@@ -40,6 +40,12 @@
 
 #include "contiki.h"
 
+#include "net/netstack.h"
+#include "net/packetbuf.h"
+#include "dev/leds.h"
+#include "net/dtn/dtn-network.h"
+
+
 #include <stdio.h> /* For printf() */
 /*---------------------------------------------------------------------------*/
 PROCESS(hello_world_process, "Hello world process");
@@ -48,9 +54,14 @@ AUTOSTART_PROCESSES(&hello_world_process);
 PROCESS_THREAD(hello_world_process, ev, data)
 {
   PROCESS_BEGIN();
-
   printf("Hello, world\n");
-  
+    uint8_t foo[5]="hallo";
+    leds_on(1);
+    dtn_discover();
+    dtn_discover();
+    dtn_discover();
+
+    leds_off(1);
   PROCESS_END();
 }
 /*---------------------------------------------------------------------------*/
