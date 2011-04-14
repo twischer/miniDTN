@@ -43,6 +43,7 @@ TARGET_UPPERCASE := ${strip ${shell echo $(TARGET) | sed y!$(LOWERCASE)!$(UPPERC
 CFLAGS += -DCONTIKI=1 -DCONTIKI_TARGET_$(TARGET_UPPERCASE)=1
 
 include $(CONTIKI)/core/net/rime/Makefile.rime
+include $(CONTIKI)/core/net/dtn/Makefile.dtn
 include $(CONTIKI)/core/net/mac/Makefile.mac
 SYSTEM  = process.c procinit.c autostart.c elfloader.c profile.c \
           timetable.c timetable-aggregate.c compower.c serial-line.c
@@ -77,7 +78,7 @@ endif
 
 CONTIKI_SOURCEFILES += $(CONTIKIFILES)
 
-CONTIKIDIRS += ${addprefix $(CONTIKI)/core/,dev lib net net/mac net/rime \
+CONTIKIDIRS += ${addprefix $(CONTIKI)/core/,dev lib net net/mac net/rime net/dtn\
                  net/rpl sys cfs ctk lib/ctk loader . }
 
 oname = ${patsubst %.c,%.o,${patsubst %.S,%.o,$(1)}}
