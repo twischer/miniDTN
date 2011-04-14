@@ -53,6 +53,14 @@
 #define QUEUEBUF_CONF_NUM                8
 #endif
 
+#elif WITH_DTN /* WITH_UIP6 */
+
+#define NETSTACK_CONF_NETWORK dtn_network_driver
+#ifndef QUEUEBUF_CONF_NUM
+#define QUEUEBUF_CONF_NUM                16
+#endif
+
+
 #else /* WITH_UIP6 */
 
 /* Network setup for non-IPv6 (rime). */

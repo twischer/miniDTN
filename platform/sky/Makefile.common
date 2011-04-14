@@ -27,6 +27,10 @@ endif
 
 CONTIKI_TARGET_SOURCEFILES += $(ARCH) $(UIPDRIVERS) #$(CONTIKI_TARGET_MAIN)
 CONTIKI_TARGET_SOURCEFILES += contiki-sky-platform.c
+ifdef CONF_DTN
+CFLAGS += -DWITH_DTN=1
+endif
+
 
 MCU=msp430x1611
 include $(CONTIKI)/cpu/msp430/Makefile.msp430
