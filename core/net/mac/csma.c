@@ -54,6 +54,7 @@
 #include <string.h>
 
 #include <stdio.h>
+#include <stdlib.h>
 
 #define DEBUG 0
 #if DEBUG
