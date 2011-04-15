@@ -44,6 +44,7 @@
 #include "net/packetbuf.h"
 #include "dev/leds.h"
 #include "net/dtn/dtn-network.h"
+#include "net/dtn/sdnv.h"
 
 
 #include <stdio.h> /* For printf() */
@@ -57,10 +58,12 @@ PROCESS_THREAD(hello_world_process, ev, data)
   printf("Hello, world\n");
     uint8_t foo[5]="hallo";
     leds_on(1);
-    dtn_discover();
-    dtn_discover();
-    dtn_discover();
-
+    sdnv_t sdnv;
+    size_t len= sdnv_encoding_len(0xABC);
+    sdnv=(uint8_t *) malloc(len);
+    sdnv_encode(0xABC,sdnv,len);
+    rimeaddr_t dest={{15,0}};
+    dtn_network_send(sdnv,len,dest);
     leds_off(1);
   PROCESS_END();
 }
