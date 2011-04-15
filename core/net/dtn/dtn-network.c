@@ -175,12 +175,11 @@ static void packet_sent(void *ptr, int status, int num_tx) {
 		
 }
 
-int dtn_network_send(uint8_t *payload_ptr, uint8_t payload_len) {
+int dtn_network_send(uint8_t *payload_ptr, uint8_t payload_len,rimeaddr_t dest) {
 	
 	uint8_t *bufptr;
 	uint16_t bundlebuf_length;
 	uint8_t packet_len; 
-	rimeaddr_t dest={{0,0}};
 	static uint16_t output_offset = 0;
 	uint8_t radio_packet[114];
 	#if 0	

@@ -32,7 +32,7 @@ extern const struct mac_driver *dtn_network_mac;
 *    Ein Bündel muss ich Bundlebuffer stehen um gesendet zu werden
 *
 */
-int dtn_network_send(uint8_t *payload_ptr, uint8_t payload_len);
+int dtn_network_send(uint8_t *payload_ptr, uint8_t payload_len, rimeaddr_t dest);
 
 /**
 *	\brief send node discovery
