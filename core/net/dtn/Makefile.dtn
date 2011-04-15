@@ -1,0 +1,3 @@
+DTN_NETWORK=dtn-network.c
+
+CONTIKI_SOURCEFILES += $(DTN_NETWORK)
