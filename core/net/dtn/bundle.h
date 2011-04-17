@@ -23,8 +23,11 @@
 #define P_LENGTH 18
 #define PAYLOAD 19
 
+#define OFFSET 0
+#define STATE 1
+
 struct bundle_t{
-	char offset_tab[20];
+	char offset_tab[20][2];
 	uint8_t *block;	
 	uint8_t size;
 };
