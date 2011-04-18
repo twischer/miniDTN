@@ -8,7 +8,6 @@
 
 int sdnv_encode(uint64_t val, uint8_t* bp, size_t len)
 {
-	printf("go  ");
 	size_t val_len = 0;
 	uint64_t tmp = val;
 
@@ -17,12 +16,10 @@ int sdnv_encode(uint64_t val, uint8_t* bp, size_t len)
 		val_len++;
 	} while (tmp != 0);
 
-	printf("1  ");
 
 	if (len < val_len) {
 		return -1;
 	}
-	printf("2  ");
 
 	bp += val_len;
 	uint8_t high_bit = 0; // for the last octet
@@ -32,7 +29,6 @@ int sdnv_encode(uint64_t val, uint8_t* bp, size_t len)
 		high_bit = (1 << 7); // for all but the last octet
 		val = val >> 7;
 	} while (val != 0);
-	printf("3  \n");
 
 	return val_len;
 }

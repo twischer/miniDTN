@@ -1,66 +1,128 @@
 #include "net/dtn/bundle.h"
 #include "net/dtn/sdnv.h"
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 
 /** 
 * brief creates a new bundle and allocates the minimum needed memory
 */
-uint8_t *create_bundle(uint8_t *payload, uint8_t len)
+uint8_t create_bundle(struct bundle_t *bundle, uint8_t *payload, uint8_t len)
 {
-	struct bundle_t bundle;
-	bundle.offset_tab[VERSION][OFFSET]=0;
-	bundle.offset_tab[FLAGS][OFFSET]=1;
-	bundle.block = (uint8_t *) malloc(len+2);
-	*bundle.block = 0;
-	bundle.size=1;
+	if (len > 108){  //to be fragmented
+		return 0;
+	}
+	bundle->offset_tab[VERSION][OFFSET]=0;
+	bundle->offset_tab[FLAGS][OFFSET]=1;
+	bundle->block = (uint8_t *) malloc(len+2);
+	*bundle->block = 0;
+	bundle->size=1;
+	printf("size: %u\n ",bundle->size);
 	uint8_t i;
-	bundle.offset_tab[VERSION][STATE]=1;
+	bundle->offset_tab[VERSION][STATE]=1;
 	for (i=1; i<=TYPE; i++){
-		bundle.offset_tab[i][OFFSET]=1;
-		bundle.offset_tab[i][STATE]=1;
+		bundle->offset_tab[i][OFFSET]=1;
+		bundle->offset_tab[i][STATE]=0;
 
 	}
-	memset(bundle.block+1,1,1);
-	for (i=TYPE+1;i<sizeof(bundle.offset_tab);i++){
-		bundle.offset_tab[i]=2;
+	bundle->offset_tab[TYPE][STATE]=1;
+	memset(bundle->block+1,1,1);
+	for (i=TYPE+1;i<20;i++){
+		bundle->offset_tab[i][OFFSET]=2;
+		bundle->offset_tab[i][STATE]=0;
 	}
-	bundle.size=len+2;
-	memcpy(bundle.block + 2, payload, len);
-	bundle.offset_tab[PAYLOAD][STATE] = len;
-	return &bundle;
+	bundle->size=len+2;
+	printf("size: %u\n ",bundle->size);
+	memcpy(bundle->block + 2, payload, len);
+	bundle->offset_tab[PAYLOAD][STATE] = len;
+	uint64_t len64=  len;
+	set_attr(bundle, P_LENGTH, &len64);
+	len64=0;
+	set_attr(bundle, LENGTH, &len64);
+	printf("size: %u\n ",bundle->size);
+	return 1;
 }
 
 
 /**
 *brief converts an integer value in sdnv and copies this to the right place in bundel
 */
-uint8_t set_attr(uint8_t *bundle, uint8_t attr, uint64_t *val)
+uint8_t set_attr(struct bundle_t *bundle, uint8_t attr, uint64_t *val)
 {
+	if (attr == TYPE){
+		uint8_t *tmp;
+		tmp = bundle->block + bundle->offset_tab[TYPE][OFFSET];
+		memset(tmp,(uint8_t) *val, 1);
+		return 1;
+	}
 	sdnv_t sdnv;
 	size_t len = sdnv_encoding_len(*val);
 	sdnv = (uint8_t *) malloc(len);
 	sdnv_encode(*val,sdnv,len);
-	bundle.block = (uint8_t *) realloc(bundle.block,(len-bundle.offset_tab[attr][STATE]) + bundle.size);
-	memmove(bundle.block + bundle.offset_tab[attr][OFFSET] + len, bundle.block + bundle.offset_tab[attr][OFFSET], bundle.size - bundle.offset_tab[attr][OFFSET] );
-	memcpy(bundle.block + bundle.offset_tab[attr][OFFSET], sdnv, len);
-	uint8_t i;
-	for(i=attr+1;i<sizeof(bundle.offset_tab);i++){
-		bundle.offset_tab[i][OFFSET] += (len - bundle.offset_tab[attr][STATE]);
+	printf("attr %u val %llu size %u len %u\n ",attr,*val,(bundle->offset_tab[attr][STATE]) , len);
+	printf("ptr %p\n",bundle->block);
+	if((len-bundle->offset_tab[attr][STATE]) > 0){
+		bundle->block = (uint8_t *) realloc(bundle->block,(len-bundle->offset_tab[attr][STATE]) + bundle->size);
+		printf("ptr %p\n",bundle->block);
+		memmove(bundle->block + bundle->offset_tab[attr][OFFSET] + len, bundle->block + bundle->offset_tab[attr][OFFSET], bundle->size - bundle->offset_tab[attr][OFFSET] );
 	}
-	bundle.size += (len - bundle.offset_tab[attr][STATE]);
-	bundle.offset_tab[attr][STATE] = len;
+	printf("ptr %p\n",bundle->block);
+	memcpy(bundle->block + bundle->offset_tab[attr][OFFSET], sdnv, len);
+	printf("ptr %p\n",bundle->block);
+	uint8_t i;
+	for(i=attr+1;i<20;i++){
+		bundle->offset_tab[i][OFFSET] += (len - bundle->offset_tab[attr][STATE]);
+	}
+	bundle->size += (len - bundle->offset_tab[attr][STATE]);
+	bundle->offset_tab[attr][STATE] = len;
+	uint8_t size=0;
+	if (attr >2 && attr <16){
+		for (i=3; i<16; i++){
+			size+=bundle->offset_tab[i][STATE];
+		}
+		memset(bundle->block+bundle->offset_tab[LENGTH][OFFSET],size,1);
+	}
 	free(sdnv);
+	return 1;
 }
 
-uint8_t *recover_bundel(uint8_t *block)
+uint8_t recover_bundel(struct bundle_t *bundle,uint8_t *block)
 {
-	struct bundle_t bundle;
-	bundle.offset_tab[VERSION]=0;
-	bundle.offset_tab[FLAGS]=1;
+	bundle->offset_tab[VERSION][OFFSET]=0;
+	bundle->offset_tab[VERSION][STATE]=1;
+	bundle->offset_tab[FLAGS][OFFSET]=1;
 	uint8_t *tmp=block;
 	tmp+=1;
+	uint8_t fields=0;
 	if (*tmp & 0x40){ //fragmented	
-	
+		printf("fragment\n");
+		fields=15;
 	}else{
-
+		fields=13;
 	}
+	uint8_t i;
+	for (i = 1; i<=fields; i++){
+		bundle->offset_tab[i][STATE]=sdnv_len(tmp);
+		bundle->offset_tab[i][OFFSET]=tmp-block;
+		tmp+=bundle->offset_tab[i][STATE];
+	}
+	if (!(*tmp & 0x40)){ //not fragmented
+		bundle->offset_tab[FRAG_OFFSET][OFFSET] = bundle->offset_tab[LIFE_TIME][OFFSET]+1;
+		bundle->offset_tab[APP_DATA_LEN][OFFSET] = bundle->offset_tab[LIFE_TIME][OFFSET]+1;
+	}
+	bundle->offset_tab[TYPE][OFFSET]=tmp-block;
+	bundle->offset_tab[TYPE][STATE]=1;
+	tmp+=1;
+	bundle->offset_tab[P_FLAGS][STATE]=sdnv_len(tmp);
+	bundle->offset_tab[P_FLAGS][OFFSET]=tmp-block;
+	tmp+=bundle->offset_tab[P_FLAGS][STATE];
+	bundle->offset_tab[P_LENGTH][STATE]=sdnv_len(tmp);
+	bundle->offset_tab[P_LENGTH][OFFSET]=tmp-block;
+	tmp+=bundle->offset_tab[P_LENGTH][STATE];
+	uint64_t val;
+	sdnv_decode(block+bundle->offset_tab[P_LENGTH][OFFSET],bundle->offset_tab[P_LENGTH][STATE],&val);
+	bundle->offset_tab[PAYLOAD][STATE]= (uint8_t) val;
+	bundle->offset_tab[PAYLOAD][OFFSET]= tmp-block;
+	bundle->size=bundle->offset_tab[PAYLOAD][OFFSET]+bundle->offset_tab[PAYLOAD][STATE];
+	return 1;
 }
