@@ -55,6 +55,7 @@
 
 #elif WITH_DTN /* WITH_UIP6 */
 
+#define RF_CHANNEL              23
 #define NETSTACK_CONF_NETWORK dtn_network_driver
 #ifndef QUEUEBUF_CONF_NUM
 #define QUEUEBUF_CONF_NUM                16
