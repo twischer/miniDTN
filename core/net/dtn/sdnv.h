@@ -1,5 +1,6 @@
 #include <stdint.h>
-#include <sys/types.h>
+#include <stdio.h>
+#include <stdlib.h>
 typedef uint8_t *sdnv_t;
 
 int sdnv_encode(uint64_t val, uint8_t* bp, size_t len);

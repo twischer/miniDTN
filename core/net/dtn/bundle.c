@@ -2,6 +2,7 @@
 #include "net/dtn/sdnv.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include "net/dtn/realloc.h"
 #include <string.h>
 
 /** 
@@ -17,7 +18,6 @@ uint8_t create_bundle(struct bundle_t *bundle, uint8_t *payload, uint8_t len)
 	bundle->block = (uint8_t *) malloc(len+2);
 	*bundle->block = 0;
 	bundle->size=1;
-	printf("size: %u\n ",bundle->size);
 	uint8_t i;
 	bundle->offset_tab[VERSION][STATE]=1;
 	for (i=1; i<=TYPE; i++){
@@ -32,14 +32,24 @@ uint8_t create_bundle(struct bundle_t *bundle, uint8_t *payload, uint8_t len)
 		bundle->offset_tab[i][STATE]=0;
 	}
 	bundle->size=len+2;
-	printf("size: %u\n ",bundle->size);
 	memcpy(bundle->block + 2, payload, len);
 	bundle->offset_tab[PAYLOAD][STATE] = len;
+	uint8_t *tmp=bundle->block;
+	for(i=0; i<bundle->size; i++){
+		printf("%u ",*tmp);
+		tmp++;
+	}
+	printf("\n");
+	tmp = payload;
+	for(i=0; i<len; i++){
+		printf("%u ",*tmp);
+		tmp++;
+	}
+	printf("\n");
 	uint64_t len64=  len;
 	set_attr(bundle, P_LENGTH, &len64);
 	len64=0;
 	set_attr(bundle, LENGTH, &len64);
-	printf("size: %u\n ",bundle->size);
 	return 1;
 }
 
@@ -59,16 +69,11 @@ uint8_t set_attr(struct bundle_t *bundle, uint8_t attr, uint64_t *val)
 	size_t len = sdnv_encoding_len(*val);
 	sdnv = (uint8_t *) malloc(len);
 	sdnv_encode(*val,sdnv,len);
-	printf("attr %u val %llu size %u len %u\n ",attr,*val,(bundle->offset_tab[attr][STATE]) , len);
-	printf("ptr %p\n",bundle->block);
 	if((len-bundle->offset_tab[attr][STATE]) > 0){
 		bundle->block = (uint8_t *) realloc(bundle->block,(len-bundle->offset_tab[attr][STATE]) + bundle->size);
-		printf("ptr %p\n",bundle->block);
 		memmove(bundle->block + bundle->offset_tab[attr][OFFSET] + len, bundle->block + bundle->offset_tab[attr][OFFSET], bundle->size - bundle->offset_tab[attr][OFFSET] );
 	}
-	printf("ptr %p\n",bundle->block);
 	memcpy(bundle->block + bundle->offset_tab[attr][OFFSET], sdnv, len);
-	printf("ptr %p\n",bundle->block);
 	uint8_t i;
 	for(i=attr+1;i<20;i++){
 		bundle->offset_tab[i][OFFSET] += (len - bundle->offset_tab[attr][STATE]);
@@ -95,7 +100,6 @@ uint8_t recover_bundel(struct bundle_t *bundle,uint8_t *block)
 	tmp+=1;
 	uint8_t fields=0;
 	if (*tmp & 0x40){ //fragmented	
-		printf("fragment\n");
 		fields=15;
 	}else{
 		fields=13;

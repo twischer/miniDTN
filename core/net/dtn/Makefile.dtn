@@ -1,4 +1,3 @@
 DTN_NETWORK=dtn-network.c
-BUNDLE=sdnv.c
-
+BUNDLE=sdnv.c bundle.c realloc.c
 CONTIKI_SOURCEFILES += $(DTN_NETWORK) $(BUNDLE) 
