@@ -45,6 +45,8 @@
 #include "dev/leds.h"
 #include "net/dtn/dtn-network.h"
 #include "net/dtn/sdnv.h"
+#include "net/dtn/bundle.h"
+#include <string.h>
 
 
 #include <stdio.h> /* For printf() */
@@ -56,14 +58,37 @@ PROCESS_THREAD(hello_world_process, ev, data)
 {
   PROCESS_BEGIN();
   printf("Hello, world\n");
-    uint8_t foo[5]="hallo";
     leds_on(1);
-    sdnv_t sdnv;
-    size_t len= sdnv_encoding_len(0xABC);
-    sdnv=(uint8_t *) malloc(len);
-    sdnv_encode(0xABC,sdnv,len);
-    rimeaddr_t dest={{15,0}};
-    dtn_network_send(sdnv,len,dest);
+        uint8_t *foo;
+        foo=(uint8_t *) malloc(10);
+        memset(foo,0xfe,10);
+        struct bundle_t bundle;
+        create_bundle(&bundle ,foo ,10);
+        uint8_t i;
+        uint64_t bla=1;
+        set_attr(&bundle, DEST_NODE, &bla);
+        set_attr(&bundle, DEST_SERV, &bla);
+        set_attr(&bundle, SRC_NODE, &bla);
+        set_attr(&bundle, SRC_SERV,&bla);
+        set_attr(&bundle, FLAGS, &bla);
+        set_attr(&bundle, REP_NODE, &bla);
+        set_attr(&bundle, REP_SERV, &bla);
+        set_attr(&bundle, CUST_NODE, &bla);
+        set_attr(&bundle, CUST_SERV, &bla);
+        set_attr(&bundle, TIME_STAMP_SEQ_NR, &bla);
+        set_attr(&bundle, LIFE_TIME, &bla);
+        set_attr(&bundle, P_FLAGS, &bla);
+        set_attr(&bundle, TIME_STAMP, &bla);
+	rimeaddr_t dest={{15,0}};
+        printf("main size: %u\n ",bundle.size);
+	dtn_network_send(bundle.block,bundle.size,dest);
+    	uint8_t *tmp=bundle.block;
+	for(i=0; i<bundle.size; i++){
+		printf("%u ",*tmp);
+		tmp++;
+	}
+	printf("\n");
+		
     leds_off(1);
   PROCESS_END();
 }
