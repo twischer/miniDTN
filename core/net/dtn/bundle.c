@@ -36,20 +36,20 @@ uint8_t create_bundle(struct bundle_t *bundle, uint8_t *payload, uint8_t len)
 	bundle->offset_tab[PAYLOAD][STATE] = len;
 	uint8_t *tmp=bundle->block;
 	for(i=0; i<bundle->size; i++){
-		printf("%u ",*tmp);
+		printf("%x ",*tmp);
 		tmp++;
 	}
 	printf("\n");
 	tmp = payload;
 	for(i=0; i<len; i++){
-		printf("%u ",*tmp);
+		printf("%x ",*tmp);
 		tmp++;
 	}
 	printf("\n");
 	uint64_t len64=  len;
 	set_attr(bundle, P_LENGTH, &len64);
 	len64=0;
-	set_attr(bundle, LENGTH, &len64);
+	//set_attr(bundle, LENGTH, &len64);
 	return 1;
 }
 
@@ -66,12 +66,13 @@ uint8_t set_attr(struct bundle_t *bundle, uint8_t attr, uint64_t *val)
 		return 1;
 	}
 	sdnv_t sdnv;
+	printf("tpr %p\n ",val);  // this fixes everything
 	size_t len = sdnv_encoding_len(*val);
 	sdnv = (uint8_t *) malloc(len);
 	sdnv_encode(*val,sdnv,len);
 	if((len-bundle->offset_tab[attr][STATE]) > 0){
 		bundle->block = (uint8_t *) realloc(bundle->block,(len-bundle->offset_tab[attr][STATE]) + bundle->size);
-		memmove(bundle->block + bundle->offset_tab[attr][OFFSET] + len, bundle->block + bundle->offset_tab[attr][OFFSET], bundle->size - bundle->offset_tab[attr][OFFSET] );
+		memmove((bundle->block + bundle->offset_tab[attr][OFFSET] + len), bundle->block + bundle->offset_tab[attr][OFFSET], bundle->size - bundle->offset_tab[attr][OFFSET] );
 	}
 	memcpy(bundle->block + bundle->offset_tab[attr][OFFSET], sdnv, len);
 	uint8_t i;

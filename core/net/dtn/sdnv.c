@@ -36,6 +36,7 @@ int sdnv_encode(uint64_t val, uint8_t* bp, size_t len)
 size_t sdnv_encoding_len(uint64_t val)
 {
 	size_t val_len = 0;
+//	printf("val %llu ptr %p\n ",val,&val);
 	do {
 		val = val >> 7;
 		val_len++;
