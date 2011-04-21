@@ -116,6 +116,9 @@ CFLAGS   += $(CFLAGSNO) -O$(OPTI)
 ifndef BOOTLOADER_START
   BOOTLOADER_START = 0x1F800
 endif
+ifdef CONF_DTN
+CFLAGS += -DWITH_DTN=1
+endif
 
 LDFLAGS  += -mmcu=$(MCU) -Wl,-Map=contiki-$(TARGET).map \
            -Wl,--section-start=.bootloader=$(BOOTLOADER_START)
