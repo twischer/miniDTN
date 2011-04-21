@@ -14,9 +14,11 @@
 #define NETSTACK_CONF_MAC     csma_driver
 #endif /* NETSTACK_CONF_MAC */
 
+#if !WITH_DTN
 #ifndef NETSTACK_CONF_RDC
 #define NETSTACK_CONF_RDC     contikimac_driver
 #endif /* NETSTACK_CONF_RDC */
+#endif
 
 #ifndef NETSTACK_CONF_RDC_CHANNEL_CHECK_RATE
 #define NETSTACK_CONF_RDC_CHANNEL_CHECK_RATE 8
@@ -57,6 +59,7 @@
 
 #define RF_CHANNEL              23
 #define NETSTACK_CONF_NETWORK dtn_network_driver
+#define NETSTACK_CONF_RDC         nullrdc_driver
 #ifndef QUEUEBUF_CONF_NUM
 #define QUEUEBUF_CONF_NUM                16
 #endif
