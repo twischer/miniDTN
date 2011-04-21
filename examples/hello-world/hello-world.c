@@ -47,7 +47,7 @@
 #include "net/dtn/sdnv.h"
 #include "net/dtn/bundle.h"
 #include <string.h>
-#include "net/dtn/realloc.h"
+//#include "net/dtn/realloc.h"
 
 #include <stdio.h> /* For printf() */
 /*---------------------------------------------------------------------------*/
@@ -88,7 +88,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
         struct bundle_t bundle;
         create_bundle(&bundle ,foo ,10);
         uint8_t i;
-        uint64_t bla=1;
+        uint32_t bla=3;
 //	#if 0
         set_attr(&bundle, DEST_NODE, &bla);
         set_attr(&bundle, DEST_SERV, &bla);
