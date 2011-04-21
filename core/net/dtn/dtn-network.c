@@ -16,6 +16,7 @@
 #include "net/netstack.h"
 #include "net/packetbuf.h"
 #include "net/rime/rimeaddr.h"
+#include "net/dtn/bundle.h"
 
 
 #define DEBUG 1
@@ -49,7 +50,7 @@ static void dtn_network_input(void) {
 	packetbuf_copyto(input_packet);
 	rimeaddr_t dest = *packetbuf_addr(PACKETBUF_ADDR_RECEIVER);
 	PRINTF("%x%x: dtn_network_input\n",dest.u8[0],dest.u8[1]);
-	if(dest.u8[0]==0 & dest.u8[1]==0){
+	if((dest.u8[0]==0) & (dest.u8[1]==0)){ //broadcast message
 		PRINTF("Broadcast\n");
 		uint8_t test[13]="DTN_DISCOVERY";
 		uint8_t discover=1;
@@ -74,7 +75,19 @@ static void dtn_network_input(void) {
 			PRINTF("some broadcast message\n");
 		}
 			
-        }
+        }else{
+		struct bundle_t bundle;	
+		//PRINTF("net bptr: %p  blptr:%u \n",&bundle,input_packet);
+		uint8_t i;
+		PRINTF("%p  %p\n",&bundle,&input_packet);	
+		recover_bundel(&bundle,&input_packet);
+
+		for(i=0;i<20;i++){
+			uint8_t *tmp=bundle.block+bundle.offset_tab[i][0];
+			PRINTF("offset %u size %u val %x\n",bundle.offset_tab[i][0], bundle.offset_tab[i][1],*tmp);
+		}
+			
+	}
 		
 #if 0
 	static uint16_t input_offset = 0;

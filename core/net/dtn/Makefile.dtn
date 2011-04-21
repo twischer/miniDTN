@@ -1,3 +1,7 @@
 DTN_NETWORK=dtn-network.c
+ifeq ($(TARGET),sky)
 BUNDLE=sdnv.c bundle.c realloc.c
+else
+BUNDLE=sdnv.c bundle.c 
+endif
 CONTIKI_SOURCEFILES += $(DTN_NETWORK) $(BUNDLE) 
