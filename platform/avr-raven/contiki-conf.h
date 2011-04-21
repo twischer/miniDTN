@@ -130,6 +130,15 @@ unsigned long clock_seconds(void);
 //#define UIP_CONF_IPV6_RPL         0
 #define NETSTACK_CONF_NETWORK       sicslowpan_driver
 #define SICSLOWPAN_CONF_COMPRESSION SICSLOWPAN_COMPRESSION_HC06
+
+
+
+#elif WITH_DTN
+#define NETSTACK_CONF_NETWORK dtn_network_driver
+#define RIMEADDR_CONF_SIZE        2
+
+
+
 #else
 /* ip4 should build but is largely untested */
 #define RIMEADDR_CONF_SIZE        2
@@ -189,8 +198,21 @@ unsigned long clock_seconds(void);
 #define UIP_CONF_DHCP_LIGHT      1
 
 
-#if 1 /* No radio cycling */
+#if WITH_DTN
+#define CHANNEL_802_15_4          23
+#define NETSTACK_CONF_MAC	  csma_driver
+#define NETSTACK_CONF_RDC    	  nullrdc_driver 
+#define NETSTACK_CONF_FRAMER      framer_802154
+#define NETSTACK_CONF_RADIO       rf230_driver
+#define RF230_CONF_AUTOACK        1
+#define SICSLOWPAN_CONF_ACK_ALL   0
+#define RF230_CONF_AUTORETRIES    2
+#ifndef QUEUEBUF_CONF_NUM
+#define QUEUEBUF_CONF_NUM                16
 
+#endif
+
+#elif 1 /* No radio cycling */
 #define NETSTACK_CONF_MAC         nullmac_driver
 #define NETSTACK_CONF_RDC         sicslowmac_driver
 #define NETSTACK_CONF_FRAMER      framer_802154
@@ -243,7 +265,7 @@ unsigned long clock_seconds(void);
 #define NETSTACK_CONF_RDC         cxmac_driver
 #define NETSTACK_CONF_FRAMER      framer_802154
 #define NETSTACK_CONF_RADIO       rf230_driver
-#define CHANNEL_802_15_4          26
+#define CHANNEL_802_15_4          23
 #define RF230_CONF_AUTOACK        1
 #define SICSLOWPAN_CONF_FRAG      1
 #define SICSLOWPAN_CONF_MAXAGE    3

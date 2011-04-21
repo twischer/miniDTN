@@ -29,6 +29,10 @@ AVRDUDE_PORT=usb
 # Verify off
 #AVRDUDE_OPTIONS=-V
 AVRDUDE_OPTIONS=
+ifdef CONF_DTN
+CFLAGS += -DWITH_DTN=1
+endif
+
 
 
 include $(CONTIKIAVR)/Makefile.avr
