@@ -6,10 +6,10 @@
 
 #define MAX_LENGTH 8 
 
-int sdnv_encode(uint64_t val, uint8_t* bp, size_t len)
+int sdnv_encode(uint32_t val, uint8_t* bp, size_t len)
 {
 	size_t val_len = 0;
-	uint64_t tmp = val;
+	uint32_t tmp = val;
 
 	do {
 		tmp = tmp >> 7;
@@ -33,10 +33,10 @@ int sdnv_encode(uint64_t val, uint8_t* bp, size_t len)
 	return val_len;
 }
 
-size_t sdnv_encoding_len(uint64_t val)
+size_t sdnv_encoding_len(uint32_t val)
 {
 	size_t val_len = 0;
-//	printf("val %llu ptr %p\n ",val,&val);
+//	printf("val %lu ptr %p\n ",val,&val);
 	do {
 		val = val >> 7;
 		val_len++;
@@ -45,7 +45,7 @@ size_t sdnv_encoding_len(uint64_t val)
 	return val_len;
 }
 
-int sdnv_decode(const uint8_t* bp, size_t len, uint64_t* val)
+int sdnv_decode(const uint8_t* bp, size_t len, uint32_t* val)
 {
 	const uint8_t* start = bp;
 	if (!val) {
