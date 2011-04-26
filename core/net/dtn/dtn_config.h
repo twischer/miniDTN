@@ -1,0 +1,2 @@
+#define BUNDLE_STORAGE_SIZE 10
+#define BUNDLE_STARAGE_FILE_NAME "list_file"
