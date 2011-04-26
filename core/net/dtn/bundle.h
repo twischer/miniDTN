@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include "core/net/dtn/bundle.h"
 
 
 //primary block defines
