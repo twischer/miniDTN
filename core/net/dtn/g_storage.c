@@ -1,7 +1,10 @@
-#include "core/net/dtn/storage.h"
-#include "core/net/dtn/dtn_config.h"
-#include "core/net/dtn/bundle.h"
-#include "core/net/sdnv.h"
+#include "contiki.h"
+#include "net/dtn/storage.h"
+#include "net/dtn/g_storage.h"
+#include "net/dtn/bundle.h"
+#include "net/dtn/sdnv.h"
+#include <stdlib.h>
+#include <stdio.h>
 
 struct file_list_entry_t file_list[BUNDLE_STORAGE_SIZE];
 char *filename = BUNDLE_STARAGE_FILE_NAME; 
@@ -23,7 +26,8 @@ void init(void){
 	}
 
 
-int32_t save_bundle(uint8_t *offset_tab, struct bundle_t *bundle){
+int32_t save_bundle(uint8_t *offset_tab, struct bundle_t *bundle)
+{
 	uint16_t i=0;
 	int32_t free=-1;
 	uint8_t *tmp=bundle->block;
@@ -79,10 +83,39 @@ int32_t save_bundle(uint8_t *offset_tab, struct bundle_t *bundle){
 	}else{
 		return -1;
 	}
-	return n;
-		
+	return (int32_t)file_list[i].file_num;
+}
+
+uint16_t del_bundle(uint16_t bundle_num)
+{
+	char b_file[5];
+	sprintf(b_file,"%u",bundle_num);
+	cfs_remove(b_file);
+	file_list[bundle_num].file_size=0;
+	file_list[bundle_num].src=0;
+}
+
+uint16_t read_bundle(uint16_t bundle_num,struct bundle_t bundle)
+{
+	char b_file[5],;
+	sprintf(b_file,"%u",bundle_num);
+	fd_read = cfs_open(b_file, CFS_READ);
+	if(fd_read!=-1) {
+		cfs_read(fd_read, bundle->offset_tab, sizeof(bundle->offset_tab));
+		cfs_seek(fd_read, sizeof(bundle->offset_tab), CFS_SEEK_SET);
+		cfs_read(fd_read, bundle->block, file_list[bundle_num].file_size-sizeof(bundle->offset_tab));
+		cfs_close(fd_read);
+		return file_list[bundle_num].file_size+sizeof(bundle->offset_tab);
+	}
+	return 0;
 
 
 
 }
-
+const struct storage_driver g_storage_driver = {
+	"G_STORAGE",
+	init,
+	save_bundle,
+	del_bundle,
+	read_bundle,
+};

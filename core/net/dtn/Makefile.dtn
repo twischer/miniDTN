@@ -4,4 +4,5 @@ BUNDLE=sdnv.c bundle.c realloc.c
 else
 BUNDLE=sdnv.c bundle.c 
 endif
-CONTIKI_SOURCEFILES += $(DTN_NETWORK) $(BUNDLE) 
+STORAGE= g_storage.c
+CONTIKI_SOURCEFILES += $(DTN_NETWORK) $(BUNDLE) $(STORAGE)

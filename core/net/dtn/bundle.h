@@ -1,5 +1,7 @@
 #include <stdint.h>
-#include "core/net/dtn/bundle.h"
+//#include "net/dtn/bundle.h"
+#ifndef __BUNDLE_H__
+#define __BUNDLE_H__
 
 
 //primary block defines
@@ -38,3 +40,4 @@ struct bundle_t{
 uint8_t recover_bundel(struct bundle_t *bundle, uint8_t *block);
 uint8_t set_attr(struct bundle_t *bundle, uint8_t attr, uint32_t *val);
 uint8_t create_bundle(struct bundle_t *bundle, uint8_t *payload, uint8_t len);
+#endif
