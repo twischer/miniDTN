@@ -31,7 +31,7 @@ const struct mac_driver *dtn_network_mac;
 
 uint16_t *output_offset_ptr;
 
-static uint8_t bundle_seqno = 0;
+//static uint8_t bundle_seqno = 0;
 
 
 static void packet_sent(void *ptr, int status, int num_tx);
@@ -190,11 +190,11 @@ static void packet_sent(void *ptr, int status, int num_tx) {
 
 int dtn_network_send(uint8_t *payload_ptr, uint8_t payload_len,rimeaddr_t dest) {
 	
-	uint8_t *bufptr;
-	uint16_t bundlebuf_length;
-	uint8_t packet_len; 
-	static uint16_t output_offset = 0;
-	uint8_t radio_packet[114];
+//	uint8_t *bufptr;
+//	uint16_t bundlebuf_length;
+//	uint8_t packet_len; 
+//	static uint16_t output_offset = 0;
+//	uint8_t radio_packet[114];
 	#if 0	
 	/* der offset sagt aus, wieviele bytes eines bundles bereits gesendet worden sind */
 	output_offset_ptr = &output_offset;
