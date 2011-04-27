@@ -44,8 +44,9 @@
 #include "net/packetbuf.h"
 #include "dev/leds.h"
 #include "net/dtn/dtn-network.h"
-#include "net/dtn/sdnv.h"
 #include "net/dtn/bundle.h"
+#include "net/dtn/dtn-config.h"
+#include "net/dtn/storage.h"
 #include <string.h>
 //#include "net/dtn/realloc.h"
 
@@ -59,28 +60,6 @@ PROCESS_THREAD(hello_world_process, ev, data)
   PROCESS_BEGIN();
   printf("Hello, world\n");
     leds_on(1);
-    #if 0
-    uint8_t *foo;
-    foo=(uint8_t *) malloc(10);
-    size_t *bar=foo-1;
-    uint8_t *bla;
-    memset(foo,0xff,10);
-    memset(foo,0,5);
-    printf("address:%p  len:%u \n",foo,*bar-1);
-    for(bla=foo;bla<foo+10;bla++){
-    	printf("0x%x ",*bla);
-    }
-    printf("\n");
-    foo = (uint8_t *) realloc(foo,20);
-    memmove(foo+10,foo,10);
-    bar=foo-1;
-    printf("address:%p  len:%u \n",foo,*bar-1);
-    for(bla=foo;bla<foo+20;bla++){
-    	printf("0x%x ",*bla);
-    }
-    printf("\n");
-    #endif
-    	
 	
         uint8_t *foo;
         foo=(uint8_t *) malloc(10);
@@ -106,7 +85,16 @@ PROCESS_THREAD(hello_world_process, ev, data)
 //	#endif
 	rimeaddr_t dest={{15,0}};
         printf("main size: %u\n ",bundle.size);
-	dtn_network_send(bundle.block,bundle.size,dest);
+	
+	int32_t saved = save_bundle(bundle.offset_tab, bundle.block);
+	if (saved >=0){
+		printf("%d byte saved\n",saved);
+	}else{
+		printf("something's wrong\n");
+	}
+
+
+	//dtn_network_send(bundle.block,bundle.size,dest);
     	uint8_t *tmp=bundle.block;
 	for(i=0; i<bundle.size; i++){
 		printf("%x ",*tmp);
