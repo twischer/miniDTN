@@ -1,8 +1,10 @@
 DTN_NETWORK=dtn-network.c
 ifeq ($(TARGET),sky)
 BUNDLE=sdnv.c bundle.c realloc.c
+STORAGE= g_storage.c 
 else
 BUNDLE=sdnv.c bundle.c 
 endif
-STORAGE= g_storage.c
+#COFFEE_FILES=3
+
 CONTIKI_SOURCEFILES += $(DTN_NETWORK) $(BUNDLE) $(STORAGE)
