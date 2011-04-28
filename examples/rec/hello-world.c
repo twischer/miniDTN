@@ -56,6 +56,8 @@ PROCESS_THREAD(hello_world_process, ev, data)
   PROCESS_BEGIN();
   packetbuf_clear();
   rimeaddr_t default_route= FOO;
+  rimeaddr_t dest={{15,0}};
+  rimeaddr_set_node_addr(&dest);
   printf("Hello, world\n");
 
   
