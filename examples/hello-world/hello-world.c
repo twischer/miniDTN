@@ -45,7 +45,7 @@
 #include "dev/leds.h"
 #include "net/dtn/dtn-network.h"
 #include "net/dtn/bundle.h"
-#include "net/dtn/dtn-config.h"
+#include "net/dtn/dtn_config.h"
 #include "net/dtn/storage.h"
 #include <string.h>
 //#include "net/dtn/realloc.h"
@@ -60,6 +60,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
   PROCESS_BEGIN();
   printf("Hello, world\n");
     leds_on(1);
+    //BUNDLE_STORAGE.init();
 	
         uint8_t *foo;
         foo=(uint8_t *) malloc(10);
@@ -85,13 +86,15 @@ PROCESS_THREAD(hello_world_process, ev, data)
 //	#endif
 	rimeaddr_t dest={{15,0}};
         printf("main size: %u\n ",bundle.size);
-	
-	int32_t saved = save_bundle(bundle.offset_tab, bundle.block);
+	int32_t saved = BUNDLE_STORAGE.save_bundle(&bundle);
 	if (saved >=0){
-		printf("%d byte saved\n",saved);
+		printf("bundle saved at pos: %ld\n",saved);
 	}else{
 		printf("something's wrong\n");
 	}
+	//bla++;
+       // set_attr(&bundle, SRC_NODE, &bla);
+	read_bundle((uint16_t) saved, &bundle);
 
 
 	//dtn_network_send(bundle.block,bundle.size,dest);
