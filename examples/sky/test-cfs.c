@@ -53,7 +53,7 @@ PROCESS_THREAD(cfs_process, ev, data)
   {
     int i, j, fd;
     int errors = 0;
-    uint16_t filesize = 65000;
+    uint16_t filesize = 650;
 #define CHUNKSIZE 128
 
     fd = cfs_open("hej", CFS_WRITE);
