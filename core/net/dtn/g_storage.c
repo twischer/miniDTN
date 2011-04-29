@@ -20,19 +20,49 @@ char *filename = BUNDLE_STARAGE_FILE_NAME;
 int fd_write, fd_read;
 
 
-void init(void){
+void init(void)
+{
+	PRINTF("init g_storage\n");
 	fd_read = cfs_open(filename, CFS_READ);
 	if(fd_read!=-1) {
-		cfs_read(fd_read,file_list,8*BUNDLE_STORAGE_SIZE);
+		PRINTF("file opened\n");
+		cfs_read(fd_read,file_list,24*BUNDLE_STORAGE_SIZE);
 		cfs_close(fd_read);
+		PRINTF("file closed\n");
 	}else{
+		PRINTF("no file found\n");
 		uint16_t i;
 		for(i=0; i < BUNDLE_STORAGE_SIZE; i++){
 			file_list[i].bundle_num=i;
 			file_list[i].file_size=0;
 			file_list[i].lifetime=0;
+			PRINTF("deleting old bundles\n");
+			del_bundle(i);	
 		}
+		PRINTF("write new list-file\n");
+		fd_write = cfs_open(filename, CFS_WRITE);
+		PRINTF("file opened\n");
+		cfs_write(fd_write, file_list, sizeof(file_list));
+		PRINTF("write inro new file\n");
+		cfs_close(fd_write);
+		PRINTF("file closed\n");
 	}
+}
+
+void reinit(void)
+{
+	uint16_t i;
+	cfs_remove(filename);
+	for(i=0; i < BUNDLE_STORAGE_SIZE; i++){
+		file_list[i].bundle_num=i;
+		file_list[i].file_size=0;
+		file_list[i].lifetime=0;
+		del_bundle(i);
+		fd_write = cfs_open(filename, CFS_WRITE);
+		cfs_write(fd_write, file_list, sizeof(file_list));
+		cfs_close(fd_write);
+	}
+
 }
 
 int32_t save_bundle(struct bundle_t *bundle)
@@ -58,7 +88,6 @@ int32_t save_bundle(struct bundle_t *bundle)
 			free=(int32_t)i;
 			PRINTF("%u is a free slot\n",i);
 		}
-		PRINTF("%lu == %lu\n",time_stamp_seq, file_list[i].time_stamp_seq);
 		if ( time_stamp_seq == file_list[i].time_stamp_seq && 
 		    time_stamp == file_list[i].time_stamp &&
 		    src == file_list[i].src &&
@@ -75,40 +104,47 @@ int32_t save_bundle(struct bundle_t *bundle)
 		return -1;
 	}
 	i=(uint16_t)free;
-	PRINTF("bundle will be safed in solt %u\n",i);	
-	file_list[i].file_size = bundle->size+sizeof(bundle->offset_tab); 
+	PRINTF("bundle will be safed in solt %u, size of bundle is %u\n",i,bundle->size);	
+	file_list[i].file_size = bundle->size; 
 	tmp=bundle->block+bundle->offset_tab[LIFE_TIME][OFFSET];
 	sdnv_decode(tmp, bundle->offset_tab[LIFE_TIME][STATE], &file_list[i].lifetime);
 	
-	char b_file[5];
-	sprintf(b_file,"%u",file_list[i].bundle_num);
+	char b_file[7];
+	sprintf(b_file,"%u.b",file_list[i].bundle_num);
 	PRINTF("filename: %s\n", b_file);
 	fd_write = cfs_open(b_file, CFS_WRITE);
 	int n=0;
+	fd_write = cfs_open(b_file, CFS_WRITE | CFS_APPEND);
 	if(fd_write != -1) {
-		n = cfs_write(fd_write, bundle->offset_tab, sizeof(bundle->offset_tab));
+		n = cfs_write(fd_write, bundle->block, bundle->size);
 		cfs_close(fd_write);
 	}else{
 		return -1;
 	}
-	fd_write = cfs_open(b_file, CFS_WRITE | CFS_APPEND);
-	if(fd_write != -1) {
-		n += cfs_write(fd_write, bundle->block, bundle->size);
-		cfs_close(fd_write);
-	}else{
+	if (n != bundle->size){
+		PRINTF("write failed\n");
 		return -1;
 	}
 	file_list[i].time_stamp_seq = time_stamp_seq;
 	file_list[i].time_stamp = time_stamp;
 	file_list[i].src = src ;
 	file_list[i].fraq_offset = fraq_offset;
+	//save file list	
+	cfs_remove(filename);
+	fd_write = cfs_open(filename, CFS_WRITE);
+	if(fd_write != -1) {
+		cfs_write(fd_write, file_list, sizeof(file_list));
+		cfs_close(fd_write);
+	}else{
+		return -2;
+	}
 	return (int32_t)file_list[i].bundle_num;
 }
 
 uint16_t del_bundle(uint16_t bundle_num)
 {
-	char b_file[5];
-	sprintf(b_file,"%u",bundle_num);
+	char b_file[7];
+	sprintf(b_file,"%u.b",bundle_num);
 	cfs_remove(b_file);
 	file_list[bundle_num].file_size=0;
 	file_list[bundle_num].src=0;
@@ -117,16 +153,24 @@ uint16_t del_bundle(uint16_t bundle_num)
 
 uint16_t read_bundle(uint16_t bundle_num,struct bundle_t *bundle)
 {
-	char b_file[5];
-	sprintf(b_file,"%u",bundle_num);
+	char b_file[7];
+	sprintf(b_file,"%u.b",bundle_num);
 	fd_read = cfs_open(b_file, CFS_READ);
 	
 	if(fd_read!=-1) {
-		cfs_read(fd_read, bundle->offset_tab, sizeof(bundle->offset_tab));
-		cfs_seek(fd_read, sizeof(bundle->offset_tab), CFS_SEEK_SET);
-		cfs_read(fd_read, bundle->block, file_list[bundle_num].file_size-sizeof(bundle->offset_tab));
+#if DEBUG
+		uint8_t i;
+		for (i = 0; i<20; i++){
+			PRINTF("val in [%u]; %u ,%u\n",i,bundle->offset_tab[i][0], bundle->offset_tab[i][1]);
+		}
+#endif
+		PRINTF("file-size %u\n", file_list[bundle_num].file_size);
+		bundle->block = (uint8_t *) malloc(file_list[bundle_num].file_size);
+		cfs_read(fd_read, bundle->block, file_list[bundle_num].file_size);
 		cfs_close(fd_read);
-		return file_list[bundle_num].file_size+sizeof(bundle->offset_tab);
+		recover_bundel(bundle,bundle->block);
+		PRINTF("first byte in bundel %u\n",*bundle->block);
+		return file_list[bundle_num].file_size;
 	}
 	return 0;
 
@@ -136,6 +180,7 @@ uint16_t read_bundle(uint16_t bundle_num,struct bundle_t *bundle)
 const struct storage_driver g_storage = {
 	"G_STORAGE",
 	init,
+	reinit,
 	save_bundle,
 	del_bundle,
 	read_bundle,
