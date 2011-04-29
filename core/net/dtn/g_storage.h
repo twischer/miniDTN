@@ -20,6 +20,7 @@ extern struct file_list_entry_t file_list[BUNDLE_STORAGE_SIZE];
 
 
 void init(void);
+void reinit(void);
 /**
 returns bundle_num
 */
