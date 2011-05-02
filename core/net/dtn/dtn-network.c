@@ -17,6 +17,7 @@
 #include "net/packetbuf.h"
 #include "net/rime/rimeaddr.h"
 #include "net/dtn/bundle.h"
+#include "net/dtn/agent.h"
 
 
 #define DEBUG 1
@@ -37,7 +38,8 @@ uint16_t *output_offset_ptr;
 static void packet_sent(void *ptr, int status, int num_tx);
 
 
-static void dtn_network_init(void) {
+static void dtn_network_init(void) 
+{
 	
 	packetbuf_clear();
 //	input_buffer_clear();
@@ -45,12 +47,17 @@ static void dtn_network_init(void) {
 	PRINTF("DTN init\n");
 }
 
-static void dtn_network_input(void) {
+
+/**
+*called for incomming packages
+*/
+static void dtn_network_input(void) 
+{
 	uint8_t input_packet[114];
 	packetbuf_copyto(input_packet);
 	rimeaddr_t dest = *packetbuf_addr(PACKETBUF_ADDR_RECEIVER);
 	PRINTF("%x%x: dtn_network_input\n",dest.u8[0],dest.u8[1]);
-	if((dest.u8[0]==0) & (dest.u8[1]==0)){ //broadcast message
+	if((dest.u8[0]==0) & (dest.u8[1]==0)) { //broadcast message
 		PRINTF("Broadcast\n");
 		uint8_t test[13]="DTN_DISCOVERY";
 		uint8_t discover=1;
@@ -75,17 +82,21 @@ static void dtn_network_input(void) {
 			PRINTF("some broadcast message\n");
 		}
 			
-        }else{
+        } else {
 		struct bundle_t bundle;	
-		//PRINTF("net bptr: %p  blptr:%u \n",&bundle,input_packet);
 		uint8_t i;
 		PRINTF("%p  %p\n",&bundle,&input_packet);	
 		recover_bundel(&bundle,&input_packet);
 
+		process_post(&agent_process, dtn_receive_bundle_event, &bundle);	
+		
+		
+		#if DEBUG
 		for(i=0;i<20;i++){
 			uint8_t *tmp=bundle.block+bundle.offset_tab[i][0];
 			PRINTF("offset %u size %u val %x\n",bundle.offset_tab[i][0], bundle.offset_tab[i][1],*tmp);
 		}
+		#endif
 			
 	}
 		
@@ -151,7 +162,8 @@ static void dtn_network_input(void) {
 }
 
 
-static void packet_sent(void *ptr, int status, int num_tx) {
+static void packet_sent(void *ptr, int status, int num_tx) 
+{
 	switch(status) {
 	  case MAC_TX_COLLISION:
 	    PRINTF("DTN: collision after %d tx\n", num_tx);
@@ -188,7 +200,8 @@ static void packet_sent(void *ptr, int status, int num_tx) {
 		
 }
 
-int dtn_network_send(uint8_t *payload_ptr, uint8_t payload_len,rimeaddr_t dest) {
+int dtn_network_send(uint8_t *payload_ptr, uint8_t payload_len,rimeaddr_t dest) 
+{
 	
 //	uint8_t *bufptr;
 //	uint16_t bundlebuf_length;
@@ -257,7 +270,9 @@ int dtn_network_send(uint8_t *payload_ptr, uint8_t payload_len,rimeaddr_t dest) 
 	
 	return 1;
 }
-int dtn_discover(void){
+
+int dtn_discover(void)
+{
 	rimeaddr_t dest={{0,0}};
 	packetbuf_copyfrom("DTN_DISCOVERY", 13);
 	packetbuf_set_addr(PACKETBUF_ADDR_RECEIVER, &dest);
@@ -267,8 +282,10 @@ int dtn_discover(void){
 	return 1;
 }	
 
-const struct network_driver dtn_network_driver = {
+const struct network_driver dtn_network_driver = 
+{
   "DTN",
   dtn_network_init,
   dtn_network_input
 };
+kkkkkkkkkkkkkkkkk

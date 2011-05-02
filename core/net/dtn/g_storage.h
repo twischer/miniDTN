@@ -15,6 +15,7 @@ struct file_list_entry_t{
 	uint32_t time_stamp;
 	uint32_t time_stamp_seq;
 	uint32_t fraq_offset;
+	uint32_t rec_time;
 };
 extern struct file_list_entry_t file_list[BUNDLE_STORAGE_SIZE];
 
@@ -29,4 +30,5 @@ int32_t save_bundle(struct bundle_t *bundle);
 uint16_t del_bundle(uint16_t bundle_num);
 
 uint16_t read_bundle(uint16_t bundle_num, struct bundle_t *bundle);
+uint16_t free_space(struct bundle_t *bundle)
 #endif

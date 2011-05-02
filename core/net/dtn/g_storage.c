@@ -26,7 +26,7 @@ void init(void)
 	fd_read = cfs_open(filename, CFS_READ);
 	if(fd_read!=-1) {
 		PRINTF("file opened\n");
-		cfs_read(fd_read,file_list,24*BUNDLE_STORAGE_SIZE);
+		cfs_read(fd_read,file_list,28*BUNDLE_STORAGE_SIZE);
 		cfs_close(fd_read);
 		PRINTF("file closed\n");
 	}else{
@@ -129,6 +129,7 @@ int32_t save_bundle(struct bundle_t *bundle)
 	file_list[i].time_stamp = time_stamp;
 	file_list[i].src = src ;
 	file_list[i].fraq_offset = fraq_offset;
+	file_list[i].rec_time= bundle->rec_time;
 	//save file list	
 	cfs_remove(filename);
 	fd_write = cfs_open(filename, CFS_WRITE);
@@ -169,14 +170,24 @@ uint16_t read_bundle(uint16_t bundle_num,struct bundle_t *bundle)
 		cfs_read(fd_read, bundle->block, file_list[bundle_num].file_size);
 		cfs_close(fd_read);
 		recover_bundel(bundle,bundle->block);
+		bundl->rec_time=file_list[bundle_num].rec_time;
 		PRINTF("first byte in bundel %u\n",*bundle->block);
 		return file_list[bundle_num].file_size;
 	}
 	return 0;
-
-
-
 }
+
+uint16_t free_space(struct bundle_t *bundle)
+{
+	uint16_t free=0, i;
+	for (i =0; i< BUNDLE_STORAGE_SIZE; i++){
+		if(file_list[i].file_size == 0){
+			free++;
+		}
+	}
+	return free;
+}
+
 const struct storage_driver g_storage = {
 	"G_STORAGE",
 	init,
@@ -184,4 +195,5 @@ const struct storage_driver g_storage = {
 	save_bundle,
 	del_bundle,
 	read_bundle,
+	free_space,
 };
