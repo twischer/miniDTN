@@ -150,3 +150,8 @@ uint8_t recover_bundel(struct bundle_t *bundle,uint8_t *block)
 	bundle->block=block;
 	return 1;
 }
+uint16_t delete_bundle(struct bundle_t *bundel)
+{
+	free(bundel->block);
+	free(bundel);
+}
