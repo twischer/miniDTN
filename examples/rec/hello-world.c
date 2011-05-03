@@ -42,6 +42,9 @@
 
 #include "net/netstack.h"
 #include "net/packetbuf.h"
+#include "net/dtn/API_registration.h"
+#include "net/dtn/API_events.h"
+#include "net/dtn/agent.h"
 #include "dev/leds.h"
   #define FOO { {4, 0 } }
 
@@ -50,16 +53,19 @@
 /*---------------------------------------------------------------------------*/
 PROCESS(hello_world_process, "Hello world process");
 AUTOSTART_PROCESSES(&hello_world_process);
+  static struct registration_api reg;
 /*---------------------------------------------------------------------------*/
 PROCESS_THREAD(hello_world_process, ev, data)
 {
   PROCESS_BEGIN();
-  packetbuf_clear();
-  rimeaddr_t default_route= FOO;
-  rimeaddr_t dest={{15,0}};
-  rimeaddr_set_node_addr(&dest);
   printf("Hello, world\n");
-
+  agent_init();
+  reg.status=1;
+  reg.application_process=&hello_world_process;
+  reg.app_id=25;
+  printf("main app_id %p \n", &reg.app_id);
+  process_post(&agent_process, dtn_application_registration_event,(void *) &reg);
+  printf("main2 app_id %lu\n", reg.app_id);
   
   PROCESS_END();
 }
