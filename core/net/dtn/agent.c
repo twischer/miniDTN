@@ -19,7 +19,9 @@
 #include "timer.h"
 
 #include "net/dtn/API_registration.h"
+#include "net/dtn/API_events.h"
 #include "net/dtn/bundle.h"
+#include "net/dtn/agent.h"
 #include "net/dtn/dtn_config.h"
 
 
@@ -113,13 +115,13 @@ PROCESS_THREAD(agent_process, ev, data)
 		else if(ev == dtn_send_bundle_event) {
 			
 			PRINTF("BUNDLEPROTOCOL: bundle send \n");
-			reception_set_time();
+			//reception_set_time();
 			bundleptr = (struct bundle_t *) data;
 			
-			while(bundlebuf_in_use())
-				PROCESS_PAUSE();
+//			while(bundlebuf_in_use())
+//				PROCESS_PAUSE();
 			
-			forwarding_bundle(bundleptr);
+			//forwarding_bundle(bundleptr);
 			continue;
 		}
 		
@@ -128,10 +130,10 @@ PROCESS_THREAD(agent_process, ev, data)
 			PRINTF("BUNDLEPROTOCOL: bundle received \n");	
 			bundleptr->rec_time= clock_time();
 			
-			while(bundlebuf_in_use())
-				PROCESS_PAUSE();
+//			while(bundlebuf_in_use())
+//				PROCESS_PAUSE();
 			bundleptr= (struct bundle_t *) data;
-			receive_bundle(bundleptr);
+			//receive_bundle(bundleptr);
 			if (bundleptr
 			save_bundle(bundleptr);
 			delete_bundle(bundleptr);
@@ -144,29 +146,27 @@ PROCESS_THREAD(agent_process, ev, data)
 			PRINTF("BUNDLEPROTOCOL: send admin record \n");
 			bundleptr = (bundle_t *) data;
 			
-			while(bundlebuf_in_use())
-				PROCESS_PAUSE();
+//			while(bundlebuf_in_use())
+//				PROCESS_PAUSE();
 			
-			forwarding_bundle(bundleptr);
+			//forwarding_bundle(bundleptr);
 			delete_bundle(bundleptr);
 			continue;
 		}
-		
+		/*
 		else if(etimer_expired(&custody_etimer)) {
-						
 			PRINTF("BUNDLEPROTOCOL: Custody Timer expired \n");
 			reception_set_time();
-			
+
 			while(bundlebuf_in_use())
 				PROCESS_PAUSE();
-			
 			custody_read_bundle(&bundle);
 			forwarding_bundle_from_custody(&bundle);
 			delete_bundle(&bundle);
 			continue;
 		}
+		*/
 	}
-	
 	PROCESS_END();
 }
 /** @} */

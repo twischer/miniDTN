@@ -6,5 +6,5 @@ BUNDLE=sdnv.c bundle.c
 endif
 COFFEE_FILES=3
 STORAGE= g_storage.c 
-
-CONTIKI_SOURCEFILES += $(DTN_NETWORK) $(BUNDLE) $(STORAGE)
+AGENT= agent.c registration.c
+CONTIKI_SOURCEFILES += $(DTN_NETWORK) $(BUNDLE) $(STORAGE) $(AGENT)
