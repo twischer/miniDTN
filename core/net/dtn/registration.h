@@ -20,7 +20,7 @@
 #include <stdint.h>
 
 #include "lib/list.h"
-#include "API/API_registration.h"
+#include "net/dtn/API_registration.h"
 
 /**
 * \name Definitionen des Status einer Anwendung

@@ -19,13 +19,15 @@
 #include "timer.h"
 
 #include "net/dtn/API_registration.h"
+#include "net/dtn/registration.h"
 #include "net/dtn/API_events.h"
 #include "net/dtn/bundle.h"
 #include "net/dtn/agent.h"
 #include "net/dtn/dtn_config.h"
+#include "net/dtn/storage.h"
 
 
-#define DEBUG 0
+#define DEBUG 1
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)
@@ -48,7 +50,7 @@ AUTOSTART_PROCESSES(&agent_process);
 void agent_init(void) {
 		
 	PRINTF("starting DTN Bundle Protocol \n");
-	process_start(&bundle_protocol_process, NULL);
+	process_start(&agent_process, NULL);
 	dtn_node_id=15; //TODO was dynamisches
 	
 	
@@ -68,10 +70,9 @@ PROCESS_THREAD(agent_process, ev, data)
 	PROCESS_BEGIN();
 	
 	registration_init();
-	custody_init();
-	
-	static bundle_t *bundleptr;
-	static uint8_t *input_buffer;
+	//custody_init();
+		
+	struct bundle_t *bundleptr;
 	struct registration_api *reg;
 	
 	while(1) {
@@ -82,8 +83,8 @@ PROCESS_THREAD(agent_process, ev, data)
 		if(ev == dtn_application_registration_event) {
 			
 			reg = (struct registration_api *) data;
-			registration_new_app(ref->app_id, reg->application_process);
-			PRINTF("BUNDLEPROTOCOL: Event empfangen, Registration, Name: %lu \n", reg->name);
+			registration_new_app(reg->app_id, reg->application_process);
+			PRINTF("BUNDLEPROTOCOL: Event empfangen, Registration, Name: %lu\n", reg->app_id);
 			continue;
 		}
 					
@@ -107,7 +108,7 @@ PROCESS_THREAD(agent_process, ev, data)
 		else if(ev == dtn_application_remove_event) {
 			
 			reg = (struct registration_api *) data;
-			PRINTF("BUNDLEPROTOCOL: Event empfangen, Remove, Name: %lu \n", reg->app_id);
+			PRINTF("BUNDLEPROTOCOL: Event empfangen, Remove, Name: %u \n", reg->app_id);
 			registration_remove_app(reg->app_id);
 			continue;
 		}
@@ -134,17 +135,16 @@ PROCESS_THREAD(agent_process, ev, data)
 //				PROCESS_PAUSE();
 			bundleptr= (struct bundle_t *) data;
 			//receive_bundle(bundleptr);
-			if (bundleptr
-			save_bundle(bundleptr);
+			BUNDLE_STORAGE.save_bundle(bundleptr);
 			delete_bundle(bundleptr);
 			continue;
 		}
 		
 		else if(ev == dtn_send_admin_record_event) {
 			
-			reception_set_time();
+			//reception_set_time();
 			PRINTF("BUNDLEPROTOCOL: send admin record \n");
-			bundleptr = (bundle_t *) data;
+			bundleptr = (struct bundle_t *) data;
 			
 //			while(bundlebuf_in_use())
 //				PROCESS_PAUSE();
