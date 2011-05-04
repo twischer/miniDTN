@@ -5,7 +5,7 @@
 #include "net/dtn/bundle.h"
 extern const struct redundance_check b_redundance;
 
-struct red_bundle {
+struct red_bundle_t {
 	uint32_t src;
 	uint32_t seq_nr;
 	uint32_t fraq_offset;
@@ -13,11 +13,6 @@ struct red_bundle {
 	struct red_bundle *next;
 };
 
-
-
-void init(void);
-
-void reinit(void);
 
 uint8_t check(struct bundle_t *bundle);
 
