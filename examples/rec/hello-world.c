@@ -63,10 +63,22 @@ PROCESS_THREAD(hello_world_process, ev, data)
   reg.status=1;
   reg.application_process=&hello_world_process;
   reg.app_id=25;
-  printf("main app_id %p \n", &reg.app_id);
   process_post(&agent_process, dtn_application_registration_event,(void *) &reg);
-  printf("main2 app_id %lu\n", reg.app_id);
-  
+  printf("main app_id %lu\n", reg.app_id);
+  while (1){
+  	PROCESS_WAIT_EVENT_UNTIL(ev);
+	if(ev == submit_data_to_application_event) {
+		uint8_t *recv_data;
+		recv_data = (uint8_t *) data;
+		uint8_t i;
+		printf("Paketinhalt:");
+		for (i=0; i<10; i++){
+			printf(" %u " ,recv_data[i]);
+		}
+
+		printf("\n");
+	}
+  }
   PROCESS_END();
 }
 /*---------------------------------------------------------------------------*/
