@@ -12,6 +12,8 @@
  #include <stdio.h>
 #include <stdlib.h>
 
+#include "clock.h"
+
 #include "dtn-network.h"
 #include "net/netstack.h"
 #include "net/packetbuf.h"
@@ -36,6 +38,9 @@ uint16_t *output_offset_ptr;
 
 
 static void packet_sent(void *ptr, int status, int num_tx);
+
+static struct bundle_t bundle;	
+
 
 
 static void dtn_network_init(void) 
@@ -83,18 +88,18 @@ static void dtn_network_input(void)
 		}
 			
         } else {
-		struct bundle_t bundle;	
 		uint8_t i;
 		PRINTF("%p  %p\n",&bundle,&input_packet);	
 		recover_bundel(&bundle,&input_packet);
-
+		bundle.rec_time=(uint32_t) clock_seconds();
+		PRINTF("NETWORK: size of received bundle: %u\n",bundle.size);
 		process_post(&agent_process, dtn_receive_bundle_event, &bundle);	
 		
 		
 		#if DEBUG
 		for(i=0;i<20;i++){
 			uint8_t *tmp=bundle.block+bundle.offset_tab[i][0];
-			PRINTF("offset %u size %u val %x\n",bundle.offset_tab[i][0], bundle.offset_tab[i][1],*tmp);
+		//	PRINTF("offset %u size %u val %x\n",bundle.offset_tab[i][0], bundle.offset_tab[i][1],*tmp);
 		}
 		#endif
 			
@@ -258,6 +263,7 @@ int dtn_network_send(uint8_t *payload_ptr, uint8_t payload_len,rimeaddr_t dest)
 		memcpy(&radio_packet[1], &bufptr[output_offset], packet_len);
 	}
 	#endif
+
 	/* kopiere die Daten in den packetbuf(fer) */
 	packetbuf_copyfrom(payload_ptr, payload_len);
 	

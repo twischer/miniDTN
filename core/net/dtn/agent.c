@@ -51,7 +51,10 @@ void agent_init(void) {
 		
 	PRINTF("starting DTN Bundle Protocol \n");
 	process_start(&agent_process, NULL);
+	BUNDLE_STORAGE.init();
+//	BUNDLE_STORAGE.reinit();
 	dtn_node_id=15; //TODO was dynamisches
+
 	
 	
 	dtn_application_registration_event = process_alloc_event();
@@ -118,6 +121,13 @@ PROCESS_THREAD(agent_process, ev, data)
 			PRINTF("BUNDLEPROTOCOL: bundle send \n");
 			//reception_set_time();
 			bundleptr = (struct bundle_t *) data;
+			uint32_t time=(uint32_t) clock_seconds();
+			time = time - bundle->rec_time;
+			uint32_t lifetime;
+			sdnv_decode(bundleptr->block + bundelptr->offset_tab[LIFE_TIME][OFFSET],sdnv_len(bundleptr->block + bundelptr->offset_tab[LIFE_TIME][OFFSET]),&lifetime);
+			lifetime= lifetime -time;
+			set_attr(bundelptr,LIFE_TIME,lifetime);
+
 			
 //			while(bundlebuf_in_use())
 //				PROCESS_PAUSE();
@@ -134,6 +144,8 @@ PROCESS_THREAD(agent_process, ev, data)
 //			while(bundlebuf_in_use())
 //				PROCESS_PAUSE();
 			bundleptr= (struct bundle_t *) data;
+			//TODO redundanz check
+			//wenn ich dest dann ausliefern sonnst forward
 			//receive_bundle(bundleptr);
 			BUNDLE_STORAGE.save_bundle(bundleptr);
 			delete_bundle(bundleptr);
