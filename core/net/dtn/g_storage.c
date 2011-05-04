@@ -29,6 +29,13 @@ void init(void)
 		cfs_read(fd_read,file_list,28*BUNDLE_STORAGE_SIZE);
 		cfs_close(fd_read);
 		PRINTF("file closed\n");
+		#if DEBUG
+		uint16_t i;
+	//	file_list[0].file_size=1;
+		for (i=0; i<BUNDLE_STORAGE_SIZE; i++){
+			PRINTF("slot %u state is %u\n", i, file_list[i].file_size);
+		}
+		#endif
 	}else{
 		PRINTF("no file found\n");
 		uint16_t i;
@@ -82,6 +89,12 @@ int32_t save_bundle(struct bundle_t *bundle)
 	tmp=bundle->block+bundle->offset_tab[FRAG_OFFSET][OFFSET];
 	uint32_t fraq_offset;
 	sdnv_decode(tmp, bundle->offset_tab[FRAG_OFFSET][STATE], &fraq_offset);
+		#if DEBUG
+		for (i=0; i<BUNDLE_STORAGE_SIZE; i++){
+			PRINTF("slot %u state is %u\n", i, file_list[i].file_size);
+		}
+		i=0;
+		#endif
 	
 	while ( i < BUNDLE_STORAGE_SIZE) {
 		if (free == -1 && file_list[i].file_size == 0){
@@ -106,6 +119,13 @@ int32_t save_bundle(struct bundle_t *bundle)
 	i=(uint16_t)free;
 	PRINTF("bundle will be safed in solt %u, size of bundle is %u\n",i,bundle->size);	
 	file_list[i].file_size = bundle->size; 
+		#if DEBUG
+		for (i=0; i<BUNDLE_STORAGE_SIZE; i++){
+			PRINTF("b slot %u state is %u\n", i, file_list[i].file_size);
+		}
+		i=0;
+		#endif
+	i=(uint16_t)free;
 	tmp=bundle->block+bundle->offset_tab[LIFE_TIME][OFFSET];
 	sdnv_decode(tmp, bundle->offset_tab[LIFE_TIME][STATE], &file_list[i].lifetime);
 	
@@ -116,7 +136,7 @@ int32_t save_bundle(struct bundle_t *bundle)
 	int n=0;
 	fd_write = cfs_open(b_file, CFS_WRITE | CFS_APPEND);
 	if(fd_write != -1) {
-		n = cfs_write(fd_write, bundle->block, bundle->size);
+		n = cfs_write(fd_write, bundle->block, bundle->size);//TODO
 		cfs_close(fd_write);
 	}else{
 		return -1;

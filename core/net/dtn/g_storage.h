@@ -7,7 +7,7 @@
 
 extern const struct storage_driver g_storage_driver;
 
-struct file_list_entry_t{
+static struct file_list_entry_t{
 	uint16_t bundle_num;
 	uint16_t file_size;
 	uint32_t lifetime;

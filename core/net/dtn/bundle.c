@@ -61,6 +61,7 @@ uint8_t create_bundle(struct bundle_t *bundle, uint8_t *payload, uint8_t len)
 	set_attr(bundle, P_LENGTH, &len64);
 	len64=0;
 	set_attr(bundle, LENGTH, &len64);
+	bundle->size=bundle->offset_tab[PAYLOAD][OFFSET]+bundle->offset_tab[PAYLOAD][STATE];
 	return 1;
 }
 
