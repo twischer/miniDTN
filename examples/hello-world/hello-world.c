@@ -69,13 +69,16 @@ PROCESS_THREAD(hello_world_process, ev, data)
         struct bundle_t bundle;
         create_bundle(&bundle ,foo ,10);
         uint8_t i;
-        uint32_t bla=3;
+        uint32_t bla=4;
 	rimeaddr_t dest={{15,0}};
 //#if 0
         set_attr(&bundle, DEST_NODE, &bla);
         set_attr(&bundle, DEST_SERV, &bla);
+	bla=15;
         set_attr(&bundle, SRC_NODE, &bla);
+	bla=25;
         set_attr(&bundle, SRC_SERV,&bla);
+	bla=4;
         set_attr(&bundle, FLAGS, &bla);
         set_attr(&bundle, REP_NODE, &bla);
         set_attr(&bundle, REP_SERV, &bla);
@@ -93,7 +96,8 @@ PROCESS_THREAD(hello_world_process, ev, data)
 
 	}
 	printf("\n");
-	int32_t saved = BUNDLE_STORAGE.save_bundle(&bundle);
+#if 0
+int32_t saved = BUNDLE_STORAGE.save_bundle(&bundle);
 	if (saved >=0){
 		printf("bundle saved at pos: %ld\n",saved);
 	}else{
@@ -135,7 +139,7 @@ tmp=bundle.block;
 
 	}
 	printf("\n");
-
+#endif
 
 	dtn_network_send(bundle.block,bundle.size,dest);
 			
