@@ -25,6 +25,8 @@
 #include "net/dtn/agent.h"
 #include "net/dtn/dtn_config.h"
 #include "net/dtn/storage.h"
+#include "net/dtn/sdnv.h"
+#include "net/dtn/redundance.h"
 
 
 #define DEBUG 1
@@ -53,6 +55,7 @@ void agent_init(void) {
 	process_start(&agent_process, NULL);
 	BUNDLE_STORAGE.init();
 //	BUNDLE_STORAGE.reinit();
+	REDUNDANCE.init();
 	dtn_node_id=15; //TODO was dynamisches
 
 	
@@ -111,7 +114,7 @@ PROCESS_THREAD(agent_process, ev, data)
 		else if(ev == dtn_application_remove_event) {
 			
 			reg = (struct registration_api *) data;
-			PRINTF("BUNDLEPROTOCOL: Event empfangen, Remove, Name: %u \n", reg->app_id);
+			PRINTF("BUNDLEPROTOCOL: Event empfangen, Remove, Name: %lu \n", reg->app_id);
 			registration_remove_app(reg->app_id);
 			continue;
 		}
@@ -122,11 +125,11 @@ PROCESS_THREAD(agent_process, ev, data)
 			//reception_set_time();
 			bundleptr = (struct bundle_t *) data;
 			uint32_t time=(uint32_t) clock_seconds();
-			time = time - bundle->rec_time;
+			time = time - bundleptr->rec_time;
 			uint32_t lifetime;
-			sdnv_decode(bundleptr->block + bundelptr->offset_tab[LIFE_TIME][OFFSET],sdnv_len(bundleptr->block + bundelptr->offset_tab[LIFE_TIME][OFFSET]),&lifetime);
+			sdnv_decode(bundleptr->block + bundleptr->offset_tab[LIFE_TIME][OFFSET],sdnv_len(bundleptr->block + bundleptr->offset_tab[LIFE_TIME][OFFSET]),&lifetime);
 			lifetime= lifetime -time;
-			set_attr(bundelptr,LIFE_TIME,lifetime);
+			set_attr(bundleptr,LIFE_TIME,&lifetime);
 
 			
 //			while(bundlebuf_in_use())
