@@ -12,4 +12,6 @@ size_t sdnv_encoding_len(uint32_t val);
 int sdnv_decode(const uint8_t* bp, size_t len, uint32_t* val);
 size_t sdnv_len(const uint8_t* bp);
 
+#define sdnv_decode2(a,b) sdnv_decode(a,sdnv_len(a),b)
+
 #endif
