@@ -47,6 +47,7 @@
 #include "net/dtn/bundle.h"
 #include "net/dtn/dtn_config.h"
 #include "net/dtn/storage.h"
+#include "net/dtn/redundance.h"
 #include <string.h>
 //#include "net/dtn/realloc.h"
 
@@ -85,7 +86,9 @@ PROCESS_THREAD(hello_world_process, ev, data)
         set_attr(&bundle, CUST_NODE, &bla);
         set_attr(&bundle, CUST_SERV, &bla);
         set_attr(&bundle, TIME_STAMP_SEQ_NR, &bla);
+	bla=25;
         set_attr(&bundle, LIFE_TIME, &bla);
+	bla=4;
         set_attr(&bundle, P_FLAGS, &bla);
         set_attr(&bundle, TIME_STAMP, &bla);
         printf("main size: %u\n",bundle.size);
@@ -96,6 +99,9 @@ PROCESS_THREAD(hello_world_process, ev, data)
 
 	}
 	printf("\n");
+	
+
+
 #if 0
 int32_t saved = BUNDLE_STORAGE.save_bundle(&bundle);
 	if (saved >=0){
