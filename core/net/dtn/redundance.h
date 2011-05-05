@@ -8,6 +8,7 @@ struct redundance_check {
 	char *name;
 
 	uint8_t (* check)(struct bundle_t *bundle);
+	uint8_t (* del)(struct red_bundle_t *red_bundle);
 	uint8_t (* set)(struct bundle_t *bundle);
 };
 
