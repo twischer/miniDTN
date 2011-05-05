@@ -3,12 +3,15 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "net/dtn/bundle.h"
+
+#define B_RED_MAX 100
+
 extern const struct redundance_check b_redundance;
 
 struct red_bundle_t {
 	uint32_t src;
 	uint32_t seq_nr;
-	uint32_t fraq_offset;
+	uint32_t frag_offset;
 	uint32_t lifetime;
 	struct red_bundle *next;
 };
