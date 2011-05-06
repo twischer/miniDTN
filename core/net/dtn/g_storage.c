@@ -26,7 +26,7 @@ void init(void)
 	fd_read = cfs_open(filename, CFS_READ);
 	if(fd_read!=-1) {
 		PRINTF("file opened\n");
-		cfs_read(fd_read,file_list,28*BUNDLE_STORAGE_SIZE);
+		cfs_read(fd_read,file_list,29*BUNDLE_STORAGE_SIZE);
 		cfs_close(fd_read);
 		PRINTF("file closed\n");
 		#if DEBUG
@@ -89,6 +89,7 @@ int32_t save_bundle(struct bundle_t *bundle)
 	tmp=bundle->block+bundle->offset_tab[FRAG_OFFSET][OFFSET];
 	uint32_t fraq_offset;
 	sdnv_decode(tmp, bundle->offset_tab[FRAG_OFFSET][STATE], &fraq_offset);
+
 		#if DEBUG
 		for (i=0; i<BUNDLE_STORAGE_SIZE; i++){
 			PRINTF("slot %u state is %u\n", i, file_list[i].file_size);
@@ -136,7 +137,7 @@ int32_t save_bundle(struct bundle_t *bundle)
 	int n=0;
 	fd_write = cfs_open(b_file, CFS_WRITE | CFS_APPEND);
 	if(fd_write != -1) {
-		n = cfs_write(fd_write, bundle->block, bundle->size);//TODO
+		n = cfs_write(fd_write, bundle->block, bundle->size);
 		cfs_close(fd_write);
 	}else{
 		return -1;
@@ -150,8 +151,9 @@ int32_t save_bundle(struct bundle_t *bundle)
 	file_list[i].src = src ;
 	file_list[i].fraq_offset = fraq_offset;
 	file_list[i].rec_time= bundle->rec_time;
+	file_list[i].custody=bundle->custody;
 	//save file list	
-	cfs_remove(filename);
+	cfs_remove(filename)
 	fd_write = cfs_open(filename, CFS_WRITE);
 	if(fd_write != -1) {
 		cfs_write(fd_write, file_list, sizeof(file_list));
@@ -169,6 +171,15 @@ uint16_t del_bundle(uint16_t bundle_num)
 	cfs_remove(b_file);
 	file_list[bundle_num].file_size=0;
 	file_list[bundle_num].src=0;
+	//save file list	
+	cfs_remove(filename)
+	fd_write = cfs_open(filename, CFS_WRITE);
+	if(fd_write != -1) {
+		cfs_write(fd_write, file_list, sizeof(file_list));
+		cfs_close(fd_write);
+	}else{
+		return 0;
+	}
 	return 1;
 }
 
@@ -191,6 +202,7 @@ uint16_t read_bundle(uint16_t bundle_num,struct bundle_t *bundle)
 		cfs_close(fd_read);
 		recover_bundel(bundle,bundle->block);
 		bundle->rec_time=file_list[bundle_num].rec_time;
+		bundle->custody = file_list[bundle_num].custody;
 		PRINTF("first byte in bundel %u\n",*bundle->block);
 		return file_list[bundle_num].file_size;
 	}
