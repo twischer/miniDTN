@@ -147,10 +147,8 @@ PROCESS_THREAD(agent_process, ev, data)
 //			while(bundlebuf_in_use())
 //				PROCESS_PAUSE();
 			bundleptr= (struct bundle_t *) data;
-			//TODO redundanz check
-			//wenn ich dest dann ausliefern sonnst forward
-			//receive_bundle(bundleptr);
-			BUNDLE_STORAGE.save_bundle(bundleptr);
+			dispatch_bundle(bundleptr);
+			//BUNDLE_STORAGE.save_bundle(bundleptr);
 			delete_bundle(bundleptr);
 			continue;
 		}
