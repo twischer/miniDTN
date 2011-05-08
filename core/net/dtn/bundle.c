@@ -77,6 +77,9 @@ uint8_t set_attr(struct bundle_t *bundle, uint8_t attr, uint32_t *val)
 		memset(tmp,(uint8_t) *val, 1);
 		return 1;
 	}
+	if (attr == FLAGS){
+		bundle->custody = 0x08 &(uint8_t) val;
+	}
 	sdnv_t sdnv;
 	size_t len = sdnv_encoding_len(*val);
 //	printf("tpr %u\n ",len);  // this fixes everything
