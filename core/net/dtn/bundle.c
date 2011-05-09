@@ -18,7 +18,7 @@
 /** 
 * brief creates a new bundle and allocates the minimum needed memory
 */
-uint8_t create_bundle(struct bundle_t *bundle, uint8_t *payload, uint8_t len)
+uint8_t create_bundle(struct bundle_t *bundle)
 {
 	if (len > 108){  //to be fragmented
 		return 0;
@@ -37,14 +37,14 @@ uint8_t create_bundle(struct bundle_t *bundle, uint8_t *payload, uint8_t len)
 	}
 	bundle->offset_tab[TYPE][STATE]=1;
 	memset(bundle->block+1,1,1);
-	for (i=TYPE+1;i<20;i++){
+	for (i=TYPE+1;i<17;i++){
 		bundle->offset_tab[i][OFFSET]=2;
 		bundle->offset_tab[i][STATE]=0;
 	}
-	bundle->size=len+2;
-	memcpy(bundle->block + 2, payload, len);
-	bundle->offset_tab[PAYLOAD][STATE] = len;
-	uint8_t *tmp=bundle->block;
+	bundle->size=2;
+	//memcpy(bundle->block + 2, payload, len);
+	//bundle->offset_tab[PAYLOAD][STATE] = len;
+	//uint8_t *tmp=bundle->block;
 	/*for(i=0; i<bundle->size; i++){
 		printf("%x ",*tmp);
 		tmp++;
@@ -58,14 +58,38 @@ uint8_t create_bundle(struct bundle_t *bundle, uint8_t *payload, uint8_t len)
 	printf("\n");
 	*/
 	uint32_t len64=  len;
-	set_attr(bundle, P_LENGTH, &len64);
+	//set_attr(bundle, P_LENGTH, &len64);
 	len64=0;
-	set_attr(bundle, LENGTH, &len64);
-	bundle->size=bundle->offset_tab[PAYLOAD][OFFSET]+bundle->offset_tab[PAYLOAD][STATE];
+	i=set_attr(bundle, LENGTH, &len64);
+	bundle->offset_tab[DATA][OFFSET]=
+	bundle->size += len64 + i; 
 	return 1;
 }
 
+uint8_t add_block(struct bundle_t *bundle, uint8_t type, uint8_t flags, uint8_t *data, uint8_t d_len)
+{
+	sdnv_t s_len;
+	size_t len = sdnv_encoding_len(*d_len);
+	s_len = (uint8_t *) malloc(len);
+	sdnv_encode(*d_len, s_len, len);
 
+	
+#if CONTIKI_TARGET_SKY
+	bundle->block = (uint8_t *) realloc(bundle->block,d_len + len + 2  + bundle->size,bundle->size);
+#else
+	bundle->block = (uint8_t *) realloc(bundle->block,d_len + len + 2  + bundle->size);
+#endif
+
+	memcpy(bundle->block + bundle->offset_tab[DATA][OFFSET] + bundle->offset_tab[DATA][STATE], &type, 1);
+	bundle->offset_tab[DATA][STATE] +=1;
+	memcpy(bundle->block + bundle->offset_tab[DATA][OFFSET] + bundle->offset_tab[DATA][STATE], &flags, 1);
+	bundle->offset_tab[DATA][STATE] +=1;
+	memcpy(bundle->block + bundle->offset_tab[DATA][OFFSET] + bundle->offset_tab[DATA][STATE], s_len, len);
+	bundle->offset_tab[DATA][STATE] +=len;
+	memcpy(bundle->block + bundle->offset_tab[DATA][OFFSET] + bundle->offset_tab[DATA][STATE],data,d_len);
+	bundle->size = bundle->offset_tab[DATA][OFFSET] + bundle->offset_tab[DATA][STATE]; 
+	return d_len + len + 2;
+}
 /**
 *brief converts an integer value in sdnv and copies this to the right place in bundel
 */
@@ -108,7 +132,7 @@ uint8_t set_attr(struct bundle_t *bundle, uint8_t attr, uint32_t *val)
 		memset(bundle->block+bundle->offset_tab[LENGTH][OFFSET],size,1);
 	}
 	free(sdnv);
-	return 1;
+	return len;
 }
 
 uint8_t recover_bundel(struct bundle_t *bundle,uint8_t *block)

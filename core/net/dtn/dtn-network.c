@@ -59,7 +59,7 @@ static void dtn_network_init(void)
 static void dtn_network_input(void) 
 {
 	uint8_t input_packet[114];
-	packetbuf_copyto(input_packet);
+	int size=packetbuf_copyto(input_packet);
 	rimeaddr_t dest = *packetbuf_addr(PACKETBUF_ADDR_RECEIVER);
 	PRINTF("%x%x: dtn_network_input\n",dest.u8[0],dest.u8[1]);
 	if((dest.u8[0]==0) & (dest.u8[1]==0)) { //broadcast message
@@ -92,6 +92,7 @@ static void dtn_network_input(void)
 		PRINTF("%p  %p\n",&bundle,&input_packet);	
 		recover_bundel(&bundle,&input_packet);
 		bundle.rec_time=(uint32_t) clock_seconds();
+		bundle.size= (uint8_t) size;
 		PRINTF("NETWORK: size of received bundle: %u\n",bundle.size);
 		process_post(&agent_process, dtn_receive_bundle_event, &bundle);	
 		
