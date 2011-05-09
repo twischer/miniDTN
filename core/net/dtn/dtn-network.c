@@ -90,7 +90,7 @@ static void dtn_network_input(void)
         } else {
 		uint8_t i;
 		PRINTF("%p  %p\n",&bundle,&input_packet);	
-		recover_bundel(&bundle,&input_packet);
+		recover_bundel(&bundle,&input_packet, size);
 		bundle.rec_time=(uint32_t) clock_seconds();
 		bundle.size= (uint8_t) size;
 		PRINTF("NETWORK: size of received bundle: %u\n",bundle.size);
