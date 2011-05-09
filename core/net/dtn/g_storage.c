@@ -200,7 +200,7 @@ uint16_t read_bundle(uint16_t bundle_num,struct bundle_t *bundle)
 		bundle->block = (uint8_t *) malloc(file_list[bundle_num].file_size);
 		cfs_read(fd_read, bundle->block, file_list[bundle_num].file_size);
 		cfs_close(fd_read);
-		recover_bundel(bundle,bundle->block);
+		recover_bundel(bundle,bundle->block,(int) file_list[bundle_num].file_size);
 		bundle->rec_time=file_list[bundle_num].rec_time;
 		bundle->custody = file_list[bundle_num].custody;
 		PRINTF("first byte in bundel %u\n",*bundle->block);
