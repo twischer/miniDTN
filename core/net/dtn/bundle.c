@@ -135,7 +135,7 @@ uint8_t set_attr(struct bundle_t *bundle, uint8_t attr, uint32_t *val)
 	return len;
 }
 
-uint8_t recover_bundel(struct bundle_t *bundle,uint8_t *block)
+uint8_t recover_bundel(struct bundle_t *bundle,uint8_t *block, int size)
 {
 	PRINTF("rec bptr: %p  blptr:%p \n",bundle,block);
 	bundle->offset_tab[VERSION][OFFSET]=0;
@@ -161,7 +161,7 @@ uint8_t recover_bundel(struct bundle_t *bundle,uint8_t *block)
 		bundle->offset_tab[FRAG_OFFSET][OFFSET] = bundle->offset_tab[LIFE_TIME][OFFSET]+1;
 		bundle->offset_tab[APP_DATA_LEN][OFFSET] = bundle->offset_tab[LIFE_TIME][OFFSET]+1;
 	}
-	bundle->offset_tab[TYPE][OFFSET]=tmp-block;
+/*	bundle->offset_tab[TYPE][OFFSET]=tmp-block;
 	bundle->offset_tab[TYPE][STATE]=1;
 	tmp+=1;
 	bundle->offset_tab[P_FLAGS][STATE]=sdnv_len(tmp);
@@ -170,11 +170,11 @@ uint8_t recover_bundel(struct bundle_t *bundle,uint8_t *block)
 	bundle->offset_tab[P_LENGTH][STATE]=sdnv_len(tmp);
 	bundle->offset_tab[P_LENGTH][OFFSET]=tmp-block;
 	tmp+=bundle->offset_tab[P_LENGTH][STATE];
+	*/
 	uint32_t val;
-	sdnv_decode(block+bundle->offset_tab[P_LENGTH][OFFSET],bundle->offset_tab[P_LENGTH][STATE],&val);
-	bundle->offset_tab[PAYLOAD][STATE]= (uint8_t) val;
-	bundle->offset_tab[PAYLOAD][OFFSET]= tmp-block;
-	bundle->size=bundle->offset_tab[PAYLOAD][OFFSET]+bundle->offset_tab[PAYLOAD][STATE];
+	bundle->offset_tab[DATA][STATE]= (uint8_t) size- tmp-block;
+	bundle->offset_tab[DATA][OFFSET]= tmp-block;
+	bundle->size=size;
 	bundle->block=block;
 	return 1;
 }
