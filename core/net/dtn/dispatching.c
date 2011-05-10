@@ -50,7 +50,7 @@ void dispatch_bundle(struct bundle_t *bundle) {
 		if(dest == dtn_node_id){
 				
 				administrative_record_block_t *admin_record;
-				admin_record = (administrative_record_block_t *) bundle->_blockt+bundle->offset_tab[PAYLOAD][OFFSET];
+				admin_record = (administrative_record_block_t *) bundle->_blockt+bundle->offset_tab[DATA][OFFSET];
 				
 				if(admin_record->record_status == CUSTODY_SIGNAL) {
 					
