@@ -151,7 +151,7 @@ int32_t save_bundle(struct bundle_t *bundle)
 	file_list[i].src = src ;
 	file_list[i].fraq_offset = fraq_offset;
 	file_list[i].rec_time= bundle->rec_time;
-	file_list[i].custody=bundle->custody;
+	//file_list[i].custody=bundle->custody;
 	//save file list	
 	cfs_remove(filename)
 	fd_write = cfs_open(filename, CFS_WRITE);
