@@ -34,7 +34,7 @@
 #endif
 
 
-void dispatch_bundle(bundle_t *bundle) {
+void dispatch_bundle(struct bundle_t *bundle) {
 	
 	struct registration *n;
 	uint8_t nr_scheme, nr_ssp;
@@ -75,7 +75,7 @@ void dispatch_bundle(bundle_t *bundle) {
 				
 					PRINTF("DISPATCHING: Registration found \n");
 				
-					deliver_bundle(bundle);
+					deliver_bundle(bundle,n);
 					return;
 				}
 			}
