@@ -50,6 +50,7 @@
 typedef struct {
 	
 	uint8_t status; 
+	uint8_t reason;
 	uint32_t fragement_offset;
 	uint32_t fragment_length;
 	uint32_t custody_signal_time;
