@@ -76,40 +76,20 @@ void deliver_bundle(struct bundle_t *bundle, struct registration *n) {
 					cust_sig.fragment_length=0;
 					cust_sig.fragement_offset=0;
 				}
-				sndv_decode(bundle->block + bundle->offset_tab[TIME_STAMP][OFFSET], bundle->offset_tab[TIME_STAMP][STATE],  &cust_sig.bundle_creation_timestamp);
-				sndv_decode(bundle->block + bundle->offset_tab[TIME_STAMP_SEQ_NR][OFFSET],bundle->offset_tab[TIME_STAMP_SEQ_NR][STATE],  &cust_sig.bundle_creation_timestamp_seq);
+				sdnv_decode(bundle->block + bundle->offset_tab[TIME_STAMP][OFFSET], bundle->offset_tab[TIME_STAMP][STATE],  &cust_sig.bundle_creation_timestamp);
+				sdnv_decode(bundle->block + bundle->offset_tab[TIME_STAMP_SEQ_NR][OFFSET],bundle->offset_tab[TIME_STAMP_SEQ_NR][STATE],  &cust_sig.bundle_creation_timestamp_seq);
 				sdnv_decode(bundle->block + bundle->offset_tab[SRC_NODE][OFFSET], bundle->offset_tab[SRC_NODE][STATE], &cust_sig.src_node);
 				sdnv_decode(bundle->block + bundle->offset_tab[SRC_SERV][OFFSET], bundle->offset_tab[SRC_SERV][STATE], &cust_sig.src_app);
 
-									
 				CUSTODY.set_state(&cust_sig);
-			}
-
-
-			/* Übergebe Nutzdaten jedes enthaltenen Payload Blocks an Anwendung */
-			while(bundle->bundle_payload_block[i].block_type == 1) {
-				
-				
-				if(n->status)
-					process_post(n->application_process, submit_data_to_application_event, bundle->bundle_payload_block[i].block_data);
-				if((bundle->bundle_payload_block[i].payload_pcf & 0x08) != 0)
-					break;
-				i++;		
-			}
-			
-			/* Wenn Custody Transfer Flag gesetzt, sende Custody Signal */
-			if((bundle->bundle_primary_block.primary_pcf & 0x08) != 0) {
-
-				send_custody_signal(bundle, CUSTODY_TRANSFER_SUCCEEDED, NO_ADDITIONAL_INFORMATION);
 			}
 		}			
 	}
 	
-	free(eid);
 	
 	#if DEBUG
 	time = clock_time();
-	time -= reception_get_time();
+	time -= bundle->rec_time;
 	PRINTF("DELIVERY: time needed to process bundle for Delivery: %i \n", time);
 	#endif
 }
