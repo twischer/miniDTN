@@ -15,14 +15,15 @@
 #include <stdlib.h>
 
 #include "lib/list.h"
-#include "core/net/dtn/agent.h"
-#include "core/net/dtn/bundle.h"
-#include "core/net/dtn/registration.h"
-#include "core/net/dtn/sdnv.h"
+#include "net/dtn/agent.h"
+#include "net/dtn/bundle.h"
+#include "net/dtn/registration.h"
+#include "net/dtn/sdnv.h"
 #include "expiration.h"
 #include "forwarding.h"
 #include "administrative_record.h"
-#include "custody-signal.h"
+#include "net/dtn/custody.h"
+#include "net/dtn/dtn_config.h"
 
 #define DEBUG 0
 #if DEBUG
@@ -54,7 +55,7 @@ void dispatch_bundle(bundle_t *bundle) {
 				if(admin_record->record_status == CUSTODY_SIGNAL) {
 					
 					//call custody signal method
-					custody_signal_received(&admin_record->custody_signal);
+					CUSTODY.set_state(&admin_record->custody_signal);
 				}
 				return;
 			}

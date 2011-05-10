@@ -3,16 +3,17 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include "net/dtn/bundle.h"
+#include "net/dtn/custody-signal.h"
+
 
 
 struct custody_driver {
 	char *name;
 	
 	void (* init)(void);
-	uint8_t (* set_state)(uint8_t state, uint8_t reason, struct bundle_t *bundle);
-	uint8_t (* manage)(struct bundle_t *bundle);
-	uint8_t (* decide)(struct bundle_t *bundle);
+	uint8_t (* set_state)(custody_signal_t *signal);
+	uint8_t (* manage)(custody_signal_t *signal);
+	uint8_t (* decide)(custody_signal_t *signa);
 };
 
 extern const struct custody_driver COSUTODY;
