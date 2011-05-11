@@ -153,7 +153,7 @@ int32_t save_bundle(struct bundle_t *bundle)
 	file_list[i].rec_time= bundle->rec_time;
 	//file_list[i].custody=bundle->custody;
 	//save file list	
-	cfs_remove(filename)
+	cfs_remove(filename);
 	fd_write = cfs_open(filename, CFS_WRITE);
 	if(fd_write != -1) {
 		cfs_write(fd_write, file_list, sizeof(file_list));
@@ -172,7 +172,7 @@ uint16_t del_bundle(uint16_t bundle_num)
 	file_list[bundle_num].file_size=0;
 	file_list[bundle_num].src=0;
 	//save file list	
-	cfs_remove(filename)
+	cfs_remove(filename);
 	fd_write = cfs_open(filename, CFS_WRITE);
 	if(fd_write != -1) {
 		cfs_write(fd_write, file_list, sizeof(file_list));

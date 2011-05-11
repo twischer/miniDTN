@@ -24,7 +24,7 @@
 *   \param bundle Das empfangene Bündel
 *   \param registration der empfangenden prozesses
 */
-void deliver_bundle(bundle_t *bundle, struct registration *n);
+void deliver_bundle(struct bundle_t *bundle, struct registration *n);
 
 #endif
 

@@ -16,6 +16,6 @@ struct custody_driver {
 	uint8_t (* decide)(custody_signal_t *signa);
 };
 
-extern const struct custody_driver COSUTODY;
+extern const struct custody_driver CUSTODY;
 
 #endif

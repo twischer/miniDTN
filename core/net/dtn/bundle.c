@@ -20,28 +20,17 @@
 */
 uint8_t create_bundle(struct bundle_t *bundle)
 {
-	if (len > 108){  //to be fragmented
-		return 0;
-	}
 	bundle->offset_tab[VERSION][OFFSET]=0;
 	bundle->offset_tab[FLAGS][OFFSET]=1;
-	bundle->block = (uint8_t *) malloc(len+2);
+	bundle->block = (uint8_t *) malloc(1);
 	*bundle->block = 0;
 	bundle->size=1;
 	uint8_t i;
 	bundle->offset_tab[VERSION][STATE]=1;
-	for (i=1; i<=TYPE; i++){
+	for (i=1;i<17;i++){
 		bundle->offset_tab[i][OFFSET]=1;
 		bundle->offset_tab[i][STATE]=0;
-
 	}
-	bundle->offset_tab[TYPE][STATE]=1;
-	memset(bundle->block+1,1,1);
-	for (i=TYPE+1;i<17;i++){
-		bundle->offset_tab[i][OFFSET]=2;
-		bundle->offset_tab[i][STATE]=0;
-	}
-	bundle->size=2;
 	//memcpy(bundle->block + 2, payload, len);
 	//bundle->offset_tab[PAYLOAD][STATE] = len;
 	//uint8_t *tmp=bundle->block;
@@ -57,7 +46,7 @@ uint8_t create_bundle(struct bundle_t *bundle)
 	}
 	printf("\n");
 	*/
-	uint32_t len64=  len;
+	uint32_t len64 ;
 	//set_attr(bundle, P_LENGTH, &len64);
 	len64=0;
 	i=set_attr(bundle, LENGTH, &len64);
@@ -69,9 +58,9 @@ uint8_t create_bundle(struct bundle_t *bundle)
 uint8_t add_block(struct bundle_t *bundle, uint8_t type, uint8_t flags, uint8_t *data, uint8_t d_len)
 {
 	sdnv_t s_len;
-	size_t len = sdnv_encoding_len(*d_len);
+	size_t len = sdnv_encoding_len((uint32_t )d_len);
 	s_len = (uint8_t *) malloc(len);
-	sdnv_encode(*d_len, s_len, len);
+	sdnv_encode((uint32_t) d_len, s_len, len);
 
 	
 #if CONTIKI_TARGET_SKY
@@ -95,14 +84,8 @@ uint8_t add_block(struct bundle_t *bundle, uint8_t type, uint8_t flags, uint8_t 
 */
 uint8_t set_attr(struct bundle_t *bundle, uint8_t attr, uint32_t *val)
 {
-	if (attr == TYPE){
-		uint8_t *tmp;
-		tmp = bundle->block + bundle->offset_tab[TYPE][OFFSET];
-		memset(tmp,(uint8_t) *val, 1);
-		return 1;
-	}
 	if (attr == FLAGS){
-		bundle->custody = 0x08 &(uint8_t) val;
+		bundle->custody = 0x08 &(uint8_t) *val;
 	}
 	sdnv_t sdnv;
 	size_t len = sdnv_encoding_len(*val);
@@ -172,7 +155,7 @@ uint8_t recover_bundel(struct bundle_t *bundle,uint8_t *block, int size)
 	tmp+=bundle->offset_tab[P_LENGTH][STATE];
 	*/
 	uint32_t val;
-	bundle->offset_tab[DATA][STATE]= (uint8_t) size- tmp-block;
+	bundle->offset_tab[DATA][STATE]= ((uint8_t) size)- (tmp - block);
 	bundle->offset_tab[DATA][OFFSET]= tmp-block;
 	bundle->size=size;
 	bundle->block=block;

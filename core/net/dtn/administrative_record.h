@@ -18,7 +18,6 @@
 #ifndef ADMINISTRATIVE_RECORD_H
 #define ADMINISTRATIVE_RECORD_H
 
-#include "API/DTN-block-types.h"
 #include "net/dtn/custody-signal.h"
 #include "net/dtn/status-report.h"
 

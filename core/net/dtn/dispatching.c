@@ -19,11 +19,12 @@
 #include "net/dtn/bundle.h"
 #include "net/dtn/registration.h"
 #include "net/dtn/sdnv.h"
-#include "expiration.h"
-#include "forwarding.h"
-#include "administrative_record.h"
+//#include "expiration.h"
+//#include "forwarding.h"
+#include "net/dtn/administrative_record.h"
 #include "net/dtn/custody.h"
 #include "net/dtn/dtn_config.h"
+#include "net/dtn/delivery.h"
 
 #define DEBUG 0
 #if DEBUG
@@ -37,12 +38,11 @@
 void dispatch_bundle(struct bundle_t *bundle) {
 	
 	struct registration *n;
-	uint8_t nr_scheme, nr_ssp;
 	
 	uint32_t dest,flags;
-	sdnv_decode(bundle->block + bundle->offset_tab[DEST_NODE][OFFSET], bundle->offset_tab[DEST_NODE][STATE], &dest)
-	sdnv_decode(bundle->block + bundle->offset_tab[FLAGS][OFFSET], bundle->offset_tab[FLAGS][STATE], &flags)
-	
+	sdnv_decode(bundle->block + bundle->offset_tab[DEST_NODE][OFFSET], bundle->offset_tab[DEST_NODE][STATE], &dest);
+	sdnv_decode(bundle->block + bundle->offset_tab[FLAGS][OFFSET], bundle->offset_tab[FLAGS][STATE], &flags);
+ 	//TODO warum sagt gcc das flags nicht bunutzt wird	
 	if((flags & 0x02) != 0) { //is bundle an admin record
 		
 		PRINTF("DISPATCHING: admin record detected \n");
@@ -50,7 +50,7 @@ void dispatch_bundle(struct bundle_t *bundle) {
 		if(dest == dtn_node_id){
 				
 				administrative_record_block_t *admin_record;
-				admin_record = (administrative_record_block_t *) bundle->_blockt+bundle->offset_tab[DATA][OFFSET];
+				admin_record = (administrative_record_block_t *) bundle->block + bundle->offset_tab[DATA][OFFSET];
 				
 				if(admin_record->record_status == CUSTODY_SIGNAL) {
 					
@@ -64,7 +64,7 @@ void dispatch_bundle(struct bundle_t *bundle) {
 	else {
 	
 		uint32_t dest_app;
-		sdnv_decode(bundle->block + bundle->offset_tab[DEST_APP][OFFSET], bundle->offset_tab[DEST_APP][STATE], &dest_app)
+		sdnv_decode(bundle->block + bundle->offset_tab[DEST_SERV][OFFSET], bundle->offset_tab[DEST_SERV][STATE], &dest_app)
 
 		PRINTF("DISPATCHING: destination eid: %lu:%lu \n", dest, dest_app);
 		
@@ -82,7 +82,7 @@ void dispatch_bundle(struct bundle_t *bundle) {
 		}
 	}
 				
-	forwarding_bundle(bundle);
+	//forwarding_bundle(bundle);
 	PRINTF("DISPATCHING: Bundle forwarded\n");
 
 }
