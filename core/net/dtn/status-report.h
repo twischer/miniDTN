@@ -6,8 +6,7 @@
 #define STATUS_REPORT_H
 
 #include <stdint.h>
-#include "API/DTN-block-types.h"
-#include "API/bundle.h"
+#include "net/dtn/bundle.h"
 
 
 /*========================================== STATUS FLAGS ==========================================*/
@@ -60,15 +59,5 @@ typedef struct {
 	uint8_t source_eid_length;
 	char *source_eid;
 } status_report_t;
-
-void set_status_flag(uint8_t flag, status_report_t *return_report);
-
-void set_reason_code(uint8_t reason, status_report_t *return_report);
-
-void set_report_time(status_report_t *return_report);
-
-void copy_timestamp_to_report(primary_block_t *block, status_report_t *return_report);
-
-void copy_eid_to_report(bundle_t *bundle, status_report_t *return_report);
 
 #endif

@@ -1,4 +1,5 @@
 #include "net/dtn/custody-signal.h"
+#include "net/dtn/custody.h"
 
 void null_cust_init(void)
 {

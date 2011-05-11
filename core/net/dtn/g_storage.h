@@ -16,7 +16,7 @@ static struct file_list_entry_t{
 	uint32_t time_stamp_seq;
 	uint32_t fraq_offset;
 	uint32_t rec_time;
-	uint8_t  custody
+	uint8_t  custody;
 };
 extern struct file_list_entry_t file_list[BUNDLE_STORAGE_SIZE];
 
