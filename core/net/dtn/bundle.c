@@ -7,7 +7,7 @@
 #endif
 #include <string.h>
 
-#define DEBUG 0
+#define DEBUG 1
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)
@@ -50,8 +50,16 @@ uint8_t create_bundle(struct bundle_t *bundle)
 	//set_attr(bundle, P_LENGTH, &len64);
 	len64=0;
 	i=set_attr(bundle, LENGTH, &len64);
-	bundle->offset_tab[DATA][OFFSET]=
 	bundle->size += len64 + i; 
+#if DEBUG
+	PRINTF("BUNDLE: CREATE ");
+	uint8_t* tmp= bundle->block;
+	for (i=1;i<bundle->offset_tab[DATA][OFFSET];i++){
+		PRINTF("%u ",*tmp);
+		tmp++;
+	}
+	PRINTF("\n");
+#endif
 	return 1;
 }
 
@@ -76,7 +84,23 @@ uint8_t add_block(struct bundle_t *bundle, uint8_t type, uint8_t flags, uint8_t 
 	memcpy(bundle->block + bundle->offset_tab[DATA][OFFSET] + bundle->offset_tab[DATA][STATE], s_len, len);
 	bundle->offset_tab[DATA][STATE] +=len;
 	memcpy(bundle->block + bundle->offset_tab[DATA][OFFSET] + bundle->offset_tab[DATA][STATE],data,d_len);
+	bundle->offset_tab[DATA][STATE] +=d_len;
 	bundle->size = bundle->offset_tab[DATA][OFFSET] + bundle->offset_tab[DATA][STATE]; 
+#if DEBUG
+	uint8_t *tmp= bundle->block + bundle->offset_tab[DATA][OFFSET];
+	PRINTF("BUNDLE: ADD_BLOCK: Type: %u , ",*tmp);
+	tmp++;
+	PRINTF("flags: %u , ",*tmp);
+	tmp++;
+	PRINTF("data_len: %u, data: ",d_len);
+	tmp++;
+	uint8_t i;
+	for (i=0; i<d_len; i++){
+		PRINTF("%u ",*tmp);
+		tmp++;
+	}
+	PRINTF("\n");
+#endif
 	return d_len + len + 2;
 }
 /**
@@ -102,7 +126,7 @@ uint8_t set_attr(struct bundle_t *bundle, uint8_t attr, uint32_t *val)
 	}
 	memcpy(bundle->block + bundle->offset_tab[attr][OFFSET], sdnv, len);
 	uint8_t i;
-	for(i=attr+1;i<20;i++){
+	for(i=attr+1;i<17;i++){
 		bundle->offset_tab[i][OFFSET] += (len - bundle->offset_tab[attr][STATE]);
 	}
 	bundle->size += (len - bundle->offset_tab[attr][STATE]);
@@ -115,7 +139,17 @@ uint8_t set_attr(struct bundle_t *bundle, uint8_t attr, uint32_t *val)
 		memset(bundle->block+bundle->offset_tab[LENGTH][OFFSET],size,1);
 	}
 	free(sdnv);
+#if DEBUG
+	PRINTF("BUNDLE: SET_ATTR ");
+	uint8_t* tmp= bundle->block;
+	for (i=1;i<bundle->offset_tab[DATA][OFFSET];i++){
+		PRINTF("%u ",*tmp);
+		tmp++;
+	}
+	PRINTF("\n");
+#endif
 	return len;
+
 }
 
 uint8_t recover_bundel(struct bundle_t *bundle,uint8_t *block, int size)
@@ -138,27 +172,20 @@ uint8_t recover_bundel(struct bundle_t *bundle,uint8_t *block, int size)
 		uint8_t len= sdnv_len(tmp);
 		bundle->offset_tab[i][STATE]=len;
 		bundle->offset_tab[i][OFFSET]=tmp-block;
+	//	PRINTF("BUNDLE: RECOVER: %u: state: %u offset: %u\n",i,bundle->offset_tab[i][STATE],bundle->offset_tab[i][OFFSET] );
 		tmp+=bundle->offset_tab[i][STATE];
 	}
 	if (!(*tmp & 0x40)){ //not fragmented
 		bundle->offset_tab[FRAG_OFFSET][OFFSET] = bundle->offset_tab[LIFE_TIME][OFFSET]+1;
 		bundle->offset_tab[APP_DATA_LEN][OFFSET] = bundle->offset_tab[LIFE_TIME][OFFSET]+1;
 	}
-/*	bundle->offset_tab[TYPE][OFFSET]=tmp-block;
-	bundle->offset_tab[TYPE][STATE]=1;
-	tmp+=1;
-	bundle->offset_tab[P_FLAGS][STATE]=sdnv_len(tmp);
-	bundle->offset_tab[P_FLAGS][OFFSET]=tmp-block;
-	tmp+=bundle->offset_tab[P_FLAGS][STATE];
-	bundle->offset_tab[P_LENGTH][STATE]=sdnv_len(tmp);
-	bundle->offset_tab[P_LENGTH][OFFSET]=tmp-block;
-	tmp+=bundle->offset_tab[P_LENGTH][STATE];
-	*/
-	uint32_t val;
-	bundle->offset_tab[DATA][STATE]= ((uint8_t) size)- (tmp - block);
+	bundle->offset_tab[DATA][STATE]= size- ((uint8_t)(tmp - block));
+	PRINTF("BUNDLE: RECOVER: data size: %u=%u-%u\n",bundle->offset_tab[DATA][STATE], size,((uint8_t)(tmp - block)));
 	bundle->offset_tab[DATA][OFFSET]= tmp-block;
 	bundle->size=size;
-	bundle->block=block;
+	bundle->block=(uint8_t *) malloc(size);
+	PRINTF("BUNDLE: RECOVER: block ptr: %p\n",bundle->offset_tab);
+	memcpy(bundle->block,block,size);
 	return 1;
 }
 uint16_t delete_bundle(struct bundle_t *bundel)

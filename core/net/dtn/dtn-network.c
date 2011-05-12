@@ -90,19 +90,20 @@ static void dtn_network_input(void)
         } else {
 		uint8_t i;
 		PRINTF("%p  %p\n",&bundle,&input_packet);	
-		recover_bundel(&bundle,&input_packet, size);
+		recover_bundel(&bundle,&input_packet, (uint8_t)size);
 		bundle.rec_time=(uint32_t) clock_seconds();
 		bundle.size= (uint8_t) size;
 		PRINTF("NETWORK: size of received bundle: %u\n",bundle.size);
-		process_post(&agent_process, dtn_receive_bundle_event, &bundle);	
+		
 		
 		
 		#if DEBUG
-		for(i=0;i<20;i++){
+		for(i=0;i<17;i++){
 			uint8_t *tmp=bundle.block+bundle.offset_tab[i][0];
-		//	PRINTF("offset %u size %u val %x\n",bundle.offset_tab[i][0], bundle.offset_tab[i][1],*tmp);
+			PRINTF("offset %u size %u val %x\n",bundle.offset_tab[i][0], bundle.offset_tab[i][1],*tmp);
 		}
 		#endif
+		process_post(&agent_process, dtn_receive_bundle_event, &bundle);	
 			
 	}
 		

@@ -26,7 +26,7 @@
 #include "net/dtn/dtn_config.h"
 #include "net/dtn/delivery.h"
 
-#define DEBUG 0
+#define DEBUG 1
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)
@@ -37,12 +37,29 @@
 
 void dispatch_bundle(struct bundle_t *bundle) {
 	
+	PRINTF("DISPATCHING: bundle: %p\n", bundle->offset_tab);
 	struct registration *n;
-	
-	uint32_t dest,flags;
+
+	uint32_t dest=1,flags=1;
 	sdnv_decode(bundle->block + bundle->offset_tab[DEST_NODE][OFFSET], bundle->offset_tab[DEST_NODE][STATE], &dest);
 	sdnv_decode(bundle->block + bundle->offset_tab[FLAGS][OFFSET], bundle->offset_tab[FLAGS][STATE], &flags);
  	//TODO warum sagt gcc das flags nicht bunutzt wird	
+	uint32_t dest_app=1;
+	sdnv_decode(bundle->block + bundle->offset_tab[DEST_SERV][OFFSET], bundle->offset_tab[DEST_SERV][STATE], &dest_app);
+
+
+#if DEBUG
+	PRINTF("DISPATCHING: [DEST_NODE][OFFSET]:%u [DEST_SERV][OFFSET]: %u \n", bundle->offset_tab[DEST_NODE][OFFSET],bundle->offset_tab[DEST_SERV][OFFSET]); 
+	PRINTF("DISPATCHING: [DEST_NODE][STATE]:%u [DEST_SERV][STATE]: %u \n", bundle->offset_tab[DEST_NODE][STATE],bundle->offset_tab[DEST_SERV][STATE]); 
+	PRINTF("DISPATCHING: destination eid: %lu:%lu \n", dest, dest_app);
+	uint8_t i;
+	for (i=0; i<17; i++){
+//		PRINTF("DISPATCHING: offset: %u , len: %u\n", bundle->offset_tab[i][OFFSET],bundle->offset_tab[i][STATE]);
+	}
+#endif
+	
+	
+	
 	if((flags & 0x02) != 0) { //is bundle an admin record
 		
 		PRINTF("DISPATCHING: admin record detected \n");
@@ -64,7 +81,7 @@ void dispatch_bundle(struct bundle_t *bundle) {
 	else {
 	
 		uint32_t dest_app;
-		sdnv_decode(bundle->block + bundle->offset_tab[DEST_SERV][OFFSET], bundle->offset_tab[DEST_SERV][STATE], &dest_app)
+		sdnv_decode(bundle->block + bundle->offset_tab[DEST_SERV][OFFSET], bundle->offset_tab[DEST_SERV][STATE], &dest_app);
 
 		PRINTF("DISPATCHING: destination eid: %lu:%lu \n", dest, dest_app);
 		
