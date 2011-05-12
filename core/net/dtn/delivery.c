@@ -28,7 +28,7 @@
 #include "net/dtn/custody.h"
 #include "net/dtn/redundance.h"
 
-#define DEBUG 0
+#define DEBUG 1
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)
@@ -38,7 +38,8 @@
 
 
 void deliver_bundle(struct bundle_t *bundle, struct registration *n) {
-	
+
+
 	if(n->status == APP_ACTIVE) {  //TODO was passiert wenn eine applikation nicht aktiv ist
 	
 
@@ -82,7 +83,7 @@ void deliver_bundle(struct bundle_t *bundle, struct registration *n) {
 	}			
 	
 	#if DEBUG
-	time = clock_time();
+	uint16_t time = clock_time();
 	time -= bundle->rec_time;
 	PRINTF("DELIVERY: time needed to process bundle for Delivery: %i \n", time);
 	#endif
