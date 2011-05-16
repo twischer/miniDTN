@@ -98,16 +98,24 @@ void reduce_lifetime(void)
 	struct red_bundle_t *n;
 	uint32_t i=0;
 	n=list_head(b_red_list);
-	for(tmp = list_head(b_red_list); tmp != NULL; tmp = list_item_next(tmp)) {
-		tmp->lifetime-=5;
-		PRINTF("B_REDUNDANCE: lifetime of bundle %lu is %lu seconds\n",i,tmp->lifetime);
-		i++;
-		if (tmp->lifetime <= 0){
-			PRINTF("B_REDUNDANCE: deleting bundle form list\n");
-			n->next=tmp->next;
-			memb_free(&b_red_mem, tmp);
+	if (n != NULL && n->next== NULL){
+		n->lifetime-=5;
+		if (n->lifetime <= 0){
+			memb_free(&b_red_mem, n);
+			n=NULL;
 		}
-		n=tmp;
+	}else{
+		for(tmp = list_head(b_red_list); tmp != NULL; tmp = list_item_next(tmp)) {
+			tmp->lifetime-=5;
+			PRINTF("B_REDUNDANCE: lifetime of bundle %lu is %lu seconds\n",i,tmp->lifetime);
+			i++;
+			if (tmp->lifetime <= 0){
+				PRINTF("B_REDUNDANCE: deleting bundle form list\n");
+				n->next=tmp->next;
+				memb_free(&b_red_mem, tmp);
+			}
+			n=tmp;
+		}
 	}
 	ctimer_restart(b_red_timer);
 		
