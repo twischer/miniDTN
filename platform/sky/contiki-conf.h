@@ -59,9 +59,9 @@
 
 #define RF_CHANNEL              23
 #define NETSTACK_CONF_NETWORK dtn_network_driver
-#define NETSTACK_CONF_RDC         nullrdc_driver
+#define NETSTACK_CONF_RDC          nullrdc_driver
 #ifndef QUEUEBUF_CONF_NUM
-#define QUEUEBUF_CONF_NUM                16
+#define QUEUEBUF_CONF_NUM                8
 #endif
 
 
