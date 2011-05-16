@@ -128,6 +128,7 @@ watchdog_start(void)
 {
   /* We setup the watchdog to reset the device after one second,
      unless watchdog_periodic() is called. */
+//  printf("WATCHDOG: on\n");
   counter--;
   if(counter == 0) {
     WDTCTL = WDTPW | WDTCNTCL | WDT_ARST_1000 | WDTTMSEL;
@@ -147,6 +148,7 @@ watchdog_periodic(void)
 void
 watchdog_stop(void)
 {
+ // printf("WATCHDOG: off\n");
   counter++;
   if(counter == 1) {
     WDTCTL = WDTPW | WDTHOLD;

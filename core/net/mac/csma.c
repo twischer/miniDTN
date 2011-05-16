@@ -321,6 +321,7 @@ send_packet(mac_callback_t sent, void *ptr)
 static void
 input_packet(void)
 {
+  PRINTF("csma: got packet\n");
   NETSTACK_NETWORK.input();
 }
 /*---------------------------------------------------------------------------*/

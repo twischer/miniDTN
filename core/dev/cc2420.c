@@ -284,6 +284,7 @@ set_txpower(uint8_t power)
 int
 cc2420_init(void)
 {
+  PRINTF("CC2420: init\n");
   uint16_t reg;
   {
     int s = splhigh();
@@ -493,6 +494,8 @@ cc2420_send(const void *payload, unsigned short payload_len)
 int
 cc2420_off(void)
 {
+//  PRINTF("CC2420: radio off\n");
+
   /* Don't do anything if we are already turned off. */
   if(receive_on == 0) {
     return 1;
@@ -620,6 +623,7 @@ TIMETABLE_AGGREGATE(aggregate_time, 10);
 int
 cc2420_interrupt(void)
 {
+  PRINTF("got packet\n");
   CC2420_CLEAR_FIFOP_INT();
   process_poll(&cc2420_process);
 #if CC2420_TIMETABLE_PROFILING
@@ -651,6 +655,14 @@ PROCESS_THREAD(cc2420_process, ev, data)
     packetbuf_clear();
     packetbuf_set_attr(PACKETBUF_ATTR_TIMESTAMP, last_packet_timestamp);
     len = cc2420_read(packetbuf_dataptr(), PACKETBUF_SIZE);
+#if DEBUG
+    uint16_t i;
+    CC2420_GET_STATUS(i);
+    uint8_t regi;
+    regi= getreg(CC2420_IOCFG0);
+    PRINTF("cc2420_process: fifo threshold: %u,  got %u bytes,  CC2420 satus:%u \n",regi,len,i);
+#endif
+
     
     packetbuf_set_datalen(len);
     

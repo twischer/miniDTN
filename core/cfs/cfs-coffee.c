@@ -46,7 +46,7 @@
 #include <limits.h>
 #include <string.h>
 
-#define DEBUG 0
+#define DEBUG 1
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)
@@ -1007,6 +1007,7 @@ cfs_open(const char *name, int flags)
   fdp = &coffee_fd_set[fd];
   fdp->flags = 0;
 
+  PRINTF("Coffee: open file %s\n",name);
   fdp->file = find_file(name);
   if(fdp->file == NULL) {
     if((flags & (CFS_READ | CFS_WRITE)) == CFS_READ) {

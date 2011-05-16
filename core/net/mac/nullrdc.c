@@ -204,6 +204,7 @@ send_packet(mac_callback_t sent, void *ptr)
 static void
 packet_input(void)
 {
+  PRINTF("nullrdc: got packet\n");
 #if NULLRDC_802154_AUTOACK
   if(packetbuf_datalen() == ACK_LEN) {
     /* Ignore ack packets */

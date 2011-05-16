@@ -164,7 +164,7 @@ static volatile uint8_t contikimac_keep_radio_on = 0;
 static volatile unsigned char we_are_sending = 0;
 static volatile unsigned char radio_is_on = 0;
 
-#define DEBUG 0
+#define DEBUG 1
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)
@@ -772,6 +772,7 @@ input_packet(void)
   /* We have received the packet, so we can go back to being
      asleep. */
   off();
+  PRINTF("contikimac: got packet\n");
 
   /*  printf("cycle_start 0x%02x 0x%02x\n", cycle_start, cycle_start % CYCLE_TIME);*/
   
@@ -815,6 +816,7 @@ input_packet(void)
           if(packetbuf_attr(PACKETBUF_ATTR_PACKET_ID) == received_seqnos[i].seqno &&
              rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_SENDER),
                           &received_seqnos[i].sender)) {
+			  PRINTF("contikimac: Drop duplicate ContikiMAC layer packet\n");
             /* Drop the packet. */
             /*        printf("Drop duplicate ContikiMAC layer packet\n");*/
             return;

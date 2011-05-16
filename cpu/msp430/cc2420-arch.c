@@ -66,7 +66,6 @@ interrupt(CC2420_IRQ_VECTOR)
 cc24240_port1_interrupt(void)
 {
   ENERGEST_ON(ENERGEST_TYPE_IRQ);
-
   if(cc2420_interrupt()) {
     LPM4_EXIT;
   }
