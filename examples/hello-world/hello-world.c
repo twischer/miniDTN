@@ -51,6 +51,8 @@
 #include <string.h>
 //#include "net/dtn/realloc.h"
 
+#include "dev/button-sensor.h"
+
 #include <stdio.h> /* For printf() */
 /*---------------------------------------------------------------------------*/
 PROCESS(hello_world_process, "Hello world process");
@@ -58,98 +60,108 @@ AUTOSTART_PROCESSES(&hello_world_process);
 /*---------------------------------------------------------------------------*/
 PROCESS_THREAD(hello_world_process, ev, data)
 {
-  PROCESS_BEGIN();
-  printf("Hello, world\n");
-    leds_on(1);
-    BUNDLE_STORAGE.init();
-//    BUNDLE_STORAGE.reinit();
+	PROCESS_BEGIN();
 	
-        uint8_t *foo;
-        foo=(uint8_t *) malloc(10);
-        memset(foo,0xfe,10);
-        struct bundle_t bundle;
-        create_bundle(&bundle);
-        uint8_t i;
-        uint32_t bla=4;
-	rimeaddr_t dest={{15,0}};
-//#if 0
-	bla=15;
-        set_attr(&bundle, DEST_NODE, &bla);
-	bla=25;
-        set_attr(&bundle, DEST_SERV, &bla);
-	bla=4;
-        set_attr(&bundle, SRC_NODE, &bla);
-        set_attr(&bundle, SRC_SERV,&bla);
-        set_attr(&bundle, FLAGS, &bla);
-        set_attr(&bundle, REP_NODE, &bla);
-        set_attr(&bundle, REP_SERV, &bla);
-        set_attr(&bundle, CUST_NODE, &bla);
-        set_attr(&bundle, CUST_SERV, &bla);
-        set_attr(&bundle, TIME_STAMP_SEQ_NR, &bla);
-	bla=25;
-        set_attr(&bundle, LIFE_TIME, &bla);
-	bla=4;
-        set_attr(&bundle, TIME_STAMP, &bla);
-	add_block(&bundle, 1,2,foo,10);
-        printf("main size: %u\n",bundle.size);
-    	uint8_t *tmp=bundle.block;
-	for(i=0; i<bundle.size; i++){
-		printf("%x ",*tmp);
-		tmp++;
+	SENSORS_ACTIVATE(button_sensor);
 
-	}
-	printf("\n");
-	
+	while(1) {
+		PROCESS_YIELD();
 
+		if(ev == sensors_event && data == &button_sensor) {
 
-#if 0
-int32_t saved = BUNDLE_STORAGE.save_bundle(&bundle);
-	if (saved >=0){
-		printf("bundle saved at pos: %ld\n",saved);
-	}else{
-		printf("something's wrong\n");
-	}
-	
-	bla=5;
-        set_attr(&bundle, SRC_NODE, &bla);
-    	tmp=bundle.block; 
-	for(i=0; i<bundle.size; i++){
-		printf("%x ",*tmp);
-		tmp++;
-
-	}
-	printf("\n");
-	int32_t saved2=BUNDLE_STORAGE.save_bundle(&bundle);
-	if (saved2 >=0){
-		printf("bundle saved at pos: %ld\n",saved2);
-	}else{
-		printf("something's wrong\n");
-	}
-
-//#endif
-//int32_t saved=0, saved2=1;
-	read_bundle((uint16_t) saved, &bundle);
-tmp=bundle.block;
-//uint8_t *tmp=bundle.block;
-	for(i=0; i<bundle.size; i++){
-		printf("%x ",*tmp);
-		tmp++;
-
-	}
-	printf("\n");
-	read_bundle(1, &bundle);
-    	tmp=bundle.block;
-	for(i=0; i<bundle.size; i++){
-		printf("%x ",*tmp);
-		tmp++;
-
-	}
-	printf("\n");
-#endif
-
-	dtn_network_send(bundle.block,bundle.size,dest);
+			printf("Hello, world\n");
+			leds_on(1);
+			BUNDLE_STORAGE.init();
+		//    BUNDLE_STORAGE.reinit();
 			
-    leds_off(1);
-  PROCESS_END();
+			uint8_t *foo;
+			foo=(uint8_t *) malloc(10);
+			memset(foo,0xfe,10);
+			struct bundle_t bundle;
+			create_bundle(&bundle);
+			uint8_t i;
+			uint32_t bla=4;
+			rimeaddr_t dest={{1,0}};
+		//#if 0
+			bla=15;
+			set_attr(&bundle, DEST_NODE, &bla);
+			bla=25;
+			set_attr(&bundle, DEST_SERV, &bla);
+			bla=4;
+			set_attr(&bundle, SRC_NODE, &bla);
+			set_attr(&bundle, SRC_SERV,&bla);
+			set_attr(&bundle, FLAGS, &bla);
+			set_attr(&bundle, REP_NODE, &bla);
+			set_attr(&bundle, REP_SERV, &bla);
+			set_attr(&bundle, CUST_NODE, &bla);
+			set_attr(&bundle, CUST_SERV, &bla);
+			set_attr(&bundle, TIME_STAMP_SEQ_NR, &bla);
+			bla=25;
+			set_attr(&bundle, LIFE_TIME, &bla);
+			bla=4;
+			set_attr(&bundle, TIME_STAMP, &bla);
+			add_block(&bundle, 1,2,foo,10);
+			printf("main size: %u\n",bundle.size);
+			uint8_t *tmp=bundle.block;
+			for(i=0; i<bundle.size; i++){
+				printf("%x ",*tmp);
+				tmp++;
+
+			}
+			printf("\n");
+			
+
+
+		#if 0
+		int32_t saved = BUNDLE_STORAGE.save_bundle(&bundle);
+			if (saved >=0){
+				printf("bundle saved at pos: %ld\n",saved);
+			}else{
+				printf("something's wrong\n");
+			}
+			
+			bla=5;
+			set_attr(&bundle, SRC_NODE, &bla);
+			tmp=bundle.block; 
+			for(i=0; i<bundle.size; i++){
+				printf("%x ",*tmp);
+				tmp++;
+
+			}
+			printf("\n");
+			int32_t saved2=BUNDLE_STORAGE.save_bundle(&bundle);
+			if (saved2 >=0){
+				printf("bundle saved at pos: %ld\n",saved2);
+			}else{
+				printf("something's wrong\n");
+			}
+
+		//#endif
+		//int32_t saved=0, saved2=1;
+			read_bundle((uint16_t) saved, &bundle);
+		tmp=bundle.block;
+		//uint8_t *tmp=bundle.block;
+			for(i=0; i<bundle.size; i++){
+				printf("%x ",*tmp);
+				tmp++;
+
+			}
+			printf("\n");
+			read_bundle(1, &bundle);
+			tmp=bundle.block;
+			for(i=0; i<bundle.size; i++){
+				printf("%x ",*tmp);
+				tmp++;
+
+			}
+			printf("\n");
+		#endif
+
+			dtn_network_send(bundle.block,bundle.size,dest);
+					
+			leds_off(1);
+		}
+	}
+	PROCESS_END();
 }
 /*---------------------------------------------------------------------------*/
