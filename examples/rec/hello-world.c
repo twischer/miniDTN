@@ -45,7 +45,9 @@
 #include "net/dtn/API_registration.h"
 #include "net/dtn/API_events.h"
 #include "net/dtn/agent.h"
+#include "net/dtn/test.h"
 #include "dev/leds.h"
+#include "dev/cc2420.h"
   #define FOO { {4, 0 } }
 
 
@@ -60,6 +62,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
   PROCESS_BEGIN();
   printf("Hello, world\n");
   agent_init();
+//  test_init();
   reg.status=1;
   reg.application_process=&hello_world_process;
   reg.app_id=25;
@@ -78,6 +81,10 @@ PROCESS_THREAD(hello_world_process, ev, data)
 
 		printf("\n");
 	}
+//	cc2420_read(packetbuf_dataptr(),128);
+	printf("main: end\n");
+
+
   }
   PROCESS_END();
 }
