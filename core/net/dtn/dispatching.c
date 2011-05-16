@@ -26,7 +26,7 @@
 #include "net/dtn/dtn_config.h"
 #include "net/dtn/delivery.h"
 
-#define DEBUG 1
+#define DEBUG 0
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)
@@ -70,7 +70,7 @@ void dispatch_bundle(struct bundle_t *bundle) {
 				admin_record = (administrative_record_block_t *) bundle->block + bundle->offset_tab[DATA][OFFSET];
 				
 				if(admin_record->record_status == CUSTODY_SIGNAL) {
-					
+					PRINTF("DISPATCHING: received custody signal\n");	
 					//call custody signal method
 					CUSTODY.set_state(&admin_record->custody_signal);
 				}

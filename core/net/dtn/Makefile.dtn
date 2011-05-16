@@ -4,8 +4,8 @@ BUNDLE=sdnv.c bundle.c realloc.c
 else
 BUNDLE=sdnv.c bundle.c 
 endif
-COFFEE_FILES=3
+COFFEE_FILES=2
 STORAGE= g_storage.c 
-AGENT= agent.c registration.c delivery.c dispatching.c null_custody.c 
+AGENT= agent.c registration.c delivery.c dispatching.c null_custody.c test.c
 REDUNDANCE_CHECK= b_redundance.c
 CONTIKI_SOURCEFILES += $(DTN_NETWORK) $(BUNDLE) $(STORAGE) $(AGENT) $(REDUNDANCE_CHECK)

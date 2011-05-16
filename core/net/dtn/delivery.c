@@ -39,26 +39,38 @@
 
 void deliver_bundle(struct bundle_t *bundle, struct registration *n) {
 
-
+	PRINTF("DELIVERY\n");
 	if(n->status == APP_ACTIVE) {  //TODO was passiert wenn eine applikation nicht aktiv ist
+	PRINTF("DELIVERY: Service is active\n");
+
 	
 
 		uint32_t len;
 		uint8_t *block = bundle->block + bundle->offset_tab[DATA][OFFSET];
+#if DEBUG
+		uint8_t block_count=0;
+#endif
+		
 		while ( block <= bundle->block + bundle->offset_tab[DATA][OFFSET] + bundle->offset_tab[DATA][STATE]){
 			if (*block != 1){ // no payloadblock
+				PRINTF("DELIVERY: block %u is no payload block\n", block_count); 
 				uint8_t s_len= sdnv_len(block+2);
 				sdnv_decode(block+2, s_len, &len);
 				block= block +2 + len +s_len;
 			}else{
 				uint8_t s_len= sdnv_len(block+2);
 				sdnv_decode(block+2, s_len, &len);
+				PRINTF("DELIVERY: block %u is a payload block\n", block_count); 
 				if( !REDUNDANCE.check(bundle)){ //packet was not delivert befor
+					PRINTF("DELIVERY: bundle was not delivered befor\n");
 					REDUNDANCE.set(bundle);
 					process_post(n->application_process, submit_data_to_application_event, block +2 +s_len);
 				}
 				break;
 			}
+#if DEBUG
+			block_count++;
+#endif
 		}
 		block = bundle->block+1;
 		if (*block & 0x08){

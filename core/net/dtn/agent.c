@@ -142,30 +142,19 @@ PROCESS_THREAD(agent_process, ev, data)
 		else if(ev == dtn_receive_bundle_event) {
 			
 			PRINTF("BUNDLEPROTOCOL: bundle received \n");	
-#if DEBUG
-			uint8_t i;
-	                for(i=0;i<17;i++){
-				uint8_t *tmp=bundleptr->block+bundleptr->offset_tab[i][0];
-		//		PRINTF("offset %u size %u val %x\n",bundleptr->offset_tab[i][0], bundleptr->offset_tab[i][1],*tmp);
-			}
-#endif
-			bundleptr->rec_time= clock_time();
 			
 //			while(bundlebuf_in_use())
 //				PROCESS_PAUSE();
 			bundleptr= (struct bundle_t *) data;
-#if DEBUG
-			PRINTF("BUNDLEPROTOCOL: bundle: %p\n", bundleptr->offset_tab);
-			uint8_t *tmp=bundleptr->block + bundleptr->offset_tab[DEST_NODE][OFFSET];
-			PRINTF("BUNDLEPROTOCOL: DEST_NODE: %u\n",*tmp);
-			tmp=bundleptr->block + bundleptr->offset_tab[DEST_SERV][OFFSET];
-			PRINTF("BUNDLEPROTOCOL: DEST_SERV: %u\n",*tmp);
-#endif
+			bundleptr->rec_time= clock_time();
 
 
 			dispatch_bundle(bundleptr);
 			//BUNDLE_STORAGE.save_bundle(bundleptr);
 			delete_bundle(bundleptr);
+//			packetbuf_clear();
+			PRINTF("BUNDLEPROTOCOL: end bundle received \n");
+		//	*/
 			continue;
 		}
 		
