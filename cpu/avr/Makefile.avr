@@ -143,7 +143,7 @@ $(OBJECTDIR)/%.o: %.c
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $(filter-out %.a,$^) $(filter %.a,$^) $(LDLIBS)
 #Allow top-level makefile to always show size even when build is up to date
 ifndef NOAVRSIZE
-	avr-size -C --mcu=$(MCU) $@
+	#avr-size -C --mcu=$(MCU) $@
 endif
 
 %.hex: %.out
