@@ -63,12 +63,12 @@ PROCESS_THREAD(hello_world_process, ev, data)
 	PROCESS_BEGIN();
 	
 	SENSORS_ACTIVATE(button_sensor);
-
+	static uint32_t j=0;
 	while(1) {
 		PROCESS_YIELD();
 
 		if(ev == sensors_event && data == &button_sensor) {
-
+	//		j++;
 			printf("Hello, world\n");
 			leds_on(1);
 			BUNDLE_STORAGE.init();
@@ -81,7 +81,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 			create_bundle(&bundle);
 			uint8_t i;
 			uint32_t bla=4;
-			rimeaddr_t dest={{1,0}};
+			rimeaddr_t dest={{333,0}};
 		//#if 0
 			bla=15;
 			set_attr(&bundle, DEST_NODE, &bla);
@@ -95,7 +95,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 			set_attr(&bundle, REP_SERV, &bla);
 			set_attr(&bundle, CUST_NODE, &bla);
 			set_attr(&bundle, CUST_SERV, &bla);
-			set_attr(&bundle, TIME_STAMP_SEQ_NR, &bla);
+			set_attr(&bundle, TIME_STAMP_SEQ_NR, &j);
 			bla=25;
 			set_attr(&bundle, LIFE_TIME, &bla);
 			bla=4;
