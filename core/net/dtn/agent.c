@@ -38,7 +38,7 @@
 #endif
 
 uint32_t dtn_node_id;
-
+static struct etimer discover_timer;
 /* Makro das den Prozess definiert */
 PROCESS(agent_process, "AGENT process");
 AUTOSTART_PROCESSES(&agent_process);
@@ -135,7 +135,7 @@ PROCESS_THREAD(agent_process, ev, data)
 //			while(bundlebuf_in_use())
 //				PROCESS_PAUSE();
 			
-			//forwarding_bundle(bundleptr);
+			forwarding_bundle(bundleptr);
 			continue;
 		}
 		
@@ -146,7 +146,7 @@ PROCESS_THREAD(agent_process, ev, data)
 //			while(bundlebuf_in_use())
 //				PROCESS_PAUSE();
 			bundleptr= (struct bundle_t *) data;
-			bundleptr->rec_time= clock_time();
+			bundleptr->rec_time= (uint32_t) clock_seconds();
 
 
 			dispatch_bundle(bundleptr);
@@ -169,6 +169,21 @@ PROCESS_THREAD(agent_process, ev, data)
 			
 			//forwarding_bundle(bundleptr);
 			delete_bundle(bundleptr);
+			continue;
+		}
+		
+		else if(ev == dtn_bundle_in_storage_ev){
+			PRINTF("BUNDLEPROTOCOL: bundle in storage\n");	
+			etimer_set(&discover_timer, DISCOVER_CYCLE*CLOCK_SECOND);
+			continue;
+		}
+		
+		else if(etimer_expired(&discover_timer)){
+			if (STORAGE.get_bundle_num()>0){
+				PRINTF("BUNDLEPROTOCOL: sending discover and reschedule timer to %u seconds\n",DISCOVER_CYCLE);
+				etimer_set(&discover_timer, DISCOVER_CYCLE*CLOCK_SECOND);
+				dtn_discover();	
+			}
 			continue;
 		}
 		/*

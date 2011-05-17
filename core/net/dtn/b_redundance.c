@@ -15,7 +15,7 @@
 
 
 
-#define DEBUG 1
+#define DEBUG 0
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)
@@ -51,7 +51,7 @@ uint8_t check(struct bundle_t *bundle)
 				PRINTF("REDUNDANCE: redundant\n");	
 				return 1;
 		}
-		PRINTF("REDUNDANCE: not redundant\n");	
+		PRINTF("REDUNDANCE: not redundant: %lu != %lu : %lu != %lu : %lu != %lu\n",src,n->src,seq_nr,n->seq_nr,frag_offset,n->frag_offset);	
 	}
 	return 0;
 }
@@ -77,8 +77,8 @@ uint8_t set(struct bundle_t *bundle)
 	if(n == NULL) {
 		n = memb_alloc(&b_red_mem);
 		if(n != NULL) {
-			n->src=src;
 			n->seq_nr=seq_nr;
+			n->src=src;
 			n->frag_offset=frag_offset;
 			n->lifetime=lifetime;
 			list_add(b_red_list, n);
@@ -93,29 +93,24 @@ uint8_t set(struct bundle_t *bundle)
 
 void reduce_lifetime(void)
 {
-	PRINTF("B_REDUNDANCE: reducing lifetime\n");
+//	PRINTF("B_REDUNDANCE: reducing lifetime\n");
 	struct red_bundle_t *tmp;
 	struct red_bundle_t *n;
+
+
 	uint32_t i=0;
 	n=list_head(b_red_list);
-	if (n != NULL && n->next== NULL){
-		n->lifetime-=5;
-		if (n->lifetime <= 0){
-			memb_free(&b_red_mem, n);
-			n=NULL;
-		}
-	}else{
-		for(tmp = list_head(b_red_list); tmp != NULL; tmp = list_item_next(tmp)) {
+	for(tmp = list_head(b_red_list); tmp != NULL; tmp = list_item_next(tmp)) {
+		PRINTF("B_REDUNDANCE: lifetime of bundle %lu is %lu seconds\n",i,tmp->lifetime);
+		i++;
+		if (tmp->lifetime <= 5){
+			PRINTF("B_REDUNDANCE: deleting bundle form list\n");
+			list_remove(b_red_list,tmp);
+			memb_free(&b_red_mem, tmp);
+		}else{
 			tmp->lifetime-=5;
-			PRINTF("B_REDUNDANCE: lifetime of bundle %lu is %lu seconds\n",i,tmp->lifetime);
-			i++;
-			if (tmp->lifetime <= 0){
-				PRINTF("B_REDUNDANCE: deleting bundle form list\n");
-				n->next=tmp->next;
-				memb_free(&b_red_mem, tmp);
-			}
-			n=tmp;
 		}
+		n=tmp;
 	}
 	ctimer_restart(b_red_timer);
 		

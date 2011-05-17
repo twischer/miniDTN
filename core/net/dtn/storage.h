@@ -13,7 +13,7 @@ struct storage_driver {
 	uint16_t (* del_bundle)(uint16_t bundle_num);
 	uint16_t (* read_bundle)(uint16_t bundle_num,struct bundle_t *bundle);
 	uint16_t (* free_space)(struct bundle_t *bundle);
+	uint16_t (* get_bundel_num)(void);
 };
-
 extern const struct storage_driver BUNDLE_STORAGE;
 #endif

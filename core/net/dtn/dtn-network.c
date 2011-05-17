@@ -40,7 +40,7 @@ uint16_t *output_offset_ptr;
 static void packet_sent(void *ptr, int status, int num_tx);
 
 static struct bundle_t bundle;	
-
+static rimeaddr_t beacon_src;
 
 
 static void dtn_network_init(void) 
@@ -89,23 +89,26 @@ static void dtn_network_input(void)
 		}
 			
         } else {
+		uint8_t test[8]="DTN_HERE";
+		uint8_t beacon=1;
 		uint8_t i;
-		PRINTF("%p  %p\n",&bundle,&input_packet);	
-		recover_bundel(&bundle,&input_packet, (uint8_t)size);
-		bundle.rec_time=(uint32_t) clock_seconds();
-		bundle.size= (uint8_t) size;
-		PRINTF("NETWORK: size of received bundle: %u\n",bundle.size);
-		
-		
-		
-		#if DEBUG
-//		for(i=0;i<17;i++){
-//			uint8_t *tmp=bundle.block+bundle.offset_tab[i][0];
-//			PRINTF("offset %u size %u val %x\n",bundle.offset_tab[i][0], bundle.offset_tab[i][1],*tmp);
-//		}
-		#endif
-		process_post(&agent_process, dtn_receive_bundle_event, &bundle);	
-		//packetbuf_clear();
+		for (i=sizeof(test); i>0; i--){
+			if(test[i-1]!=input_packet[i-1]){
+				discover=0;
+				break;
+			}
+		}
+		if (!beacon){
+			PRINTF("%p  %p\n",&bundle,&input_packet);	
+			recover_bundel(&bundle,&input_packet, (uint8_t)size);
+			bundle.rec_time=(uint32_t) clock_seconds();
+			bundle.size= (uint8_t) size;
+			PRINTF("NETWORK: size of received bundle: %u\n",bundle.size);
+			
+			process_post(&agent_process, dtn_receive_bundle_event, &bundle);	
+		}else{
+			memcpy(&beacon_src,*packetbuf_addr(PACKETBUF_ADDR_SENDER),sizeof(beacon_src));
+			process_post(&agent_process,dtn_receive_beacon_event, &beacon_src);
 			
 	}
 		

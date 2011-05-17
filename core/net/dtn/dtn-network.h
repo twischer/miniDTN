@@ -34,6 +34,8 @@ extern const struct mac_driver *dtn_network_mac;
 */
 int dtn_network_send(uint8_t *payload_ptr, uint8_t payload_len, rimeaddr_t dest);
 
+int dtn_discover(void);
+
 /**
 *	\brief send node discovery
 */
