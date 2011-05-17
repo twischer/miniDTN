@@ -18,27 +18,31 @@
 struct file_list_entry_t file_list[BUNDLE_STORAGE_SIZE];
 char *filename = BUNDLE_STARAGE_FILE_NAME; 
 int fd_write, fd_read;
+static uint16_t bundles_in_storage;
 
 
 void init(void)
 {
 	PRINTF("init g_storage\n");
 	fd_read = cfs_open(filename, CFS_READ);
+	bundles_in_storage=0;
 	if(fd_read!=-1) {
 		PRINTF("file opened\n");
 		cfs_read(fd_read,file_list,29*BUNDLE_STORAGE_SIZE);
 		cfs_close(fd_read);
 		PRINTF("file closed\n");
-		#if DEBUG
 		uint16_t i;
 	//	file_list[0].file_size=1;
 		for (i=0; i<BUNDLE_STORAGE_SIZE; i++){
 			PRINTF("slot %u state is %u\n", i, file_list[i].file_size);
+			if(file_list[i].file_size >0 ){
+				bundles_in_storage++;
+			}
 		}
-		#endif
 	}else{
 		PRINTF("no file found\n");
 		uint16_t i;
+	
 		for(i=0; i < BUNDLE_STORAGE_SIZE; i++){
 			file_list[i].bundle_num=i;
 			file_list[i].file_size=0;
@@ -60,6 +64,7 @@ void reinit(void)
 {
 	uint16_t i;
 	cfs_remove(filename);
+	bundles_in_storage=0;
 	for(i=0; i < BUNDLE_STORAGE_SIZE; i++){
 		file_list[i].bundle_num=i;
 		file_list[i].file_size=0;
@@ -139,6 +144,7 @@ int32_t save_bundle(struct bundle_t *bundle)
 	if(fd_write != -1) {
 		n = cfs_write(fd_write, bundle->block, bundle->size);
 		cfs_close(fd_write);
+		bundles_in_storage++;
 	}else{
 		return -1;
 	}
@@ -169,6 +175,7 @@ uint16_t del_bundle(uint16_t bundle_num)
 	char b_file[7];
 	sprintf(b_file,"%u.b",bundle_num);
 	cfs_remove(b_file);
+	bundles_in_storage++;
 	file_list[bundle_num].file_size=0;
 	file_list[bundle_num].src=0;
 	//save file list	
@@ -220,6 +227,9 @@ uint16_t free_space(struct bundle_t *bundle)
 	return free;
 }
 
+uint16_t get_g_bundel_num(void){
+	return bundles_in_storage;
+}
 const struct storage_driver g_storage = {
 	"G_STORAGE",
 	init,
@@ -228,4 +238,5 @@ const struct storage_driver g_storage = {
 	del_bundle,
 	read_bundle,
 	free_space,
+	get_g_bundel_num,
 };
