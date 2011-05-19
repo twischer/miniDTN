@@ -25,6 +25,7 @@ extern const struct network_driver dtn_network_driver;
 
 extern const struct mac_driver *dtn_network_mac;
 
+process_event_t dtn_beacon_event;
 
 /**
 *   \brief Sendet ein Bündel

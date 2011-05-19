@@ -4,6 +4,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "net/dtn/bundle.h"
+
+process_event_t dtn_bundle_deleted_event;
+
 struct storage_driver {
 	char *name;
 
@@ -13,7 +16,7 @@ struct storage_driver {
 	uint16_t (* del_bundle)(uint16_t bundle_num);
 	uint16_t (* read_bundle)(uint16_t bundle_num,struct bundle_t *bundle);
 	uint16_t (* free_space)(struct bundle_t *bundle);
-	uint16_t (* get_bundel_num)(void);
+	uint16_t (* get_bundle_num)(void);
 };
 extern const struct storage_driver BUNDLE_STORAGE;
 #endif

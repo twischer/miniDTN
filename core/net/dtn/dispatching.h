@@ -22,7 +22,7 @@
 *
 *   \param  bundle das zu verarbeitende Bündel
 */
-void dispatch_bundle(bundle_t *bundle);
+void dispatch_bundle(struct bundle_t *bundle);
 
 #endif
 

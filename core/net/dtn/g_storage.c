@@ -187,6 +187,9 @@ uint16_t del_bundle(uint16_t bundle_num)
 	}else{
 		return 0;
 	}
+	
+
+	process_post(&agent_process,dtn_bundle_deleted_event, bundle_num);
 	return 1;
 }
 
