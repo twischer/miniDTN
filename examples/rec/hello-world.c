@@ -40,6 +40,11 @@
 
 #include "contiki.h"
 
+
+//#include "../platform/avr-raven/cfs-coffee-arch.h"
+//#include "cfs.h"
+
+
 #include "net/netstack.h"
 #include "net/packetbuf.h"
 #include "net/dtn/API_registration.h"
@@ -61,8 +66,9 @@ PROCESS_THREAD(hello_world_process, ev, data)
 {
   PROCESS_BEGIN();
   printf("Hello, world\n");
+
   agent_init();
-//  test_init();
+  test_init();
   reg.status=1;
   reg.application_process=&hello_world_process;
   reg.app_id=25;
@@ -83,9 +89,20 @@ PROCESS_THREAD(hello_world_process, ev, data)
 	}
 //	cc2420_read(packetbuf_dataptr(),128);
 	printf("main: end\n");
-
-
   }
+#if 0
+	/*#define PRINTF printf
+	PRINTF("Formatting FLASH file system for coffee...");
+	cfs_coffee_format();
+	PRINTF("Done!\n");
+	int fa = cfs_open( "/index.html", CFS_WRITE);
+	int r = cfs_write(fa, &"It works!", 9);
+	if (r<0) PRINTF("Can''t create /index.html!\n");
+	cfs_close(fa);
+*/
+//	int foo=coffee_file_test();
+//	printf(" FAIL %d\n",foo);
+#endif
   PROCESS_END();
 }
 /*---------------------------------------------------------------------------*/
