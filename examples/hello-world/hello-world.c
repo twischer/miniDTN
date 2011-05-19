@@ -43,11 +43,11 @@
 #include "net/netstack.h"
 #include "net/packetbuf.h"
 #include "dev/leds.h"
-#include "net/dtn/dtn-network.h"
+
 #include "net/dtn/bundle.h"
-#include "net/dtn/dtn_config.h"
-#include "net/dtn/storage.h"
-#include "net/dtn/redundance.h"
+#include "net/dtn/agent.h"
+#include "net/dtn/API_events.h"
+
 #include <string.h>
 //#include "net/dtn/realloc.h"
 
@@ -58,12 +58,16 @@
 PROCESS(hello_world_process, "Hello world process");
 AUTOSTART_PROCESSES(&hello_world_process);
 /*---------------------------------------------------------------------------*/
+
+struct bundle_t bundle;
 PROCESS_THREAD(hello_world_process, ev, data)
 {
 	PROCESS_BEGIN();
 	
 	SENSORS_ACTIVATE(button_sensor);
 	static uint32_t j=0;
+	agent_init();
+//	test_init();
 	while(1) {
 		PROCESS_YIELD();
 
@@ -71,13 +75,10 @@ PROCESS_THREAD(hello_world_process, ev, data)
 	//		j++;
 			printf("Hello, world\n");
 			leds_on(1);
-			BUNDLE_STORAGE.init();
-		//    BUNDLE_STORAGE.reinit();
 			
 			uint8_t *foo;
 			foo=(uint8_t *) malloc(10);
 			memset(foo,0xfe,10);
-			struct bundle_t bundle;
 			create_bundle(&bundle);
 			uint8_t i;
 			uint32_t bla=4;
@@ -109,55 +110,12 @@ PROCESS_THREAD(hello_world_process, ev, data)
 
 			}
 			printf("\n");
+			process_post(&agent_process,dtn_send_bundle_event,(void *) &bundle);
 			
 
 
-		#if 0
-		int32_t saved = BUNDLE_STORAGE.save_bundle(&bundle);
-			if (saved >=0){
-				printf("bundle saved at pos: %ld\n",saved);
-			}else{
-				printf("something's wrong\n");
-			}
-			
-			bla=5;
-			set_attr(&bundle, SRC_NODE, &bla);
-			tmp=bundle.block; 
-			for(i=0; i<bundle.size; i++){
-				printf("%x ",*tmp);
-				tmp++;
 
-			}
-			printf("\n");
-			int32_t saved2=BUNDLE_STORAGE.save_bundle(&bundle);
-			if (saved2 >=0){
-				printf("bundle saved at pos: %ld\n",saved2);
-			}else{
-				printf("something's wrong\n");
-			}
-
-		//#endif
-		//int32_t saved=0, saved2=1;
-			read_bundle((uint16_t) saved, &bundle);
-		tmp=bundle.block;
-		//uint8_t *tmp=bundle.block;
-			for(i=0; i<bundle.size; i++){
-				printf("%x ",*tmp);
-				tmp++;
-
-			}
-			printf("\n");
-			read_bundle(1, &bundle);
-			tmp=bundle.block;
-			for(i=0; i<bundle.size; i++){
-				printf("%x ",*tmp);
-				tmp++;
-
-			}
-			printf("\n");
-		#endif
-
-			dtn_network_send(bundle.block,bundle.size,dest);
+//			dtn_network_send(bundle.block,bundle.size,dest);
 					
 			leds_off(1);
 		}
