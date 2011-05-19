@@ -20,6 +20,7 @@
 #include "net/rime/rimeaddr.h"
 #include "net/dtn/bundle.h"
 #include "net/dtn/agent.h"
+#include "net/dtn/routing.h"
 #if CONTIKI_TARGET_AVR_RAVEN
 	#include <stings.h>
 #endif
@@ -85,7 +86,7 @@ static void dtn_network_input(void)
 			packetbuf_set_addr(PACKETBUF_ADDR_RECEIVER, &dest);
 			packetbuf_set_addr(PACKETBUF_ADDR_SENDER, &dest);
 			packetbuf_set_attr(PACKETBUF_ADDRSIZE, 2);
-			NETSTACK_MAC.send(&packet_sent, NULL);
+			NETSTACK_MAC.send(NULL, NULL);
 		}else{
 			PRINTF("some broadcast message\n");
 		}
@@ -138,6 +139,7 @@ static void packet_sent(void *ptr, int status, int num_tx)
 	    PRINTF("DTN: error %d after %d tx\n", status, num_tx);
 	  }
 	
+	ROUTING.sent(*(uint8_t *)ptr,status,num_tx);
 	#if 0
 	uint16_t bundlebuf_length;
 	bundlebuf_length =  bundlebuf_get_length();
