@@ -124,7 +124,7 @@ void avr_eeprom_erase(uint16_t sector);
 /* Word reads are faster but take 130 bytes more PROGMEM */
 #define FLASH_WORD_READS          1
 /* 1=Slower reads, but no page writes after erase and 18 bytes less PROGMEM. Best for dynamic file system */
-#define FLASH_COMPLEMENT_DATA     0 
+#define FLASH_COMPLEMENT_DATA     1 
 
 /* These are used internally by the coffee file system */
 /* Micro logs are not needed for single page sectors */
@@ -164,5 +164,5 @@ int     avr_httpd_fs_strcmp (char *addr,char *ram);
 
 
 #endif /* COFFEE_AVR_FLASH */
-
+int coffee_file_test(void);
 #endif /* !COFFEE_ARCH_H */

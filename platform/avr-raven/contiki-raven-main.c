@@ -441,7 +441,7 @@ get_txpower_from_eeprom(void) {
 void initialize(void)
 {
   watchdog_init();
-  watchdog_start();
+  //watchdog_start();
 
 #ifdef RAVEN_LCD_INTERFACE
   /* First rs232 port for Raven 3290 port */
@@ -608,6 +608,8 @@ uint8_t i;
     cfs_close(fa);
 //  fa = cfs_open("upload.html"), CFW_WRITE);
 // <html><body><form action="upload.html" enctype="multipart/form-data" method="post"><input name="userfile" type="file" size="50" /><input value="Upload" type="submit" /></form></body></html>
+  }else{
+  	PRINTF("index.html found\n");
   }
 #endif /* COFFEE_FILES */
 
