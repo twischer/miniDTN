@@ -17,6 +17,7 @@
 
 #include "clock.h"
 #include "timer.h"
+#include "net/rime/rimeaddr.h"
 
 #include "net/dtn/API_registration.h"
 #include "net/dtn/registration.h"
@@ -27,6 +28,10 @@
 #include "net/dtn/storage.h"
 #include "net/dtn/sdnv.h"
 #include "net/dtn/redundance.h"
+#include "net/dtn/dispatching.h"
+#include "net/dtn/forwarding.h"
+#include "net7dtn/routing.h"
+#include "net/dtn/dtn-network.h"
 
 
 #define DEBUG 1
@@ -37,7 +42,7 @@
 #define PRINTF(...)
 #endif
 
-uint32_t dtn_node_id;
+uint32_t dtn_node_id, dtn_seq_nr;
 static struct etimer discover_timer;
 /* Makro das den Prozess definiert */
 PROCESS(agent_process, "AGENT process");
@@ -54,9 +59,10 @@ void agent_init(void) {
 	PRINTF("starting DTN Bundle Protocol \n");
 	process_start(&agent_process, NULL);
 	BUNDLE_STORAGE.init();
-//	BUNDLE_STORAGE.reinit();
+	BUNDLE_STORAGE.reinit();
 	REDUNDANCE.init();
 	dtn_node_id=15; //TODO was dynamisches
+	dtn_seq_nr=0;
 
 	
 	
@@ -66,7 +72,10 @@ void agent_init(void) {
 	dtn_receive_bundle_event = process_alloc_event();
 	dtn_send_bundle_event = process_alloc_event();
 	submit_data_to_application_event = process_alloc_event();
+	dtn_beacon_event = process_alloc_event();
 	dtn_send_admin_record_event = process_alloc_event();
+	dtn_bundle_in_storage_event = process_alloc_event();
+	dtn_bundle_deleted_event = process_alloc_event();
 }
 
 
@@ -85,7 +94,6 @@ PROCESS_THREAD(agent_process, ev, data)
 		
 		
 		PROCESS_WAIT_EVENT_UNTIL(ev);
-		
 		if(ev == dtn_application_registration_event) {
 			
 			reg = (struct registration_api *) data;
@@ -125,12 +133,17 @@ PROCESS_THREAD(agent_process, ev, data)
 			//reception_set_time();
 			bundleptr = (struct bundle_t *) data;
 			uint32_t time=(uint32_t) clock_seconds();
-			time = time - bundleptr->rec_time;
-			uint32_t lifetime;
-			sdnv_decode(bundleptr->block + bundleptr->offset_tab[LIFE_TIME][OFFSET],sdnv_len(bundleptr->block + bundleptr->offset_tab[LIFE_TIME][OFFSET]),&lifetime);
-			lifetime= lifetime -time;
-			set_attr(bundleptr,LIFE_TIME,&lifetime);
-
+			if (bundleptr->size >= 110){
+				PRINTF("BUNDLEPROTOCOL: bundle too big size: %u\n" , bundleptr->size);
+				continue;
+			}
+			//time = time - bundleptr->rec_time;
+			//uint32_t lifetime;
+			//sdnv_decode(bundleptr->block + bundleptr->offset_tab[LIFE_TIME][OFFSET],sdnv_len(bundleptr->block + bundleptr->offset_tab[LIFE_TIME][OFFSET]),&lifetime);
+			//lifetime= lifetime -time;
+			//set_attr(bundleptr,LIFE_TIME,&lifetime);
+			set_attr(bundleptr,TIME_STAMP_SEQ_NR,&dtn_seq_nr);
+			dtn_seq_nr++;
 			
 //			while(bundlebuf_in_use())
 //				PROCESS_PAUSE();
@@ -162,24 +175,41 @@ PROCESS_THREAD(agent_process, ev, data)
 			
 			//reception_set_time();
 			PRINTF("BUNDLEPROTOCOL: send admin record \n");
-			bundleptr = (struct bundle_t *) data;
+		//	bundleptr = (struct bundle_t *) data;
 			
 //			while(bundlebuf_in_use())
 //				PROCESS_PAUSE();
 			
 			//forwarding_bundle(bundleptr);
-			delete_bundle(bundleptr);
+		//	delete_bundle(bundleptr);
+			continue;
+		}
+
+		else if(ev == dtn_beacon_event){
+			rimeaddr_t* src =(rimeaddr_t*) data;	
+			ROUTING.new_neighbor(src);
+			PRINTF("BUNDLEPROTOCOL: got beacon from %u:%u\n",src->u8[1],src->u8[0]);
 			continue;
 		}
 		
-		else if(ev == dtn_bundle_in_storage_ev){
+		else if(ev == dtn_bundle_in_storage_event){
+			uint16_t b_num= *(uint16_t *) data;
 			PRINTF("BUNDLEPROTOCOL: bundle in storage\n");	
-			etimer_set(&discover_timer, DISCOVER_CYCLE*CLOCK_SECOND);
+			ROUTING.new_bundle(b_num);
+			dtn_discover();
+			if (BUNDLE_STORAGE.get_bundle_num()=1){
+				etimer_set(&discover_timer, DISCOVER_CYCLE*CLOCK_SECOND);
+			}
 			continue;
+		}
+		
+		else if(ev == dtn_bundle_deleted_event){
+			ROUTING.del_bundle(data);
 		}
 		
 		else if(etimer_expired(&discover_timer)){
-			if (STORAGE.get_bundle_num()>0){
+			PRINTF("BUNDLEPROTOCOL: discover_timer\n");
+			if (BUNDLE_STORAGE.get_bundle_num()>0){
 				PRINTF("BUNDLEPROTOCOL: sending discover and reschedule timer to %u seconds\n",DISCOVER_CYCLE);
 				etimer_set(&discover_timer, DISCOVER_CYCLE*CLOCK_SECOND);
 				dtn_discover();	

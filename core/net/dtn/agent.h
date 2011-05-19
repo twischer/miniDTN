@@ -21,7 +21,7 @@
 
 #include "contiki.h"
 
-extern uint32_t dtn_node_id;
+extern uint32_t dtn_node_id, dtn_seq_nr;
 /**
 *   \brief Makro für den Namen des Prozesses
 */
@@ -33,7 +33,6 @@ PROCESS_NAME(agent_process);
 */
 /* Event thrown to the bundle agent by network layer */
 process_event_t dtn_receive_bundle_event;
-process_event_t dtn_receive_beacon_event;
 process_event_t dtn_bundle_in_storage_event;
 
 /* Event to transmit an administrative record */
