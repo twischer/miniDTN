@@ -19,7 +19,7 @@ all:
 	@if [ $(OUTFILE) != "webserver6" ]; then cp webserver6.elf $(OUTFILE).elf;fi
 	avr-objcopy -O ihex -R .eeprom -R .fuse -R .signature $(OUTFILE).elf $(OUTFILE).hex
 #	avr-size -C --mcu=atmega1284p $(OUTFILE).elf
-	avr-size -C --mcu=$(MCU) $(OUTFILE).elf
+#	avr-size -C --mcu=$(MCU) $(OUTFILE).elf
 
 clean:
 	${MAKE} -f Makefile.webserver TARGET=$(TARGET) clean
