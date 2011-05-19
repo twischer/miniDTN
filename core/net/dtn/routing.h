@@ -11,6 +11,7 @@ struct routing_driver {
 	void (* new_neighbor)(rimeaddr_t *dest);
 	void (* new_bundle)(uint16_t bundle_num);
 	void (* del_bundle)(uint16_t bundle_num);
+	void (* sent)(uint16_t bundle_num,uint8_t payload_len,rimeaddr_t dest);
 };
 extern const struct routing_driver ROUTING;
 #endif
