@@ -37,6 +37,7 @@ process_event_t dtn_bundle_in_storage_event;
 
 /* Event to transmit an administrative record */
 process_event_t dtn_send_admin_record_event;
+process_event_t dtn_send_bundle_to_node_event;
 /** @} */
 void agent_init(void);
 

@@ -76,6 +76,8 @@ void agent_init(void) {
 	dtn_send_admin_record_event = process_alloc_event();
 	dtn_bundle_in_storage_event = process_alloc_event();
 	dtn_bundle_deleted_event = process_alloc_event();
+	dtn_send_bundle_to_node_event = process_alloc_event();
+
 }
 
 
@@ -205,6 +207,13 @@ PROCESS_THREAD(agent_process, ev, data)
 		
 		else if(ev == dtn_bundle_deleted_event){
 			ROUTING.del_bundle(data);
+		}
+
+		else if(ev == dtn_send_bundle_to_node_event){
+			struct route_t *route = (struct route_t *)data;
+			BUNDLE_STORAGE.read_bundle(route.bundle_num,bundleptr);
+			bundleprt->bundle_num =  route.bundle_num;
+			dtn_network_send(bundleptr,route.dest);
 		}
 		
 		else if(etimer_expired(&discover_timer)){
