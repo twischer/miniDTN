@@ -30,7 +30,7 @@
 #include "net/dtn/redundance.h"
 #include "net/dtn/dispatching.h"
 #include "net/dtn/forwarding.h"
-#include "net7dtn/routing.h"
+#include "net/dtn/routing.h"
 #include "net/dtn/dtn-network.h"
 
 
@@ -199,21 +199,21 @@ PROCESS_THREAD(agent_process, ev, data)
 			PRINTF("BUNDLEPROTOCOL: bundle in storage\n");	
 			ROUTING.new_bundle(b_num);
 			dtn_discover();
-			if (BUNDLE_STORAGE.get_bundle_num()=1){
+			if (BUNDLE_STORAGE.get_bundle_num() == 1){
 				etimer_set(&discover_timer, DISCOVER_CYCLE*CLOCK_SECOND);
 			}
 			continue;
 		}
 		
 		else if(ev == dtn_bundle_deleted_event){
-			ROUTING.del_bundle(data);
+			ROUTING.del_bundle((uint16_t)data);
 		}
 
 		else if(ev == dtn_send_bundle_to_node_event){
 			struct route_t *route = (struct route_t *)data;
-			BUNDLE_STORAGE.read_bundle(route.bundle_num,bundleptr);
-			bundleprt->bundle_num =  route.bundle_num;
-			dtn_network_send(bundleptr,route.dest);
+			BUNDLE_STORAGE.read_bundle(route->bundle_num,bundleptr);
+			//bundleprt->bundle_num =  route.bundle_num;
+			//dtn_network_send(bundleptr,route.dest);
 		}
 		
 		else if(etimer_expired(&discover_timer)){

@@ -40,7 +40,7 @@ void flood_new_neigh(rimeaddr_t *dest)
 		if(!sent){
 			memcpy(route.dest,dest,sizeof(dest));
 			route.bundle_num=pack.num;
-			process_post(&agent_process,dtn_send_bundle_to_node_event, pack.num);
+			//process_post(&agent_process,dtn_send_bundle_to_node_event, pack.num);
 
 		}
 	}

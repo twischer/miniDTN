@@ -4,6 +4,7 @@
 #include "net/dtn/g_storage.h"
 #include "net/dtn/bundle.h"
 #include "net/dtn/sdnv.h"
+#include "agent.h"
 #include <stdlib.h>
 #include <stdio.h>
 

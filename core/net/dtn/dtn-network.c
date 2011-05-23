@@ -111,8 +111,8 @@ static void dtn_network_input(void)
 			process_post(&agent_process, dtn_receive_bundle_event, &bundle);	
 		}else{
 			
-			rimeaddr_t* bsrc =packetbuf_addr(PACKETBUF_ADDR_SENDER);
-			memcpy(&beacon_src,bsrc,sizeof(beacon_src));
+			rimeaddr_t bsrc = *packetbuf_addr(PACKETBUF_ADDR_SENDER);
+			memcpy(&beacon_src,&bsrc,sizeof(beacon_src));
 			PRINTF("NETWORK: got beacon from %u,%u\n",beacon_src.u8[0],beacon_src.u8[1]);
 			process_post(&agent_process, dtn_beacon_event, &beacon_src);
 //			process_post(&agent_process, dtn_send_admin_record_event, NULL);
@@ -139,7 +139,7 @@ static void packet_sent(void *ptr, int status, int num_tx)
 	    PRINTF("DTN: error %d after %d tx\n", status, num_tx);
 	  }
 	
-	ROUTING.sent(*(uint8_t *)ptr,status,num_tx);
+//	ROUTING.sent(*(uint8_t *)ptr,status,num_tx);
 	#if 0
 	uint16_t bundlebuf_length;
 	bundlebuf_length =  bundlebuf_get_length();
