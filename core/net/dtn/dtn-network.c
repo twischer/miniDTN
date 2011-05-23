@@ -162,18 +162,21 @@ static void packet_sent(void *ptr, int status, int num_tx)
 		
 }
 
-int dtn_network_send(uint8_t *payload_ptr, uint8_t payload_len,rimeaddr_t dest) 
+int dtn_network_send(struct bundle_t *bundle, rimeaddr_t dest) 
 {
 	
+	uint8_t *payload = bundle->block;
+	uint8_t len = bundle->size;
+
 
 	/* kopiere die Daten in den packetbuf(fer) */
-	packetbuf_copyfrom(payload_ptr, payload_len);
+	packetbuf_copyfrom(payload, len);
 	
 	/*setze Zieladresse und übergebe das Paket an die MAC schicht */
 	packetbuf_set_addr(PACKETBUF_ADDR_RECEIVER, &dest);
 	packetbuf_set_attr(PACKETBUF_ADDRSIZE, 2);
 	
-	NETSTACK_MAC.send(&packet_sent,NULL ); //TODO pointer zur packet_number anstatt NULL
+	NETSTACK_MAC.send(&packet_sent, bundle->bundle_num); //TODO pointer zur packet_number anstatt NULL
 	
 	
 	return 1;

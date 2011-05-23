@@ -34,13 +34,9 @@ struct bundle_t{
 	uint8_t size;
 	uint8_t custody;
 	uint32_t rec_time;
+	uint16_t bundle_num;
 };
 
-struct bundle_id_t{
-	uint32_t src;
-	uint32_t seq_nr;
-	uint32_t frag_offset;
-};
 
 uint8_t recover_bundel(struct bundle_t *bundle, uint8_t *block,int size);
 uint8_t set_attr(struct bundle_t *bundle, uint8_t attr, uint32_t *val);

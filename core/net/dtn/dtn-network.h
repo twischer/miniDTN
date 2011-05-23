@@ -33,7 +33,7 @@ process_event_t dtn_beacon_event;
 *    Ein Bündel muss ich Bundlebuffer stehen um gesendet zu werden
 *
 */
-int dtn_network_send(uint8_t *payload_ptr, uint8_t payload_len, rimeaddr_t dest);
+int dtn_network_send(uint8_t *payload_ptr,rimeaddr_t dest);
 
 int dtn_discover(void);
 
