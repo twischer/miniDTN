@@ -14,6 +14,8 @@
 
 #include "contiki-conf.h"
 #include "rime.h"
+#include "net/rime/rimeaddr.h"
+#include "bundle.h"
 
 /**
 *   \brief Treiber für das Protokoll
@@ -33,9 +35,8 @@ process_event_t dtn_beacon_event;
 *    Ein Bündel muss ich Bundlebuffer stehen um gesendet zu werden
 *
 */
-int dtn_network_send(uint8_t *payload_ptr,rimeaddr_t dest);
+int dtn_network_send(struct bundle_t *bundle, rimeaddr_t dest);
 
-int dtn_discover(void);
 
 /**
 *	\brief send node discovery
