@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "net/dtn/bundle.h"
+#include "contiki.h"
 
 process_event_t dtn_bundle_deleted_event;
 

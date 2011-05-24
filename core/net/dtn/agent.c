@@ -60,6 +60,7 @@ void agent_init(void) {
 	process_start(&agent_process, NULL);
 	BUNDLE_STORAGE.init();
 	BUNDLE_STORAGE.reinit();
+	ROUTING.init();
 	REDUNDANCE.init();
 	dtn_node_id=15; //TODO was dynamisches
 	dtn_seq_nr=0;
@@ -87,6 +88,7 @@ PROCESS_THREAD(agent_process, ev, data)
 	PROCESS_BEGIN();
 	
 	registration_init();
+	
 	//custody_init();
 		
 	struct bundle_t *bundleptr;
@@ -189,8 +191,8 @@ PROCESS_THREAD(agent_process, ev, data)
 
 		else if(ev == dtn_beacon_event){
 			rimeaddr_t* src =(rimeaddr_t*) data;	
-			ROUTING.new_neighbor(src);
 			PRINTF("BUNDLEPROTOCOL: got beacon from %u:%u\n",src->u8[1],src->u8[0]);
+			ROUTING.new_neighbor(src);
 			continue;
 		}
 		
@@ -207,13 +209,16 @@ PROCESS_THREAD(agent_process, ev, data)
 		
 		else if(ev == dtn_bundle_deleted_event){
 			ROUTING.del_bundle((uint16_t)data);
+			continue;
 		}
 
 		else if(ev == dtn_send_bundle_to_node_event){
 			struct route_t *route = (struct route_t *)data;
+			PRINTF("BUNDLEPROTOCOL: send bundle %u to node %u:%u\n",route->bundle_num, route->dest->u8[1], route->dest->u8[0]);
 			BUNDLE_STORAGE.read_bundle(route->bundle_num,bundleptr);
 			//bundleprt->bundle_num =  route.bundle_num;
 			//dtn_network_send(bundleptr,route.dest);
+			continue;
 		}
 		
 		else if(etimer_expired(&discover_timer)){
