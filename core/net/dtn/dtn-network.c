@@ -21,7 +21,7 @@
 #include "net/rime/rimeaddr.h"
 #include "net/dtn/bundle.h"
 #include "net/dtn/agent.h"
-#include "net/dtn/routing.h"
+#include "routing.h"
 #if CONTIKI_TARGET_AVR_RAVEN
 	#include <stings.h>
 #endif
@@ -176,7 +176,7 @@ int dtn_network_send(struct bundle_t *bundle, struct route_t *route)
 	packetbuf_set_addr(PACKETBUF_ADDR_RECEIVER, &route->dest);
 	packetbuf_set_attr(PACKETBUF_ADDRSIZE, 2);
 	
-	NETSTACK_MAC.send(&packet_sent, bundle->bundle_num); //TODO pointer zur packet_number anstatt NULL
+	NETSTACK_MAC.send(&packet_sent, NULL); //TODO pointer zur packet_number anstatt NULL
 	
 	
 	return 1;

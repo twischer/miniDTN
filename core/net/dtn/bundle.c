@@ -7,7 +7,7 @@
 #endif
 #include <string.h>
 
-#define DEBUG 0
+#define DEBUG 1
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)
@@ -161,7 +161,7 @@ uint8_t recover_bundel(struct bundle_t *bundle,uint8_t *block, int size)
 	uint8_t *tmp=block;
 	tmp+=1;
 	uint8_t fields=0;
-	if (*tmp & 0x40){ //fragmented	
+	if (*tmp & 0x1){ //fragmented	
 		PRINTF("fragment\n");
 		fields=15;
 	}else{

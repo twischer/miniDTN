@@ -19,9 +19,8 @@
 #define PRINTF(...)
 #endif
 
-#define ROUTING_MAX_MEM 100
-#define ROUTING_NEI_MEM 5
-#define ROUTING_ROUTE_MAX_MEM 100
+#define ROUTING_MAX_MEM 10
+#define ROUTING_ROUTE_MAX_MEM 10
 
 struct pack_list_t {
 	struct pack_list_t *next;
@@ -30,6 +29,7 @@ struct pack_list_t {
 	uint8_t send_to;
 	rimeaddr_t dest[ROUTING_NEI_MEM];
 };
+
 LIST(pack_list);
 MEMB(pack_mem, struct pack_list_t, ROUTING_MAX_MEM);
 MEMB(route_mem, struct route_t, ROUTING_ROUTE_MAX_MEM);
