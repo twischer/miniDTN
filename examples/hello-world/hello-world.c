@@ -67,7 +67,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 	SENSORS_ACTIVATE(button_sensor);
 	static uint32_t j=0;
 	agent_init();
-//	test_init();
+	test_init();
 	while(1) {
 		PROCESS_YIELD();
 
@@ -91,7 +91,9 @@ PROCESS_THREAD(hello_world_process, ev, data)
 			bla=4;
 			set_attr(&bundle, SRC_NODE, &bla);
 			set_attr(&bundle, SRC_SERV,&bla);
+			bla=0;
 			set_attr(&bundle, FLAGS, &bla);
+			bla=4;
 			set_attr(&bundle, REP_NODE, &bla);
 			set_attr(&bundle, REP_SERV, &bla);
 			set_attr(&bundle, CUST_NODE, &bla);
