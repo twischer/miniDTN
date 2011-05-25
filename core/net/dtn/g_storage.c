@@ -98,7 +98,7 @@ int32_t save_bundle(struct bundle_t *bundle)
 
 		#if DEBUG
 		for (i=0; i<BUNDLE_STORAGE_SIZE; i++){
-			PRINTF("slot %u state is %u\n", i, file_list[i].file_size);
+			PRINTF("STORAGE: slot %u state is %u\n", i, file_list[i].file_size);
 		}
 		i=0;
 		#endif
@@ -106,13 +106,13 @@ int32_t save_bundle(struct bundle_t *bundle)
 	while ( i < BUNDLE_STORAGE_SIZE) {
 		if (free == -1 && file_list[i].file_size == 0){
 			free=(int32_t)i;
-			PRINTF("%u is a free slot\n",i);
+			PRINTF("STORAGE: %u is a free slot\n",i);
 		}
 		if ( time_stamp_seq == file_list[i].time_stamp_seq && 
 		    time_stamp == file_list[i].time_stamp &&
 		    src == file_list[i].src &&
 		    fraq_offset == file_list[i].fraq_offset) {  // is bundle in storage?
-		    	PRINTF("%u is the same bundle\n",i);
+		    	PRINTF("STORAGE: %u is the same bundle\n",i);
 			return (int32_t)i;
 		}//else{
 		//	PRINTF("bundle are different\n");
@@ -120,15 +120,15 @@ int32_t save_bundle(struct bundle_t *bundle)
 		i++;
 	}
 	if(free == -1){
-		PRINTF("no free slots in bundlestorage\n");
+		PRINTF("STORAGE: no free slots in bundlestorage\n");
 		return -1;
 	}
 	i=(uint16_t)free;
-	PRINTF("bundle will be safed in solt %u, size of bundle is %u\n",i,bundle->size);	
+	PRINTF(" STORAGE: bundle will be safed in solt %u, size of bundle is %u\n",i,bundle->size);	
 	file_list[i].file_size = bundle->size; 
 		#if DEBUG
 		for (i=0; i<BUNDLE_STORAGE_SIZE; i++){
-			PRINTF("b slot %u state is %u\n", i, file_list[i].file_size);
+			PRINTF("STORAGE: b slot %u state is %u\n", i, file_list[i].file_size);
 		}
 		i=0;
 		#endif
@@ -138,19 +138,28 @@ int32_t save_bundle(struct bundle_t *bundle)
 	
 	char b_file[7];
 	sprintf(b_file,"%u.b",file_list[i].bundle_num);
-	PRINTF("filename: %s\n", b_file);
+	PRINTF("STORAGE: write filename: %s\n", b_file);
 	fd_write = cfs_open(b_file, CFS_WRITE);
 	int n=0;
-	fd_write = cfs_open(b_file, CFS_WRITE | CFS_APPEND);
+	PRINTF("STORAGE: write filename: %s opened\n", b_file);
+#if DEBUG
+	PRINTF("STORAGE: bundle->block: ");
+	uint8_t j;
+	for(j=0;j<bundle->size;j++){
+		PRINTF("%u:",*(bundle->block+j));
+	}
+	PRINTF("\n");
+#endif
 	if(fd_write != -1) {
 		n = cfs_write(fd_write, bundle->block, bundle->size);
 		cfs_close(fd_write);
 		bundles_in_storage++;
 	}else{
+		PRINTF("STORAGE: write failed\n");
 		return -1;
 	}
 	if (n != bundle->size){
-		PRINTF("write failed\n");
+		PRINTF("STORAGE: write failed\n");
 		return -1;
 	}
 	file_list[i].time_stamp_seq = time_stamp_seq;
@@ -166,8 +175,10 @@ int32_t save_bundle(struct bundle_t *bundle)
 		cfs_write(fd_write, file_list, sizeof(file_list));
 		cfs_close(fd_write);
 	}else{
+		PRINTF("STORAGE: write failed\n");
 		return -2;
 	}
+	PRINTF("STORAGE: bundle_num %u\n",file_list[i].bundle_num);
 	return (int32_t)file_list[i].bundle_num;
 }
 
@@ -201,20 +212,28 @@ uint16_t read_bundle(uint16_t bundle_num,struct bundle_t *bundle)
 	fd_read = cfs_open(b_file, CFS_READ);
 	
 	if(fd_read!=-1) {
-		PRINTF("file-size %u\n", file_list[bundle_num].file_size);
+		PRINTF("STORAGE: file-size %u\n", file_list[bundle_num].file_size);
 		bundle->block = (uint8_t *) malloc(file_list[bundle_num].file_size);
 		cfs_read(fd_read, bundle->block, file_list[bundle_num].file_size);
 		cfs_close(fd_read);
 #if DEBUG
 		uint8_t i;
-		for (i = 0; i<17; i++){
-			PRINTF("val in [%u]; %u ,%u\n",i,bundle->offset_tab[i][0], bundle->offset_tab[i][1]);
+		PRINTF("STORAGE: bundle->block: ");
+		for (i = 0; i<file_list[bundle_num].file_size; i++){
+			PRINTF("%u:",*(bundle->block+i));
 		}
+		PRINTF("\n");
 #endif
 		recover_bundel(bundle,bundle->block,(int) file_list[bundle_num].file_size);
+#if DEBUG
+		for (i = 0; i<17; i++){
+			PRINTF("STORAGE: val in [%u]; %u ,%u\n",i,bundle->offset_tab[i][0], bundle->offset_tab[i][1]);
+		}
+#endif
+		PRINTF("STORAGE: 11111\n");
 		bundle->rec_time=file_list[bundle_num].rec_time;
 		bundle->custody = file_list[bundle_num].custody;
-		PRINTF("first byte in bundel %u\n",*bundle->block);
+		PRINTF("STORAGE: first byte in bundel %u\n",*bundle->block);
 		return file_list[bundle_num].file_size;
 	}
 	return 0;

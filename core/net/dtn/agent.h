@@ -22,6 +22,7 @@
 #include "contiki.h"
 
 extern uint32_t dtn_node_id, dtn_seq_nr;
+uint16_t g_bundle_num;
 /**
 *   \brief Makro für den Namen des Prozesses
 */

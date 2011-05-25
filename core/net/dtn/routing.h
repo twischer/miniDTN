@@ -18,7 +18,8 @@ extern const struct routing_driver ROUTING;
 
 
 struct route_t	{
-	rimeaddr_t dest;
+	uint8_t buf;
 	uint16_t bundle_num;
+	rimeaddr_t dest;
 };
 #endif
