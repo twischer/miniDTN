@@ -14,6 +14,7 @@
 
 #include "clock.h"
 
+#include "net/dtn/dtn_config.h"
 #include "dtn-network.h"
 #include "net/netstack.h"
 #include "net/packetbuf.h"
@@ -133,13 +134,12 @@ static void packet_sent(void *ptr, int status, int num_tx)
 	    break;
 	  case MAC_TX_OK:
 	    PRINTF("DTN: sent after %d tx\n", num_tx);
-	    PRINTF("DTN: foo= %u\n",*(uint8_t *)ptr);
 	    break;
 	  default:
 	    PRINTF("DTN: error %d after %d tx\n", status, num_tx);
 	  }
 	
-//	ROUTING.sent(*(uint8_t *)ptr,status,num_tx);
+	ROUTING.sent((struct route_t *)ptr,status,num_tx);
 	#if 0
 	uint16_t bundlebuf_length;
 	bundlebuf_length =  bundlebuf_get_length();
@@ -162,7 +162,7 @@ static void packet_sent(void *ptr, int status, int num_tx)
 		
 }
 
-int dtn_network_send(struct bundle_t *bundle, rimeaddr_t dest) 
+int dtn_network_send(struct bundle_t *bundle, struct route_t *route) 
 {
 	
 	uint8_t *payload = bundle->block;
@@ -173,7 +173,7 @@ int dtn_network_send(struct bundle_t *bundle, rimeaddr_t dest)
 	packetbuf_copyfrom(payload, len);
 	
 	/*setze Zieladresse und übergebe das Paket an die MAC schicht */
-	packetbuf_set_addr(PACKETBUF_ADDR_RECEIVER, &dest);
+	packetbuf_set_addr(PACKETBUF_ADDR_RECEIVER, &route->dest);
 	packetbuf_set_attr(PACKETBUF_ADDRSIZE, 2);
 	
 	NETSTACK_MAC.send(&packet_sent, bundle->bundle_num); //TODO pointer zur packet_number anstatt NULL
@@ -190,7 +190,7 @@ int dtn_discover(void)
 	packetbuf_set_addr(PACKETBUF_ADDR_RECEIVER, &dest);
 	packetbuf_set_addr(PACKETBUF_ADDR_SENDER, &dest);
 	packetbuf_set_attr(PACKETBUF_ADDRSIZE, 2);
-	NETSTACK_MAC.send(&packet_sent, &foo);
+	NETSTACK_MAC.send(NULL, NULL);
 	return 1;
 }	
 

@@ -201,16 +201,16 @@ uint16_t read_bundle(uint16_t bundle_num,struct bundle_t *bundle)
 	fd_read = cfs_open(b_file, CFS_READ);
 	
 	if(fd_read!=-1) {
-#if DEBUG
-		uint8_t i;
-		for (i = 0; i<20; i++){
-			PRINTF("val in [%u]; %u ,%u\n",i,bundle->offset_tab[i][0], bundle->offset_tab[i][1]);
-		}
-#endif
 		PRINTF("file-size %u\n", file_list[bundle_num].file_size);
 		bundle->block = (uint8_t *) malloc(file_list[bundle_num].file_size);
 		cfs_read(fd_read, bundle->block, file_list[bundle_num].file_size);
 		cfs_close(fd_read);
+#if DEBUG
+		uint8_t i;
+		for (i = 0; i<17; i++){
+			PRINTF("val in [%u]; %u ,%u\n",i,bundle->offset_tab[i][0], bundle->offset_tab[i][1]);
+		}
+#endif
 		recover_bundel(bundle,bundle->block,(int) file_list[bundle_num].file_size);
 		bundle->rec_time=file_list[bundle_num].rec_time;
 		bundle->custody = file_list[bundle_num].custody;

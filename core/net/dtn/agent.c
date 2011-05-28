@@ -91,7 +91,7 @@ PROCESS_THREAD(agent_process, ev, data)
 	
 	//custody_init();
 		
-	struct bundle_t *bundleptr;
+	static struct bundle_t *bundleptr;
 	struct registration_api *reg;
 	
 	while(1) {
@@ -214,10 +214,11 @@ PROCESS_THREAD(agent_process, ev, data)
 
 		else if(ev == dtn_send_bundle_to_node_event){
 			struct route_t *route = (struct route_t *)data;
-			PRINTF("BUNDLEPROTOCOL: send bundle %u to node %u:%u\n",route->bundle_num, route->dest->u8[1], route->dest->u8[0]);
+			PRINTF("BUNDLEPROTOCOL: send bundle %u to node %u:%u\n",route->bundle_num, route->dest.u8[1], route->dest.u8[0]);
 			BUNDLE_STORAGE.read_bundle(route->bundle_num,bundleptr);
-			//bundleprt->bundle_num =  route.bundle_num;
-			//dtn_network_send(bundleptr,route.dest);
+			PRINTF("BUNDLEPROTOCOL: bundle ready\n");
+			bundleptr->bundle_num =  route->bundle_num;
+			dtn_network_send(bundleptr,route);
 			continue;
 		}
 		

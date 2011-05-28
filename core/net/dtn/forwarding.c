@@ -8,7 +8,13 @@ void forwarding_bundle(struct bundle_t *bundle)
 	if(CUSTODY.decide(bundle)){
 		CUSTODY.manage(bundle);
 	}
-	saved_as_num=BUNDLE_STORAGE.save_bundle(bundle);
-	process_post(&agent_process,dtn_bundle_in_storage_event, &saved_as_num);
+	saved_as_num=(uint16_t)BUNDLE_STORAGE.save_bundle(bundle);
+	if( saved_as_num >=0){
+	//	PRINTF("FORWARDING: bundle_num %u\n",saved_as_num);
+		process_post(&agent_process,dtn_bundle_in_storage_event, &saved_as_num);
+	}else{
+		return;
+	}
+	
 
 }
