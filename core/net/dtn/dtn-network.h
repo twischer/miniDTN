@@ -16,7 +16,7 @@
 #include "rime.h"
 #include "net/rime/rimeaddr.h"
 #include "bundle.h"
-
+#include "routing.h"
 /**
 *   \brief Treiber für das Protokoll
 *
@@ -35,7 +35,7 @@ process_event_t dtn_beacon_event;
 *    Ein Bündel muss ich Bundlebuffer stehen um gesendet zu werden
 *
 */
-int dtn_network_send(struct bundle_t *bundle, rimeaddr_t dest);
+int dtn_network_send(struct bundle_t *bundle, struct route_t *route);
 
 
 /**

@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "net/dtn/bundle.h"
+#include "routing.h"
 struct routing_driver {
 	char *name;
 
@@ -17,7 +18,7 @@ extern const struct routing_driver ROUTING;
 
 
 struct route_t	{
-	rimeaddr_t *dest;
+	rimeaddr_t dest;
 	uint16_t bundle_num;
 };
 #endif
