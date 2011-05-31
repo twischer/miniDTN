@@ -54,6 +54,7 @@
 #include "dev/button-sensor.h"
 
 #include <stdio.h> /* For printf() */
+#include <stdlib.h>
 /*---------------------------------------------------------------------------*/
 PROCESS(hello_world_process, "Hello world process");
 AUTOSTART_PROCESSES(&hello_world_process);
@@ -67,7 +68,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 	SENSORS_ACTIVATE(button_sensor);
 	static uint32_t j=0;
 	agent_init();
-	test_init();
+	//test_init();
 	while(1) {
 		PROCESS_YIELD();
 
@@ -82,9 +83,9 @@ PROCESS_THREAD(hello_world_process, ev, data)
 			create_bundle(&bundle);
 			uint8_t i;
 			uint32_t bla=4;
-			rimeaddr_t dest={{333,0}};
+//			rimeaddr_t dest={{3,0}};
 		//#if 0
-			bla=15;
+			bla=3;
 			set_attr(&bundle, DEST_NODE, &bla);
 			bla=25;
 			set_attr(&bundle, DEST_SERV, &bla);
