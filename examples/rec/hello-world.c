@@ -44,7 +44,7 @@
 //#include "../platform/avr-raven/cfs-coffee-arch.h"
 //#include "cfs.h"
 
-
+#include "process.h"
 #include "net/netstack.h"
 #include "net/packetbuf.h"
 #include "net/dtn/API_registration.h"
@@ -53,6 +53,7 @@
 #include "net/dtn/test.h"
 #include "dev/leds.h"
 #include "dev/cc2420.h"
+#include "net/dtn/bundle.h"
   #define FOO { {4, 0 } }
 
 
@@ -66,23 +67,26 @@ PROCESS_THREAD(hello_world_process, ev, data)
 {
   PROCESS_BEGIN();
   printf("Hello, world\n");
-
+  
   agent_init();
-  test_init();
+  submit_data_to_application_event = process_alloc_event();
+//  test_init();
   reg.status=1;
   reg.application_process=&hello_world_process;
   reg.app_id=25;
-  process_post(&agent_process, dtn_application_registration_event,(void *) &reg);
-  printf("main app_id %lu\n", reg.app_id);
+  printf("MAIN: event= %u\n",dtn_application_registration_event);
+  printf("main app_id %lu process %p\n", reg.app_id, &agent_process);
+  process_post(&agent_process, dtn_application_registration_event,&reg);
   while (1){
   	PROCESS_WAIT_EVENT_UNTIL(ev);
+	printf("event\n");
 	if(ev == submit_data_to_application_event) {
-		uint8_t *recv_data;
-		recv_data = (uint8_t *) data;
+		struct bundle_t *bundle;
+		bundle = (struct bundle_t *) data;
 		uint8_t i;
-		printf("Paketinhalt:");
-		for (i=0; i<10; i++){
-			printf(" %u " ,recv_data[i]);
+		printf("Paketinhalt: ");
+		for (i=0; i<27; i++){
+			printf("%x " ,*(bundle->block+i));
 		}
 
 		printf("\n");
