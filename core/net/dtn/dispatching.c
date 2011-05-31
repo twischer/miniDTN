@@ -37,7 +37,7 @@
 
 void dispatch_bundle(struct bundle_t *bundle) {
 	
-	PRINTF("DISPATCHING: bundle: %p\n", bundle->offset_tab);
+	PRINTF("DISPATCHING: bundle: %p\n", bundle->block);
 	struct registration *n;
 
 	uint32_t dest=1,flags=1;
@@ -83,23 +83,24 @@ void dispatch_bundle(struct bundle_t *bundle) {
 		uint32_t dest_app;
 		sdnv_decode(bundle->block + bundle->offset_tab[DEST_SERV][OFFSET], bundle->offset_tab[DEST_SERV][STATE], &dest_app);
 
-		PRINTF("DISPATCHING: destination eid: %lu:%lu \n", dest, dest_app);
+		PRINTF("DISPATCHING: destination eid: %lu:%lu  == %u, reg_list=%p\n", dest, dest_app,dtn_node_id,list_head(reg_list));
 		
-		if(dest == dtn_node_id){
+		if(dest == (uint32_t)dtn_node_id){
 			for(n = list_head(reg_list); n != NULL; n = list_item_next(n)) {
-			
+				PRINTF("DISPATCHING: %lu == %lu\n", n->app_id, dest_app);	
 				if(n->app_id == dest_app) {
 				
 					PRINTF("DISPATCHING: Registration found \n");
-				
 					deliver_bundle(bundle,n);
 					return;
 				}
 			}
+			PRINTF("DISPATCHING: no service registrated for bundel\n");
+			return;
 		}
 	}
 				
-	//forwarding_bundle(bundle);
+	forwarding_bundle(bundle);
 	PRINTF("DISPATCHING: Bundle forwarded\n");
 
 }

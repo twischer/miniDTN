@@ -7,7 +7,7 @@
 
 extern const struct storage_driver g_storage_driver;
 
-static struct file_list_entry_t{
+struct file_list_entry_t{
 	uint16_t bundle_num;
 	uint16_t file_size;
 	uint32_t lifetime;
@@ -18,6 +18,7 @@ static struct file_list_entry_t{
 	uint32_t rec_time;
 	uint8_t  custody;
 };
+
 extern struct file_list_entry_t file_list[BUNDLE_STORAGE_SIZE];
 
 
@@ -29,6 +30,7 @@ returns bundle_num
 int32_t save_bundle(struct bundle_t *bundle);
 
 uint16_t del_bundle(uint16_t bundle_num);
+void g_store_reduce_lifetime();
 
 uint16_t read_bundle(uint16_t bundle_num, struct bundle_t *bundle);
 uint16_t free_space(struct bundle_t *bundle);

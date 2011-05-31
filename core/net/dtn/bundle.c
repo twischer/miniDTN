@@ -7,7 +7,7 @@
 #endif
 #include <string.h>
 
-#define DEBUG 1
+#define DEBUG 0
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)
@@ -26,6 +26,7 @@ uint8_t create_bundle(struct bundle_t *bundle)
 	*bundle->block = 0;
 	bundle->size=1;
 	uint8_t i;
+	bundle->rec_time=(uint32_t) clock_seconds(); 
 	bundle->offset_tab[VERSION][STATE]=1;
 	for (i=1;i<17;i++){
 		bundle->offset_tab[i][OFFSET]=1;
@@ -111,6 +112,9 @@ uint8_t set_attr(struct bundle_t *bundle, uint8_t attr, uint32_t *val)
 	if (attr == FLAGS){
 		bundle->custody = 0x08 &(uint8_t) *val;
 	}
+	if( attr == LIFE_TIME){
+		bundle->lifetime= *val;
+	}
 	sdnv_t sdnv;
 	size_t len = sdnv_encoding_len(*val);
 //	printf("tpr %u\n ",len);  // this fixes everything
@@ -181,6 +185,7 @@ uint8_t recover_bundel(struct bundle_t *bundle,uint8_t *block, int size)
 	}
 	bundle->offset_tab[DATA][STATE]= size- ((uint8_t)(tmp - block));
 	PRINTF("BUNDLE: RECOVER: data size: %u=%u-%u\n",bundle->offset_tab[DATA][STATE], size,((uint8_t)(tmp - block)));
+	sdnv_decode(block+bundle->offset_tab[LIFE_TIME][OFFSET],bundle->offset_tab[LIFE_TIME][STATE],&bundle->lifetime);
 	bundle->offset_tab[DATA][OFFSET]= tmp-block;
 	bundle->size=size;
 	bundle->block=(uint8_t *) malloc(size);

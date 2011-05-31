@@ -32,9 +32,10 @@
 #include "net/dtn/forwarding.h"
 #include "net/dtn/routing.h"
 #include "net/dtn/dtn-network.h"
+#include "node-id.h"
 
 
-#define DEBUG 1
+#define DEBUG 0
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)
@@ -52,23 +53,24 @@ AUTOSTART_PROCESSES(&agent_process);
 *   \brief Initialisierung des Bundle Protocols
 *
 *    Wird aus der main-Datei aufgerufen
-*
+*&agent_process
 */
 void agent_init(void) {
 		
 	PRINTF("starting DTN Bundle Protocol \n");
 	process_start(&agent_process, NULL);
 	BUNDLE_STORAGE.init();
-	BUNDLE_STORAGE.reinit();
+	//BUNDLE_STORAGE.reinit();
 	ROUTING.init();
 	REDUNDANCE.init();
-	dtn_node_id=15; //TODO was dynamisches
+	dtn_node_id=node_id; 
 	dtn_seq_nr=0;
+	registration_init();
 
 	
 	
-	dtn_application_registration_event = process_alloc_event();
 	dtn_application_remove_event  = process_alloc_event();
+	dtn_application_registration_event = process_alloc_event();
 	dtn_application_status_event = process_alloc_event();
 	dtn_receive_bundle_event = process_alloc_event();
 	dtn_send_bundle_event = process_alloc_event();
@@ -87,7 +89,6 @@ PROCESS_THREAD(agent_process, ev, data)
 {
 	PROCESS_BEGIN();
 	
-	registration_init();
 	
 	//custody_init();
 		
@@ -95,7 +96,6 @@ PROCESS_THREAD(agent_process, ev, data)
 	struct registration_api *reg;
 	
 	while(1) {
-		
 		
 		PROCESS_WAIT_EVENT_UNTIL(ev);
 		if(ev == dtn_application_registration_event) {
@@ -148,7 +148,7 @@ PROCESS_THREAD(agent_process, ev, data)
 			//set_attr(bundleptr,LIFE_TIME,&lifetime);
 			set_attr(bundleptr,TIME_STAMP_SEQ_NR,&dtn_seq_nr);
 			dtn_seq_nr++;
-			
+			PRINTF("BUNDLEPROTOCOL: seq_num = %lu\n",dtn_seq_nr);	
 //			while(bundlebuf_in_use())
 //				PROCESS_PAUSE();
 			
@@ -163,7 +163,7 @@ PROCESS_THREAD(agent_process, ev, data)
 //			while(bundlebuf_in_use())
 //				PROCESS_PAUSE();
 			bundleptr= (struct bundle_t *) data;
-			bundleptr->rec_time= (uint32_t) clock_seconds();
+//			bundleptr->rec_time= (uint32_t) clock_seconds();
 
 
 			dispatch_bundle(bundleptr);
@@ -197,8 +197,8 @@ PROCESS_THREAD(agent_process, ev, data)
 		}
 		
 		else if(ev == dtn_bundle_in_storage_event){
-			uint16_t b_num= *(uint16_t *) data;
 			PRINTF("BUNDLEPROTOCOL: bundle in storage\n");	
+			uint16_t b_num= *(uint16_t *) data;
 			ROUTING.new_bundle(b_num);
 			dtn_discover();
 			if (BUNDLE_STORAGE.get_bundle_num() == 1){
@@ -208,7 +208,10 @@ PROCESS_THREAD(agent_process, ev, data)
 		}
 		
 		else if(ev == dtn_bundle_deleted_event){
-			ROUTING.del_bundle((uint16_t)data);
+			uint16_t *tmp= (uint16_t *) data;
+			PRINTF("BUNDLEPROTOCOL: delete bundle %u\n",*tmp);
+			ROUTING.del_bundle( *tmp);
+			free(tmp);
 			continue;
 		}
 
@@ -218,6 +221,8 @@ PROCESS_THREAD(agent_process, ev, data)
 			BUNDLE_STORAGE.read_bundle(route->bundle_num,bundleptr);
 			PRINTF("BUNDLEPROTOCOL: bundle ready\n");
 			bundleptr->bundle_num =  route->bundle_num;
+			uint32_t remaining_time= ((uint32_t) clock_seconds())-bundleptr->rec_time;
+			set_attr(bundleptr,LIFE_TIME,&remaining_time);
 			dtn_network_send(bundleptr,route);
 			continue;
 		}
@@ -225,9 +230,11 @@ PROCESS_THREAD(agent_process, ev, data)
 		else if(etimer_expired(&discover_timer)){
 			PRINTF("BUNDLEPROTOCOL: discover_timer\n");
 			if (BUNDLE_STORAGE.get_bundle_num()>0){
-				PRINTF("BUNDLEPROTOCOL: sending discover and reschedule timer to %u seconds\n",DISCOVER_CYCLE);
+				PRINTF("BUNDLEPROTOCOL: sending discover and reschedule timer to %u seconds %u bundles in storage\n",DISCOVER_CYCLE,BUNDLE_STORAGE.get_bundle_num());
 				etimer_set(&discover_timer, DISCOVER_CYCLE*CLOCK_SECOND);
 				dtn_discover();	
+			}else{
+				PRINTF("BUNDLEPROTOCOL: no more bundles to transmit\n");
 			}
 			continue;
 		}

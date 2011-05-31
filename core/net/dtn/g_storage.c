@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#define DEBUG 1
+#define DEBUG 0
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)
@@ -20,6 +20,7 @@ struct file_list_entry_t file_list[BUNDLE_STORAGE_SIZE];
 char *filename = BUNDLE_STARAGE_FILE_NAME; 
 int fd_write, fd_read;
 static uint16_t bundles_in_storage;
+static struct ctimer g_store_timer;
 
 
 void init(void)
@@ -59,6 +60,27 @@ void init(void)
 		cfs_close(fd_write);
 		PRINTF("file closed\n");
 	}
+//	PRINTF("STORAGE: schedule ctimer\n");
+	ctimer_set(&g_store_timer,CLOCK_SECOND*5,g_store_reduce_lifetime,NULL);
+}
+
+void g_store_reduce_lifetime()
+{
+	uint16_t i=0;
+	for(i=0; i < BUNDLE_STORAGE_SIZE;i++) {
+		if (file_list[i].file_size >0){
+
+			if( file_list[i].lifetime < (uint32_t)6){
+				PRINTF("STORAGE: bundle lifetime expired of bundle %u\n",i);
+				del_bundle(i);
+			}else{
+				file_list[i].lifetime-=5;
+				PRINTF("STORAGE: remaining lifefime of bundle %u : %lu\n",i,file_list[i].lifetime);
+			}
+		}
+	}
+	ctimer_restart(&g_store_timer);
+	
 }
 
 void reinit(void)
@@ -134,8 +156,8 @@ int32_t save_bundle(struct bundle_t *bundle)
 		#endif
 	i=(uint16_t)free;
 	tmp=bundle->block+bundle->offset_tab[LIFE_TIME][OFFSET];
-	sdnv_decode(tmp, bundle->offset_tab[LIFE_TIME][STATE], &file_list[i].lifetime);
-	
+	//sdnv_decode(tmp, bundle->offset_tab[LIFE_TIME][STATE], &file_list[i].lifetime);
+	file_list[i].lifetime=bundle->lifetime;
 	char b_file[7];
 	sprintf(b_file,"%u.b",file_list[i].bundle_num);
 	PRINTF("STORAGE: write filename: %s\n", b_file);
@@ -184,10 +206,15 @@ int32_t save_bundle(struct bundle_t *bundle)
 
 uint16_t del_bundle(uint16_t bundle_num)
 {
+	uint16_t *num;
+	num = malloc(2);
+	*num=bundle_num;
 	char b_file[7];
 	sprintf(b_file,"%u.b",bundle_num);
 	cfs_remove(b_file);
-	bundles_in_storage++;
+	if (bundles_in_storage >0){
+		bundles_in_storage--;
+	}
 	file_list[bundle_num].file_size=0;
 	file_list[bundle_num].src=0;
 	//save file list	
@@ -201,7 +228,7 @@ uint16_t del_bundle(uint16_t bundle_num)
 	}
 	
 
-	process_post(&agent_process,dtn_bundle_deleted_event, bundle_num);
+	process_post(&agent_process,dtn_bundle_deleted_event, num);
 	return 1;
 }
 
@@ -211,8 +238,8 @@ uint16_t read_bundle(uint16_t bundle_num,struct bundle_t *bundle)
 	sprintf(b_file,"%u.b",bundle_num);
 	fd_read = cfs_open(b_file, CFS_READ);
 	
-	if(fd_read!=-1) {
-		PRINTF("STORAGE: file-size %u\n", file_list[bundle_num].file_size);
+	if(fd_read != -1) {
+		PRINTF("file-size %u\n", file_list[bundle_num].file_size);
 		bundle->block = (uint8_t *) malloc(file_list[bundle_num].file_size);
 		cfs_read(fd_read, bundle->block, file_list[bundle_num].file_size);
 		cfs_close(fd_read);
@@ -234,6 +261,7 @@ uint16_t read_bundle(uint16_t bundle_num,struct bundle_t *bundle)
 		bundle->rec_time=file_list[bundle_num].rec_time;
 		bundle->custody = file_list[bundle_num].custody;
 		PRINTF("STORAGE: first byte in bundel %u\n",*bundle->block);
+		bundle->lifetime=file_list[bundle_num].lifetime;
 		return file_list[bundle_num].file_size;
 	}
 	return 0;
@@ -253,6 +281,7 @@ uint16_t free_space(struct bundle_t *bundle)
 uint16_t get_g_bundel_num(void){
 	return bundles_in_storage;
 }
+
 const struct storage_driver g_storage = {
 	"G_STORAGE",
 	init,
