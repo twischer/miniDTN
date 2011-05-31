@@ -51,6 +51,9 @@ struct registration {
 	struct process *application_process;
 };
 
+struct process *registration_get_process(uint32_t app_id);
+
+
 /**
 *   \brief Initialisierung der Registrierung
 *

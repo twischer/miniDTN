@@ -28,7 +28,7 @@
 #include "net/dtn/custody.h"
 #include "net/dtn/redundance.h"
 
-#define DEBUG 1
+#define DEBUG 0
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)
@@ -50,7 +50,7 @@ void deliver_bundle(struct bundle_t *bundle, struct registration *n) {
 #if DEBUG
 		uint8_t block_count=0;
 #endif
-		
+/*	
 		while ( block <= bundle->block + bundle->offset_tab[DATA][OFFSET] + bundle->offset_tab[DATA][STATE]){
 			if (*block != 1){ // no payloadblock
 				PRINTF("DELIVERY: block %u is no payload block\n", block_count); 
@@ -72,6 +72,8 @@ void deliver_bundle(struct bundle_t *bundle, struct registration *n) {
 			block_count++;
 #endif
 		}
+*/		
+		process_post(n->application_process, submit_data_to_application_event, bundle);
 		block = bundle->block+1;
 		if (*block & 0x08){
 			custody_signal_t cust_sig;	
@@ -94,9 +96,9 @@ void deliver_bundle(struct bundle_t *bundle, struct registration *n) {
 		}
 	}			
 	
-	#if DEBUG
+	#if DEBUG_H
 	uint16_t time = clock_time();
-	time -= bundle->rec_time;
+	time -= bundle->debug_time;
 	PRINTF("DELIVERY: time needed to process bundle for Delivery: %i \n", time);
 	#endif
 }

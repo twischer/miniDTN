@@ -26,7 +26,7 @@
 	#include <stings.h>
 #endif
 
-#define DEBUG 1
+#define DEBUG 0
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)
@@ -102,12 +102,15 @@ static void dtn_network_input(void)
 				break;
 			}
 		}
-		if (!beacon){
+		if (!beacon){ //packet is a bundle
 			PRINTF("%p  %p\n",&bundle,&input_packet);	
 			recover_bundel(&bundle,&input_packet, (uint8_t)size);
 			bundle.rec_time=(uint32_t) clock_seconds();
+#if DEBUG_H
+			bundle.debug_time=clock_time();
+#endif
 			bundle.size= (uint8_t) size;
-			PRINTF("NETWORK: size of received bundle: %u\n",bundle.size);
+			PRINTF("NETWORK: size of received bundle: %u block pointer %p\n",bundle.size, bundle.block);
 			
 			process_post(&agent_process, dtn_receive_bundle_event, &bundle);	
 		}else{
@@ -139,6 +142,8 @@ static void packet_sent(void *ptr, int status, int num_tx)
 	    PRINTF("DTN: error %d after %d tx\n", status, num_tx);
 	  }
 	
+	struct route_t *route= (struct route_t *)ptr;
+	PRINTF("DTN: bundle_num : %u    %p\n",route->bundle_num,ptr);
 	ROUTING.sent((struct route_t *)ptr,status,num_tx);
 	#if 0
 	uint16_t bundlebuf_length;
@@ -167,8 +172,10 @@ int dtn_network_send(struct bundle_t *bundle, struct route_t *route)
 	
 	uint8_t *payload = bundle->block;
 	uint8_t len = bundle->size;
+	uint32_t i;
+	sdnv_decode(bundle->block+bundle->offset_tab[TIME_STAMP_SEQ_NR][OFFSET],bundle->offset_tab[TIME_STAMP_SEQ_NR][STATE],&i);
 
-
+	printf("seq_num %lu\n",i);
 	/* kopiere die Daten in den packetbuf(fer) */
 	packetbuf_copyfrom(payload, len);
 	
@@ -176,7 +183,7 @@ int dtn_network_send(struct bundle_t *bundle, struct route_t *route)
 	packetbuf_set_addr(PACKETBUF_ADDR_RECEIVER, &route->dest);
 	packetbuf_set_attr(PACKETBUF_ADDRSIZE, 2);
 	
-	NETSTACK_MAC.send(&packet_sent, NULL); //TODO pointer zur packet_number anstatt NULL
+	NETSTACK_MAC.send(&packet_sent, route); //TODO pointer zur packet_number anstatt NULL
 	
 	
 	return 1;

@@ -28,6 +28,8 @@
 #define OFFSET 0
 #define STATE 1
 
+#define DEBUG_H 1
+
 struct bundle_t{
 	char offset_tab[17][2];
 	uint8_t *block;	
@@ -35,6 +37,10 @@ struct bundle_t{
 	uint8_t custody;
 	uint32_t rec_time;
 	uint16_t bundle_num;
+	uint32_t lifetime;
+#if DEBUG_H
+	uint16_t debug_time;
+#endif
 };
 
 
