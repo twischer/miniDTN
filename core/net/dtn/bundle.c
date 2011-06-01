@@ -51,6 +51,7 @@ uint8_t create_bundle(struct bundle_t *bundle)
 	//set_attr(bundle, P_LENGTH, &len64);
 	len64=0;
 	i=set_attr(bundle, LENGTH, &len64);
+	i+=set_attr(bundle, DIRECTORY_LEN, &len64);
 	bundle->size += len64 + i; 
 #if DEBUG
 	PRINTF("BUNDLE: CREATE ");
