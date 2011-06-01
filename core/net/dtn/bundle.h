@@ -19,8 +19,9 @@
 #define TIME_STAMP 11
 #define TIME_STAMP_SEQ_NR 12
 #define LIFE_TIME 13
-#define FRAG_OFFSET 14
-#define APP_DATA_LEN 15
+#define DIRECTORY_LEN 14
+#define FRAG_OFFSET 15
+#define APP_DATA_LEN 16
 
 //payload block defines
 #define DATA 16
@@ -31,7 +32,7 @@
 #define DEBUG_H 1
 
 struct bundle_t{
-	char offset_tab[17][2];
+	char offset_tab[18][2];
 	uint8_t *block;	
 	uint8_t size;
 	uint8_t custody;
