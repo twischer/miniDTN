@@ -51,12 +51,12 @@ void flood_new_neigh(rimeaddr_t *dest)
 {
 	PRINTF("FLOOD: new node: %u:%u\n",dest->u8[1] ,dest->u8[0]);
 	struct pack_list_t *pack;
-	PRINTF("FLOOD: pack_list %p\n",list_head(pack_list));
+//	PRINTF("FLOOD: pack_list %p\n",list_head(pack_list));
 	for(pack = list_head(pack_list); pack != NULL; pack = list_item_next(pack)) {
-		PRINTF("FLOOD: searching for bundles\n");
+//		PRINTF("FLOOD: searching for bundles\n");
 		uint8_t sent=0,i;
 		for (i =0 ; i < ROUTING_NEI_MEM ; i++) {
-			PRINTF("FLOOD: bundle already sent to node %u:%u == %u:%u?\n", dest->u8[1] ,dest->u8[0], pack->dest[i].u8[1], pack->dest[i].u8[0]);
+			PRINTF("FLOOD: bundle %u already sent to node %u:%u == %u:%u?\n",pack->num, dest->u8[1] ,dest->u8[0], pack->dest[i].u8[1], pack->dest[i].u8[0]);
 			if (pack->dest[i].u8[0] == dest->u8[0] && pack->dest[i].u8[1] == dest->u8[1]){
 				PRINTF("FLOOD: YES\n");
 				sent=1;
