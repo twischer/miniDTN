@@ -24,7 +24,7 @@
 #define APP_DATA_LEN 16
 
 //payload block defines
-#define DATA 16
+#define DATA 17
 
 #define OFFSET 0
 #define STATE 1
