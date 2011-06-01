@@ -122,6 +122,7 @@ static void dtn_network_input(void)
 //			process_post(&agent_process, dtn_send_admin_record_event, NULL);
 		}		
 	}
+	packetbuf_clear();
 		
 }
 
@@ -178,12 +179,12 @@ int dtn_network_send(struct bundle_t *bundle, struct route_t *route)
 	printf("seq_num %lu\n",i);
 	/* kopiere die Daten in den packetbuf(fer) */
 	packetbuf_copyfrom(payload, len);
-	
+	delete_bundle(bundle);
 	/*setze Zieladresse und übergebe das Paket an die MAC schicht */
 	packetbuf_set_addr(PACKETBUF_ADDR_RECEIVER, &route->dest);
 	packetbuf_set_attr(PACKETBUF_ADDRSIZE, 2);
 	
-	NETSTACK_MAC.send(&packet_sent, route); //TODO pointer zur packet_number anstatt NULL
+	NETSTACK_MAC.send(&packet_sent, route); 
 	
 	
 	return 1;

@@ -17,11 +17,14 @@ void forwarding_bundle(struct bundle_t *bundle)
 	if(CUSTODY.decide(bundle)){
 		CUSTODY.manage(bundle);
 	}
-	g_bundle_num=(uint16_t)BUNDLE_STORAGE.save_bundle(bundle);
-	if (g_bundle_num >=0){
-		PRINTF("FORWARDING: bundle_num %u\n",g_bundle_num);
-		process_post(&agent_process,dtn_bundle_in_storage_event, &g_bundle_num);
+	int32_t saved= BUNDLE_STORAGE.save_bundle(bundle);
+	if( saved >=0){
+		saved_as_num= (uint16_t)saved;
+		delete_bundle(bundle);
+	//	PRINTF("FORWARDING: bundle_num %u\n",saved_as_num);
+		process_post(&agent_process,dtn_bundle_in_storage_event, &saved_as_num);
 	}else{
+		PRINTF("FORWARDING: bundle not saved\n");
 		return;
 	}
 

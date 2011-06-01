@@ -43,7 +43,8 @@
 #define PRINTF(...)
 #endif
 
-uint32_t dtn_node_id, dtn_seq_nr;
+uint32_t dtn_node_id;
+static uint32_t dtn_seq_nr;
 static struct etimer discover_timer;
 /* Makro das den Prozess definiert */
 PROCESS(agent_process, "AGENT process");
@@ -60,7 +61,6 @@ void agent_init(void) {
 	PRINTF("starting DTN Bundle Protocol \n");
 	process_start(&agent_process, NULL);
 	BUNDLE_STORAGE.init();
-	//BUNDLE_STORAGE.reinit();
 	ROUTING.init();
 	REDUNDANCE.init();
 	dtn_node_id=node_id; 
@@ -80,6 +80,7 @@ void agent_init(void) {
 	dtn_bundle_in_storage_event = process_alloc_event();
 	dtn_bundle_deleted_event = process_alloc_event();
 	dtn_send_bundle_to_node_event = process_alloc_event();
+//	BUNDLE_STORAGE.reinit();
 
 }
 
@@ -147,8 +148,8 @@ PROCESS_THREAD(agent_process, ev, data)
 			//lifetime= lifetime -time;
 			//set_attr(bundleptr,LIFE_TIME,&lifetime);
 			set_attr(bundleptr,TIME_STAMP_SEQ_NR,&dtn_seq_nr);
+			printf("BUNDLEPROTOCOL: seq_num = %lu\n",dtn_seq_nr);	
 			dtn_seq_nr++;
-			PRINTF("BUNDLEPROTOCOL: seq_num = %lu\n",dtn_seq_nr);	
 //			while(bundlebuf_in_use())
 //				PROCESS_PAUSE();
 			
@@ -211,7 +212,7 @@ PROCESS_THREAD(agent_process, ev, data)
 			uint16_t *tmp= (uint16_t *) data;
 			PRINTF("BUNDLEPROTOCOL: delete bundle %u\n",*tmp);
 			ROUTING.del_bundle( *tmp);
-			free(tmp);
+			//free(tmp);
 			continue;
 		}
 
