@@ -148,7 +148,7 @@ PROCESS_THREAD(agent_process, ev, data)
 			//lifetime= lifetime -time;
 			//set_attr(bundleptr,LIFE_TIME,&lifetime);
 			set_attr(bundleptr,TIME_STAMP_SEQ_NR,&dtn_seq_nr);
-			printf("BUNDLEPROTOCOL: seq_num = %lu\n",dtn_seq_nr);	
+			PRINTF("BUNDLEPROTOCOL: seq_num = %lu\n",dtn_seq_nr);	
 			dtn_seq_nr++;
 //			while(bundlebuf_in_use())
 //				PROCESS_PAUSE();
@@ -222,7 +222,8 @@ PROCESS_THREAD(agent_process, ev, data)
 			BUNDLE_STORAGE.read_bundle(route->bundle_num,bundleptr);
 			PRINTF("BUNDLEPROTOCOL: bundle ready\n");
 			bundleptr->bundle_num =  route->bundle_num;
-			uint32_t remaining_time= ((uint32_t) clock_seconds())-bundleptr->rec_time;
+			uint32_t remaining_time= bundleptr->lifetime-(((uint32_t) clock_seconds())-bundleptr->rec_time);
+			printf("BUNDLEPROTOCOL: %lu-%lu-%lu=%lu\n",bundleptr->lifetime, (uint32_t) clock_seconds(),bundleptr->rec_time,bundleptr->lifetime-(((uint32_t) clock_seconds())-bundleptr->rec_time));
 			set_attr(bundleptr,LIFE_TIME,&remaining_time);
 			dtn_network_send(bundleptr,route);
 			continue;

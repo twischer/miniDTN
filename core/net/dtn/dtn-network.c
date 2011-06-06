@@ -173,10 +173,11 @@ int dtn_network_send(struct bundle_t *bundle, struct route_t *route)
 	
 	uint8_t *payload = bundle->block;
 	uint8_t len = bundle->size;
-	uint32_t i;
+	uint32_t i, time;
 	sdnv_decode(bundle->block+bundle->offset_tab[TIME_STAMP_SEQ_NR][OFFSET],bundle->offset_tab[TIME_STAMP_SEQ_NR][STATE],&i);
+	sdnv_decode(bundle->block+bundle->offset_tab[LIFE_TIME][OFFSET],bundle->offset_tab[LIFE_TIME][STATE],&time);
 
-	printf("seq_num %lu\n",i);
+	printf("seq_num %lu lifetime %lu\n ",i,time);
 	/* kopiere die Daten in den packetbuf(fer) */
 	packetbuf_copyfrom(payload, len);
 	delete_bundle(bundle);
