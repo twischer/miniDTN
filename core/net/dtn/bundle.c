@@ -6,6 +6,7 @@
 	#include "net/dtn/realloc.h"
 #endif
 #include <string.h>
+#include "clock.h"
 
 #define DEBUG 0
 #if DEBUG
@@ -28,7 +29,7 @@ uint8_t create_bundle(struct bundle_t *bundle)
 	uint8_t i;
 	bundle->rec_time=(uint32_t) clock_seconds(); 
 	bundle->offset_tab[VERSION][STATE]=1;
-	for (i=1;i<17;i++){
+	for (i=1;i<18;i++){
 		bundle->offset_tab[i][OFFSET]=1;
 		bundle->offset_tab[i][STATE]=0;
 	}
@@ -121,34 +122,48 @@ uint8_t set_attr(struct bundle_t *bundle, uint8_t attr, uint32_t *val)
 //	printf("tpr %u\n ",len);  // this fixes everything
 	sdnv = (uint8_t *) malloc(len);
 	sdnv_encode(*val,sdnv,len);
-	if((len-bundle->offset_tab[attr][STATE]) > 0){
+	if(((int16_t)(len-bundle->offset_tab[attr][STATE])) > 0){
+		PRINTF("BUNDLE: realloc %d\n",((int16_t)(len-bundle->offset_tab[attr][STATE])));
 #if CONTIKI_TARGET_SKY
-		bundle->block = (uint8_t *) realloc(bundle->block,(len-bundle->offset_tab[attr][STATE]) + bundle->size,bundle->size);
+		bundle->block = (uint8_t *) realloc(bundle->block,((int16_t)(len-bundle->offset_tab[attr][STATE])) + bundle->size,bundle->size);
+		PRINTF("BUNDLE: mem-size %u\n",((int16_t)(len-bundle->offset_tab[attr][STATE])) + bundle->size);
 #else
-		bundle->block = (uint8_t *) realloc(bundle->block,(len-bundle->offset_tab[attr][STATE]) + bundle->size);
+		bundle->block = (uint8_t *) realloc(bundle->block,((int16_t)(len-bundle->offset_tab[attr][STATE])) + bundle->size);
 #endif
 		memmove((bundle->block + bundle->offset_tab[attr][OFFSET] + len), bundle->block + bundle->offset_tab[attr][OFFSET], bundle->size - bundle->offset_tab[attr][OFFSET] );
 	}
+	if (((int16_t)(len-bundle->offset_tab[attr][STATE])) < 0){
+		PRINTF("BUNDLE: smaller\n");
+		uint8_t *tmp=(uint8_t*) malloc(bundle->size + ((int16_t)(len-bundle->offset_tab[attr][STATE])));
+		memcpy(tmp,bundle->block,bundle->offset_tab[attr][OFFSET]);
+		memcpy(tmp + bundle->offset_tab[attr][OFFSET] + len,bundle->block + bundle->offset_tab[attr][OFFSET] + bundle->offset_tab[attr][STATE],bundle->size + ((int16_t)(len-bundle->offset_tab[attr][STATE])) );
+		free(bundle->block);
+		bundle->block=tmp;
+	}
 	memcpy(bundle->block + bundle->offset_tab[attr][OFFSET], sdnv, len);
 	uint8_t i;
-	for(i=attr+1;i<17;i++){
+	PRINTF("BUNDLE: val= %lu\n",*val);
+	for(i=attr+1;i<18;i++){
 		bundle->offset_tab[i][OFFSET] += (len - bundle->offset_tab[attr][STATE]);
+//		PRINTF("BUNDLE: offset_tab[%u][OFFSET]=%u offset_tab[%u][STATE]=%u\n",i,bundle->offset_tab[i][OFFSET],i,bundle->offset_tab[i][STATE]);
 	}
 	bundle->size += (len - bundle->offset_tab[attr][STATE]);
 	bundle->offset_tab[attr][STATE] = len;
+	PRINTF("BUNDLE: offset_tab[%u][OFFSET]=%u offset_tab[%u][STATE]=%u\n",attr,bundle->offset_tab[attr][OFFSET],attr,bundle->offset_tab[attr][STATE]);
 	uint8_t size=0;
-	if (attr >2 && attr <16){
-		for (i=3; i<16; i++){
+	if (attr >2 && attr <17){
+		for (i=3; i<17; i++){
 			size+=bundle->offset_tab[i][STATE];
 		}
 		memset(bundle->block+bundle->offset_tab[LENGTH][OFFSET],size,1);
 	}
 	free(sdnv);
 #if DEBUG
-	PRINTF("BUNDLE: SET_ATTR ");
+	PRINTF("BUNDLE: bundle->size= %u\n",bundle->size);
+	PRINTF("BUNDLE: SET_ATTR  %u %u : ",attr,bundle->offset_tab[DATA][OFFSET]);
 	uint8_t* tmp= bundle->block;
-	for (i=1;i<bundle->offset_tab[DATA][OFFSET];i++){
-		PRINTF("%u ",*tmp);
+	for (i=1;i<bundle->size;i++){
+		PRINTF("%x ",*tmp);
 		tmp++;
 	}
 	PRINTF("\n");
@@ -168,9 +183,9 @@ uint8_t recover_bundel(struct bundle_t *bundle,uint8_t *block, int size)
 	uint8_t fields=0;
 	if (*tmp & 0x1){ //fragmented	
 		PRINTF("fragment\n");
-		fields=15;
+		fields=16;
 	}else{
-		fields=13;
+		fields=14;
 	}
 	uint8_t i;
 	for (i = 1; i<=fields; i++){
