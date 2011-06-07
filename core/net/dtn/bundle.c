@@ -178,6 +178,10 @@ uint8_t recover_bundel(struct bundle_t *bundle,uint8_t *block, int size)
 	bundle->offset_tab[VERSION][OFFSET]=0;
 	bundle->offset_tab[VERSION][STATE]=1;
 	bundle->offset_tab[FLAGS][OFFSET]=1;
+	if (*block != 0){
+		free(block);
+		return 0;
+	}
 	uint8_t *tmp=block;
 	tmp+=1;
 	uint8_t fields=0;
@@ -194,6 +198,11 @@ uint8_t recover_bundel(struct bundle_t *bundle,uint8_t *block, int size)
 		bundle->offset_tab[i][OFFSET]=tmp-block;
 	//	PRINTF("BUNDLE: RECOVER: %u: state: %u offset: %u\n",i,bundle->offset_tab[i][STATE],bundle->offset_tab[i][OFFSET] );
 		tmp+=bundle->offset_tab[i][STATE];
+		if(i==DIRECTORY_LEN && *(bundle->block + bundle->offset_tab[i][OFFSET]) != 0){
+			free(block);
+			return 0;
+		}
+
 	}
 	if (!(*tmp & 0x40)){ //not fragmented
 		bundle->offset_tab[FRAG_OFFSET][OFFSET] = bundle->offset_tab[LIFE_TIME][OFFSET]+1;
@@ -207,6 +216,7 @@ uint8_t recover_bundel(struct bundle_t *bundle,uint8_t *block, int size)
 	bundle->block=(uint8_t *) malloc(size);
 	PRINTF("BUNDLE: RECOVER: block ptr: %p\n",bundle->offset_tab);
 	memcpy(bundle->block,block,size);
+	free(block);
 	return 1;
 }
 uint16_t delete_bundle(struct bundle_t *bundel)

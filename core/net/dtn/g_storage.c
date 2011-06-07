@@ -251,7 +251,10 @@ uint16_t read_bundle(uint16_t bundle_num,struct bundle_t *bundle)
 		}
 		PRINTF("\n");
 #endif
-		recover_bundel(bundle,bundle->block,(int) file_list[bundle_num].file_size);
+		if( !recover_bundel(bundle,bundle->block,(int) file_list[bundle_num].file_size)){
+			return 0;
+		}
+
 #if DEBUG
 		for (i = 0; i<17; i++){
 			PRINTF("STORAGE: val in [%u]; %u ,%u\n",i,bundle->offset_tab[i][0], bundle->offset_tab[i][1]);

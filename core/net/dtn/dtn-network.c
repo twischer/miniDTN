@@ -104,7 +104,9 @@ static void dtn_network_input(void)
 		}
 		if (!beacon){ //packet is a bundle
 			PRINTF("%p  %p\n",&bundle,&input_packet);	
-			recover_bundel(&bundle,&input_packet, (uint8_t)size);
+			if ( !recover_bundel(&bundle,&input_packet, (uint8_t)size)){
+				return;
+			}
 			bundle.rec_time=(uint32_t) clock_seconds();
 #if DEBUG_H
 			bundle.debug_time=clock_time();
