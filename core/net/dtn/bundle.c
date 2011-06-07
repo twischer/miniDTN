@@ -79,7 +79,9 @@ uint8_t add_block(struct bundle_t *bundle, uint8_t type, uint8_t flags, uint8_t 
 #else
 	bundle->block = (uint8_t *) realloc(bundle->block,d_len + len + 2  + bundle->size);
 #endif
-
+	if (bundle->block == NULL) {
+		return 0;
+	}
 	memcpy(bundle->block + bundle->offset_tab[DATA][OFFSET] + bundle->offset_tab[DATA][STATE], &type, 1);
 	bundle->offset_tab[DATA][STATE] +=1;
 	memcpy(bundle->block + bundle->offset_tab[DATA][OFFSET] + bundle->offset_tab[DATA][STATE], &flags, 1);

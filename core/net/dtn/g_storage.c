@@ -142,8 +142,24 @@ int32_t save_bundle(struct bundle_t *bundle)
 		i++;
 	}
 	if(free == -1){
-		PRINTF("STORAGE: no free slots in bundlestorage\n");
-		return -1;
+		uint16_t index=0;
+		uint32_t min_lifetime=-1;
+		int32_t delet=-1;
+
+		while ( index < BUNDLE_STORAGE_SIZE) {
+			if (file_list[index].file_size>0 && file_list[index].lifetime < min_lifetime){
+				delet=(int32_t) index;
+				min_lifetime=file_list[index].lifetime;
+			}
+			index++;
+		}
+		if (delet !=-1){
+			printf("STORAGE: del %u\n",delet);
+			del_bundle(delet);
+			free=delet;
+		}
+//		PRINTF("STORAGE: no free slots in bundlestorage\n");
+//		return -1;
 	}
 	i=(uint16_t)free;
 	PRINTF(" STORAGE: bundle will be safed in solt %u, size of bundle is %u\n",i,bundle->size);	
