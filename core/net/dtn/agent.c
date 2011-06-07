@@ -80,7 +80,7 @@ void agent_init(void) {
 	dtn_bundle_in_storage_event = process_alloc_event();
 	dtn_bundle_deleted_event = process_alloc_event();
 	dtn_send_bundle_to_node_event = process_alloc_event();
-//	BUNDLE_STORAGE.reinit();
+	BUNDLE_STORAGE.reinit();
 
 }
 

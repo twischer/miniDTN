@@ -1,7 +1,7 @@
 #ifndef __G_STORAGE_H__
 #define __G_STORAGE_H__
 
-#define BUNDLE_STORAGE_SIZE 10
+#define BUNDLE_STORAGE_SIZE 20
 #define BUNDLE_STARAGE_FILE_NAME "list_file"
 #include "net/dtn/bundle.h"
 
