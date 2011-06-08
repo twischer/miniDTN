@@ -90,6 +90,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 		}
 
 		printf("\n");
+		delete_bundle(bundle);
 	}
 //	cc2420_read(packetbuf_dataptr(),128);
 	printf("main: end\n");
