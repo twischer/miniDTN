@@ -16,6 +16,13 @@
 #define PRINTF(...)
 #endif
 
+#define R_DEBUG 1
+#if R_DEBUG
+#include <stdio.h>
+#define R_PRINTF(...) printf(__VA_ARGS__)
+#else
+#define R_PRINTF(...)
+#endif
 struct file_list_entry_t file_list[BUNDLE_STORAGE_SIZE];
 char *filename = BUNDLE_STARAGE_FILE_NAME; 
 int fd_write, fd_read;
@@ -224,6 +231,10 @@ uint16_t del_bundle(uint16_t bundle_num)
 {
 	uint16_t *num;
 	num = malloc(2);
+	if (num==NULL){
+		printf("\n\n MALLOC ERROR\n\n");
+	}
+
 	*num=bundle_num;
 	char b_file[7];
 	sprintf(b_file,"%u.b",bundle_num);
@@ -257,8 +268,20 @@ uint16_t read_bundle(uint16_t bundle_num,struct bundle_t *bundle)
 	if(fd_read != -1) {
 		PRINTF("file-size %u\n", file_list[bundle_num].file_size);
 		bundle->block = (uint8_t *) malloc(file_list[bundle_num].file_size);
+		if (bundle->block==NULL){
+			printf("\n\n MALLOC ERROR\n\n");
+		}
+
 		cfs_read(fd_read, bundle->block, file_list[bundle_num].file_size);
 		cfs_close(fd_read);
+#if R_DEBUG
+		uint8_t i;
+		R_PRINTF(" STORAGE: ");
+		for (i=0; i<20; i++){
+			R_PRINTF("%x:",*(bundle->block+i));
+		}
+		R_PRINTF("\n");
+#endif
 #if DEBUG
 		uint8_t i;
 		PRINTF("STORAGE: bundle->block: ");

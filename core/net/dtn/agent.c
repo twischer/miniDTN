@@ -138,6 +138,8 @@ PROCESS_THREAD(agent_process, ev, data)
 			//reception_set_time();
 			bundleptr = (struct bundle_t *) data;
 			uint32_t time=(uint32_t) clock_seconds();
+			
+			bundleptr->rec_time=(uint32_t) clock_seconds(); 
 			if (bundleptr->size >= 110){
 				PRINTF("BUNDLEPROTOCOL: bundle too big size: %u\n" , bundleptr->size);
 				continue;
@@ -169,7 +171,6 @@ PROCESS_THREAD(agent_process, ev, data)
 
 			dispatch_bundle(bundleptr);
 			//BUNDLE_STORAGE.save_bundle(bundleptr);
-			delete_bundle(bundleptr);
 //			packetbuf_clear();
 			PRINTF("BUNDLEPROTOCOL: end bundle received \n");
 		//	*/
@@ -219,6 +220,7 @@ PROCESS_THREAD(agent_process, ev, data)
 		else if(ev == dtn_send_bundle_to_node_event){
 			struct route_t *route = (struct route_t *)data;
 			PRINTF("BUNDLEPROTOCOL: send bundle %u to node %u:%u\n",route->bundle_num, route->dest.u8[1], route->dest.u8[0]);
+			uint8_t i;
 			BUNDLE_STORAGE.read_bundle(route->bundle_num,bundleptr);
 			PRINTF("BUNDLEPROTOCOL: bundle ready\n");
 			bundleptr->bundle_num =  route->bundle_num;
