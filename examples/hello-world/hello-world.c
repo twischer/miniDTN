@@ -72,7 +72,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 	while(1) {
 		PROCESS_YIELD();
 
-//		if(ev == sensors_event && data == &button_sensor) {
+		if(ev == sensors_event && data == &button_sensor) {
 	//		j++;
 			printf("Hello, world\n");
 			leds_on(1);
@@ -121,7 +121,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 //			dtn_network_send(bundle.block,bundle.size,dest);
 					
 			leds_off(1);
-		//}
+		}
 	}
 	PROCESS_END();
 }
