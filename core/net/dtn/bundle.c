@@ -24,6 +24,10 @@ uint8_t create_bundle(struct bundle_t *bundle)
 	bundle->offset_tab[VERSION][OFFSET]=0;
 	bundle->offset_tab[FLAGS][OFFSET]=1;
 	bundle->block = (uint8_t *) malloc(1);
+	if (bundle->block==NULL){
+		printf("\n\n MALLOC ERROR\n\n");
+	}
+
 	*bundle->block = 0;
 	bundle->size=1;
 	uint8_t i;
@@ -71,6 +75,10 @@ uint8_t add_block(struct bundle_t *bundle, uint8_t type, uint8_t flags, uint8_t 
 	sdnv_t s_len;
 	size_t len = sdnv_encoding_len((uint32_t )d_len);
 	s_len = (uint8_t *) malloc(len);
+	if (s_len==NULL){
+		printf("\n\n MALLOC ERROR\n\n");
+	}
+
 	sdnv_encode((uint32_t) d_len, s_len, len);
 
 	
@@ -123,6 +131,10 @@ uint8_t set_attr(struct bundle_t *bundle, uint8_t attr, uint32_t *val)
 	size_t len = sdnv_encoding_len(*val);
 //	printf("tpr %u\n ",len);  // this fixes everything
 	sdnv = (uint8_t *) malloc(len);
+	if (sdnv==NULL){
+		printf("\n\n MALLOC ERROR\n\n");
+	}
+				
 	sdnv_encode(*val,sdnv,len);
 	if(((int16_t)(len-bundle->offset_tab[attr][STATE])) > 0){
 		PRINTF("BUNDLE: realloc %d\n",((int16_t)(len-bundle->offset_tab[attr][STATE])));
@@ -137,9 +149,14 @@ uint8_t set_attr(struct bundle_t *bundle, uint8_t attr, uint32_t *val)
 	if (((int16_t)(len-bundle->offset_tab[attr][STATE])) < 0){
 		PRINTF("BUNDLE: smaller\n");
 		uint8_t *tmp=(uint8_t*) malloc(bundle->size + ((int16_t)(len-bundle->offset_tab[attr][STATE])));
+		if (*tmp==NULL){
+			printf("\n\n MALLOC ERROR\n\n");
+		}
+
 		memcpy(tmp,bundle->block,bundle->offset_tab[attr][OFFSET]);
 		memcpy(tmp + bundle->offset_tab[attr][OFFSET] + len,bundle->block + bundle->offset_tab[attr][OFFSET] + bundle->offset_tab[attr][STATE],bundle->size + ((int16_t)(len-bundle->offset_tab[attr][STATE])) );
 		free(bundle->block);
+
 		bundle->block=tmp;
 	}
 	memcpy(bundle->block + bundle->offset_tab[attr][OFFSET], sdnv, len);
@@ -160,6 +177,7 @@ uint8_t set_attr(struct bundle_t *bundle, uint8_t attr, uint32_t *val)
 		memset(bundle->block+bundle->offset_tab[LENGTH][OFFSET],size,1);
 	}
 	free(sdnv);
+	sdnv=NULL;
 #if DEBUG
 	PRINTF("BUNDLE: bundle->size= %u\n",bundle->size);
 	PRINTF("BUNDLE: SET_ATTR  %u %u : ",attr,bundle->offset_tab[DATA][OFFSET]);
@@ -182,6 +200,7 @@ uint8_t recover_bundel(struct bundle_t *bundle,uint8_t *block, int size)
 	bundle->offset_tab[FLAGS][OFFSET]=1;
 	if (*block != 0){
 		free(block);
+		block=NULL;
 		return 0;
 	}
 	uint8_t *tmp=block;
@@ -202,6 +221,7 @@ uint8_t recover_bundel(struct bundle_t *bundle,uint8_t *block, int size)
 		tmp+=bundle->offset_tab[i][STATE];
 		if(i==DIRECTORY_LEN && *(bundle->block + bundle->offset_tab[i][OFFSET]) != 0){
 			free(block);
+			block=NULL;
 			return 0;
 		}
 
@@ -216,13 +236,20 @@ uint8_t recover_bundel(struct bundle_t *bundle,uint8_t *block, int size)
 	bundle->offset_tab[DATA][OFFSET]= tmp-block;
 	bundle->size=size;
 	bundle->block=(uint8_t *) malloc(size);
+	if (bundle->block==NULL){
+		printf("\n\n MALLOC ERROR\n\n");
+	}
+
 	PRINTF("BUNDLE: RECOVER: block ptr: %p\n",bundle->offset_tab);
 	memcpy(bundle->block,block,size);
 	free(block);
+	block=NULL;
 	return 1;
 }
-uint16_t delete_bundle(struct bundle_t *bundel)
+uint16_t delete_bundle(struct bundle_t *bundle)
 {
-	free(bundel->block);
-	free(bundel);
+	free(bundle->block);
+	bundle->block=NULL;
+	free(bundle);
+	bundle=NULL;
 }

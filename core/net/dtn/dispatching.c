@@ -96,6 +96,7 @@ void dispatch_bundle(struct bundle_t *bundle) {
 				}
 			}
 			PRINTF("DISPATCHING: no service registrated for bundel\n");
+			delete_bundle(bundle);
 			return;
 		}
 	}
