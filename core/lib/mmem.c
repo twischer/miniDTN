@@ -53,7 +53,7 @@
 #ifdef MMEM_CONF_SIZE
 #define MMEM_SIZE MMEM_CONF_SIZE
 #else
-#define MMEM_SIZE 4096
+#define MMEM_SIZE 2048
 #endif
 
 LIST(mmemlist);
@@ -85,6 +85,7 @@ mmem_alloc(struct mmem *m, unsigned int size)
 {
   /* Check if we have enough memory left for this allocation. */
   if(avail_memory < size) {
+    printf("MMEM: ERROR\n");
     return 0;
   }
 
@@ -95,13 +96,12 @@ mmem_alloc(struct mmem *m, unsigned int size)
   /* Set up the pointer so that it points to the first available byte
      in the memory block. */
   m->ptr = &memory[MMEM_SIZE - avail_memory];
-
+  
   /* Remember the size of this memory block. */
   m->size = size;
 
   /* Decrease the amount of available memory. */
   avail_memory -= size;
-
   /* Return non-zero to indicate that we were able to allocate
      memory. */
   return 1;
