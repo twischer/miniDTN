@@ -108,11 +108,11 @@ static void dtn_network_input(void)
 				return;
 			}
 
-			printf("NETWORK: ");
+			PRINTF("NETWORK: ");
 			for (i=0; i<bundle.size; i++){
-				printf("%x:",*(bundle.block + i));
+				PRINTF("%x:",*(bundle.block + i));
 			}
-			printf("\n");
+			PRINTF("\n");
 			bundle.rec_time=(uint32_t) clock_seconds();
 #if DEBUG_H
 			bundle.debug_time=clock_time();
@@ -185,12 +185,12 @@ int dtn_network_send(struct bundle_t *bundle, struct route_t *route)
 	sdnv_decode(bundle->block+bundle->offset_tab[TIME_STAMP_SEQ_NR][OFFSET],bundle->offset_tab[TIME_STAMP_SEQ_NR][STATE],&i);
 	sdnv_decode(bundle->block+bundle->offset_tab[LIFE_TIME][OFFSET],bundle->offset_tab[LIFE_TIME][STATE],&time);
 
-	printf("seq_num %lu lifetime %lu bundle pointer %p bundel->block %p %x\n ",i,time,bundle,bundle->block,(*(bundle->block-2)<<8)+*(bundle->block-1));
-	printf("NETWORK: ");
+	PRINTF("seq_num %lu lifetime %lu bundle pointer %p bundel->block %p %x\n ",i,time,bundle,bundle->block,(*(bundle->block-2)<<8)+*(bundle->block-1));
+	PRINTF("NETWORK: ");
 	for (i=0; i<bundle->size; i++){
-		printf("%x:",*(bundle->block + i));
+		PRINTF("%x:",*(bundle->block + i));
 	}
-	printf("\n");
+	PRINTF("\n");
 	/* kopiere die Daten in den packetbuf(fer) */
 	packetbuf_copyfrom(payload, len);
 	delete_bundle(bundle);

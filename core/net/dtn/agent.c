@@ -82,6 +82,17 @@ void agent_init(void) {
 	dtn_bundle_in_storage_event = process_alloc_event();
 	dtn_bundle_deleted_event = process_alloc_event();
 	dtn_send_bundle_to_node_event = process_alloc_event();
+	printf("dtn_application_remove_event %u\n",dtn_application_remove_event);
+	printf("dtn_application_registration_event %u\n",dtn_application_registration_event);
+	printf("dtn_application_status_event %u\n",dtn_application_status_event);
+	printf("dtn_receive_bundle_event %u\n",dtn_receive_bundle_event);
+	printf("dtn_send_bundle_event %u\n",dtn_send_bundle_event);
+	printf("submit_data_to_application_event %u\n" , submit_data_to_application_event);
+	printf("dtn_beacon_event %u\n",dtn_beacon_event);
+	printf("dtn_send_admin_record_event %u\n", dtn_send_admin_record_event);
+	printf("dtn_bundle_in_storage_event %u\n", dtn_bundle_in_storage_event);
+	printf("dtn_bundle_deleted_event %u\n",dtn_bundle_deleted_event);
+	printf("dtn_send_bundle_to_node_event %u\n",dtn_send_bundle_to_node_event);
 //	BUNDLE_STORAGE.reinit();
 
 }
@@ -228,13 +239,16 @@ PROCESS_THREAD(agent_process, ev, data)
 			PRINTF("BUNDLEPROTOCOL: bundle ready\n");
 			bundleptr->bundle_num =  route->bundle_num;
 			uint32_t remaining_time= bundleptr->lifetime-(((uint32_t) clock_seconds())-bundleptr->rec_time);
+//			PRINTF("%lu - %lu= %lu\n",bundleptr->lifetime,(((uint32_t) clock_seconds())-bundleptr->rec_time),bundleptr->lifetime-(((uint32_t) clock_seconds())-bundleptr->rec_time));
 			if (remaining_time <= bundleptr->lifetime) {
-				printf("BUNDLEPROTOCOL: %lu-%lu-%lu=%lu\n",bundleptr->lifetime, (uint32_t) clock_seconds(),bundleptr->rec_time,bundleptr->lifetime-(((uint32_t) clock_seconds())-bundleptr->rec_time));
+				PRINTF("BUNDLEPROTOCOL: %lu-%lu-%lu=%lu\n",bundleptr->lifetime, (uint32_t) clock_seconds(),bundleptr->rec_time,bundleptr->lifetime-(((uint32_t) clock_seconds())-bundleptr->rec_time));
 				set_attr(bundleptr,LIFE_TIME,&remaining_time);
 				dtn_network_send(bundleptr,route);
 			}else{
 				PRINTF("BUNDLEPROTOCOL: OOPS\n");
+				uint16_t tmp=bundleptr->bundle_num;
 				delete_bundle(bundleptr);
+				BUNDLE_STORAGE.del_bundle(tmp);
 			}
 			continue;
 		}

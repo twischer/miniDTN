@@ -28,7 +28,7 @@ uint8_t create_bundle(struct bundle_t *bundle)
 	mmem_alloc(bundle->mem,1);
 	bundle->block = (uint8_t *) MMEM_PTR(bundle->mem);
 	if (bundle->block==NULL){
-		printf("\n\n MALLOC ERROR\n\n");
+		PRINTF("\n\n MALLOC ERROR\n\n");
 	}
 
 	*bundle->block = 0;
@@ -79,7 +79,7 @@ uint8_t add_block(struct bundle_t *bundle, uint8_t type, uint8_t flags, uint8_t 
 	size_t len = sdnv_encoding_len((uint32_t )d_len);
 	s_len = (uint8_t *) malloc(len);
 	if (s_len==NULL){
-		printf("\n\n MALLOC ERROR\n\n");
+		PRINTF("\n\n MALLOC ERROR\n\n");
 	}
 
 	sdnv_encode((uint32_t) d_len, s_len, len);
@@ -142,7 +142,7 @@ uint8_t set_attr(struct bundle_t *bundle, uint8_t attr, uint32_t *val)
 //	printf("tpr %u\n ",len);  // this fixes everything
 	sdnv = (uint8_t *) malloc(len);
 	if (sdnv==NULL){
-		printf("\n\n MALLOC ERROR\n\n");
+		PRINTF("\n\n MALLOC ERROR\n\n");
 	}
 				
 	sdnv_encode(*val,sdnv,len);
@@ -171,7 +171,7 @@ uint8_t set_attr(struct bundle_t *bundle, uint8_t attr, uint32_t *val)
 		mmem_alloc(mmem_tmp,bundle->size + ((int16_t)(len-bundle->offset_tab[attr][STATE])));
 		uint8_t *tmp=(uint8_t*) MMEM_PTR(mmem_tmp);
 		if (*tmp==NULL){
-			printf("\n\n MALLOC ERROR\n\n");
+			PRINTF("\n\n MALLOC ERROR\n\n");
 		}
 
 		memcpy(tmp,bundle->block,bundle->offset_tab[attr][OFFSET]);
@@ -262,7 +262,7 @@ uint8_t recover_bundel(struct bundle_t *bundle,uint8_t *block, int size)
 	mmem_alloc(bundle->mem,size);
 	bundle->block = (uint8_t *) MMEM_PTR(bundle->mem);
 	if (bundle->block==NULL){
-		printf("\n\n MALLOC ERROR\n\n");
+		PRINTF("\n\n MALLOC ERROR\n\n");
 	}
 
 	PRINTF("BUNDLE: RECOVER: block ptr: %p   ",bundle->offset_tab);
