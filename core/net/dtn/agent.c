@@ -17,6 +17,7 @@
 
 #include "clock.h"
 #include "timer.h"
+#include "mmem.h"
 #include "net/rime/rimeaddr.h"
 
 #include "net/dtn/API_registration.h"
@@ -35,7 +36,7 @@
 #include "node-id.h"
 
 
-#define DEBUG 0
+#define DEBUG 1
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)
@@ -66,6 +67,7 @@ void agent_init(void) {
 	dtn_node_id=node_id; 
 	dtn_seq_nr=0;
 	registration_init();
+	mmem_init();
 
 	
 	
