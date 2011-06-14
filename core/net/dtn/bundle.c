@@ -9,7 +9,7 @@
 #include <string.h>
 #include "clock.h"
 
-#define DEBUG 1
+#define DEBUG 0
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)
@@ -242,7 +242,7 @@ uint8_t recover_bundel(struct bundle_t *bundle,uint8_t *block, int size)
 		bundle->offset_tab[i][OFFSET]=tmp-block;
 	//	PRINTF("BUNDLE: RECOVER: %u: state: %u offset: %u\n",i,bundle->offset_tab[i][STATE],bundle->offset_tab[i][OFFSET] );
 		tmp+=bundle->offset_tab[i][STATE];
-		if(i==DIRECTORY_LEN && *(bundle->block + bundle->offset_tab[i][OFFSET]) != 0){
+		if(i==DIRECTORY_LEN && *(block + bundle->offset_tab[i][OFFSET]) != 0){
 			free(block);
 			block=NULL;
 			return 0;
@@ -258,13 +258,18 @@ uint8_t recover_bundel(struct bundle_t *bundle,uint8_t *block, int size)
 	sdnv_decode(block+bundle->offset_tab[LIFE_TIME][OFFSET],bundle->offset_tab[LIFE_TIME][STATE],&bundle->lifetime);
 	bundle->offset_tab[DATA][OFFSET]= tmp-block;
 	bundle->size=size;
+	bundle->mem = (struct mmem *) malloc(sizeof(struct mmem));
 	mmem_alloc(bundle->mem,size);
 	bundle->block = (uint8_t *) MMEM_PTR(bundle->mem);
 	if (bundle->block==NULL){
 		printf("\n\n MALLOC ERROR\n\n");
 	}
 
-	PRINTF("BUNDLE: RECOVER: block ptr: %p\n",bundle->offset_tab);
+	PRINTF("BUNDLE: RECOVER: block ptr: %p   ",bundle->offset_tab);
+	for (i=0; i<27; i++){
+		PRINTF("%u:",*(block+i));
+	}
+	PRINTF("\n");
 	memcpy(bundle->block,block,size);
 	free(block);
 	block=NULL;
@@ -273,6 +278,7 @@ uint8_t recover_bundel(struct bundle_t *bundle,uint8_t *block, int size)
 }
 uint16_t delete_bundle(struct bundle_t *bundle)
 {
+	PRINTF("BUNDLE: DELETE\n");
 
 	mmem_free(bundle->mem);
 	bundle->block=NULL;

@@ -233,11 +233,8 @@ PROCESS_THREAD(agent_process, ev, data)
 				set_attr(bundleptr,LIFE_TIME,&remaining_time);
 				dtn_network_send(bundleptr,route);
 			}else{
-				printf("lifetime\n");
-				uint16_t tmp=bundleptr->bundle_num;
+				PRINTF("BUNDLEPROTOCOL: OOPS\n");
 				delete_bundle(bundleptr);
-				BUNDLE_STORAGE.del_bundle(tmp);
-
 			}
 			continue;
 		}
