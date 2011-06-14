@@ -2,7 +2,7 @@
 #define __B_REDUNDANCE_H__
 #include "net/dtn/bundle.h"
 
-#define B_RED_MAX 100
+#define B_RED_MAX 10
 
 extern const struct redundance_check b_redundance_check;
 

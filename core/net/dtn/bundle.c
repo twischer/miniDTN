@@ -1,14 +1,15 @@
 #include "net/dtn/bundle.h"
 #include "net/dtn/sdnv.h"
+#include "mmem.h"
 #include <stdlib.h>
 #include <stdio.h>
 #if CONTIKI_TARGET_SKY
-	#include "net/dtn/realloc.h"
+//	#include "net/dtn/realloc.h"
 #endif
 #include <string.h>
 #include "clock.h"
 
-#define DEBUG 0
+#define DEBUG 1
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)
@@ -23,7 +24,9 @@ uint8_t create_bundle(struct bundle_t *bundle)
 {
 	bundle->offset_tab[VERSION][OFFSET]=0;
 	bundle->offset_tab[FLAGS][OFFSET]=1;
-	bundle->block = (uint8_t *) malloc(1);
+	bundle->mem = (struct mmem*) malloc(sizeof(struct mmem));
+	mmem_alloc(bundle->mem,1);
+	bundle->block = (uint8_t *) MMEM_PTR(bundle->mem);
 	if (bundle->block==NULL){
 		printf("\n\n MALLOC ERROR\n\n");
 	}
@@ -80,13 +83,20 @@ uint8_t add_block(struct bundle_t *bundle, uint8_t type, uint8_t flags, uint8_t 
 	}
 
 	sdnv_encode((uint32_t) d_len, s_len, len);
-
 	
-#if CONTIKI_TARGET_SKY
+	struct mmem *mmem_tmp = (struct mmem*) malloc(sizeof(struct mmem));
+	mmem_alloc(mmem_tmp,d_len + len + 2  + bundle->size);
+	memcpy(mmem_tmp->ptr,bundle->block,bundle->size);
+	mmem_free(bundle->mem);
+	free(bundle->mem),
+	bundle->mem=mmem_tmp;
+
+/*#if CONTIKI_TARGET_SKY
 	bundle->block = (uint8_t *) realloc(bundle->block,d_len + len + 2  + bundle->size,bundle->size);
 #else
 	bundle->block = (uint8_t *) realloc(bundle->block,d_len + len + 2  + bundle->size);
 #endif
+*/
 	if (bundle->block == NULL) {
 		return 0;
 	}
@@ -138,24 +148,37 @@ uint8_t set_attr(struct bundle_t *bundle, uint8_t attr, uint32_t *val)
 	sdnv_encode(*val,sdnv,len);
 	if(((int16_t)(len-bundle->offset_tab[attr][STATE])) > 0){
 		PRINTF("BUNDLE: realloc %d\n",((int16_t)(len-bundle->offset_tab[attr][STATE])));
+	
+		struct mmem *mmem_tmp = (struct mmem*) malloc(sizeof(struct mmem));
+		mmem_alloc(mmem_tmp,((int16_t)(len-bundle->offset_tab[attr][STATE])) + bundle->size);
+		memcpy(mmem_tmp->ptr,bundle->block,bundle->size);
+		mmem_free(bundle->mem);
+		free(bundle->mem),
+		bundle->mem=mmem_tmp;
+		/*
 #if CONTIKI_TARGET_SKY
 		bundle->block = (uint8_t *) realloc(bundle->block,((int16_t)(len-bundle->offset_tab[attr][STATE])) + bundle->size,bundle->size);
 		PRINTF("BUNDLE: mem-size %u\n",((int16_t)(len-bundle->offset_tab[attr][STATE])) + bundle->size);
 #else
 		bundle->block = (uint8_t *) realloc(bundle->block,((int16_t)(len-bundle->offset_tab[attr][STATE])) + bundle->size);
 #endif
+*/
 		memmove((bundle->block + bundle->offset_tab[attr][OFFSET] + len), bundle->block + bundle->offset_tab[attr][OFFSET], bundle->size - bundle->offset_tab[attr][OFFSET] );
 	}
 	if (((int16_t)(len-bundle->offset_tab[attr][STATE])) < 0){
 		PRINTF("BUNDLE: smaller\n");
-		uint8_t *tmp=(uint8_t*) malloc(bundle->size + ((int16_t)(len-bundle->offset_tab[attr][STATE])));
+		struct mmem *mmem_tmp = (struct mmem*) malloc(sizeof(struct mmem));
+		mmem_alloc(mmem_tmp,bundle->size + ((int16_t)(len-bundle->offset_tab[attr][STATE])));
+		uint8_t *tmp=(uint8_t*) MMEM_PTR(mmem_tmp);
 		if (*tmp==NULL){
 			printf("\n\n MALLOC ERROR\n\n");
 		}
 
 		memcpy(tmp,bundle->block,bundle->offset_tab[attr][OFFSET]);
 		memcpy(tmp + bundle->offset_tab[attr][OFFSET] + len,bundle->block + bundle->offset_tab[attr][OFFSET] + bundle->offset_tab[attr][STATE],bundle->size + ((int16_t)(len-bundle->offset_tab[attr][STATE])) );
-		free(bundle->block);
+		mmem_free(bundle->mem);
+		free(bundle->mem);
+		bundle->mem=mmem_tmp;
 
 		bundle->block=tmp;
 	}
@@ -235,7 +258,8 @@ uint8_t recover_bundel(struct bundle_t *bundle,uint8_t *block, int size)
 	sdnv_decode(block+bundle->offset_tab[LIFE_TIME][OFFSET],bundle->offset_tab[LIFE_TIME][STATE],&bundle->lifetime);
 	bundle->offset_tab[DATA][OFFSET]= tmp-block;
 	bundle->size=size;
-	bundle->block=(uint8_t *) malloc(size);
+	mmem_alloc(bundle->mem,size);
+	bundle->block = (uint8_t *) MMEM_PTR(bundle->mem);
 	if (bundle->block==NULL){
 		printf("\n\n MALLOC ERROR\n\n");
 	}
@@ -244,12 +268,16 @@ uint8_t recover_bundel(struct bundle_t *bundle,uint8_t *block, int size)
 	memcpy(bundle->block,block,size);
 	free(block);
 	block=NULL;
+	PRINTF("BUNDLE: RECOVERED\n");
 	return 1;
 }
 uint16_t delete_bundle(struct bundle_t *bundle)
 {
-	free(bundle->block);
+
+	mmem_free(bundle->mem);
 	bundle->block=NULL;
+	free(bundle->mem);
+	bundle->mem=NULL;
 	free(bundle);
 	bundle=NULL;
 }

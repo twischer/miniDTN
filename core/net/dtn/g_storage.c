@@ -276,7 +276,7 @@ uint16_t read_bundle(uint16_t bundle_num,struct bundle_t *bundle)
 		cfs_close(fd_read);
 #if R_DEBUG
 		uint8_t i;
-		R_PRINTF(" STORAGE: ");
+		R_PRINTF(" STORAGE 1: ");
 		for (i=0; i<20; i++){
 			R_PRINTF("%x:",*(bundle->block+i));
 		}
@@ -299,7 +299,6 @@ uint16_t read_bundle(uint16_t bundle_num,struct bundle_t *bundle)
 			PRINTF("STORAGE: val in [%u]; %u ,%u\n",i,bundle->offset_tab[i][0], bundle->offset_tab[i][1]);
 		}
 #endif
-		PRINTF("STORAGE: 11111\n");
 		bundle->rec_time=file_list[bundle_num].rec_time;
 		bundle->custody = file_list[bundle_num].custody;
 		PRINTF("STORAGE: first byte in bundel %u\n",*bundle->block);

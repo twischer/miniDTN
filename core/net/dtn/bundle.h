@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include "mmem.h"
 //#include "net/dtn/bundle.h"
 #ifndef __BUNDLE_H__
 #define __BUNDLE_H__
@@ -39,6 +40,7 @@ struct bundle_t{
 	uint32_t rec_time;
 	uint16_t bundle_num;
 	uint32_t lifetime;
+	struct mmem *mem;
 #if DEBUG_H
 	uint16_t debug_time;
 #endif
