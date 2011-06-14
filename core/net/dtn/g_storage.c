@@ -16,7 +16,7 @@
 #define PRINTF(...)
 #endif
 
-#define R_DEBUG 1
+#define R_DEBUG 0
 #if R_DEBUG
 #include <stdio.h>
 #define R_PRINTF(...) printf(__VA_ARGS__)
@@ -161,7 +161,7 @@ int32_t save_bundle(struct bundle_t *bundle)
 			index++;
 		}
 		if (delet !=-1){
-			printf("STORAGE: del %u\n",delet);
+			PRINTF("STORAGE: del %u\n",delet);
 			del_bundle(delet);
 			free=delet;
 		}
@@ -232,7 +232,7 @@ uint16_t del_bundle(uint16_t bundle_num)
 	uint16_t *num;
 	num = malloc(2);
 	if (num==NULL){
-		printf("\n\n MALLOC ERROR\n\n");
+		PRINTF("\n\n MALLOC ERROR\n\n");
 	}
 
 	*num=bundle_num;
@@ -269,7 +269,7 @@ uint16_t read_bundle(uint16_t bundle_num,struct bundle_t *bundle)
 		PRINTF("file-size %u\n", file_list[bundle_num].file_size);
 		bundle->block = (uint8_t *) malloc(file_list[bundle_num].file_size);
 		if (bundle->block==NULL){
-			printf("\n\n MALLOC ERROR\n\n");
+			PRINTF("\n\n MALLOC ERROR\n\n");
 		}
 
 		cfs_read(fd_read, bundle->block, file_list[bundle_num].file_size);
