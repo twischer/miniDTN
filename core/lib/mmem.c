@@ -102,7 +102,7 @@ mmem_alloc(struct mmem *m, unsigned int size)
 
   /* Decrease the amount of available memory. */
   avail_memory -= size;
-  printf("MMEM:malloc avail_memory %u\n",avail_memory);
+//  printf("MMEM:malloc avail_memory %u\n",avail_memory);
   /* Return non-zero to indicate that we were able to allocate
      memory. */
   return 1;
@@ -136,7 +136,7 @@ mmem_free(struct mmem *m)
   }
 
   avail_memory += m->size;
-  printf("MMEM:free avail_memory %u\n",avail_memory);
+//  printf("MMEM:free avail_memory %u\n",avail_memory);
 
   /* Remove the memory block from the list. */
   list_remove(mmemlist, m);
