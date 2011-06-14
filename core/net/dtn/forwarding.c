@@ -24,6 +24,7 @@ void forwarding_bundle(struct bundle_t *bundle)
 	//	PRINTF("FORWARDING: bundle_num %u\n",saved_as_num);
 		process_post(&agent_process,dtn_bundle_in_storage_event, &saved_as_num);
 	}else{
+		delete_bundle(bundle);
 		PRINTF("FORWARDING: bundle not saved\n");
 		return;
 	}

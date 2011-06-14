@@ -74,6 +74,7 @@ void dispatch_bundle(struct bundle_t *bundle) {
 					//call custody signal method
 					CUSTODY.set_state(&admin_record->custody_signal);
 				}
+				delete_bundle(bundle);
 				return;
 			}
 	}
