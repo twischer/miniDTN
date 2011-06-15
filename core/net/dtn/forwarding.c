@@ -17,6 +17,7 @@ void forwarding_bundle(struct bundle_t *bundle)
 	if(CUSTODY.decide(bundle)){
 		CUSTODY.manage(bundle);
 	}
+	PRINTF("FORWARDING\n");
 	int32_t saved= BUNDLE_STORAGE.save_bundle(bundle);
 	if( saved >=0){
 		saved_as_num= (uint16_t)saved;
