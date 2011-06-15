@@ -59,7 +59,7 @@
 PROCESS(hello_world_process, "Hello world process");
 AUTOSTART_PROCESSES(&hello_world_process);
 /*---------------------------------------------------------------------------*/
-
+static struct etimer timer;
 struct bundle_t bundle;
 PROCESS_THREAD(hello_world_process, ev, data)
 {
@@ -72,18 +72,17 @@ PROCESS_THREAD(hello_world_process, ev, data)
 	while(1) {
 		PROCESS_YIELD();
 
-		if(ev == sensors_event && data == &button_sensor) {
+		if(etimer_expired(&timer) || (ev == sensors_event && data == &button_sensor)) {
 	//		j++;
 			printf("Hello, world\n");
 			leds_on(1);
-			
 			uint8_t *foo;
 			foo=(uint8_t *) malloc(10);
 			memset(foo,0xfe,10);
 			create_bundle(&bundle);
 			uint8_t i;
 			uint32_t bla=4;
-//			rimeaddr_t dest={{3,0}};
+		//			rimeaddr_t dest={{3,0}};
 		//#if 0
 			bla=3;
 			set_attr(&bundle, DEST_NODE, &bla);
@@ -105,16 +104,17 @@ PROCESS_THREAD(hello_world_process, ev, data)
 			bla=4;
 			set_attr(&bundle, TIME_STAMP, &bla);
 			add_block(&bundle, 1,2,foo,10);
-			printf("main size: %u\n",bundle.size);
-			uint8_t *tmp=bundle.block;
-			for(i=0; i<bundle.size; i++){
-				printf("%x ",*tmp);
-				tmp++;
-
-			}
-			printf("\n");
-			process_post(&agent_process,dtn_send_bundle_event,(void *) &bundle);
 			
+			printf("main size: %u\n",bundle.size);
+	//		uint8_t *tmp=bundle.block;
+	//		for(i=0; i<bundle.size; i++){
+	//			printf("%x ",*tmp);
+	//			tmp++;
+
+	//		}
+	//		printf("\n");
+			process_post(&agent_process,dtn_send_bundle_event,(void *) &bundle);
+			etimer_set(&timer, CLOCK_SECOND);
 
 
 
