@@ -50,7 +50,6 @@
 #include "net/dtn/API_registration.h"
 #include "net/dtn/API_events.h"
 #include "net/dtn/agent.h"
-#include "net/dtn/test.h"
 #include "dev/leds.h"
 #include "dev/cc2420.h"
 #include "net/dtn/bundle.h"
