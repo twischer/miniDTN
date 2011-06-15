@@ -26,7 +26,7 @@
 	#include <stings.h>
 #endif
 
-#define DEBUG 0
+#define DEBUG 1
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)
@@ -185,7 +185,7 @@ int dtn_network_send(struct bundle_t *bundle, struct route_t *route)
 	sdnv_decode(bundle->block+bundle->offset_tab[TIME_STAMP_SEQ_NR][OFFSET],bundle->offset_tab[TIME_STAMP_SEQ_NR][STATE],&i);
 	sdnv_decode(bundle->block+bundle->offset_tab[LIFE_TIME][OFFSET],bundle->offset_tab[LIFE_TIME][STATE],&time);
 
-	PRINTF("seq_num %lu lifetime %lu bundle pointer %p bundel->block %p %x\n ",i,time,bundle,bundle->block,(*(bundle->block-2)<<8)+*(bundle->block-1));
+	PRINTF("seq_num %lu lifetime %lu bundle pointer %p bundel->block %p \n ",i,time,bundle,bundle->block);
 	PRINTF("NETWORK: ");
 	for (i=0; i<bundle->size; i++){
 		PRINTF("%x:",*(bundle->block + i));
@@ -193,7 +193,6 @@ int dtn_network_send(struct bundle_t *bundle, struct route_t *route)
 	PRINTF("\n");
 	/* kopiere die Daten in den packetbuf(fer) */
 	packetbuf_copyfrom(payload, len);
-	delete_bundle(bundle);
 	/*setze Zieladresse und übergebe das Paket an die MAC schicht */
 	packetbuf_set_addr(PACKETBUF_ADDR_RECEIVER, &route->dest);
 	packetbuf_set_attr(PACKETBUF_ADDRSIZE, 2);

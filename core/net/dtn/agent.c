@@ -236,6 +236,7 @@ PROCESS_THREAD(agent_process, ev, data)
 			PRINTF("BUNDLEPROTOCOL: send bundle %u to node %u:%u\n",route->bundle_num, route->dest.u8[1], route->dest.u8[0]);
 			uint8_t i;
 			BUNDLE_STORAGE.read_bundle(route->bundle_num,bundleptr);
+			PRINTF("BUNDLEPROTOCOL: bundleptr->block %p\n",bundleptr->block);
 			PRINTF("BUNDLEPROTOCOL: bundle ready\n");
 			bundleptr->bundle_num =  route->bundle_num;
 			uint32_t remaining_time= bundleptr->lifetime-(((uint32_t) clock_seconds())-bundleptr->rec_time);
@@ -243,7 +244,9 @@ PROCESS_THREAD(agent_process, ev, data)
 			if (remaining_time <= bundleptr->lifetime) {
 				PRINTF("BUNDLEPROTOCOL: %lu-%lu-%lu=%lu\n",bundleptr->lifetime, (uint32_t) clock_seconds(),bundleptr->rec_time,bundleptr->lifetime-(((uint32_t) clock_seconds())-bundleptr->rec_time));
 				set_attr(bundleptr,LIFE_TIME,&remaining_time);
+				PRINTF("BUNDLEPROTOCOL: bundleptr->block %p\n",bundleptr->block);
 				dtn_network_send(bundleptr,route);
+				delete_bundle(bundleptr);
 			}else{
 				PRINTF("BUNDLEPROTOCOL: OOPS\n");
 				uint16_t tmp=bundleptr->bundle_num;
