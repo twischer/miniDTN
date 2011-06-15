@@ -47,7 +47,7 @@ struct bundle_t{
 };
 
 
-uint8_t recover_bundel(struct bundle_t *bundle, uint8_t *block,int size);
+uint8_t recover_bundel(struct bundle_t *bundle,struct mmem *mem,int size);
 uint8_t set_attr(struct bundle_t *bundle, uint8_t attr, uint32_t *val);
 uint8_t create_bundle(struct bundle_t *bundle);
 uint16_t delete_bundle(struct bundle_t *bundel);

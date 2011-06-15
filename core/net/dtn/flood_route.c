@@ -77,21 +77,24 @@ void flood_new_neigh(rimeaddr_t *dest)
 	return ;
 }
 
-void flood_new_bundle(uint16_t bundle_num)
+int flood_new_bundle(uint16_t bundle_num)
 {
 	PRINTF("FLOOD: got new bundle %u\n",bundle_num);
 	struct pack_list_t *pack;
 	for(pack = list_head(pack_list); pack != NULL; pack = list_item_next(pack)) {
 		if (pack->num==bundle_num){
 			PRINTF("FLOOD: bundle is already kown\n");
-			return;
+			return -1;
 		}
 	}
 	pack =  memb_alloc(&pack_mem);
 	if (pack !=NULL ){
 		struct bundle_t bundle;
 		pack->num=bundle_num;
-		BUNDLE_STORAGE.read_bundle(bundle_num, &bundle);
+		if (BUNDLE_STORAGE.read_bundle(bundle_num, &bundle) <=0){
+			PRINTF("\n\nread bundle ERROR\n\n");
+			return -1;
+		}
 		sdnv_decode(bundle.offset_tab[FLAGS][OFFSET],bundle.offset_tab[FLAGS][STATE],&pack->flags);
 		sdnv_decode(bundle.offset_tab[DEST_NODE][OFFSET],bundle.offset_tab[DEST_NODE][STATE],&pack->dest_node);
 		pack->send_to=0;
@@ -106,7 +109,7 @@ void flood_new_bundle(uint16_t bundle_num)
 
 		delete_bundle(&bundle);
 	}
-	return ;
+	return 1;
 }
 
 void flood_del_bundle(uint16_t bundle_num)
