@@ -136,7 +136,8 @@ mmem_free(struct mmem *m)
   }
 
   avail_memory += m->size;
-//  printf("MMEM:free avail_memory %u\n",avail_memory);
+  
+  //printf("MMEM:free avail_memory %u\n",avail_memory);
 
   /* Remove the memory block from the list. */
   list_remove(mmemlist, m);
