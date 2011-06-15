@@ -294,7 +294,8 @@ uint16_t read_bundle(uint16_t bundle_num,struct bundle_t *bundle)
 		}
 		PRINTF("\n");
 #endif
-		if( !recover_bundel(bundle,bundle->block,(int) file_list[bundle_num].file_size)){
+		if( !recover_bundel(bundle,bundle->mem,(int) file_list[bundle_num].file_size)){
+			PRINTF("\n\n recover Error\n\n");
 			return 0;
 		}
 

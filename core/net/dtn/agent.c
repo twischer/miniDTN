@@ -82,7 +82,7 @@ void agent_init(void) {
 	dtn_bundle_in_storage_event = process_alloc_event();
 	dtn_bundle_deleted_event = process_alloc_event();
 	dtn_send_bundle_to_node_event = process_alloc_event();
-	printf("dtn_application_remove_event %u\n",dtn_application_remove_event);
+/*	printf("dtn_application_remove_event %u\n",dtn_application_remove_event);
 	printf("dtn_application_registration_event %u\n",dtn_application_registration_event);
 	printf("dtn_application_status_event %u\n",dtn_application_status_event);
 	printf("dtn_receive_bundle_event %u\n",dtn_receive_bundle_event);
@@ -93,6 +93,7 @@ void agent_init(void) {
 	printf("dtn_bundle_in_storage_event %u\n", dtn_bundle_in_storage_event);
 	printf("dtn_bundle_deleted_event %u\n",dtn_bundle_deleted_event);
 	printf("dtn_send_bundle_to_node_event %u\n",dtn_send_bundle_to_node_event);
+	*/
 //	BUNDLE_STORAGE.reinit();
 
 }
@@ -163,7 +164,11 @@ PROCESS_THREAD(agent_process, ev, data)
 			//lifetime= lifetime -time;
 			//set_attr(bundleptr,LIFE_TIME,&lifetime);
 			set_attr(bundleptr,TIME_STAMP_SEQ_NR,&dtn_seq_nr);
-			PRINTF("BUNDLEPROTOCOL: seq_num = %lu\n",dtn_seq_nr);	
+			uint8_t i;
+		//	for (i=0; i<bundleptr->size; i++){
+		//		PRINTF("%u:",*(bundleptr->block+i));
+		//	}
+			PRINTF("\nBUNDLEPROTOCOL: seq_num = %lu\n",dtn_seq_nr);	
 			dtn_seq_nr++;
 //			while(bundlebuf_in_use())
 //				PROCESS_PAUSE();
@@ -175,11 +180,11 @@ PROCESS_THREAD(agent_process, ev, data)
 		
 		else if(ev == dtn_receive_bundle_event) {
 			
-			PRINTF("BUNDLEPROTOCOL: bundle received \n");	
+			bundleptr= (struct bundle_t *) data;
+			PRINTF("BUNDLEPROTOCOL: bundle received %u\n",*(bundleptr->block + bundleptr->offset_tab[TIME_STAMP_SEQ_NR][OFFSET]));	
 			
 //			while(bundlebuf_in_use())
 //				PROCESS_PAUSE();
-			bundleptr= (struct bundle_t *) data;
 //			bundleptr->rec_time= (uint32_t) clock_seconds();
 
 
@@ -213,9 +218,12 @@ PROCESS_THREAD(agent_process, ev, data)
 		}
 		
 		else if(ev == dtn_bundle_in_storage_event){
-			PRINTF("BUNDLEPROTOCOL: bundle in storage\n");	
 			uint16_t b_num= *(uint16_t *) data;
-			ROUTING.new_bundle(b_num);
+			PRINTF("BUNDLEPROTOCOL: bundle in storage %u\n",b_num);	
+			if(!ROUTING.new_bundle(b_num)){
+				PRINTF("BUNDLEPROTOCOL: ERROR\n");
+				continue;
+			}
 			dtn_discover();
 			if (BUNDLE_STORAGE.get_bundle_num() == 1){
 				etimer_set(&discover_timer, DISCOVER_CYCLE*CLOCK_SECOND);
@@ -235,7 +243,10 @@ PROCESS_THREAD(agent_process, ev, data)
 			struct route_t *route = (struct route_t *)data;
 			PRINTF("BUNDLEPROTOCOL: send bundle %u to node %u:%u\n",route->bundle_num, route->dest.u8[1], route->dest.u8[0]);
 			uint8_t i;
-			BUNDLE_STORAGE.read_bundle(route->bundle_num,bundleptr);
+			if(BUNDLE_STORAGE.read_bundle(route->bundle_num,bundleptr)<=0){
+				continue;
+			}
+
 			PRINTF("BUNDLEPROTOCOL: bundleptr->block %p\n",bundleptr->block);
 			PRINTF("BUNDLEPROTOCOL: bundle ready\n");
 			bundleptr->bundle_num =  route->bundle_num;
@@ -251,7 +262,7 @@ PROCESS_THREAD(agent_process, ev, data)
 				PRINTF("BUNDLEPROTOCOL: OOPS\n");
 				uint16_t tmp=bundleptr->bundle_num;
 				delete_bundle(bundleptr);
-				BUNDLE_STORAGE.del_bundle(tmp);
+				//BUNDLE_STORAGE.del_bundle(tmp);
 			}
 			continue;
 		}

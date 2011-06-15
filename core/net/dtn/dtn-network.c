@@ -22,6 +22,7 @@
 #include "net/dtn/bundle.h"
 #include "net/dtn/agent.h"
 #include "routing.h"
+#include "mmem.h"
 #if CONTIKI_TARGET_AVR_RAVEN
 	#include <stings.h>
 #endif
@@ -89,6 +90,8 @@ static void dtn_network_input(void)
 			packetbuf_set_attr(PACKETBUF_ADDRSIZE, 2);
 			NETSTACK_MAC.send(NULL, NULL);
 		}else{
+			
+			packetbuf_clear();
 			PRINTF("some broadcast message\n");
 		}
 			
@@ -103,34 +106,45 @@ static void dtn_network_input(void)
 			}
 		}
 		if (!beacon){ //packet is a bundle
+			packetbuf_clear();
 			PRINTF("%p  %p\n",&bundle,&input_packet);	
-			if ( !recover_bundel(&bundle,&input_packet, (uint8_t)size)){
+			struct mmem mem;
+			mmem_alloc(&mem,114);
+			if (!MMEM_PTR(&mem)){
+				PRINTF("DTN: MMEM ERROR\n");
 				return;
 			}
 
+			memcpy(MMEM_PTR(&mem),&input_packet,114);
+			if ( !recover_bundel(&bundle,&mem, (uint8_t)size)){
+				PRINTF("DTN: recover ERROR\n");	
+				return;
+			}
+#if DEBUG
 			PRINTF("NETWORK: ");
 			for (i=0; i<bundle.size; i++){
 				PRINTF("%x:",*(bundle.block + i));
 			}
 			PRINTF("\n");
+#endif
 			bundle.rec_time=(uint32_t) clock_seconds();
 #if DEBUG_H
 			bundle.debug_time=clock_time();
 #endif
 			bundle.size= (uint8_t) size;
 			PRINTF("NETWORK: size of received bundle: %u block pointer %p\n",bundle.size, bundle.block);
-			
-			process_post(&agent_process, dtn_receive_bundle_event, &bundle);	
+				
+			process_post(&agent_process, dtn_receive_bundle_event, &bundle);
 		}else{
 			
 			rimeaddr_t bsrc = *packetbuf_addr(PACKETBUF_ADDR_SENDER);
 			memcpy(&beacon_src,&bsrc,sizeof(beacon_src));
+			packetbuf_clear();
 			PRINTF("NETWORK: got beacon from %u,%u\n",beacon_src.u8[0],beacon_src.u8[1]);
 			process_post(&agent_process, dtn_beacon_event, &beacon_src);
 //			process_post(&agent_process, dtn_send_admin_record_event, NULL);
 		}		
 	}
-	packetbuf_clear();
 		
 }
 

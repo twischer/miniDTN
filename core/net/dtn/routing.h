@@ -10,7 +10,7 @@ struct routing_driver {
 
 	void (* init)(void);
 	void (* new_neighbor)(rimeaddr_t *dest);
-	void (* new_bundle)(uint16_t bundle_num);
+	int (* new_bundle)(uint16_t bundle_num);
 	void (* del_bundle)(uint16_t bundle_num);
 	void (* sent)(uint16_t bundle_num,int status, int num_tx);
 };
