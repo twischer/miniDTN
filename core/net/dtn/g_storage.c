@@ -267,7 +267,11 @@ uint16_t read_bundle(uint16_t bundle_num,struct bundle_t *bundle)
 	
 	if(fd_read != -1) {
 		PRINTF("file-size %u\n", file_list[bundle_num].file_size);
-		bundle->block = (uint8_t *) malloc(file_list[bundle_num].file_size);
+
+		bundle->mem = (struct mmem*) malloc(sizeof(struct mmem));
+		mmem_alloc(bundle->mem,file_list[bundle_num].file_size);
+		bundle->block = (uint8_t *) MMEM_PTR(bundle->mem);
+
 		if (bundle->block==NULL){
 			PRINTF("\n\n MALLOC ERROR\n\n");
 		}
