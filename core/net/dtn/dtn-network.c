@@ -21,6 +21,7 @@
 #include "net/rime/rimeaddr.h"
 #include "net/dtn/bundle.h"
 #include "net/dtn/agent.h"
+#include "dispatching.h"
 #include "routing.h"
 #include "mmem.h"
 #if CONTIKI_TARGET_AVR_RAVEN
@@ -133,8 +134,8 @@ static void dtn_network_input(void)
 #endif
 			bundle.size= (uint8_t) size;
 			PRINTF("NETWORK: size of received bundle: %u block pointer %p\n",bundle.size, bundle.block);
-				
-			process_post(&agent_process, dtn_receive_bundle_event, &bundle);
+			dispatch_bundle(&bundle);			
+//			process_post(&agent_process, dtn_receive_bundle_event, &bundle);
 		}else{
 			
 			rimeaddr_t bsrc = *packetbuf_addr(PACKETBUF_ADDR_SENDER);
