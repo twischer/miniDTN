@@ -232,7 +232,10 @@ PROCESS_THREAD(agent_process, ev, data)
 				dtn_network_send(bundleptr,route);
 			}else{
 				printf("lifetime\n");
+				uint16_t tmp=bundleptr->bundle_num;
 				delete_bundle(bundleptr);
+				BUNDLE_STORAGE.del_bundle(tmp);
+
 			}
 			continue;
 		}
