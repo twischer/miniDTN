@@ -226,7 +226,7 @@ PROCESS_THREAD(agent_process, ev, data)
 			PRINTF("BUNDLEPROTOCOL: bundle ready\n");
 			bundleptr->bundle_num =  route->bundle_num;
 			uint32_t remaining_time= bundleptr->lifetime-(((uint32_t) clock_seconds())-bundleptr->rec_time);
-			if (remaining_time < bundleptr->lifetime) {
+			if (remaining_time <= bundleptr->lifetime) {
 				printf("BUNDLEPROTOCOL: %lu-%lu-%lu=%lu\n",bundleptr->lifetime, (uint32_t) clock_seconds(),bundleptr->rec_time,bundleptr->lifetime-(((uint32_t) clock_seconds())-bundleptr->rec_time));
 				set_attr(bundleptr,LIFE_TIME,&remaining_time);
 				dtn_network_send(bundleptr,route);
