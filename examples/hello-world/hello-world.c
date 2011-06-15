@@ -76,9 +76,6 @@ PROCESS_THREAD(hello_world_process, ev, data)
 	//		j++;
 			printf("Hello, world\n");
 			leds_on(1);
-			uint8_t *foo;
-			foo=(uint8_t *) malloc(10);
-			memset(foo,0xfe,10);
 			create_bundle(&bundle);
 			uint8_t i;
 			uint32_t bla=4;
@@ -103,7 +100,11 @@ PROCESS_THREAD(hello_world_process, ev, data)
 			set_attr(&bundle, LIFE_TIME, &bla);
 			bla=4;
 			set_attr(&bundle, TIME_STAMP, &bla);
+			uint8_t *foo;
+			foo=(uint8_t *) malloc(10);
+			memset(foo,0xfe,10);
 			add_block(&bundle, 1,2,foo,10);
+			free(foo);
 			
 			printf("main size: %u\n",bundle.size);
 	//		uint8_t *tmp=bundle.block;
