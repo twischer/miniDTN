@@ -235,7 +235,7 @@ PROCESS_THREAD(agent_process, ev, data)
 			uint16_t *tmp= (uint16_t *) data;
 			PRINTF("BUNDLEPROTOCOL: delete bundle %u\n",*tmp);
 			ROUTING.del_bundle( *tmp);
-			//free(tmp);
+			free(tmp);
 			continue;
 		}
 
@@ -262,7 +262,7 @@ PROCESS_THREAD(agent_process, ev, data)
 				PRINTF("BUNDLEPROTOCOL: OOPS\n");
 				uint16_t tmp=bundleptr->bundle_num;
 				delete_bundle(bundleptr);
-				//BUNDLE_STORAGE.del_bundle(tmp);
+				BUNDLE_STORAGE.del_bundle(tmp);
 			}
 			continue;
 		}
