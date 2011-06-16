@@ -85,7 +85,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 		uint8_t i;
 		printf("Paketinhalt: ");
 		for (i=0; i<27; i++){
-			printf("%x " ,*(bundle->block+i));
+			printf("%x " ,*((uint8_t *) bundle->mem.ptr+i));
 		}
 
 		printf("\n");
