@@ -37,15 +37,15 @@
 
 void dispatch_bundle(struct bundle_t *bundle) {
 	
-	PRINTF("DISPATCHING: bundle: %p\n", bundle->block);
+	PRINTF("DISPATCHING: bundle: %p\n", bundle->mem.ptr);
 	struct registration *n;
 
 	uint32_t dest=1,flags=1;
-	sdnv_decode(bundle->block + bundle->offset_tab[DEST_NODE][OFFSET], bundle->offset_tab[DEST_NODE][STATE], &dest);
-	sdnv_decode(bundle->block + bundle->offset_tab[FLAGS][OFFSET], bundle->offset_tab[FLAGS][STATE], &flags);
+	sdnv_decode(bundle->mem.ptr + bundle->offset_tab[DEST_NODE][OFFSET], bundle->offset_tab[DEST_NODE][STATE], &dest);
+	sdnv_decode(bundle->mem.ptr + bundle->offset_tab[FLAGS][OFFSET], bundle->offset_tab[FLAGS][STATE], &flags);
  	//TODO warum sagt gcc das flags nicht bunutzt wird	
 	uint32_t dest_app=1;
-	sdnv_decode(bundle->block + bundle->offset_tab[DEST_SERV][OFFSET], bundle->offset_tab[DEST_SERV][STATE], &dest_app);
+	sdnv_decode(bundle->mem.ptr + bundle->offset_tab[DEST_SERV][OFFSET], bundle->offset_tab[DEST_SERV][STATE], &dest_app);
 
 
 #if DEBUG
@@ -67,7 +67,7 @@ void dispatch_bundle(struct bundle_t *bundle) {
 		if(dest == dtn_node_id){
 				
 				administrative_record_block_t *admin_record;
-				admin_record = (administrative_record_block_t *) bundle->block + bundle->offset_tab[DATA][OFFSET];
+				admin_record = (administrative_record_block_t *) bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET];
 				
 				if(admin_record->record_status == CUSTODY_SIGNAL) {
 					PRINTF("DISPATCHING: received custody signal\n");	
@@ -82,7 +82,7 @@ void dispatch_bundle(struct bundle_t *bundle) {
 	else {
 	
 		uint32_t dest_app;
-		sdnv_decode(bundle->block + bundle->offset_tab[DEST_SERV][OFFSET], bundle->offset_tab[DEST_SERV][STATE], &dest_app);
+		sdnv_decode(bundle->mem.ptr + bundle->offset_tab[DEST_SERV][OFFSET], bundle->offset_tab[DEST_SERV][STATE], &dest_app);
 
 		PRINTF("DISPATCHING: destination eid: %lu:%lu  == %u, reg_list=%p\n", dest, dest_app,dtn_node_id,list_head(reg_list));
 		

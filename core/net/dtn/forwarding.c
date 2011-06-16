@@ -4,7 +4,7 @@
 #include "net/dtn/storage.h"
 
 
-#define DEBUG 0
+#define DEBUG 1 
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)
@@ -17,7 +17,9 @@ void forwarding_bundle(struct bundle_t *bundle)
 	if(CUSTODY.decide(bundle)){
 		CUSTODY.manage(bundle);
 	}
-	int32_t saved= BUNDLE_STORAGE.save_bundle(bundle);
+	PRINTF("FORWARDING:1 bundle->mem.ptr %p\n",bundle->mem.ptr);
+	int32_t saved = BUNDLE_STORAGE.save_bundle(bundle);
+	PRINTF("FORWARDING:2 bundle->mem.ptr %p\n",bundle->mem.ptr);
 	PRINTF("FORWARDING saved in %ld\n", saved);
 	if( saved >=0){
 		saved_as_num= (uint16_t)saved;

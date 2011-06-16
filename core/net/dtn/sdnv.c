@@ -98,24 +98,3 @@ size_t sdnv_len(const uint8_t* bp)
 
 
 
-#if 0
-int main(void)
-{
-	printf("hello\n");
-	uint8_t *sdnv;
-	size_t len= sdnv_encoding_len(0xABC);
-	sdnv=(uint8_t *) malloc(len);
-	printf("hello\n");
-	int foo=sdnv_encode(0xABC,sdnv,len);
-	int i;
-	for(i=0; i<len; i++){
-		printf("%x:",*(sdnv+i));
-	}
-	printf("\n");
-	uint64_t val;
-	sdnv_decode(sdnv,len,&val);
-	printf("%lx\n",val);
-
-
-}
-#endif
