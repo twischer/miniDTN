@@ -53,7 +53,7 @@
 #ifdef MMEM_CONF_SIZE
 #define MMEM_SIZE MMEM_CONF_SIZE
 #else
-#define MMEM_SIZE 2048
+#define MMEM_SIZE 4096
 #endif
 
 LIST(mmemlist);
@@ -84,9 +84,13 @@ int
 mmem_alloc(struct mmem *m, unsigned int size)
 {
   /* Check if we have enough memory left for this allocation. */
-  if(avail_memory < size) {
+  if((avail_memory < size) ) {
     printf("MMEM: ERROR\n");
     return 0;
+  }
+  if (avail_memory> MMEM_SIZE){
+  	printf("MMEM: avail_memory> MMEM_SIZE\n ");
+	return 0;
   }
 
   /* We had enough memory so we add this memory block to the end of
@@ -102,7 +106,7 @@ mmem_alloc(struct mmem *m, unsigned int size)
 
   /* Decrease the amount of available memory. */
   avail_memory -= size;
-//  printf("MMEM:malloc avail_memory %u\n",avail_memory);
+//printf("MMEM:malloc avail_memory %u\n",avail_memory);
   /* Return non-zero to indicate that we were able to allocate
      memory. */
   return 1;
@@ -121,7 +125,7 @@ void
 mmem_free(struct mmem *m)
 {
   struct mmem *n;
-
+//  printf(" MMEM: free %p\n",m->ptr);
   if(m->next != NULL) {
     /* Compact the memory after the allocation that is to be removed
        by moving it downwards. */
@@ -157,6 +161,7 @@ mmem_init(void)
 {
   list_init(mmemlist);
   avail_memory = MMEM_SIZE;
+  printf("MMEM: memory %p - %p\n",memory, memory+MMEM_SIZE);
 }
 /*---------------------------------------------------------------------------*/
 
