@@ -40,9 +40,9 @@ uint8_t check(struct bundle_t *bundle)
 {
 	PRINTF("REDUNDANCE: check\n");	
 	uint32_t src, seq_nr, frag_offset;
-	sdnv_decode(bundle->block + bundle->offset_tab[SRC_NODE][OFFSET], sdnv_len(bundle->block + bundle->offset_tab[SRC_NODE][OFFSET]), &src);
-	sdnv_decode(bundle->block + bundle->offset_tab[TIME_STAMP_SEQ_NR][OFFSET], sdnv_len(bundle->block + bundle->offset_tab[TIME_STAMP_SEQ_NR][OFFSET]), &seq_nr);
-	sdnv_decode(bundle->block + bundle->offset_tab[FRAG_OFFSET][OFFSET], sdnv_len(bundle->block + bundle->offset_tab[FRAG_OFFSET][OFFSET]), &frag_offset);
+	sdnv_decode(bundle->mem.ptr + bundle->offset_tab[SRC_NODE][OFFSET], sdnv_len(bundle->mem.ptr + bundle->offset_tab[SRC_NODE][OFFSET]), &src);
+	sdnv_decode(bundle->mem.ptr + bundle->offset_tab[TIME_STAMP_SEQ_NR][OFFSET], sdnv_len(bundle->mem.ptr + bundle->offset_tab[TIME_STAMP_SEQ_NR][OFFSET]), &seq_nr);
+	sdnv_decode(bundle->mem.ptr + bundle->offset_tab[FRAG_OFFSET][OFFSET], sdnv_len(bundle->mem.ptr + bundle->offset_tab[FRAG_OFFSET][OFFSET]), &frag_offset);
 	struct red_bundle_t *n;
 	for(n = list_head(b_red_list); n != NULL; n = list_item_next(n)) {
 		if( src == n->src &&
@@ -62,10 +62,10 @@ uint8_t set(struct bundle_t *bundle)
 
 	struct red_bundle_t *n;
 	uint32_t src,seq_nr,frag_offset,lifetime;
-	sdnv_decode(bundle->block + bundle->offset_tab[SRC_NODE][OFFSET], sdnv_len(bundle->block + bundle->offset_tab[SRC_NODE][OFFSET]), &src);
-	sdnv_decode(bundle->block + bundle->offset_tab[TIME_STAMP_SEQ_NR][OFFSET], sdnv_len(bundle->block + bundle->offset_tab[TIME_STAMP_SEQ_NR][OFFSET]), &seq_nr);
-	sdnv_decode(bundle->block + bundle->offset_tab[FRAG_OFFSET][OFFSET], sdnv_len(bundle->block + bundle->offset_tab[FRAG_OFFSET][OFFSET]), &frag_offset);
-	sdnv_decode(bundle->block + bundle->offset_tab[LIFE_TIME][OFFSET], sdnv_len(bundle->block + bundle->offset_tab[LIFE_TIME][OFFSET]), &lifetime);
+	sdnv_decode(bundle->mem.ptr + bundle->offset_tab[SRC_NODE][OFFSET], sdnv_len(bundle->mem.ptr + bundle->offset_tab[SRC_NODE][OFFSET]), &src);
+	sdnv_decode(bundle->mem.ptr + bundle->offset_tab[TIME_STAMP_SEQ_NR][OFFSET], sdnv_len(bundle->mem.ptr + bundle->offset_tab[TIME_STAMP_SEQ_NR][OFFSET]), &seq_nr);
+	sdnv_decode(bundle->mem.ptr + bundle->offset_tab[FRAG_OFFSET][OFFSET], sdnv_len(bundle->mem.ptr + bundle->offset_tab[FRAG_OFFSET][OFFSET]), &frag_offset);
+	sdnv_decode(bundle->mem.ptr + bundle->offset_tab[LIFE_TIME][OFFSET], sdnv_len(bundle->mem.ptr + bundle->offset_tab[LIFE_TIME][OFFSET]), &lifetime);
 	for(n = list_head(b_red_list); n != NULL; n = list_item_next(n)) {
 		if( src == n->src &&
 			seq_nr == n->seq_nr &&

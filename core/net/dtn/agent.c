@@ -59,17 +59,24 @@ AUTOSTART_PROCESSES(&agent_process);
 */
 void agent_init(void) {
 		
-	PRINTF("starting DTN Bundle Protocol \n");
 	process_start(&agent_process, NULL);
+}
+
+
+/* der Bundle Protocol Prozess */
+PROCESS_THREAD(agent_process, ev, data)
+{
+	PROCESS_BEGIN();
+	
+	PRINTF("starting DTN Bundle Protocol \n");
+	
+	mmem_init();
 	BUNDLE_STORAGE.init();
 	ROUTING.init();
 	REDUNDANCE.init();
 	dtn_node_id=node_id; 
 	dtn_seq_nr=0;
 	registration_init();
-	mmem_init();
-
-	
 	
 	dtn_application_remove_event  = process_alloc_event();
 	dtn_application_registration_event = process_alloc_event();
@@ -96,18 +103,12 @@ void agent_init(void) {
 	*/
 //	BUNDLE_STORAGE.reinit();
 
-}
-
-
-/* der Bundle Protocol Prozess */
-PROCESS_THREAD(agent_process, ev, data)
-{
-	PROCESS_BEGIN();
-	
 	
 	//custody_init();
 		
-	static struct bundle_t *bundleptr;
+	static struct bundle_t * bundleptr;
+	struct bundle_t bundle;
+
 	struct registration_api *reg;
 	
 	while(1) {
@@ -160,13 +161,13 @@ PROCESS_THREAD(agent_process, ev, data)
 			}
 			//time = time - bundleptr->rec_time;
 			//uint32_t lifetime;
-			//sdnv_decode(bundleptr->block + bundleptr->offset_tab[LIFE_TIME][OFFSET],sdnv_len(bundleptr->block + bundleptr->offset_tab[LIFE_TIME][OFFSET]),&lifetime);
+			//sdnv_decode(bundleptr->mem->ptr + bundleptr->offset_tab[LIFE_TIME][OFFSET],sdnv_len(bundleptr->mem->ptr + bundleptr->offset_tab[LIFE_TIME][OFFSET]),&lifetime);
 			//lifetime= lifetime -time;
 			//set_attr(bundleptr,LIFE_TIME,&lifetime);
 			set_attr(bundleptr,TIME_STAMP_SEQ_NR,&dtn_seq_nr);
 			uint8_t i;
 		//	for (i=0; i<bundleptr->size; i++){
-		//		PRINTF("%u:",*(bundleptr->block+i));
+		//		PRINTF("%u:",*(bundleptr->mem->ptr+i));
 		//	}
 			PRINTF("\nBUNDLEPROTOCOL: seq_num = %lu\n",dtn_seq_nr);	
 			dtn_seq_nr++;
@@ -181,7 +182,7 @@ PROCESS_THREAD(agent_process, ev, data)
 		else if(ev == dtn_receive_bundle_event) {
 			
 			bundleptr= (struct bundle_t *) data;
-			PRINTF("BUNDLEPROTOCOL: bundle received %u\n",*(bundleptr->block + bundleptr->offset_tab[TIME_STAMP_SEQ_NR][OFFSET]));	
+			PRINTF("BUNDLEPROTOCOL: bundle received %u\n",*((uint8_t *) (bundleptr->mem.ptr + bundleptr->offset_tab[TIME_STAMP_SEQ_NR][OFFSET])));	
 			
 //			while(bundlebuf_in_use())
 //				PROCESS_PAUSE();
@@ -214,6 +215,7 @@ PROCESS_THREAD(agent_process, ev, data)
 			rimeaddr_t* src =(rimeaddr_t*) data;	
 			PRINTF("BUNDLEPROTOCOL: got beacon from %u:%u\n",src->u8[1],src->u8[0]);
 			ROUTING.new_neighbor(src);
+			PRINTF("BUNDLEPROTOCOL: foooooo\n");
 			continue;
 		}
 		
@@ -232,10 +234,11 @@ PROCESS_THREAD(agent_process, ev, data)
 		}
 		
 		else if(ev == dtn_bundle_deleted_event){
-			uint16_t *tmp= (uint16_t *) data;
-			PRINTF("BUNDLEPROTOCOL: delete bundle %u\n",*tmp);
-			ROUTING.del_bundle( *tmp);
-			free(tmp);
+			//uint16_t *tmp= (uint16_t *) data;
+
+			PRINTF("BUNDLEPROTOCOL: delete bundle %u\n",del_num);
+			ROUTING.del_bundle( del_num);
+			//free(tmp);
 			continue;
 		}
 
@@ -243,11 +246,14 @@ PROCESS_THREAD(agent_process, ev, data)
 			struct route_t *route = (struct route_t *)data;
 			PRINTF("BUNDLEPROTOCOL: send bundle %u to node %u:%u\n",route->bundle_num, route->dest.u8[1], route->dest.u8[0]);
 			uint8_t i;
+
+			memset(&bundle, 0, sizeof(struct bundle_t));
+			bundleptr = &bundle;
 			if(BUNDLE_STORAGE.read_bundle(route->bundle_num,bundleptr)<=0){
 				continue;
 			}
 
-			PRINTF("BUNDLEPROTOCOL: bundleptr->block %p\n",bundleptr->block);
+			PRINTF("BUNDLEPROTOCOL: bundleptr->mem->ptr %p\n", bundleptr->mem.ptr);
 			PRINTF("BUNDLEPROTOCOL: bundle ready\n");
 			bundleptr->bundle_num =  route->bundle_num;
 			uint32_t remaining_time= bundleptr->lifetime-(((uint32_t) clock_seconds())-bundleptr->rec_time);
@@ -255,7 +261,7 @@ PROCESS_THREAD(agent_process, ev, data)
 			if (remaining_time <= bundleptr->lifetime) {
 				PRINTF("BUNDLEPROTOCOL: %lu-%lu-%lu=%lu\n",bundleptr->lifetime, (uint32_t) clock_seconds(),bundleptr->rec_time,bundleptr->lifetime-(((uint32_t) clock_seconds())-bundleptr->rec_time));
 				set_attr(bundleptr,LIFE_TIME,&remaining_time);
-				PRINTF("BUNDLEPROTOCOL: bundleptr->block %p\n",bundleptr->block);
+				PRINTF("BUNDLEPROTOCOL: bundleptr->mem->ptr %p\n", bundleptr->mem.ptr);
 				dtn_network_send(bundleptr,route);
 				delete_bundle(bundleptr);
 			}else{

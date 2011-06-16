@@ -34,13 +34,13 @@
 
 struct bundle_t{
 	char offset_tab[18][2];
-	uint8_t *block;	
 	uint8_t size;
 	uint8_t custody;
 	uint32_t rec_time;
 	uint16_t bundle_num;
 	uint32_t lifetime;
-	struct mmem *mem;
+	struct mmem mem;
+	// struct mmem *mem;
 #if DEBUG_H
 	uint16_t debug_time;
 #endif

@@ -1,4 +1,5 @@
 #define BUNDLE_STORAGE g_storage
+// #define MMEM_CONF_SIZE 2048 
 #define REDUNDANCE b_redundance
 #define CUSTODY null_custody
 #define ROUTING flood_route

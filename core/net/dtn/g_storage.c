@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#define DEBUG 0
+#define DEBUG 1
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)
@@ -28,7 +28,7 @@ char *filename = BUNDLE_STARAGE_FILE_NAME;
 int fd_write, fd_read;
 static uint16_t bundles_in_storage;
 static struct ctimer g_store_timer;
-
+uint16_t del_num;
 
 void init(void)
 {
@@ -111,33 +111,32 @@ int32_t save_bundle(struct bundle_t *bundle)
 {
 	uint16_t i=0;
 	int32_t free=-1;
-	uint8_t *tmp=bundle->block;
+	uint8_t *tmp=bundle->mem.ptr;
 	tmp=tmp+bundle->offset_tab[SRC_NODE][OFFSET];
 	uint32_t src;
 	sdnv_decode(tmp ,bundle->offset_tab[SRC_NODE][STATE], &src);
-	tmp=bundle->block+bundle->offset_tab[TIME_STAMP][OFFSET];
+	tmp=bundle->mem.ptr+bundle->offset_tab[TIME_STAMP][OFFSET];
 	uint32_t time_stamp;
 	sdnv_decode(tmp, bundle->offset_tab[TIME_STAMP][STATE], &time_stamp);
-	tmp=bundle->block+bundle->offset_tab[TIME_STAMP_SEQ_NR][OFFSET];
+	tmp=bundle->mem.ptr+bundle->offset_tab[TIME_STAMP_SEQ_NR][OFFSET];
 	uint32_t time_stamp_seq;
 	sdnv_decode(tmp, bundle->offset_tab[TIME_STAMP_SEQ_NR][STATE], &time_stamp_seq);
-	tmp=bundle->block+bundle->offset_tab[FRAG_OFFSET][OFFSET];
+	tmp=bundle->mem.ptr+bundle->offset_tab[FRAG_OFFSET][OFFSET];
 	uint32_t fraq_offset;
 	sdnv_decode(tmp, bundle->offset_tab[FRAG_OFFSET][STATE], &fraq_offset);
 
-		#if DEBUG
-		for (i=0; i<BUNDLE_STORAGE_SIZE; i++){
-			PRINTF("STORAGE: slot %u state is %u\n", i, file_list[i].file_size);
-		}
-		i=0;
-		#endif
+#if DEBUG
+	for (i=0; i<BUNDLE_STORAGE_SIZE; i++){
+		PRINTF("STORAGE: slot %u state is %u\n", i, file_list[i].file_size);
+	}
+	i=0;
+#endif
 	
 	while ( i < BUNDLE_STORAGE_SIZE) {
 		if (free == -1 && file_list[i].file_size == 0){
 			free=(int32_t)i;
 			PRINTF("STORAGE: %u is a free slot\n",i);
-		}
-		if ( time_stamp_seq == file_list[i].time_stamp_seq && 
+		} else if ( time_stamp_seq == file_list[i].time_stamp_seq && 
 		    time_stamp == file_list[i].time_stamp &&
 		    src == file_list[i].src &&
 		    fraq_offset == file_list[i].fraq_offset) {  // is bundle in storage?
@@ -161,12 +160,15 @@ int32_t save_bundle(struct bundle_t *bundle)
 			index++;
 		}
 		if (delet !=-1){
-			PRINTF("STORAGE: del %u\n",delet);
-			del_bundle(delet);
+			printf("STORAGE: del %u\n",delet);
+			
+			printf("STORAGE: bundle->mem.ptr %p (%p + %p)\n", bundle->mem.ptr, bundle, &bundle->mem);
+			if(!del_bundle(delet)){
+				return -1;
+			}
+			printf("STORAGE: bundle->mem.ptr %p (%p + %p)\n", bundle->mem.ptr, bundle, &bundle->mem);
 			free=delet;
 		}
-//		PRINTF("STORAGE: no free slots in bundlestorage\n");
-//		return -1;
 	}
 	i=(uint16_t)free;
 	PRINTF(" STORAGE: bundle will be safed in solt %u, size of bundle is %u\n",i,bundle->size);	
@@ -178,7 +180,7 @@ int32_t save_bundle(struct bundle_t *bundle)
 		i=0;
 		#endif
 	i=(uint16_t)free;
-	tmp=bundle->block+bundle->offset_tab[LIFE_TIME][OFFSET];
+	tmp=bundle->mem.ptr+bundle->offset_tab[LIFE_TIME][OFFSET];
 	//sdnv_decode(tmp, bundle->offset_tab[LIFE_TIME][STATE], &file_list[i].lifetime);
 	file_list[i].lifetime=bundle->lifetime;
 	char b_file[7];
@@ -188,15 +190,15 @@ int32_t save_bundle(struct bundle_t *bundle)
 	int n=0;
 	PRINTF("STORAGE: write filename: %s opened\n", b_file);
 #if DEBUG
-	PRINTF("STORAGE: bundle->block: ");
+	PRINTF("STORAGE: bundle->mem.ptr: ");
 	uint8_t j;
 	for(j=0;j<bundle->size;j++){
-		PRINTF("%u:",*(bundle->block+j));
+		PRINTF("%u:",*((uint8_t*)bundle->mem.ptr+j));
 	}
 	PRINTF("\n");
 #endif
 	if(fd_write != -1) {
-		n = cfs_write(fd_write, bundle->block, bundle->size);
+		n = cfs_write(fd_write, bundle->mem.ptr, bundle->size);
 		cfs_close(fd_write);
 		bundles_in_storage++;
 	}else{
@@ -229,13 +231,15 @@ int32_t save_bundle(struct bundle_t *bundle)
 
 uint16_t del_bundle(uint16_t bundle_num)
 {
-	uint16_t *num;
-	num = malloc(2);
-	if (num==NULL){
-		PRINTF("\n\n MALLOC ERROR\n\n");
-	}
+	//uint16_t *num;
+	//num = malloc(2);
+	del_num=bundle_num;
+	//if (!num){
+	//	printf("\n\n MALLOC ERROR\n\n");
+	//	return 0;
+	//}
 
-	*num=bundle_num;
+	//*num=bundle_num;
 	char b_file[7];
 	sprintf(b_file,"%u.b",bundle_num);
 	cfs_remove(b_file);
@@ -254,8 +258,8 @@ uint16_t del_bundle(uint16_t bundle_num)
 		return 0;
 	}
 	
-
-	process_post(&agent_process,dtn_bundle_deleted_event, num);
+	
+	process_post(&agent_process,dtn_bundle_deleted_event, NULL);
 	return 1;
 }
 
@@ -267,22 +271,31 @@ uint16_t read_bundle(uint16_t bundle_num,struct bundle_t *bundle)
 	
 	if(fd_read != -1) {
 		PRINTF("file-size %u\n", file_list[bundle_num].file_size);
-
+	
+		
+		mmem_alloc(&bundle->mem,file_list[bundle_num].file_size);
+/*
 		bundle->mem = (struct mmem*) malloc(sizeof(struct mmem));
-		mmem_alloc(bundle->mem,file_list[bundle_num].file_size);
-		bundle->block = (uint8_t *) MMEM_PTR(bundle->mem);
-
-		if (bundle->block==NULL){
-			PRINTF("\n\n MALLOC ERROR\n\n");
+		if( !bundle->mem){
+			printf("\n\n MALLOC ERROR\n\n");
+			return 0;
 		}
 
-		cfs_read(fd_read, bundle->block, file_list[bundle_num].file_size);
+		mmem_alloc(bundle->mem,file_list[bundle_num].file_size);
+		bundle->mem.ptr = (uint8_t *) MMEM_PTR(bundle->mem);
+
+		if (bundle->mem.ptr==NULL){
+			printf("\n\n MALLOC ERROR\n\n");
+		}
+*/
+
+		cfs_read(fd_read, bundle->mem.ptr, file_list[bundle_num].file_size);
 		cfs_close(fd_read);
 #if R_DEBUG
 		uint8_t i;
 		R_PRINTF(" STORAGE 1: ");
 		for (i=0; i<20; i++){
-			R_PRINTF("%x:",*(bundle->block+i));
+			R_PRINTF("%x:",*(bundle->mem.ptr+i));
 		}
 		R_PRINTF("\n");
 #endif
@@ -294,7 +307,7 @@ uint16_t read_bundle(uint16_t bundle_num,struct bundle_t *bundle)
 		}
 		PRINTF("\n");
 #endif
-		if( !recover_bundel(bundle,bundle->mem,(int) file_list[bundle_num].file_size)){
+		if( !recover_bundel(bundle, &bundle->mem,(int) file_list[bundle_num].file_size)){
 			PRINTF("\n\n recover Error\n\n");
 			return 0;
 		}
@@ -306,7 +319,7 @@ uint16_t read_bundle(uint16_t bundle_num,struct bundle_t *bundle)
 #endif
 		bundle->rec_time=file_list[bundle_num].rec_time;
 		bundle->custody = file_list[bundle_num].custody;
-		PRINTF("STORAGE: first byte in bundel %u\n",*bundle->block);
+		PRINTF("STORAGE: first byte in bundel %u\n",*((uint8_t*)bundle->mem.ptr));
 		bundle->lifetime=file_list[bundle_num].lifetime;
 		return file_list[bundle_num].file_size;
 	}

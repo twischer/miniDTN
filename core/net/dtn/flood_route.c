@@ -11,7 +11,7 @@
 #include "lib/memb.h"
 #include "contiki.h"
 
-#define DEBUG 0
+#define DEBUG 1
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)
@@ -64,12 +64,11 @@ void flood_new_neigh(rimeaddr_t *dest)
 		}
 		if(!sent){
 			struct route_t *route;
-//			route= (struct route_t *)malloc(sizeof(dest)+sizeof(pack->num));
 			route= memb_alloc(&route_mem);
 			memcpy(route->dest.u8,dest->u8,sizeof(dest->u8));
 			route->bundle_num=pack->num;
 			PRINTF("FLOOD: send bundle %u to %u:%u route_ptr: %p\n",route->bundle_num, route->dest.u8[1] ,route->dest.u8[0], route);
-
+			
 			process_post(&agent_process,dtn_send_bundle_to_node_event, route);
 
 		}
@@ -93,6 +92,7 @@ int flood_new_bundle(uint16_t bundle_num)
 		pack->num=bundle_num;
 		if (BUNDLE_STORAGE.read_bundle(bundle_num, &bundle) <=0){
 			PRINTF("\n\nread bundle ERROR\n\n");
+			while (1);
 			return -1;
 		}
 		sdnv_decode(bundle.offset_tab[FLAGS][OFFSET],bundle.offset_tab[FLAGS][STATE],&pack->flags);

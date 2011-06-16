@@ -9,11 +9,11 @@
  *
  */
  
- #include <stdio.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "clock.h"
-
 #include "net/dtn/dtn_config.h"
 #include "dtn-network.h"
 #include "net/netstack.h"
@@ -117,6 +117,7 @@ static void dtn_network_input(void)
 			}
 
 			memcpy(MMEM_PTR(&mem),&input_packet,114);
+			memset(&bundle, 0, sizeof(struct bundle_t));
 			if ( !recover_bundel(&bundle,&mem, (uint8_t)size)){
 				PRINTF("DTN: recover ERROR\n");	
 				return;
@@ -124,7 +125,7 @@ static void dtn_network_input(void)
 #if DEBUG
 			PRINTF("NETWORK: ");
 			for (i=0; i<bundle.size; i++){
-				PRINTF("%x:",*(bundle.block + i));
+				PRINTF("%x:",*(bundle.mem.ptr + i));
 			}
 			PRINTF("\n");
 #endif
@@ -133,7 +134,7 @@ static void dtn_network_input(void)
 			bundle.debug_time=clock_time();
 #endif
 			bundle.size= (uint8_t) size;
-			PRINTF("NETWORK: size of received bundle: %u block pointer %p\n",bundle.size, bundle.block);
+			PRINTF("NETWORK: size of received bundle: %u block pointer %p\n",bundle.size, bundle.mem.ptr);
 			dispatch_bundle(&bundle);			
 //			process_post(&agent_process, dtn_receive_bundle_event, &bundle);
 		}else{
@@ -194,16 +195,16 @@ static void packet_sent(void *ptr, int status, int num_tx)
 int dtn_network_send(struct bundle_t *bundle, struct route_t *route) 
 {
 	
-	uint8_t *payload = bundle->block;
+	uint8_t *payload = bundle->mem.ptr;
 	uint8_t len = bundle->size;
 	uint32_t i, time;
-	sdnv_decode(bundle->block+bundle->offset_tab[TIME_STAMP_SEQ_NR][OFFSET],bundle->offset_tab[TIME_STAMP_SEQ_NR][STATE],&i);
-	sdnv_decode(bundle->block+bundle->offset_tab[LIFE_TIME][OFFSET],bundle->offset_tab[LIFE_TIME][STATE],&time);
+	sdnv_decode(bundle->mem.ptr+bundle->offset_tab[TIME_STAMP_SEQ_NR][OFFSET],bundle->offset_tab[TIME_STAMP_SEQ_NR][STATE],&i);
+	sdnv_decode(bundle->mem.ptr+bundle->offset_tab[LIFE_TIME][OFFSET],bundle->offset_tab[LIFE_TIME][STATE],&time);
 
-	PRINTF("seq_num %lu lifetime %lu bundle pointer %p bundel->block %p \n ",i,time,bundle,bundle->block);
+	PRINTF("seq_num %lu lifetime %lu bundle pointer %p bundel->block %p \n ",i,time,bundle,bundle->mem.ptr);
 	PRINTF("NETWORK: ");
 	for (i=0; i<bundle->size; i++){
-		PRINTF("%x:",*(bundle->block + i));
+		PRINTF("%x:",*(bundle->mem.ptr + i));
 	}
 	PRINTF("\n");
 	/* kopiere die Daten in den packetbuf(fer) */
