@@ -94,9 +94,11 @@ uint8_t create_bundle(struct bundle_t *bundle)
 	uint32_t len64 ;
 	//set_attr(bundle, P_LENGTH, &len64);
 	len64=0;
+	PRINTF("BUNDLE: set len\n");
 	i=set_attr(bundle, LENGTH, &len64);
+	PRINTF("BUNDLE: set dir_len\n");
 	i+=set_attr(bundle, DIRECTORY_LEN, &len64);
-	bundle->size += len64 + i; 
+//	bundle->size += len64 + i; 
 #if DEBUG
 	PRINTF("BUNDLE: CREATE ");
 	uint8_t* tmp= bundle->mem.ptr;
@@ -137,10 +139,11 @@ uint8_t add_block(struct bundle_t *bundle, uint8_t type, uint8_t flags, uint8_t 
 
 	struct mmem mmem_tmp;
 	mmem_alloc(&mmem_tmp, d_len + len + 2  + bundle->size);
-	memcpy(mmem_tmp.ptr, bundle->mem.ptr, bundle->size);
+	memcpy((uint8_t*)mmem_tmp.ptr, (uint8_t*) bundle->mem.ptr, bundle->size);
 	mmem_free(&bundle->mem);
 	memset(&bundle->mem, 0, sizeof(struct mmem));
-	memcpy(&bundle->mem, &mmem_tmp, sizeof(struct mmem));
+	memcpy(&bundle->mem, &mmem_tmp, sizeof(mmem_tmp));
+	mmem_reorg(&mmem_tmp,&bundle->mem);
 
 	/*
 	mmem_realloc(&bundle->mem, bundle->size, d_len + len + 2  + bundle->size);
@@ -164,17 +167,17 @@ uint8_t add_block(struct bundle_t *bundle, uint8_t type, uint8_t flags, uint8_t 
 	if (bundle->mem.ptr == NULL) {
 		return 0;
 	}
-	memcpy(bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET] + bundle->offset_tab[DATA][STATE], &type, 1);
+	memcpy((uint8_t*)bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET] + bundle->offset_tab[DATA][STATE], &type, 1);
 	bundle->offset_tab[DATA][STATE] +=1;
-	memcpy(bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET] + bundle->offset_tab[DATA][STATE], &flags, 1);
+	memcpy((uint8_t*)bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET] + bundle->offset_tab[DATA][STATE], &flags, 1);
 	bundle->offset_tab[DATA][STATE] +=1;
-	memcpy(bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET] + bundle->offset_tab[DATA][STATE], s_len, len);
+	memcpy((uint8_t*)bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET] + bundle->offset_tab[DATA][STATE], s_len, len);
 	bundle->offset_tab[DATA][STATE] +=len;
-	memcpy(bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET] + bundle->offset_tab[DATA][STATE],data,d_len);
+	memcpy((uint8_t*)bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET] + bundle->offset_tab[DATA][STATE],data,d_len);
 	bundle->offset_tab[DATA][STATE] +=d_len;
 	bundle->size = bundle->offset_tab[DATA][OFFSET] + bundle->offset_tab[DATA][STATE]; 
 #if DEBUG
-	uint8_t *tmp= bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET];
+	uint8_t *tmp= (uint8_t*)bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET];
 	PRINTF("BUNDLE: ADD_BLOCK: Type: %u , ",*tmp);
 	tmp++;
 	PRINTF("flags: %u , ",*tmp);
@@ -194,16 +197,19 @@ uint8_t add_block(struct bundle_t *bundle, uint8_t type, uint8_t flags, uint8_t 
 *brief converts an integer value in sdnv and copies this to the right place in bundel
 */
 void hexdump(char * string, uint8_t * bla, int length) {
+#if DEBUG
 	printf("Hex: (%s) ", string);
 	int i;
 	for(i=0; i<length; i++) {
-		printf("%02X ", bla[i]);
+		printf("%02X ", *(bla+i));
 	}
 	printf("\n");
+#endif
 }
 
 uint8_t set_attr(struct bundle_t *bundle, uint8_t attr, uint32_t *val)
 {
+	PRINTF("set attr %lx\n",*val);
 	if (attr == FLAGS){
 		bundle->custody = 0x08 &(uint8_t) *val;
 	}
@@ -224,21 +230,29 @@ uint8_t set_attr(struct bundle_t *bundle, uint8_t attr, uint32_t *val)
 	sdnv_encode(*val,sdnv,len);
 
 	if(((int16_t)(len-bundle->offset_tab[attr][STATE])) > 0){
-		PRINTF("BUNDLE: realloc %u\n",(len-bundle->offset_tab[attr][STATE]) + bundle->size);
+		PRINTF("BUNDLE: realloc (%u-%u)+%u= %u\n",len,bundle->offset_tab[attr][STATE],bundle->mem.size,(len-bundle->offset_tab[attr][STATE]) + bundle->mem.size);
 
 		hexdump("vorher  ", bundle->mem.ptr, bundle->mem.size);
 		struct mmem mmem_tmp ;
-		mmem_alloc(&mmem_tmp,(len-bundle->offset_tab[attr][STATE]) + bundle->mem.size);
-		memset(mmem_tmp.ptr,7,mmem_tmp.size);
-		printf("cpy: %u \n", bundle->offset_tab[attr][OFFSET]);
-		memcpy(mmem_tmp.ptr,bundle->mem.ptr,bundle->offset_tab[attr][OFFSET]);
+		if(!mmem_alloc(&mmem_tmp,(len-bundle->offset_tab[attr][STATE]) + bundle->mem.size)){
+			PRINTF("MMEM ERROR\n");
+			while(1);
+		}
+		hexdump("vorher  ", bundle->mem.ptr, bundle->mem.size);
+		//memset((uint8_t*)mmem_tmp.ptr,7,mmem_tmp.size);
+		hexdump("vorher  ", bundle->mem.ptr, bundle->mem.size);
+		PRINTF("cpy: %u  %p --> %p\n", bundle->offset_tab[attr][OFFSET],bundle->mem.ptr,mmem_tmp.ptr);
+		memcpy((uint8_t*)mmem_tmp.ptr,(uint8_t*)bundle->mem.ptr,bundle->offset_tab[attr][OFFSET]);
 		hexdump("memcpy 1", mmem_tmp.ptr, mmem_tmp.size);
 		
-		memcpy(mmem_tmp.ptr + bundle->offset_tab[attr][OFFSET]+(len-bundle->offset_tab[attr][STATE]), bundle->mem.ptr + bundle->offset_tab[attr][OFFSET], bundle->size - bundle->offset_tab[attr][OFFSET]);
+		memcpy((uint8_t*)mmem_tmp.ptr + bundle->offset_tab[attr][OFFSET]+(len-bundle->offset_tab[attr][STATE]), (uint8_t*)bundle->mem.ptr + bundle->offset_tab[attr][OFFSET], bundle->size - bundle->offset_tab[attr][OFFSET]);
 		hexdump("memcpy 2", mmem_tmp.ptr, mmem_tmp.size);
+		PRINTF("mmem_tmp.ptr %p %p\n",mmem_tmp.ptr,mmem_tmp.next);
 		mmem_free(&bundle->mem);
-		
-		memcpy(&bundle->mem, &mmem_tmp, sizeof(struct mmem));
+		PRINTF("mmem_tmp.ptr %p\n",MMEM_PTR(&mmem_tmp));
+		memcpy(&bundle->mem, &mmem_tmp, sizeof(mmem_tmp));
+		mmem_reorg(&mmem_tmp,&bundle->mem);
+		PRINTF("bundle->mem.ptr %p\n",bundle->mem.ptr);
 		/*
 		struct mmem *mmem_tmp = (struct mmem*) malloc(sizeof(struct mmem));
 		if (!mmem_tmp){
@@ -267,10 +281,11 @@ uint8_t set_attr(struct bundle_t *bundle, uint8_t attr, uint32_t *val)
 		PRINTF("BUNDLE: smaller\n");
 		struct mmem mmem_tmp ;
 		mmem_alloc(&mmem_tmp,bundle->size + ((int16_t)(len-bundle->offset_tab[attr][STATE])));
-		memcpy(mmem_tmp.ptr,bundle->mem.ptr,bundle->offset_tab[attr][OFFSET]);
-		memcpy(mmem_tmp.ptr + bundle->offset_tab[attr][OFFSET] + len,bundle->mem.ptr + bundle->offset_tab[attr][OFFSET] + bundle->offset_tab[attr][STATE],bundle->size + ((int16_t)(len-bundle->offset_tab[attr][STATE])) );
+		memcpy((uint8_t*)mmem_tmp.ptr,(uint8_t*)bundle->mem.ptr,bundle->offset_tab[attr][OFFSET]);
+		memcpy((uint8_t*)mmem_tmp.ptr + bundle->offset_tab[attr][OFFSET] + len,(uint8_t*)bundle->mem.ptr + bundle->offset_tab[attr][OFFSET] + bundle->offset_tab[attr][STATE],bundle->size + ((int16_t)(len-bundle->offset_tab[attr][STATE])) );
 		mmem_free(&bundle->mem);
-		memcpy(&bundle->mem, &mmem_tmp, sizeof(struct mmem));
+		memcpy(&bundle->mem, &mmem_tmp, sizeof(mmem_tmp));
+		mmem_reorg(&mmem_tmp,&bundle->mem);
 		
 		
 		/*struct mmem *mmem_tmp = (struct mmem*) malloc(sizeof(struct mmem));
@@ -293,8 +308,8 @@ uint8_t set_attr(struct bundle_t *bundle, uint8_t attr, uint32_t *val)
 		bundle->mem.ptr=tmp;
 		*/
 	}
-	printf("%p + %d = %p -> %u (%d)\n", bundle->mem.ptr, bundle->offset_tab[attr][OFFSET], (bundle->mem.ptr + bundle->offset_tab[attr][OFFSET]), sdnv, len);
-	memcpy(bundle->mem.ptr + bundle->offset_tab[attr][OFFSET], sdnv, len);
+	PRINTF("%p + %d = %p -> %u (%d)\n", bundle->mem.ptr, bundle->offset_tab[attr][OFFSET], (bundle->mem.ptr + bundle->offset_tab[attr][OFFSET]), sdnv, len);
+	memcpy((uint8_t*)bundle->mem.ptr + bundle->offset_tab[attr][OFFSET], sdnv, len);
 	hexdump("memcpy 3", bundle->mem.ptr, bundle->mem.size);
 
 	uint8_t i;
@@ -303,6 +318,7 @@ uint8_t set_attr(struct bundle_t *bundle, uint8_t attr, uint32_t *val)
 		bundle->offset_tab[i][OFFSET] += (len - bundle->offset_tab[attr][STATE]);
 //		PRINTF("BUNDLE: offset_tab[%u][OFFSET]=%u offset_tab[%u][STATE]=%u\n",i,bundle->offset_tab[i][OFFSET],i,bundle->offset_tab[i][STATE]);
 	}
+	PRINTF("bundle->size %u+(%u-%u)\n",bundle->size,len,bundle->offset_tab[attr][STATE]);
 	bundle->size += (len - bundle->offset_tab[attr][STATE]);
 	bundle->offset_tab[attr][STATE] = len;
 	PRINTF("BUNDLE: offset_tab[%u][OFFSET]=%u offset_tab[%u][STATE]=%u\n",attr,bundle->offset_tab[attr][OFFSET],attr,bundle->offset_tab[attr][STATE]);
@@ -311,7 +327,8 @@ uint8_t set_attr(struct bundle_t *bundle, uint8_t attr, uint32_t *val)
 		for (i=3; i<17; i++){
 			size+=bundle->offset_tab[i][STATE];
 		}
-		memset(bundle->mem.ptr+bundle->offset_tab[LENGTH][OFFSET],size,1);
+		PRINTF("set new len %u\n",size);
+		memset((uint8_t*)bundle->mem.ptr+bundle->offset_tab[LENGTH][OFFSET],size,1);
 	}
 	// free(sdnv);
 	// sdnv=NULL;
@@ -326,7 +343,7 @@ uint8_t set_attr(struct bundle_t *bundle, uint8_t attr, uint32_t *val)
 	PRINTF("\n");
 #endif
 	hexdump("ende   ", bundle->mem.ptr, bundle->mem.size);
-	printf("\n");	
+	PRINTF("\n");	
 	return len;
 
 }
@@ -393,7 +410,7 @@ uint8_t recover_bundel(struct bundle_t *bundle,struct mmem *mem, int size)
 		PRINTF("%u:",*(block+i));
 	}
 	PRINTF("\n");
-	memcpy(bundle->mem.ptr,block,size);
+	memcpy((uint8_t*)bundle->mem.ptr,(uint8_t*)block,size);
 	mmem_free(mem);
 	block=NULL;
 	PRINTF("BUNDLE: RECOVERED\n");
