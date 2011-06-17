@@ -100,7 +100,7 @@ mmem_alloc(struct mmem *m, unsigned int size)
   /* Set up the pointer so that it points to the first available byte
      in the memory block. */
   m->ptr = &memory[MMEM_SIZE - avail_memory];
-  
+//  printf("MMEM -> ptr= %p=%p+(%u-%u)   size=%u\n",m->ptr,memory,MMEM_SIZE , avail_memory,size);
   /* Remember the size of this memory block. */
   m->size = size;
 
@@ -135,8 +135,12 @@ mmem_free(struct mmem *m)
     /* Update all the memory pointers that points to memory that is
        after the allocation that is to be removed. */
     for(n = m->next; n != NULL; n = n->next) {
+  //  	printf("\nalt n->ptr %p, ",n->ptr);
       n->ptr = (void *)((char *)n->ptr - m->size);
+  //  	printf("neu n->ptr %p\n\n",n->ptr);
     }
+  }else{
+//  	printf("\n\n OOOOOPPS\n\n");
   }
 
   avail_memory += m->size;
@@ -154,7 +158,7 @@ mmem_reorg(struct mmem *old, struct mmem *new)
   list_add(mmemlist, new);
 }
 
-
+	
 /*---------------------------------------------------------------------------*/
 /**
  * \brief      Initialize the managed memory module
@@ -170,7 +174,7 @@ mmem_init(void)
 {
   list_init(mmemlist);
   avail_memory = MMEM_SIZE;
-  printf("MMEM: memory %p - %p\n",memory, memory+MMEM_SIZE);
+//  printf("MMEM: memory %p - %p\n",memory, memory+MMEM_SIZE);
 }
 /*---------------------------------------------------------------------------*/
 
