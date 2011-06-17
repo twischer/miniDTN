@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#define DEBUG 1
+#define DEBUG 0
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)
@@ -160,13 +160,13 @@ int32_t save_bundle(struct bundle_t *bundle)
 			index++;
 		}
 		if (delet !=-1){
-			printf("STORAGE: del %u\n",delet);
+			PRINTF("STORAGE: del %u\n",delet);
 			
-			printf("STORAGE: bundle->mem.ptr %p (%p + %p)\n", bundle->mem.ptr, bundle, &bundle->mem);
+			PRINTF("STORAGE: bundle->mem.ptr %p (%p + %p)\n", bundle->mem.ptr, bundle, &bundle->mem);
 			if(!del_bundle(delet)){
 				return -1;
 			}
-			printf("STORAGE: bundle->mem.ptr %p (%p + %p)\n", bundle->mem.ptr, bundle, &bundle->mem);
+			PRINTF("STORAGE: bundle->mem.ptr %p (%p + %p)\n", bundle->mem.ptr, bundle, &bundle->mem);
 			free=delet;
 		}
 	}
