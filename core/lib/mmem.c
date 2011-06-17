@@ -146,6 +146,15 @@ mmem_free(struct mmem *m)
   /* Remove the memory block from the list. */
   list_remove(mmemlist, m);
 }
+
+void
+mmem_reorg(struct mmem *old, struct mmem *new)
+{
+  list_remove(mmemlist, old);
+  list_add(mmemlist, new);
+}
+
+
 /*---------------------------------------------------------------------------*/
 /**
  * \brief      Initialize the managed memory module
