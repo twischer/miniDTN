@@ -113,15 +113,17 @@ uint8_t create_bundle(struct bundle_t *bundle)
 
 uint8_t add_block(struct bundle_t *bundle, uint8_t type, uint8_t flags, uint8_t *data, uint8_t d_len)
 {
-	sdnv_t s_len;
+//	sdnv_t s_len;
 	size_t len = sdnv_encoding_len((uint32_t )d_len);
-	s_len = (uint8_t *) malloc(len);
-	if (s_len==NULL){
-		PRINTF("\n\n MALLOC ERROR\n\n");
-		while(1);
-	}
+	struct mmem mem;
+	mmem_alloc(&mem,len);
+//	s_len = (uint8_t *) malloc(len);
+//	if (s_len==NULL){
+//		PRINTF("\n\n MALLOC ERROR\n\n");
+//		while(1);
+//	}
 
-	sdnv_encode((uint32_t) d_len, s_len, len);
+	sdnv_encode((uint32_t) d_len, (sdnv_t) mem.ptr, len);
 
 	/*
 	struct mmem *mmem_tmp = (struct mmem*) malloc(sizeof(struct mmem));
@@ -171,11 +173,12 @@ uint8_t add_block(struct bundle_t *bundle, uint8_t type, uint8_t flags, uint8_t 
 	bundle->offset_tab[DATA][STATE] +=1;
 	memcpy((uint8_t*)bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET] + bundle->offset_tab[DATA][STATE], &flags, 1);
 	bundle->offset_tab[DATA][STATE] +=1;
-	memcpy((uint8_t*)bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET] + bundle->offset_tab[DATA][STATE], s_len, len);
+	memcpy((uint8_t*)bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET] + bundle->offset_tab[DATA][STATE], (uint8_t*)mem.ptr, len);
 	bundle->offset_tab[DATA][STATE] +=len;
 	memcpy((uint8_t*)bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET] + bundle->offset_tab[DATA][STATE],data,d_len);
 	bundle->offset_tab[DATA][STATE] +=d_len;
 	bundle->size = bundle->offset_tab[DATA][OFFSET] + bundle->offset_tab[DATA][STATE]; 
+	mmem_free(&mem);
 #if DEBUG
 	uint8_t *tmp= (uint8_t*)bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET];
 	PRINTF("BUNDLE: ADD_BLOCK: Type: %u , ",*tmp);
