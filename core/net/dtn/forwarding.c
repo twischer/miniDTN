@@ -14,11 +14,15 @@
 
 void forwarding_bundle(struct bundle_t *bundle)
 {
-	if(CUSTODY.decide(bundle)){
-		CUSTODY.manage(bundle);
-	}
 	PRINTF("FORWARDING:1 bundle->mem.ptr %p\n",bundle->mem.ptr);
-	int32_t saved = BUNDLE_STORAGE.save_bundle(bundle);
+	uint32_t flags;
+	int32_t saved;
+	sdnv_decode(bundle->mem.ptr + bundle->offset_tab[FLAGS][OFFSET], bundle->offset_tab[FLAGS][STATE], &flags);
+	if (flags & 0x08){ // bundle is custody
+		saved =CUSTODY.decide(bundle)
+	}else{
+		saved = BUNDLE_STORAGE.save_bundle(bundle);
+	}
 	PRINTF("FORWARDING:2 bundle->mem.ptr %p\n",bundle->mem.ptr);
 	PRINTF("FORWARDING saved in %ld\n", saved);
 	if( saved >=0){
