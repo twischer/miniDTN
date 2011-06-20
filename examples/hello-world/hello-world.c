@@ -96,7 +96,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 			set_attr(&bundle, CUST_NODE, &bla);
 			set_attr(&bundle, CUST_SERV, &bla);
 			set_attr(&bundle, TIME_STAMP_SEQ_NR, &j);
-			bla=25;
+			bla=3000;
 			set_attr(&bundle, LIFE_TIME, &bla);
 			bla=4;
 			set_attr(&bundle, TIME_STAMP, &bla);
@@ -119,7 +119,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 			}
 		printf("\n");
 			process_post(&agent_process,dtn_send_bundle_event,(void *) &bundle);
-			etimer_set(&timer, CLOCK_SECOND);
+			etimer_set(&timer, CLOCK_SECOND*10);
 
 
 
