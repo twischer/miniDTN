@@ -7,6 +7,7 @@
 
 #include <stdint.h>
 #include "net/dtn/bundle.h"
+#include "mmem.h"
 
 
 /*========================================== STATUS FLAGS ==========================================*/
@@ -45,19 +46,14 @@
 typedef struct {
 	uint8_t status_flag;
 	uint8_t reason_code;
-	uint16_t fragement_offset;
-	uint16_t fragment_length;
-	union {
-		uint32_t bundle_receipt_time;
-		uint32_t bundle_custody_time;
-		uint32_t bundle_forwarding_time;
-		uint32_t bundle_delivery_time;
-		uint32_t bundle_deletion_time;
-	};
-	uint32_t bundle_creation_timestamp;
-	uint8_t bundle_creation_timestamp_seq;
-	uint8_t source_eid_length;
-	char *source_eid;
+	struct mmem mem;
 } status_report_t;
+
+struct status_report_driver {
+	char *name;
+	uint8_t (* send)(struct bundle_t *bundle,uint8_t status, uint8_t reason);
+};
+
+extern const struct status_report_driver STATUS_REPORT;
 
 #endif

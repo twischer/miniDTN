@@ -6,7 +6,7 @@ void null_cust_init(void)
 	return;
 }
 
-uint8_t null_cust_manage(custody_signal_t *signal)
+uint8_t null_cust_manage(struct bundle_t *bundle)
 {
 	//TODO admin record senden, dass bundle abgelehnt wurde
 	return 0;
@@ -17,9 +17,9 @@ uint8_t null_cust_set_state(custody_signal_t *signal)
 	return 0;
 }
 
-uint8_t null_cust_decide(custody_signal_t *signal)
+int32_t null_cust_decide(struct bundle_t *bundle)
 {
-	return 0;
+	return -1;
 }
 
 
