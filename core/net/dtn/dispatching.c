@@ -66,13 +66,13 @@ void dispatch_bundle(struct bundle_t *bundle) {
 		
 		if(dest == dtn_node_id){
 				
-				administrative_record_block_t *admin_record;
-				admin_record = (administrative_record_block_t *) bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET];
 				
-				if(admin_record->record_status == CUSTODY_SIGNAL) {
+				if(*((uint8_t*)bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET]) & 32 ) {// is custody signal
 					PRINTF("DISPATCHING: received custody signal\n");	
 					//call custody signal method
-					CUSTODY.set_state(&admin_record->custody_signal);
+					CUSTODY.set_state(bundle);
+				}else if( (*((uint8_t*)bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET]) & 16) && (*((uint8_t*)bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET]+1) & 2)) { // node accepted custody
+					CUSTODY.set_state(bundle);
 				}
 				delete_bundle(bundle);
 				return;
