@@ -39,6 +39,7 @@ struct bundle_t{
 	uint32_t rec_time;
 	uint16_t bundle_num;
 	uint32_t lifetime;
+	uint32_t flags;
 	struct mmem mem;
 	// struct mmem *mem;
 #if DEBUG_H

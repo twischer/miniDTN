@@ -394,6 +394,7 @@ uint8_t recover_bundel(struct bundle_t *bundle,struct mmem *mem, int size)
 	bundle->offset_tab[DATA][STATE]= size- ((uint8_t)(tmp - block));
 	PRINTF("BUNDLE: RECOVER: data size: %u=%u-%u\n",bundle->offset_tab[DATA][STATE], size,((uint8_t)(tmp - block)));
 	sdnv_decode(block+bundle->offset_tab[LIFE_TIME][OFFSET],bundle->offset_tab[LIFE_TIME][STATE],&bundle->lifetime);
+	sdnv_decode(block+bundle->offset_tab[FALGS][OFFSET],bundle->offset_tab[FLAGS][STATE],&bundle->flags);
 	bundle->offset_tab[DATA][OFFSET]= tmp-block;
 	bundle->size=size;
 	/*bundle->mem = (struct mmem *) malloc(sizeof(struct mmem));

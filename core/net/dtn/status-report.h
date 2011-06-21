@@ -44,7 +44,7 @@
 *   \brief The structure of a status report as part of an administrative record
 */
 typedef struct {
-	uint8_t status_flag;
+	uint8_t status;
 	uint8_t reason_code;
 	struct mmem mem;
 } status_report_t;
