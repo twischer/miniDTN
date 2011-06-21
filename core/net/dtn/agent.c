@@ -45,7 +45,7 @@
 #endif
 
 uint32_t dtn_node_id;
-static uint32_t dtn_seq_nr;
+uint32_t dtn_seq_nr;
 static struct etimer discover_timer;
 /* Makro das den Prozess definiert */
 PROCESS(agent_process, "AGENT process");
