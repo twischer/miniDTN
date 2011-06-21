@@ -40,9 +40,9 @@ void dispatch_bundle(struct bundle_t *bundle) {
 	PRINTF("DISPATCHING: bundle: %p\n", bundle->mem.ptr);
 	struct registration *n;
 
-	uint32_t dest=1,flags=1;
+	uint32_t dest=1;;
 	sdnv_decode(bundle->mem.ptr + bundle->offset_tab[DEST_NODE][OFFSET], bundle->offset_tab[DEST_NODE][STATE], &dest);
-	sdnv_decode(bundle->mem.ptr + bundle->offset_tab[FLAGS][OFFSET], bundle->offset_tab[FLAGS][STATE], &flags);
+//	sdnv_decode(bundle->mem.ptr + bundle->offset_tab[FLAGS][OFFSET], bundle->offset_tab[FLAGS][STATE], &flags);
  	//TODO warum sagt gcc das flags nicht bunutzt wird	
 	uint32_t dest_app=1;
 	sdnv_decode(bundle->mem.ptr + bundle->offset_tab[DEST_SERV][OFFSET], bundle->offset_tab[DEST_SERV][STATE], &dest_app);
@@ -60,7 +60,7 @@ void dispatch_bundle(struct bundle_t *bundle) {
 	
 	
 	
-	if((flags & 0x02) != 0) { //is bundle an admin record
+	if((bundle->flags & 0x02) != 0) { //is bundle an admin record
 		
 		PRINTF("DISPATCHING: admin record detected \n");
 		

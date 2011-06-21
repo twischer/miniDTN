@@ -78,9 +78,9 @@ void deliver_bundle(struct bundle_t *bundle, struct registration *n) {
 		if (*block & 0x08){
 			custody_signal_t cust_sig;	
 			cust_sig.status= CUSTODY_TRANSFER_SUCCEEDED;
-			uint32_t flags;
-			sdnv_decode(bundle->mem.ptr + bundle->offset_tab[FLAGS][OFFSET],bundle->offset_tab[FLAGS][STATE],&flags);
-			if (flags & 0x01){ //bundle is fragmented
+//			uint32_t flags;
+//			sdnv_decode(bundle->mem.ptr + bundle->offset_tab[FLAGS][OFFSET],bundle->offset_tab[FLAGS][STATE],&flags);
+			if (bundle->flags & 0x01){ //bundle is fragmented
 				sdnv_decode(bundle->mem.ptr + bundle->offset_tab[FRAG_OFFSET][OFFSET], bundle->offset_tab[FRAG_OFFSET][STATE], &cust_sig.fragement_offset);
 				cust_sig.fragment_length=len;
 			}else{
