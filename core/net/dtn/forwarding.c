@@ -19,7 +19,7 @@ void forwarding_bundle(struct bundle_t *bundle)
 	int32_t saved;
 	//sdnv_decode(bundle->mem.ptr + bundle->offset_tab[FLAGS][OFFSET], bundle->offset_tab[FLAGS][STATE], &flags);
 	if (bundle->flags & 0x08){ // bundle is custody
-		saved =CUSTODY.decide(bundle)
+		saved =CUSTODY.decide(bundle);
 	}else{
 		saved = BUNDLE_STORAGE.save_bundle(bundle);
 	}

@@ -29,7 +29,7 @@ returns bundle_num
 */
 int32_t save_bundle(struct bundle_t *bundle);
 
-uint16_t del_bundle(uint16_t bundle_num);
+uint16_t del_bundle(uint16_t bundle_num,uint8_t reason);
 void g_store_reduce_lifetime();
 
 uint16_t read_bundle(uint16_t bundle_num, struct bundle_t *bundle);

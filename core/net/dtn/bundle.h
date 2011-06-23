@@ -36,6 +36,7 @@ struct bundle_t{
 	char offset_tab[18][2];
 	uint8_t size;
 	uint8_t custody;
+	uint8_t del_reason;
 	uint32_t rec_time;
 	uint16_t bundle_num;
 	uint32_t lifetime;

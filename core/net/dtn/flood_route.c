@@ -158,7 +158,7 @@ void flood_sent(struct route_t *route,int status, int num_tx)
 			uint16_t tmp= route->bundle_num;
 			memb_free(&route_mem,route);
 	    	    	PRINTF("FLOOD: bundle sent to max number of nodes, deleting bundle\n");
-			BUNDLE_STORAGE.del_bundle(tmp);
+			BUNDLE_STORAGE.del_bundle(tmp,4);
 		    }else{
 		    	PRINTF("FLOOD: ERROR\n");
 		    }
