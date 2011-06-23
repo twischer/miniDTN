@@ -2,6 +2,9 @@
 #include "net/dtn/custody.h"
 #include "bundle.h"
 
+#define RETRANSMIT 1000
+
+
 struct cust_t {
 	struct cust *next;
 	uint16_t bundle_num;
@@ -9,6 +12,7 @@ struct cust_t {
 	uint32_t timestamp;
 	uint32_t frag_offset;
 	uint32_t seq_num;
+	uint16_t retransmit_in;
 }
 
 
@@ -17,6 +21,8 @@ struct cust_t {
 LIST(cust_list);
 MEMB(cust_mem, struct cust_t, MAX_CUST);
 
+static struct ctimer *b_cust_timer;
+
 void b_cust_init(void)
 {
 	memb_init(&cust_mem);
@@ -24,6 +30,12 @@ void b_cust_init(void)
 	return;
 }
 
+uint8_t retransmit(void){
+	//search bundle to be retranmited in cust_list
+	//reduce all retransmit times
+	//retransmit bundel
+	//set retransmit time
+}
 
 uint8_t b_cust_release(struct bundle_t *bundle)
 {
@@ -78,6 +90,7 @@ uint8_t b_cust_release(struct bundle_t *bundle)
 	}
 	// delete in storage
 	BUNDLE_STORAGE.del_bundle(cust->bundle_num);
+	// delete timer
 	// delete in list
 	list_remove(cust_list,cust);
 	// free memb
@@ -90,6 +103,7 @@ uint8_t b_cust_release(struct bundle_t *bundle)
 }
 uint8_t b_cust_deleted(struct bundle_t *bundle){
 	//send deleted to reportto
+	//delete timer
 	//delete in list 
 	
 }
@@ -110,8 +124,9 @@ int32_t b_cust_decide(struct bundle_t *bundle)
 			if (bundle->flags & 1){
 				sdnv_decode(bundle->mem.ptr + bundle->offset_tab[FRAG_OFFSET][OFFSET] , bundle->offset_tab[FRAG_OFFSET][STATE] , &cust->frag_offset);
 			}
+			cust->retransmit_in=RETRANSMIT;
 			list_add(cust_list, cust);
-
+		}
 			
 			//save saved to list
 		return saved;
