@@ -76,23 +76,7 @@ void deliver_bundle(struct bundle_t *bundle, struct registration *n) {
 		process_post(n->application_process, submit_data_to_application_event, bundle);
 		block = bundle->mem.ptr+1;
 		if (*block & 0x08){
-			custody_signal_t cust_sig;	
-			cust_sig.status= CUSTODY_TRANSFER_SUCCEEDED;
-//			uint32_t flags;
-//			sdnv_decode(bundle->mem.ptr + bundle->offset_tab[FLAGS][OFFSET],bundle->offset_tab[FLAGS][STATE],&flags);
-			if (bundle->flags & 0x01){ //bundle is fragmented
-				sdnv_decode(bundle->mem.ptr + bundle->offset_tab[FRAG_OFFSET][OFFSET], bundle->offset_tab[FRAG_OFFSET][STATE], &cust_sig.fragement_offset);
-				cust_sig.fragment_length=len;
-			}else{
-				cust_sig.fragment_length=0;
-				cust_sig.fragement_offset=0;
-			}
-			sdnv_decode(bundle->mem.ptr + bundle->offset_tab[TIME_STAMP][OFFSET], bundle->offset_tab[TIME_STAMP][STATE],  &cust_sig.bundle_creation_timestamp);
-			sdnv_decode(bundle->mem.ptr + bundle->offset_tab[TIME_STAMP_SEQ_NR][OFFSET],bundle->offset_tab[TIME_STAMP_SEQ_NR][STATE],  &cust_sig.bundle_creation_timestamp_seq);
-			sdnv_decode(bundle->mem.ptr + bundle->offset_tab[SRC_NODE][OFFSET], bundle->offset_tab[SRC_NODE][STATE], &cust_sig.src_node);
-			sdnv_decode(bundle->mem.ptr + bundle->offset_tab[SRC_SERV][OFFSET], bundle->offset_tab[SRC_SERV][STATE], &cust_sig.src_app);
-
-			CUSTODY.set_state(&cust_sig);
+			CUSTODY.report(bundle,128);
 		}
 	}			
 	

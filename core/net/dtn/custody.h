@@ -12,9 +12,10 @@ struct custody_driver {
 	char *name;
 	
 	void (* init)(void);
-	uint8_t (* set_state)(custody_signal_t *signal);
-	uint8_t (* manage)(struct bundle_t *bundle);
+	uint8_t (* release)(struct bundle_t *bundle);
+	uint8_t (* report)(struct bundle_t *bundle, uint8_t status);
 	int32_t (* decide)(struct bundle_t *bundle);
+	uint8_t (* retransmit)(struct bundle_t *bundle);
 };
 
 extern const struct custody_driver CUSTODY;

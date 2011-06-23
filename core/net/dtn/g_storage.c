@@ -57,7 +57,7 @@ void init(void)
 			file_list[i].file_size=0;
 			file_list[i].lifetime=0;
 			PRINTF("deleting old bundles\n");
-			del_bundle(i);	
+			del_bundle(i,4);	
 		}
 		PRINTF("write new list-file\n");
 		fd_write = cfs_open(filename, CFS_WRITE);
@@ -79,7 +79,7 @@ void g_store_reduce_lifetime()
 
 			if( file_list[i].lifetime < (uint32_t)6){
 				PRINTF("STORAGE: bundle lifetime expired of bundle %u\n",i);
-				del_bundle(i);
+				del_bundle(i,1);
 			}else{
 				file_list[i].lifetime-=5;
 				PRINTF("STORAGE: remaining lifefime of bundle %u : %lu\n",i,file_list[i].lifetime);
@@ -99,7 +99,7 @@ void reinit(void)
 		file_list[i].bundle_num=i;
 		file_list[i].file_size=0;
 		file_list[i].lifetime=0;
-		del_bundle(i);
+		del_bundle(i,4);
 		fd_write = cfs_open(filename, CFS_WRITE);
 		cfs_write(fd_write, file_list, sizeof(file_list));
 		cfs_close(fd_write);
@@ -163,7 +163,7 @@ int32_t save_bundle(struct bundle_t *bundle)
 			PRINTF("STORAGE: del %u\n",delet);
 			
 			PRINTF("STORAGE: bundle->mem.ptr %p (%p + %p)\n", bundle->mem.ptr, bundle, &bundle->mem);
-			if(!del_bundle(delet)){
+			if(!del_bundle(delet,4)){
 				return -1;
 			}
 			PRINTF("STORAGE: bundle->mem.ptr %p (%p + %p)\n", bundle->mem.ptr, bundle, &bundle->mem);
@@ -229,10 +229,12 @@ int32_t save_bundle(struct bundle_t *bundle)
 	return (int32_t)file_list[i].bundle_num;
 }
 
-uint16_t del_bundle(uint16_t bundle_num)
+uint16_t del_bundle(uint16_t bundle_num,uint8_t reason)
 {
 	//uint16_t *num;
 	//num = malloc(2);
+	read_bundle(bundle_num,&bundle_str);
+	bundle_str.del_reason=reason;
 	del_num=bundle_num;
 	//if (!num){
 	//	printf("\n\n MALLOC ERROR\n\n");
@@ -259,7 +261,7 @@ uint16_t del_bundle(uint16_t bundle_num)
 	}
 	
 	
-	process_post(&agent_process,dtn_bundle_deleted_event, NULL);
+	process_post(&agent_process,dtn_bundle_deleted_event, &bundle_str);
 	return 1;
 }
 

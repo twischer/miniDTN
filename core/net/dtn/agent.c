@@ -20,20 +20,22 @@
 #include "mmem.h"
 #include "net/rime/rimeaddr.h"
 
-#include "net/dtn/API_registration.h"
-#include "net/dtn/registration.h"
-#include "net/dtn/API_events.h"
-#include "net/dtn/bundle.h"
-#include "net/dtn/agent.h"
-#include "net/dtn/dtn_config.h"
-#include "net/dtn/storage.h"
-#include "net/dtn/sdnv.h"
-#include "net/dtn/redundance.h"
-#include "net/dtn/dispatching.h"
-#include "net/dtn/forwarding.h"
-#include "net/dtn/routing.h"
-#include "net/dtn/dtn-network.h"
+#include "API_registration.h"
+#include "registration.h"
+#include "API_events.h"
+#include "bundle.h"
+#include "agent.h"
+#include "dtn_config.h"
+#include "storage.h"
+#include "sdnv.h"
+#include "redundance.h"
+#include "dispatching.h"
+#include "forwarding.h"
+#include "routing.h"
+#include "dtn-network.h"
 #include "node-id.h"
+#include "custody.h"
+#include "status-report.h"
 
 
 #define DEBUG 1
@@ -104,7 +106,7 @@ PROCESS_THREAD(agent_process, ev, data)
 //	BUNDLE_STORAGE.reinit();
 
 	
-	//custody_init();
+	CUSTODY.init();
 		
 	static struct bundle_t * bundleptr;
 	struct bundle_t bundle;
@@ -152,7 +154,6 @@ PROCESS_THREAD(agent_process, ev, data)
 			PRINTF("BUNDLEPROTOCOL: bundle send \n");
 			//reception_set_time();
 			bundleptr = (struct bundle_t *) data;
-			uint32_t time=(uint32_t) clock_seconds();
 			
 			bundleptr->rec_time=(uint32_t) clock_seconds(); 
 			if (bundleptr->size >= 110){
@@ -165,7 +166,6 @@ PROCESS_THREAD(agent_process, ev, data)
 			//lifetime= lifetime -time;
 			//set_attr(bundleptr,LIFE_TIME,&lifetime);
 			set_attr(bundleptr,TIME_STAMP_SEQ_NR,&dtn_seq_nr);
-			uint8_t i;
 		//	for (i=0; i<bundleptr->size; i++){
 		//		PRINTF("%u:",*(bundleptr->mem->ptr+i));
 		//	}
@@ -235,9 +235,13 @@ PROCESS_THREAD(agent_process, ev, data)
 		
 		else if(ev == dtn_bundle_deleted_event){
 			//uint16_t *tmp= (uint16_t *) data;
-
+			bundleptr=(struct bundle_t *) data;
 			PRINTF("BUNDLEPROTOCOL: delete bundle %u\n",del_num);
 			ROUTING.del_bundle( del_num);
+			if( ((bundleptr->flags & 8 ) || (bundleptr->flags & 0x40000)) &&(bundleptr->del_reason !=0xff )){
+				STATUS_REPORT.send(bundleptr,16,bundleptr->del_reason);
+			}
+			delete_bundle(bundleptr);
 			//free(tmp);
 			continue;
 		}
@@ -268,7 +272,7 @@ PROCESS_THREAD(agent_process, ev, data)
 				PRINTF("BUNDLEPROTOCOL: OOPS\n");
 				uint16_t tmp=bundleptr->bundle_num;
 				delete_bundle(bundleptr);
-				BUNDLE_STORAGE.del_bundle(tmp);
+				BUNDLE_STORAGE.del_bundle(tmp,1);
 			}
 			continue;
 		}

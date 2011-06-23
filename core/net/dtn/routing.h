@@ -3,11 +3,11 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include "net/dtn/bundle.h"
-#include "routing.h"
+#include "bundle.h"
+#include "contiki.h"
+#include "net/rime/rimeaddr.h"
 struct routing_driver {
 	char *name;
-
 	void (* init)(void);
 	void (* new_neighbor)(rimeaddr_t *dest);
 	int (* new_bundle)(uint16_t bundle_num);

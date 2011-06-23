@@ -70,9 +70,14 @@ void dispatch_bundle(struct bundle_t *bundle) {
 				if(*((uint8_t*)bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET]) & 32 ) {// is custody signal
 					PRINTF("DISPATCHING: received custody signal\n");	
 					//call custody signal method
-					CUSTODY.set_state(bundle);
+					if (*((uint8_t*)bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET+1]) & 128 ){	
+						CUSTODY.release(bundle);
+					}else{
+						CUSTODY.retransmit(bundle);
+					}
+
 				}else if( (*((uint8_t*)bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET]) & 16) && (*((uint8_t*)bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET]+1) & 2)) { // node accepted custody
-					CUSTODY.set_state(bundle);
+					CUSTODY.release(bundle);
 				}
 				delete_bundle(bundle);
 				return;
