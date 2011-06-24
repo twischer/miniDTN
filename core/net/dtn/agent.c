@@ -70,7 +70,6 @@ PROCESS_THREAD(agent_process, ev, data)
 {
 	PROCESS_BEGIN();
 	
-	PRINTF("starting DTN Bundle Protocol \n");
 	
 	mmem_init();
 	BUNDLE_STORAGE.init();
@@ -107,6 +106,7 @@ PROCESS_THREAD(agent_process, ev, data)
 
 	
 	CUSTODY.init();
+	PRINTF("starting DTN Bundle Protocol \n");
 		
 	static struct bundle_t * bundleptr;
 	struct bundle_t bundle;
@@ -265,7 +265,7 @@ PROCESS_THREAD(agent_process, ev, data)
 			if (remaining_time <= bundleptr->lifetime) {
 				PRINTF("BUNDLEPROTOCOL: %lu-%lu-%lu=%lu\n",bundleptr->lifetime, (uint32_t) clock_seconds(),bundleptr->rec_time,bundleptr->lifetime-(((uint32_t) clock_seconds())-bundleptr->rec_time));
 				set_attr(bundleptr,LIFE_TIME,&remaining_time);
-				PRINTF("BUNDLEPROTOCOL: bundleptr->mem->ptr %p\n", bundleptr->mem.ptr);
+				PRINTF("BUNDLEPROTOCOL: bundleptr->mem->ptr %p %u\n", bundleptr->mem.ptr, bundleptr->mem.size);
 				dtn_network_send(bundleptr,route);
 				delete_bundle(bundleptr);
 			}else{

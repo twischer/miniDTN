@@ -123,9 +123,9 @@ static void dtn_network_input(void)
 				return;
 			}
 #if DEBUG
-			PRINTF("NETWORK: ");
+			PRINTF("NETWORK: input ");
 			for (i=0; i<bundle.size; i++){
-				PRINTF("%x:",*(bundle.mem.ptr + i));
+				PRINTF("%x:",*((uint8_t *)bundle.mem.ptr + i));
 			}
 			PRINTF("\n");
 #endif
@@ -202,9 +202,9 @@ int dtn_network_send(struct bundle_t *bundle, struct route_t *route)
 	sdnv_decode(bundle->mem.ptr+bundle->offset_tab[LIFE_TIME][OFFSET],bundle->offset_tab[LIFE_TIME][STATE],&time);
 
 	PRINTF("seq_num %lu lifetime %lu bundle pointer %p bundel->block %p \n ",i,time,bundle,bundle->mem.ptr);
-	PRINTF("NETWORK: ");
-	for (i=0; i<bundle->size; i++){
-		PRINTF("%x:",*(bundle->mem.ptr + i));
+	PRINTF("NETWORK: send ");
+	for (i=0; i<bundle->mem.size; i++){
+		PRINTF("%x:",*((uint8_t*)bundle->mem.ptr + i));
 	}
 	PRINTF("\n");
 	/* kopiere die Daten in den packetbuf(fer) */

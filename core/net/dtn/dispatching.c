@@ -25,8 +25,10 @@
 #include "net/dtn/custody.h"
 #include "net/dtn/dtn_config.h"
 #include "net/dtn/delivery.h"
+#include "status-report.h"
+#include "forwarding.c"
 
-#define DEBUG 1
+#define DEBUG 0
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)
@@ -68,20 +70,34 @@ void dispatch_bundle(struct bundle_t *bundle) {
 				
 				
 				if(*((uint8_t*)bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET]) & 32 ) {// is custody signal
-					PRINTF("DISPATCHING: received custody signal\n");	
+					PRINTF("DISPATCHING: received custody signal %u %u\n",bundle->offset_tab[DATA][OFFSET], bundle->mem.size);	
+				#if DEBUG
+					uint8_t i=0;
+					for (i=0; i< bundle->mem.size-bundle->offset_tab[DATA][OFFSET]; i++){
+						PRINTF("%x:", *((uint8_t*)bundle->mem.ptr +i+ bundle->offset_tab[DATA][OFFSET]));
+					}
+					PRINTF("\n");
+				#endif
 					//call custody signal method
-					if (*((uint8_t*)bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET+1]) & 128 ){	
+					if (*((uint8_t*)bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET]+1) & 128 ){	
 						CUSTODY.release(bundle);
 					}else{
 						CUSTODY.retransmit(bundle);
 					}
 
 				}else if( (*((uint8_t*)bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET]) & 16) && (*((uint8_t*)bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET]+1) & 2)) { // node accepted custody
+				#if DEBUG
+					uint8_t i=0;
+					for (i=0; i< bundle->mem.size; i++){
+						PRINTF("%x:", *((uint8_t*)bundle->mem.ptr +i));
+					}
+					PRINTF("\n");
+				#endif
 					CUSTODY.release(bundle);
 				}
 				delete_bundle(bundle);
 				return;
-			}
+		}
 	}
 	
 	else {
@@ -89,8 +105,10 @@ void dispatch_bundle(struct bundle_t *bundle) {
 		uint32_t dest_app;
 		sdnv_decode(bundle->mem.ptr + bundle->offset_tab[DEST_SERV][OFFSET], bundle->offset_tab[DEST_SERV][STATE], &dest_app);
 
-		PRINTF("DISPATCHING: destination eid: %lu:%lu  == %u, reg_list=%p\n", dest, dest_app,dtn_node_id,list_head(reg_list));
-		
+		PRINTF("DISPATCHING: destination eid: %lu:%lu  == %lu, reg_list=%p\n", dest, dest_app,dtn_node_id,list_head(reg_list));
+		//if (bundle->flags & 0x08){ // bundle is custody
+		//	STATUS_REPORT.send(bundle, 2,0);
+		//}
 		if(dest == (uint32_t)dtn_node_id){
 			for(n = list_head(reg_list); n != NULL; n = list_item_next(n)) {
 				PRINTF("DISPATCHING: %lu == %lu\n", n->app_id, dest_app);	
