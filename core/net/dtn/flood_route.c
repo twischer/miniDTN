@@ -86,15 +86,18 @@ int flood_new_bundle(uint16_t bundle_num)
 			return -1;
 		}
 	}
+	PRINTF("FLOOD: its new\n");
 	pack =  memb_alloc(&pack_mem);
 	if (pack !=NULL ){
 		struct bundle_t bundle;
 		pack->num=bundle_num;
+		PRINTF("FLOOD: memory\n");
 		if (BUNDLE_STORAGE.read_bundle(bundle_num, &bundle) <=0){
 			PRINTF("\n\nread bundle ERROR\n\n");
 			while (1);
 			return -1;
 		}
+		PRINTF("FLOOD: red bundle\n");
 		sdnv_decode(bundle.offset_tab[FLAGS][OFFSET],bundle.offset_tab[FLAGS][STATE],&pack->flags);
 		sdnv_decode(bundle.offset_tab[DEST_NODE][OFFSET],bundle.offset_tab[DEST_NODE][STATE],&pack->dest_node);
 		pack->send_to=0;

@@ -219,6 +219,9 @@ uint8_t set_attr(struct bundle_t *bundle, uint8_t attr, uint32_t *val)
 	if( attr == LIFE_TIME){
 		bundle->lifetime= *val;
 	}
+	if (attr == FLAGS){
+		bundle->flags = *val;
+	}
 	//sdnv_t sdnv;
 	size_t len = sdnv_encoding_len(*val);
 //	printf("tpr %u\n ",len);  // this fixes everything

@@ -44,6 +44,7 @@ void init(void)
 	//	file_list[0].file_size=1;
 		for (i=0; i<BUNDLE_STORAGE_SIZE; i++){
 			PRINTF("slot %u state is %u\n", i, file_list[i].file_size);
+			watchdog_periodic();
 			if(file_list[i].file_size >0 ){
 				bundles_in_storage++;
 			}
@@ -67,8 +68,8 @@ void init(void)
 		cfs_close(fd_write);
 		PRINTF("file closed\n");
 	}
-//	PRINTF("STORAGE: schedule ctimer\n");
 	ctimer_set(&g_store_timer,CLOCK_SECOND*5,g_store_reduce_lifetime,NULL);
+	PRINTF("STORAGE: schedule ctimer\n");
 }
 
 void g_store_reduce_lifetime()
@@ -162,7 +163,7 @@ int32_t save_bundle(struct bundle_t *bundle)
 		if (delet !=-1){
 			PRINTF("STORAGE: del %u\n",delet);
 			
-			PRINTF("STORAGE: bundle->mem.ptr %p (%p + %p)\n", bundle->mem.ptr, bundle, &bundle->mem);
+			PRINTF("STORAGE: bundle->mem.ptr %p (%p + %p)\n", bundle->mem.ptr, bundle, &bundle->mem, );
 			if(!del_bundle(delet,4)){
 				return -1;
 			}
@@ -229,6 +230,7 @@ int32_t save_bundle(struct bundle_t *bundle)
 	return (int32_t)file_list[i].bundle_num;
 }
 
+
 uint16_t del_bundle(uint16_t bundle_num,uint8_t reason)
 {
 	//uint16_t *num;
@@ -267,15 +269,19 @@ uint16_t del_bundle(uint16_t bundle_num,uint8_t reason)
 
 uint16_t read_bundle(uint16_t bundle_num,struct bundle_t *bundle)
 {
+	R_PRINTF("STORAGE: read %u\n",bundle_num);
 	char b_file[7];
 	sprintf(b_file,"%u.b",bundle_num);
 	fd_read = cfs_open(b_file, CFS_READ);
 	
 	if(fd_read != -1) {
-		PRINTF("file-size %u\n", file_list[bundle_num].file_size);
+		R_PRINTF("file-size %u\n", file_list[bundle_num].file_size);
 	
 		
-		mmem_alloc(&bundle->mem,file_list[bundle_num].file_size);
+		if(!mmem_alloc(&bundle->mem,file_list[bundle_num].file_size)){
+			 R_PRINTF("STORAGE: ERROR  memory\n");
+			 while (1);
+		}
 /*
 		bundle->mem = (struct mmem*) malloc(sizeof(struct mmem));
 		if( !bundle->mem){
@@ -290,14 +296,15 @@ uint16_t read_bundle(uint16_t bundle_num,struct bundle_t *bundle)
 			printf("\n\n MALLOC ERROR\n\n");
 		}
 */
-
+		R_PRINTF("STORAGE: memory\n");
 		cfs_read(fd_read, bundle->mem.ptr, file_list[bundle_num].file_size);
 		cfs_close(fd_read);
+
 #if R_DEBUG
 		uint8_t i;
 		R_PRINTF(" STORAGE 1: ");
 		for (i=0; i<20; i++){
-			R_PRINTF("%x:",*(bundle->mem.ptr+i));
+			R_PRINTF("%x:",*((uint8_t *)bundle->mem.ptr+i));
 		}
 		R_PRINTF("\n");
 #endif
