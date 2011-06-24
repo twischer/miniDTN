@@ -53,10 +53,12 @@
 #include "dev/leds.h"
 #include "dev/cc2420.h"
 #include "net/dtn/bundle.h"
+#include "etimer.h"
   #define FOO { {4, 0 } }
 
 
 #include <stdio.h> /* For printf() */
+  struct etimer timer;
 /*---------------------------------------------------------------------------*/
 PROCESS(hello_world_process, "Hello world process");
 AUTOSTART_PROCESSES(&hello_world_process);
@@ -75,6 +77,10 @@ PROCESS_THREAD(hello_world_process, ev, data)
   reg.app_id=25;
   printf("MAIN: event= %u\n",dtn_application_registration_event);
   printf("main app_id %lu process %p\n", reg.app_id, &agent_process);
+  uint32_t foo=0;
+  etimer_set(&timer,  CLOCK_SECOND*5);
+  PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&timer));
+  printf("foooooo\n");
   process_post(&agent_process, dtn_application_registration_event,&reg);
   while (1){
   	PROCESS_WAIT_EVENT_UNTIL(ev);
