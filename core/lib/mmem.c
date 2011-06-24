@@ -85,13 +85,14 @@ mmem_alloc(struct mmem *m, unsigned int size)
 {
   /* Check if we have enough memory left for this allocation. */
   if((avail_memory < size) ) {
-    printf("MMEM: ERROR\n");
+    printf("MMEM: %u < %u\n",avail_memory,size);
     return 0;
   }
   if (avail_memory> MMEM_SIZE){
-  	printf("MMEM: avail_memory> MMEM_SIZE\n ");
+    	printf("MMEM: %u >  %u\n",avail_memory,MMEM_SIZE);
 	return 0;
   }
+
 
   /* We had enough memory so we add this memory block to the end of
      the list of allocated memory blocks. */
@@ -100,13 +101,11 @@ mmem_alloc(struct mmem *m, unsigned int size)
   /* Set up the pointer so that it points to the first available byte
      in the memory block. */
   m->ptr = &memory[MMEM_SIZE - avail_memory];
-//  printf("MMEM -> ptr= %p=%p+(%u-%u)   size=%u\n",m->ptr,memory,MMEM_SIZE , avail_memory,size);
   /* Remember the size of this memory block. */
   m->size = size;
 
   /* Decrease the amount of available memory. */
   avail_memory -= size;
-//printf("MMEM:malloc avail_memory %u\n",avail_memory);
   /* Return non-zero to indicate that we were able to allocate
      memory. */
   return 1;
@@ -124,8 +123,13 @@ mmem_alloc(struct mmem *m, unsigned int size)
 void
 mmem_free(struct mmem *m)
 {
+  if(m->size > MMEM_SIZE - avail_memory){
+  	printf("MMEM: too much free\n");
+//	watchdog_stop();
+//	while(1);
+        return;
+  }
   struct mmem *n;
-//  printf(" MMEM: free %p\n",m->ptr);
   if(m->next != NULL) {
     /* Compact the memory after the allocation that is to be removed
        by moving it downwards. */
@@ -135,17 +139,11 @@ mmem_free(struct mmem *m)
     /* Update all the memory pointers that points to memory that is
        after the allocation that is to be removed. */
     for(n = m->next; n != NULL; n = n->next) {
-  //  	printf("\nalt n->ptr %p, ",n->ptr);
       n->ptr = (void *)((char *)n->ptr - m->size);
-  //  	printf("neu n->ptr %p\n\n",n->ptr);
     }
-  }else{
-//  	printf("\n\n OOOOOPPS\n\n");
   }
 
   avail_memory += m->size;
-  
-//  printf("MMEM:free avail_memory %u\n",avail_memory);
 
   /* Remove the memory block from the list. */
   list_remove(mmemlist, m);
@@ -183,7 +181,6 @@ mmem_init(void)
 {
   list_init(mmemlist);
   avail_memory = MMEM_SIZE;
-//  printf("MMEM: memory %p - %p\n",memory, memory+MMEM_SIZE);
 }
 /*---------------------------------------------------------------------------*/
 
