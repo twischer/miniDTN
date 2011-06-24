@@ -151,6 +151,15 @@ mmem_free(struct mmem *m)
   list_remove(mmemlist, m);
 }
 
+/*---------------------------------------------------------------------------*/
+/**
+ * \brief      updates the list after realloc-like operations
+ * \author     Georg von Zengen
+ *
+ *             This function must be called after allocating new mmem
+ *             and storing it an old mmem pointer.
+ *
+ */
 void
 mmem_reorg(struct mmem *old, struct mmem *new)
 {
