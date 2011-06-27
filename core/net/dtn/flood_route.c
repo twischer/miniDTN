@@ -11,7 +11,7 @@
 #include "lib/memb.h"
 #include "contiki.h"
 
-#define DEBUG 0
+#define DEBUG 1 
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)
@@ -21,8 +21,6 @@
 
 #define ROUTING_MAX_MEM 10
 #define ROUTING_NEI_MEM 1
-#define ROUTING_ROUTE_MAX_MEM 10
-
 struct pack_list_t {
 	struct pack_list_t *next;
 	uint16_t num;
@@ -33,7 +31,7 @@ struct pack_list_t {
 
 LIST(pack_list);
 MEMB(pack_mem, struct pack_list_t, ROUTING_MAX_MEM);
-MEMB(route_mem, struct route_t, ROUTING_ROUTE_MAX_MEM);
+LIST(route_list);
 
 
 void flood_init(void)
@@ -42,6 +40,7 @@ void flood_init(void)
 	memb_init(&pack_mem);
 	memb_init(&route_mem);
 	list_init(pack_list);
+	list_init(route_list);
 	PRINTF("FLOOD: pack_list %p\n",list_head(pack_list));
 
 	return;
@@ -52,9 +51,11 @@ void flood_new_neigh(rimeaddr_t *dest)
 	PRINTF("FLOOD: new node: %u:%u\n",dest->u8[1] ,dest->u8[0]);
 	struct pack_list_t *pack;
 //	PRINTF("FLOOD: pack_list %p\n",list_head(pack_list));
+	uint8_t count=0;
 	for(pack = list_head(pack_list); pack != NULL; pack = list_item_next(pack)) {
 //		PRINTF("FLOOD: searching for bundles\n");
 		uint8_t sent=0,i;
+		watchdog_periodic();
 		for (i =0 ; i < ROUTING_NEI_MEM ; i++) {
 			PRINTF("FLOOD: bundle %u already sent to node %u:%u == %u:%u?\n",pack->num, dest->u8[1] ,dest->u8[0], pack->dest[i].u8[1], pack->dest[i].u8[0]);
 			if (pack->dest[i].u8[0] == dest->u8[0] && pack->dest[i].u8[1] == dest->u8[1]){
@@ -68,10 +69,13 @@ void flood_new_neigh(rimeaddr_t *dest)
 			memcpy(route->dest.u8,dest->u8,sizeof(dest->u8));
 			route->bundle_num=pack->num;
 			PRINTF("FLOOD: send bundle %u to %u:%u route_ptr: %p\n",route->bundle_num, route->dest.u8[1] ,route->dest.u8[0], route);
-			
-			process_post(&agent_process,dtn_send_bundle_to_node_event, route);
+			list_add(route_list,route);	
+			count++;
 
 		}
+	}
+	if (count){
+		process_post(&agent_process,dtn_send_bundle_to_node_event, list_head(route_list));
 	}
 	return ;
 }
@@ -94,7 +98,8 @@ int flood_new_bundle(uint16_t bundle_num)
 		PRINTF("FLOOD: memory\n");
 		if (BUNDLE_STORAGE.read_bundle(bundle_num, &bundle) <=0){
 			PRINTF("\n\nread bundle ERROR\n\n");
-			while (1);
+			//watchdog_stop();
+			//while (1);
 			return -1;
 		}
 		PRINTF("FLOOD: red bundle\n");
@@ -128,6 +133,8 @@ void flood_del_bundle(uint16_t bundle_num)
 		PRINTF("FLOOD: deleting bundle %u\n",bundle_num);
 		list_remove(pack_list ,pack);
 		memb_free(&pack_mem,pack);
+	}else{	
+		PRINTF("FLOOD: bundle allready deleted\n");
 	}
 	return;
 }
@@ -155,6 +162,8 @@ void flood_sent(struct route_t *route,int status, int num_tx)
 		    pack->send_to++;
 		    PRINTF("FLOOD: bundle %u sent to %u nodes\n",route->bundle_num, pack->send_to);	
 		    memb_free(&route_mem,route);
+		    PRINTF("FLOOD: bundle %u cleared\n",route->bundle_num);
+
 	    }else{
 	    	    if(pack->send_to >= ROUTING_NEI_MEM){
 		   	flood_del_bundle(route->bundle_num);

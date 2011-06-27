@@ -57,7 +57,7 @@ uint8_t create_bundle(struct bundle_t *bundle)
 */
 	if( !mmem_alloc(&bundle->mem, 1) ) {
 		PRINTF("\n\n MALLOC ERROR\n\n");
-		while(1) ;	
+		//while(1) ;	
 	}
 
 	/*
@@ -67,7 +67,7 @@ uint8_t create_bundle(struct bundle_t *bundle)
 	}
 	*/
 
-	//*bundle->mem.ptr = 0;
+	*((uint8_t*)bundle->mem.ptr) = 0;
 	bundle->size=1;
 	uint8_t i;
 	bundle->rec_time=(uint32_t) clock_seconds(); 
@@ -242,7 +242,7 @@ uint8_t set_attr(struct bundle_t *bundle, uint8_t attr, uint32_t *val)
 		struct mmem mmem_tmp ;
 		if(!mmem_alloc(&mmem_tmp,(len-bundle->offset_tab[attr][STATE]) + bundle->mem.size)){
 			PRINTF("MMEM ERROR\n");
-			while(1);
+			//while(1);
 		}
 		hexdump("vorher  ", bundle->mem.ptr, bundle->mem.size);
 		//memset((uint8_t*)mmem_tmp.ptr,7,mmem_tmp.size);
