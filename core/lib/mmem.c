@@ -125,8 +125,8 @@ mmem_free(struct mmem *m)
 {
   if(m->size > MMEM_SIZE - avail_memory){
   	printf("MMEM: too much free\n");
-//	watchdog_stop();
-//	while(1);
+	watchdog_stop();
+	while(1);
         return;
   }
   struct mmem *n;
