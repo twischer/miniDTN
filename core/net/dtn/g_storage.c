@@ -192,13 +192,13 @@ int32_t save_bundle(struct bundle_t *bundle)
 	fd_write = cfs_open(b_file, CFS_WRITE);
 	int n=0;
 	PRINTF("STORAGE: write filename: %s opened\n", b_file);
-#if DEBUG
-	PRINTF("STORAGE: bundle->mem.ptr: ");
+#if R_DEBUG
+	R_PRINTF("STORAGE: bundle->mem.ptr:%u  ",i);
 	uint8_t j;
 	for(j=0;j<bundle->size;j++){
-		PRINTF("%u:",*((uint8_t*)bundle->mem.ptr+j));
+		R_PRINTF("%u:",*((uint8_t*)bundle->mem.ptr+j));
 	}
-	PRINTF("\n");
+	R_PRINTF("\n");
 #endif
 	if(fd_write != -1) {
 		n = cfs_write(fd_write, bundle->mem.ptr, bundle->size);
@@ -228,7 +228,7 @@ int32_t save_bundle(struct bundle_t *bundle)
 		PRINTF("STORAGE: write failed\n");
 		return -2;
 	}
-	PRINTF("STORAGE: bundle_num %u\n",file_list[i].bundle_num);
+	R_PRINTF("STORAGE: bundle_num %u\n",file_list[i].bundle_num);
 	return (int32_t)file_list[i].bundle_num;
 }
 
@@ -237,6 +237,7 @@ uint16_t del_bundle(uint16_t bundle_num,uint8_t reason)
 {
 	//uint16_t *num;
 	//num = malloc(2);
+	R_PRINTF("STORAGE: delete bundle %u\n",bundle_num);
 	struct bundle_t bundle_str;
 	if(read_bundle(bundle_num,&bundle_str)){
 		bundle_str.del_reason=reason;
@@ -288,8 +289,9 @@ uint16_t read_bundle(uint16_t bundle_num,struct bundle_t *bundle)
 		
 		if(!mmem_alloc(&bundle->mem,file_list[bundle_num].file_size)){
 			 R_PRINTF("STORAGE: ERROR  memory\n");
-			 while (1);
+			 //while (1);
 		}
+		memset(bundle->mem.ptr,0,bundle->mem.size);
 /*
 		bundle->mem = (struct mmem*) malloc(sizeof(struct mmem));
 		if( !bundle->mem){
@@ -305,13 +307,15 @@ uint16_t read_bundle(uint16_t bundle_num,struct bundle_t *bundle)
 		}
 */
 		R_PRINTF("STORAGE: memory\n");
-		cfs_read(fd_read, bundle->mem.ptr, file_list[bundle_num].file_size);
+		if (!cfs_read(fd_read, bundle->mem.ptr, file_list[bundle_num].file_size)){
+			R_PRINTF("STORAGE: nothing \n");
+		}
 		cfs_close(fd_read);
 
 #if R_DEBUG
 		uint8_t i;
 		R_PRINTF(" STORAGE 1: ");
-		for (i=0; i<20; i++){
+		for (i=0; i<bundle->mem.size; i++){
 			R_PRINTF("%x:",*((uint8_t *)bundle->mem.ptr+i));
 		}
 		R_PRINTF("\n");
@@ -325,7 +329,9 @@ uint16_t read_bundle(uint16_t bundle_num,struct bundle_t *bundle)
 		PRINTF("\n");
 #endif
 		if( !recover_bundel(bundle, &bundle->mem,(int) file_list[bundle_num].file_size)){
-			PRINTF("\n\n recover Error\n\n");
+			R_PRINTF("\n\n recover Error\n\n");
+			//watchdog_stop();
+			//while(1);
 			return 0;
 		}
 
@@ -339,6 +345,8 @@ uint16_t read_bundle(uint16_t bundle_num,struct bundle_t *bundle)
 		PRINTF("STORAGE: first byte in bundel %u\n",*((uint8_t*)bundle->mem.ptr));
 		bundle->lifetime=file_list[bundle_num].lifetime;
 		return file_list[bundle_num].file_size;
+	}else{
+		R_PRINTF("STORAGE: fd_read = -1\n");
 	}
 	return 0;
 }

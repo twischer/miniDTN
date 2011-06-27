@@ -170,6 +170,7 @@ static void packet_sent(void *ptr, int status, int num_tx)
 	struct route_t *route= (struct route_t *)ptr;
 	PRINTF("DTN: bundle_num : %u    %p\n",route->bundle_num,ptr);
 	ROUTING.sent((struct route_t *)ptr,status,num_tx);
+	printf("sent\n");
 	#if 0
 	uint16_t bundlebuf_length;
 	bundlebuf_length =  bundlebuf_get_length();

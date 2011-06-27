@@ -36,6 +36,7 @@
 #include "node-id.h"
 #include "custody.h"
 #include "status-report.h"
+#include "lib/memb.h"
 
 
 #define DEBUG 1
@@ -226,6 +227,7 @@ PROCESS_THREAD(agent_process, ev, data)
 				PRINTF("BUNDLEPROTOCOL: ERROR\n");
 				continue;
 			}
+			PRINTF("BUNDLEPROTOCOL: discover");
 			dtn_discover();
 			if (BUNDLE_STORAGE.get_bundle_num() == 1){
 				etimer_set(&discover_timer, DISCOVER_CYCLE*CLOCK_SECOND);
@@ -254,32 +256,46 @@ PROCESS_THREAD(agent_process, ev, data)
 		}
 
 		else if(ev == dtn_send_bundle_to_node_event){
+			PRINTF("baaarrr\n");
 			struct route_t *route = (struct route_t *)data;
-			PRINTF("BUNDLEPROTOCOL: send bundle %u to node %u:%u\n",route->bundle_num, route->dest.u8[1], route->dest.u8[0]);
-			uint8_t i;
 
-			memset(&bundle, 0, sizeof(struct bundle_t));
-			bundleptr = &bundle;
-			if(BUNDLE_STORAGE.read_bundle(route->bundle_num,bundleptr)<=0){
-				continue;
-			}
+			//struct route_t *route;
+			//for(route = list_head(route_list); route != NULL; route = list_item_next(route)) {
+			while (route !=NULL) {
+				PRINTF("BUNDLEPROTOCOL: send bundle %u to node %u:%u\n",route->bundle_num, route->dest.u8[1], route->dest.u8[0]);
+				uint8_t i;
 
-			PRINTF("BUNDLEPROTOCOL: bundleptr->mem->ptr %p\n", bundleptr->mem.ptr);
-			PRINTF("BUNDLEPROTOCOL: bundle ready\n");
-			bundleptr->bundle_num =  route->bundle_num;
-			uint32_t remaining_time= bundleptr->lifetime-(((uint32_t) clock_seconds())-bundleptr->rec_time);
-//			PRINTF("%lu - %lu= %lu\n",bundleptr->lifetime,(((uint32_t) clock_seconds())-bundleptr->rec_time),bundleptr->lifetime-(((uint32_t) clock_seconds())-bundleptr->rec_time));
-			if (remaining_time <= bundleptr->lifetime) {
-				PRINTF("BUNDLEPROTOCOL: %lu-%lu-%lu=%lu\n",bundleptr->lifetime, (uint32_t) clock_seconds(),bundleptr->rec_time,bundleptr->lifetime-(((uint32_t) clock_seconds())-bundleptr->rec_time));
-				set_attr(bundleptr,LIFE_TIME,&remaining_time);
-				PRINTF("BUNDLEPROTOCOL: bundleptr->mem->ptr %p %u\n", bundleptr->mem.ptr, bundleptr->mem.size);
-				dtn_network_send(bundleptr,route);
-				delete_bundle(bundleptr);
-			}else{
-				PRINTF("BUNDLEPROTOCOL: OOPS\n");
-				uint16_t tmp=bundleptr->bundle_num;
-				delete_bundle(bundleptr);
-				BUNDLE_STORAGE.del_bundle(tmp,1);
+				memset(&bundle, 0, sizeof(struct bundle_t));
+				bundleptr = &bundle;
+				if(BUNDLE_STORAGE.read_bundle(route->bundle_num,bundleptr)<=0){
+					struct route_t *tmp= route;
+					route= route->next;
+					tmp->next=NULL;
+					memb_free(&route_mem,tmp);
+					continue;
+				}
+
+				PRINTF("BUNDLEPROTOCOL: bundleptr->mem->ptr %p\n", bundleptr->mem.ptr);
+				PRINTF("BUNDLEPROTOCOL: bundle ready\n");
+				bundleptr->bundle_num =  route->bundle_num;
+				uint32_t remaining_time= bundleptr->lifetime-(((uint32_t) clock_seconds())-bundleptr->rec_time);
+	//			PRINTF("%lu - %lu= %lu\n",bundleptr->lifetime,(((uint32_t) clock_seconds())-bundleptr->rec_time),bundleptr->lifetime-(((uint32_t) clock_seconds())-bundleptr->rec_time));
+				if (remaining_time <= bundleptr->lifetime) {
+					PRINTF("BUNDLEPROTOCOL: %lu-%lu-%lu=%lu\n",bundleptr->lifetime, (uint32_t) clock_seconds(),bundleptr->rec_time,bundleptr->lifetime-(((uint32_t) clock_seconds())-bundleptr->rec_time));
+					set_attr(bundleptr,LIFE_TIME,&remaining_time);
+					PRINTF("BUNDLEPROTOCOL: bundleptr->mem->ptr %p %u\n", bundleptr->mem.ptr, bundleptr->mem.size);
+					dtn_network_send(bundleptr,route);
+					delete_bundle(bundleptr);
+				}else{
+					PRINTF("BUNDLEPROTOCOL: OOPS\n");
+					uint16_t tmp=bundleptr->bundle_num;
+					delete_bundle(bundleptr);
+					BUNDLE_STORAGE.del_bundle(tmp,1);
+				}
+				struct route_t *tmp= route;
+				route= route->next;
+				tmp->next=NULL;
+				memb_free(&route_mem,tmp);
 			}
 			continue;
 		}

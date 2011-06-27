@@ -13,7 +13,7 @@
 #define RETRANSMIT 1000
 #define MAX_CUST 10
 
-#define DEBUG 1
+#define DEBUG 0
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)
@@ -63,7 +63,9 @@ void retransmit(){
 		if(cust->retransmit_in - time <=0){
 			//retransmit bundle
 			ROUTING.del_bundle(cust->bundle_num);
-			ROUTING.new_bundle(cust->bundle_num);
+			if(!ROUTING.new_bundle(cust->bundle_num)){
+				return;
+			}
 			//set retransmit time
 			cust->retransmit_in = RETRANSMIT;
 
@@ -211,7 +213,9 @@ uint8_t b_cust_restransmit(struct bundle_t *bundle)
 	}
 	if( inlist){
 		ROUTING.del_bundle(cust->bundle_num);
-		ROUTING.new_bundle(cust->bundle_num);
+		if(!ROUTING.new_bundle(cust->bundle_num)){
+			return 0;
+		}
 		PRINTF("B_CUST: bundle num %u\n",cust->bundle_num);
 		cust->retransmit_in = RETRANSMIT;
 	}
