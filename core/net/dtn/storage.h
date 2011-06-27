@@ -12,7 +12,6 @@ process_event_t dtn_bundle_deleted_event;
 uint16_t saved_as_num;
 extern uint16_t del_num;
 
-struct bundle_t bundle_str;
 
 struct storage_driver {
 	char *name;

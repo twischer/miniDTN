@@ -235,13 +235,20 @@ PROCESS_THREAD(agent_process, ev, data)
 		
 		else if(ev == dtn_bundle_deleted_event){
 			//uint16_t *tmp= (uint16_t *) data;
-			bundleptr=(struct bundle_t *) data;
+		//	bundleptr=(struct bundle_t *) data;
 			PRINTF("BUNDLEPROTOCOL: delete bundle %u\n",del_num);
 			ROUTING.del_bundle( del_num);
-			if( ((bundleptr->flags & 8 ) || (bundleptr->flags & 0x40000)) &&(bundleptr->del_reason !=0xff )){
-				STATUS_REPORT.send(bundleptr,16,bundleptr->del_reason);
-			}
-			delete_bundle(bundleptr);
+//			if( ((bundleptr->flags & 8 ) || (bundleptr->flags & 0x40000)) &&(bundleptr->del_reason !=0xff )){
+//				STATUS_REPORT.send(bundleptr,16,bundleptr->del_reason);
+//			}
+		//	PRINTF("BUNDLEPROTOCOL: delete bundle %p %p\n", bundleptr,bundleptr->mem);
+		//	if (bundleptr->size){
+		//		delete_bundle(bundleptr);
+		//	}else{
+		//		PRINTF("BUNDLEPROTOCOL: delete called too often\n");
+		//		watchdog_stop();
+		//		while(1);
+		//	}
 			//free(tmp);
 			continue;
 		}

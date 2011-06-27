@@ -128,10 +128,10 @@ uint8_t b_cust_release(struct bundle_t *bundle)
 
 	// search custody 
 	for(cust = list_head(cust_list); cust != NULL; cust= list_item_next(cust)){
-		PRINTF("B_CUST: searching...\n");
-		PRINTF("B_CUST: %lu==%lu %lu==%lu %lu==%lu %lu==%lu\n", cust->src_node, src_node ,cust->seq_num ,seq_num ,cust->timestamp ,timestamp ,cust->frag_offset ,frag_offset);
+//		PRINTF("B_CUST: searching...\n");
+//		PRINTF("B_CUST: %lu==%lu %lu==%lu %lu==%lu %lu==%lu\n", cust->src_node, src_node ,cust->seq_num ,seq_num ,cust->timestamp ,timestamp ,cust->frag_offset ,frag_offset);
 		if( cust->src_node == src_node && cust->seq_num == seq_num && cust->timestamp == timestamp && cust->frag_offset == frag_offset){
-			PRINTF("B_CUST: found bundle\n");
+//			PRINTF("B_CUST: found bundle\n");
 			inlist=1;
 			break;	
 		}
@@ -146,6 +146,7 @@ uint8_t b_cust_release(struct bundle_t *bundle)
 		cust_cnt--;
 	}
 	// delete_bundle
+	PRINTF("B_CUST: delete bundle %p %p\n", bundle,bundle->mem);
 	delete_bundle(bundle);
 	
 
@@ -349,13 +350,13 @@ int32_t b_cust_decide(struct bundle_t *bundle)
 			cust = memb_alloc(&cust_mem);
 			cust->frag_offset=0;
 			cust->bundle_num= (uint16_t) saved;
-			PRINTF("B_CUST: cust->bundle_num= %u",cust->bundle_num);
+			PRINTF("B_CUST: cust->bundle_num= %u\n",cust->bundle_num);
 			sdnv_decode(bundle->mem.ptr + bundle->offset_tab[SRC_NODE][OFFSET] , bundle->offset_tab[SRC_NODE][STATE] , &cust->src_node);
-			PRINTF("B_CUST: cust->src_node= %lu",cust->src_node);
+			PRINTF("B_CUST: cust->src_node= %lu\n",cust->src_node);
 			sdnv_decode(bundle->mem.ptr + bundle->offset_tab[TIME_STAMP][OFFSET] , bundle->offset_tab[TIME_STAMP][STATE] , &cust->timestamp);
-			PRINTF("B_CUST: cust->timestamp %lu",cust->timestamp);
+			PRINTF("B_CUST: cust->timestamp %lu\n",cust->timestamp);
 			sdnv_decode(bundle->mem.ptr + bundle->offset_tab[TIME_STAMP_SEQ_NR][OFFSET] , bundle->offset_tab[TIME_STAMP_SEQ_NR][STATE] , &cust->seq_num);
-			PRINTF("B_CUST: cust->seq_num %lu",cust->seq_num);
+			PRINTF("B_CUST: cust->seq_num %lu\n",cust->seq_num);
 			if (bundle->flags & 1){
 				sdnv_decode(bundle->mem.ptr + bundle->offset_tab[FRAG_OFFSET][OFFSET] , bundle->offset_tab[FRAG_OFFSET][STATE] , &cust->frag_offset);
 			}else{
