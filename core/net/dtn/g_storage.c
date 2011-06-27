@@ -4,6 +4,8 @@
 #include "net/dtn/g_storage.h"
 #include "net/dtn/bundle.h"
 #include "net/dtn/sdnv.h"
+#include "dtn_config.h"
+#include "status-report.h"
 #include "agent.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -235,9 +237,15 @@ uint16_t del_bundle(uint16_t bundle_num,uint8_t reason)
 {
 	//uint16_t *num;
 	//num = malloc(2);
-	read_bundle(bundle_num,&bundle_str);
-	bundle_str.del_reason=reason;
-	del_num=bundle_num;
+	struct bundle_t bundle_str;
+	if(read_bundle(bundle_num,&bundle_str)){
+		bundle_str.del_reason=reason;
+		del_num=bundle_num;
+		if( ((bundle_str.flags & 8 ) || (bundle_str.flags & 0x40000)) &&(bundle_str.del_reason !=0xff )){
+			STATUS_REPORT.send(&bundle_str,16,bundle_str.del_reason);
+		}
+		delete_bundle(&bundle_str);
+	}
 	//if (!num){
 	//	printf("\n\n MALLOC ERROR\n\n");
 	//	return 0;
@@ -263,7 +271,7 @@ uint16_t del_bundle(uint16_t bundle_num,uint8_t reason)
 	}
 	
 	
-	process_post(&agent_process,dtn_bundle_deleted_event, &bundle_str);
+	process_post(&agent_process,dtn_bundle_deleted_event, NULL);
 	return 1;
 }
 
