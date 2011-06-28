@@ -11,7 +11,7 @@
 #include "lib/memb.h"
 #include "contiki.h"
 
-#define DEBUG 1 
+#define DEBUG 0
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)
@@ -79,7 +79,15 @@ void flood_new_neigh(rimeaddr_t *dest)
 	}
 	return ;
 }
-
+void flood_delete_list(void)
+{
+	struct route_list_t *route;
+	while(list_length(route_list)>0){
+		PRINTF("FLOOD: list length %u\n",list_length(route_list));
+		route=list_pop(route_list);
+		memb_free(&route_mem,route);
+	}
+}
 int flood_new_bundle(uint16_t bundle_num)
 {
 	PRINTF("FLOOD: got new bundle %u\n",bundle_num);
@@ -189,5 +197,6 @@ const struct routing_driver flood_route ={
 	flood_new_bundle,
 	flood_del_bundle,
 	flood_sent,
+	flood_delete_list,
 };
 

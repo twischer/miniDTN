@@ -7,6 +7,7 @@
 #include "sdnv.h"
 uint8_t b_stat_send(struct bundle_t *bundle,uint8_t status, uint8_t reason)
 {
+	printf("STAT: send\n");
 	struct mmem report;
 	uint8_t size=4; //1byte admin record +1 byte status + 1byte reason + 1byte timestamp (0)
 	uint8_t type=16;
@@ -35,6 +36,7 @@ uint8_t b_stat_send(struct bundle_t *bundle,uint8_t status, uint8_t reason)
 	
 
 	if (!mmem_alloc(&report,size)){
+		printf("STAT: mmem ERROR\n");
 		return 0;
 	}
 	*(uint8_t*) report.ptr = type;
@@ -46,7 +48,11 @@ uint8_t b_stat_send(struct bundle_t *bundle,uint8_t status, uint8_t reason)
 		offset+= bundle->offset_tab[FRAG_OFFSET][STATE];
 		struct mmem sdnv;
 		uint8_t sdnv_len= sdnv_encoding_len(len);
-		mmem_alloc(&sdnv,sdnv_len);
+		if(!mmem_alloc(&sdnv,sdnv_len)){
+			printf("STAT: mmem ERROR2\n");
+			mmem_free(&report);
+			return 0;
+		}
 		sdnv_encode(len, (uint8_t*) sdnv.ptr, sdnv_len);
 		memcpy(((uint8_t*) report.ptr) + offset , sdnv.ptr , sdnv_len);
 		offset+= sdnv_len;
@@ -93,7 +99,12 @@ uint8_t b_stat_send(struct bundle_t *bundle,uint8_t status, uint8_t reason)
 	tmp=3000;
 	set_attr(&rep_bundle, LIFE_TIME, &tmp);
 	struct mmem tmp_mem;
-	mmem_alloc(&tmp_mem, rep_bundle.mem.size + size);
+	if(!mmem_alloc(&tmp_mem, rep_bundle.mem.size + size)){
+		printf("STAT: mmem ERROR3\n");
+		mmem_free(&report);
+		mmem_free(&rep_bundle.mem);
+		return 0;
+	}
 	memcpy(tmp_mem.ptr , rep_bundle.mem.ptr , rep_bundle.mem.size);
 	memcpy(tmp_mem.ptr+ rep_bundle.mem.size, report.ptr, size);
 	mmem_free(&report);

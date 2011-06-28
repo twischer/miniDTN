@@ -123,7 +123,7 @@ void b_red_init(void)
 	list_init(b_red_list);
 	CUSTODY_LIST_ENTRY_SIZE = sizeof(struct red_bundle_t) - sizeof(struct red_bundle_t *);
 	b_red_timer = (struct ctimer*) malloc(sizeof(struct ctimer));
-	ctimer_set(b_red_timer,CLOCK_SECOND*5,reduce_lifetime,NULL);
+	ctimer_set(b_red_timer,CLOCK_SECOND*10,reduce_lifetime,NULL);
 }
 
 const struct redundance_check b_redundance ={
