@@ -17,6 +17,7 @@ struct routing_driver {
 	int (* new_bundle)(uint16_t bundle_num);
 	void (* del_bundle)(uint16_t bundle_num);
 	void (* sent)(uint16_t bundle_num,int status, int num_tx);
+	void (* delete_list)(void);
 };
 extern const struct routing_driver ROUTING;
 

@@ -73,10 +73,17 @@ void deliver_bundle(struct bundle_t *bundle, struct registration *n) {
 #endif
 		}
 */		
-		process_post(n->application_process, submit_data_to_application_event, bundle);
-		block = bundle->mem.ptr+1;
-		if (*block & 0x08){
-			CUSTODY.report(bundle,128);
+		if( !REDUNDANCE.check(bundle)){ //packet was not delivert befor
+			PRINTF("DELIVERY: bundle was not delivered befor\n");
+			REDUNDANCE.set(bundle);
+			process_post(n->application_process, submit_data_to_application_event, bundle);
+			block = bundle->mem.ptr+1;
+			if (*block & 0x08){
+				CUSTODY.report(bundle,128);
+			}
+		}else{
+			delete_bundle(bundle);
+			printf("DELIVERY: muliple delivery\n");
 		}
 	}			
 	

@@ -116,7 +116,9 @@ uint8_t add_block(struct bundle_t *bundle, uint8_t type, uint8_t flags, uint8_t 
 //	sdnv_t s_len;
 	size_t len = sdnv_encoding_len((uint32_t )d_len);
 	struct mmem mem;
-	mmem_alloc(&mem,len);
+	if(!mmem_alloc(&mem,len))
+		return 0;
+
 //	s_len = (uint8_t *) malloc(len);
 //	if (s_len==NULL){
 //		PRINTF("\n\n MALLOC ERROR\n\n");
@@ -140,7 +142,10 @@ uint8_t add_block(struct bundle_t *bundle, uint8_t type, uint8_t flags, uint8_t 
 	*/
 
 	struct mmem mmem_tmp;
-	mmem_alloc(&mmem_tmp, d_len + len + 2  + bundle->size);
+	if(!mmem_alloc(&mmem_tmp, d_len + len + 2  + bundle->size)){
+		mmem_free(&mem);
+		return 0;
+	}
 	memcpy((uint8_t*)mmem_tmp.ptr, (uint8_t*) bundle->mem.ptr, bundle->size);
 	mmem_free(&bundle->mem);
 	memset(&bundle->mem, 0, sizeof(struct mmem));
@@ -167,6 +172,8 @@ uint8_t add_block(struct bundle_t *bundle, uint8_t type, uint8_t flags, uint8_t 
 #endif
 */
 	if (bundle->mem.ptr == NULL) {
+		mmem_free(&mem);
+		mmem_free(&bundle->mem);
 		return 0;
 	}
 	memcpy((uint8_t*)bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET] + bundle->offset_tab[DATA][STATE], &type, 1);
@@ -286,7 +293,8 @@ uint8_t set_attr(struct bundle_t *bundle, uint8_t attr, uint32_t *val)
 	if (((int16_t)(len-bundle->offset_tab[attr][STATE])) < 0){
 		PRINTF("BUNDLE: smaller\n");
 		struct mmem mmem_tmp ;
-		mmem_alloc(&mmem_tmp,bundle->size + ((int16_t)(len-bundle->offset_tab[attr][STATE])));
+		if(!mmem_alloc(&mmem_tmp,bundle->size + ((int16_t)(len-bundle->offset_tab[attr][STATE]))))
+			return 0;
 		memcpy((uint8_t*)mmem_tmp.ptr,(uint8_t*)bundle->mem.ptr,bundle->offset_tab[attr][OFFSET]);
 		memcpy((uint8_t*)mmem_tmp.ptr + bundle->offset_tab[attr][OFFSET] + len,(uint8_t*)bundle->mem.ptr + bundle->offset_tab[attr][OFFSET] + bundle->offset_tab[attr][STATE],bundle->size + ((int16_t)(len-bundle->offset_tab[attr][STATE])) );
 		mmem_free(&bundle->mem);
@@ -417,10 +425,11 @@ uint8_t recover_bundel(struct bundle_t *bundle,struct mmem *mem, int size)
 		PRINTF("%u:",*(block+i));
 	}
 	PRINTF("\n");
+	printf("memcpy\n");
 	memcpy((uint8_t*)bundle->mem.ptr,(uint8_t*)block,size);
 	mmem_free(mem);
 	block=NULL;
-	PRINTF("BUNDLE: RECOVERED\n");
+	printf("BUNDLE: RECOVERED\n");
 	return 1;
 }
 uint16_t delete_bundle(struct bundle_t *bundle)

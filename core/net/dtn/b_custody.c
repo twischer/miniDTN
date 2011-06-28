@@ -11,7 +11,7 @@
 #include "status-report.h"
 
 #define RETRANSMIT 1000
-#define MAX_CUST 10
+#define MAX_CUST 20
 
 #define DEBUG 0
 #if DEBUG
@@ -267,11 +267,15 @@ uint8_t b_cust_report(struct bundle_t *bundle, uint8_t status){
 		offset+= bundle->offset_tab[FRAG_OFFSET][STATE];
 		struct mmem sdnv;
 		uint8_t sdnv_len= sdnv_encoding_len(len);
-		mmem_alloc(&sdnv,sdnv_len);
-		sdnv_encode(len, (uint8_t*) sdnv.ptr, sdnv_len);
-		memcpy(((uint8_t*) report.ptr) + offset , sdnv.ptr , sdnv_len);
-		offset+= sdnv_len;
-		mmem_free(&sdnv);
+		if(mmem_alloc(&sdnv,sdnv_len)){
+			sdnv_encode(len, (uint8_t*) sdnv.ptr, sdnv_len);
+			memcpy(((uint8_t*) report.ptr) + offset , sdnv.ptr , sdnv_len);
+			offset+= sdnv_len;
+			mmem_free(&sdnv);
+		}else{
+			PRINTF("B_CUST: OOOPS1\n");
+			return 0;
+		}
 	}
 	*(((uint8_t*) report.ptr)+offset)= 0;
 	offset+=1;
@@ -306,13 +310,18 @@ uint8_t b_cust_report(struct bundle_t *bundle, uint8_t status){
 	set_attr(&rep_bundle, LIFE_TIME, &tmp);
 	struct mmem tmp_mem;
 	
-	mmem_alloc(&tmp_mem, rep_bundle.mem.size + report.size);
-	memcpy(tmp_mem.ptr , rep_bundle.mem.ptr , rep_bundle.mem.size);
-	memcpy(tmp_mem.ptr+ rep_bundle.mem.size, report.ptr, report.size);
-	mmem_free(&report);
-	mmem_free(&rep_bundle.mem);
-	memcpy(&rep_bundle.mem, &tmp_mem, sizeof(tmp_mem));
-	mmem_reorg(&tmp_mem,&rep_bundle.mem);
+	if(mmem_alloc(&tmp_mem, rep_bundle.mem.size + report.size)){
+		memcpy(tmp_mem.ptr , rep_bundle.mem.ptr , rep_bundle.mem.size);
+		memcpy(tmp_mem.ptr+ rep_bundle.mem.size, report.ptr, report.size);
+		mmem_free(&report);
+		mmem_free(&rep_bundle.mem);
+		memcpy(&rep_bundle.mem, &tmp_mem, sizeof(tmp_mem));
+		mmem_reorg(&tmp_mem,&rep_bundle.mem);
+	}else{
+		PRINTF("B_CUST: OOOOPPS2\n");
+		mmem_free(&report);
+		mmem_free(&rep_bundle.mem);
+	}
 #if DEBUG
 	uint8_t i;
 	PRINTF("B_CUST: %u ::",rep_bundle.mem.size);
@@ -346,7 +355,8 @@ uint8_t b_cust_report(struct bundle_t *bundle, uint8_t status){
 int32_t b_cust_decide(struct bundle_t *bundle)
 {
 	PRINTF("B_CUST: decide %u\n",cust_cnt);
-	if (BUNDLE_STORAGE.free_space(bundle) > 0 && cust_cnt < MAX_CUST){
+	uint8_t free=BUNDLE_STORAGE.free_space(bundle);
+	if (free > 0 && cust_cnt < MAX_CUST){
 		bundle->custody=1;
 		int32_t saved= BUNDLE_STORAGE.save_bundle(bundle);
 		if (saved>=0){
@@ -370,11 +380,14 @@ int32_t b_cust_decide(struct bundle_t *bundle)
 			//save saved to list
 			list_add(cust_list, cust);
 			cust_cnt++;
-			STATUS_REPORT.send(bundle, 2,0);
+			if (cust->src_node != dtn_node_id){
+				STATUS_REPORT.send(bundle, 2,0);
+			}
 		}
 			
 		return saved;
 	}else{
+		printf("B_CUST: cust_cnt > MAX_CUST %u %u\n",cust_cnt,free);
 		return -1;
 	}
 }

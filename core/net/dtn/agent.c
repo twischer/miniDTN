@@ -74,6 +74,7 @@ PROCESS_THREAD(agent_process, ev, data)
 	
 	mmem_init();
 	BUNDLE_STORAGE.init();
+//	BUNDLE_STORAGE.reinit();
 	ROUTING.init();
 	REDUNDANCE.init();
 	dtn_node_id=node_id; 
@@ -115,8 +116,8 @@ PROCESS_THREAD(agent_process, ev, data)
 	struct registration_api *reg;
 	
 	while(1) {
-		
 		PROCESS_WAIT_EVENT_UNTIL(ev);
+		printf("hallo\n");	
 		if(ev == dtn_application_registration_event) {
 			
 			reg = (struct registration_api *) data;
@@ -268,10 +269,7 @@ PROCESS_THREAD(agent_process, ev, data)
 				memset(&bundle, 0, sizeof(struct bundle_t));
 				bundleptr = &bundle;
 				if(BUNDLE_STORAGE.read_bundle(route->bundle_num,bundleptr)<=0){
-					struct route_t *tmp= route;
 					route= route->next;
-					tmp->next=NULL;
-					memb_free(&route_mem,tmp);
 					continue;
 				}
 
@@ -292,11 +290,9 @@ PROCESS_THREAD(agent_process, ev, data)
 					delete_bundle(bundleptr);
 					BUNDLE_STORAGE.del_bundle(tmp,1);
 				}
-				struct route_t *tmp= route;
 				route= route->next;
-				tmp->next=NULL;
-				memb_free(&route_mem,tmp);
 			}
+			ROUTING.delete_list();
 			continue;
 		}
 		

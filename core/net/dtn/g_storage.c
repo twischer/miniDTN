@@ -163,9 +163,9 @@ int32_t save_bundle(struct bundle_t *bundle)
 			index++;
 		}
 		if (delet !=-1){
-			PRINTF("STORAGE: del %u\n",delet);
+			PRINTF("STORAGE: del %ld\n",delet);
 			
-			PRINTF("STORAGE: bundle->mem.ptr %p (%p + %p)\n", bundle->mem.ptr, bundle, &bundle->mem, );
+			PRINTF("STORAGE: bundle->mem.ptr %p (%p + %p)\n", bundle->mem.ptr, bundle, &bundle->mem );
 			if(!del_bundle(delet,4)){
 				return -1;
 			}
@@ -243,7 +243,11 @@ uint16_t del_bundle(uint16_t bundle_num,uint8_t reason)
 		bundle_str.del_reason=reason;
 		del_num=bundle_num;
 		if( ((bundle_str.flags & 8 ) || (bundle_str.flags & 0x40000)) &&(bundle_str.del_reason !=0xff )){
-			STATUS_REPORT.send(&bundle_str,16,bundle_str.del_reason);
+			uint32_t src;
+			sdnv_decode(bundle_str.mem.ptr+ bundle_str.offset_tab[SRC_NODE][OFFSET],bundle_str.offset_tab[SRC_NODE][STATE],&src);
+			if (src != dtn_node_id){
+				STATUS_REPORT.send(&bundle_str,16,bundle_str.del_reason);
+			}
 		}
 		delete_bundle(&bundle_str);
 	}
@@ -279,6 +283,10 @@ uint16_t del_bundle(uint16_t bundle_num,uint8_t reason)
 uint16_t read_bundle(uint16_t bundle_num,struct bundle_t *bundle)
 {
 	R_PRINTF("STORAGE: read %u\n",bundle_num);
+	printf("STORAGE: size %u\n",file_list[bundle_num].file_size);
+	if( file_list[bundle_num].file_size <=0) {
+		return 0;
+	}
 	char b_file[7];
 	sprintf(b_file,"%u.b",bundle_num);
 	fd_read = cfs_open(b_file, CFS_READ);
