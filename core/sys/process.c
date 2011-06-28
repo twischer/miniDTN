@@ -186,9 +186,6 @@ call_process(struct process *p, process_event_t ev, process_data_t data)
   if((p->state & PROCESS_STATE_RUNNING) &&
      p->thread != NULL) {
     PRINTF("process: calling process '%s' with event %d\n", PROCESS_NAME_STRING(p), ev);
-    if (ev==150){
-    	printf("process: calling process '%s' with event %d\n", PROCESS_NAME_STRING(p), ev);
-    }
     process_current = p;
     p->state = PROCESS_STATE_CALLED;
     ret = p->thread(&p->pt, ev, data);
@@ -333,17 +330,14 @@ process_post(struct process *p, process_event_t ev, process_data_t data)
     PRINTF("process_post: Process '%s' posts event %d to process '%s', nevents %d\n",
 	   PROCESS_NAME_STRING(PROCESS_CURRENT()), ev,
 	   p == PROCESS_BROADCAST? "<broadcast>": PROCESS_NAME_STRING(p), nevents);
-    if (ev==150){
-    	printf("process_post: Process '%s' posts event %d to process '%s', nevents %d\n",PROCESS_NAME_STRING(PROCESS_CURRENT()), ev,p == PROCESS_BROADCAST? "<broadcast>": PROCESS_NAME_STRING(p), nevents);
-    }
   }
   
   if(nevents == PROCESS_CONF_NUMEVENTS) {
 // #if DEBUG
     if(p == PROCESS_BROADCAST) {
-      printf("soft panic: event queue is full when broadcast event %d was posted from %s\n", ev, PROCESS_NAME_STRING(process_current));
+      printf("soft panic: event queue is full when broadcast event %d was posted from %s %u\n", ev, PROCESS_NAME_STRING(process_current),nevents);
     } else {
-      printf("soft panic: event queue is full when event %d was posted to %s frpm %s\n", ev, PROCESS_NAME_STRING(p), PROCESS_NAME_STRING(process_current));
+      printf("soft panic: event queue is full when event %d was posted to %s frpm %s %u\n", ev, PROCESS_NAME_STRING(p), PROCESS_NAME_STRING(process_current),nevents);
     }
 // #endif /* DEBUG */
     return PROCESS_ERR_FULL;
