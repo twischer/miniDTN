@@ -11,7 +11,7 @@
 #include "status-report.h"
 
 #define RETRANSMIT 1000
-#define MAX_CUST 20
+#define MAX_CUST 5 
 
 #define DEBUG 0
 #if DEBUG
@@ -82,7 +82,7 @@ void retransmit(){
 
 uint8_t b_cust_release(struct bundle_t *bundle)
 {
-	PRINTF("B_CUST: release\n");
+	printf("B_CUST: release\n");
 	struct cust_t *cust;
 	uint8_t offset=0;
 	uint8_t frag = *((uint8_t*)bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET]) & 1;
