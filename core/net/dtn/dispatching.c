@@ -69,6 +69,7 @@ void dispatch_bundle(struct bundle_t *bundle) {
 		if(dest == dtn_node_id){
 				
 				
+				printf("asdfasdf\n");
 				if(*((uint8_t*)bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET]) & 32 ) {// is custody signal
 					PRINTF("DISPATCHING: received custody signal %u %u\n",bundle->offset_tab[DATA][OFFSET], bundle->mem.size);	
 				#if DEBUG
@@ -93,6 +94,7 @@ void dispatch_bundle(struct bundle_t *bundle) {
 					}
 					PRINTF("\n");
 				#endif
+
 					CUSTODY.release(bundle);
 				}
 				delete_bundle(bundle);

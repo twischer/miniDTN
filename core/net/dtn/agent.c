@@ -74,7 +74,7 @@ PROCESS_THREAD(agent_process, ev, data)
 	
 	mmem_init();
 	BUNDLE_STORAGE.init();
-//	BUNDLE_STORAGE.reinit();
+	BUNDLE_STORAGE.reinit();
 	ROUTING.init();
 	REDUNDANCE.init();
 	dtn_node_id=node_id; 
@@ -228,7 +228,7 @@ PROCESS_THREAD(agent_process, ev, data)
 				PRINTF("BUNDLEPROTOCOL: ERROR\n");
 				continue;
 			}
-			PRINTF("BUNDLEPROTOCOL: discover");
+			PRINTF("BUNDLEPROTOCOL: discover\n");
 			dtn_discover();
 			if (BUNDLE_STORAGE.get_bundle_num() == 1){
 				etimer_set(&discover_timer, DISCOVER_CYCLE*CLOCK_SECOND);
