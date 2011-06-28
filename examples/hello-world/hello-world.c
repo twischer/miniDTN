@@ -97,7 +97,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 			set_attr(&bundle, CUST_NODE, &bla);
 			set_attr(&bundle, CUST_SERV, &bla);
 			set_attr(&bundle, TIME_STAMP_SEQ_NR, &j);
-			bla=3000;
+			bla=25;
 			set_attr(&bundle, LIFE_TIME, &bla);
 			bla=4;
 			set_attr(&bundle, TIME_STAMP, &bla);
