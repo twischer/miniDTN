@@ -186,6 +186,9 @@ call_process(struct process *p, process_event_t ev, process_data_t data)
   if((p->state & PROCESS_STATE_RUNNING) &&
      p->thread != NULL) {
     PRINTF("process: calling process '%s' with event %d\n", PROCESS_NAME_STRING(p), ev);
+    if (ev==150){
+    	printf("process: calling process '%s' with event %d\n", PROCESS_NAME_STRING(p), ev);
+    }
     process_current = p;
     p->state = PROCESS_STATE_CALLED;
     ret = p->thread(&p->pt, ev, data);
@@ -323,7 +326,6 @@ int
 process_post(struct process *p, process_event_t ev, process_data_t data)
 {
   static process_num_events_t snum;
-
   if(PROCESS_CURRENT() == NULL) {
     PRINTF("process_post: NULL process posts event %d to process '%s', nevents %d\n",
 	   ev,PROCESS_NAME_STRING(p), nevents);
@@ -331,6 +333,9 @@ process_post(struct process *p, process_event_t ev, process_data_t data)
     PRINTF("process_post: Process '%s' posts event %d to process '%s', nevents %d\n",
 	   PROCESS_NAME_STRING(PROCESS_CURRENT()), ev,
 	   p == PROCESS_BROADCAST? "<broadcast>": PROCESS_NAME_STRING(p), nevents);
+    if (ev==150){
+    	printf("process_post: Process '%s' posts event %d to process '%s', nevents %d\n",PROCESS_NAME_STRING(PROCESS_CURRENT()), ev,p == PROCESS_BROADCAST? "<broadcast>": PROCESS_NAME_STRING(p), nevents);
+    }
   }
   
   if(nevents == PROCESS_CONF_NUMEVENTS) {

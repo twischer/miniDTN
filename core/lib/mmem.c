@@ -124,7 +124,7 @@ void
 mmem_free(struct mmem *m)
 {
   if(m->size > MMEM_SIZE - avail_memory){
-  	printf("MMEM: too much free\n");
+  	printf("MMEM: too much free %u\n",m->size);
 	watchdog_stop();
 	while(1);
         return;
@@ -144,6 +144,7 @@ mmem_free(struct mmem *m)
   }
 
   avail_memory += m->size;
+//  printf("MMEM: free %u\n",avail_memory);
 
   /* Remove the memory block from the list. */
   list_remove(mmemlist, m);
