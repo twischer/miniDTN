@@ -425,23 +425,21 @@ uint8_t recover_bundel(struct bundle_t *bundle,struct mmem *mem, int size)
 		PRINTF("%u:",*(block+i));
 	}
 	PRINTF("\n");
-	printf("memcpy\n");
 	memcpy((uint8_t*)bundle->mem.ptr,(uint8_t*)block,size);
 	mmem_free(mem);
 	block=NULL;
-	printf("BUNDLE: RECOVERED\n");
 	return 1;
 }
 uint16_t delete_bundle(struct bundle_t *bundle)
 {
-	printf("BUNDLE: delete %p %p %p %u\n", bundle, bundle->mem, bundle->mem.ptr,bundle->rec_time);
+	PRINTF("BUNDLE: delete %p %p %p %u\n", bundle, bundle->mem, bundle->mem.ptr,bundle->rec_time);
 	if (bundle->size){
 		PRINTF("BUNDLE: bundle->mem.ptr %p\n",bundle->mem.ptr);
 		mmem_free(&bundle->mem);
 		bundle->size=0;
 		return 1;
 	}else{
-		printf("BUNDLE: bundle deleted too often\n");
+		PRINTF("BUNDLE: bundle deleted too often\n");
 		return 0;
 	}
 	//free(bundle->mem);

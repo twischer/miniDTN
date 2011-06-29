@@ -322,6 +322,7 @@ uint8_t b_cust_report(struct bundle_t *bundle, uint8_t status){
 		mmem_free(&report);
 		mmem_free(&rep_bundle.mem);
 	}
+	//printf("B_CUST: len %u\n",
 #if DEBUG
 	uint8_t i;
 	PRINTF("B_CUST: %u ::",rep_bundle.mem.size);
@@ -329,8 +330,8 @@ uint8_t b_cust_report(struct bundle_t *bundle, uint8_t status){
 		PRINTF("%x:",*((uint8_t *)rep_bundle.mem.ptr+i));
 	}
 	PRINTF("\n");
-	rep_bundle.size = rep_bundle.mem.size;
 #endif
+	rep_bundle.size = rep_bundle.mem.size;
 	int32_t saved=BUNDLE_STORAGE.save_bundle(&rep_bundle);
 	if (saved >=0){
 		saved_as_num= (uint16_t)saved;

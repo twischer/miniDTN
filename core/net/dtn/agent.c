@@ -39,7 +39,7 @@
 #include "lib/memb.h"
 
 
-#define DEBUG 1
+#define DEBUG 0
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)
@@ -117,7 +117,6 @@ PROCESS_THREAD(agent_process, ev, data)
 	
 	while(1) {
 		PROCESS_WAIT_EVENT_UNTIL(ev);
-		printf("hallo\n");	
 		if(ev == dtn_application_registration_event) {
 			
 			reg = (struct registration_api *) data;

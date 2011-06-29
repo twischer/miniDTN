@@ -122,6 +122,9 @@ static void dtn_network_input(void)
 				PRINTF("DTN: recover ERROR\n");	
 				return;
 			}
+			if (bundle.flags&2){
+				printf("NET: %u\n",*((uint8_t *)bundle.mem.ptr + bundle.offset_tab[DATA][OFFSET]));
+			}
 #if DEBUG
 			PRINTF("NETWORK: input ");
 			for (i=0; i<bundle.size; i++){
