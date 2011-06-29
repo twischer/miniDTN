@@ -84,7 +84,6 @@ PROCESS_THREAD(hello_world_process, ev, data)
   process_post(&agent_process, dtn_application_registration_event,&reg);
   while (1){
   	PROCESS_WAIT_EVENT_UNTIL(ev);
-	printf("event\n");
 	if(ev == submit_data_to_application_event) {
 		struct bundle_t *bundle;
 		bundle = (struct bundle_t *) data;
@@ -98,7 +97,6 @@ PROCESS_THREAD(hello_world_process, ev, data)
 		delete_bundle(bundle);
 	}
 //	cc2420_read(packetbuf_dataptr(),128);
-	printf("main: end\n");
   }
 #if 0
 	/*#define PRINTF printf
