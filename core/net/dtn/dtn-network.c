@@ -24,6 +24,7 @@
 #include "dispatching.h"
 #include "routing.h"
 #include "mmem.h"
+#include "discovery.h"
 #if CONTIKI_TARGET_AVR_RAVEN
 	#include <stings.h>
 #endif
@@ -68,45 +69,16 @@ static void dtn_network_input(void)
 	uint8_t input_packet[114];
 	int size=packetbuf_copyto(input_packet);
 	rimeaddr_t dest = *packetbuf_addr(PACKETBUF_ADDR_RECEIVER);
+	rimeaddr_t bsrc = *packetbuf_addr(PACKETBUF_ADDR_SENDER);
 	PRINTF("%x%x: dtn_network_input\n",dest.u8[0],dest.u8[1]);
 	if((dest.u8[0]==0) & (dest.u8[1]==0)) { //broadcast message
 		PRINTF("Broadcast\n");
-		uint8_t test[13]="DTN_DISCOVERY";
-		uint8_t discover=1;
-		uint8_t i;
-		for (i=sizeof(test); i>0; i--){
-			if(test[i-1]!=input_packet[i-1]){
-				discover=0;
-				break;
-			}
-		}
-		if (discover){
-			PRINTF("DTN DISCOVERY\n");
-			rimeaddr_t dest = *packetbuf_addr(PACKETBUF_ADDR_SENDER);
-//			rimeaddr_t dest={{0,0}};
-			packetbuf_clear();
-			packetbuf_copyfrom("DTN_HERE", 8);
-			packetbuf_set_addr(PACKETBUF_ADDR_RECEIVER, &dest);
-			packetbuf_set_addr(PACKETBUF_ADDR_SENDER, &dest);
-			packetbuf_set_attr(PACKETBUF_ADDRSIZE, 2);
-			NETSTACK_MAC.send(NULL, NULL);
-		}else{
 			
-			packetbuf_clear();
-			PRINTF("some broadcast message\n");
-		}
+		DISCOVERY.is_discover(input_packet);
+		packetbuf_clear();
 			
         } else {
-		uint8_t test[8]="DTN_HERE";
-		uint8_t beacon=1;
-		uint8_t i;
-		for (i=sizeof(test); i>0; i--){
-			if(test[i-1]!=input_packet[i-1]){
-				beacon=0;
-				break;
-			}
-		}
-		if (!beacon){ //packet is a bundle
+		if (!DISCOVERY.is_beacon(input_packet)){ //packet is a bundle
 			packetbuf_clear();
 			PRINTF("%p  %p\n",&bundle,&input_packet);	
 			struct mmem mem;
@@ -123,26 +95,28 @@ static void dtn_network_input(void)
 				return;
 			}
 			if (bundle.flags&2){
-				printf("NET: %u\n",*((uint8_t *)bundle.mem.ptr + bundle.offset_tab[DATA][OFFSET]));
+				//printf("NET: %u\n",*((uint8_t *)bundle.mem.ptr + bundle.offset_tab[DATA][OFFSET]));
 			}
-#if DEBUG
-			PRINTF("NETWORK: input ");
-			for (i=0; i<bundle.size; i++){
-				PRINTF("%x:",*((uint8_t *)bundle.mem.ptr + i));
-			}
-			PRINTF("\n");
-#endif
 			bundle.rec_time=(uint32_t) clock_seconds();
 #if DEBUG_H
 			bundle.debug_time=clock_time();
 #endif
 			bundle.size= (uint8_t) size;
+#if DEBUG
+			printf("NETWORK: input ");
+			for (i=0; i<bundle.size; i++){
+				printf("%x:",*((uint8_t *)bundle.mem.ptr + i));
+			}
+			printf("\n");
+#endif
+			bundle.msrc.u8[0]=bsrc.u8[0];
+			bundle.msrc.u8[1]=bsrc.u8[1];
+			//printf("NETWORK: %u:%u\n", bundle.msrc.u8[0],bundle.msrc.u8[1]);
 			PRINTF("NETWORK: size of received bundle: %u block pointer %p\n",bundle.size, bundle.mem.ptr);
 			dispatch_bundle(&bundle);			
 //			process_post(&agent_process, dtn_receive_bundle_event, &bundle);
 		}else{
 			
-			rimeaddr_t bsrc = *packetbuf_addr(PACKETBUF_ADDR_SENDER);
 			memcpy(&beacon_src,&bsrc,sizeof(beacon_src));
 			packetbuf_clear();
 			PRINTF("NETWORK: got beacon from %u,%u\n",beacon_src.u8[0],beacon_src.u8[1]);
@@ -172,8 +146,8 @@ static void packet_sent(void *ptr, int status, int num_tx)
 	
 	struct route_t *route= (struct route_t *)ptr;
 	PRINTF("DTN: bundle_num : %u    %p\n",route->bundle_num,ptr);
+	//printf("sent to %u:%u\n",route->dest.u8[0],route->dest.u8[1]);
 	ROUTING.sent((struct route_t *)ptr,status,num_tx);
-	printf("sent\n");
 	#if 0
 	uint16_t bundlebuf_length;
 	bundlebuf_length =  bundlebuf_get_length();
@@ -206,11 +180,13 @@ int dtn_network_send(struct bundle_t *bundle, struct route_t *route)
 	sdnv_decode(bundle->mem.ptr+bundle->offset_tab[LIFE_TIME][OFFSET],bundle->offset_tab[LIFE_TIME][STATE],&time);
 
 	PRINTF("seq_num %lu lifetime %lu bundle pointer %p bundel->block %p \n ",i,time,bundle,bundle->mem.ptr);
-	PRINTF("NETWORK: send ");
+#if DEBUG
+	printf("NETWORK: send ");
 	for (i=0; i<bundle->mem.size; i++){
-		PRINTF("%x:",*((uint8_t*)bundle->mem.ptr + i));
+		printf("%x:",*((uint8_t*)bundle->mem.ptr + i));
 	}
-	PRINTF("\n");
+	printf("\n");
+#endif
 	/* kopiere die Daten in den packetbuf(fer) */
 	packetbuf_copyfrom(payload, len);
 	/*setze Zieladresse und übergebe das Paket an die MAC schicht */
@@ -223,17 +199,6 @@ int dtn_network_send(struct bundle_t *bundle, struct route_t *route)
 	return 1;
 }
 
-int dtn_discover(void)
-{	
-	uint8_t foo=23;
-	rimeaddr_t dest={{0,0}};
-	packetbuf_copyfrom("DTN_DISCOVERY", 13);
-	packetbuf_set_addr(PACKETBUF_ADDR_RECEIVER, &dest);
-	packetbuf_set_addr(PACKETBUF_ADDR_SENDER, &dest);
-	packetbuf_set_attr(PACKETBUF_ADDRSIZE, 2);
-	NETSTACK_MAC.send(NULL, NULL);
-	return 1;
-}	
 
 
 const struct network_driver dtn_network_driver = 

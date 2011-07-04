@@ -37,6 +37,7 @@
 #include "custody.h"
 #include "status-report.h"
 #include "lib/memb.h"
+#include "discovery.h"
 
 
 #define DEBUG 0
@@ -228,7 +229,7 @@ PROCESS_THREAD(agent_process, ev, data)
 				continue;
 			}
 			PRINTF("BUNDLEPROTOCOL: discover\n");
-			dtn_discover();
+			DISCOVERY.send();
 			if (BUNDLE_STORAGE.get_bundle_num() == 1){
 				etimer_set(&discover_timer, DISCOVER_CYCLE*CLOCK_SECOND);
 			}
@@ -261,10 +262,11 @@ PROCESS_THREAD(agent_process, ev, data)
 
 			//struct route_t *route;
 			//for(route = list_head(route_list); route != NULL; route = list_item_next(route)) {
+			uint8_t listcount=0;
 			while (route !=NULL) {
+				listcount++;
 				PRINTF("BUNDLEPROTOCOL: send bundle %u to node %u:%u\n",route->bundle_num, route->dest.u8[1], route->dest.u8[0]);
 				uint8_t i;
-
 				memset(&bundle, 0, sizeof(struct bundle_t));
 				bundleptr = &bundle;
 				if(BUNDLE_STORAGE.read_bundle(route->bundle_num,bundleptr)<=0){
@@ -291,6 +293,7 @@ PROCESS_THREAD(agent_process, ev, data)
 				}
 				route= route->next;
 			}
+			//printf("BUNDLEPROTOCOL: %u\n",listcount);
 			ROUTING.delete_list();
 			continue;
 		}
@@ -300,7 +303,7 @@ PROCESS_THREAD(agent_process, ev, data)
 			if (BUNDLE_STORAGE.get_bundle_num()>0){
 				PRINTF("BUNDLEPROTOCOL: sending discover and reschedule timer to %u seconds %u bundles in storage\n",DISCOVER_CYCLE,BUNDLE_STORAGE.get_bundle_num());
 				etimer_set(&discover_timer, DISCOVER_CYCLE*CLOCK_SECOND);
-				dtn_discover();	
+				DISCOVERY.send();
 			}else{
 				PRINTF("BUNDLEPROTOCOL: no more bundles to transmit\n");
 			}

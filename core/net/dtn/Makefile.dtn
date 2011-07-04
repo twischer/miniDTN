@@ -6,6 +6,6 @@ BUNDLE=sdnv.c bundle.c
 endif
 COFFEE_FILES=4
 STORAGE= g_storage.c 
-AGENT= agent.c registration.c delivery.c dispatching.c null_custody.c test.c forwarding.c flood_route.c b_custody.c b_status.c
+AGENT= agent.c registration.c delivery.c dispatching.c null_custody.c test.c forwarding.c flood_route.c b_custody.c b_status.c b_discover.c
 REDUNDANCE_CHECK= b_redundance.c
 CONTIKI_SOURCEFILES += $(DTN_NETWORK) $(BUNDLE) $(STORAGE) $(AGENT) $(REDUNDANCE_CHECK)

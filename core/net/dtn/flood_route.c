@@ -20,7 +20,7 @@
 #endif
 
 #define ROUTING_MAX_MEM 10
-#define ROUTING_NEI_MEM 1
+#define ROUTING_NEI_MEM 2
 struct pack_list_t {
 	struct pack_list_t *next;
 	uint16_t num;
@@ -55,7 +55,6 @@ void flood_new_neigh(rimeaddr_t *dest)
 	for(pack = list_head(pack_list); pack != NULL; pack = list_item_next(pack)) {
 //		PRINTF("FLOOD: searching for bundles\n");
 		uint8_t sent=0,i;
-		watchdog_periodic();
 		for (i =0 ; i < ROUTING_NEI_MEM ; i++) {
 			PRINTF("FLOOD: bundle %u already sent to node %u:%u == %u:%u?\n",pack->num, dest->u8[1] ,dest->u8[0], pack->dest[i].u8[1], pack->dest[i].u8[0]);
 			if (pack->dest[i].u8[0] == dest->u8[0] && pack->dest[i].u8[1] == dest->u8[1]){
@@ -68,7 +67,7 @@ void flood_new_neigh(rimeaddr_t *dest)
 			route= memb_alloc(&route_mem);
 			memcpy(route->dest.u8,dest->u8,sizeof(dest->u8));
 			route->bundle_num=pack->num;
-			PRINTF("FLOOD: send bundle %u to %u:%u route_ptr: %p\n",route->bundle_num, route->dest.u8[1] ,route->dest.u8[0], route);
+		//	printf("FLOOD: send bundle %u to %u:%u route_ptr: %p\n",route->bundle_num, route->dest.u8[1] ,route->dest.u8[0], route);
 			list_add(route_list,route);	
 			count++;
 
@@ -119,9 +118,12 @@ int flood_new_bundle(uint16_t bundle_num)
 			pack->dest[i].u8[0]=0;
 			pack->dest[i].u8[1]=0;
 		}
+	//	pack->dest[0].u8[0]=bundle.msrc.u8[0];
+	//	pack->dest[0].u8[1]=bundle.msrc.u8[1];
+		PRINTF("FLOOD: %u:%u\n",pack->dest[0].u8[0],pack->dest[0].u8[1]);
 		list_add(pack_list,pack);
 		PRINTF("FLOOD: pack_list %p\n",list_head(pack_list));
-		PRINTF("FLOOD: bundle saved to list\n");
+		//printf("FLOOD: bundle %u saved to list\n",pack->num);
 
 		delete_bundle(&bundle);
 	}
