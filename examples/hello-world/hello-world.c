@@ -89,13 +89,13 @@ PROCESS_THREAD(hello_world_process, ev, data)
 			bla=1;
 			set_attr(&bundle, SRC_NODE, &bla);
 			set_attr(&bundle, SRC_SERV,&bla);
-			bla=8;
+			set_attr(&bundle, CUST_NODE, &bla);
+			set_attr(&bundle, CUST_SERV, &bla);
+			bla=0;
 			set_attr(&bundle, FLAGS, &bla);
 			bla=1;
 			set_attr(&bundle, REP_NODE, &bla);
 			set_attr(&bundle, REP_SERV, &bla);
-			set_attr(&bundle, CUST_NODE, &bla);
-			set_attr(&bundle, CUST_SERV, &bla);
 			set_attr(&bundle, TIME_STAMP_SEQ_NR, &j);
 			bla=25;
 			set_attr(&bundle, LIFE_TIME, &bla);
@@ -113,7 +113,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 			}
 		printf("\n");
 			process_post(&agent_process,dtn_send_bundle_event,(void *) &bundle);
-			etimer_set(&timer, CLOCK_SECOND*10);
+			etimer_set(&timer, CLOCK_SECOND*1);
 
 
 
