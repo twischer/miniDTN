@@ -74,7 +74,7 @@ void deliver_bundle(struct bundle_t *bundle, struct registration *n) {
 		}
 */		
 		if( !REDUNDANCE.check(bundle)){ //packet was not delivert befor
-			printf("DELIVERY: bundle was not delivered befor\n");
+			//printf("DELIVERY: bundle was not delivered befor\n");
 			REDUNDANCE.set(bundle);
 			process_post(n->application_process, submit_data_to_application_event, bundle);
 			block = bundle->mem.ptr+1;
@@ -83,7 +83,7 @@ void deliver_bundle(struct bundle_t *bundle, struct registration *n) {
 			}
 		}else{
 			delete_bundle(bundle);
-			printf("DELIVERY: muliple delivery\n");
+		//	printf("DELIVERY: muliple delivery\n");
 		}
 	}			
 	

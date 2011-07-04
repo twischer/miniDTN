@@ -4,6 +4,7 @@
 #define BUNDLE_STORAGE_SIZE 10 
 #define BUNDLE_STARAGE_FILE_NAME "list_file"
 #include "net/dtn/bundle.h"
+#include "net/rime/rimeaddr.h"
 
 extern const struct storage_driver g_storage_driver;
 
@@ -17,6 +18,7 @@ struct file_list_entry_t{
 	uint32_t fraq_offset;
 	uint32_t rec_time;
 	uint8_t  custody;
+	rimeaddr_t msrc;
 };
 
 extern struct file_list_entry_t file_list[BUNDLE_STORAGE_SIZE];

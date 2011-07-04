@@ -5,14 +5,15 @@
 #include "mmem.h"
 #include "storage.h"
 #include "sdnv.h"
+static struct mmem report;
 uint8_t b_stat_send(struct bundle_t *bundle,uint8_t status, uint8_t reason)
 {
-	printf("STAT: send\n");
-	struct mmem report;
+	//printf("STAT: send %u %u\n",status,reason);
 	uint8_t size=4; //1byte admin record +1 byte status + 1byte reason + 1byte timestamp (0)
 	uint8_t type=16;
 	uint16_t f_len,d_len;
 	uint32_t len;
+	uint8_t j;
 	if( bundle->flags & 1){ //bundle fragment
 		type +=1;
 		size += bundle->offset_tab[FRAG_OFFSET][STATE];
@@ -39,10 +40,15 @@ uint8_t b_stat_send(struct bundle_t *bundle,uint8_t status, uint8_t reason)
 		printf("STAT: mmem ERROR\n");
 		return 0;
 	}
-	*(uint8_t*) report.ptr = type;
-	*(((uint8_t*) report.ptr)+1)= status;
-	*(((uint8_t*) report.ptr)+2)= reason;
+	*((uint8_t*) MMEM_PTR(&report))= type;
+	*((uint8_t*) MMEM_PTR(&report)+1)= status;
+	*((uint8_t*) MMEM_PTR(&report)+2)= reason;
 	uint8_t offset=3;
+	printf("STAT: %p %p ",MMEM_PTR(&report),MMEM_PTR(&bundle->mem));
+	for (j=0;j<bundle->mem.size;j++){
+		printf("%x:",*((uint8_t*) bundle->mem.ptr+ j));
+	}
+	printf("\n");
 	if( bundle->flags & 1){ 
 		memcpy(((uint8_t*) report.ptr) + offset, bundle->mem.ptr + bundle->offset_tab[FRAG_OFFSET][OFFSET],bundle->offset_tab[TIME_STAMP][STATE]);
 		offset+= bundle->offset_tab[FRAG_OFFSET][STATE];
@@ -77,6 +83,7 @@ uint8_t b_stat_send(struct bundle_t *bundle,uint8_t status, uint8_t reason)
 		sdnv_decode((uint8_t*)bundle->mem.ptr + bundle->offset_tab[REP_NODE][OFFSET],bundle->offset_tab[REP_NODE][STATE],&tmp);
 	}
 	set_attr(&rep_bundle, DEST_NODE, &tmp);
+	printf("STAT: %lu %u\n",tmp,status);
 	if(status&2){
 	
 		sdnv_decode((uint8_t*)bundle->mem.ptr + bundle->offset_tab[CUST_SERV][OFFSET],bundle->offset_tab[CUST_SERV][STATE],&tmp);
@@ -84,6 +91,7 @@ uint8_t b_stat_send(struct bundle_t *bundle,uint8_t status, uint8_t reason)
 		sdnv_decode((uint8_t*)bundle->mem.ptr + bundle->offset_tab[REP_SERV][OFFSET],bundle->offset_tab[REP_SERV][STATE],&tmp);
 	}
 	set_attr(&rep_bundle, DEST_SERV, &tmp);
+	printf("STAT: %lu \n",tmp);
 	set_attr(&rep_bundle, SRC_NODE, &dtn_node_id);
 	tmp=2;
 	set_attr(&rep_bundle, FLAGS, &tmp);
@@ -111,8 +119,15 @@ uint8_t b_stat_send(struct bundle_t *bundle,uint8_t status, uint8_t reason)
 	mmem_free(&rep_bundle.mem);
 	memcpy(&rep_bundle.mem, &tmp_mem, sizeof(tmp_mem));
 	mmem_reorg(&tmp_mem,&rep_bundle.mem);
-
+	uint8_t i;
+	for (i=0; i< rep_bundle.mem.size; i++){
+		printf("%x:",*((uint8_t *)rep_bundle.mem.ptr + i));
+	}
+	printf("\n");
+	
+	rep_bundle.size= rep_bundle.mem.size;
 	int32_t saved=BUNDLE_STORAGE.save_bundle(&rep_bundle);
+	printf("STAT: bundle_num %ld\n",saved);
 	if (saved >=0){
 		saved_as_num= (uint16_t)saved;
 		delete_bundle(&rep_bundle);

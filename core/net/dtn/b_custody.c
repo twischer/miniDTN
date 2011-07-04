@@ -11,7 +11,7 @@
 #include "status-report.h"
 
 #define RETRANSMIT 1000
-#define MAX_CUST 5 
+#define MAX_CUST 10 
 
 #define DEBUG 0
 #if DEBUG
@@ -82,16 +82,18 @@ void retransmit(){
 
 uint8_t b_cust_release(struct bundle_t *bundle)
 {
-	printf("B_CUST: release\n");
 	struct cust_t *cust;
 	uint8_t offset=0;
+	uint8_t cust_sig=  *((uint8_t*)bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET]) & 32;
 	uint8_t frag = *((uint8_t*)bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET]) & 1;
 	offset++;
 	uint8_t status= *((uint8_t*)bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET] + offset);
 	offset++;
 	uint32_t frag_offset, frag_len;
 	uint8_t len;
-	
+	if(!cust_sig){
+		offset++;
+	}
 	if (frag){
 		len = sdnv_len((uint8_t*)bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET] + offset);
 		sdnv_decode((uint8_t*)bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET] + offset, len, &frag_offset);
@@ -131,7 +133,7 @@ uint8_t b_cust_release(struct bundle_t *bundle)
 	// search custody 
 	for(cust = list_head(cust_list); cust != NULL; cust= list_item_next(cust)){
 //		PRINTF("B_CUST: searching...\n");
-//		PRINTF("B_CUST: %lu==%lu %lu==%lu %lu==%lu %lu==%lu\n", cust->src_node, src_node ,cust->seq_num ,seq_num ,cust->timestamp ,timestamp ,cust->frag_offset ,frag_offset);
+		//printf("B_CUST: %lu==%lu %lu==%lu %lu==%lu %lu==%lu\n", cust->src_node, src_node ,cust->seq_num ,seq_num ,cust->timestamp ,timestamp ,cust->frag_offset ,frag_offset);
 		if( cust->src_node == src_node && cust->seq_num == seq_num && cust->timestamp == timestamp && cust->frag_offset == frag_offset){
 //			PRINTF("B_CUST: found bundle\n");
 			inlist=1;
@@ -139,6 +141,7 @@ uint8_t b_cust_release(struct bundle_t *bundle)
 		}
 	}
 	if (inlist){
+		printf("B_CUST: release %u\n",cust->bundle_num);
 		// delete in storage
 		BUNDLE_STORAGE.del_bundle(cust->bundle_num,0xff);
 		// delete in list
@@ -357,10 +360,18 @@ int32_t b_cust_decide(struct bundle_t *bundle)
 {
 	PRINTF("B_CUST: decide %u\n",cust_cnt);
 	uint8_t free=BUNDLE_STORAGE.free_space(bundle);
-	if (free > 0 && cust_cnt < MAX_CUST){
+	uint32_t src, cust_node;
+	sdnv_decode(bundle->mem.ptr + bundle->offset_tab[SRC_NODE][OFFSET],bundle->offset_tab[SRC_NODE][STATE],&src);
+	
+	sdnv_decode(bundle->mem.ptr + bundle->offset_tab[CUST_NODE][OFFSET],bundle->offset_tab[CUST_NODE][STATE],&cust_node);
+	if (free > 0 && cust_cnt < MAX_CUST && (src!= dtn_node_id || cust_node == dtn_node_id)){
 		bundle->custody=1;
+		uint32_t tmp;
+		sdnv_decode(bundle->mem.ptr + bundle->offset_tab[CUST_NODE][OFFSET],bundle->offset_tab[CUST_NODE][STATE],&tmp);
+		set_attr(bundle,CUST_NODE,&dtn_node_id);
 		int32_t saved= BUNDLE_STORAGE.save_bundle(bundle);
 		if (saved>=0){
+			//printf("B_CUST: acc %u\n", ((uint16_t)saved));
 			struct cust_t *cust;
 			cust = memb_alloc(&cust_mem);
 			cust->frag_offset=0;
@@ -372,6 +383,13 @@ int32_t b_cust_decide(struct bundle_t *bundle)
 			PRINTF("B_CUST: cust->timestamp %lu\n",cust->timestamp);
 			sdnv_decode(bundle->mem.ptr + bundle->offset_tab[TIME_STAMP_SEQ_NR][OFFSET] , bundle->offset_tab[TIME_STAMP_SEQ_NR][STATE] , &cust->seq_num);
 			PRINTF("B_CUST: cust->seq_num %lu\n",cust->seq_num);
+			struct cust_t *t_cust;
+			for(t_cust = list_head(cust_list); t_cust != NULL; t_cust= list_item_next(t_cust)){
+				if (cust->bundle_num == t_cust->bundle_num){
+			//		printf("B_CUST: allready custodian\n");
+					return saved;
+				}
+			}
 			if (bundle->flags & 1){
 				sdnv_decode(bundle->mem.ptr + bundle->offset_tab[FRAG_OFFSET][OFFSET] , bundle->offset_tab[FRAG_OFFSET][STATE] , &cust->frag_offset);
 			}else{
@@ -382,13 +400,14 @@ int32_t b_cust_decide(struct bundle_t *bundle)
 			list_add(cust_list, cust);
 			cust_cnt++;
 			if (cust->src_node != dtn_node_id){
+				set_attr(bundle,CUST_NODE,&tmp);
 				STATUS_REPORT.send(bundle, 2,0);
 			}
 		}
 			
 		return saved;
 	}else{
-		printf("B_CUST: cust_cnt > MAX_CUST %u %u\n",cust_cnt,free);
+		//printf("B_CUST: cust_cnt > MAX_CUST %u %u\n",cust_cnt,free);
 		return -1;
 	}
 }

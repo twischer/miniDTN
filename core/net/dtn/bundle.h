@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include "mmem.h"
+#include "net/rime/rimeaddr.h"
 //#include "net/dtn/bundle.h"
 #ifndef __BUNDLE_H__
 #define __BUNDLE_H__
@@ -41,6 +42,7 @@ struct bundle_t{
 	uint16_t bundle_num;
 	uint32_t lifetime;
 	uint32_t flags;
+	rimeaddr_t msrc;
 	struct mmem mem;
 	// struct mmem *mem;
 #if DEBUG_H

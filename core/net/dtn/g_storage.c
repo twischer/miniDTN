@@ -7,6 +7,7 @@
 #include "dtn_config.h"
 #include "status-report.h"
 #include "agent.h"
+#include "mmem.h"
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -30,6 +31,7 @@ char *filename = BUNDLE_STARAGE_FILE_NAME;
 int fd_write, fd_read;
 static uint16_t bundles_in_storage;
 static struct ctimer g_store_timer;
+static struct bundle_t bundle_str;
 uint16_t del_num;
 
 void init(void)
@@ -46,7 +48,6 @@ void init(void)
 	//	file_list[0].file_size=1;
 		for (i=0; i<BUNDLE_STORAGE_SIZE; i++){
 			PRINTF("slot %u state is %u\n", i, file_list[i].file_size);
-			watchdog_periodic();
 			if(file_list[i].file_size >0 ){
 				bundles_in_storage++;
 			}
@@ -229,6 +230,7 @@ int32_t save_bundle(struct bundle_t *bundle)
 		return -2;
 	}
 	R_PRINTF("STORAGE: bundle_num %u\n",file_list[i].bundle_num);
+	memcpy(file_list[i].msrc.u8,bundle->msrc.u8,sizeof(file_list[i].msrc.u8));
 	return (int32_t)file_list[i].bundle_num;
 }
 
@@ -238,19 +240,30 @@ uint16_t del_bundle(uint16_t bundle_num,uint8_t reason)
 	//uint16_t *num;
 	//num = malloc(2);
 	R_PRINTF("STORAGE: delete bundle %u\n",bundle_num);
-	struct bundle_t bundle_str;
 	if(read_bundle(bundle_num,&bundle_str)){
+		uint8_t i;
+#if DEBUG
+		printf("STORAGE: ");
+		for (i=0;i<bundle_str.mem.size;i++){
+			printf("%x:",*((uint8_t*) bundle_str.mem.ptr+ i));
+		}
+		printf("\n");
+#endif
 		bundle_str.del_reason=reason;
 		del_num=bundle_num;
-		if( ((bundle_str.flags & 8 ) || (bundle_str.flags & 0x40000)) &&(bundle_str.del_reason !=0xff )){
+		if( ((bundle_str.flags & 8 ) || (bundle_str.flags & 0x40000)) &&(reason !=0xff )){
 			uint32_t src;
 			sdnv_decode(bundle_str.mem.ptr+ bundle_str.offset_tab[SRC_NODE][OFFSET],bundle_str.offset_tab[SRC_NODE][STATE],&src);
 			if (src != dtn_node_id){
 				STATUS_REPORT.send(&bundle_str,16,bundle_str.del_reason);
 			}
 		}
-		delete_bundle(&bundle_str);
+		//printf("STORAGE: foooo\n");
+
+	}else{
+		printf("STORAGE: read ERRROR\n");
 	}
+	delete_bundle(&bundle_str);
 	//if (!num){
 	//	printf("\n\n MALLOC ERROR\n\n");
 	//	return 0;
@@ -283,7 +296,7 @@ uint16_t del_bundle(uint16_t bundle_num,uint8_t reason)
 uint16_t read_bundle(uint16_t bundle_num,struct bundle_t *bundle)
 {
 	R_PRINTF("STORAGE: read %u\n",bundle_num);
-	printf("STORAGE: size %u\n",file_list[bundle_num].file_size);
+	//printf("STORAGE: size %u\n",file_list[bundle_num].file_size);
 	if( file_list[bundle_num].file_size <=0) {
 		return 0;
 	}
@@ -297,6 +310,7 @@ uint16_t read_bundle(uint16_t bundle_num,struct bundle_t *bundle)
 		
 		if(!mmem_alloc(&bundle->mem,file_list[bundle_num].file_size)){
 			 R_PRINTF("STORAGE: ERROR  memory\n");
+			 return 0;
 			 //while (1);
 		}
 		memset(bundle->mem.ptr,0,bundle->mem.size);
@@ -338,7 +352,6 @@ uint16_t read_bundle(uint16_t bundle_num,struct bundle_t *bundle)
 #endif
 		if( !recover_bundel(bundle, &bundle->mem,(int) file_list[bundle_num].file_size)){
 			R_PRINTF("\n\n recover Error\n\n");
-			//watchdog_stop();
 			//while(1);
 			return 0;
 		}
@@ -352,6 +365,7 @@ uint16_t read_bundle(uint16_t bundle_num,struct bundle_t *bundle)
 		bundle->custody = file_list[bundle_num].custody;
 		PRINTF("STORAGE: first byte in bundel %u\n",*((uint8_t*)bundle->mem.ptr));
 		bundle->lifetime=file_list[bundle_num].lifetime;
+		memcpy(bundle->msrc.u8,file_list[bundle_num].msrc.u8,sizeof(bundle->msrc.u8));
 		return file_list[bundle_num].file_size;
 	}else{
 		R_PRINTF("STORAGE: fd_read = -1\n");

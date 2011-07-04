@@ -42,7 +42,7 @@ void dispatch_bundle(struct bundle_t *bundle) {
 	PRINTF("DISPATCHING: bundle: %p\n", bundle->mem.ptr);
 	struct registration *n;
 
-	uint32_t dest=1;;
+	uint32_t dest=1;
 	sdnv_decode(bundle->mem.ptr + bundle->offset_tab[DEST_NODE][OFFSET], bundle->offset_tab[DEST_NODE][STATE], &dest);
 //	sdnv_decode(bundle->mem.ptr + bundle->offset_tab[FLAGS][OFFSET], bundle->offset_tab[FLAGS][STATE], &flags);
  	//TODO warum sagt gcc das flags nicht bunutzt wird	
@@ -51,23 +51,23 @@ void dispatch_bundle(struct bundle_t *bundle) {
 
 
 #if DEBUG
-	PRINTF("DISPATCHING: [DEST_NODE][OFFSET]:%u [DEST_SERV][OFFSET]: %u \n", bundle->offset_tab[DEST_NODE][OFFSET],bundle->offset_tab[DEST_SERV][OFFSET]); 
-	PRINTF("DISPATCHING: [DEST_NODE][STATE]:%u [DEST_SERV][STATE]: %u \n", bundle->offset_tab[DEST_NODE][STATE],bundle->offset_tab[DEST_SERV][STATE]); 
-	PRINTF("DISPATCHING: destination eid: %lu:%lu \n", dest, dest_app);
-	uint8_t i;
-	for (i=0; i<17; i++){
+//	PRINTF("DISPATCHING: [DEST_NODE][OFFSET]:%u [DEST_SERV][OFFSET]: %u \n", bundle->offset_tab[DEST_NODE][OFFSET],bundle->offset_tab[DEST_SERV][OFFSET]); 
+//	PRINTF("DISPATCHING: [DEST_NODE][STATE]:%u [DEST_SERV][STATE]: %u \n", bundle->offset_tab[DEST_NODE][STATE],bundle->offset_tab[DEST_SERV][STATE]); 
+//	PRINTF("DISPATCHING: destination eid: %lu:%lu \n", dest, dest_app);
+//	uint8_t i;
+//	for (i=0; i<17; i++){
 //		PRINTF("DISPATCHING: offset: %u , len: %u\n", bundle->offset_tab[i][OFFSET],bundle->offset_tab[i][STATE]);
-	}
+//	}
 #endif
 	
 	
 	
 	if((bundle->flags & 0x02) != 0) { //is bundle an admin record
 		
-		PRINTF("DISPATCHING: admin record detected \n");
+		//printf("DISPATCHING: admin record detected \n");
 		
 		if(dest == dtn_node_id){
-				
+				//printf("its for me\n");		
 				
 				if(*((uint8_t*)bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET]) & 32 ) {// is custody signal
 					PRINTF("DISPATCHING: received custody signal %u %u\n",bundle->offset_tab[DATA][OFFSET], bundle->mem.size);	
@@ -86,6 +86,7 @@ void dispatch_bundle(struct bundle_t *bundle) {
 					}
 
 				}else if( (*((uint8_t*)bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET]) & 16) && (*((uint8_t*)bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET]+1) & 2)) { // node accepted custody
+				//printf(" node acced\n");
 				#if DEBUG
 					uint8_t i=0;
 					for (i=0; i< bundle->mem.size; i++){
@@ -93,6 +94,7 @@ void dispatch_bundle(struct bundle_t *bundle) {
 					}
 					PRINTF("\n");
 				#endif
+					
 
 					CUSTODY.release(bundle);
 				}
