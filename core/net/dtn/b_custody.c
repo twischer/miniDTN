@@ -9,6 +9,7 @@
 #include "sdnv.h"
 #include "agent.h"
 #include "status-report.h"
+#include "mmem.h"
 
 #define RETRANSMIT 1000
 #define MAX_CUST 10 
@@ -133,7 +134,7 @@ uint8_t b_cust_release(struct bundle_t *bundle)
 	// search custody 
 	for(cust = list_head(cust_list); cust != NULL; cust= list_item_next(cust)){
 //		PRINTF("B_CUST: searching...\n");
-		//printf("B_CUST: %lu==%lu %lu==%lu %lu==%lu %lu==%lu\n", cust->src_node, src_node ,cust->seq_num ,seq_num ,cust->timestamp ,timestamp ,cust->frag_offset ,frag_offset);
+		printf("B_CUST: %lu==%lu %lu==%lu %lu==%lu %lu==%lu\n", cust->src_node, src_node ,cust->seq_num ,seq_num ,cust->timestamp ,timestamp ,cust->frag_offset ,frag_offset);
 		if( cust->src_node == src_node && cust->seq_num == seq_num && cust->timestamp == timestamp && cust->frag_offset == frag_offset){
 //			PRINTF("B_CUST: found bundle\n");
 			inlist=1;
@@ -337,10 +338,11 @@ uint8_t b_cust_report(struct bundle_t *bundle, uint8_t status){
 	rep_bundle.size = rep_bundle.mem.size;
 	int32_t saved=BUNDLE_STORAGE.save_bundle(&rep_bundle);
 	if (saved >=0){
-		saved_as_num= (uint16_t)saved;
+		uint16_t *saved_as_num = memb_alloc(saved_as_mem);
+		*saved_as_num = (uint16_t)saved;
 		delete_bundle(&rep_bundle);
-		process_post(&agent_process,dtn_bundle_in_storage_event, &saved_as_num);
-		PRINTF("B_CUST: %u \n",rep_bundle.mem.size);
+		process_post(&agent_process,dtn_bundle_in_storage_event, saved_as_num);
+		printf("B_CUST: %u \n",*saved_as_num);
 		return 1;
 	}else{
 		delete_bundle(&rep_bundle);
@@ -371,7 +373,7 @@ int32_t b_cust_decide(struct bundle_t *bundle)
 		set_attr(bundle,CUST_NODE,&dtn_node_id);
 		int32_t saved= BUNDLE_STORAGE.save_bundle(bundle);
 		if (saved>=0){
-			//printf("B_CUST: acc %u\n", ((uint16_t)saved));
+			printf("B_CUST: acc %u\n", ((uint16_t)saved));
 			struct cust_t *cust;
 			cust = memb_alloc(&cust_mem);
 			cust->frag_offset=0;
@@ -400,6 +402,7 @@ int32_t b_cust_decide(struct bundle_t *bundle)
 			list_add(cust_list, cust);
 			cust_cnt++;
 			if (cust->src_node != dtn_node_id){
+				printf("B_CUST: %u != %u\n",cust->src_node,dtn_node_id);
 				set_attr(bundle,CUST_NODE,&tmp);
 				STATUS_REPORT.send(bundle, 2,0);
 			}
@@ -411,7 +414,18 @@ int32_t b_cust_decide(struct bundle_t *bundle)
 		return -1;
 	}
 }
-
+void b_cust_del_from_list(uint16_t bundle_num)
+{
+	struct cust_t *t_cust;
+	for(t_cust = list_head(cust_list); t_cust != NULL; t_cust= list_item_next(t_cust)){
+		if (bundle_num == t_cust->bundle_num){
+			list_remove(cust_list,t_cust);
+			// free memb
+			memb_free(&cust_mem, t_cust);
+			cust_cnt--;
+		}
+	}
+}
 
 const struct custody_driver b_custody ={
 	"B_CUSTODY",
@@ -420,5 +434,6 @@ const struct custody_driver b_custody ={
 	b_cust_report,
 	b_cust_decide,
 	b_cust_restransmit,
+	b_cust_del_from_list,
 };
 

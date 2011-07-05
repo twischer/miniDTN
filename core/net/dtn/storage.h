@@ -6,12 +6,18 @@
 #include "net/dtn/bundle.h"
 #include "contiki.h"
 #include "bundle.h"
+#include "memb.h"
 
 process_event_t dtn_bundle_deleted_event;
 
-static uint16_t saved_as_num;
+//static uint16_t saved_as_num;
 extern uint16_t del_num;
 
+struct saved_as_t{
+	uint16_t saved_as_num;
+};
+
+extern struct memb_blocks *saved_as_mem;
 
 struct storage_driver {
 	char *name;

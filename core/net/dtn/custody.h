@@ -16,6 +16,7 @@ struct custody_driver {
 	uint8_t (* report)(struct bundle_t *bundle, uint8_t status);
 	int32_t (* decide)(struct bundle_t *bundle);
 	uint8_t (* retransmit)(struct bundle_t *bundle);
+	void (* del_from_list)(uint16_t bundle_num);
 };
 
 extern const struct custody_driver CUSTODY;

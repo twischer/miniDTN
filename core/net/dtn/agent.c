@@ -220,10 +220,11 @@ PROCESS_THREAD(agent_process, ev, data)
 			PRINTF("BUNDLEPROTOCOL: foooooo\n");
 			continue;
 		}
-		
+	
 		else if(ev == dtn_bundle_in_storage_event){
-			uint16_t b_num= *(uint16_t *) data;
-			PRINTF("BUNDLEPROTOCOL: bundle in storage %u\n",b_num);	
+			uint16_t b_num = *(uint16_t *) data;
+			printf("BUNDLEPROTOCOL: bundle in storage %u %p %p\n",b_num, data, saved_as_mem);	
+			memb_free(saved_as_mem,data);
 			if(!ROUTING.new_bundle(b_num)){
 				PRINTF("BUNDLEPROTOCOL: ERROR\n");
 				continue;
@@ -241,6 +242,7 @@ PROCESS_THREAD(agent_process, ev, data)
 		//	bundleptr=(struct bundle_t *) data;
 			PRINTF("BUNDLEPROTOCOL: delete bundle %u\n",del_num);
 			ROUTING.del_bundle( del_num);
+			CUSTODY.del_from_list(del_num);
 //			if( ((bundleptr->flags & 8 ) || (bundleptr->flags & 0x40000)) &&(bundleptr->del_reason !=0xff )){
 //				STATUS_REPORT.send(bundleptr,16,bundleptr->del_reason);
 //			}

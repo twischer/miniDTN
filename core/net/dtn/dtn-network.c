@@ -102,13 +102,14 @@ static void dtn_network_input(void)
 			bundle.debug_time=clock_time();
 #endif
 			bundle.size= (uint8_t) size;
-#if DEBUG
+//#if DEBUG
+			uint8_t i;
 			printf("NETWORK: input ");
 			for (i=0; i<bundle.size; i++){
 				printf("%x:",*((uint8_t *)bundle.mem.ptr + i));
 			}
 			printf("\n");
-#endif
+//#endif
 			bundle.msrc.u8[0]=bsrc.u8[0];
 			bundle.msrc.u8[1]=bsrc.u8[1];
 			//printf("NETWORK: %u:%u\n", bundle.msrc.u8[0],bundle.msrc.u8[1]);
@@ -180,13 +181,13 @@ int dtn_network_send(struct bundle_t *bundle, struct route_t *route)
 	sdnv_decode(bundle->mem.ptr+bundle->offset_tab[LIFE_TIME][OFFSET],bundle->offset_tab[LIFE_TIME][STATE],&time);
 
 	PRINTF("seq_num %lu lifetime %lu bundle pointer %p bundel->block %p \n ",i,time,bundle,bundle->mem.ptr);
-#if DEBUG
+//#if DEBUG
 	printf("NETWORK: send ");
 	for (i=0; i<bundle->mem.size; i++){
 		printf("%x:",*((uint8_t*)bundle->mem.ptr + i));
 	}
 	printf("\n");
-#endif
+//#endif
 	/* kopiere die Daten in den packetbuf(fer) */
 	packetbuf_copyfrom(payload, len);
 	/*setze Zieladresse und übergebe das Paket an die MAC schicht */

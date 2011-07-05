@@ -2,6 +2,7 @@
 #include "net/dtn/agent.h"
 #include "net/dtn/custody.h"
 #include "net/dtn/storage.h"
+#include "mmem.h"
 
 
 #define DEBUG 0 
@@ -27,11 +28,14 @@ void forwarding_bundle(struct bundle_t *bundle)
 	}
 	PRINTF("FORWARDING saved in %ld\n", saved);
 	if( saved >=0){
-		saved_as_num= (uint16_t)saved;
-		PRINTF("FORWARDING: bundle_num %u\n",saved_as_num);
+		
+		uint16_t *saved_as_num=memb_alloc(saved_as_mem);
+		*saved_as_num= (uint16_t)saved;
+		printf("FORWARDING: %u %p %p\n", *saved_as_num,saved_as_num, saved_as_mem);
+		PRINTF("FORWARDING: bundle_num %u\n",*saved_as_num);
 		delete_bundle(bundle);
 		PRINTF("FORWARDING\n");
-		process_post(&agent_process,dtn_bundle_in_storage_event, &saved_as_num);
+		process_post(&agent_process,dtn_bundle_in_storage_event, saved_as_num);
 	}else{
 		delete_bundle(bundle);
 		PRINTF("FORWARDING: bundle not saved\n");
