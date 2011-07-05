@@ -75,8 +75,8 @@ PROCESS_THREAD(hello_world_process, ev, data)
 
 		if(etimer_expired(&timer) || (ev == sensors_event && data == &button_sensor)) {
 	//		j++;
+			leds_off(1);
 			printf("Hello, world\n");
-			leds_on(1);
 			create_bundle(&bundle);
 			uint8_t i;
 			uint32_t bla=4;
@@ -86,12 +86,12 @@ PROCESS_THREAD(hello_world_process, ev, data)
 			set_attr(&bundle, DEST_NODE, &bla);
 			bla=25;
 			set_attr(&bundle, DEST_SERV, &bla);
-			bla=1;
+			bla=dtn_node_id;
 			set_attr(&bundle, SRC_NODE, &bla);
 			set_attr(&bundle, SRC_SERV,&bla);
 			set_attr(&bundle, CUST_NODE, &bla);
 			set_attr(&bundle, CUST_SERV, &bla);
-			bla=0;
+			bla=8;
 			set_attr(&bundle, FLAGS, &bla);
 			bla=1;
 			set_attr(&bundle, REP_NODE, &bla);
@@ -113,13 +113,13 @@ PROCESS_THREAD(hello_world_process, ev, data)
 			}
 		printf("\n");
 			process_post(&agent_process,dtn_send_bundle_event,(void *) &bundle);
-			etimer_set(&timer, CLOCK_SECOND*1);
+			leds_on(1);
+			etimer_set(&timer, CLOCK_SECOND*5);
 
 
 
 //			dtn_network_send(bundle.block,bundle.size,dest);
 					
-			leds_off(1);
 		}
 	}
 	PROCESS_END();
