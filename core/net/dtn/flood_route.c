@@ -20,7 +20,7 @@
 #endif
 
 #define ROUTING_MAX_MEM 10
-#define ROUTING_NEI_MEM 2
+#define ROUTING_NEI_MEM 1
 struct pack_list_t {
 	struct pack_list_t *next;
 	uint16_t num;
@@ -93,7 +93,7 @@ int flood_new_bundle(uint16_t bundle_num)
 	struct pack_list_t *pack;
 	for(pack = list_head(pack_list); pack != NULL; pack = list_item_next(pack)) {
 		if (pack->num==bundle_num){
-			PRINTF("FLOOD: bundle is already kown\n");
+			PRINTF("FLOOD: bundle is already known\n");
 			return -1;
 		}
 	}
@@ -118,8 +118,8 @@ int flood_new_bundle(uint16_t bundle_num)
 			pack->dest[i].u8[0]=0;
 			pack->dest[i].u8[1]=0;
 		}
-	//	pack->dest[0].u8[0]=bundle.msrc.u8[0];
-	//	pack->dest[0].u8[1]=bundle.msrc.u8[1];
+		pack->dest[0].u8[0]=bundle.msrc.u8[0];
+		pack->dest[0].u8[1]=bundle.msrc.u8[1];
 		PRINTF("FLOOD: %u:%u\n",pack->dest[0].u8[0],pack->dest[0].u8[1]);
 		list_add(pack_list,pack);
 		PRINTF("FLOOD: pack_list %p\n",list_head(pack_list));

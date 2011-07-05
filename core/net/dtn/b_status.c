@@ -129,9 +129,11 @@ uint8_t b_stat_send(struct bundle_t *bundle,uint8_t status, uint8_t reason)
 	int32_t saved=BUNDLE_STORAGE.save_bundle(&rep_bundle);
 	printf("STAT: bundle_num %ld\n",saved);
 	if (saved >=0){
-		saved_as_num= (uint16_t)saved;
+
+		uint16_t *saved_as_num= memb_alloc(saved_as_mem);
+		*saved_as_num= (uint16_t)saved;
 		delete_bundle(&rep_bundle);
-		process_post(&agent_process,dtn_bundle_in_storage_event, &saved_as_num);
+		process_post(&agent_process,dtn_bundle_in_storage_event, saved_as_num);
 		return 1;
 	}else{
 		delete_bundle(&rep_bundle);

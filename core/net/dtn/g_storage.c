@@ -8,6 +8,7 @@
 #include "status-report.h"
 #include "agent.h"
 #include "mmem.h"
+#include "memb.h"
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -32,6 +33,7 @@ int fd_write, fd_read;
 static uint16_t bundles_in_storage;
 static struct ctimer g_store_timer;
 static struct bundle_t bundle_str;
+struct memb_blocks *saved_as_mem;
 uint16_t del_num;
 
 void init(void)
@@ -39,6 +41,9 @@ void init(void)
 	PRINTF("init g_storage\n");
 	fd_read = cfs_open(filename, CFS_READ);
 	bundles_in_storage=0;
+	MEMB(saved_as_memb,uint16_t , 2);
+	saved_as_mem=&saved_as_memb;
+	memb_init(saved_as_mem);
 	if(fd_read!=-1) {
 		PRINTF("file opened\n");
 		cfs_read(fd_read,file_list,29*BUNDLE_STORAGE_SIZE);
