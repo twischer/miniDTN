@@ -85,6 +85,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
   while (1){
   	PROCESS_WAIT_EVENT_UNTIL(ev);
 	if(ev == submit_data_to_application_event) {
+		leds_on(1);
 		struct bundle_t *bundle;
 		bundle = (struct bundle_t *) data;
 		uint8_t i;
@@ -95,6 +96,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 
 		printf("\n");
 		delete_bundle(bundle);
+		leds_off(1);
 	}
 //	cc2420_read(packetbuf_dataptr(),128);
   }
