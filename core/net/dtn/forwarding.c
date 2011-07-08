@@ -31,7 +31,7 @@ void forwarding_bundle(struct bundle_t *bundle)
 		
 		uint16_t *saved_as_num=memb_alloc(saved_as_mem);
 		*saved_as_num= (uint16_t)saved;
-		printf("FORWARDING: %u %p %p\n", *saved_as_num,saved_as_num, saved_as_mem);
+//		printf("FORWARDING: %u %p %p\n", *saved_as_num,saved_as_num, saved_as_mem);
 		PRINTF("FORWARDING: bundle_num %u\n",*saved_as_num);
 		delete_bundle(bundle);
 		PRINTF("FORWARDING\n");

@@ -27,6 +27,7 @@
 #include "net/dtn/agent.h"
 #include "net/dtn/custody.h"
 #include "net/dtn/redundance.h"
+#include "dev/leds.h"
 
 #define DEBUG 0
 #if DEBUG
@@ -76,7 +77,9 @@ void deliver_bundle(struct bundle_t *bundle, struct registration *n) {
 		if( !REDUNDANCE.check(bundle)){ //packet was not delivert befor
 			//printf("DELIVERY: bundle was not delivered befor\n");
 			REDUNDANCE.set(bundle);
+			leds_on(1);
 			process_post(n->application_process, submit_data_to_application_event, bundle);
+			leds_off(1);
 			block = bundle->mem.ptr+1;
 			if (*block & 0x08){
 				CUSTODY.report(bundle,128);
