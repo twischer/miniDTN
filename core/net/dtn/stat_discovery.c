@@ -22,8 +22,12 @@
 
 
 
+static rimeaddr_t dest;
 void s_dis_send(struct bundle_t *bundle)
 {
+	dest.u8[0]=12;
+	dest.u8[1]=0;
+	process_post(&agent_process, dtn_beacon_event, &dest);
 	return;
 }
 
