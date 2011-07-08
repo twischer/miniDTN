@@ -65,7 +65,7 @@ static void dtn_network_init(void)
 */
 static void dtn_network_input(void) 
 {
-	PRINTF("DTN-NETWORK: got packet\n");
+	printf("DTN-NETWORK: got packet\n");
 	uint8_t input_packet[114];
 	int size=packetbuf_copyto(input_packet);
 	rimeaddr_t dest = *packetbuf_addr(PACKETBUF_ADDR_RECEIVER);
