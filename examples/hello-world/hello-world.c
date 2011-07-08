@@ -67,7 +67,6 @@ PROCESS_THREAD(hello_world_process, ev, data)
 	PROCESS_BEGIN();
 	
 	SENSORS_ACTIVATE(button_sensor);
-	static uint32_t j=0;
 	agent_init();
 	//test_init();
 	while(1) {
@@ -75,8 +74,8 @@ PROCESS_THREAD(hello_world_process, ev, data)
 
 		if(etimer_expired(&timer) || (ev == sensors_event && data == &button_sensor)) {
 	//		j++;
-			leds_off(1);
-			printf("Hello, world\n");
+//			leds_off(1);
+			//printf("Hello, world\n");
 			create_bundle(&bundle);
 			uint8_t i;
 			uint32_t bla=4;
@@ -91,12 +90,12 @@ PROCESS_THREAD(hello_world_process, ev, data)
 			set_attr(&bundle, SRC_SERV,&bla);
 			set_attr(&bundle, CUST_NODE, &bla);
 			set_attr(&bundle, CUST_SERV, &bla);
-			bla=8;
+			bla=0;
 			set_attr(&bundle, FLAGS, &bla);
 			bla=1;
 			set_attr(&bundle, REP_NODE, &bla);
 			set_attr(&bundle, REP_SERV, &bla);
-			set_attr(&bundle, TIME_STAMP_SEQ_NR, &j);
+			set_attr(&bundle, TIME_STAMP_SEQ_NR, &bla);
 			bla=25;
 			set_attr(&bundle, LIFE_TIME, &bla);
 			bla=4;
@@ -113,8 +112,8 @@ PROCESS_THREAD(hello_world_process, ev, data)
 			}
 		printf("\n");
 			process_post(&agent_process,dtn_send_bundle_event,(void *) &bundle);
-			leds_on(1);
-			etimer_set(&timer, CLOCK_SECOND*5);
+//			leds_on(1);
+			etimer_set(&timer, CLOCK_SECOND*1);
 
 
 
