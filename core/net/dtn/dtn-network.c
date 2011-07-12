@@ -25,6 +25,8 @@
 #include "routing.h"
 #include "mmem.h"
 #include "discovery.h"
+#include "stimer.h"
+#include "leds.h"
 #if CONTIKI_TARGET_AVR_RAVEN
 	#include <stings.h>
 #endif
@@ -48,14 +50,16 @@ static void packet_sent(void *ptr, int status, int num_tx);
 
 static struct bundle_t bundle;	
 static rimeaddr_t beacon_src;
-
+//static struct stimer wait_timer;
+static uint16_t last_send;
 
 static void dtn_network_init(void) 
 {
-	
+	last_send= 0;
 	packetbuf_clear();
 //	input_buffer_clear();
 	dtn_network_mac = &NETSTACK_MAC;
+//	stimer_set(&wait_timer, 1);
 	PRINTF("DTN init\n");
 }
 
@@ -83,6 +87,7 @@ static void dtn_network_input(void)
 		if (!DISCOVERY.is_beacon(input_packet)){ //packet is a bundle
 			packetbuf_clear();
 			PRINTF("%p  %p\n",&bundle,&input_packet);	
+			printf(".\n");
 			struct mmem mem;
 			mmem_alloc(&mem,114);
 			if (!MMEM_PTR(&mem)){
@@ -146,7 +151,10 @@ static void packet_sent(void *ptr, int status, int num_tx)
 	  default:
 	    PRINTF("DTN: error %d after %d tx\n", status, num_tx);
 	  }
-	
+	last_send--;
+	if (!last_send){
+		leds_on(1);
+	}
 	struct route_t *route= (struct route_t *)ptr;
 	PRINTF("DTN: bundle_num : %u    %p\n",route->bundle_num,ptr);
 	//printf("sent to %u:%u\n",route->dest.u8[0],route->dest.u8[1]);
@@ -175,10 +183,10 @@ static void packet_sent(void *ptr, int status, int num_tx)
 
 int dtn_network_send(struct bundle_t *bundle, struct route_t *route) 
 {
-	
 	uint8_t *payload = bundle->mem.ptr;
 	uint8_t len = bundle->size;
 	uint32_t i, time;
+	last_send++;
 	sdnv_decode(bundle->mem.ptr+bundle->offset_tab[TIME_STAMP_SEQ_NR][OFFSET],bundle->offset_tab[TIME_STAMP_SEQ_NR][STATE],&i);
 	sdnv_decode(bundle->mem.ptr+bundle->offset_tab[LIFE_TIME][OFFSET],bundle->offset_tab[LIFE_TIME][STATE],&time);
 
@@ -197,6 +205,10 @@ int dtn_network_send(struct bundle_t *bundle, struct route_t *route)
 	packetbuf_set_attr(PACKETBUF_ADDRSIZE, 2);
 	
 	NETSTACK_MAC.send(&packet_sent, route); 
+//	while( clock_time()- last_trans < 80){
+//		watchdog_periodic();
+//	}
+//	last_trans=clock_time();
 	
 	
 	return 1;

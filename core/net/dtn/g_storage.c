@@ -294,7 +294,7 @@ uint16_t del_bundle(uint16_t bundle_num,uint8_t reason)
 	}
 	
 	
-	process_post(&agent_process,dtn_bundle_deleted_event, NULL);
+	process_post_synch(&agent_process,dtn_bundle_deleted_event, NULL);
 	return 1;
 }
 

@@ -10,6 +10,8 @@
 #include "status-report.h"
 #include "dtn-network.h" 
 #include "discovery.h"
+#include "dev/leds.h"
+#include "storage.h"
 
 
 #define DEBUG 0
@@ -25,9 +27,13 @@
 static rimeaddr_t dest;
 void s_dis_send(struct bundle_t *bundle)
 {
-	dest.u8[0]=12;
+	dest.u8[0]=3;
 	dest.u8[1]=0;
+	printf(" %u \n",BUNDLE_STORAGE.get_bundle_num());
+	if( BUNDLE_STORAGE.get_bundle_num() ==6){
 	process_post(&agent_process, dtn_beacon_event, &dest);
+	leds_off(1);
+	}
 	return;
 }
 

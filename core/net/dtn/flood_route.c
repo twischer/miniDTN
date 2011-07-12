@@ -58,11 +58,12 @@ void flood_new_neigh(rimeaddr_t *dest)
 		for (i =0 ; i < ROUTING_NEI_MEM ; i++) {
 			PRINTF("FLOOD: bundle %u already sent to node %u:%u == %u:%u?\n",pack->num, dest->u8[1] ,dest->u8[0], pack->dest[i].u8[1], pack->dest[i].u8[0]);
 			if (pack->dest[i].u8[0] == dest->u8[0] && pack->dest[i].u8[1] == dest->u8[1]){
-				PRINTF("FLOOD: YES\n");
+				printf("FLOOD: YES\n");
 				sent=1;
 			}
 		}
 		if(!sent){
+			printf("foo\n");
 			struct route_t *route;
 			route= memb_alloc(&route_mem);
 			memcpy(route->dest.u8,dest->u8,sizeof(dest->u8));
