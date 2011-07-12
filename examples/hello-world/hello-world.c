@@ -52,6 +52,8 @@
 //#include "net/dtn/realloc.h"
 
 #include "dev/button-sensor.h"
+#include "net/dtn/dtn_config.h"
+#include "net/dtn/storage.h"
 #include "mmem.h"
 
 #include <stdio.h> /* For printf() */
@@ -69,6 +71,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 	SENSORS_ACTIVATE(button_sensor);
 	agent_init();
 	//test_init();
+	uint8_t c=0;
 	while(1) {
 		PROCESS_YIELD();
 
@@ -96,12 +99,12 @@ PROCESS_THREAD(hello_world_process, ev, data)
 			set_attr(&bundle, REP_NODE, &bla);
 			set_attr(&bundle, REP_SERV, &bla);
 			set_attr(&bundle, TIME_STAMP_SEQ_NR, &bla);
-			bla=25;
+			bla=15;
 			set_attr(&bundle, LIFE_TIME, &bla);
 			bla=4;
 			set_attr(&bundle, TIME_STAMP, &bla);
-			uint8_t foo[10]={10,10,10,10,10,10,10,10,10,10};
-			add_block(&bundle, 1,2,foo,10);
+			uint8_t foo[20]={10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10};
+			add_block(&bundle, 1,2,foo,5);
 			
 			printf("main size: %u\n",bundle.size);
 			uint8_t *tmp=(uint8_t *) bundle.mem.ptr;
@@ -113,8 +116,11 @@ PROCESS_THREAD(hello_world_process, ev, data)
 		printf("\n");
 			process_post(&agent_process,dtn_send_bundle_event,(void *) &bundle);
 //			leds_on(1);
-			etimer_set(&timer, CLOCK_SECOND*1);
-
+			if (BUNDLE_STORAGE.get_bundle_num() <5){
+				etimer_set(&timer, CLOCK_SECOND*1);
+			}else{
+				etimer_set(&timer, CLOCK_SECOND*20);
+			}
 
 
 //			dtn_network_send(bundle.block,bundle.size,dest);
