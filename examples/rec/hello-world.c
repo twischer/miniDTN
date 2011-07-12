@@ -82,21 +82,30 @@ PROCESS_THREAD(hello_world_process, ev, data)
   PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&timer));
   printf("foooooo\n");
   process_post(&agent_process, dtn_application_registration_event,&reg);
+  static  uint16_t count=0;
   while (1){
   	PROCESS_WAIT_EVENT_UNTIL(ev);
 	if(ev == submit_data_to_application_event) {
-		leds_on(1);
 		struct bundle_t *bundle;
 		bundle = (struct bundle_t *) data;
 		uint8_t i;
-		printf("Paketinhalt: ");
-		for (i=0; i<27; i++){
-			printf("%x " ,*((uint8_t *) bundle->mem.ptr+i));
-		}
+//		printf("Paketinhalt: ");
+//		for (i=0; i<27; i++){
+//			printf("%x " ,*((uint8_t *) bundle->mem.ptr+i));
+//		}
 
-		printf("\n");
+		count++;
+		if(count > 5){
+			leds_off(1);
+			count=0;
+			printf(" %u \n",clock_time());
+		}
+		if (count == 1){
+			leds_on(1);
+		}
+			
+
 		delete_bundle(bundle);
-		leds_off(1);
 	}
 //	cc2420_read(packetbuf_dataptr(),128);
   }
