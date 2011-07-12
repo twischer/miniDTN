@@ -10,11 +10,11 @@
 #include "platform-conf.h"
 #endif /* PLATFORM_CONF_H */
 
+#if !WITH_DTN
 #ifndef NETSTACK_CONF_MAC
 #define NETSTACK_CONF_MAC     csma_driver
 #endif /* NETSTACK_CONF_MAC */
 
-#if !WITH_DTN
 #ifndef NETSTACK_CONF_RDC
 #define NETSTACK_CONF_RDC     contikimac_driver
 #endif /* NETSTACK_CONF_RDC */
@@ -56,6 +56,11 @@
 #endif
 
 #elif WITH_DTN /* WITH_UIP6 */
+
+
+#ifndef NETSTACK_CONF_MAC
+#define NETSTACK_CONF_MAC     nullmac_driver
+#endif /* NETSTACK_CONF_MAC */
 
 #define RF_CHANNEL            23 
 #define NETSTACK_CONF_NETWORK dtn_network_driver
