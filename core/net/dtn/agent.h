@@ -42,6 +42,7 @@ process_event_t dtn_send_admin_record_event;
 process_event_t dtn_send_bundle_to_node_event;
 /** @} */
 void agent_init(void);
+void agent_del_bundle(void);
 
 #endif
 

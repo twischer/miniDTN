@@ -153,7 +153,7 @@ PROCESS_THREAD(agent_process, ev, data)
 		}
 		
 		else if(ev == dtn_send_bundle_event) {
-			
+			leds_off(1);	
 			PRINTF("BUNDLEPROTOCOL: bundle send \n");
 			//reception_set_time();
 			bundleptr = (struct bundle_t *) data;
@@ -176,28 +176,28 @@ PROCESS_THREAD(agent_process, ev, data)
 			dtn_seq_nr++;
 //			while(bundlebuf_in_use())
 //				PROCESS_PAUSE();
-			
+				
 			forwarding_bundle(bundleptr);
+			leds_on(1);
 			continue;
 		}
 		
-		else if(ev == dtn_receive_bundle_event) {
-			
-			bundleptr= (struct bundle_t *) data;
-			PRINTF("BUNDLEPROTOCOL: bundle received %u\n",*((uint8_t *) (bundleptr->mem.ptr + bundleptr->offset_tab[TIME_STAMP_SEQ_NR][OFFSET])));	
+//		else if(ev == dtn_receive_bundle_event) {
+//			bundleptr= (struct bundle_t *) data;
+//			PRINTF("BUNDLEPROTOCOL: bundle received %u\n",*((uint8_t *) (bundleptr->mem.ptr + bundleptr->offset_tab[TIME_STAMP_SEQ_NR][OFFSET])));	
 			
 //			while(bundlebuf_in_use())
 //				PROCESS_PAUSE();
 //			bundleptr->rec_time= (uint32_t) clock_seconds();
 
 
-			dispatch_bundle(bundleptr);
+//			dispatch_bundle(bundleptr);
 			//BUNDLE_STORAGE.save_bundle(bundleptr);
 //			packetbuf_clear();
-			PRINTF("BUNDLEPROTOCOL: end bundle received \n");
+//			PRINTF("BUNDLEPROTOCOL: end bundle received \n");
 		//	*/
-			continue;
-		}
+//			continue;
+//		}
 		
 		else if(ev == dtn_send_admin_record_event) {
 			
@@ -230,9 +230,9 @@ PROCESS_THREAD(agent_process, ev, data)
 				continue;
 			}
 			PRINTF("BUNDLEPROTOCOL: discover\n");
-			DISCOVERY.send();
+			DISCOVERY.send(b_num);
 			if (BUNDLE_STORAGE.get_bundle_num() == 1){
-			//	etimer_set(&discover_timer, DISCOVER_CYCLE*CLOCK_SECOND);
+				etimer_set(&discover_timer, DISCOVER_CYCLE*CLOCK_SECOND);
 			}
 			continue;
 		}
@@ -240,7 +240,7 @@ PROCESS_THREAD(agent_process, ev, data)
 		else if(ev == dtn_bundle_deleted_event){
 			//uint16_t *tmp= (uint16_t *) data;
 		//	bundleptr=(struct bundle_t *) data;
-			printf("BUNDLEPROTOCOL: delete bundle %u\n",del_num);
+			//printf("BUNDLEPROTOCOL: delete bundle %u\n",del_num);
 			ROUTING.del_bundle( del_num);
 			CUSTODY.del_from_list(del_num);
 //			if( ((bundleptr->flags & 8 ) || (bundleptr->flags & 0x40000)) &&(bundleptr->del_reason !=0xff )){
@@ -259,6 +259,7 @@ PROCESS_THREAD(agent_process, ev, data)
 		}
 
 		else if(ev == dtn_send_bundle_to_node_event){
+			//leds_off(2);
 			PRINTF("baaarrr\n");
 			struct route_t *route = (struct route_t *)data;
 
@@ -275,7 +276,6 @@ PROCESS_THREAD(agent_process, ev, data)
 					route= route->next;
 					continue;
 				}
-
 				PRINTF("BUNDLEPROTOCOL: bundleptr->mem->ptr %p\n", bundleptr->mem.ptr);
 				PRINTF("BUNDLEPROTOCOL: bundle ready\n");
 				bundleptr->bundle_num =  route->bundle_num;
@@ -288,7 +288,7 @@ PROCESS_THREAD(agent_process, ev, data)
 					dtn_network_send(bundleptr,route);
 					delete_bundle(bundleptr);
 				}else{
-					printf("BUNDLEPROTOCOL: OOPS\n");
+					//printf("BUNDLEPROTOCOL: OOPS\n");
 					uint16_t tmp=bundleptr->bundle_num;
 					delete_bundle(bundleptr);
 					BUNDLE_STORAGE.del_bundle(tmp,1);
@@ -297,6 +297,7 @@ PROCESS_THREAD(agent_process, ev, data)
 			}
 			//printf("BUNDLEPROTOCOL: %u\n",listcount);
 			ROUTING.delete_list();
+			//leds_on(2);
 			continue;
 		}
 		
@@ -305,7 +306,7 @@ PROCESS_THREAD(agent_process, ev, data)
 			if (BUNDLE_STORAGE.get_bundle_num()>0){
 				PRINTF("BUNDLEPROTOCOL: sending discover and reschedule timer to %u seconds %u bundles in storage\n",DISCOVER_CYCLE,BUNDLE_STORAGE.get_bundle_num());
 				etimer_set(&discover_timer, DISCOVER_CYCLE*CLOCK_SECOND);
-				DISCOVERY.send();
+				DISCOVERY.send(255);
 			}else{
 				PRINTF("BUNDLEPROTOCOL: no more bundles to transmit\n");
 			}
@@ -326,5 +327,11 @@ PROCESS_THREAD(agent_process, ev, data)
 		*/
 	}
 	PROCESS_END();
+}
+void agent_del_bundle(void){
+
+			//printf("BUNDLEPROTOCOL: delete bundle %u\n",del_num);
+			ROUTING.del_bundle( del_num);
+			CUSTODY.del_from_list(del_num);
 }
 /** @} */

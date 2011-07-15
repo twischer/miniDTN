@@ -149,7 +149,10 @@ uint8_t b_cust_release(struct bundle_t *bundle)
 		list_remove(cust_list,cust);
 		// free memb
 		memb_free(&cust_mem, cust);
-		cust_cnt--;
+		
+		if (cust_cnt>0){
+			cust_cnt--;
+		}
 	}
 	// delete_bundle
 	PRINTF("B_CUST: delete bundle %p %p\n", bundle,bundle->mem);
@@ -410,7 +413,7 @@ int32_t b_cust_decide(struct bundle_t *bundle)
 			
 		return saved;
 	}else{
-		//printf("B_CUST: cust_cnt > MAX_CUST %u %u\n",cust_cnt,free);
+		printf("B_CUST: cust_cnt > MAX_CUST %u %u\n",cust_cnt,free);
 		return -1;
 	}
 }
@@ -422,7 +425,9 @@ void b_cust_del_from_list(uint16_t bundle_num)
 			list_remove(cust_list,t_cust);
 			// free memb
 			memb_free(&cust_mem, t_cust);
-			cust_cnt--;
+			if (cust_cnt>0){
+				cust_cnt--;
+			}
 		}
 	}
 }

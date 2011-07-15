@@ -10,7 +10,7 @@
 #include "mmem.h"
 struct discovery_driver {
 	char *name;
-	void (* send)(void);
+	void (* send)(uint16_t num);
 	uint8_t (* is_beacon)(uint8_t *msg);
 	uint8_t (* is_discover)(uint8_t *msg);
 };

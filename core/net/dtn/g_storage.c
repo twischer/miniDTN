@@ -11,6 +11,7 @@
 #include "memb.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include "cfs-coffee.h"
 
 #define DEBUG 0
 #if DEBUG
@@ -69,6 +70,7 @@ void init(void)
 			del_bundle(i,4);	
 		}
 		PRINTF("write new list-file\n");
+		//cfs_coffee_reserve(filename,sizeof(file_list));
 		fd_write = cfs_open(filename, CFS_WRITE);
 		PRINTF("file opened\n");
 		cfs_write(fd_write, file_list, sizeof(file_list));
@@ -109,6 +111,7 @@ void reinit(void)
 		file_list[i].file_size=0;
 		file_list[i].lifetime=0;
 		del_bundle(i,4);
+		//cfs_coffee_reserve(filename,sizeof(file_list));
 		fd_write = cfs_open(filename, CFS_WRITE);
 		cfs_write(fd_write, file_list, sizeof(file_list));
 		cfs_close(fd_write);
@@ -195,6 +198,7 @@ int32_t save_bundle(struct bundle_t *bundle)
 	char b_file[7];
 	sprintf(b_file,"%u.b",file_list[i].bundle_num);
 	PRINTF("STORAGE: write filename: %s\n", b_file);
+	cfs_coffee_reserve(b_file,bundle->size);
 	fd_write = cfs_open(b_file, CFS_WRITE);
 	int n=0;
 	PRINTF("STORAGE: write filename: %s opened\n", b_file);
@@ -226,6 +230,7 @@ int32_t save_bundle(struct bundle_t *bundle)
 	//file_list[i].custody=bundle->custody;
 	//save file list	
 	cfs_remove(filename);
+	//cfs_coffee_reserve(filename,sizeof(file_list));
 	fd_write = cfs_open(filename, CFS_WRITE);
 	if(fd_write != -1) {
 		cfs_write(fd_write, file_list, sizeof(file_list));
@@ -266,7 +271,7 @@ uint16_t del_bundle(uint16_t bundle_num,uint8_t reason)
 		//printf("STORAGE: foooo\n");
 
 	}else{
-		printf("STORAGE: read ERRROR\n");
+		//printf("STORAGE: read ERRROR\n");
 	}
 	delete_bundle(&bundle_str);
 	//if (!num){
@@ -285,6 +290,7 @@ uint16_t del_bundle(uint16_t bundle_num,uint8_t reason)
 	file_list[bundle_num].src=0;
 	//save file list	
 	cfs_remove(filename);
+	//cfs_coffee_reserve(filename,sizeof(file_list));
 	fd_write = cfs_open(filename, CFS_WRITE);
 	if(fd_write != -1) {
 		cfs_write(fd_write, file_list, sizeof(file_list));
@@ -294,7 +300,9 @@ uint16_t del_bundle(uint16_t bundle_num,uint8_t reason)
 	}
 	
 	
-	process_post_synch(&agent_process,dtn_bundle_deleted_event, NULL);
+	//printf(".\n");
+	agent_del_bundle();
+	//process_post_synch(&agent_process,dtn_bundle_deleted_event, NULL);
 	return 1;
 }
 
@@ -308,7 +316,6 @@ uint16_t read_bundle(uint16_t bundle_num,struct bundle_t *bundle)
 	char b_file[7];
 	sprintf(b_file,"%u.b",bundle_num);
 	fd_read = cfs_open(b_file, CFS_READ);
-	
 	if(fd_read != -1) {
 		R_PRINTF("file-size %u\n", file_list[bundle_num].file_size);
 	
