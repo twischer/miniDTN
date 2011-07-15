@@ -86,6 +86,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
   while (1){
   	PROCESS_WAIT_EVENT_UNTIL(ev);
 	if(ev == submit_data_to_application_event) {
+		leds_off(4);
 		struct bundle_t *bundle;
 		bundle = (struct bundle_t *) data;
 		uint8_t i;
@@ -95,17 +96,26 @@ PROCESS_THREAD(hello_world_process, ev, data)
 //		}
 
 		count++;
-		if(count > 5){
-			leds_off(1);
+		if(count > 8){
+//			leds_off(1);
 			count=0;
-			printf(" %u \n",clock_time());
+//			printf(" %u \n",clock_time());
 		}
 		if (count == 1){
-			leds_on(1);
+//			leds_on(1);
 		}
-			
+		uint32_t bla=1;
+		set_attr(bundle, DEST_NODE, &bla);
+		bla=dtn_node_id;
+		set_attr(bundle, SRC_NODE, &bla);
+		bla=25;
+		set_attr(bundle, SRC_SERV,&bla);
+		bla=20;
+		set_attr(bundle, LIFE_TIME,&bla);
+		process_post(&agent_process,dtn_send_bundle_event,(void *) bundle);
+		//deletei_bundle(bundle);
 
-		delete_bundle(bundle);
+		leds_on(4);
 	}
 //	cc2420_read(packetbuf_dataptr(),128);
   }
