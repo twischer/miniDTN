@@ -69,13 +69,13 @@ static void dtn_network_init(void)
 */
 static void dtn_network_input(void) 
 {
-	printf("DTN-NETWORK: got packet\n");
+//	printf("DTN-NETWORK: got packet\n");
 	uint8_t input_packet[114];
 	int size=packetbuf_copyto(input_packet);
 	rimeaddr_t dest = *packetbuf_addr(PACKETBUF_ADDR_RECEIVER);
 	rimeaddr_t bsrc = *packetbuf_addr(PACKETBUF_ADDR_SENDER);
 	int16_t rssi = packetbuf_attr(PACKETBUF_ATTR_RSSI);
-	printf("NET: rssi = %d\n", rssi-45);
+	//printf("NET: rssi = %d\n", rssi-45);
 	PRINTF("%x%x: dtn_network_input\n",dest.u8[0],dest.u8[1]);
 	if((dest.u8[0]==0) & (dest.u8[1]==0)) { //broadcast message
 		PRINTF("Broadcast\n");
@@ -85,9 +85,10 @@ static void dtn_network_input(void)
 			
         } else {
 		if (!DISCOVERY.is_beacon(input_packet)){ //packet is a bundle
+			//leds_on(4);
 			packetbuf_clear();
 			PRINTF("%p  %p\n",&bundle,&input_packet);	
-			printf(".\n");
+			//printf(".\n");
 			struct mmem mem;
 			mmem_alloc(&mem,114);
 			if (!MMEM_PTR(&mem)){
@@ -123,6 +124,7 @@ static void dtn_network_input(void)
 			PRINTF("NETWORK: size of received bundle: %u block pointer %p\n",bundle.size, bundle.mem.ptr);
 			dispatch_bundle(&bundle);			
 //			process_post(&agent_process, dtn_receive_bundle_event, &bundle);
+			//leds_off(4);
 		}else{
 			
 			memcpy(&beacon_src,&bsrc,sizeof(beacon_src));
@@ -153,31 +155,11 @@ static void packet_sent(void *ptr, int status, int num_tx)
 	  }
 	last_send--;
 	if (!last_send){
-		leds_on(1);
 	}
 	struct route_t *route= (struct route_t *)ptr;
 	PRINTF("DTN: bundle_num : %u    %p\n",route->bundle_num,ptr);
 	//printf("sent to %u:%u\n",route->dest.u8[0],route->dest.u8[1]);
 	ROUTING.sent((struct route_t *)ptr,status,num_tx);
-	#if 0
-	uint16_t bundlebuf_length;
-	bundlebuf_length =  bundlebuf_get_length();
-	PRINTF("DTN-NETWORK: Buflen: %i, Offset: %i \n", bundlebuf_length, *output_offset_ptr);
-	
-	/* überprüfe ob alle teile eines Bündels gesendet worden sind */	
-	if(bundlebuf_length > *output_offset_ptr) {
-		
-		dtn_network_send();
-	}
-	/* ist alles gesendet, leere den bundlebuffer, erhöhe die sequenznummer und
-	resette den offset */
-	else {
-		
-		bundlebuf_clear();
-		*output_offset_ptr = 0;
-		bundle_seqno = (bundle_seqno+1) % 16;
-	}
-	#endif
 		
 }
 

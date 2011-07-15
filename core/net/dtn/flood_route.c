@@ -56,14 +56,14 @@ void flood_new_neigh(rimeaddr_t *dest)
 //		PRINTF("FLOOD: searching for bundles\n");
 		uint8_t sent=0,i;
 		for (i =0 ; i < ROUTING_NEI_MEM ; i++) {
-			PRINTF("FLOOD: bundle %u already sent to node %u:%u == %u:%u?\n",pack->num, dest->u8[1] ,dest->u8[0], pack->dest[i].u8[1], pack->dest[i].u8[0]);
-			if (pack->dest[i].u8[0] == dest->u8[0] && pack->dest[i].u8[1] == dest->u8[1]){
-				printf("FLOOD: YES\n");
+			PRINTF("FLOOD: bundle %u already sent to node %u:%u == %u:%u? %lu\n",pack->num, dest->u8[1] ,dest->u8[0], pack->dest[i].u8[1], pack->dest[i].u8[0], pack->scr_node);
+			if ((pack->dest[i].u8[0] == dest->u8[0] && pack->dest[i].u8[1] == dest->u8[1])|| pack->scr_node == dest->u8[0]){
+		//		printf("FLOOD: YES\n");
 				sent=1;
 			}
 		}
 		if(!sent){
-			printf("foo\n");
+		//	printf("foo\n");
 			struct route_t *route;
 			route= memb_alloc(&route_mem);
 			memcpy(route->dest.u8,dest->u8,sizeof(dest->u8));
@@ -111,16 +111,17 @@ int flood_new_bundle(uint16_t bundle_num)
 			return -1;
 		}
 		PRINTF("FLOOD: red bundle\n");
-		sdnv_decode(bundle.offset_tab[FLAGS][OFFSET],bundle.offset_tab[FLAGS][STATE],&pack->flags);
-		sdnv_decode(bundle.offset_tab[DEST_NODE][OFFSET],bundle.offset_tab[DEST_NODE][STATE],&pack->dest_node);
+		sdnv_decode(bundle.mem.ptr+bundle.offset_tab[FLAGS][OFFSET],bundle.offset_tab[FLAGS][STATE],&pack->flags);
+		sdnv_decode(bundle.mem.ptr+bundle.offset_tab[DEST_NODE][OFFSET],bundle.offset_tab[DEST_NODE][STATE],&pack->dest_node);
+		sdnv_decode(bundle.mem.ptr+bundle.offset_tab[SRC_NODE][OFFSET],bundle.offset_tab[SRC_NODE][STATE],&pack->scr_node);
 		pack->send_to=0;
 		uint8_t i;
 		for (i=0; i<ROUTING_NEI_MEM; i++){
 			pack->dest[i].u8[0]=0;
 			pack->dest[i].u8[1]=0;
 		}
-		pack->dest[0].u8[0]=bundle.msrc.u8[0];
-		pack->dest[0].u8[1]=bundle.msrc.u8[1];
+	//	pack->dest[0].u8[0]=bundle.msrc.u8[0];
+	//	pack->dest[0].u8[1]=bundle.msrc.u8[1];
 		PRINTF("FLOOD: %u:%u\n",pack->dest[0].u8[0],pack->dest[0].u8[1]);
 		list_add(pack_list,pack);
 		PRINTF("FLOOD: pack_list %p\n",list_head(pack_list));
@@ -133,6 +134,7 @@ int flood_new_bundle(uint16_t bundle_num)
 
 void flood_del_bundle(uint16_t bundle_num)
 {
+	//printf(";\n");
 	PRINTF("FLOOD: delete bundle %u\n",bundle_num);
 	struct pack_list_t *pack;
 	for(pack = list_head(pack_list); pack != NULL; pack = list_item_next(pack)) {

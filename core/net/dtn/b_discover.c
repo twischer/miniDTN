@@ -56,12 +56,14 @@ uint8_t b_dis_is_discover(uint8_t *msg)
 	}
 	PRINTF("DTN DISCOVERY\n");
 	rimeaddr_t dest = *packetbuf_addr(PACKETBUF_ADDR_SENDER);
+	//if (dest.u8[0]==0xc && dest.u8[1]==0){
 	packetbuf_clear();
 	packetbuf_copyfrom("DTN_HERE", 8);
 	packetbuf_set_addr(PACKETBUF_ADDR_RECEIVER, &dest); 
 	packetbuf_set_addr(PACKETBUF_ADDR_SENDER, &dest); 
 	packetbuf_set_attr(PACKETBUF_ADDRSIZE, 2); 
 	NETSTACK_MAC.send(NULL, NULL);
+	//}
 	return 1;
 }
 const struct discovery_driver b_discovery ={
