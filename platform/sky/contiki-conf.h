@@ -4,20 +4,21 @@
 #ifndef CONTIKI_CONF_H
 #define CONTIKI_CONF_H
 
-#ifdef PLATFORM_CONF_H
-#include PLATFORM_CONF_H
-#else
-#include "platform-conf.h"
-#endif /* PLATFORM_CONF_H */
+
+#ifdef PROJECT_CONF_H
+#include "project-conf.h"
+#endif /* PROJECT_CONF_H */
+
+	#include "platform-conf.h"
 
 #if !WITH_DTN
-#ifndef NETSTACK_CONF_MAC
-#define NETSTACK_CONF_MAC     csma_driver
-#endif /* NETSTACK_CONF_MAC */
+	#ifndef NETSTACK_CONF_MAC
+	#define NETSTACK_CONF_MAC     csma_driver
+	#endif /* NETSTACK_CONF_MAC */
 
-#ifndef NETSTACK_CONF_RDC
-#define NETSTACK_CONF_RDC     contikimac_driver
-#endif /* NETSTACK_CONF_RDC */
+	#ifndef NETSTACK_CONF_RDC
+	#define NETSTACK_CONF_RDC     contikimac_driver
+	#endif /* NETSTACK_CONF_RDC */
 #endif
 
 #ifndef NETSTACK_CONF_RDC_CHANNEL_CHECK_RATE
@@ -58,14 +59,15 @@
 #elif WITH_DTN /* WITH_UIP6 */
 
 
-#ifndef NETSTACK_CONF_MAC
-#define NETSTACK_CONF_MAC     nullmac_driver
-#endif /* NETSTACK_CONF_MAC */
+	#ifndef NETSTACK_CONF_MAC
+	#define NETSTACK_CONF_MAC     nullmac_driver
+//	#define NETSTACK_CONF_MAC     csma_driver
+	#endif /* NETSTACK_CONF_MAC */
 
-#define RF_CHANNEL            23 
-#define NETSTACK_CONF_NETWORK dtn_network_driver
-#define NETSTACK_CONF_RDC          nullrdc_driver
-#ifndef QUEUEBUF_CONF_NUM
+	#define RF_CHANNEL            23 
+	#define NETSTACK_CONF_NETWORK dtn_network_driver
+	#define NETSTACK_CONF_RDC          nullrdc_driver
+	#ifndef QUEUEBUF_CONF_NUM
 #define QUEUEBUF_CONF_NUM                8
 #endif
 
