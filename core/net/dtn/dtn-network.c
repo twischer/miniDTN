@@ -51,11 +51,12 @@ static void packet_sent(void *ptr, int status, int num_tx);
 static struct bundle_t bundle;	
 static rimeaddr_t beacon_src;
 //static struct stimer wait_timer;
-static uint16_t last_send;
+static uint16_t last_send,cnt;
 
 static void dtn_network_init(void) 
 {
 	last_send= 0;
+	cnt=0;
 	packetbuf_clear();
 //	input_buffer_clear();
 	dtn_network_mac = &NETSTACK_MAC;
@@ -185,7 +186,8 @@ int dtn_network_send(struct bundle_t *bundle, struct route_t *route)
 	/*setze Zieladresse und übergebe das Paket an die MAC schicht */
 	packetbuf_set_addr(PACKETBUF_ADDR_RECEIVER, &route->dest);
 	packetbuf_set_attr(PACKETBUF_ADDRSIZE, 2);
-	
+	cnt++;
+	printf("send: %u\n",cnt);
 	NETSTACK_MAC.send(&packet_sent, route); 
 //	while( clock_time()- last_trans < 80){
 //		watchdog_periodic();
