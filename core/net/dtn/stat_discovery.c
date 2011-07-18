@@ -29,18 +29,18 @@ void s_dis_send(uint16_t num)
 {
 	if (num ==255)
 		return;
-	struct bundle_t bundle;
-	BUNDLE_STORAGE.read_bundle(num,&bundle);
+//	struct bundle_t bundle;
+//	BUNDLE_STORAGE.read_bundle(num,&bundle);
 
-	dest.u8[0]=*((uint8_t*)bundle.mem.ptr+bundle.offset_tab[DEST_NODE][OFFSET]);
-	printf(" dest node %u= %u\n",bundle.offset_tab[DEST_NODE][OFFSET],*((uint8_t*)bundle.mem.ptr+bundle.offset_tab[DEST_NODE][OFFSET]));
-	delete_bundle(&bundle);
-//	dest.u8[0]=0xc;
+//	dest.u8[0]=*((uint8_t*)bundle.mem.ptr+bundle.offset_tab[DEST_NODE][OFFSET]);
+//	printf(" dest node %u= %u\n",bundle.offset_tab[DEST_NODE][OFFSET],*((uint8_t*)bundle.mem.ptr+bundle.offset_tab[DEST_NODE][OFFSET]));
+//	delete_bundle(&bundle);
+	dest.u8[0]=0xc;
 	dest.u8[1]=0;
 //	printf(" %u \n",BUNDLE_STORAGE.get_bundle_num());
-	//if( BUNDLE_STORAGE.get_bundle_num() ==9){
+	if( BUNDLE_STORAGE.get_bundle_num() ==6){
 	process_post(&agent_process, dtn_beacon_event, &dest);
-	//}
+	}
 	return;
 }
 
