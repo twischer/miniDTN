@@ -51,7 +51,7 @@ static void packet_sent(void *ptr, int status, int num_tx);
 static struct bundle_t bundle;	
 static rimeaddr_t beacon_src;
 //static struct stimer wait_timer;
-static uint16_t last_send,cnt;
+static uint16_t last_send,cnt,cnt2;
 
 static void dtn_network_init(void) 
 {
@@ -123,6 +123,7 @@ static void dtn_network_input(void)
 			bundle.msrc.u8[1]=bsrc.u8[1];
 			//printf("NETWORK: %u:%u\n", bundle.msrc.u8[0],bundle.msrc.u8[1]);
 			PRINTF("NETWORK: size of received bundle: %u block pointer %p\n",bundle.size, bundle.mem.ptr);
+			printf("rec: %u\n",cnt2++);
 			dispatch_bundle(&bundle);			
 //			process_post(&agent_process, dtn_receive_bundle_event, &bundle);
 			//leds_off(4);

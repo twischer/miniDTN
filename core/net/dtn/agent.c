@@ -223,7 +223,7 @@ PROCESS_THREAD(agent_process, ev, data)
 	
 		else if(ev == dtn_bundle_in_storage_event){
 			uint16_t b_num = *(uint16_t *) data;
-			//printf("BUNDLEPROTOCOL: bundle in storage %u %p %p\n",b_num, data, saved_as_mem);	
+			PRINTF("BUNDLEPROTOCOL: bundle in storage %u %p %p\n",b_num, data, saved_as_mem);	
 			memb_free(saved_as_mem,data);
 			if(!ROUTING.new_bundle(b_num)){
 				PRINTF("BUNDLEPROTOCOL: ERROR\n");
@@ -260,7 +260,7 @@ PROCESS_THREAD(agent_process, ev, data)
 
 		else if(ev == dtn_send_bundle_to_node_event){
 			//leds_off(2);
-			PRINTF("baaarrr\n");
+//			printf("baaarrr\n");
 			struct route_t *route = (struct route_t *)data;
 
 			//struct route_t *route;
