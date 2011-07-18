@@ -1,4 +1,4 @@
-#define BUNDLE_STORAGE g_storage
+#define BUNDLE_STORAGE r_storage
 // #define MMEM_CONF_SIZE 2048 
 #define REDUNDANCE b_redundance
 #define CUSTODY b_custody
