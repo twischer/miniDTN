@@ -125,7 +125,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 			set_attr(&bundle, LIFE_TIME, &bla);
 			bla=4;
 			set_attr(&bundle, TIME_STAMP, &bla);
-			uint8_t foo[40]={10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10};
+			uint8_t foo[80]={10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10};
 			add_block(&bundle, 1,2,foo,80);
 			
 //			printf("main size: %u\n",bundle.size);
@@ -139,7 +139,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 			process_post(&agent_process,dtn_send_bundle_event,(void *) &bundle);
 			last_trans=clock_time();
 //			leds_on(1);
-			if (BUNDLE_STORAGE.get_bundle_num() <8){
+			if (BUNDLE_STORAGE.get_bundle_num() <7){
 				etimer_set(&timer, CLOCK_SECOND*0.2);
 			}else{
 				etimer_set(&timer, CLOCK_SECOND*20);
