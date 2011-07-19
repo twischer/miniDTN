@@ -53,6 +53,7 @@
 #include "dev/leds.h"
 #include "dev/cc2420.h"
 #include "net/dtn/bundle.h"
+#include "sdnv.h"
 #include "etimer.h"
   #define FOO { {4, 0 } }
 
@@ -82,7 +83,8 @@ PROCESS_THREAD(hello_world_process, ev, data)
   PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&timer));
   printf("foooooo\n");
   process_post(&agent_process, dtn_application_registration_event,&reg);
-  static  uint16_t count=0;
+  static uint16_t count=0;
+  static uint32_t loss=1, iold=0;
   while (1){
   	PROCESS_WAIT_EVENT_UNTIL(ev);
 	if(ev == submit_data_to_application_event) {
@@ -104,7 +106,14 @@ PROCESS_THREAD(hello_world_process, ev, data)
 		if (count == 1){
 //			leds_on(1);
 		}
-		printf("rec: %u\n",count);
+
+		uint32_t j;
+		sdnv_decode(bundle->mem.ptr+bundle->offset_tab[TIME_STAMP_SEQ_NR][OFFSET],bundle->offset_tab[TIME_STAMP_SEQ_NR][STATE],&j);
+		if(j==iold){
+			loss+= (j-iold);
+		}
+		printf("rec: %u %lu %lu \n",count,j, loss-1);
+		iold=j+1;
 		delete_bundle(bundle);
 
 		leds_on(4);
