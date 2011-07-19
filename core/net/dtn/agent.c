@@ -17,6 +17,7 @@
 
 #include "clock.h"
 #include "timer.h"
+#include "net/netstack.h"
 #include "mmem.h"
 #include "net/rime/rimeaddr.h"
 
@@ -223,6 +224,7 @@ PROCESS_THREAD(agent_process, ev, data)
 	
 		else if(ev == dtn_bundle_in_storage_event){
 			uint16_t b_num = *(uint16_t *) data;
+		//	printf("bundle %u\n",b_num);
 			PRINTF("BUNDLEPROTOCOL: bundle in storage %u %p %p\n",b_num, data, saved_as_mem);	
 			memb_free(saved_as_mem,data);
 			if(!ROUTING.new_bundle(b_num)){
@@ -288,6 +290,7 @@ PROCESS_THREAD(agent_process, ev, data)
 					dtn_network_send(bundleptr,route);
 					delete_bundle(bundleptr);
 				}else{
+					ROUTING.sent(route,MAC_TX_NOACK,0);
 					//printf("BUNDLEPROTOCOL: OOPS\n");
 					uint16_t tmp=bundleptr->bundle_num;
 					delete_bundle(bundleptr);

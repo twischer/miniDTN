@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include "dtn_config.h"
 #include "status-report.h"
+#include "forwarding.h"
 
 #define DEBUG 0
 #if DEBUG
@@ -36,7 +37,7 @@ void rs_init(void)
 	list_init(store_l);
 	//fd_read = cfs_open(filename, CFS_READ);
 	bundles_in_storage=0;
-	MEMB(saved_as_memb,uint16_t , 2);
+	MEMB(saved_as_memb,uint16_t , 100);
         saved_as_mem=&saved_as_memb;
         memb_init(saved_as_mem);
 
@@ -125,8 +126,48 @@ int32_t rs_save_bundle(struct bundle_t *bundle)
 		i++;
 	}
 	if(free == -1){
-		PRINTF("STORAGE: no free slots in bundlestorage\n");
-		return -1;
+//		PRINTF("STORAGE: no free slots in bundlestorage\n");
+//		return -1;
+
+                uint16_t index=0,nodel_winner=0,nodel_max=0;
+                uint32_t min_lifetime=-1;
+                int32_t delet=-1;
+		uint8_t mult_old=0;
+
+                while ( index < BUNDLE_STORAGE_SIZE) {
+                        if (file_list[index].file_size>0 && file_list[index].lifetime < min_lifetime){
+                                delet=(int32_t) index;
+                                min_lifetime=file_list[index].lifetime;
+                        }
+			if (file_list[index].lifetime == min_lifetime){
+				
+				file_list[index].not_del++;
+//				printf("not_del %lu %u\n", file_list[index].time_stamp_seq, file_list[index].not_del);
+				if(nodel_max<=file_list[index].not_del){
+					nodel_winner=index;
+					nodel_max=file_list[index].not_del;
+				}
+				mult_old=1;
+			}
+			index++;
+                }
+		if (mult_old){
+			delet=(int32_t)nodel_winner;
+//			printf("mult_old\n");
+		}
+                if (delet !=-1){
+//			printf("delete %u\n", file_list[delet].bundle_num);
+			file_list[delet].not_del=0;
+                        PRINTF("STORAGE: del %ld\n",delet);
+
+                        PRINTF("STORAGE: bundle->mem.ptr %p (%p + %p)\n", bundle->mem.ptr, bundle, &bundle->mem );
+                        if(!rs_del_bundle(delet,4)){
+                                return -1;
+                        }
+                        PRINTF("STORAGE: bundle->mem.ptr %p (%p + %p)\n", bundle->mem.ptr, bundle, &bundle->mem);
+                        free=delet;
+                }
+
 	}
 	i=(uint16_t)free;
 	PRINTF(" STORAGE: bundle will be safed in solt %u, size of bundle is %u\n",i,bundle->size);	
@@ -163,7 +204,7 @@ int32_t rs_save_bundle(struct bundle_t *bundle)
 	file_list[i].src = src ;
 	file_list[i].fraq_offset = fraq_offset;
 	file_list[i].rec_time= bundle->rec_time;
-
+	//printf("stored seq_nr %lu in %u\n",time_stamp_seq, file_list[i].bundle_num);
 	PRINTF("STORAGE: bundle_num %u %p\n",file_list[i].bundle_num, file_list[i]);
 	return (int32_t)file_list[i].bundle_num;
 }

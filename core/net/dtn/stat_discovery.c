@@ -39,9 +39,9 @@ void s_dis_send(uint16_t num)
 */	dest.u8[0]=0xc;
 	dest.u8[1]=0;
 //	printf(" %u \n",BUNDLE_STORAGE.get_bundle_num());
-	if( BUNDLE_STORAGE.get_bundle_num() ==6){
+//	if( BUNDLE_STORAGE.get_bundle_num() ==40){
 	process_post(&agent_process, dtn_beacon_event, &dest);
-	}
+//	}
 	return;
 }
 

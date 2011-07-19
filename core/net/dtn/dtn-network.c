@@ -123,7 +123,7 @@ static void dtn_network_input(void)
 			bundle.msrc.u8[1]=bsrc.u8[1];
 			//printf("NETWORK: %u:%u\n", bundle.msrc.u8[0],bundle.msrc.u8[1]);
 			PRINTF("NETWORK: size of received bundle: %u block pointer %p\n",bundle.size, bundle.mem.ptr);
-			printf("rec: %u\n",cnt2++);
+//			printf("rec: %u\n",cnt2++);
 			dispatch_bundle(&bundle);			
 //			process_post(&agent_process, dtn_receive_bundle_event, &bundle);
 			//leds_off(4);
@@ -188,7 +188,7 @@ int dtn_network_send(struct bundle_t *bundle, struct route_t *route)
 	packetbuf_set_addr(PACKETBUF_ADDR_RECEIVER, &route->dest);
 	packetbuf_set_attr(PACKETBUF_ADDRSIZE, 2);
 	cnt++;
-	printf("send: %u\n",cnt);
+	printf("send: %u  %u\n",cnt,i);
 	NETSTACK_MAC.send(&packet_sent, route); 
 //	while( clock_time()- last_trans < 80){
 //		watchdog_periodic();
