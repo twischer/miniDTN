@@ -13,6 +13,7 @@
 #define PRINTF(...)
 #endif
 
+uint16_t *saved_as_num;
 void forwarding_bundle(struct bundle_t *bundle)
 {
 	PRINTF("FORWARDING:1 bundle->mem.ptr %p\n",bundle->mem.ptr);
@@ -29,7 +30,7 @@ void forwarding_bundle(struct bundle_t *bundle)
 	PRINTF("FORWARDING saved in %ld\n", saved);
 	if( saved >=0){
 		
-		uint16_t *saved_as_num=memb_alloc(saved_as_mem);
+		saved_as_num=memb_alloc(saved_as_mem);
 		if(saved_as_num==NULL){
 			delete_bundle(bundle);
 			return;

@@ -1,5 +1,6 @@
 #include "net/netstack.h"
 
+
 #include "dtn_config.h"
 #include "net/dtn/bundle.h"
 #include "net/rime/rimeaddr.h"
@@ -19,13 +20,14 @@
 #define PRINTF(...)
 #endif
 
-#define ROUTING_MAX_MEM 10
+#define ROUTING_MAX_MEM 100
 #define ROUTING_NEI_MEM 1
 struct pack_list_t {
 	struct pack_list_t *next;
 	uint16_t num;
 	uint32_t flags, dest_node, scr_node, seq_num;
 	uint8_t send_to;
+	uint8_t action;
 	rimeaddr_t dest[ROUTING_NEI_MEM];
 };
 
@@ -55,11 +57,15 @@ void flood_new_neigh(rimeaddr_t *dest)
 	for(pack = list_head(pack_list); pack != NULL; pack = list_item_next(pack)) {
 //		PRINTF("FLOOD: searching for bundles\n");
 		uint8_t sent=0,i;
+//		printf("seq_num %lu in list\n",pack->seq_num);
 		for (i =0 ; i < ROUTING_NEI_MEM ; i++) {
 			PRINTF("FLOOD: bundle %u already sent to node %u:%u == %u:%u? %lu\n",pack->num, dest->u8[1] ,dest->u8[0], pack->dest[i].u8[1], pack->dest[i].u8[0], pack->scr_node);
-			if ((pack->dest[i].u8[0] == dest->u8[0] && pack->dest[i].u8[1] == dest->u8[1])|| pack->scr_node == dest->u8[0]){
+			if ((pack->dest[i].u8[0] == dest->u8[0] && pack->dest[i].u8[1] == dest->u8[1])|| pack->scr_node == dest->u8[0] || pack->action==1){
 		//		printf("FLOOD: YES\n");
 				sent=1;
+				if (pack->action==1){
+//					printf(" %lu in action\n",pack->seq_num);
+				}
 			}
 		}
 		if(!sent){
@@ -68,7 +74,8 @@ void flood_new_neigh(rimeaddr_t *dest)
 			route= memb_alloc(&route_mem);
 			memcpy(route->dest.u8,dest->u8,sizeof(dest->u8));
 			route->bundle_num=pack->num;
-		//	printf("FLOOD: send bundle %u to %u:%u route_ptr: %p\n",route->bundle_num, route->dest.u8[1] ,route->dest.u8[0], route);
+			pack->action=1;
+	//		printf("FLOOD: send bundle %lu to %u:%u\n",pack->seq_num, route->dest.u8[1] ,route->dest.u8[0]);
 			list_add(route_list,route);	
 			count++;
 
@@ -90,7 +97,7 @@ void flood_delete_list(void)
 }
 int flood_new_bundle(uint16_t bundle_num)
 {
-	PRINTF("FLOOD: got new bundle %u\n",bundle_num);
+//	printf("FLOOD: got new bundle %u\n",bundle_num);
 	struct pack_list_t *pack;
 	for(pack = list_head(pack_list); pack != NULL; pack = list_item_next(pack)) {
 		if (pack->num==bundle_num){
@@ -114,6 +121,7 @@ int flood_new_bundle(uint16_t bundle_num)
 		sdnv_decode(bundle.mem.ptr+bundle.offset_tab[FLAGS][OFFSET],bundle.offset_tab[FLAGS][STATE],&pack->flags);
 		sdnv_decode(bundle.mem.ptr+bundle.offset_tab[DEST_NODE][OFFSET],bundle.offset_tab[DEST_NODE][STATE],&pack->dest_node);
 		sdnv_decode(bundle.mem.ptr+bundle.offset_tab[SRC_NODE][OFFSET],bundle.offset_tab[SRC_NODE][STATE],&pack->scr_node);
+		sdnv_decode(bundle.mem.ptr+bundle.offset_tab[TIME_STAMP_SEQ_NR][OFFSET],bundle.offset_tab[TIME_STAMP_SEQ_NR][STATE],&pack->seq_num);
 		pack->send_to=0;
 		uint8_t i;
 		for (i=0; i<ROUTING_NEI_MEM; i++){
@@ -155,24 +163,28 @@ void flood_del_bundle(uint16_t bundle_num)
 void flood_sent(struct route_t *route,int status, int num_tx)
 {
     struct pack_list_t *pack;
+	pack = list_head(pack_list);
+	PRINTF("FLOOD: pack_list %p, %u\n",list_head(pack_list),pack->num);
+	for(pack = list_head(pack_list); pack != NULL && pack->num != route->bundle_num ; pack = list_item_next(pack)){
+		PRINTF("FLOOD: pack_num:%u != %u\n",pack->num,route->bundle_num);
+	}
+	pack->action=0;
 		
 	switch(status) {
 	  case MAC_TX_COLLISION:
+		 //   printf("coll for %lu\n",pack->seq_num);
 	    PRINTF("FLOOD: collision after %d tx\n", num_tx);
 	    break;
 	  case MAC_TX_NOACK:
+		  //  printf("noack for %lu\n",pack->seq_num);
 	    PRINTF("FLOOD: noack after %d tx\n", num_tx);
 	    break;
 	  case MAC_TX_OK:
 	    PRINTF("FLOOD: sent after %d tx\n", num_tx);
-	    pack = list_head(pack_list);
-	    PRINTF("FLOOD: pack_list %p, %u\n",list_head(pack_list),pack->num);
-	    for(pack = list_head(pack_list); pack != NULL && pack->num != route->bundle_num ; pack = list_item_next(pack)){
-	    	PRINTF("FLOOD: pack_num:%u != %u\n",pack->num,route->bundle_num);
-	    }
 	    if (pack !=NULL && pack->send_to < ROUTING_NEI_MEM){
 		    memcpy(pack->dest[pack->send_to].u8,route->dest.u8,sizeof(route->dest.u8));
 		    pack->send_to++;
+		//    printf("ack for %lu\n",pack->seq_num);
 		    PRINTF("FLOOD: bundle %u sent to %u nodes\n",route->bundle_num, pack->send_to);	
 		    memb_free(&route_mem,route);
 		    PRINTF("FLOOD: bundle %u cleared\n",route->bundle_num);
