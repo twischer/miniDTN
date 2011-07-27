@@ -154,7 +154,7 @@ PROCESS_THREAD(agent_process, ev, data)
 		}
 		
 		else if(ev == dtn_send_bundle_event) {
-			leds_off(1);	
+			//leds_off(1);	
 			PRINTF("BUNDLEPROTOCOL: bundle send \n");
 			//reception_set_time();
 			bundleptr = (struct bundle_t *) data;
@@ -179,7 +179,7 @@ PROCESS_THREAD(agent_process, ev, data)
 //				PROCESS_PAUSE();
 				
 			forwarding_bundle(bundleptr);
-			leds_on(1);
+			//leds_on(1);
 			continue;
 		}
 		
@@ -216,13 +216,14 @@ PROCESS_THREAD(agent_process, ev, data)
 
 		else if(ev == dtn_beacon_event){
 			rimeaddr_t* src =(rimeaddr_t*) data;	
-			PRINTF("BUNDLEPROTOCOL: got beacon from %u:%u\n",src->u8[1],src->u8[0]);
+			//printf("BUNDLEPROTOCOL: got beacon from %u:%u\n",src->u8[1],src->u8[0]);
 			ROUTING.new_neighbor(src);
 			PRINTF("BUNDLEPROTOCOL: foooooo\n");
 			continue;
 		}
 	
 		else if(ev == dtn_bundle_in_storage_event){
+			leds_off(4);
 			uint16_t b_num = *(uint16_t *) data;
 		//	printf("bundle %u\n",b_num);
 			PRINTF("BUNDLEPROTOCOL: bundle in storage %u %p %p\n",b_num, data, saved_as_mem);	
@@ -236,6 +237,8 @@ PROCESS_THREAD(agent_process, ev, data)
 			if (BUNDLE_STORAGE.get_bundle_num() == 1){
 				etimer_set(&discover_timer, DISCOVER_CYCLE*CLOCK_SECOND);
 			}
+
+			leds_on(4);
 			continue;
 		}
 		
@@ -261,7 +264,7 @@ PROCESS_THREAD(agent_process, ev, data)
 		}
 
 		else if(ev == dtn_send_bundle_to_node_event){
-			//leds_off(2);
+			leds_off(2);
 //			printf("baaarrr\n");
 			struct route_t *route = (struct route_t *)data;
 
@@ -300,7 +303,7 @@ PROCESS_THREAD(agent_process, ev, data)
 			}
 			//printf("BUNDLEPROTOCOL: %u\n",listcount);
 			ROUTING.delete_list();
-			//leds_on(2);
+			leds_on(2);
 			continue;
 		}
 		
