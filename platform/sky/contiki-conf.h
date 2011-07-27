@@ -60,8 +60,8 @@
 
 
 	#ifndef NETSTACK_CONF_MAC
-	#define NETSTACK_CONF_MAC     nullmac_driver
-//	#define NETSTACK_CONF_MAC     csma_driver
+//	#define NETSTACK_CONF_MAC     nullmac_driver
+	#define NETSTACK_CONF_MAC     csma_driver
 	#endif /* NETSTACK_CONF_MAC */
 
 	#define RF_CHANNEL            23 
