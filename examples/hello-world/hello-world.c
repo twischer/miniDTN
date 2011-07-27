@@ -86,6 +86,9 @@ PROCESS_THREAD(hello_world_process, ev, data)
 	printf("foooooo\n");
 	process_post(&agent_process, dtn_application_registration_event,&reg);
 	static uint16_t	rec=0;
+//	if((ev == sensors_event && data == &button_sensor)){
+//		etimer_set(&timer, CLOCK_SECOND*0.1);
+//	}
 	while(1) {
 		PROCESS_YIELD();
 /*		if(ev == submit_data_to_application_event) {
@@ -97,6 +100,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 		}
 */		if(etimer_expired(&timer) || (ev == sensors_event && data == &button_sensor)) {
 		//if((ev == sensors_event && data == &button_sensor)) {
+			leds_off(1);
 			rec++;
 	//		j++;
 //			leds_off(1);
@@ -121,12 +125,12 @@ PROCESS_THREAD(hello_world_process, ev, data)
 			set_attr(&bundle, REP_NODE, &bla);
 			set_attr(&bundle, REP_SERV, &bla);
 			set_attr(&bundle, TIME_STAMP_SEQ_NR, &bla);
-			bla=20;
+			bla=2000;
 			set_attr(&bundle, LIFE_TIME, &bla);
 			bla=4;
 			set_attr(&bundle, TIME_STAMP, &bla);
 			uint8_t foo[80]={10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10};
-			add_block(&bundle, 1,2,foo,5);
+			add_block(&bundle, 1,2,foo,80);
 			
 //			printf("main size: %u\n",bundle.size);
 			uint8_t *tmp=(uint8_t *) bundle.mem.ptr;
@@ -140,11 +144,12 @@ PROCESS_THREAD(hello_world_process, ev, data)
 			last_trans=clock_time();
 //			leds_on(1);
 //			if (BUNDLE_STORAGE.get_bundle_num() <39){
+			leds_on(1);
+			if (rec <1000){
+				//etimer_reset(&timer);
+				etimer_set(&timer, CLOCK_SECOND*20);
+			}
 
-			//if (rec <1000){
-	
-				etimer_set(&timer, CLOCK_SECOND*0.05);
-			//}
 //			}else{
 //				etimer_set(&timer, CLOCK_SECOND*20);
 //			}
