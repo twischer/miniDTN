@@ -85,13 +85,17 @@ PROCESS_THREAD(hello_world_process, ev, data)
   process_post(&agent_process, dtn_application_registration_event,&reg);
   static uint16_t count=0;
   static uint32_t loss=1, iold=0;
+  static uint16_t nums[1000];
+  uint16_t i;
+  for(i=0;i<1000;i++){
+  	nums[i]=0;
+  }
   while (1){
   	PROCESS_WAIT_EVENT_UNTIL(ev);
 	if(ev == submit_data_to_application_event) {
-		leds_off(4);
+		leds_off(1);
 		struct bundle_t *bundle;
 		bundle = (struct bundle_t *) data;
-		uint8_t i;
 //		printf("Paketinhalt: ");
 //		for (i=0; i<27; i++){
 //			printf("%x " ,*((uint8_t *) bundle->mem.ptr+i));
@@ -113,10 +117,22 @@ PROCESS_THREAD(hello_world_process, ev, data)
 			loss+= (j-iold);
 		}
 		printf("rec: %u %lu %lu \n",count,j, loss-1);
+		nums[j]=1;
+		if (j==998||j==999){
+			uint16_t l=0;
+			for(i=0;i<j+1;i++){
+				watchdog_periodic();
+				if(nums[i]!=1){
+					l++;
+				}
+			}
+			printf("loss: %u\n",l);
+		}
+			
 		iold=j+1;
 		delete_bundle(bundle);
 
-		leds_on(4);
+		leds_on(1);
 	}
 //	cc2420_read(packetbuf_dataptr(),128);
   }
