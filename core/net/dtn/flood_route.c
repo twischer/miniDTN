@@ -20,7 +20,7 @@
 #define PRINTF(...)
 #endif
 
-#define ROUTING_MAX_MEM 100
+#define ROUTING_MAX_MEM 10
 #define ROUTING_NEI_MEM 1
 struct pack_list_t {
 	struct pack_list_t *next;

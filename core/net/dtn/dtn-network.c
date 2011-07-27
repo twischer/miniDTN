@@ -131,7 +131,7 @@ static void dtn_network_input(void)
 			
 			memcpy(&beacon_src,&bsrc,sizeof(beacon_src));
 			packetbuf_clear();
-			PRINTF("NETWORK: got beacon from %u,%u\n",beacon_src.u8[0],beacon_src.u8[1]);
+	//		printf("NETWORK: got beacon from %u,%u\n",beacon_src.u8[0],beacon_src.u8[1]);
 			process_post(&agent_process, dtn_beacon_event, &beacon_src);
 //			process_post(&agent_process, dtn_send_admin_record_event, NULL);
 		}		
