@@ -188,7 +188,7 @@ int dtn_network_send(struct bundle_t *bundle, struct route_t *route)
 	packetbuf_set_addr(PACKETBUF_ADDR_RECEIVER, &route->dest);
 	packetbuf_set_attr(PACKETBUF_ADDRSIZE, 2);
 	cnt++;
-	printf("send: %u  %u\n",cnt,i);
+	//printf("send: %u  %u\n",cnt,i);
 	NETSTACK_MAC.send(&packet_sent, route); 
 //	while( clock_time()- last_trans < 80){
 //		watchdog_periodic();
