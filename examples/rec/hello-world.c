@@ -116,7 +116,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 		if(j==iold){
 			loss+= (j-iold);
 		}
-		printf("rec: %u %lu %lu \n",count,j, loss-1);
+		//printf("rec: %u %lu %lu \n",count,j, loss-1);
 		nums[j]=1;
 		if (j==998||j==999){
 			uint16_t l=0;
