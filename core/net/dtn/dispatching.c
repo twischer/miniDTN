@@ -1,14 +1,11 @@
 /**
- * \addtogroup dispatching
+ * \addtogroup bprocess
  * @{
  */
 
 /**
  * \file
- *         Abfertigung des Bündels
- *
- *	Überprüfung des Ziels
- *
+ * \author Georg von Zengen (vonzeng@ibr.cs.tu-bs.de) 
  */
 #include <stdint.h>
 #include <string.h>

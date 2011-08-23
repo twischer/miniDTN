@@ -1,3 +1,19 @@
+/**
+ * \addtogroup redundance
+ * @{
+ */
+
+ /**
+ * \defgroup b_redundance basic redundance check module
+ *
+ * @{
+ */
+
+/**
+* \file
+* implementation of basic redundance check module
+* \author Georg von Zengen (vonzeng@ibr.cs.tu-bs.de) 
+*/
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -35,7 +51,11 @@ MEMB(b_red_mem, struct red_bundle_t, B_RED_MAX);
 
 static uint8_t length=0;
 static struct ctimer *b_red_timer;
-
+/**
+* \brief checks if bundle was delivered befor
+* \param bundle pointer to bundle
+* \return 1 if bundle was delivered befor or 0 if not
+*/
 uint8_t check(struct bundle_t *bundle)
 {
 	PRINTF("REDUNDANCE: check\n");	
@@ -56,7 +76,11 @@ uint8_t check(struct bundle_t *bundle)
 	return 0;
 }
 
-
+/**
+* \brief saves the bundle in a list of delivered bundles
+* \param bundle pointer to bundle
+* \return 1 on succesor 0 on error
+*/
 uint8_t set(struct bundle_t *bundle)
 {
 
@@ -116,6 +140,9 @@ void reduce_lifetime(void)
 		
 
 }
+/**
+* \brief called by agent at startup
+*/
 void b_red_init(void)
 {
 	PRINTF("B_REDUNDANCE: starting\n");
@@ -132,3 +159,5 @@ const struct redundance_check b_redundance ={
 	check,
 	set,
 };
+/** @} */
+/** @} */

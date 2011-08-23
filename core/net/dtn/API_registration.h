@@ -4,13 +4,13 @@
  */
    /**
  * \file
- *        
+ *      this file defines the service registration struct 
  */
 #ifndef API_REGISTRATION_H
 #define API_REGISTRATION_H
 
 /**
-*   \brief Struktur mit der Anwendungen sich beim Bundle Agent registrieren, können
+*   \brief Struct for service registration
 *
 */
 struct registration_api {

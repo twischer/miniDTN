@@ -1,11 +1,10 @@
 /**
- * \addtogroup delivery
+ * \addtogroup bprocess
  * @{
  */
 
 /**
  * \file
- *         Übergabefunktion an Anwendungen
  *
  */
  
@@ -41,7 +40,7 @@
 void deliver_bundle(struct bundle_t *bundle, struct registration *n) {
 
 	PRINTF("DELIVERY\n");
-	if(n->status == APP_ACTIVE) {  //TODO was passiert wenn eine applikation nicht aktiv ist
+	if(n->status == APP_ACTIVE) {  
 	PRINTF("DELIVERY: Service is active\n");
 
 	
@@ -51,42 +50,15 @@ void deliver_bundle(struct bundle_t *bundle, struct registration *n) {
 #if DEBUG
 		uint8_t block_count=0;
 #endif
-/*	
-		while ( block <= bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET] + bundle->offset_tab[DATA][STATE]){
-			if (*block != 1){ // no payloadblock
-				PRINTF("DELIVERY: block %u is no payload block\n", block_count); 
-				uint8_t s_len= sdnv_len(block+2);
-				sdnv_decode(block+2, s_len, &len);
-				block= block +2 + len +s_len;
-			}else{
-				uint8_t s_len= sdnv_len(block+2);
-				sdnv_decode(block+2, s_len, &len);
-				PRINTF("DELIVERY: block %u is a payload block\n", block_count); 
-				if( !REDUNDANCE.check(bundle)){ //packet was not delivert befor
-					PRINTF("DELIVERY: bundle was not delivered befor\n");
-					REDUNDANCE.set(bundle);
-					process_post(n->application_process, submit_data_to_application_event, block +2 +s_len);
-				}
-				break;
-			}
-#if DEBUG
-			block_count++;
-#endif
-		}
-*/		
 		if( !REDUNDANCE.check(bundle)){ //packet was not delivert befor
-			//printf("DELIVERY: bundle was not delivered befor\n");
 			REDUNDANCE.set(bundle);
-			//leds_on(1);
 			process_post(n->application_process, submit_data_to_application_event, bundle);
-			//leds_off(1);
 			block = bundle->mem.ptr+1;
 			if (*block & 0x08){
 				CUSTODY.report(bundle,128);
 			}
 		}else{
 			delete_bundle(bundle);
-		//	printf("DELIVERY: muliple delivery\n");
 		}
 	}			
 	

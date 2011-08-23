@@ -1,10 +1,9 @@
 /**
- * \addtogroup registration
+ * \addtogroup bprocess
  */
 
 /**
  * \file
- *         Registierung von Anwendungen
  *
  */
  

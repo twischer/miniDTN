@@ -1,9 +1,17 @@
 /**
- * \addtogroup api
+ * \addtogroup agent
  * @{
  */
-   /**
- * \file
+
+ /**
+ * \defgroup api Bundle Protocoll API
+ *
+ * @{
+ */
+
+/**
+ * \file 
+ * this file defines the API events
  *        
  */
 #ifndef API_EVENTS_H
@@ -11,30 +19,28 @@
 
 #include "contiki.h"
 /**
-*   \brief Events um Anwendung zu Registrieren
+*   \brief Event to register a Service
  */
 process_event_t dtn_application_registration_event;
 /**
-*   \brief Events um regstrierte Anwendung zu dergistrieren 
+*   \brief Event to delete a registration of a Service
 */
 process_event_t dtn_application_remove_event;
 /**
-*   \brief Events um den Status einer Anwendung zu ändern
+*   \brief Event to chage a services state
 */
 process_event_t dtn_application_status_event;
 /**
-*   \brief Events ein erstelltes Bündel zu Senden
+*   \brief Event to send a created bundle
 */
 process_event_t dtn_send_bundle_event;
-
-
 /**
-*   \brief Event mit dem der Bundle Agent empfangene Daten an die Applikation übergibt
- *
+*   \brief Event submit received bundles to a registered service
 */
 process_event_t submit_data_to_application_event;
 
 
 #endif
+/** @} */
 /** @} */
 

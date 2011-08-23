@@ -1,3 +1,11 @@
+/**
+* \addtogroup agent
+* @{
+*/
+/** 
+* \file
+* this file chooses which are modules and also confugures some modules
+*/
 #define BUNDLE_STORAGE r_storage
 // #define MMEM_CONF_SIZE 2048 
 #define REDUNDANCE b_redundance
@@ -7,4 +15,6 @@
 #define DISCOVER_CYCLE 5
 #define WATCHDOG_CONF_TIMEOUT 4
 #define DISCOVERY s_discovery
+/** @} */
+
 

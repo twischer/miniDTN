@@ -1,12 +1,12 @@
 /**
- * \addtogroup interface
+ * \addtogroup bnet
  * @{
  */
 
 /**
  * \file
- *         Anbindung an untere Schichten um Daten zu Senden und Empfangen
  *
+ * \author Georg von Zengen (vonzeng@ibr.cs.tu-bs.de) 
  */
  
 #include <stdio.h>

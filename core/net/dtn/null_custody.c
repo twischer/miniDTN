@@ -1,3 +1,11 @@
+/**
+* \addtogroup custody 
+* @{
+* \defgroup nullcust NULL custody
+* @{
+* \file
+*
+*/
 #include "net/dtn/custody-signal.h"
 #include "net/dtn/custody.h"
 
@@ -30,4 +38,6 @@ const struct custody_driver null_custody ={
 	null_cust_set_state,
 	null_cust_decide,
 };
+/** @} */
+/** @} */
 

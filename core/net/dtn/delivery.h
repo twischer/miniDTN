@@ -1,17 +1,11 @@
 /**
- * \addtogroup agent
+ * \addtogroup bprocess
  * @{
  */
- 
- /**
- * \defgroup delivery Auslieferung von Bündeln
- *
- * @{
- */
- 
+
  /**
  * \file
- *         Headerfile Übergabefunktion an Anwendungen
+ *         Headerfile for Bundle delivery
  *
  */
  
@@ -19,10 +13,10 @@
 #define DELIVERY_H
 
 /**
-*   \brief Übergibt Nutzdaten eines Bündels an Anwendung
+*   \brief delivers bundle to a registrated service
 *
-*   \param bundle Das empfangene Bündel
-*   \param registration der empfangenden prozesses
+*   \param bundle pointer to bundle 
+*   \param registration pointer to registrated service
 */
 void deliver_bundle(struct bundle_t *bundle, struct registration *n);
 
