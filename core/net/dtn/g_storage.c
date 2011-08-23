@@ -1,3 +1,18 @@
+/**
+ * \addtogroup bstorage
+ * @{
+ */
+
+ /**
+ * \defgroup g_storage flash storage modules
+ *
+ * @{
+ */
+
+/**
+ * \file 
+ * \author Georg von Zengen (vonzeng@ibr.cs.tu-bs.de)
+ */
 #include "contiki.h"
 #include "net/dtn/storage.h"
 #include "cfs/cfs.h"
@@ -37,6 +52,9 @@ static struct bundle_t bundle_str;
 struct memb_blocks *saved_as_mem;
 uint16_t del_num;
 
+/**
+* /brief called by agent at startup
+*/
 void init(void)
 {
 	PRINTF("init g_storage\n");
@@ -51,7 +69,6 @@ void init(void)
 		cfs_close(fd_read);
 		PRINTF("file closed\n");
 		uint16_t i;
-	//	file_list[0].file_size=1;
 		for (i=0; i<BUNDLE_STORAGE_SIZE; i++){
 			PRINTF("slot %u state is %u\n", i, file_list[i].file_size);
 			if(file_list[i].file_size >0 ){
@@ -70,7 +87,6 @@ void init(void)
 			del_bundle(i,4);	
 		}
 		PRINTF("write new list-file\n");
-		//cfs_coffee_reserve(filename,sizeof(file_list));
 		fd_write = cfs_open(filename, CFS_WRITE);
 		PRINTF("file opened\n");
 		cfs_write(fd_write, file_list, sizeof(file_list));
@@ -81,7 +97,9 @@ void init(void)
 	ctimer_set(&g_store_timer,CLOCK_SECOND*5,g_store_reduce_lifetime,NULL);
 	PRINTF("STORAGE: schedule ctimer\n");
 }
-
+/**
+* \brief reduces the lifetime of all stored bundles
+*/
 void g_store_reduce_lifetime()
 {
 	uint16_t i=0;
@@ -111,14 +129,17 @@ void reinit(void)
 		file_list[i].file_size=0;
 		file_list[i].lifetime=0;
 		del_bundle(i,4);
-		//cfs_coffee_reserve(filename,sizeof(file_list));
 		fd_write = cfs_open(filename, CFS_WRITE);
 		cfs_write(fd_write, file_list, sizeof(file_list));
 		cfs_close(fd_write);
 	}
 
 }
-
+/**
+* \brief saves a bundle in storage
+* \param bundle pointer to the bundle
+* \return the bundle number given to the bundle or <0 on errors
+*/
 int32_t save_bundle(struct bundle_t *bundle)
 {
 	uint16_t i=0;
@@ -154,9 +175,7 @@ int32_t save_bundle(struct bundle_t *bundle)
 		    fraq_offset == file_list[i].fraq_offset) {  // is bundle in storage?
 		    	PRINTF("STORAGE: %u is the same bundle\n",i);
 			return (int32_t)i;
-		}//else{
-		//	PRINTF("bundle are different\n");
-		//}
+		}
 		i++;
 	}
 	if(free == -1){
@@ -193,7 +212,6 @@ int32_t save_bundle(struct bundle_t *bundle)
 		#endif
 	i=(uint16_t)free;
 	tmp=bundle->mem.ptr+bundle->offset_tab[LIFE_TIME][OFFSET];
-	//sdnv_decode(tmp, bundle->offset_tab[LIFE_TIME][STATE], &file_list[i].lifetime);
 	file_list[i].lifetime=bundle->lifetime;
 	char b_file[7];
 	sprintf(b_file,"%u.b",file_list[i].bundle_num);
@@ -227,10 +245,7 @@ int32_t save_bundle(struct bundle_t *bundle)
 	file_list[i].src = src ;
 	file_list[i].fraq_offset = fraq_offset;
 	file_list[i].rec_time= bundle->rec_time;
-	//file_list[i].custody=bundle->custody;
-	//save file list	
 	cfs_remove(filename);
-	//cfs_coffee_reserve(filename,sizeof(file_list));
 	fd_write = cfs_open(filename, CFS_WRITE);
 	if(fd_write != -1) {
 		cfs_write(fd_write, file_list, sizeof(file_list));
@@ -244,11 +259,14 @@ int32_t save_bundle(struct bundle_t *bundle)
 	return (int32_t)file_list[i].bundle_num;
 }
 
-
+/**
+* \brief delets a bundle form storage
+* \param bundle_num bundle number to be deleted
+* \param reason reason code
+* \return 1 on succes or 0 on error
+*/
 uint16_t del_bundle(uint16_t bundle_num,uint8_t reason)
 {
-	//uint16_t *num;
-	//num = malloc(2);
 	R_PRINTF("STORAGE: delete bundle %u\n",bundle_num);
 	if(read_bundle(bundle_num,&bundle_str)){
 		uint8_t i;
@@ -268,18 +286,10 @@ uint16_t del_bundle(uint16_t bundle_num,uint8_t reason)
 				STATUS_REPORT.send(&bundle_str,16,bundle_str.del_reason);
 			}
 		}
-		//printf("STORAGE: foooo\n");
 
-	}else{
-		//printf("STORAGE: read ERRROR\n");
 	}
 	delete_bundle(&bundle_str);
-	//if (!num){
-	//	printf("\n\n MALLOC ERROR\n\n");
-	//	return 0;
-	//}
 
-	//*num=bundle_num;
 	char b_file[7];
 	sprintf(b_file,"%u.b",bundle_num);
 	cfs_remove(b_file);
@@ -290,7 +300,6 @@ uint16_t del_bundle(uint16_t bundle_num,uint8_t reason)
 	file_list[bundle_num].src=0;
 	//save file list	
 	cfs_remove(filename);
-	//cfs_coffee_reserve(filename,sizeof(file_list));
 	fd_write = cfs_open(filename, CFS_WRITE);
 	if(fd_write != -1) {
 		cfs_write(fd_write, file_list, sizeof(file_list));
@@ -300,16 +309,19 @@ uint16_t del_bundle(uint16_t bundle_num,uint8_t reason)
 	}
 	
 	
-	//printf(".\n");
 	agent_del_bundle();
-	//process_post_synch(&agent_process,dtn_bundle_deleted_event, NULL);
 	return 1;
 }
 
+/**
+* \brief reads a bundle from storage
+* \param bundle_num bundle nuber to read
+* \param bundle empty bundle struct, bundle will be accessable here
+* \return 1 on succes or 0 on error
+*/
 uint16_t read_bundle(uint16_t bundle_num,struct bundle_t *bundle)
 {
 	R_PRINTF("STORAGE: read %u\n",bundle_num);
-	//printf("STORAGE: size %u\n",file_list[bundle_num].file_size);
 	if( file_list[bundle_num].file_size <=0) {
 		return 0;
 	}
@@ -323,23 +335,8 @@ uint16_t read_bundle(uint16_t bundle_num,struct bundle_t *bundle)
 		if(!mmem_alloc(&bundle->mem,file_list[bundle_num].file_size)){
 			 R_PRINTF("STORAGE: ERROR  memory\n");
 			 return 0;
-			 //while (1);
 		}
 		memset(bundle->mem.ptr,0,bundle->mem.size);
-/*
-		bundle->mem = (struct mmem*) malloc(sizeof(struct mmem));
-		if( !bundle->mem){
-			printf("\n\n MALLOC ERROR\n\n");
-			return 0;
-		}
-
-		mmem_alloc(bundle->mem,file_list[bundle_num].file_size);
-		bundle->mem.ptr = (uint8_t *) MMEM_PTR(bundle->mem);
-
-		if (bundle->mem.ptr==NULL){
-			printf("\n\n MALLOC ERROR\n\n");
-		}
-*/
 		R_PRINTF("STORAGE: memory\n");
 		if (!cfs_read(fd_read, bundle->mem.ptr, file_list[bundle_num].file_size)){
 			R_PRINTF("STORAGE: nothing \n");
@@ -364,7 +361,6 @@ uint16_t read_bundle(uint16_t bundle_num,struct bundle_t *bundle)
 #endif
 		if( !recover_bundel(bundle, &bundle->mem,(int) file_list[bundle_num].file_size)){
 			R_PRINTF("\n\n recover Error\n\n");
-			//while(1);
 			return 0;
 		}
 
@@ -384,7 +380,11 @@ uint16_t read_bundle(uint16_t bundle_num,struct bundle_t *bundle)
 	}
 	return 0;
 }
-
+/**
+* \brief checks if there is space for a bundle
+* \param bundle pointer to a bundel struct (not used here)
+* \return number of free solts
+*/
 uint16_t free_space(struct bundle_t *bundle)
 {
 	uint16_t free=0, i;
@@ -395,7 +395,9 @@ uint16_t free_space(struct bundle_t *bundle)
 	}
 	return free;
 }
-
+/**
+* \returns the number of saved bundles
+*/
 uint16_t get_g_bundel_num(void){
 	return bundles_in_storage;
 }
@@ -410,3 +412,5 @@ const struct storage_driver g_storage = {
 	free_space,
 	get_g_bundel_num,
 };
+/** @} */
+/** @} */

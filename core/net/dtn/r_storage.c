@@ -1,3 +1,19 @@
+/**
+ * \addtogroup bstorage
+ * @{
+ */
+
+ /**
+ * \defgroup r_storage RAM storage modules
+ *
+ * @{
+ */
+
+/**
+ * \file 
+ * \author Georg von Zengen (vonzeng@ibr.cs.tu-bs.de)
+ */
+
 #include "contiki.h"
 
 #include "net/dtn/storage.h"
@@ -29,7 +45,9 @@ struct memb_blocks *saved_as_mem;
 LIST(store_l);
 
 void r_store_reduce_lifetime();
-
+/**
+* /brief called by agent at startup
+*/
 void rs_init(void)
 {
 	PRINTF("init g_storage\n");
@@ -51,7 +69,9 @@ void rs_init(void)
 	}
 	ctimer_set(&r_store_timer,CLOCK_SECOND*5,r_store_reduce_lifetime,NULL);
 }
-
+/**
+* \brief reduces the lifetime of all stored bundles
+*/
 void r_store_reduce_lifetime()
 {
         uint16_t i=0;
@@ -83,7 +103,11 @@ void rs_reinit(void)
 	}
 
 }
-
+/**
+* \brief saves a bundle in storage
+* \param bundle pointer to the bundle
+* \return the bundle number given to the bundle or <0 on errors
+*/
 int32_t rs_save_bundle(struct bundle_t *bundle)
 {
 	uint16_t i=0;
@@ -211,7 +235,12 @@ int32_t rs_save_bundle(struct bundle_t *bundle)
 
 static uint16_t gl_bundle_num;
 static struct bundle_t bundle_str;
-
+/**
+* \brief delets a bundle form storage
+* \param bundle_num bundle number to be deleted
+* \param reason reason code
+* \return 1 on succes or 0 on error
+*/
 uint16_t rs_del_bundle(uint16_t bundle_num,uint8_t reason)
 {
 	if(bundles_in_storage >0){
@@ -242,6 +271,12 @@ uint16_t rs_del_bundle(uint16_t bundle_num,uint8_t reason)
 	return 1;
 }
 
+/**
+* \brief reads a bundle from storage
+* \param bundle_num bundle nuber to read
+* \param bundle empty bundle struct, bundle will be accessable here
+* \return 1 on succes or 0 on error
+*/
 uint16_t rs_read_bundle(uint16_t bundle_num,struct bundle_t *bundle)
 {
 	
@@ -272,7 +307,11 @@ uint16_t rs_read_bundle(uint16_t bundle_num,struct bundle_t *bundle)
 	}
 	return 0;
 }
-
+/**
+* \brief checks if there is space for a bundle
+* \param bundle pointer to a bundel struct (not used here)
+* \return number of free solts
+*/
 uint16_t rs_free_space(struct bundle_t *bundle)
 {
 	uint16_t free=0, i;
@@ -283,7 +322,9 @@ uint16_t rs_free_space(struct bundle_t *bundle)
 	}
 	return free;
 }
-
+/**
+* \returns the number of saved bundles
+*/
 uint16_t rs_get_g_bundel_num(void){
 	return bundles_in_storage;
 }

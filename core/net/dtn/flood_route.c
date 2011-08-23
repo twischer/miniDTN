@@ -1,3 +1,19 @@
+/**
+ * \addtogroup routing
+ * @{
+ */
+
+ /**
+ * \defgroup floodrouting Flooding Routing module
+ *
+ * @{
+ */
+
+/**
+ * \file 
+ * implementation of flooding
+ * \author Georg von Zengen (vonzeng@ibr.cs.tu-bs.de)
+ */
 #include "net/netstack.h"
 
 
@@ -22,12 +38,19 @@
 
 #define ROUTING_MAX_MEM 10
 #define ROUTING_NEI_MEM 1
+/** struct to store the bundels to be routed */
 struct pack_list_t {
+	/** pointer to next bundle */
 	struct pack_list_t *next;
+	/** bundle number*/
 	uint16_t num;
+	/** bundle processing flags, destination node, source node, sequence number */
 	uint32_t flags, dest_node, scr_node, seq_num;
+	/** number of nodes this bundle was sent to */
 	uint8_t send_to;
+	/** 1 if bundle is in processing */
 	uint8_t action;
+	/** addresses of nodes this bundle was sent to */
 	rimeaddr_t dest[ROUTING_NEI_MEM];
 };
 
@@ -35,7 +58,9 @@ LIST(pack_list);
 MEMB(pack_mem, struct pack_list_t, ROUTING_MAX_MEM);
 LIST(route_list);
 
-
+/**
+* \brief called by agent at startup
+*/
 void flood_init(void)
 {
 	PRINTF("FLOOD: init flood_route\n");
@@ -47,35 +72,31 @@ void flood_init(void)
 
 	return;
 }
-
+/**
+* \brief checks if there are bundle to send to dest
+* \param dest pointer to the address of the new neighbor
+*/
 void flood_new_neigh(rimeaddr_t *dest)
 {
 	PRINTF("FLOOD: new node: %u:%u\n",dest->u8[1] ,dest->u8[0]);
 	struct pack_list_t *pack;
-//	PRINTF("FLOOD: pack_list %p\n",list_head(pack_list));
 	uint8_t count=0;
 	for(pack = list_head(pack_list); pack != NULL; pack = list_item_next(pack)) {
-//		PRINTF("FLOOD: searching for bundles\n");
 		uint8_t sent=0,i;
-//		printf("seq_num %lu in list\n",pack->seq_num);
 		for (i =0 ; i < ROUTING_NEI_MEM ; i++) {
 			PRINTF("FLOOD: bundle %u already sent to node %u:%u == %u:%u? %lu\n",pack->num, dest->u8[1] ,dest->u8[0], pack->dest[i].u8[1], pack->dest[i].u8[0], pack->scr_node);
 			if ((pack->dest[i].u8[0] == dest->u8[0] && pack->dest[i].u8[1] == dest->u8[1])|| pack->scr_node == dest->u8[0] || pack->action==1){
-		//		printf("FLOOD: YES\n");
 				sent=1;
 				if (pack->action==1){
-//					printf(" %lu in action\n",pack->seq_num);
 				}
 			}
 		}
 		if(!sent){
-		//	printf("foo\n");
 			struct route_t *route;
 			route= memb_alloc(&route_mem);
 			memcpy(route->dest.u8,dest->u8,sizeof(dest->u8));
 			route->bundle_num=pack->num;
 			pack->action=1;
-	//		printf("FLOOD: send bundle %lu to %u:%u\n",pack->seq_num, route->dest.u8[1] ,route->dest.u8[0]);
 			list_add(route_list,route);	
 			count++;
 
@@ -86,6 +107,8 @@ void flood_new_neigh(rimeaddr_t *dest)
 	}
 	return ;
 }
+
+
 void flood_delete_list(void)
 {
 	struct route_list_t *route;
@@ -95,9 +118,14 @@ void flood_delete_list(void)
 		memb_free(&route_mem,route);
 	}
 }
+
+/**
+* \brief addes a new bundle to the list of bundles
+* \param bundle_num bundle number of the bundle
+* \return >0 on success, <0 on error
+*/
 int flood_new_bundle(uint16_t bundle_num)
 {
-//	printf("FLOOD: got new bundle %u\n",bundle_num);
 	struct pack_list_t *pack;
 	for(pack = list_head(pack_list); pack != NULL; pack = list_item_next(pack)) {
 		if (pack->num==bundle_num){
@@ -113,8 +141,6 @@ int flood_new_bundle(uint16_t bundle_num)
 		PRINTF("FLOOD: memory\n");
 		if (BUNDLE_STORAGE.read_bundle(bundle_num, &bundle) <=0){
 			PRINTF("\n\nread bundle ERROR\n\n");
-			//watchdog_stop();
-			//while (1);
 			return -1;
 		}
 		PRINTF("FLOOD: red bundle\n");
@@ -128,21 +154,20 @@ int flood_new_bundle(uint16_t bundle_num)
 			pack->dest[i].u8[0]=0;
 			pack->dest[i].u8[1]=0;
 		}
-	//	pack->dest[0].u8[0]=bundle.msrc.u8[0];
-	//	pack->dest[0].u8[1]=bundle.msrc.u8[1];
 		PRINTF("FLOOD: %u:%u\n",pack->dest[0].u8[0],pack->dest[0].u8[1]);
 		list_add(pack_list,pack);
 		PRINTF("FLOOD: pack_list %p\n",list_head(pack_list));
-		//printf("FLOOD: bundle %u saved to list\n",pack->num);
-
 		delete_bundle(&bundle);
 	}
 	return 1;
 }
 
+/**
+* \brief deletes bundle from list
+* \param bundle_num bundle nuber of the bundle
+*/
 void flood_del_bundle(uint16_t bundle_num)
 {
-	//printf(";\n");
 	PRINTF("FLOOD: delete bundle %u\n",bundle_num);
 	struct pack_list_t *pack;
 	for(pack = list_head(pack_list); pack != NULL; pack = list_item_next(pack)) {
@@ -160,6 +185,12 @@ void flood_del_bundle(uint16_t bundle_num)
 	return;
 }
 
+/**
+* \brief callback function sets the status of a bundle in the list
+* \param route pointer to route struct 
+* \param status status code
+* \num_tx number of retransmissions 
+*/
 void flood_sent(struct route_t *route,int status, int num_tx)
 {
     struct pack_list_t *pack;

@@ -1,3 +1,17 @@
+/**
+* \addtogroup custody 
+* @{
+*/
+/**
+* \defgroup b_cust basic custody module
+* @{
+*/
+/**
+* \file 
+* implementation of a basic costody modul
+* \author Georg von Zengen (vonzeng@ibr.cs.tu-bs.de)
+*/
+
 #include "net/dtn/custody-signal.h"
 #include "dtn_config.h"
 #include "net/dtn/custody.h"
@@ -441,4 +455,5 @@ const struct custody_driver b_custody ={
 	b_cust_restransmit,
 	b_cust_del_from_list,
 };
-
+/** @} */
+/** @} */

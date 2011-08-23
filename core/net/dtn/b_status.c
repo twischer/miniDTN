@@ -1,3 +1,9 @@
+/** 
+* \addtogroup status
+* @{
+* \defgroup b_satus Basic status report modul
+* @{
+*/
 #include "bundle.h"
 #include "status-report.h"
 #include "dtn_config.h"
@@ -6,6 +12,12 @@
 #include "storage.h"
 #include "sdnv.h"
 static struct mmem report;
+/**
+* \brief sends a status report for a bundle to the "report-to"-node
+* \param bundle pointer to bundle 
+* \param status status code for the bundle
+* \param reason reason code for the status
+*/
 uint8_t b_stat_send(struct bundle_t *bundle,uint8_t status, uint8_t reason)
 {
 	//printf("STAT: send %u %u\n",status,reason);
@@ -153,3 +165,5 @@ const struct status_report_driver b_status ={
 	"B_STATUS",
 	b_stat_send,
 };
+/** @} */
+/** @} */

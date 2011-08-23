@@ -1,4 +1,11 @@
 /**
+* /addtogroup agent 
+* @{
+* /defgroup status Status reports
+* @{
+*/
+
+/**
 * \file
 *
 */
@@ -48,12 +55,15 @@ typedef struct {
 	uint8_t reason_code;
 	struct mmem mem;
 } status_report_t;
-
+/** interface for status report modules */
 struct status_report_driver {
 	char *name;
+	/** sends a status report to the "report to"-node */
 	uint8_t (* send)(struct bundle_t *bundle,uint8_t status, uint8_t reason);
 };
 
 extern const struct status_report_driver STATUS_REPORT;
 
 #endif
+/** @} */
+/** @} */

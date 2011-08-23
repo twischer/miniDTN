@@ -29,9 +29,6 @@ void mmem_realloc(struct mmem * mem, int oldsize, int size) {
 	memcpy(mem, &mmem_tmp, sizeof(struct mmem));
 }
 
-/** 
-* brief creates a new bundle and allocates the minimum needed memory
-*/
 uint8_t create_bundle(struct bundle_t *bundle)
 {
 	memset(bundle, 0, sizeof(struct bundle_t));
@@ -57,6 +54,7 @@ uint8_t create_bundle(struct bundle_t *bundle)
 */
 	if( !mmem_alloc(&bundle->mem, 1) ) {
 		PRINTF("\n\n MALLOC ERROR\n\n");
+		return 0;
 		//while(1) ;	
 	}
 

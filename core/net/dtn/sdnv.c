@@ -1,9 +1,19 @@
+ /**
+ * \addtogroup sdnv SDNV
+ *
+ * @{
+ */
+/**
+ * \file 
+ * implementation of sdnv functions
+ * \author Georg von Zengen (vonzeng@ibr.cs.tu-bs.de) 
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <sys/types.h>
 
-
+/** maximum sdnv length */
 #define MAX_LENGTH 8 
 
 #define DEBUG 0
@@ -95,6 +105,7 @@ size_t sdnv_len(const uint8_t* bp)
 		;
 	return val_len;
 }
+/** @} */
 
 
 

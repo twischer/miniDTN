@@ -1,3 +1,20 @@
+/**
+ * \addtogroup discovery 
+ * @{
+ */
+
+ /**
+ * \defgroup b_biscover  basic discovery module
+ *
+ * @{
+ */
+
+/**
+* \file
+* implementation of a basic discovery module
+* \author Georg von Zengen (vonzeng@ibr.cs.tu-bs.de) 
+*/
+
 #include "net/dtn/custody-signal.h"
 #include "dtn_config.h"
 #include "dtn-network.h"
@@ -21,7 +38,10 @@
 #endif
 
 
-
+/** 
+* \brief sends a discovery message 
+* \param bundle pointer to a bundle (not used here)
+*/
 void b_dis_send(struct bundle_t *bundle)
 {
 	uint8_t foo=23;  
@@ -32,7 +52,11 @@ void b_dis_send(struct bundle_t *bundle)
 	packetbuf_set_attr(PACKETBUF_ADDRSIZE, 2);
 	NETSTACK_MAC.send(NULL, NULL); 
 }
-
+/**
+* \brief checks if msg is an answer to a discovery message
+* \param msg pointer to the received message
+* \return 1 if msg is an answer or 0 if not
+*/
 uint8_t b_dis_is_beacon(uint8_t *msg)
 {
 	uint8_t test[8]="DTN_HERE";
@@ -44,7 +68,11 @@ uint8_t b_dis_is_beacon(uint8_t *msg)
 	}
 	return 1;
 }
-
+/**
+* \brief hecks if msg is a discovery message
+* \param msg pointer to the received message
+* \return 1 if msg is a discovery message or 0 if not
+*/
 uint8_t b_dis_is_discover(uint8_t *msg)
 {
 	uint8_t test[13]="DTN_DISCOVERY";
@@ -72,4 +100,5 @@ const struct discovery_driver b_discovery ={
 	b_dis_is_beacon,
 	b_dis_is_discover,
 };
-
+/** @} */
+/** @} */

@@ -1,26 +1,20 @@
 /**
- * \addtogroup agent
+ * \addtogroup bprocess
  * @{
  */
  
- /**
- * \defgroup dispatching Abfertigung empfangener Bündel
- *
- * @{
- */
  
  /**
  * \file
- *         Headerfile für Funktion zur Abfertig
- *
+ *         
  */
 #ifndef DISPATCHING_H
 #define DISPATCHING_H
 
 /**
-*   \brief Abfertigung des Bündels, Eintscheidung ob Weiterleitung oder Auslieferung an Anwendungen
+*   \brief decides if bundle must be delivered or forwarded
 *
-*   \param  bundle das zu verarbeitende Bündel
+*   \param  bundle bundle to be processed
 */
 void dispatch_bundle(struct bundle_t *bundle);
 

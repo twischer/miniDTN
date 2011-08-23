@@ -1,3 +1,15 @@
+
+ /**
+ * \addtogroup bprocess
+ *
+ * @{
+ */
+
+/**
+ * \file 
+ * implementation of forwarding
+ * \author Georg von Zengen (vonzeng@ibr.cs.tu-bs.de) 
+ */
 #include "net/dtn/bundle.h"
 #include "net/dtn/agent.h"
 #include "net/dtn/custody.h"

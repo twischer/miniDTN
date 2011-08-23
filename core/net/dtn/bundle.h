@@ -1,3 +1,19 @@
+/**
+ * \addtogroup agent
+ * @{
+ */
+
+ /**
+ * \defgroup bundle Bundle 
+ *
+ * @{
+ */
+
+/**
+ * \file 
+ * this file defines bundle stucture
+ * \author Georg von Zengen (vonzeng@ibr.cs.tu-bs.de) 
+ */
 #include <stdint.h>
 #include "mmem.h"
 #include "net/rime/rimeaddr.h"
@@ -33,6 +49,9 @@
 
 #define DEBUG_H 1
 
+/**
+* \brief this struct defines the bundel for internal prcessing
+*/
 struct bundle_t{
 	char offset_tab[18][2];
 	uint8_t size;
@@ -50,10 +69,44 @@ struct bundle_t{
 #endif
 };
 
-
+/**
+* \brief generates the bundle struct from row data
+* \param bundle_t pointer to empty bundle struct
+* \param mmem pointer to mmem struct with row data
+* \param size size of row data
+* \return 1 on success or 0 if something fails 
+*/
 uint8_t recover_bundel(struct bundle_t *bundle,struct mmem *mem,int size);
+/**
+* \brief stets an attribute of a bundle
+* \param bundle_t pointer to bundle
+* \param attr attribute to be set
+* \param val pointer to the value to be set 
+* \return length of the seted value on success or 0 on error
+*/
 uint8_t set_attr(struct bundle_t *bundle, uint8_t attr, uint32_t *val);
+/**
+* \brief creates a new bundle and allocates the minimum needed memory
+* \param bundle_t pointer to an empty bundle struct 
+* \return 1 on success or 0 on error
+*/
 uint8_t create_bundle(struct bundle_t *bundle);
+/**
+* \brief delets a bundle struct and frees mmem parts
+* \param bundle_t poiter to bundle
+* \return 1 on success or 0 on error
+*/
 uint16_t delete_bundle(struct bundle_t *bundel);
+/**
+* \brief adds a block to an existing bundle
+* \param bundle_t poiter to bundle
+* \param type type of block
+* \param flags processing flags
+* \param data pointer to block data
+* \param d_len length of data
+* \return 1 on success or 0 on error
+*/
 uint8_t add_block(struct bundle_t *bundle, uint8_t type, uint8_t flags, uint8_t *data, uint8_t d_len);
 #endif
+/** @} */
+/** @} */
