@@ -120,6 +120,8 @@ uint32_t clocktime;
 #define TESTRTIMER 0
 #if TESTRTIMER
 uint8_t rtimerflag=1;
+uint16_t rtime;
+uint16_t node_id;
 struct rtimer rt;
 void rtimercycle(void) {rtimerflag=1;}
 #endif
@@ -197,6 +199,17 @@ uint8_t default_txpower PROGMEM = RF230_MAX_TX_POWER;
 #else
 uint8_t default_txpower PROGMEM = 0;
 #endif
+<<<<<<< HEAD
+=======
+
+#ifdef PANID
+	volatile uint8_t eeprom_channel;
+static uint8_t get_channel_from_eeprom() {
+//	volatile uint8_t eeprom_channel;
+	uint8_t eeprom_check;
+	eeprom_channel = eeprom_read_byte(&rf_channel[0]);
+	eeprom_check = eeprom_read_byte(&rf_channel[1]);
+>>>>>>> 86eee2c... implemented get_panaddr_from_eeprom and added node_id to avr_raven target for more platform compability
 
 /* Get a pseudo random number using the ADC */
 static uint8_t
@@ -327,6 +340,7 @@ get_eui64_from_eeprom(uint8_t macptr[sizeof(rimeaddr_t)]) {
   sei();
   return macptr[0]!=0xFF;
 }
+<<<<<<< HEAD
 static uint16_t
 get_panid_from_eeprom(void) {
   return eeprom_read_word(&eemem_panid);
@@ -339,6 +353,19 @@ static uint8_t
 get_txpower_from_eeprom(void)
 {
   return eeprom_read_byte(&eemem_txpower);
+=======
+
+#ifdef CONF_PANADDR
+uint8_t panaddr[2] EEMEM = {0xff00&CONF_PANADDR, 0xff&CONF_PANADDR};
+#else
+uint8_t *panaddr = mac_address+5;
+#endif
+
+static uint16_t get_panaddr_from_eeprom(void) {
+	uint8_t panaddrptr[2];
+	eeprom_read_block ((void *)panaddrptr,  &panaddr, 2);
+	return (panaddrptr[1]<<8)+panaddrptr[0];
+>>>>>>> 86eee2c... implemented get_panaddr_from_eeprom and added node_id to avr_raven target for more platform compability
 }
 
 #else /* !CONTIKI_CONF_SETTINGS_MANAGER */
@@ -515,8 +542,14 @@ uint8_t i;
   /* Set addresses BEFORE starting tcpip process */
 
   rimeaddr_t addr;
+<<<<<<< HEAD
 //  memset(&addr, 0, sizeof(rimeaddr_t));
   get_eui64_from_eeprom(addr.u8);
+=======
+  memset(&addr, 0, sizeof(rimeaddr_t));
+  get_mac_from_eeprom(addr.u8);
+  node_id=get_panaddr_from_eeprom();
+>>>>>>> 86eee2c... implemented get_panaddr_from_eeprom and added node_id to avr_raven target for more platform compability
  
 #if UIP_CONF_IPV6 
   memcpy(&uip_lladdr.addr, &addr.u8, sizeof(rimeaddr_t));
@@ -547,6 +580,7 @@ uint8_t i;
   PRINTA("\n");
 #endif
 
+  PRINTF("node ID %u\n",node_id);
   /* Initialize stack protocols */
   queuebuf_init();
   NETSTACK_RDC.init();
