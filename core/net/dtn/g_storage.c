@@ -26,6 +26,7 @@
 #include "memb.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <strings.h>
 #include "cfs-coffee.h"
 
 #define DEBUG 0
