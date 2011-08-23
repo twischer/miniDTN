@@ -61,6 +61,7 @@ uint8_t debugflowsize,debugflow[DEBUGFLOWSIZE];
 #include <string.h>
 #include <dev/watchdog.h>
 
+
 #include "loader/symbols-def.h"
 #include "loader/symtab.h"
 
@@ -81,6 +82,7 @@ uint8_t debugflowsize,debugflow[DEBUGFLOWSIZE];
 #include "contiki.h"
 #include "contiki-net.h"
 #include "contiki-lib.h"
+#include "node-id.h"
 
 #include "dev/rs232.h"
 #include "dev/serial-line.h"
@@ -121,7 +123,6 @@ uint32_t clocktime;
 #if TESTRTIMER
 uint8_t rtimerflag=1;
 uint16_t rtime;
-uint16_t node_id;
 struct rtimer rt;
 void rtimercycle(void) {rtimerflag=1;}
 #endif
@@ -202,7 +203,6 @@ uint8_t default_txpower PROGMEM = 0;
 <<<<<<< HEAD
 =======
 
-#ifdef PANID
 	volatile uint8_t eeprom_channel;
 static uint8_t get_channel_from_eeprom() {
 //	volatile uint8_t eeprom_channel;
