@@ -46,25 +46,49 @@
 #include "dev/leds.h"
 
 #include <stdio.h>
+#include "node-id.h"
 
 /*---------------------------------------------------------------------------*/
 PROCESS(example_unicast_process, "Example unicast");
 AUTOSTART_PROCESSES(&example_unicast_process);
 /*---------------------------------------------------------------------------*/
 static uint16_t count=0, count2=0;
+static uint16_t first=0;
+static uint8_t rec[100];
+
 static void
 recv_uc(struct unicast_conn *c, const rimeaddr_t *from)
 {
-    leds_off(1);
-    count++;
-    if (count>=998){
-    	printf("loss: %u\n",count/1000);
+    uint16_t len = packetbuf_datalen();
+    uint16_t seq =*(char *)packetbuf_dataptr();
+    //printf("rec %u\n",seq);
+    if (first==0){
+	first=seq;
     }
+    leds_off(1);
+    if (seq <=100+first){
+    	rec[seq-first]=1;
+//        printf("rec %u\n",seq-first);
+    }
+    count++;
+    if (count==101){
+        uint16_t i=0;
+        uint16_t l=0;
+        for (i=0; i<100; i++){
+                if (rec[i]==0){
+
+                        printf("lost %u\n",i);
+                        l++;
+                }
+        }
+        printf("loss %u\n",l);
+    }
+
     leds_on(1);
-  printf("unicast message received from %d.%d\n",
-	 from->u8[0], from->u8[1]);
+//  printf("unicast message received from %d.%d\n",
+//	 from->u8[0], from->u8[1]);
 	 int16_t rssi = packetbuf_attr(PACKETBUF_ATTR_RSSI);
-	 printf("NET: rssi = %d\n", rssi-45);
+//	 printf("NET: rssi = %d\n", rssi-45);
     
 }
 static const struct unicast_callbacks unicast_callbacks = {recv_uc};
@@ -77,22 +101,26 @@ PROCESS_THREAD(example_unicast_process, ev, data)
   PROCESS_BEGIN();
 
   unicast_open(&uc, 146, &unicast_callbacks);
-
-  while(count2<=1000) {
+  printf("go\n");
+  while(1) {
+    static uint8_t a[10];
     leds_on(2);
+    a[0]=count2;
     count2++;
     static struct etimer et;
     rimeaddr_t addr;
+    rimeaddr_t addr2;
     
-    etimer_set(&et, CLOCK_SECOND);
+    etimer_set(&et, CLOCK_SECOND*1);
     
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
-
-    packetbuf_copyfrom("12345678901234567890123456789012345678901234567890123456789012345678901234567890", 20);
-    addr.u8[0] = 13;
+    packetbuf_copyfrom(a, 5);
+    addr.u8[0] = 2;
     addr.u8[1] = 0;
     if(!rimeaddr_cmp(&addr, &rimeaddr_node_addr)) {
+    if(node_id!=2){
       unicast_send(&uc, &addr);
+    }
     }
     leds_off(2);
 

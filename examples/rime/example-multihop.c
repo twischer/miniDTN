@@ -81,7 +81,7 @@
 
 #include <stdio.h>
 
-#define CHANNEL 135
+#define CHANNEL 26
 
 
 struct example_neighbor {
@@ -120,8 +120,8 @@ remove_neighbor(void *n)
  * neighbor table.
  */
 static void
-received_announcement(struct announcement *a,
-                      const rimeaddr_t *from,
+received_announcement(struct announcement *a, 
+		      const rimeaddr_t *from,
 		      uint16_t id, uint16_t value)
 {
   struct example_neighbor *e;
@@ -238,14 +238,20 @@ PROCESS_THREAD(example_multihop_process, ev, data)
     packetbuf_copyfrom("Hello", 6);
 
     /* Set the Rime address of the final receiver of the packet to
-       1.0. This is a value that happens to work nicely in a Cooja
-       simulation (because the default simulation setup creates one
-       node with address 1.0). */
-    to.u8[0] = 1;
+       1.1. This is just a dummy value that happens to work nicely in a
+       netsim simulation (because the default simulation setup creates
+       one node with address 1.1). */
+    rimeaddr_t addr2;
+    addr2.u8[0] = 2;
+    addr2.u8[1] = 0;
+    to.u8[0] = 3;
     to.u8[1] = 0;
+    //if((!rimeaddr_cmp(&to, &rimeaddr_node_addr)) &&  (!rimeaddr_cmp(&addr2, &rimeaddr_node_addr))) {
+        multihop_send(&multihop, &to);
+    //}
+
 
     /* Send the packet. */
-    multihop_send(&multihop, &to);
 
   }
 
