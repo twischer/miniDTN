@@ -12,7 +12,7 @@
 #define CUSTODY b_custody
 #define ROUTING flood_route
 #define STATUS_REPORT b_status
-#define DISCOVER_CYCLE 5
+#define DISCOVER_CYCLE 0.2
 #define WATCHDOG_CONF_TIMEOUT 4
 #define DISCOVERY s_discovery
 /** @} */
