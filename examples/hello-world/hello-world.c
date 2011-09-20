@@ -89,6 +89,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 //	if((ev == sensors_event && data == &button_sensor)){
 //		etimer_set(&timer, CLOCK_SECOND*0.1);
 //	}
+	etimer_set(&timer,  CLOCK_SECOND*0.05);
 	while(1) {
 		PROCESS_YIELD();
 /*		if(ev == submit_data_to_application_event) {
@@ -110,7 +111,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 			uint32_t bla=4;
 		//			rimeaddr_t dest={{3,0}};
 		//#if 0
-			bla=3;
+			bla=1;
 			set_attr(&bundle, DEST_NODE, &bla);
 			bla=25;
 			set_attr(&bundle, DEST_SERV, &bla);
@@ -145,10 +146,10 @@ PROCESS_THREAD(hello_world_process, ev, data)
 //			leds_on(1);
 //			if (BUNDLE_STORAGE.get_bundle_num() <39){
 			leds_on(1);
-			if (rec <1000){
+//			if (rec <1000){
 				//etimer_reset(&timer);
-				etimer_set(&timer, CLOCK_SECOND*0.07);
-			}
+				etimer_set(&timer, CLOCK_SECOND);
+//			}
 
 //			}else{
 //				etimer_set(&timer, CLOCK_SECOND*20);
