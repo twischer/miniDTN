@@ -113,7 +113,7 @@ unicast_close(struct unicast_conn *c)
 int
 unicast_send(struct unicast_conn *c, const rimeaddr_t *receiver)
 {
-  PRINTF("%d.%d: unicast_send to %d.%d\n",
+  printf("%d.%d: unicast_send to %d.%d\n",
 	 rimeaddr_node_addr.u8[0],rimeaddr_node_addr.u8[1],
 	 receiver->u8[0], receiver->u8[1]);
   packetbuf_set_addr(PACKETBUF_ADDR_RECEIVER, receiver);
