@@ -31,7 +31,7 @@
 	#include <stings.h>
 #endif
 
-#define DEBUG 0
+#define DEBUG 1
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)
@@ -151,6 +151,15 @@ static void packet_sent(void *ptr, int status, int num_tx)
 	    break;
 	  case MAC_TX_OK:
 	    PRINTF("DTN: sent after %d tx\n", num_tx);
+	    break;
+	  case MAC_TX_DEFERRED:
+	    PRINTF("DTN: error MAC_TX_DEFERRED after %d tx\n", num_tx);
+	    break;
+	  case MAC_TX_ERR:
+	    PRINTF("DTN: error MAC_TX_ERR after %d tx\n", num_tx);
+	    break;
+	  case MAC_TX_ERR_FATAL:
+	    PRINTF("DTN: error MAC_TX_ERR_FATAL after %d tx\n", num_tx);
 	    break;
 	  default:
 	    PRINTF("DTN: error %d after %d tx\n", status, num_tx);
