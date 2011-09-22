@@ -61,7 +61,7 @@ recv_uc(struct unicast_conn *c, const rimeaddr_t *from)
 {
     uint16_t len = packetbuf_datalen();
     uint16_t seq =*(char *)packetbuf_dataptr();
-    //printf("rec %u\n",seq);
+    printf("rec %u\n",seq);
     if (first==0){
 	first=seq;
     }
@@ -85,8 +85,8 @@ recv_uc(struct unicast_conn *c, const rimeaddr_t *from)
     }
 
     leds_on(1);
-//  printf("unicast message received from %d.%d\n",
-//	 from->u8[0], from->u8[1]);
+  printf("unicast message received from %d.%d\n",
+	 from->u8[0], from->u8[1]);
 	 int16_t rssi = packetbuf_attr(PACKETBUF_ATTR_RSSI);
 //	 printf("NET: rssi = %d\n", rssi-45);
     
@@ -103,24 +103,21 @@ PROCESS_THREAD(example_unicast_process, ev, data)
   unicast_open(&uc, 146, &unicast_callbacks);
   printf("go\n");
   while(1) {
+    rimeaddr_t addr;
     static uint8_t a[10];
     leds_on(2);
     a[0]=count2;
     count2++;
     static struct etimer et;
-    rimeaddr_t addr;
-    rimeaddr_t addr2;
     
     etimer_set(&et, CLOCK_SECOND*1);
     
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
-    packetbuf_copyfrom(a, 5);
+    packetbuf_copyfrom(a, sizeof(a));
     addr.u8[0] = 2;
     addr.u8[1] = 0;
     if(!rimeaddr_cmp(&addr, &rimeaddr_node_addr)) {
-    if(node_id!=2){
       unicast_send(&uc, &addr);
-    }
     }
     leds_off(2);
 
