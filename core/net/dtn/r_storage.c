@@ -43,6 +43,7 @@ static uint16_t bundles_in_storage;
 static struct ctimer r_store_timer;
 struct memb_blocks *saved_as_mem;
 LIST(store_l);
+uint16_t del_num;
 
 void r_store_reduce_lifetime();
 /**
