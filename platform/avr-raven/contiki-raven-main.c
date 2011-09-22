@@ -200,16 +200,6 @@ uint8_t default_txpower PROGMEM = RF230_MAX_TX_POWER;
 #else
 uint8_t default_txpower PROGMEM = 0;
 #endif
-<<<<<<< HEAD
-=======
-
-	volatile uint8_t eeprom_channel;
-static uint8_t get_channel_from_eeprom() {
-//	volatile uint8_t eeprom_channel;
-	uint8_t eeprom_check;
-	eeprom_channel = eeprom_read_byte(&rf_channel[0]);
-	eeprom_check = eeprom_read_byte(&rf_channel[1]);
->>>>>>> 86eee2c... implemented get_panaddr_from_eeprom and added node_id to avr_raven target for more platform compability
 
 /* Get a pseudo random number using the ADC */
 static uint8_t
@@ -340,7 +330,6 @@ get_eui64_from_eeprom(uint8_t macptr[sizeof(rimeaddr_t)]) {
   sei();
   return macptr[0]!=0xFF;
 }
-<<<<<<< HEAD
 static uint16_t
 get_panid_from_eeprom(void) {
   return eeprom_read_word(&eemem_panid);
@@ -353,19 +342,6 @@ static uint8_t
 get_txpower_from_eeprom(void)
 {
   return eeprom_read_byte(&eemem_txpower);
-=======
-
-#ifdef CONF_PANADDR
-uint8_t panaddr[2] EEMEM = {0xff00&CONF_PANADDR, 0xff&CONF_PANADDR};
-#else
-uint8_t *panaddr = mac_address+5;
-#endif
-
-static uint16_t get_panaddr_from_eeprom(void) {
-	uint8_t panaddrptr[2];
-	eeprom_read_block ((void *)panaddrptr,  &panaddr, 2);
-	return (panaddrptr[1]<<8)+panaddrptr[0];
->>>>>>> 86eee2c... implemented get_panaddr_from_eeprom and added node_id to avr_raven target for more platform compability
 }
 
 #else /* !CONTIKI_CONF_SETTINGS_MANAGER */
@@ -472,15 +448,15 @@ void initialize(void)
 
 #ifdef RAVEN_LCD_INTERFACE
   /* First rs232 port for Raven 3290 port */
-  rs232_init(RS232_PORT_0, USART_BAUD_38400,USART_PARITY_NONE | USART_STOP_BITS_1 | USART_DATA_BITS_8);
+  rs232_init(RS232_PORT_1, USART_BAUD_38400,USART_PARITY_NONE | USART_STOP_BITS_1 | USART_DATA_BITS_8);
   /* Set input handler for 3290 port */
   rs232_set_input(0,raven_lcd_serial_input);
 #endif
 
   /* Second rs232 port for debugging */
-  rs232_init(RS232_PORT_1, USART_BAUD_19200,USART_PARITY_NONE | USART_STOP_BITS_1 | USART_DATA_BITS_8);
+  rs232_init(RS232_PORT_0, USART_BAUD_38400,USART_PARITY_NONE | USART_STOP_BITS_1 | USART_DATA_BITS_8);
   /* Redirect stdout to second port */
-  rs232_redirect_stdout(RS232_PORT_1);
+  rs232_redirect_stdout(RS232_PORT_0);
   clock_init();
 
 #if STACKMONITOR
@@ -547,9 +523,17 @@ uint8_t i;
   get_eui64_from_eeprom(addr.u8);
 =======
   memset(&addr, 0, sizeof(rimeaddr_t));
+<<<<<<< HEAD
   get_mac_from_eeprom(addr.u8);
   node_id=get_panaddr_from_eeprom();
 >>>>>>> 86eee2c... implemented get_panaddr_from_eeprom and added node_id to avr_raven target for more platform compability
+=======
+  //get_mac_from_eeprom(addr.u8);
+  //node_id=get_panaddr_from_eeprom();
+  node_id=2;
+  addr.u8[1]=0;
+  addr.u8[0]=2;
+>>>>>>> 1d74ef0... inga changes
  
 #if UIP_CONF_IPV6 
   memcpy(&uip_lladdr.addr, &addr.u8, sizeof(rimeaddr_t));
@@ -569,6 +553,7 @@ uint8_t i;
   rf230_set_channel(get_channel_from_eeprom());
   rf230_set_txpower(get_txpower_from_eeprom());
 
+<<<<<<< HEAD
 #if UIP_CONF_IPV6
   PRINTA("MAC address %x:%x:%x:%x:%x:%x:%x:%x\n\r",addr.u8[0],addr.u8[1],addr.u8[2],addr.u8[3],addr.u8[4],addr.u8[5],addr.u8[6],addr.u8[7]);
 #else
@@ -579,6 +564,15 @@ uint8_t i;
   }
   PRINTA("\n");
 #endif
+=======
+  rimeaddr_set_node_addr(&addr); 
+  uint8_t alen=0;
+  PRINTF("MAC address: ");
+  for (alen=0; alen < sizeof(rimeaddr_t);alen++){
+	PRINTF("%u:",addr.u8[alen]);
+  }
+  PRINTF("\n");
+>>>>>>> 1d74ef0... inga changes
 
   PRINTF("node ID %u\n",node_id);
   /* Initialize stack protocols */

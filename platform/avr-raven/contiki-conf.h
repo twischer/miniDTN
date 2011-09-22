@@ -199,7 +199,7 @@ unsigned long clock_seconds(void);
 
 
 #if WITH_DTN
-#define CHANNEL_802_15_4          23
+#define CHANNEL_802_15_4          24
 #define NETSTACK_CONF_MAC	  csma_driver
 #define NETSTACK_CONF_RDC    	  nullrdc_driver 
 #define NETSTACK_CONF_FRAMER      framer_802154
@@ -265,7 +265,7 @@ unsigned long clock_seconds(void);
 #define NETSTACK_CONF_RDC         cxmac_driver
 #define NETSTACK_CONF_FRAMER      framer_802154
 #define NETSTACK_CONF_RADIO       rf230_driver
-#define CHANNEL_802_15_4          23
+#define CHANNEL_802_15_4          24
 #define RF230_CONF_AUTOACK        1
 #define SICSLOWPAN_CONF_FRAG      1
 #define SICSLOWPAN_CONF_MAXAGE    3
