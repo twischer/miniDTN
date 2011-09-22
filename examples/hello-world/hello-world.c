@@ -133,7 +133,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 			uint8_t foo[80]={10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10};
 			add_block(&bundle, 1,2,foo,80);
 			
-//			printf("main size: %u\n",bundle.size);
+			printf("main size: %u\n",bundle.size);
 			uint8_t *tmp=(uint8_t *) bundle.mem.ptr;
 			for(i=0; i<bundle.size; i++){
 				//printf("%x ",*tmp);
