@@ -148,7 +148,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 			leds_on(1);
 //			if (rec <1000){
 				//etimer_reset(&timer);
-				etimer_set(&timer, CLOCK_SECOND);
+				etimer_set(&timer, CLOCK_SECOND*0.01);
 //			}
 
 //			}else{
