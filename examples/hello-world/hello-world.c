@@ -44,17 +44,17 @@
 #include "net/packetbuf.h"
 #include "dev/leds.h"
 
-#include "net/dtn/bundle.h"
-#include "net/dtn/agent.h"
-#include "net/dtn/API_events.h"
-#include "net/dtn/API_registration.h"
+#include "net/uDTN/bundle.h"
+#include "net/uDTN/agent.h"
+#include "net/uDTN/API_events.h"
+#include "net/uDTN/API_registration.h"
 
 #include <string.h>
 //#include "net/dtn/realloc.h"
 
 #include "dev/button-sensor.h"
-#include "net/dtn/dtn_config.h"
-#include "net/dtn/storage.h"
+#include "net/uDTN/dtn_config.h"
+#include "net/uDTN/storage.h"
 #include "mmem.h"
 
 #include <stdio.h> /* For printf() */
