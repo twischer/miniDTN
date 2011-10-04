@@ -40,126 +40,17 @@
 
 #include "contiki.h"
 
-#include "net/netstack.h"
-#include "net/packetbuf.h"
-#include "dev/leds.h"
-
-#include "net/uDTN/bundle.h"
-#include "net/uDTN/agent.h"
-#include "net/uDTN/API_events.h"
-#include "net/uDTN/API_registration.h"
-
-#include <string.h>
-//#include "net/dtn/realloc.h"
-
-#include "dev/button-sensor.h"
-#include "net/uDTN/dtn_config.h"
-#include "net/uDTN/storage.h"
-#include "mmem.h"
-
 #include <stdio.h> /* For printf() */
-#include <stdlib.h>
 /*---------------------------------------------------------------------------*/
 PROCESS(hello_world_process, "Hello world process");
 AUTOSTART_PROCESSES(&hello_world_process);
-static struct registration_api reg;
 /*---------------------------------------------------------------------------*/
-static struct etimer timer;
-struct bundle_t bundle;
-static uint16_t last_trans=0;
 PROCESS_THREAD(hello_world_process, ev, data)
 {
-	PROCESS_BEGIN();
-	
-	SENSORS_ACTIVATE(button_sensor);
-	agent_init();
-	//test_init();
-	uint8_t c=0;
-	submit_data_to_application_event = process_alloc_event();
-	reg.status=1;
-	reg.application_process=&hello_world_process;
-	reg.app_id=25;
-	printf("MAIN: event= %u\n",dtn_application_registration_event);
-	printf("main app_id %lu process %p\n", reg.app_id, &agent_process);
-	etimer_set(&timer,  CLOCK_SECOND*5);
-	PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&timer));
-	printf("foooooo\n");
-	process_post(&agent_process, dtn_application_registration_event,&reg);
-	static uint16_t	rec=0;
-//	if((ev == sensors_event && data == &button_sensor)){
-//		etimer_set(&timer, CLOCK_SECOND*0.1);
-//	}
-	etimer_set(&timer,  CLOCK_SECOND*0.05);
-	while(1) {
-		PROCESS_YIELD();
-/*		if(ev == submit_data_to_application_event) {
-			printf("rtt:%u\n",clock_time()-last_trans);
-			struct bundle_t *bun;
-			bun = (struct bundle_t *) data;
-			delete_bundle(bun);
-			rec=1;
-		}
-*/		if(etimer_expired(&timer) || (ev == sensors_event && data == &button_sensor)) {
-		//if((ev == sensors_event && data == &button_sensor)) {
-			leds_off(1);
-			rec++;
-	//		j++;
-//			leds_off(1);
-			//printf("Hello, world\n");
-			create_bundle(&bundle);
-			uint8_t i;
-			uint32_t bla=4;
-		//			rimeaddr_t dest={{3,0}};
-		//#if 0
-			bla=1;
-			set_attr(&bundle, DEST_NODE, &bla);
-			bla=25;
-			set_attr(&bundle, DEST_SERV, &bla);
-			bla=dtn_node_id;
-			set_attr(&bundle, SRC_NODE, &bla);
-			set_attr(&bundle, SRC_SERV,&bla);
-			set_attr(&bundle, CUST_NODE, &bla);
-			set_attr(&bundle, CUST_SERV, &bla);
-			bla=0;
-			set_attr(&bundle, FLAGS, &bla);
-			bla=1;
-			set_attr(&bundle, REP_NODE, &bla);
-			set_attr(&bundle, REP_SERV, &bla);
-			set_attr(&bundle, TIME_STAMP_SEQ_NR, &bla);
-			bla=2000;
-			set_attr(&bundle, LIFE_TIME, &bla);
-			bla=4;
-			set_attr(&bundle, TIME_STAMP, &bla);
-			uint8_t foo[80]={10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10};
-			add_block(&bundle, 1,2,foo,80);
-			
-			printf("main size: %u\n",bundle.size);
-			uint8_t *tmp=(uint8_t *) bundle.mem.ptr;
-			for(i=0; i<bundle.size; i++){
-				//printf("%x ",*tmp);
-				tmp++;
+  PROCESS_BEGIN();
 
-			}
-//		printf("\n");
-			process_post(&agent_process,dtn_send_bundle_event,(void *) &bundle);
-			last_trans=clock_time();
-//			leds_on(1);
-//			if (BUNDLE_STORAGE.get_bundle_num() <39){
-			leds_on(1);
-//			if (rec <1000){
-				//etimer_reset(&timer);
-				etimer_set(&timer, CLOCK_SECOND*0.01);
-//			}
-
-//			}else{
-//				etimer_set(&timer, CLOCK_SECOND*20);
-//			}
-			
-
-
-		continue;			
-		}
-	}
-	PROCESS_END();
+  printf("Hello, world\n");
+  
+  PROCESS_END();
 }
 /*---------------------------------------------------------------------------*/
