@@ -47,13 +47,13 @@
 #include "process.h"
 #include "net/netstack.h"
 #include "net/packetbuf.h"
-#include "net/dtn/API_registration.h"
-#include "net/dtn/API_events.h"
-#include "net/dtn/agent.h"
+#include "net/uDTN/API_registration.h"
+#include "net/uDTN/API_events.h"
+#include "net/uDTN/agent.h"
 #include "dev/leds.h"
 #include "dev/cc2420.h"
-#include "net/dtn/bundle.h"
-#include "sdnv.h"
+#include "net/uDTN/bundle.h"
+#include "net/uDTN/sdnv.h"
 #include "etimer.h"
   #define FOO { {4, 0 } }
 
