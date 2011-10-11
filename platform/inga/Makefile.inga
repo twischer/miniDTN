@@ -25,7 +25,6 @@ AVRDUDE_PROGRAMMER=avr109
 # avrdude -v -P usb:xxxx -c jtag2 -p atmega128
 #AVRDUDE_PORT=usb:00B000000D79
 #AVRDUDE_PORT=usb
-AVRDUDE_PORT=/dev/ttyUSB0
 
 
 # Additional avrdude options
@@ -36,21 +35,15 @@ ifdef CONF_DTN
 CFLAGS += -DWITH_DTN=1
 endif
 
-# If we are not running under Windows, we assume Linux
+ifdef MOTES
+  MOTELIST=1
+  CMOTES=$(MOTES)
+  MOTE=1;
+endif
+
 ifndef MOTELIST
-  USBDEVPREFIX=
   SERIALDUMP = $(CONTIKI)/tools/sky/serialdump-linux
   MOTELIST = $(CONTIKI)/tools/sky/motelist-linux
-  TMOTE_BSL_FILE = tmote-bsl-linux
-  TMOTE_BSL=$(if $(wildcard $(CONTIKI)/tools/sky/$(TMOTE_BSL_FILE)),1,0)
-  ifeq ($(TMOTE_BSL), 1)
-    PATH := $(PATH):$(CONTIKI)/tools/sky
-    BSL =  $(CONTIKI)/tools/sky/$(TMOTE_BSL_FILE)
-    NUMPAR = 1
-  else
-    BSL = $(CONTIKI)/tools/sky/msp430-bsl-linux --telosb
-    BSL_FILETYPE = -I
-  endif
   MOTES = $(shell $(MOTELIST) 2>&- | grep USB | \
      cut -f 4 -d \  | \
      perl -ne 'print $$1 . " " if(m-(/dev/\w+)-);')
@@ -59,14 +52,21 @@ endif
 
 motelist: sky-motelist
 
-sky-motelist:
+motelist:
 	$(MOTELIST)
-sky-motes:
+motes:
 	@echo $(MOTES)
 
 login:
-	$(SERIALDUMP) -b19200 $(USBDEVPREFIX)$(firstword $(CMOTES))
-
-
+	$(SERIALDUMP) -b19200 $(firstword $(CMOTES))
+ifdef MOTE
+AVRDUDE_PORT=$(CMOTES)
+%.upload:  %.u 		
+	@echo DONE
+else
+%.upload: %.hex 
+	
+	$(foreach PORT, $(MOTES), avrdude $(AVRDUDE_OPTIONS) -P $(PORT) $(AVRDUDE_PROGRAMMER) -p $(MCU) -U flash:w:$<|| ) echo DONE
+endif
 include $(CONTIKIAVR)/Makefile.avr
 include $(CONTIKIAVR)/radio/Makefile.radio
