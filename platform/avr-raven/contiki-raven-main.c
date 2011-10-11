@@ -518,22 +518,9 @@ uint8_t i;
   /* Set addresses BEFORE starting tcpip process */
 
   rimeaddr_t addr;
-<<<<<<< HEAD
-//  memset(&addr, 0, sizeof(rimeaddr_t));
-  get_eui64_from_eeprom(addr.u8);
-=======
   memset(&addr, 0, sizeof(rimeaddr_t));
-<<<<<<< HEAD
   get_mac_from_eeprom(addr.u8);
   node_id=get_panaddr_from_eeprom();
->>>>>>> 86eee2c... implemented get_panaddr_from_eeprom and added node_id to avr_raven target for more platform compability
-=======
-  //get_mac_from_eeprom(addr.u8);
-  //node_id=get_panaddr_from_eeprom();
-  node_id=2;
-  addr.u8[1]=0;
-  addr.u8[0]=2;
->>>>>>> 1d74ef0... inga changes
  
 #if UIP_CONF_IPV6 
   memcpy(&uip_lladdr.addr, &addr.u8, sizeof(rimeaddr_t));
@@ -553,18 +540,6 @@ uint8_t i;
   rf230_set_channel(get_channel_from_eeprom());
   rf230_set_txpower(get_txpower_from_eeprom());
 
-<<<<<<< HEAD
-#if UIP_CONF_IPV6
-  PRINTA("MAC address %x:%x:%x:%x:%x:%x:%x:%x\n\r",addr.u8[0],addr.u8[1],addr.u8[2],addr.u8[3],addr.u8[4],addr.u8[5],addr.u8[6],addr.u8[7]);
-#else
-  PRINTA("MAC address ");
-  uint8_t i;
-  for (i=sizeof(rimeaddr_t); i>0; i--){
-    PRINTA("%x:",addr.u8[i-1]);
-  }
-  PRINTA("\n");
-#endif
-=======
   rimeaddr_set_node_addr(&addr); 
   uint8_t alen=0;
   PRINTF("MAC address: ");
@@ -572,9 +547,10 @@ uint8_t i;
 	PRINTF("%u:",addr.u8[alen]);
   }
   PRINTF("\n");
->>>>>>> 1d74ef0... inga changes
 
+#if WITH_NODE_ID
   PRINTF("node ID %u\n",node_id);
+#endif
   /* Initialize stack protocols */
   queuebuf_init();
   NETSTACK_RDC.init();
