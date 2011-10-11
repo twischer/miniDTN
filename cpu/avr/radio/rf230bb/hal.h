@@ -77,6 +77,7 @@
 // IRIS : IRIS Mote from MEMSIC
 #define RAVEN_D	    4
 #define RAVENUSB_C  1
+#define INGA_12	    1
 #define RCB_B	    	2
 #define ZIGBIT			3
 #define ATMEGA128RFA1   4
@@ -125,6 +126,27 @@
 //#   define TICKTIMER  3
 //#   define HAS_SPARE_TIMER // Not used
 
+#elif INGA_REVISION == INGA_12
+/* 1284 raven */
+#   define SSPORT     B
+#   define SSPIN      (0x04)
+#   define SPIPORT    B
+#   define MOSIPIN    (0x05)
+#   define MISOPIN    (0x06)
+#   define SCKPIN     (0x07)
+#   define RSTPORT    B
+#   define RSTPIN     (0x01)
+#   define IRQPORT    D
+#   define IRQPIN     (0x06)
+#   define SLPTRPORT  B
+#   define SLPTRPIN   (0x03)
+#   define TXCWPORT   B
+#   define TXCWPIN    (0x00)
+#   define USART      0
+#   define USARTVECT  USART0_RX_vect
+#   define TICKTIMER  3
+#   define HAS_CW_MODE
+#   define HAS_SPARE_TIMER
 
 #elif RAVEN_REVISION == RAVEN_D
 /* 1284 raven */
