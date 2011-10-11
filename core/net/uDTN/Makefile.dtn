@@ -4,6 +4,7 @@ else
 BUNDLE=sdnv.c bundle.c 
 endif
 #COFFEE_FILES=4
+CFLAGS+=-DWITH_NODE_ID=1
 
 DTN_NETWORK=dtn-network.c
 STORAGE= g_storage.c r_storage.c 
