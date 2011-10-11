@@ -42,7 +42,6 @@
 
 #include "net/netstack.h"
 #include "net/packetbuf.h"
-#include "dev/leds.h"
 
 #include "net/uDTN/bundle.h"
 #include "net/uDTN/agent.h"
@@ -101,10 +100,8 @@ PROCESS_THREAD(hello_world_process, ev, data)
 		}
 */		if(etimer_expired(&timer) || (ev == sensors_event && data == &button_sensor)) {
 		//if((ev == sensors_event && data == &button_sensor)) {
-			leds_off(1);
 			rec++;
 	//		j++;
-//			leds_off(1);
 			//printf("Hello, world\n");
 			create_bundle(&bundle);
 			uint8_t i;
@@ -143,9 +140,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 //		printf("\n");
 			process_post(&agent_process,dtn_send_bundle_event,(void *) &bundle);
 			last_trans=clock_time();
-//			leds_on(1);
 //			if (BUNDLE_STORAGE.get_bundle_num() <39){
-			leds_on(1);
 //			if (rec <1000){
 				//etimer_reset(&timer);
 				etimer_set(&timer, CLOCK_SECOND*0.01);

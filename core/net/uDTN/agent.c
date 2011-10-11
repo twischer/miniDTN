@@ -38,7 +38,6 @@
 #include "status-report.h"
 #include "lib/memb.h"
 #include "discovery.h"
-#include "dev/leds.h"
 
 
 #define DEBUG 0
@@ -163,7 +162,6 @@ PROCESS_THREAD(agent_process, ev, data)
 		}
 	
 		else if(ev == dtn_bundle_in_storage_event){
-			leds_off(4);
 			uint16_t b_num = *(uint16_t *) data;
 			PRINTF("BUNDLEPROTOCOL: bundle in storage %u %p %p\n",b_num, data, saved_as_mem);	
 			memb_free(saved_as_mem,data);
@@ -177,7 +175,6 @@ PROCESS_THREAD(agent_process, ev, data)
 				etimer_set(&discover_timer, DISCOVER_CYCLE*CLOCK_SECOND);
 			}
 
-			leds_on(4);
 			continue;
 		}
 		
@@ -188,7 +185,6 @@ PROCESS_THREAD(agent_process, ev, data)
 		}
 
 		else if(ev == dtn_send_bundle_to_node_event){
-			leds_off(2);
 			struct route_t *route = (struct route_t *)data;
 
 			uint8_t listcount=0;
@@ -221,7 +217,6 @@ PROCESS_THREAD(agent_process, ev, data)
 				route= route->next;
 			}
 			ROUTING.delete_list();
-			leds_on(2);
 			continue;
 		}
 		
