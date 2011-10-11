@@ -99,7 +99,6 @@ void dispatch_bundle(struct bundle_t *bundle) {
 	
 	else {
 	
-					//leds_on(1);
 		uint32_t dest_app;
 		sdnv_decode(bundle->mem.ptr + bundle->offset_tab[DEST_SERV][OFFSET], bundle->offset_tab[DEST_SERV][STATE], &dest_app);
 
@@ -113,7 +112,6 @@ void dispatch_bundle(struct bundle_t *bundle) {
 				if(n->app_id == dest_app) {
 					PRINTF("DISPATCHING: Registration found \n");
 					deliver_bundle(bundle,n);
-					//leds_off(1);	
 					return;
 				}
 			}
