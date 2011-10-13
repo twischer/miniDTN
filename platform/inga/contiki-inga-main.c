@@ -439,7 +439,7 @@ get_txpower_from_eeprom(void) {
 void initialize(void)
 {
   watchdog_init();
-  //watchdog_start();
+  watchdog_start();
 
   /* Second rs232 port for debugging */
   rs232_init(RS232_PORT_0, USART_BAUD_19200,USART_PARITY_NONE | USART_STOP_BITS_1 | USART_DATA_BITS_8);
