@@ -39,6 +39,7 @@ ifdef MOTES
   MOTELIST=1
   CMOTES=$(MOTES)
   MOTE=1;
+  SERIALDUMP = $(CONTIKI)/tools/sky/serialdump-linux
 endif
 
 ifndef MOTELIST
