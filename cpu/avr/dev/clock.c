@@ -147,7 +147,6 @@ clock_time(void)
   } while(tmp != count);
   return tmp;
 }
-#if 0
 /*---------------------------------------------------------------------------*/
 /**
  * Delay the CPU for a multiple of TODO
@@ -157,10 +156,11 @@ clock_delay(unsigned int i)
 {
   for (; i > 0; i--) {		/* Needs fixing XXX */
     unsigned j;
-    for (j = 50; j > 0; j--)
+    for (j = 5; j > 0; j--)
       asm volatile("nop");
   }
 }
+#if 0
 
 /*---------------------------------------------------------------------------*/
 /**
