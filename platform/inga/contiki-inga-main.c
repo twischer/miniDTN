@@ -60,6 +60,8 @@ uint8_t debugflowsize,debugflow[DEBUGFLOWSIZE];
 #include <stdio.h>
 #include <string.h>
 #include <dev/watchdog.h>
+#include "lib/sensors.h"
+#include "dev/button-sensor.h"
 
 
 #include "loader/symbols-def.h"
@@ -687,10 +689,12 @@ ipaddr_add(const uip_ipaddr_t *addr)
 /*-------------------------------------------------------------------------*/
 /*------------------------- Main Scheduler loop----------------------------*/
 /*-------------------------------------------------------------------------*/
+SENSORS(&button_sensor);
 int
 main(void)
 {
   initialize();
+  process_start(&sensors_process, NULL);
 
   while(1) {
     process_run();
