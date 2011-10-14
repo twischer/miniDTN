@@ -116,6 +116,13 @@ unsigned long clock_seconds(void);
 /* Debugflow macro, useful for tracing path through mac and radio interrupts */
 //#define DEBUGFLOWSIZE 128
 
+/*LED defines*/
+#define LEDS_PxDIR DDRD
+#define LEDS_PxOUT PORTD
+#define LEDS_CONF_GREEN 0x20
+#define LEDS_CONF_YELLOW  0x80
+
+
 /* Network setup. The new NETSTACK interface requires RF230BB (as does ip4) */
 #if RF230BB
 #undef PACKETBUF_CONF_HDR_SIZE                  //Use the packetbuf default for header size
