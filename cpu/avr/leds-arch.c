@@ -43,22 +43,37 @@
 
 #include "contiki-conf.h"
 #include "dev/leds.h"
+#include <avr/io.h>
 
 /*---------------------------------------------------------------------------*/
 void
 leds_arch_init(void)
 {
+#ifdef LEDS_PxDIR
+  LEDS_PxDIR |= (LEDS_CONF_GREEN | LEDS_CONF_YELLOW);
+  LEDS_PxOUT |= (LEDS_CONF_GREEN | LEDS_CONF_YELLOW);
+#endif
 }
 /*---------------------------------------------------------------------------*/
 unsigned char
 leds_arch_get(void)
 {
+#ifdef LEDS_PxDIR
+  return ((LEDS_PxOUT & LEDS_CONF_GREEN) ? 0 : LEDS_GREEN)
+    | ((LEDS_PxOUT & LEDS_CONF_YELLOW) ? 0 : LEDS_YELLOW);
+#else
     return 0;
+#endif
 }
 /*---------------------------------------------------------------------------*/
 void
 leds_arch_set(unsigned char leds)
 {
+#ifdef LEDS_PxDIR
+  LEDS_PxOUT = (LEDS_PxOUT & ~(LEDS_CONF_GREEN|LEDS_CONF_YELLOW))
+    | ((leds & LEDS_GREEN) ? 0 : LEDS_CONF_GREEN)
+    | ((leds & LEDS_YELLOW) ? 0 : LEDS_CONF_YELLOW);
+#endif
 
 }
 /*---------------------------------------------------------------------------*/
