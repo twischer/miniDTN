@@ -47,18 +47,13 @@
 #define PLATFORM       PLATFORM_AVR
 //#define RAVEN_REVISION RAVEN_D
 #define INGA_REVISION INGA_12
-#ifndef F_CPU
-#define F_CPU          8000000UL
-#endif
 #include <stdint.h>
+#include "platform-conf.h"
 
 typedef int32_t s32_t;
 typedef unsigned char u8_t;
 typedef unsigned short u16_t;
 typedef unsigned long u32_t;
-typedef unsigned short clock_time_t;
-typedef unsigned short uip_stats_t;
-typedef unsigned long off_t;
 
 void clock_delay(unsigned int us2);
 void clock_wait(int ms10);
@@ -67,9 +62,6 @@ unsigned long clock_seconds(void);
 
 /* Maximum timer interval for 16 bit clock_time_t */
 #define INFINITE_TIME 0xffff
-
-/* Clock ticks per second */
-#define CLOCK_CONF_SECOND 128
 
 /* Maximum tick interval is 0xffff/128 = 511 seconds */
 #define RIME_CONF_BROADCAST_ANNOUNCEMENT_MAX_TIME INFINITE_TIME/CLOCK_CONF_SECOND /* Default uses 600 */
@@ -115,13 +107,6 @@ unsigned long clock_seconds(void);
 
 /* Debugflow macro, useful for tracing path through mac and radio interrupts */
 //#define DEBUGFLOWSIZE 128
-
-/*LED defines*/
-#define LEDS_PxDIR DDRD
-#define LEDS_PxOUT PORTD
-#define LEDS_CONF_GREEN 0x20
-#define LEDS_CONF_YELLOW  0x80
-
 
 /* Network setup. The new NETSTACK interface requires RF230BB (as does ip4) */
 #if RF230BB
