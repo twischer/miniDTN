@@ -49,7 +49,7 @@
 void
 leds_arch_init(void)
 {
-#ifdef LEDS_PxDIR
+#ifdef PLATFORM_HAS_LEDS
   LEDS_PxDIR |= (LEDS_CONF_GREEN | LEDS_CONF_YELLOW);
   LEDS_PxOUT |= (LEDS_CONF_GREEN | LEDS_CONF_YELLOW);
 #endif
@@ -58,7 +58,7 @@ leds_arch_init(void)
 unsigned char
 leds_arch_get(void)
 {
-#ifdef LEDS_PxDIR
+#ifdef PLATFORM_HAS_LEDS
   return ((LEDS_PxOUT & LEDS_CONF_GREEN) ? 0 : LEDS_GREEN)
     | ((LEDS_PxOUT & LEDS_CONF_YELLOW) ? 0 : LEDS_YELLOW);
 #else
@@ -69,7 +69,7 @@ leds_arch_get(void)
 void
 leds_arch_set(unsigned char leds)
 {
-#ifdef LEDS_PxDIR
+#ifdef PLATFORM_HAS_LEDS
   LEDS_PxOUT = (LEDS_PxOUT & ~(LEDS_CONF_GREEN|LEDS_CONF_YELLOW))
     | ((leds & LEDS_GREEN) ? 0 : LEDS_CONF_GREEN)
     | ((leds & LEDS_YELLOW) ? 0 : LEDS_CONF_YELLOW);
