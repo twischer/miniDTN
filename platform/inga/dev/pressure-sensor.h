@@ -3,7 +3,7 @@
 
 #include "lib/sensors.h"
 
-extern const struct sensors_sensor  PRESS_sensor;
+extern const struct sensors_sensor  pressure_sensor;
 
 #define  TEMP 0
 #define  PRESS 1

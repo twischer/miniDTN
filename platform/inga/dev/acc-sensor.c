@@ -6,8 +6,8 @@
 #include "lib/sensors.h"
 #include "interfaces/acc-adxl345.h"
 #include "dev/acc-sensor.h"
-const struct sensors_sensor light_sensor;
-uint8_t state=0;
+const struct sensors_sensor acc_sensor;
+uint8_t acc_state=0;
 /*---------------------------------------------------------------------------*/
 static int
 value(int type)
@@ -28,13 +28,13 @@ value(int type)
 static int
 status(int type)
 {
-  return state;
+  return acc_state;
 }
 /*---------------------------------------------------------------------------*/
 static int
 configure(int type, int c)
 {
-  state=1;
+  acc_state=1;
   return adxl345_init();
 }
 /*---------------------------------------------------------------------------*/

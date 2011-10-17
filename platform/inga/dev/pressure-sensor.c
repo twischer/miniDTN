@@ -6,8 +6,8 @@
 #include "lib/sensors.h"
 #include "interfaces/pressure-bmp085.h"
 #include "dev/pressure-sensor.h"
-const struct sensors_sensor press_sensor;
-uint8_t state=0;
+const struct sensors_sensor pressure_sensor;
+uint8_t press_state=0;
 /*---------------------------------------------------------------------------*/
 static int
 value(int type)
@@ -24,14 +24,14 @@ value(int type)
 static int
 status(int type)
 {
-  return state;
+  return press_state;
 }
 /*---------------------------------------------------------------------------*/
 static int
 configure(int type, int c)
 {
-  state=1;
+  press_state=1;
   return bmp085_init();
 }
 /*---------------------------------------------------------------------------*/
-SENSORS_SENSOR(press_sensor, "PRESSURE", value, configure, status);
+SENSORS_SENSOR(pressure_sensor, "PRESSURE", value, configure, status);
