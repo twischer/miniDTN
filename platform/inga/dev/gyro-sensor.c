@@ -7,7 +7,7 @@
 #include "interfaces/gyro-l3g4200d.h"
 #include "dev/gyro-sensor.h"
 const struct sensors_sensor gyro_sensor;
-uint8_t state=0;
+uint8_t gyro_state=0;
 /*---------------------------------------------------------------------------*/
 static int
 value(int type)
@@ -28,13 +28,13 @@ value(int type)
 static int
 status(int type)
 {
-  return state;
+  return gyro_state;
 }
 /*---------------------------------------------------------------------------*/
 static int
 configure(int type, int c)
 {
-  state=1;
+  gyro_state=1;
   return l3g4200d_init();
 }
 /*---------------------------------------------------------------------------*/

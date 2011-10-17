@@ -86,9 +86,9 @@ PROCESS_THREAD(hello_world_process, ev, data)
                 int16_t tmp;
                 /*############################################################*/
                 //ADXL345 serial Test
-                //printf("\n X:%d", adxl345_get_x_acceleration());
-                //printf("| Y:%d", adxl345_get_y_acceleration());
-                //printf("| Z:%d", adxl345_get_z_acceleration());
+                printf("\n X:%d", adxl345_get_x_acceleration());
+                printf("| Y:%d", adxl345_get_y_acceleration());
+                printf("| Z:%d", adxl345_get_z_acceleration());
                 //
                 //              tmp = adxl345_get_y_acceleration();
                 //
@@ -109,14 +109,14 @@ PROCESS_THREAD(hello_world_process, ev, data)
 
                 /*############################################################*/
                 //BMP085 serial Test
-                //              #define BMP085_MODE_0   0
-                //              #define BMP085_MODE_1   1
-                //              #define BMP085_MODE_2   2
-                //              #define BMP085_MODE_3   3
+                              #define BMP085_MODE_0   0
+                              #define BMP085_MODE_1   1
+                              #define BMP085_MODE_2   2
+                              #define BMP085_MODE_3   3
                 //
-                //              tmp = (uint16_t) bmp085_read_temperature();
+                              tmp = (uint16_t) bmp085_read_temperature();
                 //
-                //              tmp = (int16_t) bmp085_read_comp_pressure(BMP085_MODE_2);
+                              tmp = (int16_t) bmp085_read_comp_pressure(BMP085_MODE_2);
 
                 /*############################################################*/
                 //Power Monitoring
