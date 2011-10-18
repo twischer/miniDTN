@@ -515,8 +515,8 @@ uint8_t i;
   memcpy(&uip_lladdr.addr, &addr.u8, sizeof(rimeaddr_t));
 #elif WITH_NODE_ID
   node_id=get_panaddr_from_eeprom();
-  addr.u8[1]=node_id&0xff;
-  addr.u8[0]=(node_id&0xff00)>>8;
+  addr.u8[0]=node_id&0xff;
+  addr.u8[1]=(node_id&0xff00)>>8;
   PRINTA("Node ID from eeprom: %X\n",node_id);
 #endif  
   rimeaddr_set_node_addr(&addr); 
