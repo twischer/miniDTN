@@ -67,7 +67,7 @@ AVRDUDE_PORT=$(CMOTES)
 else
 %.upload: %.hex 
 	
-	$(foreach PORT, $(MOTES), avrdude $(AVRDUDE_OPTIONS) -P $(PORT) $(AVRDUDE_PROGRAMMER) -p $(MCU) -U flash:w:$<|| ) echo DONE
+	$(foreach PORT, $(MOTES), avrdude $(AVRDUDE_OPTIONS) -P $(PORT) $(AVRDUDE_PROGRAMMER) -p $(MCU) -U flash:w:$<& )echo DONE; wait $!
 endif
 include $(CONTIKIAVR)/Makefile.avr
 include $(CONTIKIAVR)/radio/Makefile.radio
