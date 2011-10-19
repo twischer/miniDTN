@@ -50,7 +50,6 @@ struct route_t	{
 	rimeaddr_t dest;
 	/** bundle_num of the bundle */
 	uint16_t bundle_num;
-	rimeaddr_t dest;
 };
 /** memory for route_ts */
 MEMB(route_mem, struct route_t, ROUTING_ROUTE_MAX_MEM);
