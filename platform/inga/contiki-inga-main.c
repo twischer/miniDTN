@@ -360,6 +360,7 @@ extern uint8_t eemem_domain_name[30];
 static uint8_t
 get_channel_from_eeprom() {
   uint8_t x;
+#if PRESERVE_CHANNEL
   size_t  size = 1;
   if (settings_get(SETTINGS_KEY_CHANNEL, 0,(unsigned char*)&x, &size) == SETTINGS_STATUS_OK) {
     if ((x<11) || (x>26)) {
@@ -372,6 +373,9 @@ get_channel_from_eeprom() {
       PRINTD("->Set EEPROM RF channel to %d.\n",x);
     }
   }
+#else
+  x=CHANNEL_802_15_4;
+#endif
   return x;
 }
 static bool

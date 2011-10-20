@@ -41,7 +41,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 		printf("Y_ACC=%d, ",acc_sensor.value(Y_ACC));
 		printf("Z_ACC=%d\n",acc_sensor.value(Z_ACC));
 		printf("X_AS=%d, Y_AS=%d, Z_AS=%d\n",gyro_sensor.value(X_AS), gyro_sensor.value(Y_AS), gyro_sensor.value(Z_AS));
-		printf("PRESS=%d, TEMP=%d\n\n", pressure_sensor.value(PRESS), pressure_sensor.value(TEMP));
+		printf("PRESS=%u, TEMP=%d\n\n", pressure_sensor.value(PRESS), pressure_sensor.value(TEMP));
 
         }
 
