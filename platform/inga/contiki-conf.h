@@ -192,7 +192,7 @@ unsigned long clock_seconds(void);
 
 
 #if WITH_DTN
-#define CHANNEL_802_15_4          23
+#define CHANNEL_802_15_4          26
 #define NETSTACK_CONF_MAC	  csma_driver
 #define NETSTACK_CONF_RDC    	  nullrdc_driver 
 #define NETSTACK_CONF_FRAMER      framer_802154
@@ -210,7 +210,7 @@ unsigned long clock_seconds(void);
 #define NETSTACK_CONF_RDC         nullrdc_driver
 #define NETSTACK_CONF_FRAMER      framer_802154
 #define NETSTACK_CONF_RADIO       rf230_driver
-#define CHANNEL_802_15_4          23
+#define CHANNEL_802_15_4          26
 #define RADIO_CONF_CALIBRATE_INTERVAL 256
 /* AUTOACK receive mode gives better rssi measurements, even if ACK is never requested */
 #define RF230_CONF_AUTOACK        1
@@ -236,7 +236,7 @@ unsigned long clock_seconds(void);
 #define NETSTACK_CONF_RDC         nullrdc_driver
 #define NETSTACK_CONF_FRAMER      framer_802154
 #define NETSTACK_CONF_RADIO       rf230_driver
-#define CHANNEL_802_15_4          23
+#define CHANNEL_802_15_4          26
 /* The radio needs to interrupt during an rtimer interrupt */
 #define RTIMER_CONF_NESTED_INTERRUPTS 1
 #define RF230_CONF_AUTOACK        1
@@ -258,7 +258,7 @@ unsigned long clock_seconds(void);
 #define NETSTACK_CONF_RDC         cxmac_driver
 #define NETSTACK_CONF_FRAMER      framer_802154
 #define NETSTACK_CONF_RADIO       rf230_driver
-#define CHANNEL_802_15_4          23
+#define CHANNEL_802_15_4          26
 #define RF230_CONF_AUTOACK        1
 #define SICSLOWPAN_CONF_FRAG      1
 #define SICSLOWPAN_CONF_MAXAGE    3
