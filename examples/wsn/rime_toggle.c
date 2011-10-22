@@ -43,7 +43,6 @@
 #include "random.h"
 
 #include "dev/button-sensor.h"
-
 #include "dev/leds.h"
 
 #include <stdio.h>
