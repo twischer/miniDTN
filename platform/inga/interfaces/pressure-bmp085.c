@@ -62,6 +62,22 @@ int32_t bmp085_read_pressure(uint8_t mode) {
 	return (pressure >> (8 - mode));
 }
 
+int32_t bmp085_read_comp_temperature(void) {
+	int32_t ut = 0, compt = 0;
+
+	int32_t x1, x2, b5;
+
+	ut = bmp085_read_temperature();
+
+	x1 = ((int32_t) ut - (int32_t) bmp085_coeff.ac6)
+			* (int32_t) bmp085_coeff.ac5 >> 15;
+	x2 = ((int32_t) bmp085_coeff.mc << 11) / (x1 + bmp085_coeff.md);
+	b5 = x1 + x2;
+	compt = (b5 + 8) >> 4;
+
+	return compt;
+}
+
 int32_t bmp085_read_comp_pressure(uint8_t mode) {
 	int32_t ut = 0, compt = 0;
 	int32_t up = 0, compp = 0;

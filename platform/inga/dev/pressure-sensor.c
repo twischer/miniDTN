@@ -16,7 +16,8 @@ value(int type)
   case PRESS:
     return (uint16_t) bmp085_read_comp_pressure(0);
   case  TEMP:
-    return (uint16_t) bmp085_read_temperature();
+    //return (uint16_t) bmp085_read_temperature();
+    return (int16_t) bmp085_read_comp_temperature();
   }
   return 0;
 }

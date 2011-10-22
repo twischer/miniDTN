@@ -178,6 +178,13 @@ int8_t bmp085_init(void);
 int32_t bmp085_read_temperature(void);
 
 /**
+ * \brief This function reads the raw temperature value and
+ * converts it to real temerature
+ *
+ * return Temerature in 0.1 Degree
+ */
+int32_t bmp085_read_comp_temperature(void);
+/**
  * \brief This functions reads the raw value of one
  * pressure conversion.
  *
