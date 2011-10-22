@@ -21,6 +21,9 @@ value(int type)
 
   case Z_AS:
     return l3g4200d_get_y_angle();
+
+  case TEMP:
+		return (uint8_t) l3g4200d_get_temp();
   }
   return 0;
 }
