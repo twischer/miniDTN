@@ -157,10 +157,11 @@ clock_delay(unsigned int i)
 {
   for (; i > 0; i--) {		/* Needs fixing XXX */
     unsigned j;
-    for (j = 50; j > 0; j--)
+    for (j = 5; j > 0; j--)
       asm volatile("nop");
   }
 }
+#if 0
 
 /*---------------------------------------------------------------------------*/
 /**

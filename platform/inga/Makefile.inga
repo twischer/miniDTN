@@ -1,0 +1,74 @@
+CONTIKI_TARGET_DIRS = . drv interfaces dev
+
+CONTIKI_CORE=contiki-inga-main
+CONTIKI_TARGET_MAIN = ${CONTIKI_CORE}.o
+CONTIKI_TARGET_SOURCEFILES += contiki-inga-main.c contiki-inga-default-init-net.c
+#The avr cpu makefile will also add these files if COFFEE_FILES is specified.
+#CONTIKI_TARGET_SOURCEFILES += cfs-coffee.c cfs-coffee-arch.c
+#Needed for slip
+CONTIKI_TARGET_SOURCEFILES += button-sensor.c sensors.c slip_uart0.c slip.c acc-sensor.c gyro-sensor.c pressure-sensor.c
+CONTIKI_TARGET_SOURCEFILES += adc-drv.c  i2c-drv.c  mspi-drv.c acc-adxl345.c   flash-microSD.c  pressure-bmp085.c flash-at45db.c  gyro-l3g4200d.c  pressure-mpl115a.c
+
+CONTIKIAVR=$(CONTIKI)/cpu/avr
+CONTIKIBOARD=.
+
+CONTIKI_PLAT_DEFS = -DF_CPU=8000000UL -DAUTO_CRC_PADDING=2
+
+MCU=atmega1284p
+#AVRDUDE_PROGRAMMER=jtag2
+AVRDUDE_PROGRAMMER=avr109
+
+# For usb devices, you may either use PORT=usb, or (e.g. if you have more than one
+# programmer connected) you can use the following trick to find out the serial number:
+#
+# The example is for an JTAGICE mkII used to program an ATmega128:
+# avrdude -v -P usb:xxxx -c jtag2 -p atmega128
+#AVRDUDE_PORT=usb:00B000000D79
+#AVRDUDE_PORT=usb
+
+
+# Additional avrdude options
+# Verify off
+#AVRDUDE_OPTIONS=-V
+AVRDUDE_OPTIONS=-b 230400
+ifdef CONF_DTN
+CFLAGS += -DWITH_DTN=1
+endif
+CFLAGS += -DWITH_NODE_ID=1
+
+ifdef MOTES
+  MOTELIST=1
+  CMOTES=$(MOTES)
+  MOTE=1;
+  SERIALDUMP = $(CONTIKI)/tools/sky/serialdump-linux
+endif
+
+ifndef MOTELIST
+  SERIALDUMP = $(CONTIKI)/tools/sky/serialdump-linux
+  MOTELIST = $(CONTIKI)/tools/sky/motelist-linux
+  MOTES = $(shell $(MOTELIST) 2>&- | grep USB | \
+     cut -f 4 -d \  | \
+     perl -ne 'print $$1 . " " if(m-(/dev/\w+)-);')
+  CMOTES=$(MOTES)
+endif
+
+motelist: sky-motelist
+
+motelist:
+	$(MOTELIST)
+motes:
+	@echo $(MOTES)
+
+login:
+	$(SERIALDUMP) -b19200 $(firstword $(CMOTES))
+ifdef MOTE
+AVRDUDE_PORT=$(CMOTES)
+%.upload:  %.u 		
+	@echo DONE
+else
+%.upload: %.hex 
+	
+	$(foreach PORT, $(MOTES), avrdude $(AVRDUDE_OPTIONS) -P $(PORT) $(AVRDUDE_PROGRAMMER) -p $(MCU) -U flash:w:$<& )echo DONE; wait $!
+endif
+include $(CONTIKIAVR)/Makefile.avr
+include $(CONTIKIAVR)/radio/Makefile.radio

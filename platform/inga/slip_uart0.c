@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, Swedish Institute of Computer Science.
+ * Copyright (c) 2010, University of Colombo School of Computing
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,54 +26,68 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * This file is part of the Configurable Sensor Network Application
- * Architecture for sensor nodes running the Contiki operating system.
+ * This file is part of the Contiki operating system.
  *
- * This is a dummy non-functional dummy implementation.
- *
- * $Id: leds-arch.c,v 1.1 2006/12/22 17:05:31 barner Exp $
- *
- * -----------------------------------------------------------------
- *
- * Author  : Adam Dunkels, Joakim Eriksson, Niclas Finne, Simon Barner
- * Created : 2005-11-03
- * Updated : $Date: 2006/12/22 17:05:31 $
- *           $Revision: 1.1 $
+ * @(#)$$
  */
 
-#include "contiki-conf.h"
-#include "dev/leds.h"
-#include <avr/io.h>
+/**
+ * \file
+ *         Machine dependent AVR SLIP routines for UART0.
+ * \author
+ *         Kasun Hewage <kasun.ch@gmail.com>
+ */
+
+#include <stdio.h>
+#include "contiki.h"
+#include "dev/rs232.h"
+#include "slip.h"
 
 /*---------------------------------------------------------------------------*/
-void
-leds_arch_init(void)
+static int
+slip_putchar(char c, FILE *stream)
 {
-#ifdef PLATFORM_HAS_LEDS
-  LEDS_PxDIR |= (LEDS_CONF_GREEN | LEDS_CONF_YELLOW);
-  LEDS_PxOUT |= (LEDS_CONF_GREEN | LEDS_CONF_YELLOW);
-#endif
-}
-/*---------------------------------------------------------------------------*/
-unsigned char
-leds_arch_get(void)
-{
-#ifdef PLATFORM_HAS_LEDS
-  return ((LEDS_PxOUT & LEDS_CONF_GREEN) ? 0 : LEDS_GREEN)
-    | ((LEDS_PxOUT & LEDS_CONF_YELLOW) ? 0 : LEDS_YELLOW);
-#else
-    return 0;
-#endif
-}
-/*---------------------------------------------------------------------------*/
-void
-leds_arch_set(unsigned char leds)
-{
-#ifdef PLATFORM_HAS_LEDS
-  LEDS_PxOUT = (LEDS_PxOUT & ~(LEDS_CONF_GREEN|LEDS_CONF_YELLOW))
-    | ((leds & LEDS_GREEN) ? 0 : LEDS_CONF_GREEN)
-    | ((leds & LEDS_YELLOW) ? 0 : LEDS_CONF_YELLOW);
-#endif
+#define SLIP_END 0300
+  static char debug_frame = 0;
 
+  if (!debug_frame) {        /* Start of debug output */
+    slip_arch_writeb(SLIP_END);
+    slip_arch_writeb('\r'); /* Type debug line == '\r' */
+    debug_frame = 1;
+  }
+
+  slip_arch_writeb((unsigned char)c);
+          
+  /*
+   * Line buffered output, a newline marks the end of debug output and
+   * implicitly flushes debug output.         
+   */
+  if (c == '\n') {
+    slip_arch_writeb(SLIP_END);
+    debug_frame = 0;
+  }
+
+  return c;
 }
 /*---------------------------------------------------------------------------*/
+static FILE slip_stdout = FDEV_SETUP_STREAM(slip_putchar, NULL,
+                                            _FDEV_SETUP_WRITE);
+/*---------------------------------------------------------------------------*/
+void
+slip_arch_init(unsigned long ubr)
+{
+  rs232_set_input(RS232_PORT_0, slip_input_byte);
+  stdout = &slip_stdout;
+}
+/*---------------------------------------------------------------------------*/
+/*
+ XXX:
+      Currently, the following function is in cpu/avr/dev/rs232.c file. this
+      should be moved to here from there hence this is a platform specific slip 
+      related function. 
+void
+slip_arch_writeb(unsigned char c)
+{
+  rs232_send(RS232_PORT_0, c);
+}
+*/

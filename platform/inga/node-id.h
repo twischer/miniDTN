@@ -26,54 +26,20 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * This file is part of the Configurable Sensor Network Application
- * Architecture for sensor nodes running the Contiki operating system.
+ * This file is part of the Contiki operating system.
  *
- * This is a dummy non-functional dummy implementation.
+ * Author: Adam Dunkels <adam@sics.se>
  *
- * $Id: leds-arch.c,v 1.1 2006/12/22 17:05:31 barner Exp $
- *
- * -----------------------------------------------------------------
- *
- * Author  : Adam Dunkels, Joakim Eriksson, Niclas Finne, Simon Barner
- * Created : 2005-11-03
- * Updated : $Date: 2006/12/22 17:05:31 $
- *           $Revision: 1.1 $
  */
 
+#ifndef NODE_ID_H
+#define NODE_ID_H
+
 #include "contiki-conf.h"
-#include "dev/leds.h"
-#include <avr/io.h>
 
-/*---------------------------------------------------------------------------*/
-void
-leds_arch_init(void)
-{
-#ifdef PLATFORM_HAS_LEDS
-  LEDS_PxDIR |= (LEDS_CONF_GREEN | LEDS_CONF_YELLOW);
-  LEDS_PxOUT |= (LEDS_CONF_GREEN | LEDS_CONF_YELLOW);
-#endif
-}
-/*---------------------------------------------------------------------------*/
-unsigned char
-leds_arch_get(void)
-{
-#ifdef PLATFORM_HAS_LEDS
-  return ((LEDS_PxOUT & LEDS_CONF_GREEN) ? 0 : LEDS_GREEN)
-    | ((LEDS_PxOUT & LEDS_CONF_YELLOW) ? 0 : LEDS_YELLOW);
-#else
-    return 0;
-#endif
-}
-/*---------------------------------------------------------------------------*/
-void
-leds_arch_set(unsigned char leds)
-{
-#ifdef PLATFORM_HAS_LEDS
-  LEDS_PxOUT = (LEDS_PxOUT & ~(LEDS_CONF_GREEN|LEDS_CONF_YELLOW))
-    | ((leds & LEDS_GREEN) ? 0 : LEDS_CONF_GREEN)
-    | ((leds & LEDS_YELLOW) ? 0 : LEDS_CONF_YELLOW);
-#endif
+void node_id_restore(void);
+void node_id_burn(uint16_t node_id);
 
-}
-/*---------------------------------------------------------------------------*/
+extern uint16_t node_id;
+
+#endif /* !NODE_ID_H */
