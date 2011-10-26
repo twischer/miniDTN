@@ -147,6 +147,7 @@ clock_time(void)
   } while(tmp != count);
   return tmp;
 }
+
 /*---------------------------------------------------------------------------*/
 /**
  * Delay the CPU for a multiple of TODO
