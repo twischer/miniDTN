@@ -108,7 +108,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 			uint32_t bla=4;
 		//			rimeaddr_t dest={{3,0}};
 		//#if 0
-			bla=1;
+			bla=0x0500;
 			set_attr(&bundle, DEST_NODE, &bla);
 			bla=25;
 			set_attr(&bundle, DEST_SERV, &bla);
@@ -130,7 +130,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 			uint8_t foo[80]={10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10};
 			add_block(&bundle, 1,2,foo,80);
 			
-//			printf("main size: %u\n",bundle.size);
+			printf("main size: %u\n",bundle.size);
 			uint8_t *tmp=(uint8_t *) bundle.mem.ptr;
 			for(i=0; i<bundle.size; i++){
 				//printf("%x ",*tmp);
@@ -143,7 +143,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 //			if (BUNDLE_STORAGE.get_bundle_num() <39){
 //			if (rec <1000){
 				//etimer_reset(&timer);
-				etimer_set(&timer, CLOCK_SECOND*0.01);
+				etimer_set(&timer, CLOCK_SECOND);
 //			}
 
 //			}else{

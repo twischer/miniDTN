@@ -102,7 +102,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 //		}
 
 		count++;
-	//	printf("%u\n",count);
+		printf("%u\n",count);
 		if(count > 8){
 //			leds_off(1);
 //			count=0;
