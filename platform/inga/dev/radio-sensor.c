@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, Swedish Institute of Computer Science.
+ * Copyright (c) 2005, Swedish Institute of Computer Science
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,54 +26,53 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * This file is part of the Configurable Sensor Network Application
- * Architecture for sensor nodes running the Contiki operating system.
+ * This file is part of the Contiki operating system.
  *
- * This is a dummy non-functional dummy implementation.
- *
- * $Id: leds-arch.c,v 1.1 2006/12/22 17:05:31 barner Exp $
- *
- * -----------------------------------------------------------------
- *
- * Author  : Adam Dunkels, Joakim Eriksson, Niclas Finne, Simon Barner
- * Created : 2005-11-03
- * Updated : $Date: 2006/12/22 17:05:31 $
- *           $Revision: 1.1 $
+ * @(#)$Id: radio-sensor.c,v 1.7 2010/08/25 19:30:53 nifi Exp $
  */
 
-#include "contiki-conf.h"
-#include "dev/leds.h"
-#include <avr/io.h>
+#include "lib/sensors.h"
+#include "radio/rf230bb/hal.h"
+#include "dev/radio.h"
+#include "radio/rf230bb/rf230bb.h"
+#include "dev/radio-sensor.h"
+
+const struct sensors_sensor radio_sensor;
+static int active;
 
 /*---------------------------------------------------------------------------*/
-void
-leds_arch_init(void)
+static int
+value(int type)
 {
-#ifdef PLATFORM_HAS_LEDS
-  LEDS_PxDIR |= (LEDS_CONF_GREEN | LEDS_CONF_YELLOW);
-  LEDS_PxOUT |= (LEDS_CONF_GREEN | LEDS_CONF_YELLOW);
-#endif
+  switch(type) {
+  case RADIO_SENSOR_LAST_PACKET:
+    return rf230_last_correlation;
+  case RADIO_SENSOR_LAST_VALUE:
+  default:
+    return rf230_last_rssi;
+  }
 }
 /*---------------------------------------------------------------------------*/
-unsigned char
-leds_arch_get(void)
+static int
+configure(int type, int c)
 {
-#ifdef PLATFORM_HAS_LEDS
-  return ((LEDS_PxOUT & LEDS_CONF_GREEN) ? 0 : LEDS_GREEN)
-    | ((LEDS_PxOUT & LEDS_CONF_YELLOW) ? 0 : LEDS_YELLOW);
-#else
-    return 0;
-#endif
+  if(type == SENSORS_ACTIVE) {
+    active = c;
+    return 1;
+  }
+  return 0;
 }
 /*---------------------------------------------------------------------------*/
-void
-leds_arch_set(unsigned char leds)
+static int
+status(int type)
 {
-#ifdef PLATFORM_HAS_LEDS
-  LEDS_PxOUT = (LEDS_PxOUT & ~(LEDS_CONF_GREEN|LEDS_CONF_YELLOW))
-    | ((leds & LEDS_GREEN) ? 0 : LEDS_CONF_GREEN)
-    | ((leds & LEDS_YELLOW) ? 0 : LEDS_CONF_YELLOW);
-#endif
-
+  switch(type) {
+  case SENSORS_ACTIVE:
+  case SENSORS_READY:
+    return active;
+  }
+  return 0;
 }
 /*---------------------------------------------------------------------------*/
+SENSORS_SENSOR(radio_sensor, RADIO_SENSOR,
+	       value, configure, status);

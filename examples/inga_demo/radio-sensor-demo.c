@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, Swedish Institute of Computer Science.
+ * Copyright (c) 2007, Swedish Institute of Computer Science.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,54 +26,65 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * This file is part of the Configurable Sensor Network Application
- * Architecture for sensor nodes running the Contiki operating system.
+ * This file is part of the Contiki operating system.
  *
- * This is a dummy non-functional dummy implementation.
- *
- * $Id: leds-arch.c,v 1.1 2006/12/22 17:05:31 barner Exp $
- *
- * -----------------------------------------------------------------
- *
- * Author  : Adam Dunkels, Joakim Eriksson, Niclas Finne, Simon Barner
- * Created : 2005-11-03
- * Updated : $Date: 2006/12/22 17:05:31 $
- *           $Revision: 1.1 $
+ * $Id: example-broadcast.c,v 1.3 2010/11/06 15:03:48 adamdunkels Exp $
  */
 
-#include "contiki-conf.h"
+/**
+ * \file
+ *         Testing the broadcast layer in Rime
+ * \author
+ *         Adam Dunkels <adam@sics.se>
+ */
+
+#include "contiki.h"
+#include "net/rime.h"
+#include "random.h"
+
+#include "dev/button-sensor.h"
+
 #include "dev/leds.h"
-#include <avr/io.h>
 
+#include <stdio.h>
+#include "radio-sensor.h"
 /*---------------------------------------------------------------------------*/
-void
-leds_arch_init(void)
+PROCESS(example_broadcast_process, "Broadcast example");
+AUTOSTART_PROCESSES(&example_broadcast_process);
+/*---------------------------------------------------------------------------*/
+static void
+broadcast_recv(struct broadcast_conn *c, const rimeaddr_t *from)
 {
-#ifdef PLATFORM_HAS_LEDS
-  LEDS_PxDIR |= (LEDS_CONF_GREEN | LEDS_CONF_YELLOW);
-  LEDS_PxOUT |= (LEDS_CONF_GREEN | LEDS_CONF_YELLOW);
-#endif
+  printf("broadcast message received from %d.%d: '%s'\n LQI=%u, RSSI=%u\n",
+         from->u8[0], from->u8[1], (char *)packetbuf_dataptr(),radio_sensor.value(RADIO_SENSOR_LAST_PACKET),radio_sensor.value(RADIO_SENSOR_LAST_VALUE));
+	 
 }
+static const struct broadcast_callbacks broadcast_call = {broadcast_recv};
+static struct broadcast_conn broadcast;
 /*---------------------------------------------------------------------------*/
-unsigned char
-leds_arch_get(void)
+PROCESS_THREAD(example_broadcast_process, ev, data)
 {
-#ifdef PLATFORM_HAS_LEDS
-  return ((LEDS_PxOUT & LEDS_CONF_GREEN) ? 0 : LEDS_GREEN)
-    | ((LEDS_PxOUT & LEDS_CONF_YELLOW) ? 0 : LEDS_YELLOW);
-#else
-    return 0;
-#endif
-}
-/*---------------------------------------------------------------------------*/
-void
-leds_arch_set(unsigned char leds)
-{
-#ifdef PLATFORM_HAS_LEDS
-  LEDS_PxOUT = (LEDS_PxOUT & ~(LEDS_CONF_GREEN|LEDS_CONF_YELLOW))
-    | ((leds & LEDS_GREEN) ? 0 : LEDS_CONF_GREEN)
-    | ((leds & LEDS_YELLOW) ? 0 : LEDS_CONF_YELLOW);
-#endif
+  static struct etimer et;
 
+  PROCESS_EXITHANDLER(broadcast_close(&broadcast);)
+
+  PROCESS_BEGIN();
+
+  broadcast_open(&broadcast, 129, &broadcast_call);
+  SENSORS_ACTIVATE(radio_sensor);
+
+  while(1) {
+
+    /* Delay 2-4 seconds */
+    etimer_set(&et, CLOCK_SECOND * 4 + random_rand() % (CLOCK_SECOND * 4));
+
+    PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
+
+    packetbuf_copyfrom("Hello", 6);
+    broadcast_send(&broadcast);
+    printf("broadcast message sent\n");
+  }
+
+  PROCESS_END();
 }
 /*---------------------------------------------------------------------------*/
