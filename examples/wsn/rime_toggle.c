@@ -37,7 +37,6 @@
  * \author
  *         Adam Dunkels <adam@sics.se>
  */
-
 #include "contiki.h"
 #include "net/rime.h"
 #include "random.h"
@@ -54,16 +53,9 @@ AUTOSTART_PROCESSES(&example_broadcast_process);
 static void
 broadcast_recv(struct broadcast_conn *c, const rimeaddr_t *from)
 {
-  static struct ctimer ct;
-	static void (*light_off) = leds_off;
-	static unsigned char two = LEDS_YELLOW;
-	leds_init();	
-
-	leds_on(LEDS_YELLOW);
+	leds_invert(LEDS_YELLOW);
   printf("broadcast message received from %d.%d: '%s'\n",
          from->u8[0], from->u8[1], (char *)packetbuf_dataptr());
-
-	ctimer_set(&ct,  CLOCK_SECOND*2, light_off, &two);
 }
 
 static const struct broadcast_callbacks broadcast_call = {broadcast_recv};
@@ -76,8 +68,8 @@ PROCESS_THREAD(example_broadcast_process, ev, data)
   PROCESS_EXITHANDLER(broadcast_close(&broadcast);)
 
   PROCESS_BEGIN();
-	leds_init();	
 
+	leds_init();
 	SENSORS_ACTIVATE(button_sensor);//activate button
 
   broadcast_open(&broadcast, 129, &broadcast_call);
@@ -86,8 +78,8 @@ PROCESS_THREAD(example_broadcast_process, ev, data)
 
 		PROCESS_WAIT_EVENT_UNTIL(ev == sensors_event && data == &button_sensor);
 
-
 		leds_on(LEDS_GREEN);
+
     packetbuf_copyfrom("Hello", 6);
     broadcast_send(&broadcast);
     printf("broadcast message sent\n");
