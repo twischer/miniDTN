@@ -35,7 +35,7 @@
 //#include "sys/ctimer.h"
 //#include "sys/etimer.h"
 #include "net/uip.h"
-#include "net/uip-ds6.h"
+//#include "net/uip-ds6.h"
 
 #include "simple-udp.h"
 
