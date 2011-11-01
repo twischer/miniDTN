@@ -25,6 +25,8 @@
 #include "status-report.h"
 #include "mmem.h"
 
+#include <string.h>
+
 #define RETRANSMIT 1000
 #define MAX_CUST 10 
 
@@ -419,7 +421,7 @@ int32_t b_cust_decide(struct bundle_t *bundle)
 			list_add(cust_list, cust);
 			cust_cnt++;
 			if (cust->src_node != dtn_node_id){
-				printf("B_CUST: %u != %u\n",cust->src_node,dtn_node_id);
+				printf("B_CUST: %lu != %lu\n",cust->src_node,dtn_node_id);
 				set_attr(bundle,CUST_NODE,&tmp);
 				STATUS_REPORT.send(bundle, 2,0);
 			}

@@ -23,6 +23,7 @@
 #include "agent.h"
 #include "dispatching.h"
 #include "routing.h"
+#include "sdnv.h"
 #include "mmem.h"
 #include "discovery.h"
 #include "stimer.h"
@@ -170,7 +171,7 @@ static void packet_sent(void *ptr, int status, int num_tx)
 	struct route_t *route= (struct route_t *)ptr;
 	PRINTF("DTN: bundle_num : %u    %p\n",route->bundle_num,ptr);
 	//printf("sent to %u:%u\n",route->dest.u8[0],route->dest.u8[1]);
-	ROUTING.sent((struct route_t *)ptr,status,num_tx);
+	ROUTING.sent(route,status,num_tx);
 		
 }
 

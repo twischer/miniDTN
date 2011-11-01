@@ -26,7 +26,7 @@
 #include "memb.h"
 #include <stdlib.h>
 #include <stdio.h>
-#include <strings.h>
+#include <string.h>
 #include "cfs-coffee.h"
 
 #define DEBUG 0
@@ -50,7 +50,7 @@ int fd_write, fd_read;
 static uint16_t bundles_in_storage;
 static struct ctimer g_store_timer;
 static struct bundle_t bundle_str;
-struct memb_blocks *saved_as_mem;
+struct memb *saved_as_mem;
 uint16_t del_num;
 
 /**

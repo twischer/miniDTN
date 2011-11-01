@@ -191,7 +191,6 @@ PROCESS_THREAD(agent_process, ev, data)
 			while (route !=NULL) {
 				listcount++;
 				PRINTF("BUNDLEPROTOCOL: send bundle %u to node %u:%u\n",route->bundle_num, route->dest.u8[1], route->dest.u8[0]);
-				uint8_t i;
 				memset(&bundle, 0, sizeof(struct bundle_t));
 				bundleptr = &bundle;
 				if(BUNDLE_STORAGE.read_bundle(route->bundle_num,bundleptr)<=0){
@@ -223,7 +222,7 @@ PROCESS_THREAD(agent_process, ev, data)
 		else if(etimer_expired(&discover_timer)){
 			PRINTF("BUNDLEPROTOCOL: discover_timer\n");
 			if (BUNDLE_STORAGE.get_bundle_num()>0){
-				PRINTF("BUNDLEPROTOCOL: sending discover and reschedule timer to %u seconds %u bundles in storage\n",DISCOVER_CYCLE,BUNDLE_STORAGE.get_bundle_num());
+				PRINTF("BUNDLEPROTOCOL: sending discover and reschedule timer to %f seconds %u bundles in storage\n",DISCOVER_CYCLE,BUNDLE_STORAGE.get_bundle_num());
 				etimer_set(&discover_timer, DISCOVER_CYCLE*CLOCK_SECOND);
 				DISCOVERY.send(255);
 			}else{

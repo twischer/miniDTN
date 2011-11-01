@@ -44,12 +44,6 @@ LIST(b_red_list);
 MEMB(b_red_mem, struct red_bundle_t, B_RED_MAX);
 
 
-
-
-
-
-
-static uint8_t length=0;
 static struct ctimer *b_red_timer;
 /**
 * \brief checks if bundle was delivered befor
@@ -115,7 +109,7 @@ uint8_t set(struct bundle_t *bundle)
 
 		
 
-void reduce_lifetime(void)
+void reduce_lifetime(void *unused)
 {
 //	PRINTF("B_REDUNDANCE: reducing lifetime\n");
 	struct red_bundle_t *tmp;
