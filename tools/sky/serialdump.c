@@ -5,12 +5,21 @@
 #include <errno.h>
 #include <sys/time.h>
 
+#ifdef __APPLE__ && __MACH__
+#include <stdlib.h>
+#include <string.h>
+#endif
+
 #define BAUDRATE B57600
 #define BAUDRATE_S "57600"
 #ifdef linux
 #define MODEMDEVICE "/dev/ttyS0"
 #else
+#ifdef __APPLE__ && __MACH__
+#define MODEMDEVICE "/dev/tty"
+#else
 #define MODEMDEVICE "/dev/com1"
+#endif /* __APPLE__ && __MACH__ */
 #endif /* linux */
 
 #define SLIP_END     0300
@@ -159,7 +168,11 @@ int main(int argc, char **argv)
   }
   fprintf(stderr, "connecting to %s (%s)", device, speedname);
 
+#ifdef __APPLE__ && __MACH__
+  fd = open(device, O_RDWR | O_NOCTTY | O_NDELAY | O_SYNC );
+#else
   fd = open(device, O_RDWR | O_NOCTTY | O_NDELAY | O_DIRECT | O_SYNC );
+#endif
   if (fd <0) {
     fprintf(stderr, "\n");
     perror(device);
@@ -171,6 +184,13 @@ int main(int argc, char **argv)
     perror("could not set fcntl");
     exit(-1);
   }
+
+#ifdef __APPLE__ && __MACH__
+  if (fcntl(fd, F_NOCACHE, 1) < 0) {
+    perror("could not set fcntl");
+    exit(-1);
+  }
+#endif
 
   if (tcgetattr(fd, &options) < 0) {
     perror("could not get options");
