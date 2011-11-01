@@ -47,7 +47,7 @@ void b_dis_send(uint16_t num)
 	rimeaddr_t dest={{0,0}};
 	packetbuf_copyfrom("DTN_DISCOVERY", 13);
 	packetbuf_set_addr(PACKETBUF_ADDR_RECEIVER, &dest);
-	packetbuf_set_addr(PACKETBUF_ADDR_SENDER, &dest);
+	packetbuf_set_addr(PACKETBUF_ADDR_SENDER, &rimeaddr_node_addr);
 	packetbuf_set_attr(PACKETBUF_ADDRSIZE, 2);
 	NETSTACK_MAC.send(NULL, NULL); 
 }
@@ -87,7 +87,7 @@ uint8_t b_dis_is_discover(uint8_t *msg)
 	packetbuf_clear();
 	packetbuf_copyfrom("DTN_HERE", 8);
 	packetbuf_set_addr(PACKETBUF_ADDR_RECEIVER, &dest); 
-	packetbuf_set_addr(PACKETBUF_ADDR_SENDER, &dest); 
+	packetbuf_set_addr(PACKETBUF_ADDR_SENDER, &rimeaddr_node_addr);
 	packetbuf_set_attr(PACKETBUF_ADDRSIZE, 2); 
 	NETSTACK_MAC.send(NULL, NULL);
 	//}
