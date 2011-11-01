@@ -58,7 +58,7 @@ int8_t at45db_init(void) {
 		id = mspi_transceive(0x00);
 		mspi_chip_release(AT45DB_CS);
 		_delay_ms(10);
-		if (i++ > 250) {
+		if (i++ > 10) {
 			return -1;
 		}
 	}
