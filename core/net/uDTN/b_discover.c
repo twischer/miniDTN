@@ -42,9 +42,8 @@
 * \brief sends a discovery message 
 * \param bundle pointer to a bundle (not used here)
 */
-void b_dis_send(struct bundle_t *bundle)
+void b_dis_send(uint16_t num)
 {
-	uint8_t foo=23;  
 	rimeaddr_t dest={{0,0}};
 	packetbuf_copyfrom("DTN_DISCOVERY", 13);
 	packetbuf_set_addr(PACKETBUF_ADDR_RECEIVER, &dest);

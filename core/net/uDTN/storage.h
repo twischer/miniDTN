@@ -34,7 +34,7 @@ struct saved_as_t{
 	uint16_t saved_as_num;
 };
 
-extern struct memb_blocks *saved_as_mem;
+extern struct memb *saved_as_mem;
 /** storage module interface  */
 struct storage_driver {
 	char *name;

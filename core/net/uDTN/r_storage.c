@@ -25,6 +25,7 @@
 #include "r_storage.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include "dtn_config.h"
 #include "status-report.h"
 #include "forwarding.h"
@@ -41,7 +42,7 @@ struct file_list_entry_t file_list[BUNDLE_STORAGE_SIZE];
 int fd_write, fd_read;
 static uint16_t bundles_in_storage;
 static struct ctimer r_store_timer;
-struct memb_blocks *saved_as_mem;
+struct memb *saved_as_mem;
 LIST(store_l);
 uint16_t del_num;
 

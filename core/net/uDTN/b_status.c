@@ -11,6 +11,8 @@
 #include "mmem.h"
 #include "storage.h"
 #include "sdnv.h"
+#include <string.h>
+
 static struct mmem report;
 /**
 * \brief sends a status report for a bundle to the "report-to"-node

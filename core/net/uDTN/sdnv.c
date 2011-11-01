@@ -11,7 +11,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <sys/types.h>
 
 /** maximum sdnv length */
 #define MAX_LENGTH 8 
