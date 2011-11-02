@@ -1,0 +1,34 @@
+inga_tool is a utility to reset the INGA and update the FTDI EEPROM
+
+To build it you need at least libftdi version 0.19, libusb, libudev and libpopt.
+Just typing
+ $ make
+should build the binary. I might add autotools support eventually.
+
+
+Use it like this to reset an INGA node:
+./inga_tool -d <usbserial> -r
+
+The following will flash the EEPROM (WARNING, not extensively tested):
+./inga_node -d <usbserial> -f -v
+
+It is also possible to choose a device based on the USB serial:
+./inga_node -s <serial>
+
+Reset:
+This is used to go into the bootloader without the need to reset the device
+manually. You'll need an up-to-date bootloader for this to work.
+
+Flashing:
+Right now no options are supported for flashing, that will be something for the
+future. The following changes will be made:
+* manufacturer -> "IBR"
+* product -> "INGA"
+* cbus functions are set to
+  CBUS0 TXLED
+  CBUS1 RXLED
+  CBUS2 TXDEN
+  CBUS3 IOMODE
+  CBUS4 SLEEP
+
+Unchanged are VID/PID and the serial.
