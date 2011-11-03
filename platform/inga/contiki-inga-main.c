@@ -62,7 +62,7 @@ uint8_t debugflowsize,debugflow[DEBUGFLOWSIZE];
 #include <dev/watchdog.h>
 #include "lib/sensors.h"
 #include "dev/button-sensor.h"
-
+#include "interfaces/flash-at45db.h"
 
 #include "loader/symbols-def.h"
 #include "loader/symtab.h"
@@ -493,6 +493,9 @@ uint8_t i;
 #endif 
 
   PRINTA("\n*******Booting %s*******\n",CONTIKI_VERSION_STRING);
+
+  /* Flash initialization */
+  at45db_init();
 
 /* rtimers needed for radio cycling */
   rtimer_init();

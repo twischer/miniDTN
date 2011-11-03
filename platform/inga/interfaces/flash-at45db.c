@@ -110,7 +110,7 @@ void at45db_write_buffer(uint16_t addr, uint8_t *buffer, uint16_t bytes) {
 	at45db_write_cmd(&cmd[0]);
 
 	for (i = 0; i < bytes; i++) {
-		mspi_transceive(*buffer++);
+		mspi_transceive(~(*buffer++));
 	}
 
 	mspi_chip_release(AT45DB_CS);
@@ -153,7 +153,7 @@ void at45db_read_page_bypassed(uint16_t p_addr, uint16_t b_addr,
 	}
 	/*now the data bytes can be received*/
 	for (i = 0; i < bytes; i++) {
-		*buffer++ = mspi_transceive(MSPI_DUMMY_BYTE);
+		*buffer++ = ~mspi_transceive(MSPI_DUMMY_BYTE);
 	}
 	mspi_chip_release(AT45DB_CS);
 }
@@ -181,7 +181,7 @@ void at45db_read_buffer(uint8_t b_addr, uint8_t *buffer, uint16_t bytes) {
 	mspi_transceive(0x00);
 
 	for (i = 0; i < bytes; i++) {
-		*buffer++ = mspi_transceive(0x00);
+		*buffer++ = ~mspi_transceive(0x00);
 	}
 	mspi_chip_release(AT45DB_CS);
 }
