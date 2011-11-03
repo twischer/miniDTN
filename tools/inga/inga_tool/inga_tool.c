@@ -78,19 +78,21 @@ void resolve_usb_device(struct config_t *cfg)
 	char *devpath;
 	const char *devnum, *busnum;
 
-	rc = sprintf(devpath, "/sys/class/tty/%s", basename(cfg->device_path));
-	if (rc < 0) {
-		fprintf(stderr, "Failed to generate sysfs path\n");
-		exit(EXIT_FAILURE);
-	}
-
 	if (cfg->device_path) {
 		udev = udev_new();
 		if (!udev) {
 			fprintf(stderr, "Failed to initialize udev\n");
 			exit(EXIT_FAILURE);
 		}
+
+		rc = asprintf(&devpath, "/sys/class/tty/%s", basename(cfg->device_path));
+		if (rc < 0) {
+			fprintf(stderr, "Failed to generate sysfs path\n");
+			exit(EXIT_FAILURE);
+		}
+
 		dev = udev_device_new_from_syspath(udev, devpath);
+		free(devpath);
 		if (!dev) {
 			fprintf(stderr, "Failed get udev device\n");
 			exit(EXIT_FAILURE);
