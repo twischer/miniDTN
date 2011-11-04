@@ -169,30 +169,40 @@ int     avr_httpd_fs_strcmp (char *addr,char *ram);
 
 
 #ifdef COFFEE_AVR_EXTERNAL
-/* Byte page size, starting address on page boundary, and size of the file system */
-#define COFFEE_PAGE_SIZE          528
-#ifndef COFFEE_ADDRESS
-#define COFFEE_ADDRESS            0x00
-#endif
-#define COFFEE_PAGES              (COFFEE_SECTORS*COFFEE_BLOCKS_PER_SECTOR*COFFEE_PAGES_PER_BLOCK)
-#define COFFEE_START              (COFFEE_ADDRESS)
-#define COFFEE_SIZE               (COFFEE_PAGES*COFFEE_PAGE_SIZE)
 
-/* These must agree with the parameters passed to makefsdata */
-#define COFFEE_BLOCKS_PER_SECTOR	32
+#ifndef COFFEE_ADDRESS
+#define COFFEE_ADDRESS            	0x00
+#endif
+#define COFFEE_START              	(COFFEE_ADDRESS)
 #define COFFEE_PAGES_PER_BLOCK		8
-/* Actually, the AT45DB161 has 16 sectors - but then many things are going wrong */
-#define COFFEE_SECTORS				4
-#define COFFEE_SECTOR_SIZE        (COFFEE_PAGE_SIZE*COFFEE_PAGES_PER_BLOCK*COFFEE_BLOCKS_PER_SECTOR)
-#define COFFEE_NAME_LENGTH        16
+#define COFFEE_NAME_LENGTH        	16
 
 /* These are used internally by the coffee file system */
-#define COFFEE_MAX_OPEN_FILES     6
-#define COFFEE_FD_SET_SIZE        8
-#define COFFEE_LOG_TABLE_LIMIT    16
-#define COFFEE_DYN_SIZE           (COFFEE_PAGE_SIZE*1)
-#define COFFEE_MICRO_LOGS         0
-#define COFFEE_LOG_SIZE           128
+#define COFFEE_MAX_OPEN_FILES     	6
+#define COFFEE_FD_SET_SIZE        	8
+#define COFFEE_LOG_TABLE_LIMIT    	16
+#define COFFEE_DYN_SIZE           	(COFFEE_PAGE_SIZE*1)
+#define COFFEE_MICRO_LOGS         	0
+#define COFFEE_LOG_SIZE           	128
+
+#if !COFFEE_AVR_EXTERNAL_32
+/**
+ * These are the (safe) settings for 16 bit variables
+ *
+ * You can use up to 63360 bytes - however, garbage collection will probably not work
+ */
+
+/* Byte page size, starting address on page boundary, and size of the file system */
+#define COFFEE_PAGE_SIZE          	528
+#define COFFEE_PAGES              	120 		// (COFFEE_SECTORS*COFFEE_BLOCKS_PER_SECTOR*COFFEE_PAGES_PER_BLOCK)
+#define COFFEE_SIZE               	63360UL 	// (COFFEE_PAGES*COFFEE_PAGE_SIZE)
+
+/* These must agree with the parameters passed to makefsdata */
+#define COFFEE_BLOCKS_PER_SECTOR	15
+/* Actually, the AT45DB161 has 16 sectors - but then many things are going wrong */
+#define COFFEE_SECTORS				1
+#define COFFEE_SECTOR_SIZE        	63360UL 	// (COFFEE_PAGE_SIZE*COFFEE_BLOCKS_PER_SECTOR*COFFEE_PAGES_PER_BLOCK)
+
 
 /* coffee_page_t is used for page and sector numbering
  * uint8_t can handle 511 pages.
@@ -201,6 +211,36 @@ int     avr_httpd_fs_strcmp (char *addr,char *ram);
  */
 #define coffee_page_t uint16_t
 #define CFS_CONF_OFFSET_TYPE uint16_t
+
+#else /* COFFEE_AVR_EXTERNAL_32 */
+/**
+ * WARNING: The following settings use 32 bit variables and do not work properly
+ *
+ * Either COFFEE or the test suite in cfs-coffee-arch.c is not prepared for 32 bit
+ *
+ * !!! Use with caution!!!
+ */
+/* Byte page size, starting address on page boundary, and size of the file system */
+#define COFFEE_PAGE_SIZE          	528
+#define COFFEE_PAGES              	1536 		// (COFFEE_SECTORS*COFFEE_BLOCKS_PER_SECTOR*COFFEE_PAGES_PER_BLOCK)
+#define COFFEE_SIZE               	811008UL 	// (COFFEE_PAGES*COFFEE_PAGE_SIZE)
+
+/* These must agree with the parameters passed to makefsdata */
+#define COFFEE_BLOCKS_PER_SECTOR	32
+/* Actually, the AT45DB161 has 16 sectors - but then many things are going wrong */
+#define COFFEE_SECTORS				6
+#define COFFEE_SECTOR_SIZE        	135168UL 	// (COFFEE_PAGE_SIZE*COFFEE_BLOCKS_PER_SECTOR*COFFEE_PAGES_PER_BLOCK)
+
+
+/* coffee_page_t is used for page and sector numbering
+ * uint8_t can handle 511 pages.
+ * CFS_CONF_OFFSET_TYPE is used for full byte addresses
+ * uint16_t can handle up to a 65535 byte file system.
+ */
+#define coffee_page_t uint16_t
+#define CFS_CONF_OFFSET_TYPE uint32_t
+
+#endif /* COFFEE_AVR_EXTERNAL_32 */
 
 
 #define COFFEE_WRITE(buf, size, offset) \
