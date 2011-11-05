@@ -50,6 +50,8 @@ ifndef MOTELIST
      cut -f 4 -d \  | \
      perl -ne 'print $$1 . " " if(m-(/dev/\w+)-);')
   CMOTES=$(MOTES)
+
+  INGA_RESET = $(CONTIKI)/tools/inga/inga_tool/inga_tool
 endif
 
 motelist: sky-motelist
@@ -67,7 +69,7 @@ AVRDUDE_PORT=$(CMOTES)
 	@echo DONE
 else
 %.upload: %.hex 
-	
+	$(foreach PORT, $(MOTES), $(shell $(INGA_RESET) -d $(PORT) -r)) echo DONE; wait $!;
 	$(foreach PORT, $(MOTES), avrdude $(AVRDUDE_OPTIONS) -P $(PORT) $(AVRDUDE_PROGRAMMER) -p $(MCU) -U flash:w:$<& )echo DONE; wait $!
 endif
 include $(CONTIKIAVR)/Makefile.avr
