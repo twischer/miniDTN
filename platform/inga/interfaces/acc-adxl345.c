@@ -49,7 +49,7 @@ int8_t adxl345_init(void) {
 
 	while (adxl345_read(ADXL345_DEVICE_ID_REG) != ADXL345_DEVICE_ID_DATA) {
 		_delay_ms(10);
-		if (i++ > 250) {
+		if (i++ > 10) {
 			return -1;
 		}
 	}

@@ -444,6 +444,12 @@ get_txpower_from_eeprom(void) {
 /*------Done in a subroutine to keep main routine stack usage small--------*/
 void initialize(void)
 {
+  uint8_t reason;
+
+  /* Save the reset reason for later */
+  reason = MCUSR;
+  MCUSR = 0;
+
   watchdog_init();
   watchdog_start();
 
@@ -492,7 +498,19 @@ uint8_t i;
 }
 #endif 
 
-  PRINTA("\n*******Booting %s*******\n",CONTIKI_VERSION_STRING);
+  PRINTA("\n*******Booting %s*******\nReset reason: ",CONTIKI_VERSION_STRING);
+  /* Print out reset reason */
+  if (reason & _BV(JTRF))
+         PRINTA("JTAG ");
+  if (reason & _BV(WDRF))
+         PRINTA("Watchdog ");
+  if (reason & _BV(BORF))
+         PRINTA("Brown-out ");
+  if (reason & _BV(EXTRF))
+         PRINTA("External ");
+  if (reason & _BV(PORF))
+         PRINTA("Power-on ");
+  PRINTA("\n");
 
 /* rtimers needed for radio cycling */
   rtimer_init();

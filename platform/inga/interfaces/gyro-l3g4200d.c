@@ -45,7 +45,7 @@ int8_t l3g4200d_init(void) {
 	i2c_init();
 	while (l3g4200d_read8bit(L3G4000D_WHO_I_AM_REG) != 0xD3) {
 		_delay_ms(10);
-		if (i++ > 250) {
+		if (i++ > 10) {
 			return -1;
 		}
 	}
@@ -99,7 +99,7 @@ uint16_t l3g4200d_read16bit(uint8_t addr) {
 	return (uint16_t) ((msb << 8) + lsb);
 }
 
-l3g4200d_write8bit(uint8_t addr, uint8_t data){
+void l3g4200d_write8bit(uint8_t addr, uint8_t data){
 	i2c_start(L3G4200D_DEV_ADDR_W);
 	i2c_write(addr);
 	i2c_write(data);
