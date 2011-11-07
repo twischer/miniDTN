@@ -872,7 +872,6 @@ void external_flash_erase(coffee_page_t page) {
 		return;
 	}
 
-	if( debug )
 	PRINTF("external_flash_erase(page %u)\n", page);
 
 	at45db_erase_page(page);
