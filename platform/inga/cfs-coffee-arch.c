@@ -747,9 +747,7 @@ void external_flash_write_page(coffee_page_t page, CFS_CONF_OFFSET_TYPE offset, 
 	memcpy(buffer + offset, buf, size);
 
 	// And write the page again
-	at45db_erase_page(page);
-	at45db_write_buffer(0, buffer, COFFEE_PAGE_SIZE);
-	at45db_buffer_to_page(page);
+	at45db_write_page(page, 0, buffer, COFFEE_PAGE_SIZE);
 
 	watchdog_periodic();
 
