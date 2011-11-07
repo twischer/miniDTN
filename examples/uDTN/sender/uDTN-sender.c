@@ -108,7 +108,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 			uint32_t bla=4;
 		//			rimeaddr_t dest={{3,0}};
 		//#if 0
-			bla=0x0500;
+			bla=0x0001;
 			set_attr(&bundle, DEST_NODE, &bla);
 			bla=25;
 			set_attr(&bundle, DEST_SERV, &bla);
@@ -143,7 +143,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 //			if (BUNDLE_STORAGE.get_bundle_num() <39){
 //			if (rec <1000){
 				//etimer_reset(&timer);
-				etimer_set(&timer, CLOCK_SECOND);
+				etimer_set(&timer, CLOCK_SECOND/10);
 //			}
 
 //			}else{
