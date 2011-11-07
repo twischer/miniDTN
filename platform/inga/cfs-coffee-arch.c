@@ -867,6 +867,19 @@ void external_flash_read(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSE
 #endif
 }
 
+void external_flash_erase(coffee_page_t page) {
+	if( page > COFFEE_PAGES ) {
+		return;
+	}
+
+	if( debug )
+	PRINTF("external_flash_erase(page %u)\n", page);
+
+	at45db_erase_page(page);
+	watchdog_periodic();
+}
+
+/*
 void external_flash_erase(coffee_page_t sector) {
 	if( sector > COFFEE_SECTORS ) {
 		return;
@@ -887,5 +900,6 @@ void external_flash_erase(coffee_page_t sector) {
 		watchdog_periodic();
 	}
 }
+*/
 
 #endif /* COFFEE_AVR_EXTERNAL */
