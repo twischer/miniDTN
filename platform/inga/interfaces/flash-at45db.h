@@ -85,6 +85,15 @@
  */
 #define AT45DB_PAGE_ERASE			0x81
 /*!
+ * Main Memory Page Program Buffer 1
+ */
+#define AT45DB_PAGE_PROGRAM_1		0x82
+/*!
+ * Main Memory Page Program Buffer 2
+ */
+#define AT45DB_PAGE_PROGRAM_2		0x85
+
+/*!
  * Write byte(s) to buffer 1 opcode
  */
 #define AT45DB_BUFFER_1				0x84
@@ -144,6 +153,10 @@ typedef struct{
  */
 	volatile uint8_t buf_to_page_addr[2];
 
+/*!
+ * Main Memory Page Program (Erase Page + Reprogram directly in one operation)
+ */
+	volatile uint8_t page_program[2];
 }bufmgr_t;
 
 /*!
@@ -216,6 +229,19 @@ void at45db_write_buffer(uint16_t addr, uint8_t *buffer, uint16_t bytes);
  *
  */
 void at45db_buffer_to_page(uint16_t addr);
+
+/**
+ * \brief This function copies the data from the the pointer
+ * into the buffer, erases the EEPROM page and flashes the new
+ * content directly into the page
+ *
+ * \param p_addr page address e.g. AT45DB161 (0 - 4095)
+ * \param b_addr byte address within the page e.g. AT45DB161 (0 - 527)
+ * \param *buffer Pointer to local byte buffer
+ * \param bytes Number of bytes (e.g. byte buffer size) which have to
+ *        be read to the local byte buffer
+ */
+void at45db_write_page(uint16_t p_addr, uint16_t b_addr, uint8_t *buffer, uint16_t bytes);
 
 /**
  * \brief Bytes can be read via buffer from a Flash EEPROM page. With this
