@@ -100,6 +100,11 @@ PROCESS_THREAD(hello_world_process, ev, data)
 		}
 */		if(etimer_expired(&timer) || (ev == sensors_event && data == &button_sensor)) {
 		//if((ev == sensors_event && data == &button_sensor)) {
+			if (rec == 1000) {
+				profiling_stop();
+				profiling_report(0);
+				profiling_start();
+			}
 			rec++;
 	//		j++;
 			//printf("Hello, world\n");
@@ -129,8 +134,9 @@ PROCESS_THREAD(hello_world_process, ev, data)
 			set_attr(&bundle, TIME_STAMP, &bla);
 			uint8_t foo[80]={10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10};
 			add_block(&bundle, 1,2,foo,80);
-			
-			printf("main size: %u\n",bundle.size);
+			if (rec%50 == 0)
+				printf("%i\n", rec);
+//			printf("main size: %u\n",bundle.size);
 			uint8_t *tmp=(uint8_t *) bundle.mem.ptr;
 			for(i=0; i<bundle.size; i++){
 				//printf("%x ",*tmp);
