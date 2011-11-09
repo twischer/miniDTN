@@ -13,7 +13,7 @@ int8_t bmp085_init(void) {
 	i2c_init();
 	while (bmp085_read16bit_data(BMP085_AC1_ADDR) == 0x00) {
 		_delay_ms(10);
-		if (i++ > 250) {
+		if (i++ > 10) {
 			return -1;
 		}
 	}

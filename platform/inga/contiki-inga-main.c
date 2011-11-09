@@ -62,7 +62,7 @@ uint8_t debugflowsize,debugflow[DEBUGFLOWSIZE];
 #include <dev/watchdog.h>
 #include "lib/sensors.h"
 #include "dev/button-sensor.h"
-
+#include "interfaces/flash-at45db.h"
 
 #include "loader/symbols-def.h"
 #include "loader/symtab.h"
@@ -444,6 +444,12 @@ get_txpower_from_eeprom(void) {
 /*------Done in a subroutine to keep main routine stack usage small--------*/
 void initialize(void)
 {
+  uint8_t reason;
+
+  /* Save the reset reason for later */
+  reason = MCUSR;
+  MCUSR = 0;
+
   watchdog_init();
   watchdog_start();
 
@@ -492,7 +498,22 @@ uint8_t i;
 }
 #endif 
 
-  PRINTA("\n*******Booting %s*******\n",CONTIKI_VERSION_STRING);
+  PRINTA("\n*******Booting %s*******\nReset reason: ",CONTIKI_VERSION_STRING);
+  /* Print out reset reason */
+  if (reason & _BV(JTRF))
+         PRINTA("JTAG ");
+  if (reason & _BV(WDRF))
+         PRINTA("Watchdog ");
+  if (reason & _BV(BORF))
+         PRINTA("Brown-out ");
+  if (reason & _BV(EXTRF))
+         PRINTA("External ");
+  if (reason & _BV(PORF))
+         PRINTA("Power-on ");
+  PRINTA("\n");
+
+  /* Flash initialization */
+  at45db_init();
 
 /* rtimers needed for radio cycling */
   rtimer_init();

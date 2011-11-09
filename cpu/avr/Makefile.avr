@@ -61,6 +61,8 @@ ifdef COFFEE_FILES                #if files are defined force definition of COFF
    COFFEE_ADDRESS=0x14000
   else ifeq ($(COFFEE_FILES), 4)  #4=program flash dynamic
    COFFEE_ADDRESS=0x10000
+  else ifeq ($(COFFEE_FILES), 5)  #5=INGA external flash
+   COFFEE_ADDRESS=0x0
   else
    print "Unsupported coffee file type!"
   endif
@@ -143,10 +145,10 @@ ifndef NOAVRSIZE
 	avr-size -C --mcu=$(MCU) $@
 endif
 
-%.hex: %.out
+%.hex: %.$(TARGET)
 	$(OBJCOPY) $^ -j .text -j .data -O ihex $@
 
-%.ihex: %.out
+%.ihex: %.$(TARGET)
 	$(OBJCOPY) $^ -O ihex $@
 
 # Add a namelist to the kernel
@@ -164,7 +166,7 @@ endif
 #%.hex: %.elf
 #	$(OBJCOPY) -R .eeprom -R .fuse -R .signature $^ -O ihex $@
 
-%.eep: %.out
+%.eep: %.$(TARGET)
 	-$(OBJCOPY) -j .eeprom --set-section-flags=.eeprom="alloc,load" \
 	--change-section-lma .eeprom=0 -O ihex $^ $@
 

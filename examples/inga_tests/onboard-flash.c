@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006, Technical University of Munich
+ * Copyright (c) 2006, Swedish Institute of Computer Science.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,21 +28,47 @@
  *
  * This file is part of the Contiki operating system.
  *
- * Author: Simon Barner <barner@in.tum.de>
- *
- * @(#)$$
  */
-#include "contiki-raven.h"
 
-void
-init_lowlevel(void)
+#include "contiki.h"
+
+#include <stdio.h> /* For printf() */
+#include "cfs/cfs-coffee.h"
+/*---------------------------------------------------------------------------*/
+PROCESS(onboard_flash_test_process, "Onboard Flash COFFEE Test process");
+AUTOSTART_PROCESSES(&onboard_flash_test_process);
+/*---------------------------------------------------------------------------*/
+int RUNNING = 1;
+struct etimer et;
+PROCESS_THREAD(onboard_flash_test_process, ev, data)
 {
-   /* Configure default slip port with 19200 baud */
-  //rs232_init(RS232_PORT_0, USART_BAUD_19200, USART_PARITY_NONE | USART_STOP_BITS_1 | USART_DATA_BITS_8);
+	PROCESS_BEGIN();
 
-  /* Second rs232 port for debugging */
-  rs232_init(RS232_PORT_1, USART_BAUD_57600, USART_PARITY_NONE | USART_STOP_BITS_1 | USART_DATA_BITS_8);
+	etimer_set(&et, CLOCK_SECOND * 5);
+	PROCESS_YIELD_UNTIL(etimer_expired(&et));
 
-  /* Redirect stdout to second port */
-  rs232_redirect_stdout (RS232_PORT_1);
+	while(RUNNING) {
+		printf("Starting test...\n");
+		int ret = coffee_file_test();
+		printf("Test finished with %d\n", ret);
+
+		printf("Result: ");
+		if( ret == 0 ) {
+			printf("SUCCESS\n");
+			RUNNING = 0;
+		} else {
+			printf("FAILURE\n");
+
+			printf("Formatting Flash...");
+			fflush(stdout);
+			cfs_coffee_format();
+			printf("OK\n");
+		}
+
+		etimer_set(&et, CLOCK_SECOND * 60);
+		PROCESS_YIELD_UNTIL(etimer_expired(&et));
+	}
+
+	PROCESS_END();
 }
+/*---------------------------------------------------------------------------*/

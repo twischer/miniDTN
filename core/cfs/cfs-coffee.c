@@ -54,6 +54,7 @@
 #define PRINTF(...)
 #endif
 
+#include "cfs-coffee-arch.h"
 #include "contiki-conf.h"
 #include "cfs/cfs.h"
 #include "cfs-coffee-arch.h"
@@ -982,6 +983,7 @@ write_log_page(struct file *file, struct log_param *lp)
 static int
 get_available_fd(void)
 {
+	PRINTF("get_available_fd()\n");
   int i;
 
   for(i = 0; i < COFFEE_FD_SET_SIZE; i++) {

@@ -1,16 +1,25 @@
+#define _GNU_SOURCE
+
 #include <stdio.h>
 #include <fcntl.h>
 #include <termios.h>
 #include <unistd.h>
 #include <errno.h>
 #include <sys/time.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
 
 #define BAUDRATE B57600
 #define BAUDRATE_S "57600"
 #ifdef linux
 #define MODEMDEVICE "/dev/ttyS0"
 #else
+#if defined __APPLE__ && defined __MACH__
+#define MODEMDEVICE "/dev/tty"
+#else
 #define MODEMDEVICE "/dev/com1"
+#endif /* (__APPLE__ && __MACH__) */
 #endif /* linux */
 
 #define SLIP_END     0300
@@ -159,7 +168,11 @@ int main(int argc, char **argv)
   }
   fprintf(stderr, "connecting to %s (%s)", device, speedname);
 
+#if defined __APPLE__ && defined __MACH__
+  fd = open(device, O_RDWR | O_NOCTTY | O_NDELAY | O_SYNC );
+#else
   fd = open(device, O_RDWR | O_NOCTTY | O_NDELAY | O_DIRECT | O_SYNC );
+#endif
   if (fd <0) {
     fprintf(stderr, "\n");
     perror(device);
@@ -171,6 +184,13 @@ int main(int argc, char **argv)
     perror("could not set fcntl");
     exit(-1);
   }
+
+#if defined __APPLE__ && defined __MACH__
+  if (fcntl(fd, F_NOCACHE, 1) < 0) {
+    perror("could not set fcntl");
+    exit(-1);
+  }
+#endif
 
   if (tcgetattr(fd, &options) < 0) {
     perror("could not get options");
