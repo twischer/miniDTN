@@ -102,7 +102,9 @@ PROCESS_THREAD(hello_world_process, ev, data)
 //		}
 
 		count++;
-		printf("%u\n",count);
+		if (count%50 == 0)
+			printf("%u\n",count);
+
 		if(count > 8){
 //			leds_off(1);
 //			count=0;
@@ -129,6 +131,9 @@ PROCESS_THREAD(hello_world_process, ev, data)
 		if (count==1000){
 			leds_off(1);
 			printf("done\n");
+			profiling_stop();
+			profiling_report(0);
+			profiling_start();
 			uint16_t l=0;
 			for(i=0;i<j+1;i++){
 				watchdog_periodic();
