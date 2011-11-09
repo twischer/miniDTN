@@ -1,5 +1,5 @@
 CONTIKI = ../..
 
-all: rime_toggle udp_toggle present rime-tog2
+all: rime_toggle 
 
 include $(CONTIKI)/Makefile.include
