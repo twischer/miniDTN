@@ -39,10 +39,10 @@
 #include "contiki.h"
 #include "sys/profiling.h"
 
-#ifdef MAX_CONF_PROFILES
-#define MAX_PROFILES MAX_CONF_PROFILES
+#ifdef PROFILES_CONF_MAX
+#define MAX_PROFILES PROFILES_CONF_MAX
 #else
-#define MAX_PROFILES 400
+#define MAX_PROFILES 100
 #endif /* MAX_CONF_PROFILES */
 
 static struct profile_t profile;
