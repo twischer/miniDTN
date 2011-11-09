@@ -2,6 +2,7 @@ CONTIKI_TARGET_DIRS = . drv interfaces dev
 
 CONTIKI_CORE=contiki-inga-main
 CONTIKI_TARGET_MAIN = ${CONTIKI_CORE}.o
+CONTIKI_SOURCEFILES += sprofiling_arch.c
 CONTIKI_TARGET_SOURCEFILES += contiki-inga-main.c contiki-inga-default-init-net.c
 #The avr cpu makefile will also add these files if COFFEE_FILES is specified.
 #CONTIKI_TARGET_SOURCEFILES += cfs-coffee.c cfs-coffee-arch.c

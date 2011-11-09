@@ -106,6 +106,8 @@ uint8_t debugflowsize,debugflow[DEBUGFLOWSIZE];
 #endif
 
 #include "net/rime.h"
+#include "sys/sprofiling.h"
+#include "sys/profiling.h"
 
 /* Get periodic prints from idle loop, from clock seconds or rtimer interrupts */
 /* Use of rtimer will conflict with other rtimer interrupts such as contikimac radio cycling */
@@ -521,6 +523,9 @@ uint8_t i;
   /* etimers must be started before ctimer_init */
   process_start(&etimer_process, NULL);
 
+  profiling_init();
+  sprofiling_init();
+
 #if RF230BB
 
   ctimer_init();
@@ -731,6 +736,8 @@ main(void)
 {
   initialize();
   process_start(&sensors_process, NULL);
+
+  profiling_start();
 
   while(1) {
     process_run();

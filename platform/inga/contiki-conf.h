@@ -60,6 +60,9 @@ void clock_wait(int ms10);
 void clock_set_seconds(unsigned long s);
 unsigned long clock_seconds(void);
 
+#define SPROFILES_CONF_MAX 1
+#define PROFILES_CONF_MAX 200
+
 /* Maximum timer interval for 16 bit clock_time_t */
 #define INFINITE_TIME 0xffff
 
