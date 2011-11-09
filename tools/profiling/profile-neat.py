@@ -3,7 +3,7 @@
 import os
 from optparse import OptionParser
 import subprocess
-#import pydot
+import pydot
 
 
 parser = OptionParser()
@@ -15,6 +15,9 @@ parser.add_option("-c", "--clusters",
 parser.add_option("-i", "--individual",
 		action="store_true", dest="individual", default=False,
 		help="show individual callsites in functions")
+parser.add_option("--cumulative",
+		action="store_true", dest="cumulative", default=False,
+		help="accumulate time")
 parser.add_option("-l", "--log", dest="log",
 		help="log file to open")
 parser.add_option("-x", "--binary", dest="bin",
@@ -64,43 +67,37 @@ def plural(i):
 	else:
 		return "s"
 
-def graph_function(func, callsite, label=None):
+def graph_function(graph, func, callsite, label=None):
 	if not label:
 		label = func
 	if not callsite:
-#		return pydot.Node(func, label=label)
-		out.write("  %s [label=\"%s\"]\n"%(func, label))
+		graph.add_node(pydot.Node(func, label=label))
 	else:
-		out.write("  subgraph cluster_fn_%s {\n  label=\"%s\";shape=ellipse;\n\n"%(func, label))
+		subgr = pydot.Subgraph("cluster_fn_%s"%func, label=label, style="filled")
 		for site in func_table.values():
 			if site['name'] == func:
 				if site['func']:
-					out.write("    mem_%x [label=\"\" style=\"invis\" height=0 width=0 fixedsize=true]\n"%(site['addr']))
+					subgr.add_node(pydot.Node("mem_%x"%(site['addr']), label="", shape="plaintext", style="invis"))
 				else:
-					out.write("    mem_%x [label=\"line %s\"]\n"%(site['addr'], site['line']))
-		out.write("  }\n")
+					subgr.add_node(pydot.Node("mem_%x"%(site['addr']), label="line %s"%(site['line']), shape="plaintext"))
+		graph.add_subgraph(subgr)
 
-def graph_functions(out, byfile=False, callsites=False):
+def graph_functions(graph, byfile=False, callsites=False):
 	if (byfile):
 		i = 0
 		for file_el in file_table.keys():
-			out.write("  subgraph cluster_file_%i {\n"%(i))
-			out.write("    label=\"%s\";\n"%(file_el.split('/')[-1]))
+			subgr = pydot.Subgraph("cluster_file_%i"%(i), label=file_el.split('/')[-1])
 			i += 1
 			for func in file_table[file_el]:
-				graph_function(out, func, callsites, label="%s()"%(func))
-
-			out.write("  }\n")
+				graph_function(subgr, func, callsites, label="%s()"%(func))
+			graph.add_subgraph(subgr)
 	else:
 		for file_el in file_table.keys():
 			for func in file_table[file_el]:
-				graph_function(out, func, callsites, label="%s\\n%s()"%(file_el.split('/')[-1], func))
+				graph_function(graph, func, callsites, label="%s\\n%s()"%(file_el.split('/')[-1], func))
 
 
 def graph_edges():
-	pass
-
-def graph_files():
 	pass
 
 def generate_callgraph(calls, outfile):
@@ -127,43 +124,57 @@ def generate_callgraph(calls, outfile):
 			allcount += call['count']
 			alltime += call['time']
 
-	out = open(outfile, 'w')
+	graph = pydot.Dot(graph_name='G', graph_type='digraph', label="%s callgraph\\ndotted: #calls < 0.1%% / \dashed: 0.1%% <= #calls < 1%% / solid: #calls >= 1%%"%(options.bin),
+			splines="spline", nodesep=0.4, compound=True);
 
-	out.write("digraph \"%s\" {\n"%(options.bin))
-	out.write("label=\"%s callgraph\\ndotted: #calls < 0.1%% / \dashed: 0.1%% <= #calls < 1%% / solid: #calls >= 1%%\"\n"%(options.bin));
-	out.write("splines=\"spline\";\nnodesep=0.4;\ncompound=true;\n");
-	out.write("node [shape=ellipse fontsize=10];\n");
-	out.write("edge [fontsize=9];\n");
+	graph.set_node_defaults(shape="ellipse", fontsize=10);
+	graph.set_edge_defaults(fontsize=9);
 
-	graph_functions(out, options.clusters, options.individual)
+	graph_functions(graph, options.clusters, options.individual)
 
-	avgtime = float(alltime)/allcount
+	if options.cumulative:
+		avgtime = float(alltime)/len(cumulative)
+	else:
+		avgtime = float(alltime)/allcount
 
 	for fpair in cumulative.keys():
-		attr = ""
-		reltime = float(cumulative[fpair]['time'])/cumulative[fpair]['count']
+		if options.cumulative:
+			reltime = float(cumulative[fpair]['time'])/alltime
+			duration = "%.3f%%"%(reltime*100)
+		else:
+			reltime = float(cumulative[fpair]['time'])/cumulative[fpair]['count']
+			duration = "%.3fms"%(reltime/128*1000)
+
+		edge = pydot.Edge(fpair[0], fpair[1], label="%i site%s\n%s\n%i call%s"%(cumulative[fpair]['site'], plural(cumulative[fpair]['site']),
+							 duration, cumulative[fpair]['count'], plural(cumulative[fpair]['count'])))
 
 		if cumulative[fpair]['count'] < 0.001* allcount:
-			attr += " style=\"dotted\""
+			style = "dotted"
 		elif cumulative[fpair]['count'] < 0.01* allcount:
-			attr += " style=\"dashed\""
+			style = "dashed"
 		else:
-			attr += " style=\"bold\""
+			style = "bold"
 
-		frac = reltime/(avgtime*2)
+		edge.set_style(style)
+
+
+		if options.cumulative:
+			frac = reltime*10
+		else:
+			frac = reltime/(avgtime*2)
+
 		if frac > 1:
 			frac = 1
-		attr += " color=\"#%02x00%02x\""%(frac*255, (1-frac)*255)
+
+
+		edge.set_color("#%02x00%02x"%(frac*255, (1-frac)*255))
 
 		if options.individual:
-			attr += "lhead=\"cluster_fn_%s\""% cumulative[fpair]['to']['name']
+			edge.set_lhead("cluster_fn_%s"%cumulative[fpair]['to']['name'])
 
-		out.write("  %s -> %s [label=\"%i site%s\\n%.3fms\\n%i call%s\" %s]\n"%(fpair[0], fpair[1],
-			cumulative[fpair]['site'], plural(cumulative[fpair]['site']),
-			reltime/128.0*1000, cumulative[fpair]['count'], plural(cumulative[fpair]['count']), attr))
+		graph.add_edge(edge);
 
-	out.write("}\n")
-	out.close()
+	graph.write_svg(outfile)
 
 
 

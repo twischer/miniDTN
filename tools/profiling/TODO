@@ -1,0 +1,12 @@
+X Cluster functions to source files
+X Include number of callsites in edges
+* Make limits, etc. configurable
+* Add option(s) to cluster/show callsites of only certain files/functions
+* Filter out/in certain function names
+* Wrapper for "system" calls --wrap linker option (automatic macros with __builtin_apply?)
+* What effect does inlining have?
+* Verify the duration and increase resolution
+* Calculate percent over complete runtime
+* Output complete runtime in profiler
+* Count only time spent in function without the subcalls
+* Fraction of time spent calling subfunctions
