@@ -50,9 +50,13 @@ def lookup_symbol(symbol, funcptr=False):
 
 	output = subprocess.check_output(["%s-addr2line"%(options.prefix), "-afe", options.bin, "0x%x"%(symbol)]).strip().split('\n')
 
+	# Does the address point to the start of a function or not?
 	element['func'] = funcptr
+	# Address of the call site
 	element['addr'] = symbol #int(output[0], 16)
+	# Name of the function
 	element['name'] = output[1]
+	# Filename and line number of the call site
 	element['file'], element['line'] = output[2].split(':')
 
 	file_el = file_table.setdefault(element['file'], [])
@@ -77,11 +81,14 @@ def graph_function(graph, func, callsite, label=None):
 		if site['name'] == func:
 			time_spent += site['time_spent']
 
-	label = "%s\n%.3fms"%(label, float(time_spent)/opts['ticks_per_sec']*1000)
-	if not callsite:
-		graph.add_node(pydot.Node(func, label=label))
+	if time_spent >= 0:
+		fnlabel = "%s\n%.3fms"%(label, float(time_spent)/opts['ticks_per_sec']*1000)
 	else:
-		subgr = pydot.Subgraph("cluster_fn_%s"%func, label=label, style="filled")
+		fnlabel = "%s\n(unprofiled)"%(label)
+	if not callsite:
+		graph.add_node(pydot.Node(func, label=fnlabel))
+	else:
+		subgr = pydot.Subgraph("cluster_fn_%s"%func, label=fnlabel, style="filled")
 		for site in func_table.values():
 			if site['name'] == func:
 				if site['func']:
@@ -113,6 +120,13 @@ def generate_callgraph(calls, outfile):
 	allcount = 0
 	alltime = 0
 
+	for i in func_table.values():
+		if i['time_spent'] > 0:
+			alltime += i['time_spent']
+	opts['time_fns'] = alltime
+
+	alltime = 0
+
 	if (options.individual):
 		for call in calls:
 			cumel = cumulative.setdefault(("mem_%x"%(call['from']['addr']), "mem_%x"%(call['to']['addr'])), {'count':0, 'time':0, 'site':0})
@@ -131,6 +145,7 @@ def generate_callgraph(calls, outfile):
 			cumel['site'] += 1
 			allcount += call['count']
 			alltime += call['time']
+
 
 	opts['time_all'] = alltime
 	opts['count_all'] = allcount
@@ -215,6 +230,9 @@ def handle_prof(logfile, header):
 		to_el.setdefault('time_spent', 0)
 		to_el['time_spent'] += call['time']
 
+		if len(calls) == opts['num_sites']:
+			break
+
 
 
 	calls  = sorted(calls, key=lambda call: call[options.sort], reverse=options.reverse)
@@ -224,7 +242,7 @@ def handle_prof(logfile, header):
 	for call in calls:
 		print "%s -> %s %i times, %.3fms"%(call['from']['name'], call['to']['name'], call['count'], float(call['time'])/opts['ticks_per_sec']*1000)
 
-	print "Function time combined: %.3fs, Profiling time: %.3fs"%(float(opts['time_all'])/opts['ticks_per_sec'], float(opts['time_run'])/opts['ticks_per_sec'])
+	print "Function time combined: %.3fs, Profiling time: %.3fs"%(float(opts['time_fns'])/opts['ticks_per_sec'], float(opts['time_run'])/opts['ticks_per_sec'])
 
 
 def handle_sprof(logfile, header):
@@ -242,6 +260,9 @@ def handle_sprof(logfile, header):
 		site['addr'] = symbol
 		site['count'] = int(elements[1])
 		sites.append(site)
+
+		if len(sites) == opts['num_sites']:
+			break
 
 	sites = sorted(sites, key=lambda site: site['count'], reverse=options.reverse)
 
