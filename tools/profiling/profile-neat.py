@@ -5,13 +5,24 @@ from optparse import OptionParser
 import subprocess
 import pydot
 
+def split_list(option, opt, value, parser):
+	setattr(parser.values, option.dest, value.split(','))
 
 parser = OptionParser()
 parser.add_option("-g", "--graph", dest="graph",
 		help="generate a graph")
+
+
+# Cluster functions together
 parser.add_option("-c", "--clusters",
 		action="store_true", dest="clusters", default=False,
 		help="arrange the functions by filename")
+parser.add_option("--cluster-files",
+		dest="cluster_files", default=[],
+                type='string', action='callback', callback=split_list,
+		help="cluster functions in the following filenames")
+
+# Show individual callsites
 parser.add_option("-i", "--individual",
 		action="store_true", dest="individual", default=False,
 		help="show individual callsites in functions")
@@ -100,16 +111,15 @@ def graph_function(graph, func, callsite, label=None):
 		graph.add_subgraph(subgr)
 
 def graph_functions(graph, byfile=False, callsites=False):
-	if (byfile):
-		i = 0
-		for file_el in file_table.keys():
+	i = 0
+	for file_el in file_table.keys():
+		if byfile or (file_el.split('/')[-1] in options.cluster_files):
 			subgr = pydot.Subgraph("cluster_file_%i"%(i), label=file_el.split('/')[-1])
 			i += 1
 			for func in file_table[file_el]:
 				graph_function(subgr, func, callsites, label="%s()"%(func))
 			graph.add_subgraph(subgr)
-	else:
-		for file_el in file_table.keys():
+		else:
 			for func in file_table[file_el]:
 				graph_function(graph, func, callsites, label="%s\\n%s()"%(file_el.split('/')[-1], func))
 
