@@ -77,12 +77,14 @@ def graph_function(graph, func, callsite, label=None):
 		label = func
 
 	time_spent = 0
+	invocations = 0
 	for site in func_table.values():
 		if site['name'] == func:
 			time_spent += site['time_spent']
+			invocations += site['invocations']
 
-	if time_spent >= 0:
-		fnlabel = "%s\n%.3fms"%(label, float(time_spent)/opts['ticks_per_sec']*1000)
+	if invocations > 0:
+		fnlabel = "%s\n%.3fms\n%i calls"%(label, float(time_spent)/opts['ticks_per_sec']*1000, invocations)
 	else:
 		fnlabel = "%s\n(unprofiled)"%(label)
 	if not callsite:
@@ -227,8 +229,11 @@ def handle_prof(logfile, header):
 		# Keep track of how much time we're actually spending in here
 		from_el.setdefault('time_spent', 0)
 		from_el['time_spent'] -= call['time']
+		from_el.setdefault('invocations', 0)
 		to_el.setdefault('time_spent', 0)
 		to_el['time_spent'] += call['time']
+		to_el.setdefault('invocations', 0)
+		to_el['invocations'] += call['count']
 
 		if len(calls) == opts['num_sites']:
 			break
