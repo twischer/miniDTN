@@ -6,7 +6,7 @@
 /* The structure that holds the callsites */
 struct sprofile_site_t {
 	void *addr;
-	uint32_t calls;
+	uint16_t calls;
 };
 
 struct sprofile_t {
