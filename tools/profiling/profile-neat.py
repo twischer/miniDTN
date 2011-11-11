@@ -26,6 +26,15 @@ parser.add_option("--cluster-files",
 parser.add_option("-i", "--individual",
 		action="store_true", dest="individual", default=False,
 		help="show individual callsites in functions")
+
+# Highlighting
+parser.add_option("--highlight-functions",
+		dest="highlight_functions", default=[],
+                type='string', action='callback', callback=split_list,
+		help="highlight the following functions")
+parser.add_option("--highlight-color", dest="highlight_color", default="#00FF00",
+		help="Highlight color")
+
 parser.add_option("--cumulative",
 		action="store_true", dest="cumulative", default=False,
 		help="accumulate time")
@@ -87,6 +96,11 @@ def graph_function(graph, func, callsite, label=None):
 	if not label:
 		label = func
 
+	color="#dddddd00"
+
+	if func in options.highlight_functions:
+		color = options.highlight_color
+
 	time_spent = 0
 	invocations = 0
 	for site in func_table.values():
@@ -99,9 +113,9 @@ def graph_function(graph, func, callsite, label=None):
 	else:
 		fnlabel = "%s\n(unprofiled)"%(label)
 	if not callsite:
-		graph.add_node(pydot.Node(func, label=fnlabel))
+		graph.add_node(pydot.Node(func, label=fnlabel, fillcolor=color, style="filled"))
 	else:
-		subgr = pydot.Subgraph("cluster_fn_%s"%func, label=fnlabel, style="filled")
+		subgr = pydot.Subgraph("cluster_fn_%s"%func, label=fnlabel, style="filled", fillcolor=color)
 		for site in func_table.values():
 			if site['name'] == func:
 				if site['func']:
