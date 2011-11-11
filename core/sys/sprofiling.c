@@ -56,12 +56,12 @@ void sprofiling_report(uint8_t pretty)
 	/* We don't want to profile the report itself */
 	sprofiling_stop();
 	if (pretty)
-		printf("\nSPROF: %u sites %lu samples\npc:calls\n", stat_profile.num_sites, stat_profile.num_samples);
+		printf("\nSPROF: %u sites %u max_sites %lu samples\npc:calls\n", stat_profile.num_sites, stat_profile.max_sites, stat_profile.num_samples);
 	else
-		printf("\nSPROF:%u:%lu\n", stat_profile.num_sites, stat_profile.num_samples);
+		printf("\nSPROF:%u:%u:%lu\n", stat_profile.num_sites, stat_profile.max_sites, stat_profile.num_samples);
 
 	for(i=0; i<stat_profile.num_sites;i++) {
-		printf("%p:%lu\n", stat_profile.sites[i].addr, stat_profile.sites[i].calls);
+		printf("%p:%u\n", stat_profile.sites[i].addr, stat_profile.sites[i].calls);
 	}
 	sprofiling_start();
 }

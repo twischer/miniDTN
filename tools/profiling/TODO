@@ -10,3 +10,7 @@ X Include number of callsites in edges
 * Output complete runtime in profiler
 * Count only time spent in function without the subcalls
 * Fraction of time spent calling subfunctions
+* Binary search
+* Implement a stack for instrumented functions
+* Record based nodes: http://www.graphviz.org/doc/info/shapes.html
+* Transparency for nodes/edges
