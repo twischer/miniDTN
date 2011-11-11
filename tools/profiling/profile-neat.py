@@ -34,6 +34,7 @@ parser.add_option("-q", "--quiet",
 
 (options, args) = parser.parse_args()
 
+opts = {}
 func_table = {}
 file_table = {}
 
@@ -70,6 +71,13 @@ def plural(i):
 def graph_function(graph, func, callsite, label=None):
 	if not label:
 		label = func
+
+	time_spent = 0
+	for site in func_table.values():
+		if site['name'] == func:
+			time_spent += site['time_spent']
+
+	label = "%s\n%.3fms"%(label, float(time_spent)/opts['ticks_per_sec']*1000)
 	if not callsite:
 		graph.add_node(pydot.Node(func, label=label))
 	else:
@@ -124,6 +132,8 @@ def generate_callgraph(calls, outfile):
 			allcount += call['count']
 			alltime += call['time']
 
+	opts['time_all'] = alltime
+	opts['count_all'] = allcount
 	graph = pydot.Dot(graph_name='G', graph_type='digraph', label="%s callgraph\\ndotted: #calls < 0.1%% / \dashed: 0.1%% <= #calls < 1%% / solid: #calls >= 1%%"%(options.bin),
 			splines="spline", nodesep=0.4, compound=True);
 
@@ -139,11 +149,11 @@ def generate_callgraph(calls, outfile):
 
 	for fpair in cumulative.keys():
 		if options.cumulative:
-			reltime = float(cumulative[fpair]['time'])/alltime
+			reltime = float(cumulative[fpair]['time'])/opts['time_run']
 			duration = "%.3f%%"%(reltime*100)
 		else:
 			reltime = float(cumulative[fpair]['time'])/cumulative[fpair]['count']
-			duration = "%.3fms"%(reltime/128*1000)
+			duration = "%.3fms/call"%(reltime/opts['ticks_per_sec']*1000)
 
 		edge = pydot.Edge(fpair[0], fpair[1], label="%i site%s\n%s\n%i call%s"%(cumulative[fpair]['site'], plural(cumulative[fpair]['site']),
 							 duration, cumulative[fpair]['count'], plural(cumulative[fpair]['count'])))
@@ -178,9 +188,13 @@ def generate_callgraph(calls, outfile):
 
 
 
-def handle_prof(logfile):
+def handle_prof(logfile, header):
 	calls = []
 	print "Profiling for %s"%(options.bin)
+	tempopts = header.split(':')[1:]
+	global opts
+	opts = dict(zip(('num_sites', 'max_sites', 'time_run', 'ticks_per_sec'), [int(i) for i in tempopts]))
+
 	for line in logfile:
 		elements = line.split(':')
 		call = {}
@@ -188,21 +202,34 @@ def handle_prof(logfile):
 		symto = int(elements[1], 16)
 		from_el = lookup_symbol(symfrom)
 		to_el = lookup_symbol(symto, funcptr=True)
+
 		call['from'] = from_el
 		call['to'] = to_el
 		call['count'] = int(elements[2])
 		call['time'] = int(elements[3])
 		calls.append(call)
 
+		# Keep track of how much time we're actually spending in here
+		from_el.setdefault('time_spent', 0)
+		from_el['time_spent'] -= call['time']
+		to_el.setdefault('time_spent', 0)
+		to_el['time_spent'] += call['time']
+
+
+
 	calls  = sorted(calls, key=lambda call: call[options.sort], reverse=options.reverse)
 	if options.graph:
 		generate_callgraph(calls, options.graph)
 
 	for call in calls:
-		print "%s -> %s %i times, %.3fms"%(call['from']['name'], call['to']['name'], call['count'], call['time']/128.0*1000)
+		print "%s -> %s %i times, %.3fms"%(call['from']['name'], call['to']['name'], call['count'], float(call['time'])/opts['ticks_per_sec']*1000)
+
+	print "Function time combined: %.3fs, Profiling time: %.3fs"%(float(opts['time_all'])/opts['ticks_per_sec'], float(opts['time_run'])/opts['ticks_per_sec'])
 
 
-def handle_sprof(logfile):
+
+
+def handle_sprof(logfile, header):
 	print "Error, unimplemented!"
 	os.exit(1)
 
@@ -211,6 +238,6 @@ logfile = open(options.log)
 # Read the header
 header = logfile.readline()
 if (header.startswith("PROF")):
-	handle_prof(logfile)
+	handle_prof(logfile, header)
 elif (header.startswith("SPROF")):
-	handle_sprof(logfile)
+	handle_sprof(logfile, header)
