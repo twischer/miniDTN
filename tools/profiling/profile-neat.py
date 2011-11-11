@@ -227,11 +227,27 @@ def handle_prof(logfile, header):
 	print "Function time combined: %.3fs, Profiling time: %.3fs"%(float(opts['time_all'])/opts['ticks_per_sec'], float(opts['time_run'])/opts['ticks_per_sec'])
 
 
-
-
 def handle_sprof(logfile, header):
-	print "Error, unimplemented!"
-	os.exit(1)
+	sites = []
+	print "Statistical profiling for %s"%(options.bin)
+	tempopts = header.split(':')[1:]
+	global opts
+	opts = dict(zip(('num_sites', 'max_sites', 'num_samples') , [int(i) for i in tempopts]))
+
+	for line in logfile:
+		elements = line.split(':')
+		site = {}
+		symaddr = int(elements[0], 16)
+		symbol = lookup_symbol(symaddr)
+		site['addr'] = symbol
+		site['count'] = int(elements[1])
+		sites.append(site)
+
+	sites = sorted(sites, key=lambda site: site['count'], reverse=options.reverse)
+
+	for site in sites:
+		print "%s:%s %i times"%(site['addr']['name'], site['addr']['line'], site['count'])
+
 
 logfile = open(options.log)
 
