@@ -86,16 +86,29 @@ void profiling_init(void)
 
 	profile.sites = site;
 	profile.max_sites = MAX_PROFILES;
+	profile.time_run = 0;
 	profile.status = 0;
 }
 
 inline void profiling_start(void)
 {
+	if (profile.status & PROFILING_STARTED)
+		return;
+
+	profile.time_start = ((unsigned long)clock_time()<<8) + clock_fine()*256/fine_count;
 	profile.status |= PROFILING_STARTED;
 }
 
 inline void profiling_stop(void)
 {
+	unsigned long temp;
+
+	if (!profile.status & PROFILING_STARTED)
+		return;
+
+	temp = ((unsigned long)clock_time()<<8) + clock_fine()*256/fine_count;
+
+	profile.time_run += (temp - profile.time_start);
 	profile.status &= ~PROFILING_STARTED;
 }
 

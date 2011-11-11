@@ -19,6 +19,8 @@ struct profile_t {
 	int status;
 	uint16_t max_sites;
 	uint16_t num_sites;
+	unsigned long time_run;
+	unsigned long time_start;
 	struct profile_site_t *sites;
 };
 
