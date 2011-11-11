@@ -4,13 +4,15 @@
 #if defined (__AVR_ATmega128__)
 
 #define AVR_OUTPUT_COMPARE_INT TIMER0_COMP_vect
+#define AVR_CLOCK_COUNTER TCNT0
+#define AVR_CLOCK_MAX (F_CPU/1024UL/CLOCK_CONF_SECOND)
 
 #define OCRSetup() \
   /* Select internal clock */ \
   ASSR = 0x00; 				  \
 \
   /* Set counter to zero */   \
-  TCNT0 = 0;				  \
+  AVR_CLOCK_COUNTER = 0;				  \
 \
   /*						  \
    * Set comparison register: \
@@ -18,7 +20,7 @@
    * pre-scale factor is 1024, we want CLOCK_CONF_SECOND ticks / sec: \
    * F_CPU = 1024 * CLOCK_CONF_SECOND * OCR0 \
    */ \
-  OCR0 = F_CPU/1024UL/CLOCK_CONF_SECOND; \
+  OCR0 = AVR_CLOCK_MAX; \
 \
   /* 								\
    * Set timer control register: 	\
@@ -40,12 +42,15 @@
 /* Uses the general routine below at present */
 
 #define AVR_OUTPUT_COMPARE_INT TIMER0_COMPA_vect
+#define AVR_CLOCK_COUNTER TCNT0
+#define AVR_CLOCK_MAX (F_CPU/1024/CLOCK_CONF_SECOND - 1)
+
 #define OCRSetup() \
   /* Select internal clock */ \
   ASSR = 0x00; 				  \
 \
   /* Set counter to zero */   \
-  TCNT0 = 0;				  \
+  AVR_CLOCK_COUNTER = 0;				  \
 \
   /*						  \
    * Set comparison register: \
@@ -53,7 +58,7 @@
    * pre-scale factor is 1024, we want CLOCK_CONF_SECOND ticks / sec: \
    * F_CPU = 1024 * CLOCK_CONF_SECOND * OCR0A, less 1 for CTC mode \
    */ \
-  OCR0A = F_CPU/1024/CLOCK_CONF_SECOND - 1; \
+  OCR0A = AVR_CLOCK_MAX; \
 \
   /* 								\
    * Set timer control register: 	\
@@ -83,12 +88,15 @@
 */
 #if AVR_CONF_USE32KCRYSTAL
 #define AVR_OUTPUT_COMPARE_INT TIMER2_COMPA_vect
+#define AVR_CLOCK_COUNTER TCNT2
+#define AVR_CLOCK_MAX (32768/8/CLOCK_CONF_SECOND - 1)
+
 #define OCRSetup() \
   /* Clock from crystal on TOSC0-1 */ \
   ASSR = _BV(AS2);		      \
 \
   /* Set counter to zero */   \
-  TCNT2 = 0;				  \
+  AVR_CLOCK_COUNTER = 0;				  \
 \
   /*						  \
    * Set comparison register: \
@@ -96,7 +104,7 @@
    * pre-scale factor is 8, we want CLOCK_CONF_SECOND ticks / sec: \
    * 32768 = 8 * CLOCK_CONF_SECOND * OCR2A, less 1 for CTC mode\
    */ \
-  OCR2A = 32768/8/CLOCK_CONF_SECOND - 1; \
+  OCR2A = AVR_CLOCK_MAX; \
 \
   /* 								\
    * Set timer control register: 	\
@@ -156,13 +164,15 @@
 #endif
 
 #define AVR_OUTPUT_COMPARE_INT TIMER0_COMPA_vect
+#define AVR_CLOCK_COUNTER TCNT0
+#define AVR_CLOCK_MAX (F_CPU/AVR_CONF_TMR0_PRESCALE/CLOCK_CONF_SECOND - 1)
 
 #define OCRSetup() \
   /* Select internal clock */ \
   ASSR = 0x00; 				  \
 \
   /* Set counter to zero */   \
-  TCNT0 = 0;				  \
+  AVR_CLOCK_COUNTER = 0;				  \
 \
   /*						  \
    * Set comparison register: \
@@ -170,7 +180,7 @@
    * We want CLOCK_CONF_SECOND ticks / sec: \
    * F_CPU = AVR_CONF_TMR0_PRESCALE * CLOCK_CONF_SECOND * OCR2A, less 1 for CTC mode \
    */ \
-  OCR0A = F_CPU/AVR_CONF_TMR0_PRESCALE/CLOCK_CONF_SECOND - 1; \
+  OCR0A = AVR_CLOCK_MAX; \
 \
   /* 								\
    * Set timer control register: 	\
@@ -192,16 +202,19 @@
 
 #elif defined (__AVR_ATmega644__) || defined (__AVR_ATmega328P__)
 
+#define AVR_CLOCK_COUNTER TCNT0
+#define AVR_CLOCK_MAX (F_CPU/256UL/CLOCK_CONF_SECOND - 1)
+
 #define OCRSetup() \
   /* Set counter to zero */   \
-  TCNT0 = 0;   \
+  AVR_CLOCK_COUNTER = 0;   \
 \
   /*   \
    * Set comparison register: \
    * Crystal freq. is F_CPU,\
    * pre-scale factor is 256, want CLOCK_CONF_SECOND ticks / sec: \
    */ \
-  OCR0A = F_CPU/256UL/CLOCK_CONF_SECOND - 1; \
+  OCR0A = AVR_CLOCK_MAX; \
 \
   /* \
    * Set timer control register: \
@@ -225,10 +238,12 @@
 #elif defined (__AVR_ATmega8515__) || defined (__AVR_ATmega16__) || defined (__AVR_ATmega32__)
 
 #define AVR_OUTPUT_COMPARE_INT TIMER0_COMP_vect
+#define AVR_CLOCK_COUNTER TCNT0
+#define AVR_CLOCK_MAX (F_CPU/256UL/CLOCK_CONF_SECOND)
 
 #define OCRSetup() \
   /* Set counter to zero */   \
-  TCNT0 = 0;   \
+  AVR_CLOCK_COUNTER = 0;   \
 \
   /*   \
    * Set comparison register: \
@@ -236,7 +251,7 @@
    * pre-scale factor is 256, we want CLOCK_CONF_SECOND ticks / sec: \
    * F_CPU = 256 * CLOCK_CONF_SECOND * OCR0 \
    */ \
-  OCR0 = F_CPU/256UL/CLOCK_CONF_SECOND; \
+  OCR0 = AVR_CLOCK_MAX; \
 \
   /* \
    * Set timer control register: \
@@ -256,11 +271,13 @@
 
 #elif defined (__AVR_ATmega8__)
 
+#define AVR_CLOCK_COUNTER TCNT2
+#define AVR_CLOCK_MAX (F_CPU/256UL/CLOCK_CONF_SECOND)
 #define AVR_OUTPUT_COMPARE_INT TIMER2_COMP_vect
 
 #define OCRSetup() \
   /* Set counter to zero */   \
-  TCNT2 = 0;   \
+  AVR_CLOCK_COUNTER = 0;   \
 \
   /*   \
    * Set comparison register: \
@@ -268,7 +285,7 @@
    * pre-scale factor is 256, we want CLOCK_CONF_SECOND ticks / sec: \
    * F_CPU = 256 * CLOCK_CONF_SECOND * OCR2 \
    */ \
-  OCR2 = F_CPU/256UL/CLOCK_CONF_SECOND; \
+  OCR2 = AVR_CLOCK_MAX; \
 \
   /* \
    * Set timer control register: \
