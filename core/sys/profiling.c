@@ -47,6 +47,16 @@
 
 static struct profile_t profile;
 static struct profile_site_t site[MAX_PROFILES];
+static int fine_count;
+
+static inline void profiling_internal(uint8_t internal)  __attribute__ ((no_instrument_function));
+static inline void profiling_internal(uint8_t internal)
+{
+	if (internal)
+		profile.status |= PROFILING_INTERNAL;
+	else
+		profile.status &= ~PROFILING_INTERNAL;
+}
 
 /* We have to restrict instrumenting printf as well! */
 void profiling_report(uint8_t pretty)
@@ -72,6 +82,8 @@ struct profile_t *profiling_get()
 
 void profiling_init(void)
 {
+	fine_count = clock_fine_max() + 1;
+
 	profile.sites = site;
 	profile.max_sites = MAX_PROFILES;
 	profile.status = 0;
@@ -96,7 +108,7 @@ void __cyg_profile_func_enter(void *func, void *caller)
 {
       uint16_t i;
 
-      if (!(profile.status&PROFILING_STARTED))
+      if (!(profile.status&PROFILING_STARTED) || (profile.status&PROFILING_INTERNAL))
 	      return;
 
       for (i=0;i<profile.num_sites;i++) {
@@ -110,7 +122,6 @@ void __cyg_profile_func_enter(void *func, void *caller)
                       profile.sites[i].addr = func ;
 		      profile.sites[i].from = caller;
 		      profile.sites[i].calls = 1;
-                      profile.sites[i].time_start = 0;
 		      profile.sites[i].time_accum = 0;
                       profile.num_sites++;
               } else {
@@ -118,18 +129,23 @@ void __cyg_profile_func_enter(void *func, void *caller)
               }
 
 	      /* Prevent infinite loop if clock_time() is not compiled with no_instrument_function */
-	      profiling_stop();
-              profile.sites[i].time_start = clock_time();
-	      profiling_start();
+	      profiling_internal(1);
+	      profile.sites[i].time_start = ((unsigned long)clock_time()<<8) + clock_fine()*256/fine_count;
+	      profiling_internal(0);
       }
 }
 
 void __cyg_profile_func_exit(void *func, void *caller)
 {
 	uint16_t i;
+	unsigned long temp;
 
-      if (!(profile.status&PROFILING_STARTED))
+      if (!(profile.status&PROFILING_STARTED) || (profile.status&PROFILING_INTERNAL))
 	      return;
+
+      profiling_internal(1);
+      temp = ((unsigned long)clock_time()<<8) + clock_fine()*256/fine_count;
+      profiling_internal(0);
 
       for (i=0;i<profile.num_sites;i++) {
               if (profile.sites[i].addr == func &&
@@ -137,9 +153,7 @@ void __cyg_profile_func_exit(void *func, void *caller)
                       break;
       }
       if (i<profile.num_sites) {
-	      profiling_stop();
-              profile.sites[i].time_accum += (clock_time() - profile.sites[i].time_start)%65536;
-	      profiling_start();
+	      profile.sites[i].time_accum += (temp - profile.sites[i].time_start);
       }
 }
 

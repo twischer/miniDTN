@@ -4,14 +4,15 @@
 #include <stdint.h>
 
 #define PROFILING_STARTED 1
+#define PROFILING_INTERNAL 2
 
 /* The structure that holds the callsites */
 struct profile_site_t {
 	void *from;
 	void *addr;
 	uint32_t calls;
-	uint32_t time_accum;
-	uint16_t time_start;
+	unsigned long time_accum;
+	unsigned long time_start;
 };
 
 struct profile_t {
