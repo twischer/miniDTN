@@ -43,6 +43,7 @@
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h>
 #include <string.h>
+#include "dev/watchdog.h"
 
 #include "cfs-coffee-arch.h"
 
@@ -80,8 +81,8 @@ coffee_file_test(void)
   int error;
   int wfd, rfd, afd;
   unsigned char buf[256], buf2[11];
-  int r, i, j, total_read;
-  unsigned offset;
+  int32_t r, i, j, total_read;
+  CFS_CONF_OFFSET_TYPE offset;
 
   cfs_remove("T1");
   cfs_remove("T2");
@@ -390,6 +391,7 @@ coffee_file_test(void)
   error = 0;
 end:
   cfs_close(wfd); cfs_close(rfd); cfs_close(afd);
+
   return error;
 }
 #endif /* TESTCOFFEE */
@@ -717,3 +719,184 @@ avr_flash_write(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE si
 }
 
 #endif /* COFFEE_AVR_FLASH */
+
+
+#ifdef COFFEE_AVR_EXTERNAL
+
+#include "interfaces/flash-at45db.h"
+
+void external_flash_write_page(coffee_page_t page, CFS_CONF_OFFSET_TYPE offset, uint8_t * buf, CFS_CONF_OFFSET_TYPE size) {
+	PRINTF("external_flash_write_page(page %u, offset %u, buf %p, size %u) \n", page, offset, buf, size);
+
+	if( size < 1 ) {
+		return;
+	}
+
+	if( page > COFFEE_PAGES ) {
+		return;
+	}
+
+	unsigned char buffer[COFFEE_PAGE_SIZE];
+
+	// Now read the current content of that page
+	at45db_read_page_bypassed(page, 0, buffer, COFFEE_PAGE_SIZE);
+
+	watchdog_periodic();
+
+	// Copy over the new content
+	memcpy(buffer + offset, buf, size);
+
+	// And write the page again
+	at45db_write_page(page, 0, buffer, COFFEE_PAGE_SIZE);
+
+	watchdog_periodic();
+
+	PRINTF("Page %u programmed with %u bytes (%u new)\n", page, COFFEE_PAGE_SIZE, size);
+}
+
+void external_flash_write(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE size) {
+	PRINTF(">>>>> external_flash_write(addr %u, buf %p, size %u)\n", addr, buf, size);
+
+	if( addr > COFFEE_SIZE ) {
+		return;
+	}
+
+	// Which is the first page we will be programming
+	coffee_page_t current_page = addr / COFFEE_PAGE_SIZE;
+	CFS_CONF_OFFSET_TYPE written = 0;
+
+	while(written < size) {
+		// get the start address of the current page
+		CFS_CONF_OFFSET_TYPE page_start = current_page * COFFEE_PAGE_SIZE;
+		CFS_CONF_OFFSET_TYPE offset = 0;
+
+		if( addr > page_start ) {
+			// Frist page offset
+			offset = addr - page_start;
+		}
+
+		CFS_CONF_OFFSET_TYPE length = size - written;
+
+		if( length > (COFFEE_PAGE_SIZE - offset) ) {
+			length = COFFEE_PAGE_SIZE - offset;
+		}
+
+		external_flash_write_page(current_page, offset, buf + written, length);
+		written += length;
+		current_page++;
+	}
+
+#if DEBUG
+	int g;
+	printf("WROTE: ");
+	for(g=0; g<size; g++) {
+		printf("%02X %c ", buf[g] & 0xFF, buf[g] & 0xFF);
+	}
+	printf("\n");
+#endif
+}
+
+void external_flash_read_page(coffee_page_t page, CFS_CONF_OFFSET_TYPE offset, uint8_t *buf, CFS_CONF_OFFSET_TYPE size) {
+	PRINTF("external_flash_read_page(page %u, offset %u, buf %p, size %u)\n", page, offset, buf, size );
+
+	if( page > COFFEE_PAGES ) {
+		return;
+	}
+
+	at45db_read_page_bypassed(page, offset, buf, size);
+	watchdog_periodic();
+
+#if DEBUG
+	int g;
+	printf("READ: ");
+	for(g=0; g<size; g++) {
+		printf("%02X %c ", buf[g] & 0xFF, buf[g] & 0xFF);
+	}
+	printf("\n");
+#endif
+}
+
+void external_flash_read(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE size) {
+	PRINTF(">>>>> external_flash_read(addr %u, buf %p, size %u)\n", addr, buf, size );
+
+	if( size < 1 ) {
+		return;
+	}
+
+	if( addr > COFFEE_SIZE ) {
+		return;
+	}
+
+	// First of all: find out what the number of the page is
+	coffee_page_t current_page = addr / COFFEE_PAGE_SIZE;
+	CFS_CONF_OFFSET_TYPE read = 0;
+
+	while( read < size ) {
+		// get the start address of the current page
+		CFS_CONF_OFFSET_TYPE page_start = current_page * COFFEE_PAGE_SIZE;
+		CFS_CONF_OFFSET_TYPE offset = 0;
+
+		if( addr > page_start ) {
+			// Frist page offset
+			offset = addr - page_start;
+		}
+
+		CFS_CONF_OFFSET_TYPE length = size - read;
+
+		if( length > (COFFEE_PAGE_SIZE - offset) ) {
+			length = (COFFEE_PAGE_SIZE - offset);
+		}
+
+		external_flash_read_page(current_page, offset, buf + read, length);
+
+		PRINTF("Page %u read with %u bytes (offset %u)\n", h, length, offset);
+
+		read += length;
+		current_page++;
+	}
+
+#if DEBUG
+	int g;
+	printf("READ: ");
+	for(g=0; g<size; g++) {
+		printf("%02X %c ", buf[g] & 0xFF, buf[g] & 0xFF);
+	}
+	printf("\n");
+#endif
+}
+
+void external_flash_erase(coffee_page_t page) {
+	if( page > COFFEE_PAGES ) {
+		return;
+	}
+
+	PRINTF("external_flash_erase(page %u)\n", page);
+
+	at45db_erase_page(page);
+	watchdog_periodic();
+}
+
+/*
+void external_flash_erase(coffee_page_t sector) {
+	if( sector > COFFEE_SECTORS ) {
+		return;
+	}
+
+	// This has to erase the contents of a whole sector
+	// AT45DB cannot directly delete a sector, we have to do it manually
+	PRINTF("external_flash_erase(sector %u)\n", sector);
+	CFS_CONF_OFFSET_TYPE h;
+
+	coffee_page_t start = sector * COFFEE_BLOCKS_PER_SECTOR;
+	coffee_page_t end = start + COFFEE_BLOCKS_PER_SECTOR;
+
+	for(h=start; h<end; h++) {
+		PRINTF("Deleting block %u\n", h);
+
+		at45db_erase_block(h);
+		watchdog_periodic();
+	}
+}
+*/
+
+#endif /* COFFEE_AVR_EXTERNAL */

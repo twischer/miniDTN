@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, Swedish Institute of Computer Science.
+ * Copyright (c) 2006, Swedish Institute of Computer Science.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,68 +28,47 @@
  *
  * This file is part of the Contiki operating system.
  *
- * $Id: example-broadcast.c,v 1.3 2010/11/06 15:03:48 adamdunkels Exp $
  */
 
-/**
- * \file
- *         Testing the broadcast layer in Rime
- * \author
- *         Adam Dunkels <adam@sics.se>
- */
 #include "contiki.h"
-#include "net/rime.h"
-#include "random.h"
 
-#include "dev/button-sensor.h"
-#include "dev/leds.h"
-
-#include <stdio.h>
+#include <stdio.h> /* For printf() */
+#include "cfs/cfs-coffee.h"
 /*---------------------------------------------------------------------------*/
-PROCESS(example_broadcast_process, "Broadcast example");
-AUTOSTART_PROCESSES(&example_broadcast_process);
+PROCESS(onboard_flash_test_process, "Onboard Flash COFFEE Test process");
+AUTOSTART_PROCESSES(&onboard_flash_test_process);
 /*---------------------------------------------------------------------------*/
-
-static void
-broadcast_recv(struct broadcast_conn *c, const rimeaddr_t *from)
+int RUNNING = 1;
+struct etimer et;
+PROCESS_THREAD(onboard_flash_test_process, ev, data)
 {
-	leds_invert(LEDS_YELLOW);
-  printf("broadcast message received from %d.%d: '%s'\n",
-         from->u8[0], from->u8[1], (char *)packetbuf_dataptr());
-}
+	PROCESS_BEGIN();
 
-static const struct broadcast_callbacks broadcast_call = {broadcast_recv};
-static struct broadcast_conn broadcast;
-/*---------------------------------------------------------------------------*/
-PROCESS_THREAD(example_broadcast_process, ev, data)
-{
-  static struct etimer et;
+	etimer_set(&et, CLOCK_SECOND * 5);
+	PROCESS_YIELD_UNTIL(etimer_expired(&et));
 
-  PROCESS_EXITHANDLER(broadcast_close(&broadcast);)
+	while(RUNNING) {
+		printf("Starting test...\n");
+		int ret = coffee_file_test();
+		printf("Test finished with %d\n", ret);
 
-  PROCESS_BEGIN();
+		printf("Result: ");
+		if( ret == 0 ) {
+			printf("SUCCESS\n");
+			RUNNING = 0;
+		} else {
+			printf("FAILURE\n");
 
-	leds_init();
-	SENSORS_ACTIVATE(button_sensor);//activate button
+			printf("Formatting Flash...");
+			fflush(stdout);
+			cfs_coffee_format();
+			printf("OK\n");
+		}
 
-  broadcast_open(&broadcast, 129, &broadcast_call);
+		etimer_set(&et, CLOCK_SECOND * 60);
+		PROCESS_YIELD_UNTIL(etimer_expired(&et));
+	}
 
-  while(1) {
-
-		PROCESS_WAIT_EVENT_UNTIL(ev == sensors_event && data == &button_sensor);
-
-		leds_on(LEDS_GREEN);
-
-    packetbuf_copyfrom("Hello", 6);
-    broadcast_send(&broadcast);
-    printf("broadcast message sent\n");
-
-		etimer_set(&et,  CLOCK_SECOND*2);
-		PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
-
-		leds_off(LEDS_GREEN);
-  }
-
-  PROCESS_END();
+	PROCESS_END();
 }
 /*---------------------------------------------------------------------------*/

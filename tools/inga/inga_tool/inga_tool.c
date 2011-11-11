@@ -214,7 +214,7 @@ void inga_reset(struct config_t *cfg)
     /* Set CBUS3 to output and high */
     ftdi_set_bitmode(&ftdic, 0x88, BITMODE_CBUS);
 
-    sleep(1);
+    //sleep(1);
 
     /* Set CBUS3 to output and low */
     ftdi_set_bitmode(&ftdic, 0x80, BITMODE_CBUS);

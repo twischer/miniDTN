@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, Swedish Institute of Computer Science.
+ * Copyright (c) 2011, Swedish Institute of Computer Science.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,61 +28,80 @@
  *
  * This file is part of the Contiki operating system.
  *
- * $Id: example-broadcast.c,v 1.3 2010/11/06 15:03:48 adamdunkels Exp $
  */
 
-/**
- * \file
- *         Testing the broadcast layer in Rime
- * \author
- *         Adam Dunkels <adam@sics.se>
- */
 #include "contiki.h"
-#include "net/rime.h"
-#include "random.h"
+#include "lib/random.h"
+//#include "sys/ctimer.h"
+//#include "sys/etimer.h"
+#include "net/uip.h"
+//#include "net/uip-ds6.h"
+
+#include "simple-udp.h"
 
 #include "dev/button-sensor.h"
 #include "dev/leds.h"
 
 #include <stdio.h>
-/*---------------------------------------------------------------------------*/
-PROCESS(example_broadcast_process, "Broadcast example");
-AUTOSTART_PROCESSES(&example_broadcast_process);
-/*---------------------------------------------------------------------------*/
+#include <string.h>
 
+#define UDP_PORT 1234
+
+#define SEND_INTERVAL		(20 * CLOCK_SECOND)
+#define SEND_TIME		(random_rand() % (SEND_INTERVAL))
+
+static struct simple_udp_connection broadcast_connection;
+
+/*---------------------------------------------------------------------------*/
+PROCESS(broadcast_example_process, "UDP broadcast example process");
+AUTOSTART_PROCESSES(&broadcast_example_process);
+/*---------------------------------------------------------------------------*/
 static void
-broadcast_recv(struct broadcast_conn *c, const rimeaddr_t *from)
+receiver(struct simple_udp_connection *c,
+         const uip_ipaddr_t *sender_addr,
+         uint16_t sender_port,
+         const uip_ipaddr_t *receiver_addr,
+         uint16_t receiver_port,
+         const uint8_t *data,
+         uint16_t datalen)
 {
-	leds_invert(LEDS_YELLOW);
-  printf("broadcast message received from %d.%d: '%s'\n",
-         from->u8[0], from->u8[1], (char *)packetbuf_dataptr());
-}
+  static struct ctimer ct;
+	static void (*light_off) = leds_off;
+	static unsigned char two = LEDS_YELLOW;
+	//leds_init();	
 
-static const struct broadcast_callbacks broadcast_call = {broadcast_recv};
-static struct broadcast_conn broadcast;
+	leds_invert(LEDS_YELLOW);
+	//leds_on(LEDS_YELLOW);
+  printf("Data received on port %d from port %d with length %d\n",
+         receiver_port, sender_port, datalen);
+
+	//TODO warum geht hier der Timer nicht?
+	//ctimer_set(&ct,  CLOCK_SECOND*2, light_off, &two);
+}
 /*---------------------------------------------------------------------------*/
-PROCESS_THREAD(example_broadcast_process, ev, data)
+PROCESS_THREAD(broadcast_example_process, ev, data)
 {
   static struct etimer et;
-
-  PROCESS_EXITHANDLER(broadcast_close(&broadcast);)
+  uip_ipaddr_t addr;
 
   PROCESS_BEGIN();
 
-	leds_init();
+	//muss vor leds_init(); stehen !?
+  simple_udp_register(&broadcast_connection, UDP_PORT,
+                      NULL, UDP_PORT,
+                      receiver);
+
+	leds_init();	
 	SENSORS_ACTIVATE(button_sensor);//activate button
 
-  broadcast_open(&broadcast, 129, &broadcast_call);
-
   while(1) {
-
 		PROCESS_WAIT_EVENT_UNTIL(ev == sensors_event && data == &button_sensor);
 
 		leds_on(LEDS_GREEN);
 
-    packetbuf_copyfrom("Hello", 6);
-    broadcast_send(&broadcast);
-    printf("broadcast message sent\n");
+    printf("Sending broadcast\n");
+    uip_create_linklocal_allnodes_mcast(&addr);
+    simple_udp_sendto(&broadcast_connection, "Test", 4, &addr);
 
 		etimer_set(&et,  CLOCK_SECOND*2);
 		PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));

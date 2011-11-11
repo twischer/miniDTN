@@ -47,6 +47,8 @@ int8_t at45db_init(void) {
 	buffer_mgr.buffer_addr[1] = AT45DB_BUFFER_2;
 	buffer_mgr.buf_to_page_addr[0] = AT45DB_BUF_1_TO_PAGE;
 	buffer_mgr.buf_to_page_addr[1] = AT45DB_BUF_2_TO_PAGE;
+	buffer_mgr.page_program[0] = AT45DB_PAGE_PROGRAM_1;
+	buffer_mgr.page_program[1] = AT45DB_PAGE_PROGRAM_2;
 
 	mspi_chip_release(AT45DB_CS);
 	/*init mspi in mode3, at chip select pin 3 and max baud rate*/
@@ -110,7 +112,7 @@ void at45db_write_buffer(uint16_t addr, uint8_t *buffer, uint16_t bytes) {
 	at45db_write_cmd(&cmd[0]);
 
 	for (i = 0; i < bytes; i++) {
-		mspi_transceive(*buffer++);
+		mspi_transceive(~(*buffer++));
 	}
 
 	mspi_chip_release(AT45DB_CS);
@@ -124,6 +126,26 @@ void at45db_buffer_to_page(uint16_t addr) {
 			(uint8_t) (addr >> 6), (uint8_t) (addr << 2), 0x00 };
 	at45db_write_cmd(&cmd[0]);
 	mspi_chip_release(AT45DB_CS);
+	/* switch active buffer to allow the other one to be written,
+	 * while these buffer is copied to the Flash EEPROM page*/
+	buffer_mgr.active_buffer ^= 1;
+}
+
+
+void at45db_write_page(uint16_t p_addr, uint16_t b_addr, uint8_t *buffer, uint16_t bytes) {
+	uint16_t i;
+	/*block erase command consists of 4 byte*/
+	uint8_t cmd[4] = { buffer_mgr.page_program[buffer_mgr.active_buffer],
+			(uint8_t) (p_addr >> 6), ((uint8_t) (p_addr << 2) & 0xFC) | ((uint8_t) (b_addr >> 8) & 0x3), (uint8_t) (b_addr) };
+
+	at45db_write_cmd(&cmd[0]);
+
+	for (i = 0; i < bytes; i++) {
+		mspi_transceive(~(*buffer++));
+	}
+
+	mspi_chip_release(AT45DB_CS);
+
 	/* switch active buffer to allow the other one to be written,
 	 * while these buffer is copied to the Flash EEPROM page*/
 	buffer_mgr.active_buffer ^= 1;
@@ -153,7 +175,7 @@ void at45db_read_page_bypassed(uint16_t p_addr, uint16_t b_addr,
 	}
 	/*now the data bytes can be received*/
 	for (i = 0; i < bytes; i++) {
-		*buffer++ = mspi_transceive(MSPI_DUMMY_BYTE);
+		*buffer++ = ~mspi_transceive(MSPI_DUMMY_BYTE);
 	}
 	mspi_chip_release(AT45DB_CS);
 }
@@ -181,7 +203,7 @@ void at45db_read_buffer(uint8_t b_addr, uint8_t *buffer, uint16_t bytes) {
 	mspi_transceive(0x00);
 
 	for (i = 0; i < bytes; i++) {
-		*buffer++ = mspi_transceive(0x00);
+		*buffer++ = ~mspi_transceive(0x00);
 	}
 	mspi_chip_release(AT45DB_CS);
 }
