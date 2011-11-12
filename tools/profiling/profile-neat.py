@@ -5,16 +5,55 @@ from optparse import OptionParser
 import subprocess
 import pydot
 
+def split_list(option, opt, value, parser):
+	setattr(parser.values, option.dest, value.split(','))
 
 parser = OptionParser()
 parser.add_option("-g", "--graph", dest="graph",
 		help="generate a graph")
+
+
+# Cluster functions together
 parser.add_option("-c", "--clusters",
 		action="store_true", dest="clusters", default=False,
 		help="arrange the functions by filename")
+parser.add_option("--cluster-files",
+		dest="cluster_files", default=[],
+                type='string', action='callback', callback=split_list,
+		help="cluster functions in the following filenames")
+
+# Show individual callsites
 parser.add_option("-i", "--individual",
 		action="store_true", dest="individual", default=False,
 		help="show individual callsites in functions")
+
+# Highlighting
+parser.add_option("--highlight-functions",
+		dest="highlight_functions", default=[],
+                type='string', action='callback', callback=split_list,
+		help="highlight the following functions")
+parser.add_option("--highlight-color", dest="highlight_color", default="#00FF00",
+		help="Highlight color")
+
+#Filtering
+parser.add_option("--ignore-functions",
+		dest="ignore_functions", default=[],
+                type='string', action='callback', callback=split_list,
+		help="ignore the following functions")
+parser.add_option("--only-functions",
+		dest="only_functions", default=[],
+                type='string', action='callback', callback=split_list,
+		help="only consider the following functions")
+parser.add_option("--ignore-files",
+		dest="ignore_files", default=[],
+                type='string', action='callback', callback=split_list,
+		help="ignore functions in the following files")
+parser.add_option("--only-files",
+		dest="only_files", default=[],
+                type='string', action='callback', callback=split_list,
+		help="only consider functions in the following files")
+
+
 parser.add_option("--cumulative",
 		action="store_true", dest="cumulative", default=False,
 		help="accumulate time")
@@ -34,9 +73,32 @@ parser.add_option("-q", "--quiet",
 
 (options, args) = parser.parse_args()
 
+
 opts = {}
 func_table = {}
 file_table = {}
+
+def ignore_site(site, onlyfile=False, onlyname=False):
+	name = None
+	filename = None
+	if onlyname:
+		name = site
+	elif onlyfile:
+		filename = site
+	else:
+		name = site['name']
+		filename = site['file']
+
+	if name and name in options.ignore_functions:
+		return True
+	if filename and filename.split('/')[-1] in options.ignore_files:
+		return True
+	if name and len(options.only_functions) and not name in options.only_functions:
+		return True
+	if filename and len(options.only_files) and not filename.split('/')[-1] in options.only_files:
+		return True
+	return False
+
 
 def lookup_symbol(symbol, funcptr=False):
 	# AVR stores the address in words, correct that
@@ -50,9 +112,13 @@ def lookup_symbol(symbol, funcptr=False):
 
 	output = subprocess.check_output(["%s-addr2line"%(options.prefix), "-afe", options.bin, "0x%x"%(symbol)]).strip().split('\n')
 
+	# Does the address point to the start of a function or not?
 	element['func'] = funcptr
+	# Address of the call site
 	element['addr'] = symbol #int(output[0], 16)
+	# Name of the function
 	element['name'] = output[1]
+	# Filename and line number of the call site
 	element['file'], element['line'] = output[2].split(':')
 
 	file_el = file_table.setdefault(element['file'], [])
@@ -69,19 +135,32 @@ def plural(i):
 		return "s"
 
 def graph_function(graph, func, callsite, label=None):
+	if ignore_site(func, onlyname=True):
+		return
+
 	if not label:
 		label = func
 
+	color="#dddddd00"
+
+	if func in options.highlight_functions:
+		color = options.highlight_color
+
 	time_spent = 0
+	invocations = 0
 	for site in func_table.values():
 		if site['name'] == func:
 			time_spent += site['time_spent']
+			invocations += site['invocations']
 
-	label = "%s\n%.3fms"%(label, float(time_spent)/opts['ticks_per_sec']*1000)
-	if not callsite:
-		graph.add_node(pydot.Node(func, label=label))
+	if invocations > 0:
+		fnlabel = "%s\n%.3fms\n%i calls"%(label, float(time_spent)/opts['ticks_per_sec']*1000, invocations)
 	else:
-		subgr = pydot.Subgraph("cluster_fn_%s"%func, label=label, style="filled")
+		fnlabel = "%s\n(unprofiled)"%(label)
+	if not callsite:
+		graph.add_node(pydot.Node(func, label=fnlabel, fillcolor=color, style="filled"))
+	else:
+		subgr = pydot.Subgraph("cluster_fn_%s"%func, label=fnlabel, style="filled", fillcolor=color)
 		for site in func_table.values():
 			if site['name'] == func:
 				if site['func']:
@@ -91,16 +170,17 @@ def graph_function(graph, func, callsite, label=None):
 		graph.add_subgraph(subgr)
 
 def graph_functions(graph, byfile=False, callsites=False):
-	if (byfile):
-		i = 0
-		for file_el in file_table.keys():
+	i = 0
+	for file_el in file_table.keys():
+		if ignore_site(file_el, onlyfile=True):
+			continue
+		if byfile or (file_el.split('/')[-1] in options.cluster_files):
 			subgr = pydot.Subgraph("cluster_file_%i"%(i), label=file_el.split('/')[-1])
 			i += 1
 			for func in file_table[file_el]:
 				graph_function(subgr, func, callsites, label="%s()"%(func))
 			graph.add_subgraph(subgr)
-	else:
-		for file_el in file_table.keys():
+		else:
 			for func in file_table[file_el]:
 				graph_function(graph, func, callsites, label="%s\\n%s()"%(file_el.split('/')[-1], func))
 
@@ -113,8 +193,17 @@ def generate_callgraph(calls, outfile):
 	allcount = 0
 	alltime = 0
 
+	for i in func_table.values():
+		if i['time_spent'] > 0:
+			alltime += i['time_spent']
+	opts['time_fns'] = alltime
+
+	alltime = 0
+
 	if (options.individual):
 		for call in calls:
+			if ignore_site(call['to']) or ignore_site(call['from']):
+				continue
 			cumel = cumulative.setdefault(("mem_%x"%(call['from']['addr']), "mem_%x"%(call['to']['addr'])), {'count':0, 'time':0, 'site':0})
 			cumel['from'] = call['from']
 			cumel['to'] = call['to']
@@ -125,12 +214,15 @@ def generate_callgraph(calls, outfile):
 			alltime += call['time']
 	else:
 		for call in calls:
+			if ignore_site(call['to']) or ignore_site(call['from']):
+				continue
 			cumel = cumulative.setdefault((call['from']['name'], call['to']['name']), {'count':0, 'time':0, 'site':0})
 			cumel['count'] += call['count']
 			cumel['time'] += call['time']
 			cumel['site'] += 1
 			allcount += call['count']
 			alltime += call['time']
+
 
 	opts['time_all'] = alltime
 	opts['count_all'] = allcount
@@ -212,8 +304,14 @@ def handle_prof(logfile, header):
 		# Keep track of how much time we're actually spending in here
 		from_el.setdefault('time_spent', 0)
 		from_el['time_spent'] -= call['time']
+		from_el.setdefault('invocations', 0)
 		to_el.setdefault('time_spent', 0)
 		to_el['time_spent'] += call['time']
+		to_el.setdefault('invocations', 0)
+		to_el['invocations'] += call['count']
+
+		if len(calls) == opts['num_sites']:
+			break
 
 
 
@@ -224,7 +322,7 @@ def handle_prof(logfile, header):
 	for call in calls:
 		print "%s -> %s %i times, %.3fms"%(call['from']['name'], call['to']['name'], call['count'], float(call['time'])/opts['ticks_per_sec']*1000)
 
-	print "Function time combined: %.3fs, Profiling time: %.3fs"%(float(opts['time_all'])/opts['ticks_per_sec'], float(opts['time_run'])/opts['ticks_per_sec'])
+	print "Function time combined: %.3fs, Profiling time: %.3fs"%(float(opts['time_fns'])/opts['ticks_per_sec'], float(opts['time_run'])/opts['ticks_per_sec'])
 
 
 def handle_sprof(logfile, header):
@@ -242,6 +340,9 @@ def handle_sprof(logfile, header):
 		site['addr'] = symbol
 		site['count'] = int(elements[1])
 		sites.append(site)
+
+		if len(sites) == opts['num_sites']:
+			break
 
 	sites = sorted(sites, key=lambda site: site['count'], reverse=options.reverse)
 
