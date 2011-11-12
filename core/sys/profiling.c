@@ -45,9 +45,18 @@
 #define MAX_PROFILES 100
 #endif /* MAX_CONF_PROFILES */
 
+#ifdef PROFILES_CONF_STACKSIZE
+#define PROFILE_STACKSIZE PROFILES_CONF_STACKSIZE
+#else
+#define PROFILE_STACKSIZE 20
+#endif /* PROFILES_CONF_STACKSIZE */
+
 static struct profile_t profile;
 static struct profile_site_t site[MAX_PROFILES];
 static int fine_count;
+
+static struct profile_site_t *callstack[PROFILE_STACKSIZE];
+static int stacklevel;
 
 static inline void profiling_internal(uint8_t internal)  __attribute__ ((no_instrument_function));
 static inline void profiling_internal(uint8_t internal)
@@ -87,6 +96,7 @@ void profiling_init(void)
 	profile.max_sites = MAX_PROFILES;
 	profile.time_run = 0;
 	profile.status = 0;
+	stacklevel = 0;
 }
 
 inline void profiling_start(void)
@@ -123,6 +133,7 @@ void __cyg_profile_func_enter(void *func, void *caller)
       if (!(profile.status&PROFILING_STARTED) || (profile.status&PROFILING_INTERNAL))
 	      return;
 
+      profiling_internal(1);
       for (i=0;i<profile.num_sites;i++) {
               if (profile.sites[i].addr == func &&
 			      profile.sites[i].from == caller)
@@ -141,32 +152,46 @@ void __cyg_profile_func_enter(void *func, void *caller)
               }
 
 	      /* Prevent infinite loop if clock_time() is not compiled with no_instrument_function */
-	      profiling_internal(1);
 	      profile.sites[i].time_start = ((unsigned long)clock_time()<<8) + clock_fine()*256/fine_count;
-	      profiling_internal(0);
+	      callstack[stacklevel++] = &profile.sites[i];
       }
+      profiling_internal(0);
 }
 
 void __cyg_profile_func_exit(void *func, void *caller)
 {
 	uint16_t i;
 	unsigned long temp;
+	struct profile_site_t *site;
 
       if (!(profile.status&PROFILING_STARTED) || (profile.status&PROFILING_INTERNAL))
 	      return;
 
       profiling_internal(1);
       temp = ((unsigned long)clock_time()<<8) + clock_fine()*256/fine_count;
-      profiling_internal(0);
+
+      if (callstack[stacklevel-1]->addr == func &&
+		      callstack[stacklevel-1]->from == caller) {
+	      stacklevel--;
+	      site = callstack[stacklevel];
+	      goto found;
+      }
 
       for (i=0;i<profile.num_sites;i++) {
               if (profile.sites[i].addr == func &&
-			      profile.sites[i].from == caller)
-                      break;
+			      profile.sites[i].from == caller) {
+		      site = &profile.sites[i];
+	              goto found;
+	      }
       }
-      if (i<profile.num_sites) {
-	      profile.sites[i].time_accum += (temp - profile.sites[i].time_start);
-      }
+      /* We didn't find the entry, abort */
+      profiling_internal(0);
+      return;
+
+found:
+
+      site->time_accum += (temp - site->time_start);
+      profiling_internal(0);
 }
 
 
