@@ -35,6 +35,25 @@ parser.add_option("--highlight-functions",
 parser.add_option("--highlight-color", dest="highlight_color", default="#00FF00",
 		help="Highlight color")
 
+#Filtering
+parser.add_option("--ignore-functions",
+		dest="ignore_functions", default=[],
+                type='string', action='callback', callback=split_list,
+		help="ignore the following functions")
+parser.add_option("--only-functions",
+		dest="only_functions", default=[],
+                type='string', action='callback', callback=split_list,
+		help="only consider the following functions")
+parser.add_option("--ignore-files",
+		dest="ignore_files", default=[],
+                type='string', action='callback', callback=split_list,
+		help="ignore functions in the following files")
+parser.add_option("--only-files",
+		dest="only_files", default=[],
+                type='string', action='callback', callback=split_list,
+		help="only consider functions in the following files")
+
+
 parser.add_option("--cumulative",
 		action="store_true", dest="cumulative", default=False,
 		help="accumulate time")
@@ -54,9 +73,32 @@ parser.add_option("-q", "--quiet",
 
 (options, args) = parser.parse_args()
 
+
 opts = {}
 func_table = {}
 file_table = {}
+
+def ignore_site(site, onlyfile=False, onlyname=False):
+	name = None
+	filename = None
+	if onlyname:
+		name = site
+	elif onlyfile:
+		filename = site
+	else:
+		name = site['name']
+		filename = site['file']
+
+	if name and name in options.ignore_functions:
+		return True
+	if filename and filename.split('/')[-1] in options.ignore_files:
+		return True
+	if name and len(options.only_functions) and not name in options.only_functions:
+		return True
+	if filename and len(options.only_files) and not filename.split('/')[-1] in options.only_files:
+		return True
+	return False
+
 
 def lookup_symbol(symbol, funcptr=False):
 	# AVR stores the address in words, correct that
@@ -93,6 +135,9 @@ def plural(i):
 		return "s"
 
 def graph_function(graph, func, callsite, label=None):
+	if ignore_site(func, onlyname=True):
+		return
+
 	if not label:
 		label = func
 
@@ -127,6 +172,8 @@ def graph_function(graph, func, callsite, label=None):
 def graph_functions(graph, byfile=False, callsites=False):
 	i = 0
 	for file_el in file_table.keys():
+		if ignore_site(file_el, onlyfile=True):
+			continue
 		if byfile or (file_el.split('/')[-1] in options.cluster_files):
 			subgr = pydot.Subgraph("cluster_file_%i"%(i), label=file_el.split('/')[-1])
 			i += 1
@@ -155,6 +202,8 @@ def generate_callgraph(calls, outfile):
 
 	if (options.individual):
 		for call in calls:
+			if ignore_site(call['to']) or ignore_site(call['from']):
+				continue
 			cumel = cumulative.setdefault(("mem_%x"%(call['from']['addr']), "mem_%x"%(call['to']['addr'])), {'count':0, 'time':0, 'site':0})
 			cumel['from'] = call['from']
 			cumel['to'] = call['to']
@@ -165,6 +214,8 @@ def generate_callgraph(calls, outfile):
 			alltime += call['time']
 	else:
 		for call in calls:
+			if ignore_site(call['to']) or ignore_site(call['from']):
+				continue
 			cumel = cumulative.setdefault((call['from']['name'], call['to']['name']), {'count':0, 'time':0, 'site':0})
 			cumel['count'] += call['count']
 			cumel['time'] += call['time']
