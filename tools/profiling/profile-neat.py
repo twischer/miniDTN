@@ -1,77 +1,89 @@
 #!/usr/bin/python2.7
 
 import os
-from optparse import OptionParser
+import argparse
 import subprocess
 import pydot
+
+class MakeList(argparse.Action):
+	def __call__(self, parser, namespace, values, option_string=None):
+		setattr(namespace, self.dest, values.split('.'))
 
 def split_list(option, opt, value, parser):
 	setattr(parser.values, option.dest, value.split(','))
 
-parser = OptionParser()
-parser.add_option("-g", "--graph", dest="graph",
-		help="generate a graph")
+parser = argparse.ArgumentParser(description="Process profiling data")
 
-
+display = parser.add_argument_group('display')
 # Cluster functions together
-parser.add_option("-c", "--clusters",
+display.add_argument("-c", "--clusters",
 		action="store_true", dest="clusters", default=False,
 		help="arrange the functions by filename")
-parser.add_option("--cluster-files",
+display.add_argument("--cluster-files",
 		dest="cluster_files", default=[],
-                type='string', action='callback', callback=split_list,
-		help="cluster functions in the following filenames")
+                action=MakeList,
+		help="only cluster functions in the following filenames")
 
 # Show individual callsites
-parser.add_option("-i", "--individual",
+display.add_argument("-i", "--individual",
 		action="store_true", dest="individual", default=False,
 		help="show individual callsites in functions")
-
-# Highlighting
-parser.add_option("--highlight-functions",
-		dest="highlight_functions", default=[],
-                type='string', action='callback', callback=split_list,
-		help="highlight the following functions")
-parser.add_option("--highlight-color", dest="highlight_color", default="#00FF00",
-		help="Highlight color")
-
-#Filtering
-parser.add_option("--ignore-functions",
-		dest="ignore_functions", default=[],
-                type='string', action='callback', callback=split_list,
-		help="ignore the following functions")
-parser.add_option("--only-functions",
-		dest="only_functions", default=[],
-                type='string', action='callback', callback=split_list,
-		help="only consider the following functions")
-parser.add_option("--ignore-files",
-		dest="ignore_files", default=[],
-                type='string', action='callback', callback=split_list,
-		help="ignore functions in the following files")
-parser.add_option("--only-files",
-		dest="only_files", default=[],
-                type='string', action='callback', callback=split_list,
-		help="only consider functions in the following files")
-
-
-parser.add_option("--cumulative",
+display.add_argument("--individual-source",
+		action="store_true", dest="individual_source", default=False,
+		help="show source line of the callsites")
+display.add_argument("--individual-functions",
+		dest="individual_functions", default=[],
+                action=MakeList,
+		help="show individual callsites in the specified functions")
+display.add_argument("--cumulative",
 		action="store_true", dest="cumulative", default=False,
 		help="accumulate time")
-parser.add_option("-l", "--log", dest="log",
-		help="log file to open")
-parser.add_option("-x", "--binary", dest="bin",
-		help="binary file")
-parser.add_option("-p", "--prefix", dest="prefix",
-		help="prefix needed for the addr2line tool")
-parser.add_option("-s", "--sort", dest="sort", default="count",
+
+
+filtering = parser.add_argument_group('filtering')
+#Filtering
+filtering.add_argument("--ignore-functions",
+		dest="ignore_functions", default=[],
+                action=MakeList,
+		help="ignore the following functions")
+filtering.add_argument("--only-functions",
+		dest="only_functions", default=[],
+                action=MakeList,
+		help="only consider the following functions")
+filtering.add_argument("--ignore-files",
+		dest="ignore_files", default=[],
+                action=MakeList,
+		help="ignore functions in the following files")
+filtering.add_argument("--only-files",
+		dest="only_files", default=[],
+                action=MakeList,
+		help="only consider functions in the following files")
+
+graph = parser.add_argument_group('graph options')
+graph.add_argument("-g", "--graph", dest="graph",
+		help="generate a graph")
+graph.add_argument("--highlight-functions",
+		dest="highlight_functions", default=[],
+                action=MakeList,
+		help="highlight the following functions")
+graph.add_argument("--highlight-color", dest="highlight_color", default="#00FF00",
+		help="Highlight color")
+
+parser.add_argument("-s", "--sort", dest="sort", default="count",
 		help="sort according to criteria (from|to|count|time)")
-parser.add_option("-r", "--reverse", action="store_false", dest="reverse",
+parser.add_argument("-r", "--reverse", action="store_false", dest="reverse",
 		default=True, help="revert sort order")
-parser.add_option("-q", "--quiet",
+parser.add_argument("-q", "--quiet",
 		action="store_false", dest="verbose", default=True,
 		help="don't print status messages to stdout")
+parser.add_argument("-p", "--prefix", dest="prefix",
+		help="prefix needed for the addr2line tool")
+parser.add_argument("bin",
+		help="binary file")
+parser.add_argument("log", type=argparse.FileType('r'),
+		help="log file with the profiling data")
 
-(options, args) = parser.parse_args()
+options = parser.parse_args()
 
 
 opts = {}
@@ -350,11 +362,9 @@ def handle_sprof(logfile, header):
 		print "%s:%s %i times"%(site['addr']['name'], site['addr']['line'], site['count'])
 
 
-logfile = open(options.log)
-
 # Read the header
-header = logfile.readline()
+header = options.log.readline()
 if (header.startswith("PROF")):
-	handle_prof(logfile, header)
+	handle_prof(options.log, header)
 elif (header.startswith("SPROF")):
-	handle_sprof(logfile, header)
+	handle_sprof(options.log, header)
