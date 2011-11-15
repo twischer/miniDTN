@@ -15,3 +15,4 @@ X Filter out/in certain function names
 * Implement a stack for instrumented functions
 * Record based nodes: http://www.graphviz.org/doc/info/shapes.html
 * Transparency for nodes/edges
+* Add with saturation

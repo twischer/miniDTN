@@ -28,13 +28,14 @@ display.add_argument("--cluster-files",
 display.add_argument("-i", "--individual",
 		action="store_true", dest="individual", default=False,
 		help="show individual callsites in functions")
-display.add_argument("--individual-source",
-		action="store_true", dest="individual_source", default=False,
-		help="show source line of the callsites")
-display.add_argument("--individual-functions",
-		dest="individual_functions", default=[],
-                action=MakeList,
-		help="show individual callsites in the specified functions")
+##TODO: Implement
+##display.add_argument("--individual-source",
+##		action="store_true", dest="individual_source", default=False,
+##		help="show source line of the callsites")
+##display.add_argument("--individual-functions",
+##		dest="individual_functions", default=[],
+##                action=MakeList,
+##		help="show individual callsites in the specified functions")
 display.add_argument("--cumulative",
 		action="store_true", dest="cumulative", default=False,
 		help="accumulate time")
