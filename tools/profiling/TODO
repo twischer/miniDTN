@@ -4,15 +4,15 @@ X Output complete runtime in profiler
 X Count only time spent in function without the subcalls
 X Highlight certain functions
 X Filter out/in certain function names
+X Verify the duration and increase resolution
+x Implement a stack for instrumented functions
 * Add option(s) to cluster/show callsites of only certain files/functions
 * Make limits, etc. configurable (colouring/style)
-* Verify the duration and increase resolution
 * Wrapper for "system" calls --wrap linker option (automatic macros with __builtin_apply?)
 * What effect does inlining have? - Function no longer visible
 * Calculate percent over complete runtime
 * Fraction of time spent calling subfunctions
 * Binary search
-* Implement a stack for instrumented functions
 * Record based nodes: http://www.graphviz.org/doc/info/shapes.html
 * Transparency for nodes/edges
 * Add with saturation

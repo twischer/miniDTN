@@ -6,13 +6,18 @@
 #define PROFILING_STARTED 1
 #define PROFILING_INTERNAL 2
 
+struct profile_callstack_t {
+	void *func;
+	void *caller;
+	unsigned long time_start;
+};
+
 /* The structure that holds the callsites */
 struct profile_site_t {
 	void *from;
 	void *addr;
 	uint32_t calls;
 	unsigned long time_accum;
-	unsigned long time_start;
 };
 
 struct profile_t {

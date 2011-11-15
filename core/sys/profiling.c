@@ -55,7 +55,7 @@ static struct profile_t profile;
 static struct profile_site_t site[MAX_PROFILES];
 static int fine_count;
 
-static struct profile_site_t *callstack[PROFILE_STACKSIZE];
+static struct profile_callstack_t callstack[PROFILE_STACKSIZE];
 static int stacklevel;
 
 static inline void profiling_internal(uint8_t internal)  __attribute__ ((no_instrument_function));
@@ -99,16 +99,19 @@ void profiling_init(void)
 	stacklevel = 0;
 }
 
-inline void profiling_start(void)
+void profiling_start(void)
 {
 	if (profile.status & PROFILING_STARTED)
 		return;
 
 	profile.time_start = ((unsigned long)clock_time()<<8) + clock_fine()*256/fine_count;
 	profile.status |= PROFILING_STARTED;
+
+	/* Reset the callstack */
+	stacklevel = 0;
 }
 
-inline void profiling_stop(void)
+void profiling_stop(void)
 {
 	unsigned long temp;
 
@@ -125,7 +128,6 @@ inline void profiling_stop(void)
 void __cyg_profile_func_enter(void *, void *) __attribute__ ((no_instrument_function));
 void __cyg_profile_func_exit(void *, void *) __attribute__ ((no_instrument_function));
 
-/* XXX: What about recursion and nested recursion? */
 void __cyg_profile_func_enter(void *func, void *caller)
 {
       uint16_t i;
@@ -134,6 +136,10 @@ void __cyg_profile_func_enter(void *func, void *caller)
 	      return;
 
       profiling_internal(1);
+
+      if (stacklevel >= PROFILE_STACKSIZE)
+	      goto out;
+
       for (i=0;i<profile.num_sites;i++) {
               if (profile.sites[i].addr == func &&
 			      profile.sites[i].from == caller)
@@ -151,10 +157,15 @@ void __cyg_profile_func_enter(void *func, void *caller)
                       profile.sites[i].calls++;
               }
 
-	      /* Prevent infinite loop if clock_time() is not compiled with no_instrument_function */
-	      profile.sites[i].time_start = ((unsigned long)clock_time()<<8) + clock_fine()*256/fine_count;
-	      callstack[stacklevel++] = &profile.sites[i];
+              /* Update the call stack */
+              callstack[stacklevel].time_start = ((unsigned long)clock_time()<<8) + clock_fine()*256/fine_count;
+              callstack[stacklevel].func = func;
+              callstack[stacklevel].caller = caller;
+
+              stacklevel++;
       }
+
+out:
       profiling_internal(0);
 }
 
@@ -170,27 +181,32 @@ void __cyg_profile_func_exit(void *func, void *caller)
       profiling_internal(1);
       temp = ((unsigned long)clock_time()<<8) + clock_fine()*256/fine_count;
 
-      if (callstack[stacklevel-1]->addr == func &&
-		      callstack[stacklevel-1]->from == caller) {
+      /* See if this call was recorded on the call stack */
+      if (stacklevel > 0 && callstack[stacklevel-1].func == func &&
+		      callstack[stacklevel-1].caller == caller) {
+	      temp = temp - callstack[stacklevel-1].time_start;
 	      stacklevel--;
-	      site = callstack[stacklevel];
-	      goto found;
+      } else {
+	      goto out;
       }
 
       for (i=0;i<profile.num_sites;i++) {
               if (profile.sites[i].addr == func &&
 			      profile.sites[i].from == caller) {
 		      site = &profile.sites[i];
-	              goto found;
 	      }
       }
-      /* We didn't find the entry, abort */
+      if (!site)
+	      goto out;
+
+      /* Update calls and time */
+      site->calls++;
+      site->time_accum += temp;
       profiling_internal(0);
       return;
 
-found:
-
-      site->time_accum += (temp - site->time_start);
+out:
+      /* We didn't find the entry, abort */
       profiling_internal(0);
 }
 
