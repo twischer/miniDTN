@@ -6,13 +6,15 @@ X Highlight certain functions
 X Filter out/in certain function names
 X Verify the duration and increase resolution
 x Implement a stack for instrumented functions
+X Binary search
+X Measure overhead
 * Add option(s) to cluster/show callsites of only certain files/functions
 * Make limits, etc. configurable (colouring/style)
 * Wrapper for "system" calls --wrap linker option (automatic macros with __builtin_apply?)
 * What effect does inlining have? - Function no longer visible
 * Calculate percent over complete runtime
 * Fraction of time spent calling subfunctions
-* Binary search
 * Record based nodes: http://www.graphviz.org/doc/info/shapes.html
 * Transparency for nodes/edges
 * Add with saturation
+* Record overhead in the call stack

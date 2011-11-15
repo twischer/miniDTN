@@ -127,10 +127,61 @@ void profiling_stop(void)
 /* Don't instrument the instrumentation functions */
 void __cyg_profile_func_enter(void *, void *) __attribute__ ((no_instrument_function));
 void __cyg_profile_func_exit(void *, void *) __attribute__ ((no_instrument_function));
+static inline struct profile_site_t *find_or_add_site(void *func, void *caller, uint8_t findonly)  __attribute__ ((no_instrument_function));
+
+static inline struct profile_site_t *find_or_add_site(void *func, void *caller, uint8_t findonly)
+{
+	struct profile_site_t *site = NULL;
+	int16_t lower, upper;
+	uint16_t newindex = 0, i;
+
+	lower = 0;
+	upper = profile.num_sites-1;
+
+	while (lower <= upper) {
+		newindex = ((upper - lower)>>1) + lower;
+		site = &profile.sites[newindex];
+		if (func > site->addr) {
+			lower = newindex + 1;
+		} else if (func < site->addr) {
+			upper = newindex - 1;
+		} else {
+			if (caller > site->from) {
+				lower = newindex + 1;
+			} else if (caller < site->from) {
+				upper = newindex - 1;
+			} else {
+				return site;
+			}
+		}
+	}
+
+	/* We only want to get an entry if it existed */
+	if (findonly)
+		return NULL;
+
+	/* Table is full - nothing we can do */
+	if (profile.num_sites == profile.max_sites)
+		return NULL;
+
+	newindex = lower;
+	/* Site not found, need to insert it */
+	for (i = profile.num_sites; i>newindex; i--) {
+		memcpy(&profile.sites[i], &profile.sites[i-1], sizeof(struct profile_site_t));
+	}
+	profile.num_sites++;
+	site = &profile.sites[newindex];
+	site->from = caller;
+	site->addr = func;
+	site->calls = 0;
+	site->time_accum = 0;
+
+	return site;
+}
 
 void __cyg_profile_func_enter(void *func, void *caller)
 {
-      uint16_t i;
+      struct profile_site_t *site;
 
       if (!(profile.status&PROFILING_STARTED) || (profile.status&PROFILING_INTERNAL))
 	      return;
@@ -140,30 +191,16 @@ void __cyg_profile_func_enter(void *func, void *caller)
       if (stacklevel >= PROFILE_STACKSIZE)
 	      goto out;
 
-      for (i=0;i<profile.num_sites;i++) {
-              if (profile.sites[i].addr == func &&
-			      profile.sites[i].from == caller)
-                      break;
-      }
-      if (i<profile.max_sites) {
-              /* XXX: Possible race for interrupts here? Disable? */
-              if (i==profile.num_sites) {
-                      profile.sites[i].addr = func ;
-		      profile.sites[i].from = caller;
-		      profile.sites[i].calls = 1;
-		      profile.sites[i].time_accum = 0;
-                      profile.num_sites++;
-              } else {
-                      profile.sites[i].calls++;
-              }
+      site = find_or_add_site(func, caller, 0);
+      if (!site)
+	      goto out;
 
-              /* Update the call stack */
-              callstack[stacklevel].time_start = ((unsigned long)clock_time()<<8) + clock_fine()*256/fine_count;
-              callstack[stacklevel].func = func;
-              callstack[stacklevel].caller = caller;
+      /* Update the call stack */
+      callstack[stacklevel].time_start = ((unsigned long)clock_time()<<8) + clock_fine()*256/fine_count;
+      callstack[stacklevel].func = func;
+      callstack[stacklevel].caller = caller;
 
-              stacklevel++;
-      }
+      stacklevel++;
 
 out:
       profiling_internal(0);
@@ -171,7 +208,6 @@ out:
 
 void __cyg_profile_func_exit(void *func, void *caller)
 {
-	uint16_t i;
 	unsigned long temp;
 	struct profile_site_t *site;
 
@@ -190,12 +226,7 @@ void __cyg_profile_func_exit(void *func, void *caller)
 	      goto out;
       }
 
-      for (i=0;i<profile.num_sites;i++) {
-              if (profile.sites[i].addr == func &&
-			      profile.sites[i].from == caller) {
-		      site = &profile.sites[i];
-	      }
-      }
+      site = find_or_add_site(func, caller, 1);
       if (!site)
 	      goto out;
 
