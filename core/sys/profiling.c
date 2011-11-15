@@ -55,7 +55,7 @@ static struct profile_t profile;
 static struct profile_site_t site[MAX_PROFILES];
 static int fine_count;
 
-static struct profile_site_t *callstack[PROFILE_STACKSIZE];
+static struct profile_callstack_t callstack[PROFILE_STACKSIZE];
 static int stacklevel;
 
 static inline void profiling_internal(uint8_t internal)  __attribute__ ((no_instrument_function));
@@ -99,16 +99,19 @@ void profiling_init(void)
 	stacklevel = 0;
 }
 
-inline void profiling_start(void)
+void profiling_start(void)
 {
 	if (profile.status & PROFILING_STARTED)
 		return;
 
 	profile.time_start = ((unsigned long)clock_time()<<8) + clock_fine()*256/fine_count;
 	profile.status |= PROFILING_STARTED;
+
+	/* Reset the callstack */
+	stacklevel = 0;
 }
 
-inline void profiling_stop(void)
+void profiling_stop(void)
 {
 	unsigned long temp;
 
@@ -124,43 +127,87 @@ inline void profiling_stop(void)
 /* Don't instrument the instrumentation functions */
 void __cyg_profile_func_enter(void *, void *) __attribute__ ((no_instrument_function));
 void __cyg_profile_func_exit(void *, void *) __attribute__ ((no_instrument_function));
+static inline struct profile_site_t *find_or_add_site(void *func, void *caller, uint8_t findonly)  __attribute__ ((no_instrument_function));
 
-/* XXX: What about recursion and nested recursion? */
+static inline struct profile_site_t *find_or_add_site(void *func, void *caller, uint8_t findonly)
+{
+	struct profile_site_t *site = NULL;
+	int16_t lower, upper;
+	uint16_t newindex = 0, i;
+
+	lower = 0;
+	upper = profile.num_sites-1;
+
+	while (lower <= upper) {
+		newindex = ((upper - lower)>>1) + lower;
+		site = &profile.sites[newindex];
+		if (func > site->addr) {
+			lower = newindex + 1;
+		} else if (func < site->addr) {
+			upper = newindex - 1;
+		} else {
+			if (caller > site->from) {
+				lower = newindex + 1;
+			} else if (caller < site->from) {
+				upper = newindex - 1;
+			} else {
+				return site;
+			}
+		}
+	}
+
+	/* We only want to get an entry if it existed */
+	if (findonly)
+		return NULL;
+
+	/* Table is full - nothing we can do */
+	if (profile.num_sites == profile.max_sites)
+		return NULL;
+
+	newindex = lower;
+	/* Site not found, need to insert it */
+	for (i = profile.num_sites; i>newindex; i--) {
+		memcpy(&profile.sites[i], &profile.sites[i-1], sizeof(struct profile_site_t));
+	}
+	profile.num_sites++;
+	site = &profile.sites[newindex];
+	site->from = caller;
+	site->addr = func;
+	site->calls = 0;
+	site->time_accum = 0;
+
+	return site;
+}
+
 void __cyg_profile_func_enter(void *func, void *caller)
 {
-      uint16_t i;
+      struct profile_site_t *site;
 
       if (!(profile.status&PROFILING_STARTED) || (profile.status&PROFILING_INTERNAL))
 	      return;
 
       profiling_internal(1);
-      for (i=0;i<profile.num_sites;i++) {
-              if (profile.sites[i].addr == func &&
-			      profile.sites[i].from == caller)
-                      break;
-      }
-      if (i<profile.max_sites) {
-              /* XXX: Possible race for interrupts here? Disable? */
-              if (i==profile.num_sites) {
-                      profile.sites[i].addr = func ;
-		      profile.sites[i].from = caller;
-		      profile.sites[i].calls = 1;
-		      profile.sites[i].time_accum = 0;
-                      profile.num_sites++;
-              } else {
-                      profile.sites[i].calls++;
-              }
 
-	      /* Prevent infinite loop if clock_time() is not compiled with no_instrument_function */
-	      profile.sites[i].time_start = ((unsigned long)clock_time()<<8) + clock_fine()*256/fine_count;
-	      callstack[stacklevel++] = &profile.sites[i];
-      }
+      if (stacklevel >= PROFILE_STACKSIZE)
+	      goto out;
+
+      site = find_or_add_site(func, caller, 0);
+      if (!site)
+	      goto out;
+
+      /* Update the call stack */
+      callstack[stacklevel].time_start = ((unsigned long)clock_time()<<8) + clock_fine()*256/fine_count;
+      callstack[stacklevel].func = func;
+      callstack[stacklevel].caller = caller;
+
+      stacklevel++;
+
+out:
       profiling_internal(0);
 }
 
 void __cyg_profile_func_exit(void *func, void *caller)
 {
-	uint16_t i;
 	unsigned long temp;
 	struct profile_site_t *site;
 
@@ -170,27 +217,27 @@ void __cyg_profile_func_exit(void *func, void *caller)
       profiling_internal(1);
       temp = ((unsigned long)clock_time()<<8) + clock_fine()*256/fine_count;
 
-      if (callstack[stacklevel-1]->addr == func &&
-		      callstack[stacklevel-1]->from == caller) {
+      /* See if this call was recorded on the call stack */
+      if (stacklevel > 0 && callstack[stacklevel-1].func == func &&
+		      callstack[stacklevel-1].caller == caller) {
+	      temp = temp - callstack[stacklevel-1].time_start;
 	      stacklevel--;
-	      site = callstack[stacklevel];
-	      goto found;
+      } else {
+	      goto out;
       }
 
-      for (i=0;i<profile.num_sites;i++) {
-              if (profile.sites[i].addr == func &&
-			      profile.sites[i].from == caller) {
-		      site = &profile.sites[i];
-	              goto found;
-	      }
-      }
-      /* We didn't find the entry, abort */
+      site = find_or_add_site(func, caller, 1);
+      if (!site)
+	      goto out;
+
+      /* Update calls and time */
+      site->calls++;
+      site->time_accum += temp;
       profiling_internal(0);
       return;
 
-found:
-
-      site->time_accum += (temp - site->time_start);
+out:
+      /* We didn't find the entry, abort */
       profiling_internal(0);
 }
 
