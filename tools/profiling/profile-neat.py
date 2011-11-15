@@ -206,9 +206,9 @@ def generate_callgraph(calls, outfile):
 	allcount = 0
 	alltime = 0
 
-	for i in func_table.values():
-		if i['time_spent'] > 0:
-			alltime += i['time_spent']
+	for site in func_table.values():
+		if site['invocations'] > 0:
+			alltime += site['time_spent']
 	opts['time_fns'] = alltime
 
 	alltime = 0
@@ -257,7 +257,10 @@ def generate_callgraph(calls, outfile):
 			reltime = float(cumulative[fpair]['time'])/opts['time_run']
 			duration = "%.3f%%"%(reltime*100)
 		else:
-			reltime = float(cumulative[fpair]['time'])/cumulative[fpair]['count']
+			try:
+				reltime = float(cumulative[fpair]['time'])/cumulative[fpair]['count']
+			except ZeroDivisionError:
+				reltime = 0
 			duration = "%.3fms/call"%(reltime/opts['ticks_per_sec']*1000)
 
 		edge = pydot.Edge(fpair[0], fpair[1], label="%i site%s\n%s\n%i call%s"%(cumulative[fpair]['site'], plural(cumulative[fpair]['site']),
@@ -328,14 +331,26 @@ def handle_prof(logfile, header):
 
 
 
-	calls  = sorted(calls, key=lambda call: call[options.sort], reverse=options.reverse)
 	if options.graph:
 		generate_callgraph(calls, options.graph)
 
+	calls  = sorted(calls, key=lambda call: call[options.sort], reverse=options.reverse)
 	for call in calls:
 		print "%s -> %s %i times, %.3fms"%(call['from']['name'], call['to']['name'], call['count'], float(call['time'])/opts['ticks_per_sec']*1000)
 
-	print "Function time combined: %.3fs, Profiling time: %.3fs"%(float(opts['time_fns'])/opts['ticks_per_sec'], float(opts['time_run'])/opts['ticks_per_sec'])
+	funcs = {}
+	for func in func_table.values():
+		fn = funcs.setdefault(func['name'], {'invocations': 0, 'time': 0})
+		fn['invocations'] += func['invocations']
+		fn['time'] += func['time_spent']
+
+	combtime = 0
+	for fn in funcs.keys():
+		if funcs[fn]['invocations'] > 0:
+			combtime += funcs[fn]['time']
+			print "%s %i times %.3fs"%(fn, funcs[fn]['invocations'], float(funcs[fn]['time'])/opts['ticks_per_sec'])
+
+	print "Function time combined: %.3fs, Profiling time: %.3fs"%(float(combtime)/opts['ticks_per_sec'], float(opts['time_run'])/opts['ticks_per_sec'])
 
 
 def handle_sprof(logfile, header):
