@@ -55,6 +55,8 @@
 #include "net/uDTN/dtn_config.h"
 #include "net/uDTN/storage.h"
 #include "mmem.h"
+#include "sys/profiling.h"
+#include "watchdog.h"
 
 #include <stdio.h> /* For printf() */
 #include <stdlib.h>
@@ -69,7 +71,8 @@ static uint16_t last_trans=0;
 PROCESS_THREAD(hello_world_process, ev, data)
 {
 	PROCESS_BEGIN();
-	
+	profiling_init();
+	profiling_start();
 	SENSORS_ACTIVATE(button_sensor);
 	agent_init();
 	//test_init();
@@ -102,7 +105,9 @@ PROCESS_THREAD(hello_world_process, ev, data)
 		//if((ev == sensors_event && data == &button_sensor)) {
 			if (rec == 1000) {
 				profiling_stop();
+				watchdog_stop();
 				profiling_report(0);
+				watchdog_start();
 				profiling_start();
 			}
 			rec++;
