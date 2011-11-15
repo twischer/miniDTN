@@ -380,7 +380,11 @@ def handle_sprof(logfile, header):
 
 # Read the header
 header = options.log.readline()
-if (header.startswith("PROF")):
-	handle_prof(options.log, header)
-elif (header.startswith("SPROF")):
-	handle_sprof(options.log, header)
+while (header):
+	if (header.startswith("PROF")):
+		handle_prof(options.log, header)
+		break
+	elif (header.startswith("SPROF")):
+		handle_sprof(options.log, header)
+		break
+	header = options.log.readline()
