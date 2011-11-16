@@ -1,4 +1,4 @@
-LDFLAGS =-lusb -lftdi -ludev -lpopt
+LDLIBS=-lusb -lftdi -ludev -lpopt
 
 all: inga_tool
 
