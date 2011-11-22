@@ -1,4 +1,4 @@
-#ifndef _MBR_H_
+﻿#ifndef _MBR_H_
 #define _MBR_H_
 
 struct mbr_primary_partition {

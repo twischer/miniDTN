@@ -1,7 +1,10 @@
-#ifndef _FAT_H_
+﻿#ifndef _FAT_H_
 #define _FAT_H_
 
 int mkfs_fat16(/*how do we specify the disk?*/);
 int mkfs_fat32();
+
+int fat_mkdir(char *);
+int fat_rmdir(char *);
 
 #endif
