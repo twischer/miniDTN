@@ -1,0 +1,33 @@
+suite:
+    logbase: /home/alphaone/scm/diplomarbeit/eval/logs
+    logpattern: date
+    contikibase: /home/alphaone/scm/diplomarbeit/eval/contiki
+    testcases:
+        - throughput
+        - latency
+
+# List of devices
+# Each device has a name, a class (type of device), a path and an id
+devices:
+  - name: sender
+    class: INGA
+    path: /dev/inga/0
+    id: 0
+  - name: receiver
+    class: INGA
+    path: /dev/inga/1
+    id: 1
+
+tests:
+  - name: throughput
+    devices:
+      - name: sender
+        programdir: examples/uDTN/sender
+        program: uDTN-sender
+        instrument: [examples/uDTN/sender/uDTN-sender.c,platform/inga/*.c]
+        graph_options: ""
+      - name: receiver
+        programdir: examples/uDTN/sink
+        program: uDTN-sink
+        instrument: [examples/uDTN/sink/uDTN-sink.c,platform/inga/*.c]
+        graph_options: ""
