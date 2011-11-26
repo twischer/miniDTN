@@ -537,14 +537,31 @@ uint8_t i;
   get_eui64_from_eeprom(addr.u8);
  
 #if UIP_CONF_IPV6 
+  // with IPv6
+#if WITH_NODE_ID
+  // IPv6 + Node_ID
+  node_id=get_panaddr_from_eeprom();
+  addr.u8[0]=node_id&0xff;
+  addr.u8[1]=(node_id&0xff00)>>8;
+  PRINTA("Node ID from eeprom: %X\n",node_id);
+  uint16_t inv_node_id=((node_id&0xff00)>>8)+((node_id&0xff)<<8); // chance order of bytes for rf23x
+
   memcpy(&uip_lladdr.addr, &addr.u8, sizeof(rimeaddr_t));
   rimeaddr_set_node_addr(&addr); 
   rf230_set_pan_addr(
 	get_panid_from_eeprom(),
-	get_panaddr_from_eeprom(),
+	inv_node_id,
 	(uint8_t *)&addr.u8
   );
-#elif WITH_NODE_ID
+#else /* WITH_NODE_ID */
+  // IPv6 + no Node_ID
+#error "IPv6 without Node_ID currently not implemented"
+#endif /* WITH_NODE_ID */
+
+#else /* UIP_CONF_IPV6 */
+  // No IPv6 (Rime, DTN, etc.)
+#if WITH_NODE_ID
+  // No IPv6 + Node_ID
   node_id=get_panaddr_from_eeprom();
   addr.u8[0]=node_id&0xff;
   addr.u8[1]=(node_id&0xff00)>>8;
@@ -557,14 +574,16 @@ uint8_t i;
 	inv_node_id,
   	NULL
   );
-#else
+#else /* WITH_NODE_ID */
+  // No IPv6 + no Node_ID
   rimeaddr_set_node_addr(&addr); 
   rf230_set_pan_addr(
 	get_panid_from_eeprom(),
 	get_panaddr_from_eeprom(),
 	(uint8_t *)&addr.u8
   );
-#endif  
+#endif /* WITH_NODE_ID */
+#endif /* UIP_CONF_IPV6 */
   rf230_set_channel(get_channel_from_eeprom());
   rf230_set_txpower(get_txpower_from_eeprom());
 
