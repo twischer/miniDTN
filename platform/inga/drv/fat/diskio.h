@@ -7,6 +7,15 @@
 #define diskio_device_type_GENERIC_FLASH 2
 #define diskio_device_type_PARTITION 4
 
+#define DISKIO_SUCCESS 0
+#define DISKIO_ERROR_NO_DEVICE_SELECTED 1
+#define DISKIO_ERROR_INTERNAL_ERROR 2
+#define DISKIO_ERROR_DEVICE_TYPE_NOT_RECOGNIZED 3
+#define DISKIO_ERROR_OPERATION_NOT_SUPPORTED 4
+#define DISKIO_ERROR_TO_BE_IMPLEMENTED 5
+
+#define DISKIO_MAX_DEVICES 8
+
 struct diskio_device_info{
 	/** Specifiey the recognized type of the memory*/
 	uint8_t type;
@@ -16,15 +25,15 @@ struct diskio_device_info{
 	uint8_t partition;
 };
 
-int diskio_read_block();
-int diskio_read_blocks();
-int diskio_write_block();
-int diskio_write_blocks();
+int diskio_read_block( struct diskio_device_info *dev, uint32_t block_address, uint8_t *buffer );
+int diskio_read_blocks( struct diskio_device_info *dev, uint32_t block_start_address, uint8_t num_blocks, uint8_t *buffer );
+int diskio_write_block( struct diskio_device_info *dev, uint32_t block_address, uint8_t *buffer );
+int diskio_write_blocks( struct diskio_device_info *dev, uint32_t block_start_address, uint8_t num_blocks, uint8_t *buffer );
 
 /** Implementation should use mbr_read to automatically add new devices */
 struct diskio_device_info * diskio_devices();
 
 /** sets to which device normally reads and writes go */
-int diskio_set_current_device();
+int diskio_set_default_device( struct diskio_device_info *dev );
 
 #endif
