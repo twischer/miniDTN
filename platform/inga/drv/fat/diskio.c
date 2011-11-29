@@ -83,5 +83,13 @@ int diskio_set_default_device( struct diskio_device_info *dev ) {
 
 struct diskio_device_info * diskio_devices() {
 	static struct diskio_device_info devices[DISKIO_MAX_DEVICES];
-	// IMPLEMENT!
+	static struct mbr mbr;
+	// IMPLEMENT
+	mbr_init( &mbr, microSD_get_card_size() );
+	mbr_read( devices[i], &mbr );
+	for( int i = 0; i < 4; ++i ) {
+		if( mbr_hasPartition( mbr, i + 1 ) == TRUE ) {
+			// make partition copy of current dev
+		}
+	}
 }
