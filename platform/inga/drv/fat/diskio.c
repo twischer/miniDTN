@@ -77,19 +77,27 @@ int diskio_rw_op( struct diskio_device_info *dev, uint32_t block_start_address, 
 	return DISKIO_SUCCESS;
 }
 
-int diskio_set_default_device( struct diskio_device_info *dev ) {
+void diskio_set_default_device( struct diskio_device_info *dev ) {
 	default_device = dev;
 }
 
 struct diskio_device_info * diskio_devices() {
 	static struct diskio_device_info devices[DISKIO_MAX_DEVICES];
 	static struct mbr mbr;
-	// IMPLEMENT
-	mbr_init( &mbr, microSD_get_card_size() );
-	mbr_read( devices[i], &mbr );
-	for( int i = 0; i < 4; ++i ) {
-		if( mbr_hasPartition( mbr, i + 1 ) == TRUE ) {
-			// make partition copy of current dev
+	int dev_num = 0;
+	if( microSD_init() == 0 ) {
+		devices[dev_num].type = DISKIO_DEVICE_TYPE_SD_CARD;
+		devices[dev_num].number = dev_num;		
+		mbr_init( &mbr, microSD_get_card_size() );
+		mbr_read( devices[0], &mbr );
+		for( int i = 0; i < 4; ++i ) {
+			if( mbr_hasPartition( mbr, i + 1 ) == TRUE ) {
+				devices[dev_num].type = DISKIO_DEVICE_TYPE_SD_CARD | DISKIO_DEVICE_TYPE_PARTITION;
+				devices[dev_num].number = dev_num;
+				devices[dev_num].partition = i + 1;
+			}
 		}
+		dev_num += 1;
 	}
+	return &devices;
 }

@@ -52,7 +52,7 @@ int mbr_write( struct mbr *from, struct diskio_device_info *to ) {
 	}
 	mbr_buffer[510] = 0x55;
 	mbr_buffer[511] = 0xAA;
-	diskio_write_block( to, 0, mbr_buffer );
+	return diskio_write_block( to, 0, mbr_buffer );
 }
 
 int mbr_addPartition(struct mbr *mbr, uint8_t part_num, uint8_t part_type, uint32_t start, uint32_t len ) {
