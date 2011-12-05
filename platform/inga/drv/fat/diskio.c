@@ -2,6 +2,7 @@
 #include "../../interfaces/flash_microSD.h"
 
 static struct diskio_device_info *default_device = NULL;
+static struct diskio_device_info devices[DISKIO_MAX_DEVICES];
 
 int diskio_rw_op( struct diskio_device_info *dev, uint32_t block_start_address, uint8_t num_blocks, uint8_t *buffer, uint8_t op );
 
@@ -82,9 +83,12 @@ void diskio_set_default_device( struct diskio_device_info *dev ) {
 }
 
 struct diskio_device_info * diskio_devices() {
-	static struct diskio_device_info devices[DISKIO_MAX_DEVICES];
+	return &devices;
+}
+
+void diskio_detect_devices() {	
 	static struct mbr mbr;
-	int dev_num = 0;
+	int dev_num = 0;	
 	if( microSD_init() == 0 ) {
 		devices[dev_num].type = DISKIO_DEVICE_TYPE_SD_CARD;
 		devices[dev_num].number = dev_num;		
@@ -99,5 +103,4 @@ struct diskio_device_info * diskio_devices() {
 		}
 		dev_num += 1;
 	}
-	return &devices;
 }

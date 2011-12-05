@@ -70,6 +70,14 @@ int diskio_write_block( struct diskio_device_info *dev, uint32_t block_address, 
 int diskio_write_blocks( struct diskio_device_info *dev, uint32_t block_start_address, uint8_t num_blocks, uint8_t *buffer );
 
 /**
+ * Returns the device-Database.
+ *
+ * Number of devices in the database is limited by the DISKIO_MAX_DEVICES define.
+ * \return pointer to the Array of device infos. No available device entries have the type set to DISKIO_DEVICE_TYPE_NOT_RECOGNIZED.
+ */
+struct diskio_device_info * diskio_devices();
+
+/**
  * Creates the internal database of available devices.
  *
  * Adds virtual devices for multiple Partitions on devices using the MBR-Library.
@@ -77,9 +85,8 @@ int diskio_write_blocks( struct diskio_device_info *dev, uint32_t block_start_ad
  * Warning the device numbers may change when calling this function. It should be called
  * once on start but may also be called, if the microSD-Card was ejected to update the device
  * database.
- * \return pointer to the Array of device infos. No available device entries have the type set to DISKIO_DEVICE_TYPE_NOT_RECOGNIZED.
  */
-struct diskio_device_info * diskio_devices();
+int diskio_detect_devices();
 
 /**
  * Sets the default operation device.
