@@ -135,9 +135,9 @@ uint32_t compute_fat_size( uint8_t fat_type, uint16_t root_entry_count, uint16_t
 	return FATSz;
 }
 
-void set_boot_sector( uint8_t *buffer, uint16_t sec_size, uint32_t total_sec_count ) {
+void set_boot_sector( uint8_t *buffer, struct diskio_device_info *dev ) {
 	// Test if we can make FAT16 or FAT32
-	uint8_t fat_type = init_lookup_table( total_sec_count, sec_size ); 
+	uint8_t fat_type = init_lookup_table( dev->num_sectors, dev->sector_size ); 
 	uint8_t sectors_per_cluster = (fat_type << 2) >> 2;
 	uint32_t FATsz = 0;
 	fat_type = fat_type >> 6;
@@ -149,10 +149,10 @@ void set_boot_sector( uint8_t *buffer, uint16_t sec_size, uint32_t total_sec_cou
 	buffer[0] = 0x00; buffer[1] = 0x00; buffer[2] = 0x00;
 	
 	// BS_OEMName
-	memset(  &(buffer[3]), "MSWIN4.1", 8 );
+	memcpy(  &(buffer[3]), "MSWIN4.1", 8 );
 	
 	// BPB_BytesPerSec
-	buffer[11] = (uint8_t) sec_size; buffer[12] = (uint8_t) sec_size >> 8;
+	buffer[11] = (uint8_t) dev->sector_size; buffer[12] = (uint8_t) dev->sector_size >> 8;
 	
 	// BPB_SecPerClus
 	buffer[13] = sectors_per_cluster;
@@ -175,8 +175,8 @@ void set_boot_sector( uint8_t *buffer, uint16_t sec_size, uint32_t total_sec_cou
 	}
 	
 	// BPB_TotSec16
-	if( total_sec_count < 0x10000 ) {
-		buffer[19] = (uint8_t) total_sec_count; buffer[20] = (uint8_t) total_sec_count >> 8;
+	if( dev->num_sectors < 0x10000 ) {
+		buffer[19] = (uint8_t) dev->num_sectors; buffer[20] = (uint8_t) dev->num_sectors >> 8;
 	} else {
 		buffer[19] = 0; buffer[20] = 0;
 	}
@@ -190,11 +190,11 @@ void set_boot_sector( uint8_t *buffer, uint16_t sec_size, uint32_t total_sec_cou
 	// BPB_FATSz16
 	FATsz = compute_fat_size( fat_type,
 		(((uint16_t)buffer[18]) << 8) + buffer[17], 
-		sec_size,
+		dev->sector_size,
 		buffer[14],
 		sectors_per_cluster,
 		buffer[16],
-		total_sec_count );
+		dev->num_sectors );
 	if( fat_type == FAT16 && FATsz < 0x10000) {
 		buffer[22] = (uint8_t) FATsz; buffer[23] = (uint8_t) (FATsz >> 8);
 	} else if( fat_type == FAT16 ) {
@@ -213,11 +213,11 @@ void set_boot_sector( uint8_t *buffer, uint16_t sec_size, uint32_t total_sec_cou
 	buffer[28] = 0; buffer[29] = 0; buffer[30] = 0; buffer[31] = 0;
 	
 	// BPB_TotSec32
-	if( total_sec_count < 0x10000 ) {
+	if( dev->num_sectors < 0x10000 ) {
 		buffer[32] = 0; buffer[33] = 0; buffer[34] = 0; buffer[35] = 0;
 	} else {
-		buffer[32] = (uint8_t) total_sec_count      ; buffer[33] = (uint8_t) total_sec_count >>  8;
-		buffer[34] = (uint8_t) total_sec_count >> 16; buffer[35] = (uint8_t) total_sec_count >> 24;
+		buffer[32] = (uint8_t) dev->num_sectors      ; buffer[33] = (uint8_t) dev->num_sectors >>  8;
+		buffer[34] = (uint8_t) dev->num_sectors >> 16; buffer[35] = (uint8_t) dev->num_sectors >> 24;
 	}
 	
 	if( fat_type == FAT16 ) {
@@ -234,10 +234,10 @@ void set_boot_sector( uint8_t *buffer, uint16_t sec_size, uint32_t total_sec_cou
 		buffer[39] = 0; buffer[40] = 0; buffer[41] = 0; buffer[42] = 0;
 		
 		// BS_VolLab
-		memset(  &(buffer[43]), "NO NAME    ", 11 );
+		memcpy(  &(buffer[43]), "NO NAME    ", 11 );
 		
 		// BS_FilSysType
-		memset(  &(buffer[54]), "FAT16   ", 8 );
+		memcpy(  &(buffer[54]), "FAT16   ", 8 );
 	} else if( fat_type == FAT32 ) {
 		// BPB_FATSz32
 		buffer[36] = (uint8_t) FATsz      ; buffer[37] = (uint8_t) FATsz >>  8;
@@ -274,18 +274,44 @@ void set_boot_sector( uint8_t *buffer, uint16_t sec_size, uint32_t total_sec_cou
 		buffer[67] = 0; buffer[68] = 0; buffer[69] = 0; buffer[70] = 0;
 		
 		// BS_VolLab
-		memset(  &(buffer[71]), "NO NAME    ", 11 );
+		memcpy(  &(buffer[71]), "NO NAME    ", 11 );
 		
 		// BS_FilSysType
-		memset(  &(buffer[82]), "FAT32   ", 8 );		
+		memcpy(  &(buffer[82]), "FAT32   ", 8 );		
 	}
 	
 	// Specification demands this values at this precise positions
 	buffer[510] = 0x55; buffer[511] = 0xAA;
 }
 
+void init_fat( uint32_t *buffer, struct diskio_device_info *dev ) {
+	uint32_t i = 0;
+	// BPB_Media Copy
+	buffer[0] = 0x0FFFFF00 + BPB_Media;
+	
+	// End of Clusterchain marker
+	buffer[1] = 0x0FFFFFF8;
+	
+	// Write both FATs at once
+	diskio_write_block( dev, BPB_ResvSecCnt, buffer );
+	diskio_write_block( dev, BPB_ResvSecCnt + FATSz, buffer );
+	
+	// Reset first to buffer bits
+	buffer[0] = 0;
+	buffer[1] = 0;
+	
+	for(i = 1; i < FATSz; ++i) {
+		// Write additional Sectors of both FATs
+		diskio_write_block( dev, BPB_ResvSecCnt + i; buffer );
+		diskio_write_block( dev, BPB_ResvSecCnt + i + FATSz; buffer );
+	}
+}
+
 int mkfs_fat( struct diskio_device_info *dev ) {
 	static uint8_t buffer[512];
 	memset( buffer, 0, 512 );		
-	set_boot_sector( buffer, dev->sector_size, dev->num_sectors );
+	set_boot_sector( buffer, dev );
+	diskio_write_block( dev, 0, buffer );
+	memset( buffer, 0, 512 );
+	init_fat( buffer, dev );
 }

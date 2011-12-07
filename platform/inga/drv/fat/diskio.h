@@ -23,8 +23,9 @@ struct diskio_device_info{
 	uint8_t type; /** Specifies the recognized type of the memory */	
 	uint8_t number; /** Number to identify device */	
 	uint8_t partition; /** Will be ignored if PARTITION flag is not set in type, otherwise tells which partition of this device is meant */
-	uint32_t num_sectors;
-	uint16_t sector_size;
+	uint32_t num_sectors; /** Number of sectors on this device */
+	uint16_t sector_size; /** How big is one sector in bytes */
+	uint32_t first_sector; /** If this is a Partition, this indicates which is the first_sector belonging to this partition on this device */
 };
 
 /**

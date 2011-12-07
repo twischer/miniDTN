@@ -3,14 +3,13 @@
 
 static uint8_t mbr_buffer[512];
 
-void mbr_init( struct mbr *mbr, uint32_t disk_size ) {
+void mbr_init( struct mbr *mbr ) {
 	for( int i = 0; i < 4; ++i ) {
 		// Set Status to invalid (everything other than 0x00 and 0x80 is invalid
 		mbr->partition[i].status = 0x01;
 		// Everything else is set to 0
 		memset( (&(mbr->partition[i])) + 1, 0, 15 );
 	}
-	mbr->disk_size = disk_size;
 }
 /*
 int mbr_part_info_cpy_from_buffer( uint8_t part_num, struct mbr *to) {
@@ -28,7 +27,7 @@ int mbr_part_info_cpy_from_buffer( uint8_t part_num, struct mbr *to) {
 	part->lba_num_sectors 		= ((uint32_t) mbr_buffer[start_index + 15]) << 24 +  ((uint32_t) mbr_buffer[start_index + 14]) << 16 +  ((uint32_t) mbr_buffer[start_index + 13]) << 8 + mbr_buffer[start_index + 12];
 }
 */
-int mbr_read( struct diskio_device_info *from, struct mbr *to) {
+int mbr_read( struct diskio_device_info *from, struct mbr *to ) {
 	static int ret = diskio_read_block( from, 0, *mbr_buffer );
 	if( ret != 0 ) return MBR_ERROR_DISKIO_ERROR;
 	/*test if 0x55AA is at the end, otherwise it is no MBR*/

@@ -47,8 +47,6 @@ struct mbr { //ignores everything but primary partitions (saves 448 bytes)
 	 * For the sake of simplicity Extended partitions are not implemented.
 	 */
 	struct mbr_primary_partition partition[4];
-	/** The size of the disk. (may be needed to be 64 bit but 32 suffice for the moment)*/
-	uint32_t disk_size;
 };
 
 /**
@@ -58,7 +56,7 @@ struct mbr { //ignores everything but primary partitions (saves 448 bytes)
  * \param *mbr the mbr which should be initialized
  * \param disk_size the size of the disk on which the mbr will reside
  */
-void mbr_init( struct mbr *mbr, uint32_t disk_size );
+void mbr_init( struct mbr *mbr );
 
 /**
  * Reads the MBR from the specified device.
@@ -68,7 +66,7 @@ void mbr_init( struct mbr *mbr, uint32_t disk_size );
  * \param *to whe mbr structure in which the data is parsed
  * \return MBR_SUCCESS on success, MBR_ERROR_DISKIO_ERROR if there was a problem reading the block or MBR_ERROR_NO_MBR_FOUND when there is no MBR on this device.
  */
-int mbr_read( struct diskio_device_info *from, struct mbr *to);
+int mbr_read( struct diskio_device_info *from, struct mbr *to );
 
 /**
  * Write the MBR to the specified device.
@@ -80,8 +78,8 @@ int mbr_read( struct diskio_device_info *from, struct mbr *to);
 int mbr_write( struct mbr *from, struct diskio_device_info *to );
 
 int mbr_addPartition(struct mbr *mbr, uint8_t part_num, uint8_t part_type, uint32_t start, uint32_t len );
-int mbr_delPartition(struct mbr *mbr, uint8_t part_num);
+int mbr_delPartition(struct mbr *mbr, uint8_t part_num );
 
-int mbr_hasPartition(struct mbr *mbr, uint8_t part_num);
+int mbr_hasPartition(struct mbr *mbr, uint8_t part_num );
 
 #endif

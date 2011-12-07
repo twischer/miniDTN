@@ -28,6 +28,7 @@ int diskio_rw_op( struct diskio_device_info *dev, uint32_t block_start_address, 
 			return DISKIO_ERROR_NO_DEVICE_SELECTED;
 		dev = default_device;
 	}
+	block_start_address += dev->first_sector;
 	switch( dev->type ) {
 		case diskio_device_type_SD_CARD:
 			switch( op ) {
@@ -92,13 +93,19 @@ void diskio_detect_devices() {
 	if( microSD_init() == 0 ) {
 		devices[dev_num].type = DISKIO_DEVICE_TYPE_SD_CARD;
 		devices[dev_num].number = dev_num;		
-		mbr_init( &mbr, microSD_get_card_size() );
+		devices[dev_num].num_sectors = microSD_query( MICROSD_CARD_SIZE );
+		devices[dev_num].sector_size = microSD_query( MICROSD_CARD_SECTOR_SIZE );
+		devices[dev_num].first_sector = 0;
+		mbr_init( &mbr );
 		mbr_read( devices[0], &mbr );
 		for( int i = 0; i < 4; ++i ) {
 			if( mbr_hasPartition( mbr, i + 1 ) == TRUE ) {
-				devices[dev_num].type = DISKIO_DEVICE_TYPE_SD_CARD | DISKIO_DEVICE_TYPE_PARTITION;
-				devices[dev_num].number = dev_num;
-				devices[dev_num].partition = i + 1;
+				devices[dev_num + i + 1].type = DISKIO_DEVICE_TYPE_SD_CARD | DISKIO_DEVICE_TYPE_PARTITION;
+				devices[dev_num + i + 1].number = dev_num;
+				devices[dev_num + i + 1].partition = i + 1;
+				devices[dev_num + i + 1].num_sectors = mbr.partition[i].lba_num_sectors;
+				devices[dev_num + i + 1].sector_size = devices[dev_num].sector_size;
+				devices[dev_num + i + 1].first_sector = mbr.partition[i].lba_first_sector;
 			}
 		}
 		dev_num += 1;
