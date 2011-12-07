@@ -200,7 +200,7 @@ void inga_reset(struct config_t *cfg)
     }
 
     rc = ftdi_usb_open_dev(&ftdic, usbdev);
-    if (rc < 0 && rc != -5)
+    if (rc < 0)
     {
         fprintf(stderr, "unable to open ftdi device: %d (%s)\n", rc, ftdi_get_error_string(&ftdic));
         exit(EXIT_FAILURE);
@@ -257,7 +257,7 @@ void inga_eeprom(struct config_t *cfg)
     }
 
     rc = ftdi_usb_open_dev(&ftdic, usbdev);
-    if (rc < 0 && rc != -5)
+    if (rc < 0)
     {
         fprintf(stderr, "unable to open ftdi device: %d (%s)\n", rc, ftdi_get_error_string(&ftdic));
         exit(EXIT_FAILURE);
