@@ -450,6 +450,8 @@ struct config_t *init_config(void)
 	cfg->eep_cbusio = 1;
 	cfg->eep_manuf = "IBR";
 	cfg->eep_prod = "INGA";
+
+  return cfg;
 }
 
 int main(int argc, const char **argv)
