@@ -397,7 +397,7 @@ void parse_options(int argc, const char **argv, struct config_t *cfg)
 		{ NULL, 0, 0, NULL, 0}
 	};
 
-	cfg->mode == MODE_RESET;
+	cfg->mode = MODE_RESET;
 
 	poptc = poptGetContext(NULL, argc, argv, options, 0);
 
