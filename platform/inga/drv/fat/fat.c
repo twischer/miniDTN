@@ -68,6 +68,9 @@ cfs_closedir(cfs_dir *dirp)
 {
 }
 
+/**
+ * Determines the type of the fat by using the BPB.
+ */
 uint8_t determine_fat_type( uint32_t TotSec, uint16_t ResvdSecCnt, uint8_t NumFATs, uint32_t FATSz, uint32_t RootDirSectors, uint8_t SecPerClus ) {
 	uint32_t DataSec = TotSec - (ResvdSecCnt + (NumFATs * FATSz) + RootDirSectors;
 	uint32_t CountofClusters = DataSec / SecPerClus;
@@ -83,42 +86,99 @@ uint8_t determine_fat_type( uint32_t TotSec, uint16_t ResvdSecCnt, uint8_t NumFA
 	}
 }
 
+/**
+ * Tests if the given value is a power of 2.
+ *
+ * \param value Number which should be testet if it is a power of 2.
+ * \return TRUE or FALSE.
+ */
+uint8_t is_a_power_of_2( uint32_t value ) {
+	uint32_t test = 1;
+	uint8_t i = 0;
+	if( value == 0 )
+		return TRUE;
+	for( i = 0; i < 32; ++i ) {
+		test << 1;
+		if( test == value )
+			return TRUE;
+	}
+	return FALSE;
+}
+
+/**
+ * Rounds the value down to the next lower power of 2.
+ *
+ * \param value The number which should be rounded down.
+ * \return the next lower number which is a power of 2
+ */
+uint32_t round_down_to_power_of_2( uint32_t value ) {
+	uint32_t po2 = 1 << 31;
+	while( value < po2 ) {
+		po2 >> 1;
+	}
+	return po2;
+}
+
+/**
+ * Determines the number of sectors per cluster.
+ *
+ * \param sec_size The size of one sector in bytes.
+ * \param bytes number of bytes one cluster should be big
+ * \return 1,2,4,8,16,32,64,128 depending on the number of sectors per cluster
+ */
 uint8_t SPC( uint16_t sec_size, uint16_t bytes ) {
 	uint8_t SecPerClus = 0;
-	SecPerCluster = 1024 / sec_size;
-	if( SecPerCluster == 0)
-		SecPerCluster = 1;
+	SecPerCluster = (uint8_t)(bytes / sec_size);
+	if( SecPerCluster == 0 )
+		return 1;
+
+	if( is_a_power_of_2( SecPerCluster ) == FALSE )
+		SecPerCluster = (uint8_t) round_down_to_power_of_2( SecPerCluster );
+	
+	if( SecPerCluster > 128 || SecPerCluster * sec_size > 32 * 1024 )
+		return 1;
+	
 	return SecPerCluster;
 }
 
-uint8_t init_lookup_table( uint32_t total_sec_count, uint16_t bytes_per_sec ) {
+/**
+ * Determines for mkfs which FAT-Type and cluster-size should be used.
+ *
+ * This is based upon the FAT specification, which states that the table only works for 512
+ * Bytes sized sectors. For that the function SPC is used to compute this right. but
+ * it probalby only works for powers of 2 in the bytes_per_sec field.
+ * \param total_sec_count the total number of sectors of the filesystem
+ * \param bytes_per_sec how many bytes are there in one sector
+ * \return in the upper two bits is the fat type, either FAT12, FAT16, FAT32 or FAT_INVALID. In the lower 8 bits is the number of sectors per cluster.
+ */
+uint16_t mkfs_determine_fat_type_and_SPC( uint32_t total_sec_count, uint16_t bytes_per_sec ) {
 	uint64_t vol_size = (total_sec_count * bytes_per_sec) / 512;
 	if( vol_size < 8400 * 512 ) {
-		return FAT12 << 6 + 0;
+		return FAT12 << 8 + 0;
 	} else if( vol_size < 32680 ) {
-		return FAT16 << 6 + SPC(bytes_per_sec,1024);
+		return FAT16 << 8 + SPC(bytes_per_sec,1024);
 	} else if( vol_size < 262144 ) {
-		return FAT16 << 6 + SPC(bytes_per_sec,2048);
+		return FAT16 << 8 + SPC(bytes_per_sec,2048);
 	} else if( vol_size < 524288 ) {
-		return FAT16 << 6 + SPC(bytes_per_sec,4096);
+		return FAT16 << 8 + SPC(bytes_per_sec,4096);
 	} else if( vol_size < 1048576 ) {
-		return FAT16 << 6 + SPC(bytes_per_sec,8192);
+		return FAT16 << 8 + SPC(bytes_per_sec,8192);
 	} else if( vol_size < 2097152 ) {
-		return FAT16 << 6 + SPC(bytes_per_sec,16384);
+		return FAT16 << 8 + SPC(bytes_per_sec,16384);
 	} else if( vol_size < 4194304 ) {
-		return FAT16 << 6 + SPC(bytes_per_sec,32768);
+		return FAT16 << 8 + SPC(bytes_per_sec,32768);
 	}
 	
 	if( vol_size < 16777216 ) {
-		return FAT32 << 6 + SPC(bytes_per_sec,4096);
+		return FAT32 << 8 + SPC(bytes_per_sec,4096);
 	} else if( vol_size < 33554432 ) {
-		return FAT32 << 6 + SPC(bytes_per_sec,8192);
+		return FAT32 << 8 + SPC(bytes_per_sec,8192);
 	} else if( vol_size < 67108864 ) {
-		return FAT32 << 6 + SPC(bytes_per_sec,16384);
+		return FAT32 << 8 + SPC(bytes_per_sec,16384);
 	} else if( vol_size < 0xFFFFFFFF ) {
-		return FAT32 << 6 + SPC(bytes_per_sec,32768);
+		return FAT32 << 8 + SPC(bytes_per_sec,32768);
 	} else {
-		return FAT_INVALID << 6 + 0;
+		return FAT_INVALID << 8 + 0;
 	}
 }
 
@@ -141,10 +201,10 @@ uint32_t mkfs_compute_fat_size( struct FAT_Info *fi ) {
 
 int mkfs_write_boot_sector( uint8_t *buffer, struct diskio_device_info *dev, struct FAT_Info *fi ) {
 	// Test if we can make FAT16 or FAT32
-	fi->type = init_lookup_table( dev->num_sectors, dev->sector_size ); 
-	uint8_t sectors_per_cluster = (fat_type << 2) >> 2;
+	uint16_t type_SPC = mkfs_determine_fat_type_and_SPC( dev->num_sectors, dev->sector_size ); 
+	uint8_t sectors_per_cluster = (uint8_t) type_SPC;
 	fi->BPB_FATsz = 0;
-	fi->type = fi->type >> 6;
+	fi->type = (uint8_t) type_SPC >> 8;
 	
 	if( fi->type == FAT12 || fi->type == FAT_INVALID ) {
 		return -1;		
@@ -165,7 +225,7 @@ int mkfs_write_boot_sector( uint8_t *buffer, struct diskio_device_info *dev, str
 	fi->BPB_SecPerClus = sectors_per_cluster;
 	
 	//BPB_RsvdSecCnt
-	if( fat_type == FAT16) {
+	if( fat_type == FAT16 ) {
 		buffer[14] = 1; buffer[15] = 0;
 		fi->BPB_RsvdSecCnt = 1;
 	} else if( fat_type == FAT32 ) {
@@ -339,6 +399,8 @@ void mkfs_write_fats( uint8_t *buffer, struct diskio_device_info *dev, struct FA
 		}
 	}
 }
+
+
 
 int mkfs_fat( struct diskio_device_info *dev ) {
 	uint8_t buffer[512];
