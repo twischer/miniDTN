@@ -4,6 +4,52 @@
 static struct diskio_device_info *default_device = NULL;
 static struct diskio_device_info devices[DISKIO_MAX_DEVICES];
 
+/* TODO: Länge des Buffers sollte mitübergeben werden, macht die Nutzung einfacher */
+
+#ifdef DISKIO_DEBUG
+#include <stdio.h>
+FILE *handle = NULL;
+
+void diskio_read_block_file( uint32_t block_start_address, uint8_t *buffer ) {
+	uint16_t i;
+	fseek( handle, block_start_address * DISKIO_DEBUG_FILE_SECTOR_SIZE, SEEK_SET );
+	for( i = 0; i < DISKIO_DEBUG_FILE_SECTOR_SIZE; ++i ) {
+		buffer[i] = (uint8_t) getc( handle );
+	}
+}
+
+void diskio_read_blocks_file( uint32_t block_start_address, uint8_t num_blocks, uint8_t *buffer ) {
+	uint16_t i;
+	uint8_t blocks;
+	fseek( handle, block_start_address * DISKIO_DEBUG_FILE_SECTOR_SIZE, SEEK_SET );
+	for( blocks = 0; blocks < num_blocks; ++blocks){
+		for( i = 0; i < DISKIO_DEBUG_FILE_SECTOR_SIZE; ++i ) {
+			buffer[i + DISKIO_DEBUG_FILE_SECTOR_SIZE * blocks] = (uint8_t) getc( handle );
+		}
+	}
+}
+
+void diskio_write_block_file( uint32_t block_start_address, uint8_t *buffer ) {
+	uint16_t i;
+	fseek( handle, block_start_address * DISKIO_DEBUG_FILE_SECTOR_SIZE, SEEK_SET );
+	for( i = 0; i < DISKIO_DEBUG_FILE_SECTOR_SIZE; ++i ) {
+		putc( handle, buffer[i] );
+	}
+}
+ /*ToDo: Rewrite with fread and fwrite*/
+ /*ToDo: Test if it replaces data, not appends it*/
+void diskio_write_blocks_file( uint32_t block_start_address, uint8_t num_blocks, uint8_t *buffer ) {
+	uint16_t i;
+	uint8_t blocks;
+	fseek( handle, block_start_address * DISKIO_DEBUG_FILE_SECTOR_SIZE, SEEK_SET );
+	for( blocks = 0; blocks < num_blocks; ++blocks){
+		for( i = 0; i < DISKIO_DEBUG_FILE_SECTOR_SIZE; ++i ) {
+			putc( handle, buffer[i + DISKIO_DEBUG_FILE_SECTOR_SIZE * blocks] );
+		}
+	}
+}
+#endif
+
 int diskio_rw_op( struct diskio_device_info *dev, uint32_t block_start_address, uint8_t num_blocks, uint8_t *buffer, uint8_t op );
 
 int diskio_read_block( struct diskio_device_info *dev, uint32_t block_address, uint8_t *buffer ) {
@@ -29,7 +75,7 @@ int diskio_rw_op( struct diskio_device_info *dev, uint32_t block_start_address, 
 		dev = default_device;
 	}
 	block_start_address += dev->first_sector;
-	switch( dev->type ) {
+	switch( dev->type & DISKIO_DEVICE_TYPE_MASK ) {
 		case diskio_device_type_SD_CARD:
 			switch( op ) {
 				case DISKIO_OP_READ_BLOCK:
@@ -72,6 +118,25 @@ int diskio_rw_op( struct diskio_device_info *dev, uint32_t block_start_address, 
 					break;
 			}			
 			break;
+		case DISKIO_DEVICE_TYPE_FILE:
+			switch( op ) {
+				case DISKIO_OP_READ_BLOCK:
+					diskio_read_block_file( block_start_address, buffer );
+					break;
+				case DISKIO_OP_READ_BLOCKS:
+					diskio_read_blocks_file( block_start_address, num_blocks, buffer );
+					break;
+				case DISKIO_OP_WRITE_BLOCK:
+					diskio_write_block_file( block_start_address, buffer );
+					break;
+				case DISKIO_OP_WRITE_BLOCKS:
+					diskio_write_blocks_file( block_start_address, num_blocks, buffer );
+					break;
+				default:
+					return DISKIO_ERROR_OPERATION_NOT_SUPPORTED;
+					break;
+			}			
+			break;
 		case diskio_device_type_NOT_RECOGNIZED:
 		default:
 			return DISKIO_ERROR_DEVICE_TYPE_NOT_RECOGNIZED;
@@ -88,8 +153,9 @@ struct diskio_device_info * diskio_devices() {
 }
 
 void diskio_detect_devices() {	
-	static struct mbr mbr;
-	int dev_num = 0;	
+	struct mbr mbr;
+	int dev_num = 0;
+#ifndef DISKIO_DEBUG
 	if( microSD_init() == 0 ) {
 		devices[dev_num].type = DISKIO_DEVICE_TYPE_SD_CARD;
 		devices[dev_num].number = dev_num;		
@@ -110,4 +176,31 @@ void diskio_detect_devices() {
 		}
 		dev_num += 1;
 	}
+#else
+	if( !handle ) {
+		handle = fopen( DISKIO_DEBUG_FILE_NAME, "rwb" );
+		if( !handle ) {
+			/*CRAP!*/
+			exit(1);
+		}
+	}
+	devices[dev_num].type == DISKIO_DEVICE_TYPE_FILE;
+	devices[dev_num].number = dev_num;
+	devices[dev_num].num_sectors = DISKIO_DEBUG_FILE_NUM_SECTORS;
+	devices[dev_num].sector_size = DISKIO_DEBUG_FILE_SECTOR_SIZE;
+	devices[dev_num].first_sector = 0;
+	mbr_init( &mbr );
+		mbr_read( devices[0], &mbr );
+		for( int i = 0; i < 4; ++i ) {
+			if( mbr_hasPartition( mbr, i + 1 ) == TRUE ) {
+				devices[dev_num + i + 1].type = DISKIO_DEVICE_TYPE_FILE | DISKIO_DEVICE_TYPE_PARTITION;
+				devices[dev_num + i + 1].number = dev_num;
+				devices[dev_num + i + 1].partition = i + 1;
+				devices[dev_num + i + 1].num_sectors = mbr.partition[i].lba_num_sectors;
+				devices[dev_num + i + 1].sector_size = devices[dev_num].sector_size;
+				devices[dev_num + i + 1].first_sector = mbr.partition[i].lba_first_sector;
+			}
+		}
+		dev_num += 1;
+#endif
 }
