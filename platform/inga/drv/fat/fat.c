@@ -7,7 +7,8 @@
 
 struct file {
 	//metadata
-	//position on disk
+	/** Cluster Position on disk */
+	uint32_t cluster;
 };
 
 struct file_desc {
@@ -17,6 +18,46 @@ struct file_desc {
 };
 
 struct file_desc fat_fd_pool[FAT_FD_POOL_SIZE];
+
+struct dir_entry {
+	uint8_t DIR_Name[11];
+	uint8_t DIR_Attr;
+	uint8_t DIR_NTRes;
+	uint8_t CrtTimeTenth;
+	uint8_t unknown[6];
+	uint16_t DIR_FstClusHI;
+	uint16_t DIR_WrtTime;
+	uint16_t DIR_WrtDate;
+	uint16_t DIR_FstClusLO;
+	uint32_t DIR_FileSize;
+};
+
+uint32_t find_file( const char *path ) {
+#ifdef DISKIO_PATH_SUPPORT
+	//: /[DirNum]/[Directories]/[name].[ext]
+#else
+	int start_idx = 0, end_idx = 0, i;
+	struct dir_entry;
+	init( dir_entry );
+	for( i = 0; i < strlen(path); ++i ) {
+		if( start_idx == end_idx && path[i] != '/' ) {
+			start_idx = i;
+			end_idx = i - 1;
+		} else if( start_idx == end_idx && path[i] == '/' ) {
+			continue;
+		} else if( start_idx != end_idx && (path[i] == '/' || path[i] == '\0')) {
+			end_idx = i;
+			if(!lookup( path, start_idx, end_idx, &dir_entry )) {
+				return 0;
+			}
+			if( path[i] == '\0' ) {
+				return (((uint32_t)dir_entry.DIR_FstClusHI) << 16) + dir_entry.DIR_FstClusLO;
+			}
+		}
+	}
+	return 0;
+#endif
+}
 
 int
 cfs_open(const char *name, int flags)
