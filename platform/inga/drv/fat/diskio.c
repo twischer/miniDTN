@@ -1,14 +1,17 @@
 ﻿#include "diskio.h"
+#include "mbr.h"
+#ifndef DISKIO_DEBUG
 #include "../../interfaces/flash_microSD.h"
+#endif
 
-static struct diskio_device_info *default_device = NULL;
+static struct diskio_device_info *default_device = 0;
 static struct diskio_device_info devices[DISKIO_MAX_DEVICES];
 
 /* TODO: Länge des Buffers sollte mitübergeben werden, macht die Nutzung einfacher */
 
 #ifdef DISKIO_DEBUG
 #include <stdio.h>
-FILE *handle = NULL;
+FILE *handle = 0;
 
 void diskio_read_block_file( uint32_t block_start_address, uint8_t *buffer ) {
 	uint16_t i;
@@ -33,7 +36,7 @@ void diskio_write_block_file( uint32_t block_start_address, uint8_t *buffer ) {
 	uint16_t i;
 	fseek( handle, block_start_address * DISKIO_DEBUG_FILE_SECTOR_SIZE, SEEK_SET );
 	for( i = 0; i < DISKIO_DEBUG_FILE_SECTOR_SIZE; ++i ) {
-		putc( handle, buffer[i] );
+		putc( buffer[i], handle );
 	}
 }
  /*ToDo: Rewrite with fread and fwrite*/
@@ -44,16 +47,21 @@ void diskio_write_blocks_file( uint32_t block_start_address, uint8_t num_blocks,
 	fseek( handle, block_start_address * DISKIO_DEBUG_FILE_SECTOR_SIZE, SEEK_SET );
 	for( blocks = 0; blocks < num_blocks; ++blocks){
 		for( i = 0; i < DISKIO_DEBUG_FILE_SECTOR_SIZE; ++i ) {
-			putc( handle, buffer[i + DISKIO_DEBUG_FILE_SECTOR_SIZE * blocks] );
+			putc( buffer[i + DISKIO_DEBUG_FILE_SECTOR_SIZE * blocks], handle );
 		}
 	}
 }
 #endif
 
+#define DISKIO_OP_WRITE_BLOCK  1
+#define DISKIO_OP_READ_BLOCK   2
+#define DISKIO_OP_WRITE_BLOCKS 3
+#define DISKIO_OP_READ_BLOCKS  4
+
 int diskio_rw_op( struct diskio_device_info *dev, uint32_t block_start_address, uint8_t num_blocks, uint8_t *buffer, uint8_t op );
 
 int diskio_read_block( struct diskio_device_info *dev, uint32_t block_address, uint8_t *buffer ) {
-	return diskio_rw_op( dev, block_address, 1, buffer, DISKIO_OP_WRITE_BLOCK );
+	return diskio_rw_op( dev, block_address, 1, buffer, DISKIO_OP_READ_BLOCK );
 }
 
 int diskio_read_blocks( struct diskio_device_info *dev, uint32_t block_start_address, uint8_t num_blocks, uint8_t *buffer ) {
@@ -70,16 +78,17 @@ int diskio_write_blocks( struct diskio_device_info *dev, uint32_t block_start_ad
 
 int diskio_rw_op( struct diskio_device_info *dev, uint32_t block_start_address, uint8_t num_blocks, uint8_t *buffer, uint8_t op ) {
 	if( dev == NULL ) {
-		if( default_device == NULL )
+		if( default_device == 0 )
 			return DISKIO_ERROR_NO_DEVICE_SELECTED;
 		dev = default_device;
 	}
 	block_start_address += dev->first_sector;
 	switch( dev->type & DISKIO_DEVICE_TYPE_MASK ) {
-		case diskio_device_type_SD_CARD:
+		uint8_t ret_code = 0;
+		case DISKIO_DEVICE_TYPE_SD_CARD:
 			switch( op ) {
 				case DISKIO_OP_READ_BLOCK:
-					uint8_t ret_code = microSD_read_block( block_start_address, buffer );
+					ret_code = microSD_read_block( block_start_address, buffer );
 					if( ret_code != 0 )
 						return DISKIO_ERROR_INTERNAL_ERROR;
 					break;
@@ -87,7 +96,7 @@ int diskio_rw_op( struct diskio_device_info *dev, uint32_t block_start_address, 
 					return DISKIO_ERROR_TO_BE_IMPLEMENTED;
 					break;
 				case DISKIO_OP_WRITE_BLOCK:
-					uint8_t ret_code = microSD_write_block( block_start_address, buffer );
+					ret_code = microSD_write_block( block_start_address, buffer );
 					if( ret_code != 0 )
 						return DISKIO_ERROR_INTERNAL_ERROR;
 					break;
@@ -95,11 +104,11 @@ int diskio_rw_op( struct diskio_device_info *dev, uint32_t block_start_address, 
 					return DISKIO_ERROR_TO_BE_IMPLEMENTED;
 					break;
 				default:
-					return DISKIO_ERROR_NOT_SUPPORTED;
+					return DISKIO_ERROR_OPERATION_NOT_SUPPORTED;
 					break;
 			}
 			break;
-		case diskio_device_type_GENERIC_FLASH:
+		case DISKIO_DEVICE_TYPE_GENERIC_FLASH:
 			switch( op ) {
 				case DISKIO_OP_READ_BLOCK:
 					return DISKIO_ERROR_TO_BE_IMPLEMENTED;
@@ -119,6 +128,7 @@ int diskio_rw_op( struct diskio_device_info *dev, uint32_t block_start_address, 
 			}			
 			break;
 		case DISKIO_DEVICE_TYPE_FILE:
+			#ifdef DISKIO_DEBUG
 			switch( op ) {
 				case DISKIO_OP_READ_BLOCK:
 					diskio_read_block_file( block_start_address, buffer );
@@ -135,9 +145,10 @@ int diskio_rw_op( struct diskio_device_info *dev, uint32_t block_start_address, 
 				default:
 					return DISKIO_ERROR_OPERATION_NOT_SUPPORTED;
 					break;
-			}			
+			}
+			#endif
 			break;
-		case diskio_device_type_NOT_RECOGNIZED:
+		case DISKIO_DEVICE_TYPE_NOT_RECOGNIZED:
 		default:
 			return DISKIO_ERROR_DEVICE_TYPE_NOT_RECOGNIZED;
 	}
@@ -149,12 +160,13 @@ void diskio_set_default_device( struct diskio_device_info *dev ) {
 }
 
 struct diskio_device_info * diskio_devices() {
-	return &devices;
+	return devices;
 }
 
-void diskio_detect_devices() {	
+int diskio_detect_devices() {	
 	struct mbr mbr;
 	int dev_num = 0;
+	int i = 0;
 #ifndef DISKIO_DEBUG
 	if( microSD_init() == 0 ) {
 		devices[dev_num].type = DISKIO_DEVICE_TYPE_SD_CARD;
@@ -164,7 +176,7 @@ void diskio_detect_devices() {
 		devices[dev_num].first_sector = 0;
 		mbr_init( &mbr );
 		mbr_read( devices[0], &mbr );
-		for( int i = 0; i < 4; ++i ) {
+		for( i = 0; i < 4; ++i ) {
 			if( mbr_hasPartition( mbr, i + 1 ) == TRUE ) {
 				devices[dev_num + i + 1].type = DISKIO_DEVICE_TYPE_SD_CARD | DISKIO_DEVICE_TYPE_PARTITION;
 				devices[dev_num + i + 1].number = dev_num;
@@ -181,7 +193,7 @@ void diskio_detect_devices() {
 		handle = fopen( DISKIO_DEBUG_FILE_NAME, "rwb" );
 		if( !handle ) {
 			/*CRAP!*/
-			exit(1);
+			//exit(1);
 		}
 	}
 	devices[dev_num].type == DISKIO_DEVICE_TYPE_FILE;
@@ -190,17 +202,18 @@ void diskio_detect_devices() {
 	devices[dev_num].sector_size = DISKIO_DEBUG_FILE_SECTOR_SIZE;
 	devices[dev_num].first_sector = 0;
 	mbr_init( &mbr );
-		mbr_read( devices[0], &mbr );
-		for( int i = 0; i < 4; ++i ) {
-			if( mbr_hasPartition( mbr, i + 1 ) == TRUE ) {
-				devices[dev_num + i + 1].type = DISKIO_DEVICE_TYPE_FILE | DISKIO_DEVICE_TYPE_PARTITION;
-				devices[dev_num + i + 1].number = dev_num;
-				devices[dev_num + i + 1].partition = i + 1;
-				devices[dev_num + i + 1].num_sectors = mbr.partition[i].lba_num_sectors;
-				devices[dev_num + i + 1].sector_size = devices[dev_num].sector_size;
-				devices[dev_num + i + 1].first_sector = mbr.partition[i].lba_first_sector;
-			}
+	mbr_read( &devices[0], &mbr );
+	for( i = 0; i < 4; ++i ) {
+		if( mbr_hasPartition( &mbr, i + 1 ) == TRUE ) {
+			devices[dev_num + i + 1].type = DISKIO_DEVICE_TYPE_FILE | DISKIO_DEVICE_TYPE_PARTITION;
+			devices[dev_num + i + 1].number = dev_num;
+			devices[dev_num + i + 1].partition = i + 1;
+			devices[dev_num + i + 1].num_sectors = mbr.partition[i].lba_num_sectors;
+			devices[dev_num + i + 1].sector_size = devices[dev_num].sector_size;
+			devices[dev_num + i + 1].first_sector = mbr.partition[i].lba_first_sector;
 		}
-		dev_num += 1;
+	}
+	dev_num += 1;
 #endif
+	return 0;
 }

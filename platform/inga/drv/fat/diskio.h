@@ -24,6 +24,8 @@
 
 #define DISKIO_MAX_DEVICES 8
 
+#include <stdint.h>
+
 /**
  * Stores the necessary information to identify a device using the diskio-Library.
  */
