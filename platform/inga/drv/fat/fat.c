@@ -187,7 +187,8 @@ uint8_t SPC( uint16_t sec_size, uint16_t bytes ) {
  *
  * This is based upon the FAT specification, which states that the table only works for 512
  * Bytes sized sectors. For that the function SPC is used to compute this right. but
- * it probalby only works for powers of 2 in the bytes_per_sec field.
+ * it probalby only works for powers of 2 in the bytes_per_sec field. It tries to use FAT16
+ * if at all possible, FAT32 only when there is no other choice.
  * \param total_sec_count the total number of sectors of the filesystem
  * \param bytes_per_sec how many bytes are there in one sector
  * \return in the upper two bits is the fat type, either FAT12, FAT16, FAT32 or FAT_INVALID. In the lower 8 bits is the number of sectors per cluster.
@@ -441,7 +442,55 @@ void mkfs_write_fats( uint8_t *buffer, struct diskio_device_info *dev, struct FA
 	}
 }
 
+void mkfs_write_fsinfo( uint8_t *buffer, struct diskio_device_info *dev, struct FAT_Info *fi ) {
+	uint32_t fsi_free_count = 0;
+	uint32_t fsi_nxt_free = 0;
+	// FSI_LeadSig
+	buffer[0] = 0x52; buffer[1] = 0x52; buffer[2] = 0x61; buffer[3] = 0x41;
+	
+	// FSI_Reserved1
+	
+	// FSI_StrucSig
+	buffer[484] = 0x72; buffer[485] = 0x72; buffer[486] = 0x41; buffer[487] = 0x61;
+	
+	// FSI_Free_Count
+	fsi_free_count = (fi->BPB_TotSec - ((fi->BPB_FATSz * fi->BPB_NumFATs) + fi->BPB_RsvdSecCnt)) / fi->BPB_SecPerClus;
+	buffer[488] = (uint8_t) fsi_free_count;       buffer[489] = (uint8_t) fsi_free_count >> 8;
+	buffer[490] = (uint8_t) fsi_free_count >> 16; buffer[491] = (uint8_t) fsi_free_count >> 24;
+	
+	// FSI_Nxt_Free
+	fsi_nxt_free = (fi->BPB_ResvdSecCnt + (fi->BPB_NumFATs * fi->BPB_FATSz));
+	if( fsi_nxt_free % fi->BPB_SecPerClus ) {
+		fsi_nxt_free = (fsi_nxt_free / fi->BPB_SecPerClus) + 1;
+	} else {
+		fsi_nxt_free = (fsi_nxt_free / fi->BPB_SecPerClus);
+	}
+	buffer[492] = (uint8_t) fsi_nxt_free;       buffer[493] = (uint8_t) fsi_nxt_free >> 8;
+	buffer[494] = (uint8_t) fsi_nxt_free >> 16; buffer[495] = (uint8_t) fsi_nxt_free >> 24;	
+	
+	// FSI_Reserved2
+	
+	// FSI_TrailSig
+	buffer[508] = 0x00; buffer[509] = 0x00; buffer[510] = 0x55; buffer[511] = 0xAA;
+	
+	diskio_write_block( dev, 1, buffer );
+}
 
+void set_fat16_entry( struct FAT_Info *fi, uint16_t cluster, uint16_t value ) {
+	uint16_t *fat16_p;
+}
+
+void set_fat32_entry( struct FAT_Info *fi, uint32_t cluster, uint32_t value ) {
+	uint32_t *fat32_p = get_fat_block( 1, 3 ):
+	fat32_p += 2;
+	fat32_p = value;
+	writeback_fat_block();
+}
+
+void mkfs_write_root_directory( uint8_t *buffer, struct diskio_device_info *dev, struct FAT_Info *fi ) {
+	uint32_t FirstRootDirSecNum = fi->BPB_ResvdSecCnt + (fi->BPB_NumFATs * fi->BPB_FATSz);
+	set_fat_entry( fi, 2, EOC );
+}
 
 int mkfs_fat( struct diskio_device_info *dev ) {
 	uint8_t buffer[512];
@@ -450,9 +499,9 @@ int mkfs_fat( struct diskio_device_info *dev ) {
 	mkfs_write_boot_sector( buffer, dev, &fi );	
 	memset( buffer, 0, 512 );
 	mkfs_write_fats( buffer, dev, &fi );
+	memset( buffer, 0, 512 );
 	if( fi->type == FAT32 ) {
 		mkfs_write_fsinfo( buffer, dev, &fi );
-	} else if( fi->type == FAT16 ) {
-		mkfs_write_root_directory( buffer, dev, &fi );
 	}
+	mkfs_write_root_directory( buffer, dev, &fi );
 }

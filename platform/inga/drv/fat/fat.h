@@ -8,6 +8,8 @@
 #define FAT32 2
 #define FAT_INVALID 3
 
+#define EOC 0x0FFFFFFF
+
 struct FAT_Info {
 	uint8_t type; /** Either FAT16, FAT32 or FAT_INVALID */
 	uint16_t BPB_BytesPerSec;
