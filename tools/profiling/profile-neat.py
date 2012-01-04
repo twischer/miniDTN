@@ -7,7 +7,7 @@ import pydot
 
 class MakeList(argparse.Action):
 	def __call__(self, parser, namespace, values, option_string=None):
-		setattr(namespace, self.dest, values.split('.'))
+		setattr(namespace, self.dest, values.split(','))
 
 def split_list(option, opt, value, parser):
 	setattr(parser.values, option.dest, value.split(','))
@@ -106,7 +106,7 @@ def ignore_site(site, onlyfile=False, onlyname=False):
 		return True
 	if filename and filename.split('/')[-1] in options.ignore_files:
 		return True
-	if name and len(options.only_functions) and not name in options.only_functions:
+	if name and len(options.only_functions) and not (name in options.only_functions):
 		return True
 	if filename and len(options.only_files) and not filename.split('/')[-1] in options.only_files:
 		return True
@@ -248,9 +248,15 @@ def generate_callgraph(calls, outfile):
 	graph_functions(graph, options.clusters, options.individual)
 
 	if options.cumulative:
-		avgtime = float(alltime)/len(cumulative)
+		if len(cumulative) == 0:
+			avgtime = 0
+		else:
+			avgtime = float(alltime)/len(cumulative)
 	else:
-		avgtime = float(alltime)/allcount
+		if allcount == 0:
+			avgtime = 0
+		else:
+			avgtime = float(alltime)/allcount
 
 	for fpair in cumulative.keys():
 		if options.cumulative:
@@ -303,13 +309,27 @@ def handle_prof(logfile, header):
 	global opts
 	opts = dict(zip(('num_sites', 'max_sites', 'time_run', 'ticks_per_sec'), [int(i) for i in tempopts]))
 
+	i = 0
+
 	for line in logfile:
+		if i == opts['num_sites']:
+			break
+
+
+		i += 1
 		elements = line.split(':')
 		call = {}
 		symfrom = int(elements[0], 16)
 		symto = int(elements[1], 16)
 		from_el = lookup_symbol(symfrom)
 		to_el = lookup_symbol(symto, funcptr=True)
+
+		from_el.setdefault('time_spent', 0)
+		from_el.setdefault('invocations', 0)
+		to_el.setdefault('time_spent', 0)
+		to_el.setdefault('invocations', 0)
+		if ignore_site(from_el['name'], onlyname=True) or ignore_site(to_el['name'], onlyname=True):
+			continue
 
 		call['from'] = from_el
 		call['to'] = to_el
@@ -318,17 +338,9 @@ def handle_prof(logfile, header):
 		calls.append(call)
 
 		# Keep track of how much time we're actually spending in here
-		from_el.setdefault('time_spent', 0)
 		from_el['time_spent'] -= call['time']
-		from_el.setdefault('invocations', 0)
-		to_el.setdefault('time_spent', 0)
 		to_el['time_spent'] += call['time']
-		to_el.setdefault('invocations', 0)
 		to_el['invocations'] += call['count']
-
-		if len(calls) == opts['num_sites']:
-			break
-
 
 
 	if options.graph:
