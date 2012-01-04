@@ -24,7 +24,7 @@ tests:
       - name: sender
         programdir: examples/uDTN/sender
         program: uDTN-sender
-        instrument: [examples/uDTN/sender/uDTN-sender.c,platform/inga/*.c]
+        instrument: [examples/uDTN/sender/uDTN-sender.c,platform/inga/*.c,core/net/uDTN/*.c]
         graph_options: ""
       - name: receiver
         programdir: examples/uDTN/sink

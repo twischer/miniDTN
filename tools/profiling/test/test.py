@@ -24,6 +24,7 @@ class Device(object):
 	"""Represents the actual device (Sky, INGA, ...) partaking in the test"""
 	startpattern = "*******Booting Contiki"
 	endpattern = "ContikiEND"
+	profilepattern = ["PROF", "SPROF"]
 	def __init__(self, config):
 		self.name = config['name']
 		self.id = config['id']
@@ -39,14 +40,47 @@ class Device(object):
 		self.graph_options = config['graph_options']
 
 	def build(self):
-		raise Exception('Unimplemented')
+		try:
+			os.chdir(self.programdir)
+		except OSError as err:
+			self.logger.error("Could not change to %s", self.programdir)
+			raise
+
+		try:
+			self.logger.info("Cleaning %s", self.programdir)
+			output = subprocess.check_output(["make", "TARGET=%s"%(self.platform), "clean"], stderr=subprocess.STDOUT)
+			self.logger.debug(output)
+
+			self.logger.info("Building %s", os.path.join(self.programdir, self.program))
+			output = subprocess.check_output(["make", "TARGET=%s"%(self.platform), self.program], stderr=subprocess.STDOUT)
+			self.logger.debug(output)
+			time.sleep(2)
+			touchcall = ["touch"]
+			touchcall.extend([os.path.join(self.contikibase, instrpat) for instrpat in self.instrument])
+			self.logger.debug(' '.join(touchcall))
+			## XXX:Danger, Will Robinson! Do not use shell with user input
+			output = subprocess.check_output(' '.join(touchcall), stderr=subprocess.STDOUT, shell=True)
+			self.logger.debug(output)
+			self.logger.info("Building instrumentation for %s", os.path.join(self.programdir, self.program))
+			output = subprocess.check_output(["make", "TARGET=%s"%(self.platform), self.program], stderr=subprocess.STDOUT, env={'CFLAGS': '-finstrument-functions'})
+			self.logger.debug(output)
+		except subprocess.CalledProcessError as err:
+			self.logger.error(err)
+			self.logger.error(err.output)
+			raise
 	def upload(self):
 		raise Exception('Unimplemented')
 	def reset(self):
 		raise Exception('Unimplemented')
-	def create_graph(self):
-		pass
-#		subprocess.check_output
+	def create_graph(self, log):
+		basename = os.path.join(self.logdir, "profile")
+		svgname = "%s.svg"%(basename)
+		pdfname = "%s.pdf"%(basename)
+
+		profile = subprocess.Popen(["profile-neat.py", "-p", self.prefix, "-g", svgname, self.binary,  "-"], stdin=subprocess.PIPE, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+		(output, tmp) = profile.communicate(log)
+		logging.info(output)
+		output = subprocess.check_output(["inkscape", "-A", pdfname, svgname])
 	def recordlog(self):
 		logfile = os.path.join(self.logdir, self.name)
 		self.reset()
@@ -64,6 +98,7 @@ class Device(object):
 		ser = serial.Serial(port=self.path, baudrate=self.baudrate)
 
 		resetseen = 0
+		profilelines = -1
 		for line in ser:
 			line = line.strip()
 			self.logger.debug(line)
@@ -74,6 +109,18 @@ class Device(object):
 
 			if line.startswith(self.startpattern):
 				resetseen += 1
+			for profpat in self.profilepattern:
+				if line.startswith(profpat):
+					profilelines = int(line.split(':')[1]) + 1
+					profiledata = ""
+
+			if profilelines > 0:
+				profiledata += line
+				profiledata += "\n"
+				profilelines -= 1
+			if profilelines == 0:
+				self.create_graph(profiledata)
+				profilelines = -1
 
 
 		ser.close()
@@ -92,25 +139,6 @@ class INGA(Device):
 	prefix="avr"
 	platform="inga"
 	baudrate=19200
-	def build(self):
-		try:
-			os.chdir(self.programdir)
-		except OSError as err:
-			self.logger.error("Could not change to %s", self.programdir)
-			raise
-
-		try:
-			self.logger.info("Cleaning %s", self.programdir)
-			output = subprocess.check_output(["make", "TARGET=inga", "clean"], stderr=subprocess.STDOUT)
-			self.logger.debug(output)
-
-			self.logger.info("Building %s", os.path.join(self.programdir, self.program))
-			output = subprocess.check_output(["make", "TARGET=inga", self.program], stderr=subprocess.STDOUT)
-			self.logger.debug(output)
-		except subprocess.CalledProcessError as err:
-			self.logger.error(err)
-			self.logger.error(err.output)
-			raise
 
 	def upload(self):
 		try:
@@ -122,7 +150,8 @@ class INGA(Device):
 		try:
 			self.logger.info("Uploading %s", os.path.join(self.programdir, self.program))
 			output = subprocess.check_output(["make", "TARGET=inga", "MOTES=%s"%(self.path), "%s.upload"%(self.program)], stderr=subprocess.STDOUT)
-			shutil.copy("%s.inga"%(self.program), self.logdir)
+			self.binary = os.path.join(self.logdir, self.program)
+			shutil.copyfile("%s.inga"%(self.program), self.binary)
 			self.logger.debug(output)
 		except subprocess.CalledProcessError as err:
 			self.logger.error(err)
@@ -182,8 +211,13 @@ class Testcase(object):
 			thread.start()
 
 		# Wait until all threads have finished
-		for thread in threads:
-			thread.join()
+		timeout = True
+		while timeout:
+			timeout = False
+			for thread in threads:
+				thread.join(1)
+				if thread.isAlive():
+					timeout = True
 
 class Testsuite(object):
 	def __init__(self, suitecfg, devcfg, testcfg):
@@ -202,7 +236,7 @@ class Testsuite(object):
 			deviceclass = globals()[devicecfg['class']]
 			deviceinst = deviceclass(devicecfg)
 			self.devices[devicecfg['name']] = deviceinst
-		
+
 		self.tests = {}
 		for testcfg in testcfg:
 			testcfg['logbase'] = self.logdir
@@ -251,6 +285,7 @@ class Testsuite(object):
 				logging.error("Test %s failed, traceback follows", testname)
 				logging.error(traceback.format_exc())
 				failure.append(test)
+				continue
 
 			success.append(test)
 
