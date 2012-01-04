@@ -86,6 +86,7 @@ int diskio_rw_op( struct diskio_device_info *dev, uint32_t block_start_address, 
 	switch( dev->type & DISKIO_DEVICE_TYPE_MASK ) {
 		uint8_t ret_code = 0;
 		case DISKIO_DEVICE_TYPE_SD_CARD:
+			#ifndef DISKIO_DEBUG
 			switch( op ) {
 				case DISKIO_OP_READ_BLOCK:
 					ret_code = microSD_read_block( block_start_address, buffer );
@@ -107,6 +108,7 @@ int diskio_rw_op( struct diskio_device_info *dev, uint32_t block_start_address, 
 					return DISKIO_ERROR_OPERATION_NOT_SUPPORTED;
 					break;
 			}
+			#endif
 			break;
 		case DISKIO_DEVICE_TYPE_GENERIC_FLASH:
 			switch( op ) {
@@ -166,27 +168,30 @@ struct diskio_device_info * diskio_devices() {
 int diskio_detect_devices() {	
 	struct mbr mbr;
 	int dev_num = 0;
-	int i = 0;
+	int i = 0, index = 0;
 #ifndef DISKIO_DEBUG
 	if( microSD_init() == 0 ) {
-		devices[dev_num].type = DISKIO_DEVICE_TYPE_SD_CARD;
-		devices[dev_num].number = dev_num;		
-		devices[dev_num].num_sectors = microSD_query( MICROSD_CARD_SIZE );
-		devices[dev_num].sector_size = microSD_query( MICROSD_CARD_SECTOR_SIZE );
-		devices[dev_num].first_sector = 0;
+		devices[index].type = DISKIO_DEVICE_TYPE_SD_CARD;
+		devices[index].number = dev_num;		
+		devices[index].num_sectors = microSD_query( MICROSD_CARD_SIZE );
+		devices[index].sector_size = microSD_query( MICROSD_CARD_SECTOR_SIZE );
+		devices[index].first_sector = 0;
 		mbr_init( &mbr );
-		mbr_read( devices[0], &mbr );
+		mbr_read( devices[index], &mbr );
+		index += 1;
 		for( i = 0; i < 4; ++i ) {
 			if( mbr_hasPartition( mbr, i + 1 ) == TRUE ) {
-				devices[dev_num + i + 1].type = DISKIO_DEVICE_TYPE_SD_CARD | DISKIO_DEVICE_TYPE_PARTITION;
-				devices[dev_num + i + 1].number = dev_num;
-				devices[dev_num + i + 1].partition = i + 1;
-				devices[dev_num + i + 1].num_sectors = mbr.partition[i].lba_num_sectors;
-				devices[dev_num + i + 1].sector_size = devices[dev_num].sector_size;
-				devices[dev_num + i + 1].first_sector = mbr.partition[i].lba_first_sector;
+				devices[index].type = DISKIO_DEVICE_TYPE_SD_CARD | DISKIO_DEVICE_TYPE_PARTITION;
+				devices[index].number = dev_num;
+				devices[index].partition = i + 1;
+				devices[index].num_sectors = mbr.partition[i].lba_num_sectors;
+				devices[index].sector_size = devices[dev_num].sector_size;
+				devices[index].first_sector = mbr.partition[i].lba_first_sector;
+				index += 1:
 			}
 		}
 		dev_num += 1;
+		index += 1;
 	}
 #else
 	if( !handle ) {
@@ -196,24 +201,27 @@ int diskio_detect_devices() {
 			//exit(1);
 		}
 	}
-	devices[dev_num].type == DISKIO_DEVICE_TYPE_FILE;
-	devices[dev_num].number = dev_num;
-	devices[dev_num].num_sectors = DISKIO_DEBUG_FILE_NUM_SECTORS;
-	devices[dev_num].sector_size = DISKIO_DEBUG_FILE_SECTOR_SIZE;
-	devices[dev_num].first_sector = 0;
+	devices[index].type = DISKIO_DEVICE_TYPE_FILE;
+	devices[index].number = dev_num;
+	devices[index].num_sectors = DISKIO_DEBUG_FILE_NUM_SECTORS;
+	devices[index].sector_size = DISKIO_DEBUG_FILE_SECTOR_SIZE;
+	devices[index].first_sector = 0;
 	mbr_init( &mbr );
-	mbr_read( &devices[0], &mbr );
+	mbr_read( &devices[index], &mbr );
+	index += 1;
 	for( i = 0; i < 4; ++i ) {
 		if( mbr_hasPartition( &mbr, i + 1 ) == TRUE ) {
-			devices[dev_num + i + 1].type = DISKIO_DEVICE_TYPE_FILE | DISKIO_DEVICE_TYPE_PARTITION;
-			devices[dev_num + i + 1].number = dev_num;
-			devices[dev_num + i + 1].partition = i + 1;
-			devices[dev_num + i + 1].num_sectors = mbr.partition[i].lba_num_sectors;
-			devices[dev_num + i + 1].sector_size = devices[dev_num].sector_size;
-			devices[dev_num + i + 1].first_sector = mbr.partition[i].lba_first_sector;
+			devices[index].type = DISKIO_DEVICE_TYPE_FILE | DISKIO_DEVICE_TYPE_PARTITION;
+			devices[index].number = dev_num;
+			devices[index].partition = i + 1;
+			devices[index].num_sectors = mbr.partition[i].lba_num_sectors;
+			devices[index].sector_size = devices[dev_num].sector_size;
+			devices[index].first_sector = mbr.partition[i].lba_first_sector;
+			index += 1;
 		}
 	}
 	dev_num += 1;
+	index += 1;
 #endif
 	return 0;
 }
