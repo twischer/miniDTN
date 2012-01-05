@@ -19,6 +19,7 @@ void diskio_read_block_file( uint32_t block_start_address, uint8_t *buffer ) {
 	for( i = 0; i < DISKIO_DEBUG_FILE_SECTOR_SIZE; ++i ) {
 		buffer[i] = (uint8_t) getc( handle );
 	}
+	fflush( handle);
 }
 
 void diskio_read_blocks_file( uint32_t block_start_address, uint8_t num_blocks, uint8_t *buffer ) {
@@ -30,6 +31,7 @@ void diskio_read_blocks_file( uint32_t block_start_address, uint8_t num_blocks, 
 			buffer[i + DISKIO_DEBUG_FILE_SECTOR_SIZE * blocks] = (uint8_t) getc( handle );
 		}
 	}
+	fflush( handle);
 }
 
 void diskio_write_block_file( uint32_t block_start_address, uint8_t *buffer ) {
@@ -38,6 +40,7 @@ void diskio_write_block_file( uint32_t block_start_address, uint8_t *buffer ) {
 	for( i = 0; i < DISKIO_DEBUG_FILE_SECTOR_SIZE; ++i ) {
 		putc( buffer[i], handle );
 	}
+	fflush( handle);
 }
  /*ToDo: Rewrite with fread and fwrite*/
  /*ToDo: Test if it replaces data, not appends it*/
@@ -50,6 +53,7 @@ void diskio_write_blocks_file( uint32_t block_start_address, uint8_t num_blocks,
 			putc( buffer[i + DISKIO_DEBUG_FILE_SECTOR_SIZE * blocks], handle );
 		}
 	}
+	fflush( handle);
 }
 #endif
 
@@ -195,7 +199,7 @@ int diskio_detect_devices() {
 	}
 #else
 	if( !handle ) {
-		handle = fopen( DISKIO_DEBUG_FILE_NAME, "rwb" );
+		handle = fopen( DISKIO_DEBUG_FILE_NAME, "r+b" );
 		if( !handle ) {
 			/*CRAP!*/
 			//exit(1);

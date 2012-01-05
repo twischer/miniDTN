@@ -1,15 +1,15 @@
 ﻿#include "mbr.h"
 #include <string.h>
 
-static uint8_t mbr_buffer[512];
+uint8_t mbr_buffer[512];
 
 void mbr_init( struct mbr *mbr ) {
 	int i = 0;
 	for( i = 0; i < 4; ++i ) {
+		// Everything else is set to 0
+		memset( (&(mbr->partition[i])), 0, 16 );
 		// Set Status to invalid (everything other than 0x00 and 0x80 is invalid
 		mbr->partition[i].status = 0x01;
-		// Everything else is set to 0
-		memset( (&(mbr->partition[i])) + 1, 0, 15 );
 	}
 }
 
