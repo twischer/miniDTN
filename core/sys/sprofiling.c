@@ -43,7 +43,7 @@
 #ifdef SPROFILES_CONF_MAX
 #define MAX_PROFILES SPROFILES_CONF_MAX
 #else
-#define MAX_PROFILES 100
+#define MAX_PROFILES 1
 #endif /* MAX_CONF_PROFILES */
 
 static struct sprofile_t stat_profile;
