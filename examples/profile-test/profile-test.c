@@ -81,11 +81,12 @@ PROCESS_THREAD(led_test_red, ev, data)
   printf("Starting LED test (red)\n");
 
   while (1) {
-	  leds_on(LEDS_RED);
-	  for (i=0;i<48;i++) {
-		  asm volatile("nop");
-	  }
-	  leds_off(LEDS_RED);
+	  leds_on(LEDS_YELLOW);
+         for (i=0;i<48;i++) {
+                 asm volatile("nop");
+
+         }
+	  leds_off(LEDS_YELLOW);
 	  etimer_set(&timer, CLOCK_SECOND/50);
 	  PROCESS_WAIT_UNTIL(etimer_expired(&timer));
   }
@@ -98,20 +99,33 @@ PROCESS_THREAD(profiler, ev, data)
 {
 	static struct etimer timer;
 	PROCESS_BEGIN();
+
+#ifdef STAT_PROFILE
 	sprofiling_init();
+	sprofiling_start();
+#else
 	profiling_init();
 	profiling_start();
-	sprofiling_start();
+#endif
 
 	while (1) {
-		etimer_set(&timer, CLOCK_SECOND*5);
+		etimer_set(&timer, CLOCK_SECOND*30);
 		PROCESS_WAIT_UNTIL(etimer_expired(&timer));
+		etimer_set(&timer, CLOCK_SECOND*30);
+		PROCESS_WAIT_UNTIL(etimer_expired(&timer));
+		etimer_set(&timer, CLOCK_SECOND*30);
+		PROCESS_WAIT_UNTIL(etimer_expired(&timer));
+		etimer_set(&timer, CLOCK_SECOND*30);
+		PROCESS_WAIT_UNTIL(etimer_expired(&timer));
+#ifdef STAT_PROFILE
 		sprofiling_stop();
+		sprofiling_report(0);
+		sprofiling_start();
+#else
 		profiling_stop();
 		profiling_report(0);
-		sprofiling_report(0);
 		profiling_start();
-		sprofiling_start();
+#endif
 	}
 	PROCESS_END();
 }

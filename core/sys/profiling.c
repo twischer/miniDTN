@@ -42,7 +42,7 @@
 #ifdef PROFILES_CONF_MAX
 #define MAX_PROFILES PROFILES_CONF_MAX
 #else
-#define MAX_PROFILES 100
+#define MAX_PROFILES 1
 #endif /* MAX_CONF_PROFILES */
 
 #ifdef PROFILES_CONF_STACKSIZE
@@ -101,10 +101,19 @@ void profiling_init(void)
 
 void profiling_start(void)
 {
+	clock_time_t now;
+	unsigned short now_fine;
+
 	if (profile.status & PROFILING_STARTED)
 		return;
 
-	profile.time_start = ((unsigned long)clock_time()<<8) + clock_fine()*256/fine_count;
+	do {
+		now_fine = clock_fine();
+		now = clock_time();
+	} while (now_fine != clock_fine());
+
+
+	profile.time_start = ((unsigned long)now<<8) + now_fine*256/fine_count;
 	profile.status |= PROFILING_STARTED;
 
 	/* Reset the callstack */
@@ -114,11 +123,19 @@ void profiling_start(void)
 void profiling_stop(void)
 {
 	unsigned long temp;
+	clock_time_t now;
+	unsigned short now_fine;
 
 	if (!profile.status & PROFILING_STARTED)
 		return;
 
-	temp = ((unsigned long)clock_time()<<8) + clock_fine()*256/fine_count;
+	do {
+		now_fine = clock_fine();
+		now = clock_time();
+	} while (now_fine != clock_fine());
+
+
+	temp = ((unsigned long)now<<8) + now_fine*256/fine_count;
 
 	profile.time_run += (temp - profile.time_start);
 	profile.status &= ~PROFILING_STARTED;
@@ -182,6 +199,8 @@ static inline struct profile_site_t *find_or_add_site(void *func, void *caller, 
 void __cyg_profile_func_enter(void *func, void *caller)
 {
       struct profile_site_t *site;
+      clock_time_t now;
+      unsigned short now_fine;
 
       if (!(profile.status&PROFILING_STARTED) || (profile.status&PROFILING_INTERNAL))
 	      return;
@@ -196,7 +215,12 @@ void __cyg_profile_func_enter(void *func, void *caller)
 	      goto out;
 
       /* Update the call stack */
-      callstack[stacklevel].time_start = ((unsigned long)clock_time()<<8) + clock_fine()*256/fine_count;
+      do {
+	      now_fine = clock_fine();
+	      now = clock_time();
+      } while (now_fine != clock_fine());
+
+      callstack[stacklevel].time_start = ((unsigned long)now<<8) + now_fine*256/fine_count;
       callstack[stacklevel].func = func;
       callstack[stacklevel].caller = caller;
 
@@ -210,12 +234,20 @@ void __cyg_profile_func_exit(void *func, void *caller)
 {
 	unsigned long temp;
 	struct profile_site_t *site;
+	clock_time_t now;
+	unsigned short now_fine;
 
       if (!(profile.status&PROFILING_STARTED) || (profile.status&PROFILING_INTERNAL))
 	      return;
 
       profiling_internal(1);
-      temp = ((unsigned long)clock_time()<<8) + clock_fine()*256/fine_count;
+
+      do {
+	      now_fine = clock_fine();
+	      now = clock_time();
+      } while (now_fine != clock_fine());
+
+      temp = ((unsigned long)now<<8) + now_fine*256/fine_count;
 
       /* See if this call was recorded on the call stack */
       if (stacklevel > 0 && callstack[stacklevel-1].func == func &&
