@@ -384,10 +384,27 @@ def handle_sprof(logfile, header):
 		if len(sites) == opts['num_sites']:
 			break
 
-	sites = sorted(sites, key=lambda site: site['count'], reverse=options.reverse)
+	if options.individual:
+		sites = sorted(sites, key=lambda site: site['count'], reverse=options.reverse)
+		for site in sites:
+			if ignore_site(site['addr']):
+				continue
+			print "(%s) %s:%s (0x%x) %i times"%(site['addr']['file'], site['addr']['name'], site['addr']['line'], site['addr']['addr'], site['count'])
+	else:
+		filtered_sites = {}
+		for site in sites:
+			if ignore_site(site['addr']):
+				continue
+			if options.cumulative:
+				fsite = filtered_sites.setdefault((site['addr']['file'], site['addr']['name']), {'name': site['addr']['name'], 'file': site['addr']['file'], 'line': '()', 'count': 0})
+				fsite['count'] += site['count']
+			else:
+				fsite = filtered_sites.setdefault((site['addr']['file'], site['addr']['name'], site['addr']['line']), {'name': site['addr']['name'], 'file': site['addr']['file'], 'line': site['addr']['line'], 'count': 0})
+				fsite['count'] += site['count']
 
-	for site in sites:
-		print "%s:%s %i times"%(site['addr']['name'], site['addr']['line'], site['count'])
+		filtered_sites = sorted(filtered_sites.values(), key=lambda site: site['count'], reverse=options.reverse)
+		for site in filtered_sites:
+			print "(%s) %s:%s %i times"%(site['file'], site['name'], site['line'], site['count'])
 
 
 # Read the header
