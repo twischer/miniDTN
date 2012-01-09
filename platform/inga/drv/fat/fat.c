@@ -5,6 +5,8 @@
 
 #define FAT_FD_POOL_SIZE 5
 
+uint8_t buffer
+
 struct file {
 	//metadata
 	/** Cluster Position on disk */
@@ -32,12 +34,16 @@ struct dir_entry {
 	uint32_t DIR_FileSize;
 };
 
-uint32_t find_file( const char *path ) {
+uint8_t lookup( const char *path, int start_idx, int end_idx, struct dir_entry *dir_entry ) {
+
+}
+
+uint32_t find_file_cluster( const char *path ) {
 #ifdef DISKIO_PATH_SUPPORT
 	//: /[DirNum]/[Directories]/[name].[ext]
 #else
 	int start_idx = 0, end_idx = 0, i;
-	struct dir_entry;
+	struct dir_entry dir_entry;
 	init( dir_entry );
 	for( i = 0; i < strlen(path); ++i ) {
 		if( start_idx == end_idx && path[i] != '/' ) {
