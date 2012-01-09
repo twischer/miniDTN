@@ -82,6 +82,34 @@
  */
 uint8_t microSD_init(void);
 
+/**
+ * \brief This function will read the CSD (16 Bytes) of the SD-Card.
+ *
+ * \param *buffer Pointer to a block buffer, MUST hold at least 16 Bytes.
+ *
+ * \return <ul>
+ *  		<li> 0 : SD-Card CSD read was successful
+ *  		<li> 1 : CMD9 failure!
+ * 		   </ul>
+ */
+uint8_t microSD_read_csd( uint8_t *buffer );
+
+/**
+ * \brief This function returns the number of bytes in one block.
+ *
+ *
+ * \return Number of bytes per block on the SD-Card
+ */
+uint16_t microSD_get_block_size();
+
+/**
+ * \brief This function returns the number of blocks on the SD-Card.
+ *
+ *
+ * \return Number of blocks on the SD-Card
+ */
+uint32_t microSD_get_card_block_count();
+
 uint8_t microSD_deinit(void);
 
 /**

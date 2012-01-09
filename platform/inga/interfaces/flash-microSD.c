@@ -37,10 +37,66 @@
  * 		Original source: Ulrich Radig
  * 		<< modified by >>
  *      Ulf Kulau <kulau@ibr.cs.tu-bs.de>
+ *		Christoph Peltz <peltz@ibr.cs.tu-bs.de>
  *
  */
 
 #include "flash-microSD.h"
+
+/**
+ * \brief The number of bytes in one block on the SD-Card.
+ */
+uint16_t microSD_block_size = 512;
+/**
+ * \brief Number of blocks on the SD-Card.
+ */
+uint32_t microSD_card_block_count = 0;
+
+uint16_t microSD_get_block_size() {
+	return microSD_block_size;
+}
+
+uint32_t microSD_get_card_block_count() {
+	return microSD_card_block_count;
+}
+
+uint8_t microSD_read_csd( uint8_t *buffer ) {
+	/*CMD9 this is just a guess, need to verify TODO*/
+	uint8_t cmd[6] = { 0x49, 0x00, 0x00, 0x00, 0x00, 0xFF };
+	if( microSD_write_cmd( cmd ) != 0x00 ) {
+#if DEBUG
+		printf("\nCMD9 failure!");
+#endif
+		return 1;
+	}
+
+	/*wait for the 0xFE start byte*/
+	while (mspi_transceive(MSPI_DUMMY_BYTE) != 0xFE) {
+	};
+
+	for (i = 0; i < 16; i++) {
+		*buffer++ = mspi_transceive(MSPI_DUMMY_BYTE);
+	}
+	/*CRC-Byte: don't care*/
+	mspi_transceive(MSPI_DUMMY_BYTE);
+	mspi_transceive(MSPI_DUMMY_BYTE);
+
+	/*release chip select and disable microSD spi*/
+	mspi_chip_release(MICRO_SD_CS);
+
+	return 0;
+}
+
+void microSD_setSDCInfo( uint8_t *csd ) {
+	/*Bits 80 till 83 are the READ_BL_LEN*/
+	uint8_t READ_BL_LEN = csd[10] & 0x0F;
+	/*Bits 62 - 73 are C_SIZE*/
+	uint32_t C_SIZE = (csd[7] & 07000) >> 6 + (csd[8] << 2) + (csd[9] & 07 << 10);
+	/*Bits 47 - 49 are C_SIZE_MULT*/
+	uint8_t C_SIZE_MULT = csd[6] & 0x07;
+	microSD_card_block_count = (C_SIZE + 1) * (2 << (C_SIZE_MULT + 2));
+	microSD_block_size = 2 << READ_BL_LEN;
+}
 
 uint8_t microSD_init(void) {
 	uint16_t i;
@@ -67,6 +123,7 @@ uint8_t microSD_init(void) {
 	}
 	/*CMD0: set sd card to idle state*/
 	uint8_t cmd[6] = { 0x40, 0x00, 0x00, 0x00, 0x00, 0x95 };
+	uint8_t csd[16];
 	i = 0;
 	while (microSD_write_cmd(&cmd[0]) != 0x01) {
 		i++;
@@ -88,6 +145,9 @@ uint8_t microSD_init(void) {
 			return 2;
 		}
 	}
+	if( !microSD_read_csd( csd ) )
+		return 3;
+	microSD_setSDCInfo( csd );
 	mspi_chip_release(MICRO_SD_CS);
 	return 0;
 }

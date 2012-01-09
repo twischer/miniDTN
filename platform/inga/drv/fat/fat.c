@@ -5,7 +5,7 @@
 
 #define FAT_FD_POOL_SIZE 5
 
-uint8_t buffer
+uint8_t *buffer = 0;
 
 struct file {
 	//metadata
