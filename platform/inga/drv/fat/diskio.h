@@ -8,6 +8,9 @@
 #define DISKIO_DEVICE_TYPE_FILE 4
 #define DISKIO_DEVICE_TYPE_PARTITION 128
 
+/** Bigger sectors then this are not supported. May be reduced down to 512 to use less memory. */
+#define DISKIO_MAX_SECTOR_SIZE 4096
+
 //Mask used to ignore modifiers like the PARTITION flag
 #define DISKIO_DEVICE_TYPE_MASK 0x7f
 
@@ -21,6 +24,7 @@
 #define DISKIO_ERROR_DEVICE_TYPE_NOT_RECOGNIZED 3
 #define DISKIO_ERROR_OPERATION_NOT_SUPPORTED 4
 #define DISKIO_ERROR_TO_BE_IMPLEMENTED 5
+#define DISKIO_FAILURE 6
 
 #define DISKIO_MAX_DEVICES 8
 

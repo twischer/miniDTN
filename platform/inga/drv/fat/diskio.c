@@ -173,6 +173,7 @@ int diskio_detect_devices() {
 	struct mbr mbr;
 	int dev_num = 0;
 	int i = 0, index = 0;
+
 #ifndef DISKIO_DEBUG
 	if( microSD_init() == 0 ) {
 		devices[index].type = DISKIO_DEVICE_TYPE_SD_CARD;
@@ -180,6 +181,9 @@ int diskio_detect_devices() {
 		devices[index].num_sectors = microSD_get_card_block_count();
 		devices[index].sector_size = microSD_get_block_size();
 		devices[index].first_sector = 0;
+		if( devices[index].sector_size > DISKIO_MAX_SECTOR_SIZE )
+			return DISKIO_FAILURE;
+
 		mbr_init( &mbr );
 		mbr_read( devices[index], &mbr );
 		index += 1;
@@ -194,6 +198,7 @@ int diskio_detect_devices() {
 				index += 1:
 			}
 		}
+
 		dev_num += 1;
 		index += 1;
 	}
@@ -202,7 +207,7 @@ int diskio_detect_devices() {
 		handle = fopen( DISKIO_DEBUG_FILE_NAME, "r+b" );
 		if( !handle ) {
 			/*CRAP!*/
-			return 1;
+			return DISKIO_FAILURE;
 		}
 	}
 	devices[index].type = DISKIO_DEVICE_TYPE_FILE;
@@ -227,5 +232,5 @@ int diskio_detect_devices() {
 	dev_num += 1;
 	index += 1;
 #endif
-	return 0;
+	return DISKIO_SUCCESS;
 }

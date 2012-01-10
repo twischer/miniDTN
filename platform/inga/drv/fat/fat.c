@@ -2,10 +2,11 @@
 #include <core/cfs/cfs.h>
 #include "fat.h"
 #include <string.h>
+#include <core/lib/memb.h>
 
 #define FAT_FD_POOL_SIZE 5
 
-uint8_t *buffer = 0;
+uint8_t sector_buffer[DISKIO_MAX_SECTOR_SIZE] = 0;
 
 struct file {
 	//metadata
@@ -18,6 +19,11 @@ struct file_desc {
 	struct file *file;
 	uint8_t flags;
 };
+
+struct file_system {
+	struct diskio_device_info *dev;
+	struct FAT_info info;
+} mounted;
 
 struct file_desc fat_fd_pool[FAT_FD_POOL_SIZE];
 
@@ -33,6 +39,22 @@ struct dir_entry {
 	uint16_t DIR_FstClusLO;
 	uint32_t DIR_FileSize;
 };
+
+uint8_t mount_device( struct diskio_device_info *dev ) {
+	if (mounted.dev != 0) {
+		umount_device();
+	}
+
+	//reallocate sector buffer
+	//read first sector into buffer
+	//parse bootsector
+	//return 1 if bs is bullshit
+	//call determine_fat_type
+	//return 2 if unsupported
+
+	mounted.dev = dev;
+	return 0;
+}
 
 uint8_t lookup( const char *path, int start_idx, int end_idx, struct dir_entry *dir_entry ) {
 
@@ -119,9 +141,9 @@ cfs_closedir(cfs_dir *dirp)
  * Determines the type of the fat by using the BPB.
  */
 uint8_t determine_fat_type( uint32_t TotSec, uint16_t ResvdSecCnt, uint8_t NumFATs, uint32_t FATSz, uint32_t RootDirSectors, uint8_t SecPerClus ) {
-	uint32_t DataSec = TotSec - (ResvdSecCnt + (NumFATs * FATSz) + RootDirSectors;
+	uint32_t DataSec = TotSec - (ResvdSecCnt + (NumFATs * FATSz) + RootDirSectors);
 	uint32_t CountofClusters = DataSec / SecPerClus;
-	If(CountofClusters < 4085) {
+	if(CountofClusters < 4085) {
 		/* Volume is FAT12 */
 		return FAT12;
 	} else if(CountofClusters < 65525) {
