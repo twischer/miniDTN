@@ -176,7 +176,7 @@ uint8_t microSD_read_block(uint32_t addr, uint8_t *buffer) {
 	while (mspi_transceive(MSPI_DUMMY_BYTE) != 0xFE) {
 	};
 
-	for (i = 0; i < 512; i++) {
+	for (i = 0; i < microSD_block_size; i++) {
 		*buffer++ = mspi_transceive(MSPI_DUMMY_BYTE);
 	}
 	/*CRC-Byte: don't care*/
@@ -223,7 +223,7 @@ uint8_t microSD_write_block(uint32_t addr, uint8_t *buffer) {
 	mspi_transceive(0xFE);
 
 	/*send 1 block (512byte) to the microSD card*/
-	for (i = 0; i < 512; i++) {
+	for (i = 0; i < microSD_block_size; i++) {
 		mspi_transceive(*buffer++);
 	}
 

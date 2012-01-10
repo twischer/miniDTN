@@ -113,10 +113,10 @@ uint32_t microSD_get_card_block_count();
 uint8_t microSD_deinit(void);
 
 /**
- * \brief This function will read one block (512Byte) of the SD-Card.
+ * \brief This function will read one block (512, 1024, 2048 or 4096Byte) of the SD-Card.
  *
  * \param addr Block address
- * \param *buffer Pointer to a block buffer
+ * \param *buffer Pointer to a block buffer (needs to be as long es microSD_get_block_size()).
  *
  * \return <ul>
  *  		<li> 0 : SD-Card block read was successful
@@ -126,10 +126,10 @@ uint8_t microSD_deinit(void);
 uint8_t microSD_read_block(uint32_t addr, uint8_t *buffer);
 
 /**
- * \brief This function will write one block (512Byte) of the SD-Card.
+ * \brief This function will write one block (512, 1024, 2048 or 4096Byte) of the SD-Card.
  *
  * \param addr Block address
- * \param *buffer Pointer to a block buffer
+ * \param *buffer Pointer to a block buffer (needs to be as long es microSD_get_block_size()).
  *
  * \return <ul>
  *  		<li> 0 : SD-Card block write was successful
