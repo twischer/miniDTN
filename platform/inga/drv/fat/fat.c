@@ -7,6 +7,7 @@
 #define FAT_FD_POOL_SIZE 5
 
 uint8_t sector_buffer[DISKIO_MAX_SECTOR_SIZE] = 0;
+uint32_t sector_buffer_addr = 0;
 
 struct file {
 	//metadata
@@ -40,51 +41,178 @@ struct dir_entry {
 	uint32_t DIR_FileSize;
 };
 
-uint8_t mount_device( struct diskio_device_info *dev ) {
+/**
+ * Determines the type of the fat by using the BPB.
+ */
+uint8_t determine_fat_type( struct FAT_Info *info ) {
+	uint16_t RootDirSectors = ((info->BPB_RootEntCnt * 32) + (info->BPB_BytsPerSec – 1)) / info->BPB_BytsPerSec;
+	uint32_t DataSec = info->BPB_TotSec - (info->BPB_ResvdSecCnt + (info->BPB_NumFATs * info->BPB_FATSz) + RootDirSectors);
+	uint32_t CountofClusters = DataSec / SecPerClus;
+	if(CountofClusters < 4085) {
+		/* Volume is FAT12 */
+		return FAT12;
+	} else if(CountofClusters < 65525) {
+		/* Volume is FAT16 */
+		return FAT16;
+	} else {
+		/* Volume is FAT32 */
+		return FAT32;
+	}
+}
+
+/**
+ * Parses the Bootsector of a FAT-Filesystem and validates it.
+ *
+ * \param buffer One sector of the filesystem, must be at least 512 Bytes long.
+ * \param info The FAT_Info struct which gets populated with the FAT information.
+ * \return <ul>
+ *          <li> 0 : Bootsector seems okay.
+ *          <li> 1 : BPB_BytesPerSec is not a power of 2
+ *          <li> 2 : BPB_SecPerClus is not a power of 2
+ *          <li> 4 : Bytes per Cluster is more than 32K
+ *          <li> 8 : More than 2 FATs (not supported)
+ *          <li> 16: BPB_TotSec is 0
+ *          <li> 32: BPB_FATSz is 0
+ *          <li> 64: FAT Signature isn't correct
+ *         </ul>
+ *         More than one error flag may be set but return is 0 on no error.
+ */
+uint8_t parse_bootsector( uint8_t *buffer, struct FAT_Info *info ) {
+	int ret = 0;
+	info->BPB_BytesPerSec = buffer[11] + ((uint16_t) buffer[12]) << 8;
+	info->BPB_SecPerClus = buffer[13];
+	info->BPB_RsvdSecCnt = buffer[14] + ((uint16_t) buffer[15]) << 8;
+	info->BPB_NumFATs = buffer[16];
+	info->BPB_RootEntCnt = buffer[17] + ((uint16_t) buffer[18]) << 8;
+	info->BPB_TotSec = buffer[19] + ((uint16_t) buffer[20]) << 8;
+	if( info->BPB_TotSec == 0 )
+		info->BPB_TotSec = buffer[32] +
+			(((uint32_t) buffer[33]) << 8) +
+			(((uint32_t) buffer[34]) << 16) +
+			(((uint32_t) buffer[35]) << 24);
+	info->BPB_Media = buffer[21];
+	info->BPB_FATSz =  buffer[22] + ((uint16_t) buffer[23]) << 8;
+	if( info->BPB_FATSz == 0 )
+		info->BPB_FATSz = buffer[36] +
+			(((uint32_t) buffer[37]) << 8) +
+			(((uint32_t) buffer[38]) << 16) +
+			(((uint32_t) buffer[39]) << 24);
+	info->BPB_RootClus =  buffer[44] +
+		(((uint32_t) buffer[45]) << 8) +
+		(((uint32_t) buffer[46]) << 16) +
+		(((uint32_t) buffer[47]) << 24);
+	
+	if( !is_a_power_of_2( info->BPB_BytesPerSec ) )
+		ret += 1;
+	if( !is_a_power_of_2( info->BPB_SecPerClus ) )
+		ret += 2;
+	if( info->BPB_BytesPerSec * info->BPB_SecPerClus > 32 * 1024 )
+		ret += 4;
+	if( info->BPB_NumFATs > 2 )
+		ret += 8;
+	if( info->BPB_TotSec == 0 )
+		ret += 16;
+	if( info->BPB_FATSz == 0 )
+		ret += 32;
+	if( buffer[510] != 0x55 || buffer[511] != 0xaa )
+		ret += 64;
+	return ret;
+}
+
+uint8_t fat_mount_device( struct diskio_device_info *dev ) {
 	if (mounted.dev != 0) {
-		umount_device();
+		fat_umount_device();
 	}
 
-	//reallocate sector buffer
 	//read first sector into buffer
+	diskio_read_block( dev, dev->first_sector, sector_buffer );
 	//parse bootsector
-	//return 1 if bs is bullshit
+	if( !parse_bootsector( sector_buffer, &(mounted.info) ) )
+		return 1;
 	//call determine_fat_type
+	mounted.info.type = determine_fat_type( &(mounted.info) );
 	//return 2 if unsupported
+	if( mounted.info.type != FAT16 && mounted.info.type != FAT32 )
+		return 2;
 
 	mounted.dev = dev;
 	return 0;
 }
 
-uint8_t lookup( const char *path, int start_idx, int end_idx, struct dir_entry *dir_entry ) {
+void fat_umount_device() {
+	// TODO Write last buffer
+	// TODO Write second FAT
+	// TODO invalidate file-descriptors
+	// Reset the device pointer
+	mounted.dev = 0;
+}
+
+uint8_t fat_read_block( uint32_t sector_addr ) {
+	if( sector_buffer_addr == sector_addr && sector_addr != 0 )
+		return 0;
+	sector_buffer_addr = sector_addr;
+	return diskio_read_block( sector_addr, sector_buffer );
+}
+
+uint8_t lookup( const char *path, struct dir_entry *dir_entry ) {
 
 }
 
-uint32_t find_file_cluster( const char *path ) {
-#ifdef DISKIO_PATH_SUPPORT
-	//: /[DirNum]/[Directories]/[name].[ext]
-#else
-	int start_idx = 0, end_idx = 0, i;
-	struct dir_entry dir_entry;
-	init( dir_entry );
-	for( i = 0; i < strlen(path); ++i ) {
-		if( start_idx == end_idx && path[i] != '/' ) {
-			start_idx = i;
-			end_idx = i - 1;
-		} else if( start_idx == end_idx && path[i] == '/' ) {
-			continue;
-		} else if( start_idx != end_idx && (path[i] == '/' || path[i] == '\0')) {
-			end_idx = i;
-			if(!lookup( path, start_idx, end_idx, &dir_entry )) {
-				return 0;
-			}
-			if( path[i] == '\0' ) {
-				return (((uint32_t)dir_entry.DIR_FstClusHI) << 16) + dir_entry.DIR_FstClusLO;
+uint8_t get_name_part( const char *path, char *name, uint8_t part_num ) {
+	uint8_t start = 0, end = 0, run = 0, i = 0, idx = 0, dot_found = 0;;
+	memset( name, 0x20, 11 );
+	for( i = 0; path[i] != '\0'; ++i ){
+		if( path[i] == '/' ) {
+			run++;
+			end = i;
+			if( run > part_num ) {
+				for(i = 0, idx = 0; i < end-start; ++i, ++idx) {
+					// Part too long
+					if( idx >= 11 )
+						return 2;
+					//ignore . but jump to last 3 chars of name
+					if( path[start + i] == '.') {
+						if( dot_found )
+							return 3;
+						idx = 7;
+						dot_found = 1;
+						continue;
+					}
+					if( !dotfound && idx > 7 )
+						return 4;
+					name[idx] = toupper(path[start + i]);
+				}
+				break;
+			} else {
+				start = end;
 			}
 		}
+		if( i == 255 )
+			return 1;
 	}
 	return 0;
-#endif
+}
+
+uint32_t find_file_cluster( const char *path ) {
+	uint32_t first_root_dir_sec_num = 0;
+	struct dir_entry;
+	char name[11] = "\0";
+	uint8_t i = 0;
+	if( mounted.info.type == FAT16 ) {
+		// calculate the first cluster of the root dir
+		first_root_dir_sec_num = mounted.info.BPB_ResvdSecCnt + (mounted.info.BPB_NumFATs * mounted.info.BPB_FATSz);
+	} else  if( mounted.info.type == FAT32 ) {
+		// BPB_RootClus is the first cluster of the root dir
+		first_root_dir_sec_num = mounted.info.BPB_RootClus * mounted.info.BPB_SecPerClus;
+	}
+	for(i = 0; get_name_part( path, name, i ) == 0; i++) {
+		fat_read_block( first_root_dir_sec_num );
+		if( !lookup( name, &dir_ent ) ) {
+			return 0;
+		}
+		first_root_dir_sec_num = dir_ent.DIR_FstClusLO + ((uint32_t) dir_ent.DIR_FstClusHI) << 16;
+	}
+	return first_root_dir_sec_num;
 }
 
 int
@@ -135,24 +263,6 @@ cfs_readdir(struct cfs_dir *dirp, struct cfs_dirent *dirent)
 void
 cfs_closedir(cfs_dir *dirp)
 {
-}
-
-/**
- * Determines the type of the fat by using the BPB.
- */
-uint8_t determine_fat_type( uint32_t TotSec, uint16_t ResvdSecCnt, uint8_t NumFATs, uint32_t FATSz, uint32_t RootDirSectors, uint8_t SecPerClus ) {
-	uint32_t DataSec = TotSec - (ResvdSecCnt + (NumFATs * FATSz) + RootDirSectors);
-	uint32_t CountofClusters = DataSec / SecPerClus;
-	if(CountofClusters < 4085) {
-		/* Volume is FAT12 */
-		return FAT12;
-	} else if(CountofClusters < 65525) {
-		/* Volume is FAT16 */
-		return FAT16;
-	} else {
-		/* Volume is FAT32 */
-		return FAT32;
-	}
 }
 
 /**
