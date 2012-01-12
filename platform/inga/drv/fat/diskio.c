@@ -1,7 +1,7 @@
 ﻿#include "diskio.h"
 #include "mbr.h"
 #ifndef DISKIO_DEBUG
-#include "../../interfaces/flash_microSD.h"
+#include "../../interfaces/flash-microSD.h"
 #endif
 
 static struct diskio_device_info *default_device = 0;
@@ -61,6 +61,32 @@ void diskio_write_blocks_file( uint32_t block_start_address, uint8_t num_blocks,
 #define DISKIO_OP_READ_BLOCK   2
 #define DISKIO_OP_WRITE_BLOCKS 3
 #define DISKIO_OP_READ_BLOCKS  4
+
+void print_device_info( struct diskio_device_info *dev ) {
+	printf("DiskIO Device Info\n");
+	printf("\ttype = ");
+	switch(dev->type & 0x7F) {
+		case DISKIO_DEVICE_TYPE_SD_CARD:
+			printf("SD_CARD");
+			break;
+		case DISKIO_DEVICE_TYPE_GENERIC_FLASH:
+			printf("Generic_Flash");
+			break;
+		case DISKIO_DEVICE_TYPE_FILE:
+			printf("File");
+			break;
+		default:
+			printf("Unknown");
+	}
+	if(dev->type & DISKIO_DEVICE_TYPE_PARTITION)
+		printf(" (Partition)");
+	printf("\n");
+	printf("\tnumber = %d\n", dev->number);
+	printf("\tpartition = %d\n", dev->partition);
+	printf("\tnum_sectors = %ld\n", dev->num_sectors);
+	printf("\tsector_size = %d\n", dev->sector_size);
+	printf("\tfirst_sector = %ld\n", dev->first_sector);
+}
 
 int diskio_rw_op( struct diskio_device_info *dev, uint32_t block_start_address, uint8_t num_blocks, uint8_t *buffer, uint8_t op );
 
@@ -185,22 +211,24 @@ int diskio_detect_devices() {
 			return DISKIO_FAILURE;
 
 		mbr_init( &mbr );
-		mbr_read( devices[index], &mbr );
+		mbr_read( &devices[index], &mbr );
 		index += 1;
 		for( i = 0; i < 4; ++i ) {
-			if( mbr_hasPartition( mbr, i + 1 ) == TRUE ) {
+			if( mbr_hasPartition( &mbr, i + 1 ) == TRUE ) {
 				devices[index].type = DISKIO_DEVICE_TYPE_SD_CARD | DISKIO_DEVICE_TYPE_PARTITION;
 				devices[index].number = dev_num;
 				devices[index].partition = i + 1;
 				devices[index].num_sectors = mbr.partition[i].lba_num_sectors;
 				devices[index].sector_size = devices[dev_num].sector_size;
 				devices[index].first_sector = mbr.partition[i].lba_first_sector;
-				index += 1:
+				index += 1;
 			}
 		}
 
 		dev_num += 1;
 		index += 1;
+	} else {
+		return DISKIO_FAILURE;
 	}
 #else
 	if( !handle ) {

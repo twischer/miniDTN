@@ -42,7 +42,7 @@
  */
 
 #include "flash-microSD.h"
-
+#define DEBUG 1
 /**
  * \brief The number of bytes in one block on the SD-Card.
  */
@@ -63,6 +63,7 @@ uint32_t microSD_get_card_block_count() {
 uint8_t microSD_read_csd( uint8_t *buffer ) {
 	/*CMD9 this is just a guess, need to verify TODO*/
 	uint8_t cmd[6] = { 0x49, 0x00, 0x00, 0x00, 0x00, 0xFF };
+	uint8_t i = 0;
 	if( microSD_write_cmd( cmd ) != 0x00 ) {
 #if DEBUG
 		printf("\nCMD9 failure!");
@@ -89,17 +90,28 @@ uint8_t microSD_read_csd( uint8_t *buffer ) {
 
 void microSD_setSDCInfo( uint8_t *csd ) {
 	/*Bits 80 till 83 are the READ_BL_LEN*/
-	uint8_t READ_BL_LEN = csd[10] & 0x0F;
+	uint8_t READ_BL_LEN = csd[5] & 0x0F;
 	/*Bits 62 - 73 are C_SIZE*/
-	uint32_t C_SIZE = (csd[7] & 07000) >> 6 + (csd[8] << 2) + (csd[9] & 07 << 10);
+	uint32_t C_SIZE = ((csd[8] & 07000) >> 6) + (((uint32_t)csd[7]) << 2) + (((uint32_t)csd[6] & 07) << 10);
 	/*Bits 47 - 49 are C_SIZE_MULT*/
-	uint8_t C_SIZE_MULT = csd[6] & 0x07;
-	microSD_card_block_count = (C_SIZE + 1) * (2 << (C_SIZE_MULT + 2));
+	uint16_t C_SIZE_MULT = ((csd[9] & 0x80) >> 7) + ((csd[8] & 0x03) << 1);
+	uint32_t mult = (2 << (C_SIZE_MULT + 2));
+	microSD_card_block_count = (C_SIZE + 1) * mult;
 	microSD_block_size = 2 << READ_BL_LEN;
+	#ifdef DEBUG
+		printf("microSD_setSDCInfo(): CSD Version = %u\n", ((csd[0] & (12 << 4)) >> 4));
+		printf("microSD_setSDCInfo(): READ_BL_LEN = %u\n", READ_BL_LEN);
+		printf("microSD_setSDCInfo(): C_SIZE = %lu\n", C_SIZE);
+		printf("microSD_setSDCInfo(): C_SIZE_MULT = %u\n", C_SIZE_MULT);
+		printf("microSD_setSDCInfo(): mult = %lu\n", mult);
+		printf("microSD_setSDCInfo(): microSD_card_block_count  = %lu\n", microSD_card_block_count);
+		printf("microSD_setSDCInfo(): microSD_block_size  = %u\n", microSD_block_size);
+	#endif
 }
 
 uint8_t microSD_init(void) {
 	uint16_t i;
+	uint8_t ret = 0;
 	/*set pin for mcro sd card power switch to output*/
 	MICRO_SD_PWR_PORT_DDR |= (1 << MICRO_SD_PWR_PIN);
 	/*switch off the sd card and tri state buffer whenever this is not done
@@ -137,15 +149,18 @@ uint8_t microSD_init(void) {
 	/*prepare next 6 data bytes: CMD1*/
 	cmd[0] = 0x41;
 	cmd[5] = 0xFF;
-	while (microSD_write_cmd(&cmd[0]) != 0) {
+	while ((ret = microSD_write_cmd(&cmd[0])) != 0) {
 		i++;
-		if (i > 500) {
+		if (i > 5500) {
+			#ifdef DEBUG
+			printf("microSD_init(): timeout reached, last return value was %d", ret);
+			#endif
 			mspi_chip_release(MICRO_SD_CS);
 			microSD_deinit();
 			return 2;
 		}
 	}
-	if( !microSD_read_csd( csd ) )
+	if( microSD_read_csd( csd ) != 0 )
 		return 3;
 	microSD_setSDCInfo( csd );
 	mspi_chip_release(MICRO_SD_CS);

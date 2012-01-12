@@ -42,6 +42,7 @@ struct diskio_device_info{
 	uint32_t first_sector; /** If this is a Partition, this indicates which is the first_sector belonging to this partition on this device */
 };
 
+void print_device_info( struct diskio_device_info *dev );
 /**
  * Reads one block from the specified device and stores it in buffer.
  *

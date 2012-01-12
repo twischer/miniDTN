@@ -8,6 +8,7 @@ void mbr_init( struct mbr *mbr ) {
 	for( i = 0; i < 4; ++i ) {
 		// Everything else is set to 0
 		memset( (&(mbr->partition[i])), 0, 16 );		
+		mbr->partition[i].status = 0x01;
 	}
 }
 
@@ -88,6 +89,7 @@ int mbr_hasPartition(struct mbr *mbr, uint8_t part_num) {
 	if( part_num > 4 || part_num < 1 ) {
 		return FALSE;
 	}
+	printf("status = %d\n", mbr->partition[part_num - 1].status);
 	if( mbr->partition[part_num - 1].status != 0x00 && mbr->partition[part_num - 1].status != 0x80 ) {
 		return FALSE;
 	}
