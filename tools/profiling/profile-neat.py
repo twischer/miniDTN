@@ -62,7 +62,7 @@ filtering.add_argument("--only-files",
 
 graph = parser.add_argument_group('graph options')
 graph.add_argument("-g", "--graph", dest="graph",
-		help="generate a graph")
+		help="generate a graph. The pattern %n will be replaced by the name of the profiling result")
 graph.add_argument("--highlight-functions",
 		dest="highlight_functions", default=[],
                 action=MakeList,
@@ -307,7 +307,8 @@ def handle_prof(logfile, header):
 	print "Profiling for %s"%(options.bin)
 	tempopts = header.split(':')[1:]
 	global opts
-	opts = dict(zip(('num_sites', 'max_sites', 'time_run', 'ticks_per_sec'), [int(i) for i in tempopts]))
+	opts = dict(zip(('num_sites', 'max_sites', 'time_run', 'ticks_per_sec'), [int(i) for i in tempopts[1:]]))
+	opts['name'] = tempopts[0]
 
 	i = 0
 
@@ -344,7 +345,8 @@ def handle_prof(logfile, header):
 
 
 	if options.graph:
-		generate_callgraph(calls, options.graph)
+		graphfile = options.graph.replace("%n", opts['name'])
+		generate_callgraph(calls, graphfile)
 
 	calls  = sorted(calls, key=lambda call: call[options.sort], reverse=options.reverse)
 	for call in calls:
@@ -370,7 +372,8 @@ def handle_sprof(logfile, header):
 	print "Statistical profiling for %s"%(options.bin)
 	tempopts = header.split(':')[1:]
 	global opts
-	opts = dict(zip(('num_sites', 'max_sites', 'num_samples') , [int(i) for i in tempopts]))
+	opts = dict(zip(('num_sites', 'max_sites', 'num_samples') , [int(i) for i in tempopts[1:]]))
+	opts['name'] = tempopts[0]
 
 	for line in logfile:
 		elements = line.split(':')
