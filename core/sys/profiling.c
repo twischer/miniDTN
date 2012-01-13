@@ -67,14 +67,20 @@ static inline void profiling_internal(uint8_t internal)
 		profile.status &= ~PROFILING_INTERNAL;
 }
 
-void profiling_report(uint8_t pretty)
+void profiling_report(const char *name, uint8_t pretty)
 {
         int i;
 
+	/* The parser would be confused if the name contains colons or newlines, so disallow */
+	if (!name || strchr(name, ':') || strchr(name, '\r') || strchr(name, '\n')) {
+		printf("The profile report name is invalid\n");
+		name = "invalid";
+	}
+
 	if (pretty)
-		printf("PROF: %u sites %u max sites %lu ticks spent %lu ticks/s\nfrom:to:calls:time\n", profile.num_sites, profile.max_sites, profile.time_run, CLOCK_SECOND*256l);
+		printf("PROF: \"%s\" %u sites %u max sites %lu ticks spent %lu ticks/s\nfrom:to:calls:time\n", name, profile.num_sites, profile.max_sites, profile.time_run, CLOCK_SECOND*256l);
 	else
-		printf("PROF:%u:%u:%lu:%lu\n", profile.num_sites, profile.max_sites, profile.time_run, CLOCK_SECOND*256l);
+		printf("PROF:%s:%u:%u:%lu:%lu\n", name, profile.num_sites, profile.max_sites, profile.time_run, CLOCK_SECOND*256l);
 
 	for(i=0; i<profile.num_sites;i++) {
 		printf("%p:%p:%lu:%lu\n", profile.sites[i].from, profile.sites[i].addr,

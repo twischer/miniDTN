@@ -119,11 +119,11 @@ PROCESS_THREAD(profiler, ev, data)
 		PROCESS_WAIT_UNTIL(etimer_expired(&timer));
 #ifdef STAT_PROFILE
 		sprofiling_stop();
-		sprofiling_report(0);
+		sprofiling_report("led-test", 0);
 		sprofiling_start();
 #else
 		profiling_stop();
-		profiling_report(0);
+		profiling_report("led-test", 0);
 		profiling_start();
 #endif
 	}

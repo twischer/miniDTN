@@ -21,7 +21,7 @@ struct sprofile_t {
 void sprofiling_init(void);
 void sprofiling_start(void);
 void sprofiling_stop(void);
-void sprofiling_report(uint8_t pretty);
+void sprofiling_report(const char* name, uint8_t pretty);
 struct sprofile_t *sprofiling_get(void);
 inline void sprofiling_add_sample(void *pc);
 

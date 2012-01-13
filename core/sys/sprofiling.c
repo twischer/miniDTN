@@ -49,21 +49,24 @@
 static struct sprofile_t stat_profile;
 static struct sprofile_site_t stat_site[MAX_PROFILES];
 
-void sprofiling_report(uint8_t pretty)
+void sprofiling_report(const char* name, uint8_t pretty)
 {
 	int i;
 
-	/* We don't want to profile the report itself */
-	sprofiling_stop();
+	/* The parser would be confused if the name contains colons or newlines, so disallow */
+	if (!name || strchr(name, ':') || strchr(name, '\r') || strchr(name, '\n')) {
+		printf("The profile report name is invalid\n");
+		name = "invalid";
+	}
+
 	if (pretty)
-		printf("\nSPROF: %u sites %u max_sites %lu samples\npc:calls\n", stat_profile.num_sites, stat_profile.max_sites, stat_profile.num_samples);
+		printf("\nSPROF: \"%s\" %u sites %u max_sites %lu samples\npc:calls\n", name, stat_profile.num_sites, stat_profile.max_sites, stat_profile.num_samples);
 	else
-		printf("\nSPROF:%u:%u:%lu\n", stat_profile.num_sites, stat_profile.max_sites, stat_profile.num_samples);
+		printf("\nSPROF:%s:%u:%u:%lu\n", name, stat_profile.num_sites, stat_profile.max_sites, stat_profile.num_samples);
 
 	for(i=0; i<stat_profile.num_sites;i++) {
 		printf("%p:%u\n", stat_profile.sites[i].addr, stat_profile.sites[i].calls);
 	}
-	sprofiling_start();
 }
 
 struct sprofile_t *sprofiling_get()
