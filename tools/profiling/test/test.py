@@ -37,7 +37,8 @@ class Device(object):
 		self.programdir = os.path.join(self.contikibase, config['programdir'])
 		self.program = config['program']
 		self.instrument = config['instrument']
-		self.graph_options = config['graph_options']
+		self.cflags = config.setdefault('cflags', "")
+		self.graph_options = config.setdefault('graph_options', "")
 
 	def build(self):
 		try:
@@ -52,7 +53,7 @@ class Device(object):
 			self.logger.debug(output)
 
 			self.logger.info("Building %s", os.path.join(self.programdir, self.program))
-			output = subprocess.check_output(["make", "TARGET=%s"%(self.platform), self.program], stderr=subprocess.STDOUT)
+			output = subprocess.check_output(["make", "TARGET=%s"%(self.platform), self.program], stderr=subprocess.STDOUT, env={'CFLAGS': self.cflags})
 			self.logger.debug(output)
 			time.sleep(2)
 			touchcall = ["touch"]
@@ -62,7 +63,7 @@ class Device(object):
 			output = subprocess.check_output(' '.join(touchcall), stderr=subprocess.STDOUT, shell=True)
 			self.logger.debug(output)
 			self.logger.info("Building instrumentation for %s", os.path.join(self.programdir, self.program))
-			output = subprocess.check_output(["make", "TARGET=%s"%(self.platform), self.program], stderr=subprocess.STDOUT, env={'CFLAGS': '-finstrument-functions'})
+			output = subprocess.check_output(["make", "TARGET=%s"%(self.platform), self.program], stderr=subprocess.STDOUT, env={'CFLAGS': '-finstrument-functions %s'%(self.cflags)})
 			self.logger.debug(output)
 		except subprocess.CalledProcessError as err:
 			self.logger.error(err)
