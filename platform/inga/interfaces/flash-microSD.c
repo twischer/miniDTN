@@ -166,6 +166,7 @@ uint8_t microSD_init(void) {
 	uint8_t cmd0[6]  = { 0x40, 0x00, 0x00, 0x00, 0x00, 0x95 };
 	uint8_t cmd1[6]  = { 0x41, 0x00, 0x00, 0x00, 0x00, 0xFF };
 	uint8_t cmd8[6]  = { 0x48, 0x00, 0x00, 0x01, 0xaa, 0x01 };
+	uint8_t cmd16[6] = { 0x50, 0x00, 0x00, 0x02, 0x00, 0x01 };
 	uint8_t cmd41[6] = { 0x69, 0x40, 0x00, 0x00, 0x00, 0x01 };
 	uint8_t cmd55[6] = { 0x77, 0x00, 0x00, 0x00, 0x00, 0x01 };
 	uint8_t cmd58[6] = { 0x7a, 0x00, 0x00, 0x00, 0x00, 0x01 };
@@ -225,6 +226,19 @@ uint8_t microSD_init(void) {
 				mspi_chip_release(MICRO_SD_CS);
 				microSD_deinit();
 				return 2;
+			}
+		}
+		/* Set Block Length to 512 Bytes */
+		i = 0;
+		while( (ret = microSD_write_cmd( cmd16, NULL )) != 0x01 ) {
+			i++;
+			if (i > 500) {
+				#ifdef DEBUG
+				printf("microSD_init(): cmd16 timeout reached, last return value was %d\n", ret);
+				#endif
+				mspi_chip_release(MICRO_SD_CS);
+				microSD_deinit();
+				return 5;
 			}
 		}
 	} else {
@@ -311,7 +325,7 @@ uint8_t microSD_read_block(uint32_t addr, uint8_t *buffer) {
 	while (mspi_transceive(MSPI_DUMMY_BYTE) != 0xFE) {
 	};
 
-	for (i = 0; i < microSD_block_size; i++) {
+	for (i = 0; i < 512; i++) {
 		*buffer++ = mspi_transceive(MSPI_DUMMY_BYTE);
 	}
 	/*CRC-Byte: don't care*/
@@ -358,7 +372,7 @@ uint8_t microSD_write_block(uint32_t addr, uint8_t *buffer) {
 	mspi_transceive(0xFE);
 
 	/*send 1 block (512byte) to the microSD card*/
-	for (i = 0; i < microSD_block_size; i++) {
+	for (i = 0; i < 512; i++) {
 		mspi_transceive(*buffer++);
 	}
 

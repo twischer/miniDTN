@@ -80,6 +80,7 @@
  *  		<li> 2 : CMD1 failure!
  *			<li> 3 : Failure reading the CSD!
  *			<li> 4 : CMD8 failure!
+ *			<li> 5 : CMD16 failure!
  *			<li> 6 : ACMD41 failure!
  *			<li> 7 : CMD58 failure!
  * 		   </ul>
@@ -100,6 +101,9 @@ uint8_t microSD_read_csd( uint8_t *buffer );
 
 /**
  * \brief This function returns the number of bytes in one block.
+ *
+ * Mainly used to calculated size of the SD-Card together with
+ * microSD_get_card_block_count().
  *
  *
  * \return Number of bytes per block on the SD-Card
