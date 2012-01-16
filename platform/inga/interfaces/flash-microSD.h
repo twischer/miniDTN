@@ -78,6 +78,10 @@
  *  		<li> 0 : SD-Card was initialized without an error
  *  		<li> 1 : CMD0 failure!
  *  		<li> 2 : CMD1 failure!
+ *			<li> 3 : Failure reading the CSD!
+ *			<li> 4 : CMD8 failure!
+ *			<li> 6 : ACMD41 failure!
+ *			<li> 7 : CMD58 failure!
  * 		   </ul>
  */
 uint8_t microSD_init(void);
@@ -143,13 +147,11 @@ uint8_t microSD_write_block(uint32_t addr, uint8_t *buffer);
  * command consists off 6 bytes
  *
  * \param *cmd Pointer to the command array
+ * \param *resp Pointer to the response array. Only needed for responses other than R1. May me NULL if response is R1. Otherwise resp must be long enough for the response (only R3 and R7 are supported yet) and the first byte of the response array must indicate the response that is expected. For Example the first byte should be 0x07 if response type R7 is expected.
  *
- * \return <ul>
- *  		<li> 1 : Acknowledge
- *  		<li> other failure code
- * 		   </ul>
+ * \return R1 response byte or 0xFF in case of read/write timeout
  */
-uint8_t microSD_write_cmd(uint8_t *cmd);
+uint8_t microSD_write_cmd(uint8_t *cmd, uint8_t *resp );
 
 
 

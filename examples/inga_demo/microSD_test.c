@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #include "node-id.h"
 #include "leds.h"
+#include <avr/wdt.h>
 
 
 #define DEBUG                                   0
@@ -36,7 +37,9 @@ PROCESS_THREAD(hello_world_process, ev, data)
         //microSD Test
 		uint8_t buffer[512];
 		uint16_t j;
+		wdt_disable();
 		printf("\nmicroSD_init() = %u\n", microSD_init());
+		printf("Size of uint64_t  = %u\n", sizeof(uint64_t));
 		printf("Size of uint32_t  = %u\n", sizeof(uint32_t));
 		printf("Size of uint16_t  = %u\n", sizeof(uint16_t));
 		printf("Size of int  = %u\n", sizeof(int));
