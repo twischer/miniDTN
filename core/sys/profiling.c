@@ -197,6 +197,8 @@ static inline struct profile_site_t *find_or_add_site(void *func, void *caller, 
 	site->from = caller;
 	site->addr = func;
 	site->calls = 0;
+	site->time_max = 0;
+	site->time_min = 0xFFFF;
 	site->time_accum = 0;
 
 	return site;
@@ -271,6 +273,16 @@ void __cyg_profile_func_exit(void *func, void *caller)
       /* Update calls and time */
       site->calls++;
       site->time_accum += temp;
+
+      /* Min max calculation */
+      if (temp > site->time_max) {
+	      site->time_max = temp;
+	      if (temp > 0xFFFF)
+		      site->time_max = 0xFFFF;
+      }
+      if (temp < site->time_min)
+	      site->time_min = temp;
+
       profiling_internal(0);
       return;
 
