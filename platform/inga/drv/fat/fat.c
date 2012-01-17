@@ -6,8 +6,9 @@
 
 #define FAT_FD_POOL_SIZE 5
 
-uint8_t sector_buffer[DISKIO_MAX_SECTOR_SIZE] = 0;
+uint8_t sector_buffer[512] = 0;
 uint32_t sector_buffer_addr = 0;
+uint8_t sector_buffer_dirty = 0;
 
 struct file {
 	//metadata
@@ -24,6 +25,7 @@ struct file_desc {
 struct file_system {
 	struct diskio_device_info *dev;
 	struct FAT_info info;
+	uint32_t first_data_sector;
 } mounted;
 
 struct file_desc fat_fd_pool[FAT_FD_POOL_SIZE];
@@ -37,9 +39,15 @@ struct dir_entry {
 	uint16_t DIR_FstClusHI;
 	uint16_t DIR_WrtTime;
 	uint16_t DIR_WrtDate;
+	
 	uint16_t DIR_FstClusLO;
 	uint32_t DIR_FileSize;
 };
+
+uint16_t _get_free_cluster_16();
+uint16_t _get_free_cluster_32();
+void calc_fat_block( uint32_t cur_block, uint32_t *fat_sec_num, uint32_t *ent_offset );
+uint32_t get_free_cluster(uint32_t start_cluster);
 
 /**
  * Determines the type of the fat by using the BPB.
@@ -120,6 +128,7 @@ uint8_t parse_bootsector( uint8_t *buffer, struct FAT_Info *info ) {
 }
 
 uint8_t fat_mount_device( struct diskio_device_info *dev ) {
+	uint32_t RootDirSectors = 0;
 	if (mounted.dev != 0) {
 		fat_umount_device();
 	}
@@ -136,6 +145,9 @@ uint8_t fat_mount_device( struct diskio_device_info *dev ) {
 		return 2;
 
 	mounted.dev = dev;
+
+	RootDirSectors = ((mounted.info.BPB_RootEntCnt * 32) + (mounted.info.BPB_BytsPerSec – 1)) / mounted.info.BPB_BytsPerSec;
+	mounted.first_data_sector = mounted.info.BPB_ResvdSecCnt + (mounted.info.BPB_NumFATs * mounted.info.BPB_FATSz) + RootDirSectors;
 	return 0;
 }
 
@@ -150,12 +162,115 @@ void fat_umount_device() {
 uint8_t fat_read_block( uint32_t sector_addr ) {
 	if( sector_buffer_addr == sector_addr && sector_addr != 0 )
 		return 0;
+	if( sector_buffer_dirty )
+		fat_flush();
 	sector_buffer_addr = sector_addr;
 	return diskio_read_block( sector_addr, sector_buffer );
 }
 
+uint8_t fat_next_block() {
+	if( sector_buffer_dirty )
+		fat_flush();
+	/* Are we on a Cluster edge? */
+	if( (sector_buffer_addr + 1) % mounted.info.BPB_SecPerClus == 0 ) {
+		uint32_t entry = read_fat_entry( sector_buffer_addr );
+		if( is_EOC( entry ) )
+			return 128;
+		fat_read_block( cluster2sector(entry) );
+	} else {
+		fat_read_block( sector_buffer_addr + 1 );
+	}
+}
+
+uint32_t cluster2sector(uint32_t cluster_num) {
+	return ((cluster_num – 2) * mounted.info.BPB_SecPerClus) + mounted.first_data_sector;
+}
+
+uint8_t is_EOC( uint32_t fat_entry ) {
+	if( mounted.info.type == FAT16 ) {
+		if( fat_entry >= 0xFFF8 )
+			return 1;
+	} else if( mounted.info.type == FAT32 ) {
+		if( (fat_entry & 0x0FFFFFFF) >= 0x0FFFFFF8 )
+			return 1;
+	}
+	return 0;
+}
+
 uint8_t lookup( const char *path, struct dir_entry *dir_entry ) {
 
+}
+
+uint32_t read_fat_entry( uint32_t sec_addr ) {
+	uint32_t fat_sec_num = 0, ent_offset = 0, ret = 0;;
+	calc_fat_block( sec_addr, &fat_sec_num, &ent_offset );
+	fat_read_block( fat_sec_num );
+	if( mounted.info.type == FAT16 ) {
+		ret = (((uint16_t) sector_buffer[ent_offset]) << 8) + ((uint16_t) sector_buffer[ent_offset]);
+	} else if( mounted.info.type == FAT32 ) {
+		ret = (((uint32_t) sector_buffer[ent_offset]) << 24) + (((uint32_t) sector_buffer[ent_offset+1]) << 16) + (((uint32_t) sector_buffer[ent_offset+2]) << 8) + ((uint32_t) sector_buffer[ent_offset+3]);
+		ret &= 0x0FFFFFFF;
+	}
+	return ret;
+}
+
+void calc_fat_block( uint32_t cur_sec, uint32_t *fat_sec_num, uint32_t *ent_offset ) {
+	uint32_t N = cur_sec / mounted.info.BPB_SecPerClus;
+	if( mounted.info.type == FAT16 )
+		*ent_offset = N * 2;
+	else if( mounted.info.type == FAT32 )
+		*ent_offset = N * 4;
+	*fat_sec_num = mounted.info.BPB_ResvdSecCnt + (*ent_offset / mounted.info.BPB_BytesPerSec);
+	*ent_offset = *ent_offset % mounted.info.BPB_BytesPerSec;
+}
+
+/**
+ * \brief Looks through the FAT to find a free cluster.
+ *
+ * \TODO Check for end of FAT and no free clusters.
+ * \return Returns the number of a free cluster.
+ */
+uint32_t get_free_cluster(uint32_t start_cluster) {
+	uint32_t fat_sec_num = 0;
+	uint32_t ent_offset = 0;
+	uint16_t i = 0;
+	calc_fat_block( start_cluster, &fat_sec_num, &ent_offset );
+	do {
+		fat_read_block( fat_sec_num );
+		if( mounted.info.type == FAT16 )
+			i = _get_free_cluster_16();
+		else if( mounted.info.type == FAT32 )
+			i = _get_free_cluster_32();
+		fat_sec_num++;
+	} while( i == 512 );
+	ent_offset = (fat_sec_num - mounted.info.BPB_ResvdSecCnt) * mounted.info.BPB_BytesPerSec;
+	if( mounted.info.type == FAT16 )
+		ent_offset /= 2;
+	else if( mounted.info.type == FAT32 )
+		ent_offset /= 4;
+	return ent_offset;
+}
+
+uint16_t _get_free_cluster_16() {
+	uint16_t entry = 0;
+	for( i = 0; i < 512; i += 2 ) {
+		entry = (((uint16_t) sector_buffer[i]) << 8) + ((uint16_t) sector_buffer[i+1]);
+		if( entry == 0 ) {
+			return i;
+		}
+	}
+	return 512;
+}
+
+uint16_t _get_free_cluster_32() {
+	uint32_t entry = 0;
+	for( i = 0; i < 512; i += 4 ) {
+		entry = (((uint32_t) sector_buffer[i]) << 24) + (((uint32_t) sector_buffer[i+1]) << 16) + (((uint32_t) sector_buffer[i+2]) << 8) + ((uint32_t) sector_buffer[i+3]);
+		if( entry & 0x0FFFFFFF == 0 ) {
+			return i;
+		}
+	}
+	return 512;
 }
 
 uint8_t get_name_part( const char *path, char *name, uint8_t part_num ) {
@@ -227,6 +342,10 @@ cfs_open(const char *name, int flags)
 void
 cfs_close(int fd)
 {
+	if( fd < 0 || fd >= FAT_FD_POOL_SIZE )
+		return;
+	fat_flush( fd );
+	fat_fd_pool[fd].file = NULL;
 }
 
 
