@@ -37,6 +37,8 @@ PROCESS_THREAD(hello_world_process, ev, data)
         //microSD Test
 		uint8_t buffer[512];
 		uint16_t j;
+		memset(buffer, 0xFF, 512);
+		printf("\nChecksum is: %x", microSD_data_crc( buffer ));
 		wdt_disable();
 		printf("\nmicroSD_init() = %u\n", microSD_init());
 		printf("Size of uint64_t  = %u\n", sizeof(uint64_t));
