@@ -2,6 +2,7 @@
 #include "cfs/cfs.h"
 #include "fat.h"
 #include <string.h>
+#include <stdio.h>
 
 #define FAT_FD_POOL_SIZE 5
 
@@ -34,11 +35,12 @@ struct dir_entry {
 	uint8_t DIR_Attr;
 	uint8_t DIR_NTRes;
 	uint8_t CrtTimeTenth;
-	uint8_t unknown[6];
+	uint16_t DIR_CrtTime;
+	uint16_t DIR_CrtDate;
+	uint16_t DIR_LstAccessDate;
 	uint16_t DIR_FstClusHI;
 	uint16_t DIR_WrtTime;
 	uint16_t DIR_WrtDate;
-	
 	uint16_t DIR_FstClusLO;
 	uint32_t DIR_FileSize;
 };
@@ -54,7 +56,7 @@ void fat_sync_fats() {
 	uint8_t fat_number;
 	uint32_t fat_block;
 	fat_flush();
-	for(fat_block = 0; fat_block < mounted.info.BPB_FATSz; fat_block) {
+	for(fat_block = 0; fat_block < mounted.info.BPB_FATSz; fat_block++) {
 		diskio_read_block( mounted.dev, fat_block + mounted.info.BPB_RsvdSecCnt, sector_buffer );
 		for(fat_number = 2; fat_number <= mounted.info.BPB_NumFATs; fat_number++) {
 			diskio_write_block( mounted.dev, (fat_block + mounted.info.BPB_RsvdSecCnt) + ((fat_number - 1) * mounted.info.BPB_FATSz), sector_buffer );
@@ -64,6 +66,7 @@ void fat_sync_fats() {
 
 uint16_t _get_free_cluster_16();
 uint16_t _get_free_cluster_32();
+uint8_t fat_read_block( uint32_t sector_addr );
 uint8_t is_a_power_of_2( uint32_t value );
 void calc_fat_block( uint32_t cur_block, uint32_t *fat_sec_num, uint32_t *ent_offset );
 uint32_t get_free_cluster(uint32_t start_cluster);
@@ -186,7 +189,9 @@ uint8_t fat_mount_device( struct diskio_device_info *dev ) {
 
 	RootDirSectors = ((mounted.info.BPB_RootEntCnt * 32) + (mounted.info.BPB_BytesPerSec - 1)) / mounted.info.BPB_BytesPerSec;
 	mounted.first_data_sector = mounted.info.BPB_RsvdSecCnt + (mounted.info.BPB_NumFATs * mounted.info.BPB_FATSz) + RootDirSectors;
-	printf("fat_mount_device(): first_data_sector = %lu", mounted.first_data_sector );
+	printf("\nfat_mount_device(): first_data_sector = %lu", mounted.first_data_sector );
+	fat_read_block( mounted.first_data_sector );
+	print_current_sector();
 	return 0;
 }
 
@@ -632,8 +637,8 @@ int mkfs_write_boot_sector( uint8_t *buffer, struct diskio_device_info *dev, str
 	if( dev->num_sectors < 0x10000 ) {
 		buffer[32] = 0; buffer[33] = 0; buffer[34] = 0; buffer[35] = 0;
 	} else {
-		buffer[32] = (uint8_t) fi->BPB_TotSec      ; buffer[33] = (uint8_t) fi->BPB_TotSec >>  8;
-		buffer[34] = (uint8_t) fi->BPB_TotSec >> 16; buffer[35] = (uint8_t) fi->BPB_TotSec >> 24;
+		buffer[32] = (uint8_t) fi->BPB_TotSec      ; buffer[33] = (uint8_t) (fi->BPB_TotSec >>  8);
+		buffer[34] = (uint8_t) (fi->BPB_TotSec >> 16); buffer[35] = (uint8_t) (fi->BPB_TotSec >> 24);
 	}
 	
 	if( fi->type == FAT16 ) {
@@ -656,8 +661,8 @@ int mkfs_write_boot_sector( uint8_t *buffer, struct diskio_device_info *dev, str
 		memcpy(  &(buffer[54]), "FAT16   ", 8 );
 	} else if( fi->type == FAT32 ) {
 		// BPB_FATSz32
-		buffer[36] = (uint8_t) fi->BPB_FATSz      ; buffer[37] = (uint8_t) fi->BPB_FATSz >>  8;
-		buffer[38] = (uint8_t) fi->BPB_FATSz >> 16; buffer[39] = (uint8_t) fi->BPB_FATSz >> 24;
+		buffer[36] = (uint8_t) fi->BPB_FATSz      ; buffer[37] = (uint8_t) (fi->BPB_FATSz >>  8);
+		buffer[38] = (uint8_t) (fi->BPB_FATSz >> 16); buffer[39] = (uint8_t) (fi->BPB_FATSz >> 24);
 		
 		// BPB_ExtFlags
 		buffer[40] = 0; buffer[41] = 0; // Mirror enabled
@@ -758,8 +763,8 @@ void mkfs_write_fsinfo( uint8_t *buffer, struct diskio_device_info *dev, struct 
 	
 	// FSI_Free_Count
 	fsi_free_count = (fi->BPB_TotSec - ((fi->BPB_FATSz * fi->BPB_NumFATs) + fi->BPB_RsvdSecCnt)) / fi->BPB_SecPerClus;
-	buffer[488] = (uint8_t) fsi_free_count;       buffer[489] = (uint8_t) fsi_free_count >> 8;
-	buffer[490] = (uint8_t) fsi_free_count >> 16; buffer[491] = (uint8_t) fsi_free_count >> 24;
+	buffer[488] = (uint8_t) fsi_free_count;       buffer[489] = (uint8_t) (fsi_free_count >> 8);
+	buffer[490] = (uint8_t) (fsi_free_count >> 16); buffer[491] = (uint8_t) (fsi_free_count >> 24);
 	
 	// FSI_Nxt_Free
 	fsi_nxt_free = (fi->BPB_RsvdSecCnt + (fi->BPB_NumFATs * fi->BPB_FATSz));
@@ -768,8 +773,8 @@ void mkfs_write_fsinfo( uint8_t *buffer, struct diskio_device_info *dev, struct 
 	} else {
 		fsi_nxt_free = (fsi_nxt_free / fi->BPB_SecPerClus);
 	}
-	buffer[492] = (uint8_t) fsi_nxt_free;       buffer[493] = (uint8_t) fsi_nxt_free >> 8;
-	buffer[494] = (uint8_t) fsi_nxt_free >> 16; buffer[495] = (uint8_t) fsi_nxt_free >> 24;	
+	buffer[492] = (uint8_t) fsi_nxt_free;       buffer[493] = (uint8_t) (fsi_nxt_free >> 8);
+	buffer[494] = (uint8_t) (fsi_nxt_free >> 16); buffer[495] = (uint8_t) (fsi_nxt_free >> 24);	
 	
 	// FSI_Reserved2
 	

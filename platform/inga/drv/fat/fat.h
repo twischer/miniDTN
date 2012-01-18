@@ -35,7 +35,23 @@ int fat_rmdir(char *);
  * \return 0 on success, 1 if the bootsector was not found or corrupted, 2 if the FAT-Type wasn't supported.
  */
 uint8_t fat_mount_device( struct diskio_device_info *dev );
+
+/**
+ * Umounts the mounted device. Invalidates all file descriptors.
+ * Syncs all FATs and flushes cached data.
+ */
 void fat_umount_device();
+
+/**
+ * Populates the give FAT_Info with the mounted FAT_Info.
+ *
+ * \param *info The FAT_Info struct which should be populated.
+ */
 void get_fat_info( struct FAT_Info *info );
+
+/**
+ * Syncs every FAT with the first FAT. Can take much time.
+ */
+void fat_sync_fats();
 
 #endif
