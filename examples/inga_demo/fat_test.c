@@ -25,6 +25,7 @@
 
 #include "interfaces/flash-microSD.h"           //tested
 #include "drv/fat/diskio.h"           //tested
+#include "drv/fat/fat.h"           //tested
 #include <stdio.h> /* For printf() */
 #include <avr/wdt.h>
 /*---------------------------------------------------------------------------*/
@@ -36,8 +37,8 @@ PROCESS_THREAD(hello_world_process, ev, data)
 {
   PROCESS_BEGIN();
 	uint16_t i = 0;
-	uint8_t buffer[512];
 	struct diskio_device_info *info = 0;
+	struct FAT_Info fat;
 	wdt_disable();
 	printf("\nTEST BEGIN\n");
 	while(diskio_detect_devices() != DISKIO_SUCCESS);
@@ -49,15 +50,20 @@ PROCESS_THREAD(hello_world_process, ev, data)
 			break;
 		}
 	}
-	printf("diskio_read_block() = %u", diskio_read_block( info, 0, buffer ) );
+	printf("\nfat_mount_device() = %u", fat_mount_device( info ) );
+	get_fat_info( &fat );
+	printf("\nFAT Info");
+	printf("\n\t type            = %u", fat.type);
+	printf("\n\t BPB_BytesPerSec = %u", fat.BPB_BytesPerSec);
+	printf("\n\t BPB_SecPerClus  = %u", fat.BPB_SecPerClus);
+	printf("\n\t BPB_RsvdSecCnt  = %u", fat.BPB_RsvdSecCnt);
+	printf("\n\t BPB_NumFATs     = %u", fat.BPB_NumFATs);
+	printf("\n\t BPB_RootEntCnt  = %u", fat.BPB_RootEntCnt);
+	printf("\n\t BPB_TotSec      = %lu", fat.BPB_TotSec);
+	printf("\n\t BPB_Media       = %u", fat.BPB_Media);
+	printf("\n\t BPB_FATSz       = %lu", fat.BPB_FATSz);
+	printf("\n\t BPB_RootClus    = %lu", fat.BPB_RootClus);
 	printf("\n");
-	for(i = 0; i < 512; i++) {
-		printf("%02x", buffer[i]);
-		if( ((i+1) % 2) == 0 )
-			printf(" ");
-		if( ((i+1) % 32) == 0 )
-			printf("\n");
-	}
                 
   PROCESS_END();
 }

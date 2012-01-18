@@ -1,12 +1,11 @@
 ﻿#include <stdint.h>
-#include <core/cfs/cfs.h>
+#include "cfs/cfs.h"
 #include "fat.h"
 #include <string.h>
-#include <core/lib/memb.h>
 
 #define FAT_FD_POOL_SIZE 5
 
-uint8_t sector_buffer[512] = 0;
+uint8_t sector_buffer[512];
 uint32_t sector_buffer_addr = 0;
 uint8_t sector_buffer_dirty = 0;
 
@@ -24,7 +23,7 @@ struct file_desc {
 
 struct file_system {
 	struct diskio_device_info *dev;
-	struct FAT_info info;
+	struct FAT_Info info;
 	uint32_t first_data_sector;
 } mounted;
 
@@ -44,18 +43,36 @@ struct dir_entry {
 	uint32_t DIR_FileSize;
 };
 
+void fat_flush() {}
 uint16_t _get_free_cluster_16();
 uint16_t _get_free_cluster_32();
+uint8_t is_a_power_of_2( uint32_t value );
 void calc_fat_block( uint32_t cur_block, uint32_t *fat_sec_num, uint32_t *ent_offset );
 uint32_t get_free_cluster(uint32_t start_cluster);
+uint32_t read_fat_entry( uint32_t sec_addr );
 
+void get_fat_info( struct FAT_Info *info ) {
+	memcpy( info, &(mounted.info), sizeof(struct FAT_Info) );
+}
+
+void print_current_sector() {
+	uint16_t i = 0;
+	printf("\n");
+	for(i = 0; i < 512; i++) {
+		printf("%02x", sector_buffer[i]);
+		if( ((i+1) % 2) == 0 )
+			printf(" ");
+		if( ((i+1) % 32) == 0 )
+			printf("\n");
+	}
+}
 /**
  * Determines the type of the fat by using the BPB.
  */
 uint8_t determine_fat_type( struct FAT_Info *info ) {
-	uint16_t RootDirSectors = ((info->BPB_RootEntCnt * 32) + (info->BPB_BytsPerSec – 1)) / info->BPB_BytsPerSec;
-	uint32_t DataSec = info->BPB_TotSec - (info->BPB_ResvdSecCnt + (info->BPB_NumFATs * info->BPB_FATSz) + RootDirSectors);
-	uint32_t CountofClusters = DataSec / SecPerClus;
+	uint16_t RootDirSectors = ((info->BPB_RootEntCnt * 32) + (info->BPB_BytesPerSec - 1)) / info->BPB_BytesPerSec;
+	uint32_t DataSec = info->BPB_TotSec - (info->BPB_RsvdSecCnt + (info->BPB_NumFATs * info->BPB_FATSz) + RootDirSectors);
+	uint32_t CountofClusters = DataSec / info->BPB_SecPerClus;
 	if(CountofClusters < 4085) {
 		/* Volume is FAT12 */
 		return FAT12;
@@ -87,19 +104,19 @@ uint8_t determine_fat_type( struct FAT_Info *info ) {
  */
 uint8_t parse_bootsector( uint8_t *buffer, struct FAT_Info *info ) {
 	int ret = 0;
-	info->BPB_BytesPerSec = buffer[11] + ((uint16_t) buffer[12]) << 8;
+	info->BPB_BytesPerSec = (((uint16_t) buffer[12]) << 8) + buffer[11];
 	info->BPB_SecPerClus = buffer[13];
-	info->BPB_RsvdSecCnt = buffer[14] + ((uint16_t) buffer[15]) << 8;
+	info->BPB_RsvdSecCnt = buffer[14] + (((uint16_t) buffer[15]) << 8);
 	info->BPB_NumFATs = buffer[16];
-	info->BPB_RootEntCnt = buffer[17] + ((uint16_t) buffer[18]) << 8;
-	info->BPB_TotSec = buffer[19] + ((uint16_t) buffer[20]) << 8;
+	info->BPB_RootEntCnt = buffer[17] + (((uint16_t) buffer[18]) << 8);
+	info->BPB_TotSec = buffer[19] + (((uint16_t) buffer[20]) << 8);
 	if( info->BPB_TotSec == 0 )
 		info->BPB_TotSec = buffer[32] +
 			(((uint32_t) buffer[33]) << 8) +
 			(((uint32_t) buffer[34]) << 16) +
 			(((uint32_t) buffer[35]) << 24);
 	info->BPB_Media = buffer[21];
-	info->BPB_FATSz =  buffer[22] + ((uint16_t) buffer[23]) << 8;
+	info->BPB_FATSz =  buffer[22] + (((uint16_t) buffer[23]) << 8);
 	if( info->BPB_FATSz == 0 )
 		info->BPB_FATSz = buffer[36] +
 			(((uint32_t) buffer[37]) << 8) +
@@ -110,9 +127,9 @@ uint8_t parse_bootsector( uint8_t *buffer, struct FAT_Info *info ) {
 		(((uint32_t) buffer[46]) << 16) +
 		(((uint32_t) buffer[47]) << 24);
 	
-	if( !is_a_power_of_2( info->BPB_BytesPerSec ) )
+	if( is_a_power_of_2( info->BPB_BytesPerSec ) == 0)
 		ret += 1;
-	if( !is_a_power_of_2( info->BPB_SecPerClus ) )
+	if( is_a_power_of_2( info->BPB_SecPerClus ) == 0)
 		ret += 2;
 	if( info->BPB_BytesPerSec * info->BPB_SecPerClus > 32 * 1024 )
 		ret += 4;
@@ -124,6 +141,7 @@ uint8_t parse_bootsector( uint8_t *buffer, struct FAT_Info *info ) {
 		ret += 32;
 	if( buffer[510] != 0x55 || buffer[511] != 0xaa )
 		ret += 64;
+	printf("\nparse_bootsector() = %u", ret);
 	return ret;
 }
 
@@ -134,9 +152,9 @@ uint8_t fat_mount_device( struct diskio_device_info *dev ) {
 	}
 
 	//read first sector into buffer
-	diskio_read_block( dev, dev->first_sector, sector_buffer );
+	diskio_read_block( dev, 0, sector_buffer );
 	//parse bootsector
-	if( !parse_bootsector( sector_buffer, &(mounted.info) ) )
+	if( parse_bootsector( sector_buffer, &(mounted.info) ) != 0 )
 		return 1;
 	//call determine_fat_type
 	mounted.info.type = determine_fat_type( &(mounted.info) );
@@ -146,8 +164,8 @@ uint8_t fat_mount_device( struct diskio_device_info *dev ) {
 
 	mounted.dev = dev;
 
-	RootDirSectors = ((mounted.info.BPB_RootEntCnt * 32) + (mounted.info.BPB_BytsPerSec – 1)) / mounted.info.BPB_BytsPerSec;
-	mounted.first_data_sector = mounted.info.BPB_ResvdSecCnt + (mounted.info.BPB_NumFATs * mounted.info.BPB_FATSz) + RootDirSectors;
+	RootDirSectors = ((mounted.info.BPB_RootEntCnt * 32) + (mounted.info.BPB_BytesPerSec - 1)) / mounted.info.BPB_BytesPerSec;
+	mounted.first_data_sector = mounted.info.BPB_RsvdSecCnt + (mounted.info.BPB_NumFATs * mounted.info.BPB_FATSz) + RootDirSectors;
 	return 0;
 }
 
@@ -165,7 +183,22 @@ uint8_t fat_read_block( uint32_t sector_addr ) {
 	if( sector_buffer_dirty )
 		fat_flush();
 	sector_buffer_addr = sector_addr;
-	return diskio_read_block( sector_addr, sector_buffer );
+	return diskio_read_block( mounted.dev, sector_addr, sector_buffer );
+}
+
+uint32_t cluster2sector(uint32_t cluster_num) {
+	return ((cluster_num - 2) * mounted.info.BPB_SecPerClus) + mounted.first_data_sector;
+}
+
+uint8_t is_EOC( uint32_t fat_entry ) {
+	if( mounted.info.type == FAT16 ) {
+		if( fat_entry >= 0xFFF8 )
+			return 1;
+	} else if( mounted.info.type == FAT32 ) {
+		if( (fat_entry & 0x0FFFFFFF) >= 0x0FFFFFF8 )
+			return 1;
+	}
+	return 0;
 }
 
 uint8_t fat_next_block() {
@@ -180,21 +213,6 @@ uint8_t fat_next_block() {
 	} else {
 		fat_read_block( sector_buffer_addr + 1 );
 	}
-}
-
-uint32_t cluster2sector(uint32_t cluster_num) {
-	return ((cluster_num – 2) * mounted.info.BPB_SecPerClus) + mounted.first_data_sector;
-}
-
-uint8_t is_EOC( uint32_t fat_entry ) {
-	if( mounted.info.type == FAT16 ) {
-		if( fat_entry >= 0xFFF8 )
-			return 1;
-	} else if( mounted.info.type == FAT32 ) {
-		if( (fat_entry & 0x0FFFFFFF) >= 0x0FFFFFF8 )
-			return 1;
-	}
-	return 0;
 }
 
 uint8_t lookup( const char *path, struct dir_entry *dir_entry ) {
@@ -220,7 +238,7 @@ void calc_fat_block( uint32_t cur_sec, uint32_t *fat_sec_num, uint32_t *ent_offs
 		*ent_offset = N * 2;
 	else if( mounted.info.type == FAT32 )
 		*ent_offset = N * 4;
-	*fat_sec_num = mounted.info.BPB_ResvdSecCnt + (*ent_offset / mounted.info.BPB_BytesPerSec);
+	*fat_sec_num = mounted.info.BPB_RsvdSecCnt + (*ent_offset / mounted.info.BPB_BytesPerSec);
 	*ent_offset = *ent_offset % mounted.info.BPB_BytesPerSec;
 }
 
@@ -243,7 +261,7 @@ uint32_t get_free_cluster(uint32_t start_cluster) {
 			i = _get_free_cluster_32();
 		fat_sec_num++;
 	} while( i == 512 );
-	ent_offset = (fat_sec_num - mounted.info.BPB_ResvdSecCnt) * mounted.info.BPB_BytesPerSec;
+	ent_offset = (fat_sec_num - mounted.info.BPB_RsvdSecCnt) * mounted.info.BPB_BytesPerSec;
 	if( mounted.info.type == FAT16 )
 		ent_offset /= 2;
 	else if( mounted.info.type == FAT32 )
@@ -253,6 +271,7 @@ uint32_t get_free_cluster(uint32_t start_cluster) {
 
 uint16_t _get_free_cluster_16() {
 	uint16_t entry = 0;
+	uint16_t i = 0;
 	for( i = 0; i < 512; i += 2 ) {
 		entry = (((uint16_t) sector_buffer[i]) << 8) + ((uint16_t) sector_buffer[i+1]);
 		if( entry == 0 ) {
@@ -264,6 +283,7 @@ uint16_t _get_free_cluster_16() {
 
 uint16_t _get_free_cluster_32() {
 	uint32_t entry = 0;
+	uint16_t i = 0;
 	for( i = 0; i < 512; i += 4 ) {
 		entry = (((uint32_t) sector_buffer[i]) << 24) + (((uint32_t) sector_buffer[i+1]) << 16) + (((uint32_t) sector_buffer[i+2]) << 8) + ((uint32_t) sector_buffer[i+3]);
 		if( entry & 0x0FFFFFFF == 0 ) {
@@ -274,7 +294,7 @@ uint16_t _get_free_cluster_32() {
 }
 
 uint8_t get_name_part( const char *path, char *name, uint8_t part_num ) {
-	uint8_t start = 0, end = 0, run = 0, i = 0, idx = 0, dot_found = 0;;
+	uint8_t start = 0, end = 0, run = 0, i = 0, idx = 0, dot_found = 0;
 	memset( name, 0x20, 11 );
 	for( i = 0; path[i] != '\0'; ++i ){
 		if( path[i] == '/' ) {
@@ -293,7 +313,7 @@ uint8_t get_name_part( const char *path, char *name, uint8_t part_num ) {
 						dot_found = 1;
 						continue;
 					}
-					if( !dotfound && idx > 7 )
+					if( !dot_found && idx > 7 )
 						return 4;
 					name[idx] = toupper(path[start + i]);
 				}
@@ -310,12 +330,12 @@ uint8_t get_name_part( const char *path, char *name, uint8_t part_num ) {
 
 uint32_t find_file_cluster( const char *path ) {
 	uint32_t first_root_dir_sec_num = 0;
-	struct dir_entry;
+	struct dir_entry dir_ent;
 	char name[11] = "\0";
 	uint8_t i = 0;
 	if( mounted.info.type == FAT16 ) {
 		// calculate the first cluster of the root dir
-		first_root_dir_sec_num = mounted.info.BPB_ResvdSecCnt + (mounted.info.BPB_NumFATs * mounted.info.BPB_FATSz);
+		first_root_dir_sec_num = mounted.info.BPB_RsvdSecCnt + (mounted.info.BPB_NumFATs * mounted.info.BPB_FATSz);
 	} else  if( mounted.info.type == FAT32 ) {
 		// BPB_RootClus is the first cluster of the root dir
 		first_root_dir_sec_num = mounted.info.BPB_RootClus * mounted.info.BPB_SecPerClus;
@@ -329,7 +349,7 @@ uint32_t find_file_cluster( const char *path ) {
 	}
 	return first_root_dir_sec_num;
 }
-
+/*
 int
 cfs_open(const char *name, int flags)
 {
@@ -383,24 +403,24 @@ void
 cfs_closedir(cfs_dir *dirp)
 {
 }
-
+*/
 /**
  * Tests if the given value is a power of 2.
  *
  * \param value Number which should be testet if it is a power of 2.
- * \return TRUE or FALSE.
+ * \return 0 on failure and 1 if value is a power of 2.
  */
 uint8_t is_a_power_of_2( uint32_t value ) {
 	uint32_t test = 1;
 	uint8_t i = 0;
 	if( value == 0 )
-		return TRUE;
+		return 0;
 	for( i = 0; i < 32; ++i ) {
 		test << 1;
 		if( test == value )
-			return TRUE;
+			return 0;
 	}
-	return FALSE;
+	return 1;
 }
 
 /**
@@ -425,12 +445,12 @@ uint32_t round_down_to_power_of_2( uint32_t value ) {
  * \return 1,2,4,8,16,32,64,128 depending on the number of sectors per cluster
  */
 uint8_t SPC( uint16_t sec_size, uint16_t bytes ) {
-	uint8_t SecPerClus = 0;
+	uint8_t SecPerCluster = 0;
 	SecPerCluster = (uint8_t)(bytes / sec_size);
 	if( SecPerCluster == 0 )
 		return 1;
 
-	if( is_a_power_of_2( SecPerCluster ) == FALSE )
+	if( is_a_power_of_2( SecPerCluster ) != 0 )
 		SecPerCluster = (uint8_t) round_down_to_power_of_2( SecPerCluster );
 	
 	if( SecPerCluster > 128 || SecPerCluster * sec_size > 32 * 1024 )
@@ -490,7 +510,7 @@ uint16_t mkfs_determine_fat_type_and_SPC( uint32_t total_sec_count, uint16_t byt
 uint32_t mkfs_compute_fat_size( struct FAT_Info *fi ) {
 	uint16_t RootDirSectors = ((fi->BPB_RootEntCnt * 32) + (fi->BPB_BytesPerSec - 1)) / fi->BPB_BytesPerSec;
 	uint32_t TmpVal1 = fi->BPB_TotSec - (fi->BPB_RsvdSecCnt + RootDirSectors);
-	uint32_t TmpVal2 = (256 * fi->BytesPerSec) + fi->BPB_NumFATs;
+	uint32_t TmpVal2 = (256 * fi->BPB_BytesPerSec) + fi->BPB_NumFATs;
 	uint32_t FATSz = 0;
 	if( fi->type == FAT32 )
 		TmpVal2 /= 2;
@@ -502,7 +522,7 @@ int mkfs_write_boot_sector( uint8_t *buffer, struct diskio_device_info *dev, str
 	// Test if we can make FAT16 or FAT32
 	uint16_t type_SPC = mkfs_determine_fat_type_and_SPC( dev->num_sectors, dev->sector_size ); 
 	uint8_t sectors_per_cluster = (uint8_t) type_SPC;
-	fi->BPB_FATsz = 0;
+	fi->BPB_FATSz = 0;
 	fi->type = (uint8_t) type_SPC >> 8;
 	
 	if( fi->type == FAT12 || fi->type == FAT_INVALID ) {
@@ -524,10 +544,10 @@ int mkfs_write_boot_sector( uint8_t *buffer, struct diskio_device_info *dev, str
 	fi->BPB_SecPerClus = sectors_per_cluster;
 	
 	//BPB_RsvdSecCnt
-	if( fat_type == FAT16 ) {
+	if( fi->type == FAT16 ) {
 		buffer[14] = 1; buffer[15] = 0;
 		fi->BPB_RsvdSecCnt = 1;
-	} else if( fat_type == FAT32 ) {
+	} else if( fi->type == FAT32 ) {
 		buffer[14] = 32; buffer[15] = 0;
 		fi->BPB_RsvdSecCnt = 32;
 	}
@@ -537,10 +557,10 @@ int mkfs_write_boot_sector( uint8_t *buffer, struct diskio_device_info *dev, str
 	fi->BPB_NumFATs = 2;
 	
 	// BPB_RootEntCnt
-	if( fat_type == FAT16 ) {
+	if( fi->type == FAT16 ) {
 		buffer[17] = (uint8_t) 512; buffer[18] = (uint8_t) 512 >> 8;
 		fi->BPB_RootEntCnt = 512;
-	} else if( fat_type == FAT32 ) {
+	} else if( fi->type == FAT32 ) {
 		buffer[17] = 0; buffer[18] = 0;
 		fi->BPB_RootEntCnt = 0;
 	}
@@ -567,7 +587,7 @@ int mkfs_write_boot_sector( uint8_t *buffer, struct diskio_device_info *dev, str
 	
 	if( fi->type == FAT16 && fi->BPB_FATSz < 0x10000) {
 		buffer[22] = (uint8_t) fi->BPB_FATSz; buffer[23] = (uint8_t) (fi->BPB_FATSz >> 8);
-	} else if( fat_type == FAT16 ) {
+	} else if( fi->type == FAT16 ) {
 		return -1;
 	} else {
 		buffer[22] = 0; buffer[23] = 0;
@@ -685,7 +705,7 @@ void mkfs_write_fats( uint8_t *buffer, struct diskio_device_info *dev, struct FA
 	
 	// Write first sector of the FATs
 	for( j = 0; j < fi->BPB_NumFATs; ++j ) {
-		diskio_write_block( dev, fi->BPB_ResvSecCnt + fi->BPB_FATSz * j, buffer );
+		diskio_write_block( dev, fi->BPB_RsvdSecCnt + fi->BPB_FATSz * j, buffer );
 	}
 	
 	// Reset first 64 bits = 8 Bytes of the buffer
@@ -694,7 +714,7 @@ void mkfs_write_fats( uint8_t *buffer, struct diskio_device_info *dev, struct FA
 	for(i = 1; i < fi->BPB_FATSz; ++i) {
 		// Write additional Sectors of the FATs
 		for( j = 0; j < fi->BPB_NumFATs; ++j ) {
-			diskio_write_block( dev, fi->BPB_ResvSecCnt + fi->BPB_FATSz * j, buffer );
+			diskio_write_block( dev, fi->BPB_RsvdSecCnt + fi->BPB_FATSz * j, buffer );
 		}
 	}
 }
@@ -716,7 +736,7 @@ void mkfs_write_fsinfo( uint8_t *buffer, struct diskio_device_info *dev, struct 
 	buffer[490] = (uint8_t) fsi_free_count >> 16; buffer[491] = (uint8_t) fsi_free_count >> 24;
 	
 	// FSI_Nxt_Free
-	fsi_nxt_free = (fi->BPB_ResvdSecCnt + (fi->BPB_NumFATs * fi->BPB_FATSz));
+	fsi_nxt_free = (fi->BPB_RsvdSecCnt + (fi->BPB_NumFATs * fi->BPB_FATSz));
 	if( fsi_nxt_free % fi->BPB_SecPerClus ) {
 		fsi_nxt_free = (fsi_nxt_free / fi->BPB_SecPerClus) + 1;
 	} else {
@@ -732,7 +752,7 @@ void mkfs_write_fsinfo( uint8_t *buffer, struct diskio_device_info *dev, struct 
 	
 	diskio_write_block( dev, 1, buffer );
 }
-
+/*
 void set_fat16_entry( struct FAT_Info *fi, uint16_t cluster, uint16_t value ) {
 	uint16_t *fat16_p;
 }
@@ -743,10 +763,10 @@ void set_fat32_entry( struct FAT_Info *fi, uint32_t cluster, uint32_t value ) {
 	fat32_p = value;
 	writeback_fat_block();
 }
-
+*/
 void mkfs_write_root_directory( uint8_t *buffer, struct diskio_device_info *dev, struct FAT_Info *fi ) {
-	uint32_t FirstRootDirSecNum = fi->BPB_ResvdSecCnt + (fi->BPB_NumFATs * fi->BPB_FATSz);
-	set_fat_entry( fi, 2, EOC );
+	uint32_t FirstRootDirSecNum = fi->BPB_RsvdSecCnt + (fi->BPB_NumFATs * fi->BPB_FATSz);
+//	set_fat_entry( fi, 2, EOC );
 }
 
 int mkfs_fat( struct diskio_device_info *dev ) {
@@ -757,7 +777,7 @@ int mkfs_fat( struct diskio_device_info *dev ) {
 	memset( buffer, 0, 512 );
 	mkfs_write_fats( buffer, dev, &fi );
 	memset( buffer, 0, 512 );
-	if( fi->type == FAT32 ) {
+	if( fi.type == FAT32 ) {
 		mkfs_write_fsinfo( buffer, dev, &fi );
 	}
 	mkfs_write_root_directory( buffer, dev, &fi );

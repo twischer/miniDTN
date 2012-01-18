@@ -26,7 +26,7 @@ struct mbr_primary_partition {
 	 * Third byte stores the lower 8 bits of the cylinder value (0 - 7)
 	 */
 	uint8_t chs_first_sector[3];
-	/** The type of partition this is, like FAT16 or FAT32 */
+	/** The type of partition this is, like FAT16 or FAT32; type = 0 means it's unused*/
 	uint8_t type;
 	/** Stores the last sector of the partition in the old CHS format */
 	uint8_t chs_last_sector[3];

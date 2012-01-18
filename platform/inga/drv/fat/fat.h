@@ -36,5 +36,6 @@ int fat_rmdir(char *);
  */
 uint8_t fat_mount_device( struct diskio_device_info *dev );
 void fat_umount_device();
+void get_fat_info( struct FAT_Info *info );
 
 #endif
