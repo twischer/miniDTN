@@ -43,7 +43,25 @@ struct dir_entry {
 	uint32_t DIR_FileSize;
 };
 
-void fat_flush() {}
+void fat_flush() {
+	if( sector_buffer_dirty ) {
+		diskio_write_block( mounted.dev, sector_buffer_addr, sector_buffer );
+		sector_buffer_dirty = 0;
+	}
+}
+
+void fat_sync_fats() {
+	uint8_t fat_number;
+	uint32_t fat_block;
+	fat_flush();
+	for(fat_block = 0; fat_block < mounted.info.BPB_FATSz; fat_block) {
+		diskio_read_block( mounted.dev, fat_block + mounted.info.BPB_RsvdSecCnt, sector_buffer );
+		for(fat_number = 2; fat_number <= mounted.info.BPB_NumFATs; fat_number++) {
+			diskio_write_block( mounted.dev, (fat_block + mounted.info.BPB_RsvdSecCnt) + ((fat_number - 1) * mounted.info.BPB_FATSz), sector_buffer );
+		}
+	}
+}
+
 uint16_t _get_free_cluster_16();
 uint16_t _get_free_cluster_32();
 uint8_t is_a_power_of_2( uint32_t value );
@@ -141,7 +159,9 @@ uint8_t parse_bootsector( uint8_t *buffer, struct FAT_Info *info ) {
 		ret += 32;
 	if( buffer[510] != 0x55 || buffer[511] != 0xaa )
 		ret += 64;
+	#ifdef DEBUG
 	printf("\nparse_bootsector() = %u", ret);
+	#endif
 	return ret;
 }
 
@@ -166,13 +186,20 @@ uint8_t fat_mount_device( struct diskio_device_info *dev ) {
 
 	RootDirSectors = ((mounted.info.BPB_RootEntCnt * 32) + (mounted.info.BPB_BytesPerSec - 1)) / mounted.info.BPB_BytesPerSec;
 	mounted.first_data_sector = mounted.info.BPB_RsvdSecCnt + (mounted.info.BPB_NumFATs * mounted.info.BPB_FATSz) + RootDirSectors;
+	printf("fat_mount_device(): first_data_sector = %lu", mounted.first_data_sector );
 	return 0;
 }
 
 void fat_umount_device() {
-	// TODO Write last buffer
-	// TODO Write second FAT
-	// TODO invalidate file-descriptors
+	uint8_t i = 0;
+	// Write last buffer
+	fat_flush();
+	// Write second FAT
+	fat_sync_fats();
+	// invalidate file-descriptors
+	for(i = 0; i < FAT_FD_POOL_SIZE; i++) {
+		fat_fd_pool[i].file = 0;
+	}
 	// Reset the device pointer
 	mounted.dev = 0;
 }
@@ -180,8 +207,7 @@ void fat_umount_device() {
 uint8_t fat_read_block( uint32_t sector_addr ) {
 	if( sector_buffer_addr == sector_addr && sector_addr != 0 )
 		return 0;
-	if( sector_buffer_dirty )
-		fat_flush();
+	fat_flush();
 	sector_buffer_addr = sector_addr;
 	return diskio_read_block( mounted.dev, sector_addr, sector_buffer );
 }
