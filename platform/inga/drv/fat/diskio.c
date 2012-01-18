@@ -200,6 +200,7 @@ int diskio_detect_devices() {
 	int dev_num = 0;
 	int i = 0, index = 0;
 
+	memset( devices, 0, DISKIO_MAX_DEVICES * sizeof(struct diskio_device_info) );
 #ifndef DISKIO_DEBUG
 	if( microSD_init() == 0 ) {
 		devices[index].type = DISKIO_DEVICE_TYPE_SD_CARD;
@@ -214,7 +215,7 @@ int diskio_detect_devices() {
 		mbr_read( &devices[index], &mbr );
 		index += 1;
 		for( i = 0; i < 4; ++i ) {
-			if( mbr_hasPartition( &mbr, i + 1 ) == TRUE ) {
+			if( mbr_hasPartition( &mbr, i + 1 ) != 0 ) {
 				devices[index].type = DISKIO_DEVICE_TYPE_SD_CARD | DISKIO_DEVICE_TYPE_PARTITION;
 				devices[index].number = dev_num;
 				devices[index].partition = i + 1;

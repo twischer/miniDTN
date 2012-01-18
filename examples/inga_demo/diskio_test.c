@@ -34,13 +34,13 @@ static struct etimer timer;
 PROCESS_THREAD(hello_world_process, ev, data)
 {
   PROCESS_BEGIN();
-    //microSD Test
 	uint8_t i = 0;
 	struct diskio_device_info *info = 0;
+	printf("\nTEST BEGIN\n");
 	while(diskio_detect_devices() != DISKIO_SUCCESS);
 	info = diskio_devices();
 	for(i = 0; i < DISKIO_MAX_DEVICES; i++) {
-		print_device_info( info + i);
+		print_device_info( info + i );
 	}
                 
   PROCESS_END();

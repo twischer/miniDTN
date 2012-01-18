@@ -43,7 +43,7 @@ int mbr_addPartition(struct mbr *mbr, uint8_t part_num, uint8_t part_type, uint3
 	uint16_t cylinder = 0;
 	
 	ret = mbr_hasPartition( mbr, part_num );
-	if( ret != FALSE ) {
+	if( ret != 0 ) {
 		return MBR_ERROR_PARTITION_EXISTS;
 	}
 	
@@ -87,11 +87,14 @@ int mbr_delPartition(struct mbr *mbr, uint8_t part_num) {
 
 int mbr_hasPartition(struct mbr *mbr, uint8_t part_num) {
 	if( part_num > 4 || part_num < 1 ) {
-		return FALSE;
+		return 0;
 	}
 	printf("status = %d\n", mbr->partition[part_num - 1].status);
+	printf("type = %d\n", mbr->partition[part_num - 1].type);
 	if( mbr->partition[part_num - 1].status != 0x00 && mbr->partition[part_num - 1].status != 0x80 ) {
-		return FALSE;
+		return 0;
 	}
-	return TRUE;
+	if( mbr->partition[part_num - 1].type == 0 )
+		return 0;
+	return 1;
 }
