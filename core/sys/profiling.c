@@ -83,8 +83,8 @@ void profiling_report(const char *name, uint8_t pretty)
 		printf("PROF:%s:%u:%u:%lu:%lu\n", name, profile.num_sites, profile.max_sites, profile.time_run, CLOCK_SECOND*256l);
 
 	for(i=0; i<profile.num_sites;i++) {
-		printf("%p:%p:%lu:%lu\n", profile.sites[i].from, profile.sites[i].addr,
-				profile.sites[i].calls, profile.sites[i].time_accum);
+		printf("%p:%p:%lu:%lu:%u:%u\n", profile.sites[i].from, profile.sites[i].addr,
+				profile.sites[i].calls, profile.sites[i].time_accum, profile.sites[i].time_min, profile.sites[i].time_max);
 	}
 	printf("\n");
 }
