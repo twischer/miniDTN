@@ -2,6 +2,10 @@
 #define _FAT_H_
 
 #include "diskio.h"
+#include <string.h>
+#include <stdio.h>
+#include <ctype.h>
+﻿#include <stdint.h>
 
 #define FAT12 0
 #define FAT16 1
@@ -21,6 +25,18 @@ struct FAT_Info {
 	uint8_t BPB_Media;
 	uint32_t BPB_FATSz;
 	uint32_t BPB_RootClus; /** only valid for FAT32 */
+};
+
+struct file {
+	//metadata
+	/** Cluster Position on disk */
+	uint32_t cluster;
+};
+
+struct file_desc {
+	cfs_offset_t offset;
+	struct file *file;
+	uint8_t flags;
 };
 
 int mkfs_fat( struct diskio_device_info *dev );
