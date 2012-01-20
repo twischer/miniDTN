@@ -225,6 +225,11 @@ uint32_t cluster2sector(uint32_t cluster_num) {
 	return ((cluster_num - 2) * mounted.info.BPB_SecPerClus) + mounted.first_data_sector;
 }
 
+/*UNTESTED*/
+uint32_t sector2cluster(uint32_t sector_num) {
+	return ((sector_num - mounted.first_data_sector) / mounted.info.BPB_SecPerClus) + 2;
+}
+
 uint8_t is_EOC( uint32_t fat_entry ) {
 	if( mounted.info.type == FAT16 ) {
 		if( fat_entry >= 0xFFF8 )
@@ -278,7 +283,7 @@ uint32_t read_fat_entry_cluster( uint32_t cluster ) {
 }
 
 uint32_t read_fat_entry( uint32_t sec_addr ) {
-	uint32_t fat_sec_num = 0, ent_offset = 0, ret = 0;;
+	uint32_t fat_sec_num = 0, ent_offset = 0, ret = 0;
 	calc_fat_block( sec_addr, &fat_sec_num, &ent_offset );
 	fat_read_block( fat_sec_num );
 	if( mounted.info.type == FAT16 ) {
@@ -288,6 +293,21 @@ uint32_t read_fat_entry( uint32_t sec_addr ) {
 		ret &= 0x0FFFFFFF;
 	}
 	return ret;
+}
+
+void write_fat_entry( uint32_t cluster_num, uint32_t value ) {
+	uint32_t fat_sec_num = 0, ent_offset = 0;
+	calc_fat_block( cluster2sector(cluster_num), &fat_sec_num, &ent_offset );
+	fat_read_block( fat_sec_num );
+	if( mounted.info.type == FAT16 ) {
+		sector_buffer[ent_offset+1] = (uint8_t) (value >> 8);
+		sector_buffer[ent_offset]   = (uint8_t) (value);
+	} else if( mounted.info.type == FAT32 ) {
+		sector_buffer[ent_offset+3] = ((uint8_t) (value >> 24) & 0x0FFF) + (0xF000 & sector_buffer[ent_offset+3]);
+		sector_buffer[ent_offset+2] = (uint8_t) (value >> 16);
+		sector_buffer[ent_offset+1] = (uint8_t) (value >> 8);
+		sector_buffer[ent_offset]   = (uint8_t) (value);
+	}
 }
 
 void calc_fat_block( uint32_t cur_sec, uint32_t *fat_sec_num, uint32_t *ent_offset ) {
@@ -464,6 +484,10 @@ uint8_t fat_read_file( int fd, uint32_t clusters, uint32_t clus_offset ) {
 	return fat_read_block( cluster2sector(cluster) + clus_offset );
 }
 
+uint32_t fat_create_file( const char *path ) {
+	return 0;
+}
+
 int
 cfs_open(const char *name, int flags)
 {
@@ -481,17 +505,24 @@ cfs_open(const char *name, int flags)
 		return fd;
 	// find file on Disk
 	fat_file_pool[fd].cluster = find_file_cluster( name );
-	if( fat_file_pool[fd].cluster == 0 )
-		return -1;
+	if( fat_file_pool[fd].cluster == 0 ){ 
+		if( flags & CFS_WRITE ) {
+			fat_file_pool[fd].cluster = fat_create_file( name );	
+		if( fat_file_pool[fd].cluster == 0 )
+			return -1;
+		} else
+			return -1;
+	}
 	fat_fd_pool[fd].file = &(fat_file_pool[fd]);
 	fat_fd_pool[fd].flags = (uint8_t) flags;
 	// put read/write position in the right spot
 	fat_fd_pool[fd].offset = 0;
+	if( flags & CFS_APPEND )
+		cfs_seek( fd, CFS_SEEK_END, 0 );
 	// return FileDescriptor
 	return fd;
 }
 
-/*
 void
 cfs_close(int fd)
 {
@@ -500,7 +531,6 @@ cfs_close(int fd)
 	fat_flush( fd );
 	fat_fd_pool[fd].file = NULL;
 }
-*/
 
 int
 cfs_read(int fd, void *buf, unsigned int len)
@@ -510,6 +540,10 @@ cfs_read(int fd, void *buf, unsigned int len)
 	uint8_t clus_offset = (fat_fd_pool[fd].offset / mounted.info.BPB_BytesPerSec) % mounted.info.BPB_SecPerClus;
 	uint16_t i, j = 0;
 	uint8_t *buffer = (uint8_t *) buf;
+	if( fd < 0 || fd >= FAT_FD_POOL_SIZE )
+		return -1;
+	if( !(fat_fd_pool[fd].flags & CFS_READ) )
+		return -1;
 	while( fat_read_file( fd, clusters, clus_offset ) == 0 ) {
 		for( i = offset; i < 512 && j < len; i++,j++,fat_fd_pool[fd].offset++ ) {
 			buffer[j] = sector_buffer[i];
@@ -523,19 +557,41 @@ cfs_read(int fd, void *buf, unsigned int len)
 		if( j >= len )
 			break;
 	}
-	return 0;
+	return (int) j;
 }
 /*
 int
 cfs_write(int fd, const void *buf, unsigned int len)
 {
 }
+*/
 
 cfs_offset_t
 cfs_seek(int fd, cfs_offset_t offset, int whence)
 {
+	if( fd < 0 || fd >= FAT_FD_POOL_SIZE )
+		return -1;
+	switch(whence) {
+		case CFS_SEEK_SET:
+			fat_fd_pool[fd].offset = offset;
+			break;
+		case CFS_SEEK_CUR:
+			fat_fd_pool[fd].offset += offset;
+			break;
+		case CFS_SEEK_END:
+			fat_fd_pool[fd].offset = (fat_fd_pool[fd].file->size - 1) + offset;
+			break;
+		default:
+			break;
+	}
+	if( fat_fd_pool[fd].offset >= fat_fd_pool[fd].file->size )
+		fat_fd_pool[fd].offset = (fat_fd_pool[fd].file->size - 1);
+	if( fat_fd_pool[fd].offset < 0 )
+		fat_fd_pool[fd].offset = 0;
+	return fat_fd_pool[fd].offset;
 }
 
+/*
 int
 cfs_remove(const char *name)
 {
