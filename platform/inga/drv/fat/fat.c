@@ -503,8 +503,70 @@ uint8_t pr_is_current_path_part_a_file( PathResolver *rsolv ) {
 	return 0;
 }
 
-uint8_t fat_create_file( const char *path ) {
+uint32_t add_cluster_to_current_chain() {
+	uint32_t current_sector = sector_buffer_addr;
+	uint32_t free_cluster = get_free_cluster( sector2cluster( current_sector ) );
+	write_fat_entry( sector2cluster( current_sector ), free_cluster );
+	write_fat_entry( free_cluster, EOC );
+	return free_cluster;
+}
+
+uint8_t add_directory_entry_to_current( struct dir_entry *dir_ent, uint32_t *dir_entry_sector, uint32_t *dir_entry_offset ) {
+	uint16_t i = 0;
+	uint8_t ret = 0;
+	for(;;) {
+		for( i = 0; i < 512; i+=32 ) {
+			if( sector_buffer[i] == 0x00 || sector_buffer[i] == 0xE5 ) {
+				memcpy( &(sector_buffer[i]), dir_ent, sizeof(struct dir_entry) );
+				sector_buffer_dirty = 1;
+				return 0;
+			}
+		}
+		if( (ret = fat_next_block()) != 0 ) {
+			if( ret == 128 ) {
+				uint32_t cluster = add_cluster_to_current_chain();
+				if( fat_read_block( cluster2sector( cluster ) ) == 0 ){
+					memcpy( &(sector_buffer[0]), dir_ent, sizeof(struct dir_entry) );
+					sector_buffer_dirty = 1;
+					return 0;
+				}
+			}
+			return 1;
+		}
+	}
 	return 1;
+}
+
+uint8_t fat_create_file( const char *path, struct dir_entry *dir_ent ) {
+	uint32_t first_root_dir_sec_num = 0;
+	uint32_t file_sector_num = 0;
+	uint8_t i = 0;
+	struct PathResolver pr;
+	pr_reset( &pr );
+	pr.path = path;
+	if( mounted.info.type == FAT16 ) {
+		// calculate the first cluster of the root dir
+		first_root_dir_sec_num = mounted.info.BPB_RsvdSecCnt + (mounted.info.BPB_NumFATs * mounted.info.BPB_FATSz); // TODO Verify this is correct
+	} else if( mounted.info.type == FAT32 ) {
+		// BPB_RootClus is the first cluster of the root dir
+		first_root_dir_sec_num = cluster2sector( mounted.info.BPB_RootClus );
+	}
+	file_sector_num = first_root_dir_sec_num;
+	for(i = 0; pr_get_next_path_part( &pr ) == 0 && i < 255; i++) {
+		fat_read_block( file_sector_num );
+		if( lookup( pr->name, dir_ent, dir_entry_sector, dir_entry_offset ) != 0 ) {
+			if( pr_is_current_path_part_a_file( pr ) ) {
+				memset( dir_ent, 0, 32 );
+				dir_ent->name = pr->name;
+				dir_ent->DIR_Attr = DIR_Attr_FILE;
+				print_dir_entry( dir_ent );
+				return add_directory_entry_to_current( dir_entry, dir_entry_sector, dir_entry_offset );
+			}
+			return 0;
+		}
+		file_sector_num = cluster2sector( dir_ent->DIR_FstClusLO + (((uint32_t) dir_ent->DIR_FstClusHI) << 16) );
+	}
+	return 0;
 }
 
 int
@@ -526,7 +588,7 @@ cfs_open(const char *name, int flags)
 	// find file on Disk
 	if( !get_dir_entry( name, &dir_ent, &fat_file_pool[fd].dir_entry_sector, &fat_file_pool[fd].dir_entry_offset ) ) {
 		if( flags & CFS_CREATE ) {
-			if( fat_create_file( name, &dir_ent ) != 0 ) {
+			if( fat_create_file( name, &dir_ent, &fat_file_pool[fd].dir_entry_sector, &fat_file_pool[fd].dir_entry_offset ) != 0 ) {
 				return -1;
 			}
 		} else {
