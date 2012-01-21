@@ -27,10 +27,28 @@ struct FAT_Info {
 	uint32_t BPB_RootClus; /** only valid for FAT32 */
 };
 
+struct dir_entry {
+	uint8_t DIR_Name[11];
+	uint8_t DIR_Attr;
+	uint8_t DIR_NTRes;
+	uint8_t CrtTimeTenth;
+	uint16_t DIR_CrtTime;
+	uint16_t DIR_CrtDate;
+	uint16_t DIR_LstAccessDate;
+	uint16_t DIR_FstClusHI;
+	uint16_t DIR_WrtTime;
+	uint16_t DIR_WrtDate;
+	uint16_t DIR_FstClusLO;
+	uint32_t DIR_FileSize;
+};
+
 struct file {
 	//metadata
 	/** Cluster Position on disk */
 	uint32_t cluster;
+	uint32_t dir_entry_sector;
+	uint16_t dir_entry_offset;
+	struct dir_entry dir_entry;
 };
 
 struct file_desc {
