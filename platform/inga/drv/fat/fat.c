@@ -3,9 +3,19 @@
 
 #define FAT_FD_POOL_SIZE 5
 
+#define ATTR_READ_ONLY 0x01
+#define ATTR_HIDDEN    0x02
+#define ATTR_SYSTEM    0x04
+#define ATTR_VOLUME_ID 0x08
+#define ATTR_DIRECTORY 0x10
+#define ATTR_ARCHIVE   0x20
+#define ATTR_LONG_NAME (ATTR_READ_ONLY | ATTR_HIDDEN | ATTR_SYSTEM | ATTR_VOLUME_ID)
+
 uint8_t sector_buffer[512];
 uint32_t sector_buffer_addr = 0;
 uint8_t sector_buffer_dirty = 0;
+
+uint16_t cfs_readdir_offset = 0;
 
 struct file_system {
 	struct diskio_device_info *dev;
@@ -451,8 +461,6 @@ uint32_t find_nth_cluster( uint32_t start_cluster, uint32_t n ) {
 	uint32_t cluster = start_cluster, i = 0;
 	for( i = 0; i < n; i++ ) {
 		cluster = read_fat_entry_cluster( cluster );
-		if( is_EOC( cluster ) )
-			return 0;
 	}
 	return cluster;
 }
@@ -462,12 +470,23 @@ uint8_t fat_read_file( int fd, uint32_t clusters, uint32_t clus_offset ) {
 	uint32_t cluster = find_nth_cluster( fat_file_pool[fd].cluster, clusters );
 	//printf("\nfat_read_file(): cluster = %lu", cluster);
 	//printf("\nfat_read_file(): sector = %lu", cluster2sector(cluster) + clus_offset);
-	if( cluster == 0 )
+	if( cluster == 0 || is_EOC( cluster ) )
 		return 1;
 	return fat_read_block( cluster2sector(cluster) + clus_offset );
 }
 
 uint8_t fat_write_file( int fd, uint32_t clusters, uint32_t clus_offset ) {
+	uint32_t cluster = find_nth_cluster( fat_file_pool[fd].cluster, clusters );
+	if( cluster == 0 ) {
+		return 1;
+	} else if( is_EOC( cluster ) ) {
+		uint32_t last_cluster_num = find_nth_cluster( fat_file_pool[fd].cluster, clusters-1 );
+		uint32_t free_cluster = get_free_cluster( last_cluster_num );
+		write_fat_entry( last_cluster_num, free_cluster );
+		write_fat_entry( free_cluster, EOC );
+		return fat_read_block( cluster2sector( free_cluster ) );
+	}
+	return fat_read_block( cluster2sector(cluster) + clus_offset );
 }
 
 void pr_reset( PathResolver *rsolv ) {
@@ -556,7 +575,7 @@ uint8_t fat_create_file( const char *path, struct dir_entry *dir_ent ) {
 		fat_read_block( file_sector_num );
 		if( lookup( pr->name, dir_ent, dir_entry_sector, dir_entry_offset ) != 0 ) {
 			if( pr_is_current_path_part_a_file( pr ) ) {
-				memset( dir_ent, 0, 32 );
+				memset( dir_ent, 0, sizeof(dir_entry) )
 				dir_ent->name = pr->name;
 				dir_ent->DIR_Attr = DIR_Attr_FILE;
 				print_dir_entry( dir_ent );
@@ -567,6 +586,20 @@ uint8_t fat_create_file( const char *path, struct dir_entry *dir_ent ) {
 		file_sector_num = cluster2sector( dir_ent->DIR_FstClusLO + (((uint32_t) dir_ent->DIR_FstClusHI) << 16) );
 	}
 	return 0;
+}
+
+uint8_t _is_file( struct dir_entry *dir_ent ) {
+	if( dir_ent->DIR_Attr & ATTR_DIRECTORY )
+		return 0;
+	if( dir_ent->DIR_Attr & ATTR_VOLUME_ID )
+		return 0;
+	return 1;
+}
+
+uint8_t _cfs_flags_ok( int flags, struct dir_entry *dir_ent ) {
+	if( (flags & CFS_CREATE || flags & CFS_WRITE) && dir_ent->DIR_Attr & ATTR_READ_ONLY )
+		return 0;
+	return 1;
 }
 
 int
@@ -606,6 +639,7 @@ cfs_open(const char *name, int flags)
 	fat_fd_pool[fd].flags = (uint8_t) flags;
 	// put read/write position in the right spot
 	fat_fd_pool[fd].offset = 0;
+	fat_file_pool[fd].size = dir_ent.DIR_FileSize;
 	if( flags & CFS_APPEND )
 		cfs_seek( fd, CFS_SEEK_END, 0 );
 	// return FileDescriptor
@@ -692,6 +726,7 @@ cfs_write(int fd, const void *buf, unsigned int len)
 		for( i = offset; i < 512 && j < len; i++,j++,fat_fd_pool[fd].offset++ ) {
 			sector_buffer[i] = buffer[j];
 		}
+		sector_buffer_dirty = 1;
 		if( (clus_offset + 1) % mounted.info.BPB_SecPerClus == 0 ) {
 			clus_offset = 0;
 			clusters++;
@@ -728,27 +763,99 @@ cfs_seek(int fd, cfs_offset_t offset, int whence)
 	return fat_fd_pool[fd].offset;
 }
 
-/*
+void reset_cluster_chain( struct dir_entry *dir_ent ) {
+	uint32_t cluster = (((uint32_t) dir_ent->DIR_FstClusHI) << 16) + dir_ent->DIR_FstClusLO;
+	uint32_t next_cluster = read_fat_entry( cluster );
+	while( !is_EOC( cluster ) ) {
+		write_fat_entry( cluster, 0L );
+		cluster = next_cluster;
+		next_cluster = read_fat_entry( cluster );
+	}
+	write_fat_entry( cluster, 0L );
+}
+
+void remove_dir_entry( uint32_t dir_entry_sector, uint32_t dir_entry_offset ) {
+	if( read_fat_block( dir_entry_sector ) != 0 )
+		return;
+	memset( &(fat_sector_buffer[dir_entry_offset]), 0, sizeof(struct dir_entry) );
+	fat_sector_buffer[dir_entry_offset] = 0xE5;
+}
+
 int
 cfs_remove(const char *name)
 {
+	struct dir_entry dir_ent;
+	uint32_t sector, offset;
+	if( !get_dir_entry( name, &dir_ent, &sector, &offset ) ) {
+		return -1;
+	}
+	if( _is_file( &dir_ent) ) {
+		reset_cluster_chain( &dir_ent );
+		remove_dir_entry( sector, offset );
+		return 0;
+	}
+	return -1;
 }
 
 int
 cfs_opendir(struct cfs_dir *dirp, const char *name)
 {
+	struct dir_entry dir_ent;
+	uint32_t sector, offset;
+	uint32_t dir_cluster = get_dir_entry( name, &dir_ent, &sector, &offset );
+	cfs_readdir_offset = 0;
+	if( dir_cluster == 0 )
+		return -1;
+	memcpy( dirp, &dir_ent, sizeof(struct dir_entry) );
+	return 0;
+}
+
+uint8_t get_dir_entry( struct dir_entry *dir, uint16_t offset, struct dir_entry *entry ) {
+	uint32_t dir_off = offset * 32;
+	uint16_t cluster_num = dir_off / mounted.info.BPB_SecPerClus;
+	uint32_t cluster;
+	cluster = find_nth_cluster( (((uint32_t) dir->DIR_FstClusHi) << 16) + dir->DIR_FstClusLO );
+	if( cluster == 0 )
+		return 1;
+	if( fat_read_block( cluster2sector(cluster) + dir_off / mounted.info.BPB_BytesPerSec ) != 0 )
+		return 2;
+	memcpy( entry, fat_sector_buffer[dir_off % mounted.info.BPB_BytesPerSec], sizeof(struct dir_entry) );
+	return 0;
+}
+
+void make_readable_entry( struct dir_entry *dir, struct cfs_dirent *dirent ) {
+	uint8_t i, j;
+	for( i = 0, j = 0; i < 11; i++ ) {
+		if( dir->DIR_Name[i] != ' ' ) {
+			dirent->name[j] = dir->DIR_Name[i];
+			j++;
+		}
+		if( i == 7 ) {
+			dir_ent->name[j] = '.';
+			j++;
+		}
+	}
 }
 
 int
 cfs_readdir(struct cfs_dir *dirp, struct cfs_dirent *dirent)
 {
+	struct dir_entry *dir_ent = (struct dir_entry *) dirp;
+	struct dir_entry entry;
+	if( get_dir_entry( dir_ent, cfs_readdir_offset, &entry ) != 0 )
+		return -1;
+	make_readable_entry( entry, dirent );
+	dirent->size = entry->DIR_FileSize;
+	cfs_readdir_offset++;
+	return 0;
 }
 
 void
-cfs_closedir(cfs_dir *dirp)
+cfs_closedir(struct cfs_dir *dirp)
 {
+	cfs_readdir_offset = 0;
 }
-*/
+
 /**
  * Tests if the given value is a power of 2.
  *

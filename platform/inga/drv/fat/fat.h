@@ -5,7 +5,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <ctype.h>
-﻿#include <stdint.h>
+#include <stdint.h>
 
 #define FAT12 0
 #define FAT16 1
@@ -49,6 +49,7 @@ struct file {
 	uint32_t dir_entry_sector;
 	uint16_t dir_entry_offset;
 	struct dir_entry dir_entry;
+	uint32_t size;
 };
 
 struct file_desc {
