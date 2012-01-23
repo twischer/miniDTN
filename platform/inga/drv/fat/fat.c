@@ -811,15 +811,18 @@ cfs_remove(const char *name)
 	struct dir_entry dir_ent;
 	uint32_t sector;
 	uint16_t offset;
-	if( get_dir_entry( name, &dir_ent, &sector, &offset ) != 0 ) {
+	if( !get_dir_entry( name, &dir_ent, &sector, &offset ) ) {
+		printf("\ncfs_remove(): File not found!");
 		return -1;
 	}
 	if( _is_file( &dir_ent ) ) {
+		printf("\ncfs_remove(): File found!");
 		reset_cluster_chain( &dir_ent );
 		remove_dir_entry( sector, offset );
 		fat_flush();
 		return 0;
 	}
+	printf("\ncfs_remove(): Urks!");
 	return -1;
 }
 
