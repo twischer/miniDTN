@@ -52,7 +52,9 @@ uint8_t get_dir_entry( const char *path, struct dir_entry *dir_ent, uint32_t *di
  */
 void fat_flush() {
 	if( sector_buffer_dirty ) {
+		printf("\nfat_flush() : Sector is dirty, writing back to addr = %lu", sector_buffer_addr);
 		diskio_write_block( mounted.dev, sector_buffer_addr, sector_buffer );
+		printf("\nfat_flush() : resetting dirty flag");
 		sector_buffer_dirty = 0;
 	}
 }
@@ -219,6 +221,7 @@ void fat_umount_device() {
 }
 
 uint8_t fat_read_block( uint32_t sector_addr ) {
+	printf("\nfat_read_block()");
 	if( sector_buffer_addr == sector_addr && sector_addr != 0 )
 		return 0;
 	fat_flush();
@@ -247,8 +250,8 @@ uint8_t is_EOC( uint32_t fat_entry ) {
 }
 
 uint8_t fat_next_block() {
-	if( sector_buffer_dirty )
-		fat_flush();
+	printf("\nfat_next_block()");
+	fat_flush();
 	/* Are we on a Cluster edge? */
 	if( (sector_buffer_addr + 1) % mounted.info.BPB_SecPerClus == 0 ) {
 		uint32_t entry = read_fat_entry( sector_buffer_addr );
@@ -529,6 +532,7 @@ uint8_t pr_is_current_path_part_a_file( struct PathResolver *rsolv ) {
 uint32_t add_cluster_to_current_chain() {
 	uint32_t current_sector = sector_buffer_addr;
 	uint32_t free_cluster = get_free_cluster( sector2cluster( current_sector ) );
+	printf("\nadd_cluster_to_current_chain()");
 	write_fat_entry( sector2cluster( current_sector ), free_cluster );
 	write_fat_entry( free_cluster, EOC );
 	return free_cluster;
@@ -538,12 +542,13 @@ uint8_t add_directory_entry_to_current( struct dir_entry *dir_ent, uint32_t *dir
 	uint16_t i = 0;
 	uint8_t ret = 0;
 	printf("\nadd_directory_entry_to_current(): BEGIN");
-	printf("\nadd_directory_entry_to_current(): BEGIN");
 	for(;;) {
 		for( i = 0; i < 512; i+=32 ) {
 			if( sector_buffer[i] == 0x00 || sector_buffer[i] == 0xE5 ) {
 				memcpy( &(sector_buffer[i]), dir_ent, sizeof(struct dir_entry) );
 				sector_buffer_dirty = 1;
+				*dir_entry_sector = sector_buffer_addr;
+				*dir_entry_offset = i;
 				return 0;
 			}
 		}
@@ -553,6 +558,8 @@ uint8_t add_directory_entry_to_current( struct dir_entry *dir_ent, uint32_t *dir
 				if( fat_read_block( cluster2sector( cluster ) ) == 0 ){
 					memcpy( &(sector_buffer[0]), dir_ent, sizeof(struct dir_entry) );
 					sector_buffer_dirty = 1;
+					*dir_entry_sector = sector_buffer_addr;
+					*dir_entry_offset = 0;
 					return 0;
 				}
 			}
@@ -656,7 +663,9 @@ cfs_open(const char *name, int flags)
 }
 
 void update_dir_entry( int fd ) {
-	fat_read_block( fat_file_pool[fd].dir_entry_sector );
+	printf("\nupdate_dir_entry() : dir_entry_sector = %lu", fat_file_pool[fd].dir_entry_sector);
+	if( fat_read_block( fat_file_pool[fd].dir_entry_sector ) != 0 )
+		return;
 	memcpy( &(sector_buffer[fat_file_pool[fd].dir_entry_offset]), &(fat_file_pool[fd].dir_entry), sizeof(struct dir_entry) );
 	sector_buffer_dirty = 1;
 }
@@ -666,8 +675,8 @@ cfs_close(int fd)
 {
 	if( fd < 0 || fd >= FAT_FD_POOL_SIZE )
 		return;
-	fat_flush( fd );
 	update_dir_entry( fd );
+	fat_flush( fd );
 	fat_fd_pool[fd].file = NULL;
 }
 
@@ -780,7 +789,7 @@ cfs_seek(int fd, cfs_offset_t offset, int whence)
 void reset_cluster_chain( struct dir_entry *dir_ent ) {
 	uint32_t cluster = (((uint32_t) dir_ent->DIR_FstClusHI) << 16) + dir_ent->DIR_FstClusLO;
 	uint32_t next_cluster = read_fat_entry( cluster );
-	while( !is_EOC( cluster ) ) {
+	while( !is_EOC( cluster ) & cluster >= 2 ) {
 		write_fat_entry( cluster, 0L );
 		cluster = next_cluster;
 		next_cluster = read_fat_entry( cluster );
@@ -802,12 +811,13 @@ cfs_remove(const char *name)
 	struct dir_entry dir_ent;
 	uint32_t sector;
 	uint16_t offset;
-	if( !get_dir_entry( name, &dir_ent, &sector, &offset ) ) {
+	if( get_dir_entry( name, &dir_ent, &sector, &offset ) != 0 ) {
 		return -1;
 	}
-	if( _is_file( &dir_ent) ) {
+	if( _is_file( &dir_ent ) ) {
 		reset_cluster_chain( &dir_ent );
 		remove_dir_entry( sector, offset );
+		fat_flush();
 		return 0;
 	}
 	return -1;
