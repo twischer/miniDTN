@@ -52,9 +52,11 @@ uint8_t get_dir_entry( const char *path, struct dir_entry *dir_ent, uint32_t *di
  */
 void fat_flush() {
 	if( sector_buffer_dirty ) {
-		printf("\nfat_flush() : Sector is dirty, writing back to addr = %lu", sector_buffer_addr);
+		////printf("\nfat_flush() : Sector is dirty, writing back to addr = %lu", sector_buffer_addr);
+		if( sector_buffer[0] != 'A' )
+			//printf("\nWAAAH!");
 		diskio_write_block( mounted.dev, sector_buffer_addr, sector_buffer );
-		printf("\nfat_flush() : resetting dirty flag");
+		////printf("\nfat_flush() : resetting dirty flag");
 		sector_buffer_dirty = 0;
 	}
 }
@@ -80,13 +82,15 @@ void get_fat_info( struct FAT_Info *info ) {
 
 void print_current_sector() {
 	uint16_t i = 0;
-	printf("\n");
+	//printf("\n");
 	for(i = 0; i < 512; i++) {
-		printf("%02x", sector_buffer[i]);
-		if( ((i+1) % 2) == 0 )
-			printf(" ");
-		if( ((i+1) % 32) == 0 )
-			printf("\n");
+		//printf("%02x", sector_buffer[i]);
+		if( ((i+1) % 2) == 0 ) {
+			//printf(" ");
+		}
+		if( ((i+1) % 32) == 0 ) {
+			//printf("\n");
+		}
 	}
 }
 /**
@@ -164,7 +168,7 @@ uint8_t parse_bootsector( uint8_t *buffer, struct FAT_Info *info ) {
 		ret += 32;
 	if( buffer[510] != 0x55 || buffer[511] != 0xaa )
 		ret += 64;
-	printf("\nparse_bootsector() = %u", ret);
+	//printf("\nparse_bootsector() = %u", ret);
 	return ret;
 }
 
@@ -194,15 +198,15 @@ uint8_t fat_mount_device( struct diskio_device_info *dev ) {
 	//Calculated the first_data_sector
 	RootDirSectors = ((mounted.info.BPB_RootEntCnt * 32) + (mounted.info.BPB_BytesPerSec - 1)) / mounted.info.BPB_BytesPerSec;
 	mounted.first_data_sector = mounted.info.BPB_RsvdSecCnt + (mounted.info.BPB_NumFATs * mounted.info.BPB_FATSz) + RootDirSectors;
-	printf("\nfat_mount_device(): first_data_sector = %lu", mounted.first_data_sector );
+	//printf("\nfat_mount_device(): first_data_sector = %lu", mounted.first_data_sector );
 	fat_read_block( mounted.first_data_sector );
 	print_current_sector();
-	printf("\nfat_mount_device(): Looking for \"Traum.txt\" = %lu", find_file_cluster("traum.txt") );
-	printf("\nfat_mount_device(): Looking for \"prog1.txt\" = %lu", find_file_cluster("prog1.txt") );
-	printf("\nfat_mount_device(): Looking for \"prog1.csv\" = %lu", dbg_file_cluster = find_file_cluster("prog1.csv") );
-	printf("\nfat_mount_device(): Next cluster of \"prog1.csv\" = %lu", dbg_file_cluster = read_fat_entry(dbg_file_cluster * mounted.info.BPB_SecPerClus));
-	printf("\nfat_mount_device(): Next cluster of \"prog1.csv\" = %lu", dbg_file_cluster = read_fat_entry(dbg_file_cluster * mounted.info.BPB_SecPerClus));
-	printf("\nfat_mount_device(): Next cluster of \"prog1.csv\" = %lu", dbg_file_cluster = read_fat_entry(dbg_file_cluster * mounted.info.BPB_SecPerClus));
+	//printf("\nfat_mount_device(): Looking for \"Traum.txt\" = %lu", find_file_cluster("traum.txt") );
+	//printf("\nfat_mount_device(): Looking for \"prog1.txt\" = %lu", find_file_cluster("prog1.txt") );
+	//printf("\nfat_mount_device(): Looking for \"prog1.csv\" = %lu", dbg_file_cluster = find_file_cluster("prog1.csv") );
+	//printf("\nfat_mount_device(): Next cluster of \"prog1.csv\" = %lu", dbg_file_cluster = read_fat_entry(dbg_file_cluster * mounted.info.BPB_SecPerClus));
+	//printf("\nfat_mount_device(): Next cluster of \"prog1.csv\" = %lu", dbg_file_cluster = read_fat_entry(dbg_file_cluster * mounted.info.BPB_SecPerClus));
+	//printf("\nfat_mount_device(): Next cluster of \"prog1.csv\" = %lu", dbg_file_cluster = read_fat_entry(dbg_file_cluster * mounted.info.BPB_SecPerClus));
 	return 0;
 }
 
@@ -221,15 +225,18 @@ void fat_umount_device() {
 }
 
 uint8_t fat_read_block( uint32_t sector_addr ) {
-	printf("\nfat_read_block()");
+	//printf("\nfat_read_block()");
 	if( sector_buffer_addr == sector_addr && sector_addr != 0 )
 		return 0;
 	fat_flush();
+	//printf("READ_BLOCK");
 	sector_buffer_addr = sector_addr;
 	return diskio_read_block( mounted.dev, sector_addr, sector_buffer );
 }
 
 uint32_t cluster2sector(uint32_t cluster_num) {
+	if(cluster_num < 2)
+		cluster_num = 2;
 	return ((cluster_num - 2) * mounted.info.BPB_SecPerClus) + mounted.first_data_sector;
 }
 
@@ -250,17 +257,17 @@ uint8_t is_EOC( uint32_t fat_entry ) {
 }
 
 uint8_t fat_next_block() {
-	printf("\nfat_next_block()");
+	//printf("\nfat_next_block()");
 	fat_flush();
 	/* Are we on a Cluster edge? */
 	if( (sector_buffer_addr + 1) % mounted.info.BPB_SecPerClus == 0 ) {
 		uint32_t entry = read_fat_entry( sector_buffer_addr );
-		printf("\nfat_next_block(): Cluster edge reached");
+		//printf("\nfat_next_block(): Cluster edge reached");
 		if( is_EOC( entry ) )
 			return 128;
 		return fat_read_block( cluster2sector(entry) );
 	} else {
-		printf("\nfat_next_block(): read sector %lu", sector_buffer_addr + 1);
+		//printf("\nfat_next_block(): read sector %lu", sector_buffer_addr + 1);
 		return fat_read_block( sector_buffer_addr + 1 );
 	}
 }
@@ -289,7 +296,7 @@ uint8_t lookup( const char *name, struct dir_entry *dir_entry, uint32_t *dir_ent
 }
 
 uint32_t read_fat_entry_cluster( uint32_t cluster ) {
-	return read_fat_entry( cluster * mounted.info.BPB_SecPerClus );
+	return read_fat_entry( cluster2sector( cluster ) );
 }
 
 uint32_t read_fat_entry( uint32_t sec_addr ) {
@@ -307,6 +314,7 @@ uint32_t read_fat_entry( uint32_t sec_addr ) {
 
 void write_fat_entry( uint32_t cluster_num, uint32_t value ) {
 	uint32_t fat_sec_num = 0, ent_offset = 0;
+	//printf("\nwrite_fat_entry( %lu, %lu )", cluster_num, value);
 	calc_fat_block( cluster2sector(cluster_num), &fat_sec_num, &ent_offset );
 	fat_read_block( fat_sec_num );
 	if( mounted.info.type == FAT16 ) {
@@ -318,10 +326,12 @@ void write_fat_entry( uint32_t cluster_num, uint32_t value ) {
 		sector_buffer[ent_offset+1] = (uint8_t) (value >> 8);
 		sector_buffer[ent_offset]   = (uint8_t) (value);
 	}
+	sector_buffer_dirty = 1;
 }
 
 void calc_fat_block( uint32_t cur_sec, uint32_t *fat_sec_num, uint32_t *ent_offset ) {
-	uint32_t N = cur_sec / mounted.info.BPB_SecPerClus;
+	uint32_t N = sector2cluster( cur_sec );
+	//printf("\ncalc_fat_block() : N = %lu", N);
 	if( mounted.info.type == FAT16 )
 		*ent_offset = N * 2;
 	else if( mounted.info.type == FAT32 )
@@ -342,7 +352,8 @@ uint32_t get_free_cluster(uint32_t start_cluster) {
 	uint32_t fat_sec_num = 0;
 	uint32_t ent_offset = 0;
 	uint16_t i = 0;
-	calc_fat_block( start_cluster, &fat_sec_num, &ent_offset );
+	//printf("\nget_free_cluster( %lu ) -> %lu", start_cluster, cluster2sector(start_cluster));
+	calc_fat_block( cluster2sector( start_cluster ), &fat_sec_num, &ent_offset );
 	do {
 		fat_read_block( fat_sec_num );
 		if( mounted.info.type == FAT16 )
@@ -351,11 +362,13 @@ uint32_t get_free_cluster(uint32_t start_cluster) {
 			i = _get_free_cluster_32();
 		fat_sec_num++;
 	} while( i == 512 );
-	ent_offset = (fat_sec_num - mounted.info.BPB_RsvdSecCnt) * mounted.info.BPB_BytesPerSec;
+	ent_offset = ((fat_sec_num - 1) - mounted.info.BPB_RsvdSecCnt) * mounted.info.BPB_BytesPerSec + i;
 	if( mounted.info.type == FAT16 )
 		ent_offset /= 2;
 	else if( mounted.info.type == FAT32 )
 		ent_offset /= 4;
+	//printf("\nget_free_cluster(): ent_offset = %lu", ent_offset);
+	//printf("\nget_free_cluster(): fat_sec_num = %lu", fat_sec_num);
 	return ent_offset;
 }
 
@@ -386,7 +399,7 @@ uint16_t _get_free_cluster_32() {
 uint8_t _make_valid_name( const char *path, uint8_t start, uint8_t end, char *name ) {
 	uint8_t i = 0, idx = 0, dot_found = 0;
 	memset( name, 0x20, 11 );
-	printf("\n_make_valid_name() : name = ");
+	//printf("\n_make_valid_name() : name = ");
 	for(i = 0, idx = 0; i < end-start; ++i, ++idx) {
 		// Part too long
 		if( idx >= 11 )
@@ -402,25 +415,25 @@ uint8_t _make_valid_name( const char *path, uint8_t start, uint8_t end, char *na
 		if( !dot_found && idx > 7 )
 			return 4;
 		name[idx] = toupper(path[start + i]);
-		printf("%c", name[idx]);
+		//printf("%c", name[idx]);
 	}
 	return 0;
 }
 
 void print_dir_entry( struct dir_entry *dir_entry ) {
-	printf("\nDirectory Entry");
-	printf("\n\tDIR_Name = %c%c%c%c%c%c%c%c%c%c%c", dir_entry->DIR_Name[0], dir_entry->DIR_Name[1],dir_entry->DIR_Name[2],dir_entry->DIR_Name[3],dir_entry->DIR_Name[4],dir_entry->DIR_Name[5],dir_entry->DIR_Name[6],dir_entry->DIR_Name[7],dir_entry->DIR_Name[8],dir_entry->DIR_Name[9],dir_entry->DIR_Name[10]);
-	printf("\n\tDIR_Attr = %x", dir_entry->DIR_Attr);
-	printf("\n\tDIR_NTRes = %x", dir_entry->DIR_NTRes);
-	printf("\n\tCrtTimeTenth = %x", dir_entry->CrtTimeTenth);
-	printf("\n\tDIR_CrtTime = %x", dir_entry->DIR_CrtTime);
-	printf("\n\tDIR_CrtDate = %x", dir_entry->DIR_CrtDate);
-	printf("\n\tDIR_LstAccessDate = %x", dir_entry->DIR_LstAccessDate);
-	printf("\n\tDIR_FstClusHI = %x", dir_entry->DIR_FstClusHI);
-	printf("\n\tDIR_WrtTime = %x", dir_entry->DIR_WrtTime);
-	printf("\n\tDIR_WrtDate = %x", dir_entry->DIR_WrtDate);
-	printf("\n\tDIR_FstClusLO = %x", dir_entry->DIR_FstClusLO);
-	printf("\n\tDIR_FileSize = %lu Bytes", dir_entry->DIR_FileSize);
+	//printf("\nDirectory Entry");
+	//printf("\n\tDIR_Name = %c%c%c%c%c%c%c%c%c%c%c", dir_entry->DIR_Name[0], dir_entry->DIR_Name[1],dir_entry->DIR_Name[2],dir_entry->DIR_Name[3],dir_entry->DIR_Name[4],dir_entry->DIR_Name[5],dir_entry->DIR_Name[6],dir_entry->DIR_Name[7],dir_entry->DIR_Name[8],dir_entry->DIR_Name[9],dir_entry->DIR_Name[10]);
+	//printf("\n\tDIR_Attr = %x", dir_entry->DIR_Attr);
+	//printf("\n\tDIR_NTRes = %x", dir_entry->DIR_NTRes);
+	//printf("\n\tCrtTimeTenth = %x", dir_entry->CrtTimeTenth);
+	//printf("\n\tDIR_CrtTime = %x", dir_entry->DIR_CrtTime);
+	//printf("\n\tDIR_CrtDate = %x", dir_entry->DIR_CrtDate);
+	//printf("\n\tDIR_LstAccessDate = %x", dir_entry->DIR_LstAccessDate);
+	//printf("\n\tDIR_FstClusHI = %x", dir_entry->DIR_FstClusHI);
+	//printf("\n\tDIR_WrtTime = %x", dir_entry->DIR_WrtTime);
+	//printf("\n\tDIR_WrtDate = %x", dir_entry->DIR_WrtDate);
+	//printf("\n\tDIR_FstClusLO = %x", dir_entry->DIR_FstClusLO);
+	//printf("\n\tDIR_FileSize = %lu Bytes", dir_entry->DIR_FileSize);
 }
 
 uint8_t get_dir_entry( const char *path, struct dir_entry *dir_ent, uint32_t *dir_entry_sector, uint16_t *dir_entry_offset ) {
@@ -464,8 +477,10 @@ uint32_t find_file_cluster( const char *path ) {
 
 uint32_t find_nth_cluster( uint32_t start_cluster, uint32_t n ) {
 	uint32_t cluster = start_cluster, i = 0;
+	//printf("\nfind_nth_cluster( %lu, %lu )", start_cluster, n);
 	for( i = 0; i < n; i++ ) {
 		cluster = read_fat_entry_cluster( cluster );
+		//printf("\n\t next cluster = %lu", cluster);
 	}
 	return cluster;
 }
@@ -482,11 +497,13 @@ uint8_t fat_read_file( int fd, uint32_t clusters, uint32_t clus_offset ) {
 
 uint8_t fat_write_file( int fd, uint32_t clusters, uint32_t clus_offset ) {
 	uint32_t cluster = find_nth_cluster( fat_file_pool[fd].cluster, clusters );
+	//printf("\nfat_write_file() : cluster = %lu", cluster);
 	if( cluster == 0 ) {
 		return 1;
 	} else if( is_EOC( cluster ) ) {
 		uint32_t last_cluster_num = find_nth_cluster( fat_file_pool[fd].cluster, clusters-1 );
 		uint32_t free_cluster = get_free_cluster( last_cluster_num );
+		//printf("\nfat_write_file() : cluster = EOC");
 		write_fat_entry( last_cluster_num, free_cluster );
 		write_fat_entry( free_cluster, EOC );
 		return fat_read_block( cluster2sector( free_cluster ) );
@@ -532,7 +549,7 @@ uint8_t pr_is_current_path_part_a_file( struct PathResolver *rsolv ) {
 uint32_t add_cluster_to_current_chain() {
 	uint32_t current_sector = sector_buffer_addr;
 	uint32_t free_cluster = get_free_cluster( sector2cluster( current_sector ) );
-	printf("\nadd_cluster_to_current_chain()");
+	//printf("\nadd_cluster_to_current_chain()");
 	write_fat_entry( sector2cluster( current_sector ), free_cluster );
 	write_fat_entry( free_cluster, EOC );
 	return free_cluster;
@@ -541,7 +558,7 @@ uint32_t add_cluster_to_current_chain() {
 uint8_t add_directory_entry_to_current( struct dir_entry *dir_ent, uint32_t *dir_entry_sector, uint16_t *dir_entry_offset ) {
 	uint16_t i = 0;
 	uint8_t ret = 0;
-	printf("\nadd_directory_entry_to_current(): BEGIN");
+	//printf("\nadd_directory_entry_to_current(): BEGIN");
 	for(;;) {
 		for( i = 0; i < 512; i+=32 ) {
 			if( sector_buffer[i] == 0x00 || sector_buffer[i] == 0xE5 ) {
@@ -574,7 +591,7 @@ uint8_t fat_create_file( const char *path, struct dir_entry *dir_ent, uint32_t *
 	uint32_t file_sector_num = 0;
 	uint8_t i = 0;
 	struct PathResolver pr;
-	printf("\nfat_create_file(): BEGIN");
+	//printf("\nfat_create_file(): BEGIN");
 	pr_reset( &pr );
 	pr.path = path;
 	if( mounted.info.type == FAT16 ) {
@@ -588,9 +605,9 @@ uint8_t fat_create_file( const char *path, struct dir_entry *dir_ent, uint32_t *
 	for(i = 0; pr_get_next_path_part( &pr ) == 0 && i < 255; i++) {
 		fat_read_block( file_sector_num );
 		if( lookup( pr.name, dir_ent, dir_entry_sector, dir_entry_offset ) != 0 ) {
-			printf("\nfat_create_file(): X");
+			//printf("\nfat_create_file(): X");
 			if( pr_is_current_path_part_a_file( &pr ) ) {
-				printf("X");
+				//printf("X");
 				memset( dir_ent, 0, sizeof(struct dir_entry) );
 				memcpy( dir_ent->DIR_Name, pr.name, 11 );
 				dir_ent->DIR_Attr = 0;
@@ -663,7 +680,7 @@ cfs_open(const char *name, int flags)
 }
 
 void update_dir_entry( int fd ) {
-	printf("\nupdate_dir_entry() : dir_entry_sector = %lu", fat_file_pool[fd].dir_entry_sector);
+	//printf("\nupdate_dir_entry() : dir_entry_sector = %lu", fat_file_pool[fd].dir_entry_sector);
 	if( fat_read_block( fat_file_pool[fd].dir_entry_sector ) != 0 )
 		return;
 	memcpy( &(sector_buffer[fat_file_pool[fd].dir_entry_offset]), &(fat_file_pool[fd].dir_entry), sizeof(struct dir_entry) );
@@ -712,20 +729,25 @@ cfs_read(int fd, void *buf, unsigned int len)
 }
 
 void _add_cluster_to_empty_file( int fd, uint32_t free_cluster ) {
+	//printf("\n_add_cluster_to_empty_file( %d, %lu )", fd, free_cluster);
 	write_fat_entry( free_cluster, EOC );
 	fat_file_pool[fd].dir_entry.DIR_FstClusHI = (uint16_t) (free_cluster >> 16);
 	fat_file_pool[fd].dir_entry.DIR_FstClusLO = (uint16_t) (free_cluster);
 	update_dir_entry( fd );
+	fat_file_pool[fd].cluster = free_cluster;
 }
 
 void add_cluster_to_file( int fd ) {
 	uint32_t free = get_free_cluster( 0 );
 	uint32_t cluster = fat_file_pool[fd].cluster;
 	uint32_t n = cluster;
+	//printf("\nadd_cluster_to_file()");
 	if( fat_file_pool[fd].cluster == 0 ) {
 		_add_cluster_to_empty_file( fd, free );
+		return;
 	}
 	while( !is_EOC( n ) ) {
+		//printf("\nadd_cluster_to_file() : n = %lu", n );
 		cluster = n;
 		n = read_fat_entry_cluster( cluster );
 	}
@@ -741,10 +763,13 @@ cfs_write(int fd, const void *buf, unsigned int len)
 	uint8_t clus_offset = (fat_fd_pool[fd].offset / mounted.info.BPB_BytesPerSec) % mounted.info.BPB_SecPerClus;
 	uint16_t i, j = 0;
 	uint8_t *buffer = (uint8_t *) buf;
-	
+	if( len > 0 && fat_file_pool[fd].dir_entry.DIR_FileSize == 0 )
+		add_cluster_to_file( fd );
 	while( fat_write_file( fd, clusters, clus_offset ) == 0 ) {
 		for( i = offset; i < 512 && j < len; i++,j++,fat_fd_pool[fd].offset++ ) {
 			sector_buffer[i] = buffer[j];
+			if(sector_buffer[i] != 'A')
+				//printf("\nWAAAH!");
 			if( fat_fd_pool[fd].offset == fat_file_pool[fd].dir_entry.DIR_FileSize )
 				fat_file_pool[fd].dir_entry.DIR_FileSize++;
 		}
@@ -789,7 +814,7 @@ cfs_seek(int fd, cfs_offset_t offset, int whence)
 void reset_cluster_chain( struct dir_entry *dir_ent ) {
 	uint32_t cluster = (((uint32_t) dir_ent->DIR_FstClusHI) << 16) + dir_ent->DIR_FstClusLO;
 	uint32_t next_cluster = read_fat_entry( cluster );
-	while( !is_EOC( cluster ) & cluster >= 2 ) {
+	while( !is_EOC( cluster ) && cluster >= 2 ) {
 		write_fat_entry( cluster, 0L );
 		cluster = next_cluster;
 		next_cluster = read_fat_entry( cluster );
@@ -812,7 +837,7 @@ cfs_remove(const char *name)
 	uint32_t sector;
 	uint16_t offset;
 	if( !get_dir_entry( name, &dir_ent, &sector, &offset ) ) {
-		printf("\ncfs_remove(): File not found!");
+		//printf("\ncfs_remove(): File not found!");
 		return -1;
 	}
 	if( _is_file( &dir_ent ) ) {
@@ -822,7 +847,7 @@ cfs_remove(const char *name)
 		fat_flush();
 		return 0;
 	}
-	printf("\ncfs_remove(): Urks!");
+	//printf("\ncfs_remove(): Urks!");
 	return -1;
 }
 

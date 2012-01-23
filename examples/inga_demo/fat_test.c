@@ -70,13 +70,23 @@ PROCESS_THREAD(hello_world_process, ev, data)
 	clock_init();
 	printf("\nOpening \"prog1.csv\" = %d", fd = cfs_open("prog1.csv", 0) );
 	printf("\nClosing \"prog1.csv\"");
+	printf("\nClosing \"prog1.csv\"");
 	cfs_close( fd );
 	printf("\nclosed");
 	printf("\nCreating \"prog2.csv\" = %d", fd = cfs_open("prog2.csv", CFS_WRITE) );
+	//printf("\nRemoving \"prog2.csv\" = %d", cfs_remove("prog2.csv") );
+	memset( buffer, 'A', 1024 );
+	start = clock_time();
+	for( i = 0; i < 25; i++) {
+		printf("\n%u", i);
+		cfs_write(fd, buffer, 1024);
+	}
+	end = clock_time();
+	printf("\nTime = %lu", (end - start) );
+	printf("\nSecond = %lu", CLOCK_SECOND );
 	printf("\nclosing");
 	cfs_close( fd );
 	printf("\nclosed");
-	printf("\nRemoving \"prog2.csv\" = %d", cfs_remove("prog2.csv") );
 //	printf("\nReading 1024 bytes \"prog1.csv\" = %d", cfs_read(fd, buffer, 1024) );
 	/*
 	start = clock_time();
