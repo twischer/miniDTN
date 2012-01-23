@@ -1,5 +1,6 @@
 ﻿#include "diskio.h"
 #include "mbr.h"
+#include <string.h>
 #ifndef DISKIO_DEBUG
 #include "../../interfaces/flash-microSD.h"
 #endif

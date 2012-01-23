@@ -1,4 +1,3 @@
-#include "cfs/cfs.h"
 #include "fat.h"
 
 #define FAT_FD_POOL_SIZE 5
@@ -42,11 +41,11 @@ uint32_t get_free_cluster(uint32_t start_cluster);
 uint32_t read_fat_entry( uint32_t sec_addr );
 uint32_t find_file_cluster( const char *path );
 uint32_t cluster2sector(uint32_t cluster_num);
-void pr_reset( PathResolver *rsolv );
-uint8_t pr_get_next_path_part( PathResolver *rsolv );
+void pr_reset( struct PathResolver *rsolv );
+uint8_t pr_get_next_path_part( struct PathResolver *rsolv );
 uint8_t _make_valid_name( const char *path, uint8_t start, uint8_t end, char *name );
-uint8_t pr_is_current_path_part_a_file( PathResolver *rsolv );
-uint8_t get_dir_entry( const char *path, struct dir_entry *dir_ent );
+uint8_t pr_is_current_path_part_a_file( struct PathResolver *rsolv );
+uint8_t get_dir_entry( const char *path, struct dir_entry *dir_ent, uint32_t *dir_entry_sector, uint16_t *dir_entry_offset );
 
 /**
  * Writes the current buffered block back to the disk if it was changed.
@@ -263,7 +262,7 @@ uint8_t fat_next_block() {
 	}
 }
 
-uint8_t lookup( const char *name, struct dir_entry *dir_entry, uint32_t *dir_entry_sector, uint32_t *dir_entry_offset ) {
+uint8_t lookup( const char *name, struct dir_entry *dir_entry, uint32_t *dir_entry_sector, uint16_t *dir_entry_offset ) {
 		uint16_t i = 0;
 		for(;;) {
 			for( i = 0; i < 512; i+=32 ) {
@@ -271,8 +270,8 @@ uint8_t lookup( const char *name, struct dir_entry *dir_entry, uint32_t *dir_ent
 				//printf("\nlookup(): sec_buf = %c%c%c%c%c%c%c%c%c%c%c", sector_buffer[i+0], sector_buffer[i+1], sector_buffer[i+2], sector_buffer[i+3], sector_buffer[i+4], sector_buffer[i+5], sector_buffer[i+6], sector_buffer[i+7], sector_buffer[i+8], sector_buffer[i+9], sector_buffer[i+10]);
 				if( memcmp( name, &(sector_buffer[i]), 11 ) == 0 ) {
 					memcpy( dir_entry, &(sector_buffer[i]), sizeof(struct dir_entry) );
-					dir_entry_sector = sector_buffer_address;
-					dir_entry_offset = i;
+					*dir_entry_sector = sector_buffer_addr;
+					*dir_entry_offset = i;
 					return 0;
 				}
 				// There are no more entries in this directory
@@ -384,6 +383,7 @@ uint16_t _get_free_cluster_32() {
 uint8_t _make_valid_name( const char *path, uint8_t start, uint8_t end, char *name ) {
 	uint8_t i = 0, idx = 0, dot_found = 0;
 	memset( name, 0x20, 11 );
+	printf("\n_make_valid_name() : name = ");
 	for(i = 0, idx = 0; i < end-start; ++i, ++idx) {
 		// Part too long
 		if( idx >= 11 )
@@ -399,6 +399,7 @@ uint8_t _make_valid_name( const char *path, uint8_t start, uint8_t end, char *na
 		if( !dot_found && idx > 7 )
 			return 4;
 		name[idx] = toupper(path[start + i]);
+		printf("%c", name[idx]);
 	}
 	return 0;
 }
@@ -419,17 +420,7 @@ void print_dir_entry( struct dir_entry *dir_entry ) {
 	printf("\n\tDIR_FileSize = %lu Bytes", dir_entry->DIR_FileSize);
 }
 
-/**
- * Only user for easier Debuging output. Should NOT be used any longer.
- */
-uint32_t find_file_cluster( const char *path ) {
-	struct dir_entry dir_ent;
-	uint32_t dir_entry_sector, dir_entry_offset;
-	get_dir_entry( path, dir_ent, &dir_entry_sector, &dir_entry_offset );
-	return dir_ent.DIR_FstClusLO + (((uint32_t) dir_ent.DIR_FstClusHI) << 16);
-}
-
-uint8_t get_dir_entry( const char *path, struct dir_entry *dir_ent, uint32_t *dir_entry_sector, uint32_t *dir_entry_offset ) {
+uint8_t get_dir_entry( const char *path, struct dir_entry *dir_ent, uint32_t *dir_entry_sector, uint16_t *dir_entry_offset ) {
 	uint32_t first_root_dir_sec_num = 0;
 	uint32_t file_sector_num = 0;
 	uint8_t i = 0;
@@ -446,7 +437,7 @@ uint8_t get_dir_entry( const char *path, struct dir_entry *dir_ent, uint32_t *di
 	file_sector_num = first_root_dir_sec_num;
 	for(i = 0; pr_get_next_path_part( &pr ) == 0 && i < 255; i++) {
 		fat_read_block( file_sector_num );
-		if( lookup( pr->name, dir_ent, dir_entry_sector, dir_entry_offset ) != 0 ) {
+		if( lookup( pr.name, dir_ent, dir_entry_sector, dir_entry_offset ) != 0 ) {
 			return 0;
 		}
 		file_sector_num = cluster2sector( dir_ent->DIR_FstClusLO + (((uint32_t) dir_ent->DIR_FstClusHI) << 16) );
@@ -455,6 +446,17 @@ uint8_t get_dir_entry( const char *path, struct dir_entry *dir_ent, uint32_t *di
 	if( file_sector_num == first_root_dir_sec_num )
 		return 0;
 	return 1;
+}
+
+/**
+ * Only user for easier Debuging output. Should NOT be used any longer.
+ */
+uint32_t find_file_cluster( const char *path ) {
+	struct dir_entry dir_ent;
+	uint32_t dir_entry_sector;
+	uint16_t dir_entry_offset;
+	get_dir_entry( path, &dir_ent, &dir_entry_sector, &dir_entry_offset );
+	return dir_ent.DIR_FstClusLO + (((uint32_t) dir_ent.DIR_FstClusHI) << 16);
 }
 
 uint32_t find_nth_cluster( uint32_t start_cluster, uint32_t n ) {
@@ -489,19 +491,21 @@ uint8_t fat_write_file( int fd, uint32_t clusters, uint32_t clus_offset ) {
 	return fat_read_block( cluster2sector(cluster) + clus_offset );
 }
 
-void pr_reset( PathResolver *rsolv ) {
+void pr_reset( struct PathResolver *rsolv ) {
 	rsolv->start = 0;
 	rsolv->end = 0;
 	rsolv->path = NULL;
 	memset(rsolv->name, '\0', 11);
 }
 
-uint8_t pr_get_next_path_part( PathResolver *rsolv ) {
+uint8_t pr_get_next_path_part( struct PathResolver *rsolv ) {
 	uint16_t i = 0;
 	if( rsolv->path == NULL )
 		return 2;
-	rsolv->end++;
 	rsolv->start = rsolv->end;
+	rsolv->end++;
+	if( rsolv->path[rsolv->start] == '/' )
+		rsolv->start++;
 
 	for( i = rsolv->start; rsolv->path[i] != '\0'; i++ ){
 		if( rsolv->path[i] != '/' ) {
@@ -514,7 +518,7 @@ uint8_t pr_get_next_path_part( PathResolver *rsolv ) {
 	return 1;
 }
 
-uint8_t pr_is_current_path_part_a_file( PathResolver *rsolv ) {
+uint8_t pr_is_current_path_part_a_file( struct PathResolver *rsolv ) {
 	if( rsolv->path[rsolv->end] == '/')
 		return 0;
 	else if(rsolv->path[rsolv->end] == '\0' )
@@ -530,9 +534,11 @@ uint32_t add_cluster_to_current_chain() {
 	return free_cluster;
 }
 
-uint8_t add_directory_entry_to_current( struct dir_entry *dir_ent, uint32_t *dir_entry_sector, uint32_t *dir_entry_offset ) {
+uint8_t add_directory_entry_to_current( struct dir_entry *dir_ent, uint32_t *dir_entry_sector, uint16_t *dir_entry_offset ) {
 	uint16_t i = 0;
 	uint8_t ret = 0;
+	printf("\nadd_directory_entry_to_current(): BEGIN");
+	printf("\nadd_directory_entry_to_current(): BEGIN");
 	for(;;) {
 		for( i = 0; i < 512; i+=32 ) {
 			if( sector_buffer[i] == 0x00 || sector_buffer[i] == 0xE5 ) {
@@ -556,11 +562,12 @@ uint8_t add_directory_entry_to_current( struct dir_entry *dir_ent, uint32_t *dir
 	return 1;
 }
 
-uint8_t fat_create_file( const char *path, struct dir_entry *dir_ent ) {
+uint8_t fat_create_file( const char *path, struct dir_entry *dir_ent, uint32_t *dir_entry_sector, uint16_t *dir_entry_offset ) {
 	uint32_t first_root_dir_sec_num = 0;
 	uint32_t file_sector_num = 0;
 	uint8_t i = 0;
 	struct PathResolver pr;
+	printf("\nfat_create_file(): BEGIN");
 	pr_reset( &pr );
 	pr.path = path;
 	if( mounted.info.type == FAT16 ) {
@@ -573,13 +580,15 @@ uint8_t fat_create_file( const char *path, struct dir_entry *dir_ent ) {
 	file_sector_num = first_root_dir_sec_num;
 	for(i = 0; pr_get_next_path_part( &pr ) == 0 && i < 255; i++) {
 		fat_read_block( file_sector_num );
-		if( lookup( pr->name, dir_ent, dir_entry_sector, dir_entry_offset ) != 0 ) {
-			if( pr_is_current_path_part_a_file( pr ) ) {
-				memset( dir_ent, 0, sizeof(dir_entry) )
-				dir_ent->name = pr->name;
-				dir_ent->DIR_Attr = DIR_Attr_FILE;
+		if( lookup( pr.name, dir_ent, dir_entry_sector, dir_entry_offset ) != 0 ) {
+			printf("\nfat_create_file(): X");
+			if( pr_is_current_path_part_a_file( &pr ) ) {
+				printf("X");
+				memset( dir_ent, 0, sizeof(struct dir_entry) );
+				memcpy( dir_ent->DIR_Name, pr.name, 11 );
+				dir_ent->DIR_Attr = 0;
 				print_dir_entry( dir_ent );
-				return add_directory_entry_to_current( dir_entry, dir_entry_sector, dir_entry_offset );
+				return add_directory_entry_to_current( dir_ent, dir_entry_sector, dir_entry_offset );
 			}
 			return 0;
 		}
@@ -597,7 +606,7 @@ uint8_t _is_file( struct dir_entry *dir_ent ) {
 }
 
 uint8_t _cfs_flags_ok( int flags, struct dir_entry *dir_ent ) {
-	if( (flags & CFS_CREATE || flags & CFS_WRITE) && dir_ent->DIR_Attr & ATTR_READ_ONLY )
+	if( (flags & CFS_APPEND || flags & CFS_WRITE) && dir_ent->DIR_Attr & ATTR_READ_ONLY )
 		return 0;
 	return 1;
 }
@@ -620,7 +629,7 @@ cfs_open(const char *name, int flags)
 		return fd;
 	// find file on Disk
 	if( !get_dir_entry( name, &dir_ent, &fat_file_pool[fd].dir_entry_sector, &fat_file_pool[fd].dir_entry_offset ) ) {
-		if( flags & CFS_CREATE ) {
+		if( flags & CFS_WRITE || flags & CFS_APPEND ) {
 			if( fat_create_file( name, &dir_ent, &fat_file_pool[fd].dir_entry_sector, &fat_file_pool[fd].dir_entry_offset ) != 0 ) {
 				return -1;
 			}
@@ -639,11 +648,17 @@ cfs_open(const char *name, int flags)
 	fat_fd_pool[fd].flags = (uint8_t) flags;
 	// put read/write position in the right spot
 	fat_fd_pool[fd].offset = 0;
-	fat_file_pool[fd].size = dir_ent.DIR_FileSize;
+	memcpy( &(fat_file_pool[fd].dir_entry), &dir_ent, sizeof(struct dir_entry) );
 	if( flags & CFS_APPEND )
 		cfs_seek( fd, CFS_SEEK_END, 0 );
 	// return FileDescriptor
 	return fd;
+}
+
+void update_dir_entry( int fd ) {
+	fat_read_block( fat_file_pool[fd].dir_entry_sector );
+	memcpy( &(sector_buffer[fat_file_pool[fd].dir_entry_offset]), &(fat_file_pool[fd].dir_entry), sizeof(struct dir_entry) );
+	sector_buffer_dirty = 1;
 }
 
 void
@@ -652,6 +667,7 @@ cfs_close(int fd)
 	if( fd < 0 || fd >= FAT_FD_POOL_SIZE )
 		return;
 	fat_flush( fd );
+	update_dir_entry( fd );
 	fat_fd_pool[fd].file = NULL;
 }
 
@@ -686,15 +702,10 @@ cfs_read(int fd, void *buf, unsigned int len)
 	return (int) j;
 }
 
-void update_dir_entry( int fd ) {
-	fat_read_block( fat_file_pool[fd].dir_entry_sector );
-	memcpy( &(sector_buffer[fat_file_pool[fd].dir_entry_offset]), fat_file_pool[fd].dir_entry, 32 );
-}
-
 void _add_cluster_to_empty_file( int fd, uint32_t free_cluster ) {
 	write_fat_entry( free_cluster, EOC );
-	fat_file_pool[fd].dir_entry.FstClushHI = (uint16_t) (free_cluster >> 16);
-	fat_file_pool[fd].dir_entry.FstClushLO = (uint16_t) (free_cluster);
+	fat_file_pool[fd].dir_entry.DIR_FstClusHI = (uint16_t) (free_cluster >> 16);
+	fat_file_pool[fd].dir_entry.DIR_FstClusLO = (uint16_t) (free_cluster);
 	update_dir_entry( fd );
 }
 
@@ -725,6 +736,8 @@ cfs_write(int fd, const void *buf, unsigned int len)
 	while( fat_write_file( fd, clusters, clus_offset ) == 0 ) {
 		for( i = offset; i < 512 && j < len; i++,j++,fat_fd_pool[fd].offset++ ) {
 			sector_buffer[i] = buffer[j];
+			if( fat_fd_pool[fd].offset == fat_file_pool[fd].dir_entry.DIR_FileSize )
+				fat_file_pool[fd].dir_entry.DIR_FileSize++;
 		}
 		sector_buffer_dirty = 1;
 		if( (clus_offset + 1) % mounted.info.BPB_SecPerClus == 0 ) {
@@ -736,6 +749,7 @@ cfs_write(int fd, const void *buf, unsigned int len)
 		if( j >= len )
 			break;
 	}
+	return j;
 }
 
 cfs_offset_t
@@ -751,13 +765,13 @@ cfs_seek(int fd, cfs_offset_t offset, int whence)
 			fat_fd_pool[fd].offset += offset;
 			break;
 		case CFS_SEEK_END:
-			fat_fd_pool[fd].offset = (fat_fd_pool[fd].file->size - 1) + offset;
+			fat_fd_pool[fd].offset = (fat_file_pool[fd].dir_entry.DIR_FileSize - 1) + offset;
 			break;
 		default:
 			break;
 	}
-	if( fat_fd_pool[fd].offset >= fat_fd_pool[fd].file->size )
-		fat_fd_pool[fd].offset = (fat_fd_pool[fd].file->size - 1);
+	if( fat_fd_pool[fd].offset >= fat_file_pool[fd].dir_entry.DIR_FileSize )
+		fat_fd_pool[fd].offset = (fat_file_pool[fd].dir_entry.DIR_FileSize - 1);
 	if( fat_fd_pool[fd].offset < 0 )
 		fat_fd_pool[fd].offset = 0;
 	return fat_fd_pool[fd].offset;
@@ -774,18 +788,20 @@ void reset_cluster_chain( struct dir_entry *dir_ent ) {
 	write_fat_entry( cluster, 0L );
 }
 
-void remove_dir_entry( uint32_t dir_entry_sector, uint32_t dir_entry_offset ) {
-	if( read_fat_block( dir_entry_sector ) != 0 )
+void remove_dir_entry( uint32_t dir_entry_sector, uint16_t dir_entry_offset ) {
+	if( fat_read_block( dir_entry_sector ) != 0 )
 		return;
-	memset( &(fat_sector_buffer[dir_entry_offset]), 0, sizeof(struct dir_entry) );
-	fat_sector_buffer[dir_entry_offset] = 0xE5;
+	memset( &(sector_buffer[dir_entry_offset]), 0, sizeof(struct dir_entry) );
+	sector_buffer[dir_entry_offset] = 0xE5;
+	sector_buffer_dirty = 1;
 }
 
 int
 cfs_remove(const char *name)
 {
 	struct dir_entry dir_ent;
-	uint32_t sector, offset;
+	uint32_t sector;
+	uint16_t offset;
 	if( !get_dir_entry( name, &dir_ent, &sector, &offset ) ) {
 		return -1;
 	}
@@ -801,7 +817,8 @@ int
 cfs_opendir(struct cfs_dir *dirp, const char *name)
 {
 	struct dir_entry dir_ent;
-	uint32_t sector, offset;
+	uint32_t sector;
+	uint16_t offset;
 	uint32_t dir_cluster = get_dir_entry( name, &dir_ent, &sector, &offset );
 	cfs_readdir_offset = 0;
 	if( dir_cluster == 0 )
@@ -810,16 +827,16 @@ cfs_opendir(struct cfs_dir *dirp, const char *name)
 	return 0;
 }
 
-uint8_t get_dir_entry( struct dir_entry *dir, uint16_t offset, struct dir_entry *entry ) {
+uint8_t get_dir_entry_old( struct dir_entry *dir, uint16_t offset, struct dir_entry *entry ) {
 	uint32_t dir_off = offset * 32;
 	uint16_t cluster_num = dir_off / mounted.info.BPB_SecPerClus;
 	uint32_t cluster;
-	cluster = find_nth_cluster( (((uint32_t) dir->DIR_FstClusHi) << 16) + dir->DIR_FstClusLO );
+	cluster = find_nth_cluster( (((uint32_t) dir->DIR_FstClusHI) << 16) + dir->DIR_FstClusLO, (uint32_t) cluster_num );
 	if( cluster == 0 )
 		return 1;
 	if( fat_read_block( cluster2sector(cluster) + dir_off / mounted.info.BPB_BytesPerSec ) != 0 )
 		return 2;
-	memcpy( entry, fat_sector_buffer[dir_off % mounted.info.BPB_BytesPerSec], sizeof(struct dir_entry) );
+	memcpy( entry, &(sector_buffer[dir_off % mounted.info.BPB_BytesPerSec]), sizeof(struct dir_entry) );
 	return 0;
 }
 
@@ -831,7 +848,7 @@ void make_readable_entry( struct dir_entry *dir, struct cfs_dirent *dirent ) {
 			j++;
 		}
 		if( i == 7 ) {
-			dir_ent->name[j] = '.';
+			dirent->name[j] = '.';
 			j++;
 		}
 	}
@@ -842,10 +859,10 @@ cfs_readdir(struct cfs_dir *dirp, struct cfs_dirent *dirent)
 {
 	struct dir_entry *dir_ent = (struct dir_entry *) dirp;
 	struct dir_entry entry;
-	if( get_dir_entry( dir_ent, cfs_readdir_offset, &entry ) != 0 )
+	if( get_dir_entry_old( dir_ent, cfs_readdir_offset, &entry ) != 0 )
 		return -1;
-	make_readable_entry( entry, dirent );
-	dirent->size = entry->DIR_FileSize;
+	make_readable_entry( &entry, dirent );
+	dirent->size = entry.DIR_FileSize;
 	cfs_readdir_offset++;
 	return 0;
 }

@@ -1,5 +1,6 @@
 ﻿#include "mbr.h"
 #include <string.h>
+#include <stdio.h>
 
 uint8_t mbr_buffer[512];
 
@@ -59,7 +60,7 @@ int mbr_addPartition(struct mbr *mbr, uint8_t part_num, uint8_t part_type, uint3
 	// the end address isn't capable of fitting into a uint32_t
 	// or the end address is further out then chs addressing is capable of
 	// 1023*254*63 is the max value for chs
-	if( start + len <= start || start + len >= 1023*254*63 ) {
+	if( start + len <= start || start + len >= ((uint32_t) 1023)*254*63 ) {
 		mbr->partition[part_num - 1].chs_last_sector[0] = 254;
 		mbr->partition[part_num - 1].chs_last_sector[1] = ((uint8_t)((1023 >> 8) << 6)) + 63;
 		mbr->partition[part_num - 1].chs_last_sector[2] = (uint8_t) 1023;

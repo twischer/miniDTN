@@ -69,60 +69,27 @@ PROCESS_THREAD(hello_world_process, ev, data)
 	printf("\n\t BPB_RootClus    = %lu\n\n", fat.BPB_RootClus);
 	clock_init();
 	printf("\nOpening \"prog1.csv\" = %d", fd = cfs_open("prog1.csv", 0) );
+	printf("\nClosing \"prog1.csv\"");
+	cfs_close( fd );
+	printf("\nCreating \"prog2.csv\" = %d", fd = cfs_open("prog2.csv", CFS_WRITE) );
+	cfs_close( fd );
 //	printf("\nReading 1024 bytes \"prog1.csv\" = %d", cfs_read(fd, buffer, 1024) );
+	/*
 	start = clock_time();
 	cfs_read(fd, buffer, 1024);
-/*	for(i=0;i<1024;i++) {
-		printf("%c", buffer[i]);
-	}
-	memset( buffer, 'A', 1024);*/
 	cfs_read(fd, buffer, 1024);
-/*	for(i=0;i<1024;i++) {
-		printf("%c", buffer[i]);
-	}
-	memset( buffer, 'A', 1024);*/
 	cfs_read(fd, buffer, 1024);
-/*	for(i=0;i<1024;i++) {
-		printf("%c", buffer[i]);
-	}
-	memset( buffer, 'A', 1024);*/
 	cfs_read(fd, buffer, 1024);
-/*	for(i=0;i<1024;i++) {
-		printf("%c", buffer[i]);
-	}
-	memset( buffer, 'A', 1024);*/
 	cfs_read(fd, buffer, 1024);
-/*	for(i=0;i<1024;i++) {
-		printf("%c", buffer[i]);
-	}
-	memset( buffer, 'A', 1024);*/
 	cfs_read(fd, buffer, 1024);
-/*	for(i=0;i<1024;i++) {
-		printf("%c", buffer[i]);
-	}
-	memset( buffer, 'A', 1024);*/
 	cfs_read(fd, buffer, 1024);
-/*	for(i=0;i<1024;i++) {
-		printf("%c", buffer[i]);
-	}
-	memset( buffer, 'A', 1024);*/
 	cfs_read(fd, buffer, 1024);
-/*	for(i=0;i<1024;i++) {
-		printf("%c", buffer[i]);
-	}
-	memset( buffer, 'A', 1024);*/
 	cfs_read(fd, buffer, 1024);
-/*	for(i=0;i<1024;i++) {
-		printf("%c", buffer[i]);
-	}
-	memset( buffer, 'A', 1024);*/
 	cfs_read(fd, buffer, 1024);
-/*	for(i=0;i<1024;i++) {
-		printf("%c", buffer[i]);
-	}*/
 	end = clock_time();
 	printf("\nTime = %lu", (end - start) );
 	printf("\nSecond = %lu", CLOCK_SECOND );
+	*/
 	printf("\n\n");
                 
   PROCESS_END();
