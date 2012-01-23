@@ -161,13 +161,21 @@ def graph_function(graph, func, callsite, label=None):
 
 	time_spent = 0
 	invocations = 0
+	time_max = 0
+	time_min = 0xffff
 	for site in func_table.values():
+		print site['name'], func
 		if site['name'] == func:
 			time_spent += site['time_spent']
 			invocations += site['invocations']
+			if 'time_max' in site:
+				time_max = max(site['time_max'], time_max)
+			if 'time_min' in site:
+				time_min = min(site['time_min'], time_min)
 
 	if invocations > 0:
-		fnlabel = "%s\n%.3fms\n%i calls"%(label, float(time_spent)/opts['ticks_per_sec']*1000, invocations)
+		fnlabel = "%s\nmin: %.3fms max: %.3fms\n%.3fms\n%i calls"%(label, float(time_min)/opts['ticks_per_sec']*1000,
+				float(time_max)/opts['ticks_per_sec']*1000, float(time_spent)/opts['ticks_per_sec']*1000, invocations)
 	else:
 		fnlabel = "%s\n(unprofiled)"%(label)
 	if not callsite:
@@ -336,6 +344,20 @@ def handle_prof(logfile, header):
 		call['to'] = to_el
 		call['count'] = int(elements[2])
 		call['time'] = int(elements[3])
+
+		call['time_min'] = int(elements[4])
+		call['time_max'] = int(elements[5])
+
+		if 'time_min' in to_el:
+			to_el['time_min'] = min(to_el['time_min'], int(elements[4]))
+		else:
+			to_el['time_min'] = int(elements[4])
+
+		if 'time_max' in to_el:
+			to_el['time_max'] = max(to_el['time_max'], int(elements[5]))
+		else:
+			to_el['time_max'] = int(elements[5])
+
 		calls.append(call)
 
 		# Keep track of how much time we're actually spending in here

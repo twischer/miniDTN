@@ -17,6 +17,8 @@ struct profile_site_t {
 	void *from;
 	void *addr;
 	uint32_t calls;
+	uint16_t time_min;
+	uint16_t time_max;
 	unsigned long time_accum;
 };
 
