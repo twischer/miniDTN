@@ -42,6 +42,7 @@
 #include "dev/leds.h"
 #include "sys/profiling.h"
 #include "sys/sprofiling.h"
+#include "sys/test.h"
 
 #include <stdio.h> /* For printf() */
 
@@ -120,10 +121,12 @@ PROCESS_THREAD(profiler, ev, data)
 #ifdef STAT_PROFILE
 		sprofiling_stop();
 		sprofiling_report("led-test", 0);
+		TEST_PASS(0, 1, "none");
 		sprofiling_start();
 #else
 		profiling_stop();
 		profiling_report("led-test", 0);
+		TEST_PASS(0, 1, "none");
 		profiling_start();
 #endif
 	}
