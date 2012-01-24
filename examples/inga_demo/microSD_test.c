@@ -22,8 +22,6 @@
 #include <avr/wdt.h>
 
 
-#define DEBUG                                   0
-
 #include "interfaces/flash-microSD.h"           //tested
 #include <stdio.h> /* For printf() */
 /*---------------------------------------------------------------------------*/
@@ -36,11 +34,15 @@ PROCESS_THREAD(hello_world_process, ev, data)
   PROCESS_BEGIN();
         //microSD Test
 		uint8_t buffer[512];
-		uint16_t j;
+		uint16_t j, i;
+  		uint32_t start, end;
 		memset(buffer, 0xFF, 512);
 		printf("\nChecksum is: %x", microSD_data_crc( buffer ));
-		wdt_disable();
-		printf("\nmicroSD_init() = %u\n", microSD_init());
+		//wdt_disable();
+		init:
+		printf("\nmicroSD_init() = %u\n", i = microSD_init());
+		if( i != 0 )
+			goto init;
 		printf("Size of uint64_t  = %u\n", sizeof(uint64_t));
 		printf("Size of uint32_t  = %u\n", sizeof(uint32_t));
 		printf("Size of uint16_t  = %u\n", sizeof(uint16_t));
@@ -52,14 +54,27 @@ PROCESS_THREAD(hello_world_process, ev, data)
 				buffer[j + 3] = '\n';
 
 		}
-
-		microSD_write_block(2, buffer);
-
-		microSD_read_block(2, buffer);
-
-		for (j = 0; j < 512; j++) {
-				printf(buffer[j]);
+		clock_init();
+		start = clock_time();
+		for( j = 0; j < 512; j++ ) {
+			//printf("\n%u", j);
+			if( microSD_write_block(12L + j, buffer) != 0 )
+				printf("\n Error writing block %u", j);
 		}
+		end = clock_time();
+		printf("\nTime = %lu", (end - start) );
+		printf("\nSecond = %lu", CLOCK_SECOND );
+
+		for (i = 0; i < 512; i++) {
+			microSD_read_block(12+i, buffer);
+			for (j = 0; j < 512; j+=4) {
+					if( buffer[j] != 'u' ||	buffer[j + 1] != 'e' ||	buffer[j + 2] != 'r' || buffer[j + 3] != '\n' ) {
+						printf("\n Error in block %u", i);
+						break;
+					}
+			}
+		}
+
 		microSD_deinit();
                 
   PROCESS_END();

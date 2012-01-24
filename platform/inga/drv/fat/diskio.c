@@ -128,7 +128,9 @@ int diskio_rw_op( struct diskio_device_info *dev, uint32_t block_start_address, 
 					return DISKIO_ERROR_TO_BE_IMPLEMENTED;
 					break;
 				case DISKIO_OP_WRITE_BLOCK:
+					printf("\ndiskio_rw_op() : before");
 					ret_code = microSD_write_block( block_start_address, buffer );
+					printf("\ndiskio_rw_op() : after = %d", ret_code);
 					if( ret_code != 0 )
 						return DISKIO_ERROR_INTERNAL_ERROR;
 					break;

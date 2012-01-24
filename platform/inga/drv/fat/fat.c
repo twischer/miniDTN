@@ -52,11 +52,10 @@ uint8_t get_dir_entry( const char *path, struct dir_entry *dir_ent, uint32_t *di
  */
 void fat_flush() {
 	if( sector_buffer_dirty ) {
-		////printf("\nfat_flush() : Sector is dirty, writing back to addr = %lu", sector_buffer_addr);
-		if( sector_buffer[0] != 'A' )
-			//printf("\nWAAAH!");
-		diskio_write_block( mounted.dev, sector_buffer_addr, sector_buffer );
-		////printf("\nfat_flush() : resetting dirty flag");
+		printf("\nfat_flush() : Sector is dirty, writing back to addr = %lu", sector_buffer_addr);
+		if( diskio_write_block( mounted.dev, sector_buffer_addr, sector_buffer ) != DISKIO_SUCCESS ) {
+			printf("\nfat_flush() : Error writing sector %lu", sector_buffer_addr);
+		}
 		sector_buffer_dirty = 0;
 	}
 }
@@ -352,7 +351,7 @@ uint32_t get_free_cluster(uint32_t start_cluster) {
 	uint32_t fat_sec_num = 0;
 	uint32_t ent_offset = 0;
 	uint16_t i = 0;
-	//printf("\nget_free_cluster( %lu ) -> %lu", start_cluster, cluster2sector(start_cluster));
+	printf("\nget_free_cluster( %lu ) -> %lu", start_cluster, cluster2sector(start_cluster));
 	calc_fat_block( cluster2sector( start_cluster ), &fat_sec_num, &ent_offset );
 	do {
 		fat_read_block( fat_sec_num );
@@ -367,7 +366,7 @@ uint32_t get_free_cluster(uint32_t start_cluster) {
 		ent_offset /= 2;
 	else if( mounted.info.type == FAT32 )
 		ent_offset /= 4;
-	//printf("\nget_free_cluster(): ent_offset = %lu", ent_offset);
+	printf("\nget_free_cluster(): next_free_cluster = %lu", ent_offset);
 	//printf("\nget_free_cluster(): fat_sec_num = %lu", fat_sec_num);
 	return ent_offset;
 }
@@ -388,7 +387,8 @@ uint16_t _get_free_cluster_32() {
 	uint32_t entry = 0;
 	uint16_t i = 0;
 	for( i = 0; i < 512; i += 4 ) {
-		entry = (((uint32_t) sector_buffer[i]) << 24) + (((uint32_t) sector_buffer[i+1]) << 16) + (((uint32_t) sector_buffer[i+2]) << 8) + ((uint32_t) sector_buffer[i+3]);
+		entry = (((uint32_t) sector_buffer[i+3]) << 24) + (((uint32_t) sector_buffer[i+2]) << 16) + (((uint32_t) sector_buffer[i+1]) << 8) + ((uint32_t) sector_buffer[i]);
+		printf("\n_get_free_cluster_32() : entry = %lu", entry & 0x0FFFFFFF);
 		if( (entry & 0x0FFFFFFF) == 0 ) {
 			return i;
 		}
@@ -477,10 +477,10 @@ uint32_t find_file_cluster( const char *path ) {
 
 uint32_t find_nth_cluster( uint32_t start_cluster, uint32_t n ) {
 	uint32_t cluster = start_cluster, i = 0;
-	//printf("\nfind_nth_cluster( %lu, %lu )", start_cluster, n);
+	printf("\nfind_nth_cluster( %lu, %lu )", start_cluster, n);
 	for( i = 0; i < n; i++ ) {
 		cluster = read_fat_entry_cluster( cluster );
-		//printf("\n\t next cluster = %lu", cluster);
+		printf("\n\t next cluster = %lu", cluster);
 	}
 	return cluster;
 }
@@ -751,8 +751,9 @@ void add_cluster_to_file( int fd ) {
 		cluster = n;
 		n = read_fat_entry_cluster( cluster );
 	}
+	printf("\nadd_cluster_to_file() : cluster = %lu, free = %lu, n = %lx", cluster, free, n );
 	write_fat_entry( cluster, free );
-	write_fat_entry( free, n );
+	write_fat_entry( free, EOC );
 }
 
 int
@@ -768,8 +769,6 @@ cfs_write(int fd, const void *buf, unsigned int len)
 	while( fat_write_file( fd, clusters, clus_offset ) == 0 ) {
 		for( i = offset; i < 512 && j < len; i++,j++,fat_fd_pool[fd].offset++ ) {
 			sector_buffer[i] = buffer[j];
-			if(sector_buffer[i] != 'A')
-				//printf("\nWAAAH!");
 			if( fat_fd_pool[fd].offset == fat_file_pool[fd].dir_entry.DIR_FileSize )
 				fat_file_pool[fd].dir_entry.DIR_FileSize++;
 		}
@@ -841,7 +840,7 @@ cfs_remove(const char *name)
 		return -1;
 	}
 	if( _is_file( &dir_ent ) ) {
-		printf("\ncfs_remove(): File found!");
+		//printf("\ncfs_remove(): File found!");
 		reset_cluster_chain( &dir_ent );
 		remove_dir_entry( sector, offset );
 		fat_flush();
