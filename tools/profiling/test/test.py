@@ -135,7 +135,7 @@ class Device(object):
 				if line.startswith("TEST"):
 					testdata = line.split(':')
 					# TEST:FAIL/PASS:<value>:<unit>
-					queue.put({'status': 'Completed', 'reason': testdata[1], 'name': self.name, 'data': testdata[2], 'unit': testdata[3]})
+					queue.put({'status': 'Completed', 'reason': testdata[1], 'name': self.name, 'data': testdata[2], 'scale': testdata[3], 'unit': testdata[4]})
 				line = ""
 
 			try:
@@ -281,9 +281,8 @@ class Testcase(object):
 							time.sleep(2)
 							raise err
 						elif item['status'] == "Completed":
-							self.logger.info("Test %s completed by device %s (%s) - %s %s", self.name, item['name'], item['reason'], item['data'], item['unit'])
+							self.logger.info("Device %s completed test (%s) - %f %s", self.name, item['name'], item['reason'], float(item['data'])/item['scale'], item['unit'])
 							result.append(item)
-							break
 					except Queue.Empty:
 						pass
 
@@ -303,8 +302,17 @@ class Testcase(object):
 				raise
 
 		except Exception:
+			# Catch all exceptions and remove logger before passing the exception on
 			self.logger.removeHandler(handler)
 			raise
+
+		self.logger.info("Test %s completed", self.name)
+		for item in result:
+			self.logger.info("%s:%s:%f:%s", item['name'], item['reason'], float(item['data'])/item['scale'], item['unit'])
+			if item['reason'] != "PASS":
+				err = Exception("Device %s reported failure"%(item['name'])
+				self.logger.removeHandler(handler)
+				raise err
 
 		self.logger.removeHandler(handler)
 
