@@ -5,6 +5,7 @@ import errno
 import serial
 import logging
 import threading
+import Queue
 import subprocess
 import shutil
 import time
@@ -73,16 +74,16 @@ class Device(object):
 		raise Exception('Unimplemented')
 	def reset(self):
 		raise Exception('Unimplemented')
-	def create_graph(self, log):
+	def create_graph(self, name, log):
 		basename = os.path.join(self.logdir, "profile")
-		svgname = "%s.svg"%(basename)
-		pdfname = "%s.pdf"%(basename)
+		svgname = "%s-%s.svg"%(basename, name)
+		pdfname = "%s-%s.pdf"%(basename, name)
 
 		profile = subprocess.Popen(["profile-neat.py", "-p", self.prefix, "-g", svgname, self.binary,  "-"], stdin=subprocess.PIPE, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
 		(output, tmp) = profile.communicate(log)
 		logging.info(output)
 		output = subprocess.check_output(["inkscape", "-A", pdfname, svgname])
-	def recordlog(self):
+	def recordlog(self, queue, controlqueue):
 		logfile = os.path.join(self.logdir, self.name)
 		self.reset()
 		# Make sure the device nodes are there again
@@ -96,33 +97,58 @@ class Device(object):
 		handler.setLevel(logging.DEBUG)
 		self.logger.addHandler(handler)
 
-		ser = serial.Serial(port=self.path, baudrate=self.baudrate)
+		# Some bug somewhere in the system prevents the baud rate to be set correctly after a USB reset
+		# Setting the baud rate twice works around that
+		ser = serial.Serial(port=self.path, baudrate=1200, timeout=0.5)
+		ser.baudrate = self.baudrate
 
 		resetseen = 0
 		profilelines = -1
-		for line in ser:
-			line = line.strip()
-			self.logger.debug(line)
+		line = ""
+		while True:
+			line += ser.readline()
+			if (line.endswith('\n') or line.endswith('\r')):
+				line = line.strip()
+				self.logger.debug(line)
 
-			if resetseen > 1:
-				self.logger.error("Device resetted unexpectedly, aborting test")
-				break
+				if line.startswith(self.startpattern):
+					resetseen += 1
+				if resetseen > 1:
+					self.logger.error("Device resetted unexpectedly, aborting test")
+					queue.put({'status': 'Aborted', 'reason': 'Node restart detected', 'name': self.name})
+					break
 
-			if line.startswith(self.startpattern):
-				resetseen += 1
-			for profpat in self.profilepattern:
-				if line.startswith(profpat):
-					profilelines = int(line.split(':')[1]) + 1
-					profiledata = ""
+				for profpat in self.profilepattern:
+					if line.startswith(profpat):
+						profilelines = int(line.split(':')[2]) + 1
+						profilename = line.split(':')[1]
+						profiledata = ""
 
-			if profilelines > 0:
-				profiledata += line
-				profiledata += "\n"
-				profilelines -= 1
-			if profilelines == 0:
-				self.create_graph(profiledata)
-				profilelines = -1
+				if profilelines > 0:
+					profiledata += line
+					profiledata += "\n"
+					profilelines -= 1
+				if profilelines == 0:
+					self.create_graph(profilename, profiledata)
+					profilelines = -1
 
+				if line.startswith("TEST"):
+					testdata = line.split(':')
+					# TEST:FAIL/PASS:<value>:<unit>
+					queue.put({'status': 'Completed', 'reason': testdata[1], 'name': self.name, 'data': testdata[2], 'unit': testdata[3]})
+				line = ""
+
+			try:
+				item = controlqueue.get_nowait()
+				controlqueue.task_done()
+				if item == "Exit":
+					self.logger.info("Aborted by test")
+					queue.put({'status': 'Aborted', 'reason': 'Aborted by test', 'name': self.name})
+					break
+				else:
+					self.logger.debug("Received unknown control item: %s", item)
+			except Queue.Empty:
+				pass
 
 		ser.close()
 		self.logger.removeHandler(handler)
@@ -175,7 +201,9 @@ class Testcase(object):
 		self.logger = logging.getLogger('test.%s'%(self.name))
 		self.logbase = os.path.join(config['logbase'], self.name)
 		self.contikibase = config['contikibase']
+		self.timeout = int(config.setdefault('timeout', "300"))
 		self.devices = []
+		self.timedout = False
 
 		mkdir_p(self.logbase)
 		for cfgdevice in devicecfg:
@@ -191,34 +219,94 @@ class Testcase(object):
 			device.configure(cfgdevice)
 			self.devices.append(device)
 
+	def timeout_occured(self):
+		self.timedout = True
 
 	def run(self):
-		for device in self.devices:
+		logfile = os.path.join(self.logbase, "test.log")
+		handler = logging.FileHandler(logfile)
+		formatter = logging.Formatter(fmt='%(asctime)s: %(message)s',
+				datefmt='%Y%m%d %H%M%S')
+		handler.setFormatter(formatter)
+		handler.setLevel(logging.DEBUG)
+		self.logger.addHandler(handler)
+
+		self.timedout = False
+		result = []
+
+		try:
+			self.logger.info("Starting test %s", self.name)
+			for device in self.devices:
+				try:
+					self.logger.info("Setting up %s for device %s", device.programdir, device.name)
+					device.build()
+					device.upload()
+				except Exception as err:
+					self.logger.error("Test could not complete")
+					self.logger.error(err)
+					raise
+
+			self.logger.info("All devices configured, resetting and starting test")
+
 			try:
-				self.logger.info("Setting up %s for device %s", device.programdir, device.name)
-				device.build()
-				device.upload()
-			except Exception as err:
-				self.logger.error("Test could not complete")
-				self.logger.error(err)
+				threads = {}
+				queue = Queue.Queue()
+				for device in self.devices:
+					control = Queue.Queue()
+					thread = threading.Thread(target=device.recordlog, args=(queue,control))
+					threads[device.name] = (thread, control)
+					thread.start()
+
+				timeouttimer = threading.Timer(self.timeout, self.timeout_occured)
+				self.logger.info("Starting timeout (%is)", self.timeout)
+				timeouttimer.start()
+
+				while not self.timedout:
+					# Exit if all threads have finished
+					alldead = True
+					for thread in threads.values():
+						if thread[0].isAlive():
+							alldead = False
+					if alldead:
+						break
+
+					try:
+						item = queue.get(True, 2)
+						self.logger.debug("Got item %s"%(item))
+						queue.task_done()
+						if item['status'] == "Aborted":
+							err = Exception("Test failed: Device %s aborted (%s)"%(item['name'], item['reason']))
+							for thread in threads.values():
+								thread[1].put("Exit")
+							time.sleep(2)
+							raise err
+						elif item['status'] == "Completed":
+							self.logger.info("Test %s completed by device %s (%s) - %s %s", self.name, item['name'], item['reason'], item['data'], item['unit'])
+							result.append(item)
+							break
+					except Queue.Empty:
+						pass
+
+				if self.timedout:
+					self.logger.error("Timeout while running test %s", self.name)
+					for thread in threads.values():
+						thread[1].put("Exit")
+					time.sleep(2)
+
+					err = Exception("Timeout")
+					raise err
+			except KeyboardInterrupt:
+				self.logger.error("Test aborted by user")
+				for thread in threads.values():
+					thread[1].put("Exit")
+				time.sleep(2)
 				raise
 
-		self.logger.info("All devices configured, resetting and starting test")
+		except Exception:
+			self.logger.removeHandler(handler)
+			raise
 
-		threads = []
-		for device in self.devices:
-			thread = threading.Thread(target=device.recordlog)
-			threads.append(thread)
-			thread.start()
-
-		# Wait until all threads have finished
-		timeout = True
-		while timeout:
-			timeout = False
-			for thread in threads:
-				thread.join(1)
-				if thread.isAlive():
-					timeout = True
+		self.logger.removeHandler(handler)
 
 class Testsuite(object):
 	def __init__(self, suitecfg, devcfg, testcfg):
