@@ -3,7 +3,8 @@ suite:
     logpattern: date
     contikibase: /home/alphaone/scm/diplomarbeit/eval/contiki
     testcases:
-        - throughput
+        - profile-test
+        #- throughput
 
 # List of devices
 # Each device has a name, a class (type of device), a path and an id
@@ -18,6 +19,15 @@ devices:
     id: 1
 
 tests:
+  - name: profile-test
+    timeout: 140
+    devices:
+      - name: sender
+        programdir: examples/profile-test
+        program: profile-test
+        instrument: [examples/profile-test/profile-test.c,core/dev/leds.c,cpu/avr/leds-arch.c]
+        cflags: "-fno-inline"
+        graph_options: ""
   - name: throughput
     devices:
       - name: sender
