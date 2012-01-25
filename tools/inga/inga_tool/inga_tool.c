@@ -359,8 +359,8 @@ void inga_eeprom(struct config_t *cfg)
 		fprintf(stderr, "\nCould not write EEPROM: %i\n", rc);
 		exit(EXIT_FAILURE);
 	}
-	printf("done\n");
 	sleep(10);
+	printf("done\n");
 
 out:
 
