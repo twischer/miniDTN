@@ -43,39 +43,49 @@ PROCESS_THREAD(hello_world_process, ev, data)
 		printf("\nmicroSD_init() = %u\n", i = microSD_init());
 		if( i != 0 )
 			goto init;
-		printf("Size of uint64_t  = %u\n", sizeof(uint64_t));
+		//printf("Size of uint64_t  = %u\n", sizeof(uint64_t));
 		printf("Size of uint32_t  = %u\n", sizeof(uint32_t));
 		printf("Size of uint16_t  = %u\n", sizeof(uint16_t));
 		printf("Size of int  = %u\n", sizeof(int));
 		for (j = 0; j < 512; j+=4) {
-				buffer[j] = 'u';
+				buffer[j] = 'f';
 				buffer[j + 1] = 'e';
 				buffer[j + 2] = 'r';
 				buffer[j + 3] = '\n';
 
 		}
-		clock_init();
-		start = clock_time();
-		for( j = 0; j < 8192; j++ ) {
-			//printf("\n%u", j);
-			if( microSD_write_block(38000L + j, buffer) != 0 ) {
-				printf("\n Error writing block %lu", 38000L + j);
+		for (j = 0; j < 512; j+=4) {
+			if( buffer[j] != 'f' ||	buffer[j + 1] != 'e' ||	buffer[j + 2] != 'r' || buffer[j + 3] != '\n' ) {
+				printf("\n BUFFER CORRUPTED");
 			}
 		}
+		clock_init();
+		//printf("\nmicroSD_set_CRC() = %u", microSD_set_CRC(1));
+		start = clock_time();
+		for( j = 0; j < 512; j++ ) {
+			printf("\n%u", j);
+			if( microSD_write_block(32000L + j, buffer) != 0 ) {
+				printf("\n Error writing block %lu", 32000L + j);
+			}
+		}
+		//if( microSD_write_block(38000L + j, buffer) != 0 ) {
+		//	printf("\n Error writing block %lu", 38000L + j);
+		//}
+
 		end = clock_time();
 		printf("\nTime = %lu", (end - start) );
 		printf("\nSecond = %lu", CLOCK_SECOND );
-/*
+
 		for (i = 0; i < 512; i++) {
-			microSD_read_block(12+i, buffer);
+			microSD_read_block(32000L+i, buffer);
 			for (j = 0; j < 512; j+=4) {
-					if( buffer[j] != 'u' ||	buffer[j + 1] != 'e' ||	buffer[j + 2] != 'r' || buffer[j + 3] != '\n' ) {
+					if( buffer[j] != 'f' ||	buffer[j + 1] != 'e' ||	buffer[j + 2] != 'r' || buffer[j + 3] != '\n' ) {
 						printf("\n Error in block %u", i);
 						break;
 					}
 			}
 		}
-*/
+
 		microSD_deinit();
                 
   PROCESS_END();
