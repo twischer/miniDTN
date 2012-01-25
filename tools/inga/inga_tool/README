@@ -10,14 +10,15 @@ Use it like this to reset an INGA node:
 ./inga_tool -d <usbserial> -r
 
 The following will flash the EEPROM (WARNING, not extensively tested):
-./inga_node -d <usbserial> -f -v
+./inga_tool -d <usbserial> -f -v
 
 It is also possible to choose a device based on the USB serial:
-./inga_node -s <serial>
+./inga_tool -s <serial>
 
 Reset:
 This is used to go into the bootloader without the need to reset the device
-manually. You'll need an up-to-date bootloader for this to work.
+manually. You'll need an up-to-date bootloader for this to work. In addition,
+flashing the EEPROM of INGA is required before using the reset functionality.
 
 Flashing:
 Right now no options are supported for flashing, that will be something for the

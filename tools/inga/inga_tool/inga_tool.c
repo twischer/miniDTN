@@ -64,6 +64,7 @@ struct config_t {
 	char *eep_manuf;
 	char *eep_prod;
 	char *eep_serial;
+	int eep_max_power;
 };
 
 #define VERBOSE(args...)\
@@ -200,7 +201,7 @@ void inga_reset(struct config_t *cfg)
     }
 
     rc = ftdi_usb_open_dev(&ftdic, usbdev);
-    if (rc < 0 && rc != -5)
+    if (rc < 0)
     {
         fprintf(stderr, "unable to open ftdi device: %d (%s)\n", rc, ftdi_get_error_string(&ftdic));
         exit(EXIT_FAILURE);
@@ -257,7 +258,7 @@ void inga_eeprom(struct config_t *cfg)
     }
 
     rc = ftdi_usb_open_dev(&ftdic, usbdev);
-    if (rc < 0 && rc != -5)
+    if (rc < 0)
     {
         fprintf(stderr, "unable to open ftdi device: %d (%s)\n", rc, ftdi_get_error_string(&ftdic));
         exit(EXIT_FAILURE);
@@ -300,9 +301,11 @@ void inga_eeprom(struct config_t *cfg)
 		"Manufacturer: %s\n"
 		"Product:      %s\n"
 		"Serial:       %s\n"
+		"Max power:    %i\n"
 		"CBUS:         %1x%1x %1x%1x 0%1x\n\n", eeprom.chip_type,
 			eeprom.vendor_id, eeprom.product_id, eeprom.manufacturer,
-			eeprom.product, eeprom.serial, eeprom.cbus_function[1],
+			eeprom.product, eeprom.serial, eeprom.max_power*2,
+			eeprom.cbus_function[1],
 			eeprom.cbus_function[0], eeprom.cbus_function[3],
 			eeprom.cbus_function[2], eeprom.cbus_function[4]);
 
@@ -323,6 +326,8 @@ void inga_eeprom(struct config_t *cfg)
 		eeprom.cbus_function[3] = CBUS_IOMODE;
 		eeprom.cbus_function[4] = CBUS_SLEEP;
 	}
+	if (cfg->eep_max_power > 0)
+		eeprom.max_power = cfg->eep_max_power/2;
 
 
 	VERBOSE("\nUpdating with EEPROM config:\n"
@@ -332,9 +337,11 @@ void inga_eeprom(struct config_t *cfg)
 		"Manufacturer: %s\n"
 		"Product:      %s\n"
 		"Serial:       %s\n"
+		"Max power:    %i\n"
 		"CBUS:         %1x%1x %1x%1x 0%1x\n\n", eeprom.chip_type,
 			eeprom.vendor_id, eeprom.product_id, eeprom.manufacturer,
-			eeprom.product, eeprom.serial, eeprom.cbus_function[0],
+			eeprom.product, eeprom.serial, eeprom.max_power*2,
+			eeprom.cbus_function[0],
 			eeprom.cbus_function[1], eeprom.cbus_function[2],
 			eeprom.cbus_function[3], eeprom.cbus_function[4]);
 
@@ -352,8 +359,8 @@ void inga_eeprom(struct config_t *cfg)
 		fprintf(stderr, "\nCould not write EEPROM: %i\n", rc);
 		exit(EXIT_FAILURE);
 	}
-	printf("done\n");
 	sleep(10);
+	printf("done\n");
 
 out:
 
@@ -393,11 +400,13 @@ void parse_options(int argc, const char **argv, struct config_t *cfg)
 			"device_id"},
 		{"verbose", 'v', POPT_ARG_NONE, &cfg->verbose, 0, "Be verbose",
 			NULL},
+		{"max-power", 'p', POPT_ARG_INT, &cfg->eep_max_power, 0, "Maximum current to draw from USB (mA)",
+			"current"},
 		POPT_AUTOHELP
 		{ NULL, 0, 0, NULL, 0}
 	};
 
-	cfg->mode == MODE_RESET;
+	cfg->mode = MODE_RESET;
 
 	poptc = poptGetContext(NULL, argc, argv, options, 0);
 
@@ -446,10 +455,13 @@ struct config_t *init_config(void)
 	/* Set some sensible defaults
 	 * Enable CBUS3 IO, keep vendor/product ID as is,
 	 * set manufacturer to IBR and product string to INGA,
-	 * keep serial */
+	 * keep serial, don't change the max power setting */
 	cfg->eep_cbusio = 1;
 	cfg->eep_manuf = "IBR";
 	cfg->eep_prod = "INGA";
+	cfg->eep_max_power = -1;
+
+	return cfg;
 }
 
 int main(int argc, const char **argv)
