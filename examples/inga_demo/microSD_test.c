@@ -56,15 +56,16 @@ PROCESS_THREAD(hello_world_process, ev, data)
 		}
 		clock_init();
 		start = clock_time();
-		for( j = 0; j < 512; j++ ) {
+		for( j = 0; j < 8192; j++ ) {
 			//printf("\n%u", j);
-			if( microSD_write_block(12L + j, buffer) != 0 )
-				printf("\n Error writing block %u", j);
+			if( microSD_write_block(38000L + j, buffer) != 0 ) {
+				printf("\n Error writing block %lu", 38000L + j);
+			}
 		}
 		end = clock_time();
 		printf("\nTime = %lu", (end - start) );
 		printf("\nSecond = %lu", CLOCK_SECOND );
-
+/*
 		for (i = 0; i < 512; i++) {
 			microSD_read_block(12+i, buffer);
 			for (j = 0; j < 512; j+=4) {
@@ -74,7 +75,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 					}
 			}
 		}
-
+*/
 		microSD_deinit();
                 
   PROCESS_END();

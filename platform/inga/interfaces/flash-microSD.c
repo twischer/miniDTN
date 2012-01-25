@@ -434,19 +434,20 @@ uint8_t microSD_write_block(uint32_t addr, uint8_t *buffer) {
 	cmd[2] = ((addr & 0x00FF0000) >> 16);
 	cmd[3] = ((addr & 0x0000FF00) >> 8);
 	cmd[4] = ((addr & 0x000000FF));
+	//printf("\nmicroSD_write_block(): addr = %lx", addr);
 
 	/* send CMD24 with address information. Chip select is done by
 	 * the microSD_write_cmd method and */
 	if (microSD_write_cmd(cmd, NULL) != 0x00) {
-#if DEBUG
-		//printf("\nmicroSD_write_block(): CMD24 failure!");
-#endif
+//#if DEBUG
+		printf("\nmicroSD_write_block(): CMD24 failure!");
+//#endif
 		return -1;
 	}
 
-	for (i = 0; i < 10; i++) {
+//	for (i = 0; i < 10; i++) {
 		mspi_transceive(MSPI_DUMMY_BYTE);
-	}
+//	}
 
 	/* send start byte 0xFE to the microSD card to symbolize the beginning
 	 * of one data block (512byte)*/
@@ -462,23 +463,18 @@ uint8_t microSD_write_block(uint32_t addr, uint8_t *buffer) {
 	mspi_transceive(MSPI_DUMMY_BYTE);
 
 	/*failure check: Data Response XXX00101 = OK*/
-	again:
 	if (((i = mspi_transceive(MSPI_DUMMY_BYTE)) & 0x1F) != 0x05) {
-//#if DEBUG
-		printf("\nmicroSD_write_block(): data_response = %x!", i);
-		/*following two if's are a workaround at the moment*/
-		if( i == 0xff )
-			return 0;
-		if( (i & 0x01) != 1  || (i & 0x08) != 0)
-			goto again;
-//#endif
+		//if( i == 0x00 ) {
+		//	goto cont;
+		//}
 		mspi_chip_release(MICRO_SD_CS);
 		return -2;
 	}
-
+	cont:
 	/*wait while microSD card is busy*/
 	while (mspi_transceive(MSPI_DUMMY_BYTE) != 0xff) {
 	};
+	//printf("\nmicroSD_write_block(): status = %x", microSD_get_status());
 	/*release chip select and disable microSD spi*/
 	mspi_chip_release(MICRO_SD_CS);
 

@@ -50,7 +50,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 		watchdog_periodic();
 	}
 	printf("\nTEST BEGIN\n");
-	while(diskio_detect_devices() != DISKIO_SUCCESS);
+	while((i = diskio_detect_devices()) != DISKIO_SUCCESS);
 	info = diskio_devices();
 	for(i = 0; i < DISKIO_MAX_DEVICES; i++) {
 		print_device_info( info + i );
@@ -94,6 +94,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 	cfs_remove("prog2.txt");
 	printf("\nCreating \"prog2.txt\" = %d", fd = cfs_open("prog2.txt", CFS_WRITE) );
 	memset( buffer, 'A', 1024 );
+	buffer[1023] = '\n';
 	start = clock_time();
 	for( i = 0; i < 25; i++) {
 		printf("\n%u", i);
@@ -132,6 +133,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 	printf("\nTime = %lu", (end - start) );
 	printf("\nSecond = %lu", CLOCK_SECOND );
 	*/
+	printf("\n\n");
 	printf("\n\n");
                 
   PROCESS_END();
