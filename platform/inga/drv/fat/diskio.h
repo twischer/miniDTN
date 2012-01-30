@@ -5,7 +5,6 @@
 #define DISKIO_DEVICE_TYPE_NOT_RECOGNIZED 0
 #define DISKIO_DEVICE_TYPE_SD_CARD 1
 #define DISKIO_DEVICE_TYPE_GENERIC_FLASH 2
-#define DISKIO_DEVICE_TYPE_FILE 4
 #define DISKIO_DEVICE_TYPE_PARTITION 128
 
 /** Bigger sectors then this are not supported. May be reduced down to 512 to use less memory. */

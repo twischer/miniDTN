@@ -57,12 +57,16 @@ uint32_t microSD_card_block_count = 0;
 uint8_t microSD_sdsc_card = 1;
 uint8_t microSD_crc_enable = 0;
 
-uint16_t microSD_get_block_size() {
-	return microSD_block_size;
+uint64_t microSD_get_card_size() {
+	return ((uint64_t) microSD_card_block_count) * microSD_block_size;
 }
 
-uint32_t microSD_get_card_block_count() {
-	return microSD_card_block_count;
+uint32_t microSD_get_block_num() {
+	return (microSD_card_block_count / microSD_block_size) * microSD_get_block_size();
+}
+
+uint16_t microSD_get_block_size() {
+	return 512;
 }
 
 uint8_t microSD_is_SDSC() {
@@ -79,7 +83,7 @@ uint8_t microSD_set_CRC( uint8_t enable ) {
 		cmd[4] = 0xFF;
 	}
 	if( (ret = microSD_write_cmd( cmd, NULL )) != 0x00 ) {
-		printf("\nmicroSD_set_CRC(): ret = %u", ret);
+		//printf("\nmicroSD_set_CRC(): ret = %u", ret);
 		return 1;
 	}
 	microSD_crc_enable = cmd[1];
@@ -93,7 +97,7 @@ uint8_t microSD_read_csd( uint8_t *buffer ) {
 	uint8_t i = 0;
 	if( (i = microSD_write_cmd( cmd, NULL )) != 0x00 ) {
 #if DEBUG
-		printf("\nmicroSD_read_csd(): CMD9 failure! (%u)", i);
+		//printf("\nmicroSD_read_csd(): CMD9 failure! (%u)", i);
 #endif
 		return 1;
 	}
@@ -211,7 +215,6 @@ uint8_t microSD_init(void) {
 	/*READY TO INITIALIZE micro SD / SD card*/
 	mspi_chip_release(MICRO_SD_CS);
 	/*init mspi in mode0, at chip select pin 2 and max baud rate*/
-//	mspi_init(MICRO_SD_CS, MSPI_MODE_0, MSPI_BAUD_MAX);
 	mspi_init(MICRO_SD_CS, MSPI_MODE_0, MSPI_BAUD_2MBPS);
 	/*set SPI mode by chip select (only necessary when mspi manager is active)*/
 
@@ -242,7 +245,7 @@ uint8_t microSD_init(void) {
 	/*Memory for the contents of the csd*/
 	uint8_t csd[16];
 	#ifdef DEBUG
-	//printf("\nmicroSD_init(): Writing cmd0");
+	printf("\nmicroSD_init(): Writing cmd0");
 	#endif
 	i = 0;
 	while( (ret = microSD_write_cmd( cmd0, NULL )) != 0x01 ) {
@@ -251,7 +254,7 @@ uint8_t microSD_init(void) {
 			mspi_chip_release(MICRO_SD_CS);
 			microSD_deinit();
 			#ifdef DEBUG
-			//printf("\nmicroSD_init(): cmd0 timeout -> %d", ret);
+			printf("\nmicroSD_init(): cmd0 timeout -> %d", ret);
 			#endif
 			return 1;
 		}
@@ -259,7 +262,7 @@ uint8_t microSD_init(void) {
 	/*send CMD8*/
 	microSD_cmd_crc( cmd8 );
 	#ifdef DEBUG
-	//printf("\nmicroSD_init(): Writing cmd8");
+	printf("\nmicroSD_init(): Writing cmd8");
 	#endif
 	resp[0] = 0x07;
 	i = 0;
@@ -279,14 +282,14 @@ uint8_t microSD_init(void) {
 	if( ret & 0x04 ) {
 		/*prepare next 6 data bytes: CMD1*/
 		#ifdef DEBUG
-		//printf("\nmicroSD_init(): Writing cmd1");
+		printf("\nmicroSD_init(): Writing cmd1");
 		#endif
 		i = 0;
 		while( (ret = microSD_write_cmd( cmd1, NULL )) != 0 ) {
 			i++;
 			if (i > 5500) {
 				#ifdef DEBUG
-				//printf("\nmicroSD_init(): cmd1 timeout reached, last return value was %d", ret);
+				printf("\nmicroSD_init(): cmd1 timeout reached, last return value was %d", ret);
 				#endif
 				mspi_chip_release(MICRO_SD_CS);
 				microSD_deinit();
@@ -299,7 +302,7 @@ uint8_t microSD_init(void) {
 			i++;
 			if (i > 500) {
 				#ifdef DEBUG
-				//printf("\nmicroSD_init(): cmd16 timeout reached, last return value was %d", ret);
+				printf("\nmicroSD_init(): cmd16 timeout reached, last return value was %d", ret);
 				#endif
 				mspi_chip_release(MICRO_SD_CS);
 				microSD_deinit();
@@ -308,8 +311,8 @@ uint8_t microSD_init(void) {
 		}
 	} else {
 		#ifdef DEBUG
-		//printf("\nWriting acmd41 (55 + 41)");
-		//printf("\nmicroSD_init():\tWriting cmd55");
+		printf("\nWriting acmd41 (55 + 41)");
+		printf("\nmicroSD_init():\tWriting cmd55");
 		#endif
 		resp[0] = 0x01;
 		i = 0;
@@ -318,7 +321,7 @@ uint8_t microSD_init(void) {
 			i++;
 			if (i > 500) {
 				#ifdef DEBUG
-				//printf("\nmicroSD_init(): acmd41 timeout reached, last return value was %u", ret);
+				printf("\nmicroSD_init(): acmd41 timeout reached, last return value was %u", ret);
 				#endif
 				mspi_chip_release(MICRO_SD_CS);
 				microSD_deinit();
@@ -326,20 +329,21 @@ uint8_t microSD_init(void) {
 			}
 		}
 		#ifdef DEBUG
-		//printf("\nmicroSD_init():\tWriting cmd41");
+		printf("\nmicroSD_init():\tWriting cmd41");
 		#endif
-		if( microSD_write_cmd( cmd41, NULL ) != 0 )
+		if( microSD_write_cmd( cmd41, NULL ) != 0 ) {
 			goto ACMD41;
+		}
 		resp[0] = 0x03;
 		i = 0;
 		#ifdef DEBUG
-		//printf("\nmicroSD_init(): Writing cmd58");
+		printf("\nmicroSD_init(): Writing cmd58");
 		#endif
 		while( (ret = microSD_write_cmd( cmd58, resp )) != 0x0 ) {
 			i++;
 			if (i > 900) {
 				#ifdef DEBUG
-				//printf("\nmicroSD_init(): cmd58 timeout reached, last return value was %d", ret);
+				printf("\nmicroSD_init(): cmd58 timeout reached, last return value was %d", ret);
 				#endif
 				mspi_chip_release(MICRO_SD_CS);
 				microSD_deinit();
@@ -347,35 +351,19 @@ uint8_t microSD_init(void) {
 			}
 		}
 		if( resp[1] & 0x80 ) {
-			if( resp[1] & 0x40 )
+			if( resp[1] & 0x40 ) {
 				microSD_sdsc_card = 0;
+			}
 			#ifdef DEBUG
 			printf("\nmicroSD_init(): acmd41: Card power up okay!");
 			if( resp[1] & 0x40 ) {
 				printf("\nmicroSD_init(): acmd41: Card is SDHC/SDXC");
 			} else {
 				printf("\nmicroSD_init(): acmd41: Card is SDSC");
-				i = 0;
-				while( (ret = microSD_write_cmd( cmd16, NULL )) != 0x00 ) {
-					i++;
-					if (i > 500) {
-						#ifdef DEBUG
-						printf("\nmicroSD_init(): cmd16 timeout reached, last return value was %d", ret);
-						#endif
-						mspi_chip_release(MICRO_SD_CS);
-						microSD_deinit();
-						return 8;
-					}
-				}
 			}
 			#endif
 		}
 	}
-	#ifdef DEBUG
-	//printf("\nmicroSD_init(): Reading csd");
-	#endif
-	//if( microSD_read_csd( csd ) != 0 )
-	//	return 3;
 	i=0;
 	while( microSD_read_csd( csd ) != 0 ) {
 		i++;
@@ -421,16 +409,16 @@ uint8_t microSD_read_block(uint32_t addr, uint8_t *buffer) {
 	}
 
 	/*wait for the 0xFE start byte*/
-	printf("\n");
-	for(i = 0; i < 10; i++) {
+	//printf("\n");
+	for(i = 0; i < 100; i++) {
 		if((ret = mspi_transceive(MSPI_DUMMY_BYTE)) == 0xFE ) {
 			goto read;
 		}
-		printf("%x ", ret);
+		//printf("%x ", ret);
 	}
 	printf("\nmicroSD_read_block(): No Start Byte recieved, last was %d", ret);
 	return 2;
-	//while (mspi_transceive(MSPI_DUMMY_BYTE) != 0xFE) {}
+
 	read:
 	for (i = 0; i < 512; i++) {
 		buffer[i] = mspi_transceive(MSPI_DUMMY_BYTE);
@@ -454,7 +442,7 @@ uint16_t microSD_get_status() {
 	uint8_t cmd[6] = { 0x4D, 0x00, 0x00, 0x00, 0x00, 0xFF };
 	uint8_t resp[5]  = { 0x02, 0x00, 0x00, 0x00, 0x00 };
 	if (microSD_write_cmd(cmd, resp) != 0x00) {
-		printf("\nmicroSD_get_status() : no status");
+		//printf("\nmicroSD_get_status() : no status");
 		return 0;
 	}
 	return ((uint16_t) resp[1] << 8) + ((uint16_t) resp[0]);
@@ -483,21 +471,18 @@ uint8_t microSD_write_block(uint32_t addr, uint8_t *buffer) {
 	cmd[3] = ((addr & 0x0000FF00) >> 8);
 	cmd[4] = ((addr & 0x000000FF));
 
-	if( microSD_crc_enable ) {
+	//if( microSD_crc_enable ) {
 		//crc = microSD_data_crc( buffer );
-	}
-	printf("\nmicroSD_write_block(): addr = %lx", addr);
+	//}
 
 	/* send CMD24 with address information. Chip select is done by
 	 * the microSD_write_cmd method and */
 	if ((i = microSD_write_cmd( cmd, NULL)) != 0x00) {
-		printf("\nmicroSD_write_block(): CMD24 failure! (%u)",i );
+		//printf("\nmicroSD_write_block(): CMD24 failure! (%u)",i );
 		mspi_chip_release(MICRO_SD_CS);
 		return 1;
 	}
-	//for (i = 0; i < 100; i++) {
-		mspi_transceive(MSPI_DUMMY_BYTE);
-	//}
+	mspi_transceive(MSPI_DUMMY_BYTE);
 
 	/* send start byte 0xFE to the microSD card to symbolize the beginning
 	 * of one data block (512byte)*/
@@ -516,14 +501,12 @@ uint8_t microSD_write_block(uint32_t addr, uint8_t *buffer) {
 
 	/*failure check: Data Response XXX00101 = OK*/
 	if (((i = mspi_transceive(MSPI_DUMMY_BYTE)) & 0x1F) != 0x05) {
-		printf("\nmicroSD_write_block(): Error writing block %lx! Ret code = %x", addr, i);
+		//printf("\nmicroSD_write_block(): Error writing block %lx! Ret code = %x", addr, i);
 		mspi_chip_release(MICRO_SD_CS);
 		return -2;
 	}
 	/*wait while microSD card is busy*/
-	while (mspi_transceive(MSPI_DUMMY_BYTE) != 0xff) {
-	};
-	//printf("\nmicroSD_write_block(): status = %x", microSD_get_status());
+	while (mspi_transceive(MSPI_DUMMY_BYTE) != 0xff) {};
 	/*release chip select and disable microSD spi*/
 	mspi_chip_release(MICRO_SD_CS);
 

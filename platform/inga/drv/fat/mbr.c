@@ -16,7 +16,9 @@ void mbr_init( struct mbr *mbr ) {
 int mbr_read( struct diskio_device_info *from, struct mbr *to ) {
 	int ret = diskio_read_block( from, 0, mbr_buffer );
 	int i = 0;
-	if( ret != 0 ) return MBR_ERROR_DISKIO_ERROR;
+	if( ret != 0 ) {
+		return MBR_ERROR_DISKIO_ERROR;
+	}
 	/*test if 0x55AA is at the end, otherwise it is no MBR*/
 	if( mbr_buffer[510] == 0x55 && mbr_buffer[511] == 0xAA ) {
 		for( i = 0; i < 4; ++i ) {

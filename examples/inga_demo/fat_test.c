@@ -21,8 +21,6 @@
 #include "leds.h"
 
 
-#define DEBUG                                   0
-
 #include "interfaces/flash-microSD.h"           //tested
 #include "drv/fat/diskio.h"           //tested
 #include "drv/fat/fat.h"           //tested
@@ -38,28 +36,102 @@ static struct etimer timer;
 PROCESS_THREAD(hello_world_process, ev, data)
 {
   PROCESS_BEGIN();
-  	uint32_t start, end, begin;
+  	uint32_t start, end, begin, count;
 	uint16_t i = 0;
+	uint8_t ret;
+	int read_ret;
 	uint8_t buffer[1024];
 	struct diskio_device_info *info = 0;
 	struct FAT_Info fat;
 	int fd;
 	//wdt_disable();
-	for(i = 0; i < 5; i++) {
+	for(i = 0; i < 3; i++) {
 		_delay_ms(1000);
 		watchdog_periodic();
 	}
-	printf("\nTEST BEGIN\n");
+	redetect:
 	while((i = diskio_detect_devices()) != DISKIO_SUCCESS);
 	info = diskio_devices();
 	for(i = 0; i < DISKIO_MAX_DEVICES; i++) {
 		print_device_info( info + i );
 		if( (info + i)->type == (DISKIO_DEVICE_TYPE_SD_CARD | DISKIO_DEVICE_TYPE_PARTITION) ) {
 			info += i;
-			break;
+			goto run;
 		}
 	}
-	printf("\nfat_mount_device() = %u", fat_mount_device( info ) );
+	goto redetect;
+	run:
+	//printf("\nfat_mount_device() = ");
+	rtimer_arch_init();
+	printf("\nSecond = %lu", RTIMER_SECOND);
+	start = RTIMER_NOW();
+	fat_mount_device( info );
+	end = RTIMER_NOW();
+	printf("\nMount time = %lu", end - start);
+	start = RTIMER_NOW();
+	fd = cfs_open("dir1/book.pdf", CFS_READ);
+	end = RTIMER_NOW();
+	printf("\nOpening time = %lu (fd = %u)", end - start, fd);
+	count = 0;
+	for(i = 0; i < 20; i++) {
+		rtimer_arch_init();
+		start = RTIMER_NOW();
+		read_ret = cfs_read(fd, buffer, 1024);
+		end = RTIMER_NOW();
+		printf("\nRead time (1024B) = %lu (ret = %d)", end - start, read_ret);
+		count += (end - start);
+	}
+	printf("\nSum = %lu", count);
+	start = RTIMER_NOW();
+	cfs_close( fd );
+	end = RTIMER_NOW();
+	printf("\nClose time = %lu", end - start);
+	start = RTIMER_NOW();
+	fd = cfs_open("test.pdf", CFS_WRITE);
+	end = RTIMER_NOW();
+	printf("\nOpening time = %lu (fd = %u)", end - start, fd);
+	count = 0;
+	for(i = 0; i < 20; i++) {
+		rtimer_arch_init();
+		start = RTIMER_NOW();
+		read_ret = cfs_write(fd, buffer, 1024);
+		end = RTIMER_NOW();
+		printf("\nWrite time (1024B) = %lu (ret = %d)", end - start, read_ret);
+		count += (end - start);
+	}
+	printf("\nSum = %lu", count);
+	start = RTIMER_NOW();
+	cfs_close( fd );
+	end = RTIMER_NOW();
+	printf("\nClose time = %lu", end - start);
+	/*start = RTIMER_NOW();
+	fd = cfs_open("prog2.txt", CFS_WRITE);
+	end = RTIMER_NOW();
+	printf("\nOpening time = %lu", end - start);
+	start = RTIMER_NOW();
+	cfs_read(fd, buffer, 512);
+	end = RTIMER_NOW();
+	printf("\nRead time (512B) = %lu", end - start);
+	start = RTIMER_NOW();
+	cfs_close( fd );
+	end = RTIMER_NOW();
+	printf("\nClose time = %lu", end - start);
+	start = RTIMER_NOW();
+	fd = cfs_open("prog2.txt", CFS_WRITE);
+	end = RTIMER_NOW();
+	printf("\nOpening time = %lu", end - start);
+	start = RTIMER_NOW();
+	cfs_write(fd, buffer, 512);
+	end = RTIMER_NOW();
+	printf("\nWrite time (512B) = %lu", end - start);
+	start = RTIMER_NOW();
+	cfs_close( fd );
+	end = RTIMER_NOW();
+	printf("\nClose time = %lu", end - start);
+	start = RTIMER_NOW();
+	fat_umount_device( info );
+	end = RTIMER_NOW();
+	printf("\nUmount time = %lu", end - start);*/
 	/*start = get_free_cluster(0);
 	begin = start;
 	printf("\nwrite EOC in cluster %lu", start);
@@ -77,7 +149,8 @@ PROCESS_THREAD(hello_world_process, ev, data)
 	find_nth_cluster( begin, 5 );
 	start = get_free_cluster(start);
 	fat_flush();*/
-	/*get_fat_info( &fat );
+	//fat_mount_device( info );
+	get_fat_info( &fat );
 	printf("\nFAT Info");
 	printf("\n\t type            = %u", fat.type);
 	printf("\n\t BPB_BytesPerSec = %u", fat.BPB_BytesPerSec);
@@ -88,10 +161,10 @@ PROCESS_THREAD(hello_world_process, ev, data)
 	printf("\n\t BPB_TotSec      = %lu", fat.BPB_TotSec);
 	printf("\n\t BPB_Media       = %u", fat.BPB_Media);
 	printf("\n\t BPB_FATSz       = %lu", fat.BPB_FATSz);
-	printf("\n\t BPB_RootClus    = %lu\n\n", fat.BPB_RootClus);*/
+	printf("\n\t BPB_RootClus    = %lu\n\n", fat.BPB_RootClus);
 	//clock_init();
 	//printf("\nclosed");
-	cfs_remove("prog2.txt");
+	/*cfs_remove("prog2.txt");
 	printf("\nCreating \"prog2.txt\" = %d", fd = cfs_open("prog2.txt", CFS_WRITE) );
 	memset( buffer, 'A', 1024 );
 	buffer[1023] = '\n';
@@ -104,7 +177,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 	end = clock_time();
 	printf("\nTime = %lu", (end - start) );
 	printf("\nSecond = %lu", CLOCK_SECOND );
-	cfs_close( fd );
+	cfs_close( fd );*/
 	/*printf("\nCreating \"prog1.txt\" = %d", fd = cfs_open("prog1.txt", CFS_WRITE) );
 	memset( buffer, 'B', 1024 );
 	start = clock_time();
@@ -133,7 +206,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 	printf("\nTime = %lu", (end - start) );
 	printf("\nSecond = %lu", CLOCK_SECOND );
 	*/
-	printf("\n\n");
+	//printf("\n\n");
 	printf("\n\n");
                 
   PROCESS_END();

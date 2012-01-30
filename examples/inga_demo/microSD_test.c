@@ -47,17 +47,17 @@ PROCESS_THREAD(hello_world_process, ev, data)
 		printf("Size of uint32_t  = %u\n", sizeof(uint32_t));
 		printf("Size of uint16_t  = %u\n", sizeof(uint16_t));
 		printf("Size of int  = %u\n", sizeof(int));
-		for (j = 0; j < 512; j+=4) {
+/*		for (j = 0; j < 512; j+=4) {
 				obuffer[j] = 'H';
 				obuffer[j + 1] = 'e';
 				obuffer[j + 2] = 'r';
 				obuffer[j + 3] = '\n';
 
-		}
+		}*/
 		//clock_init();
 		//printf("\nmicroSD_set_CRC() = %u", microSD_set_CRC(1));
 		//start = clock_time();
-		for( j = 500; j < 8192; j++ ) {
+		/*for( j = 500; j < 8192; j++ ) {
 			printf("\n%u", j);
 			retry_write:
 			if( microSD_write_block(0L + j, obuffer) != 0 ) {
@@ -88,7 +88,27 @@ PROCESS_THREAD(hello_world_process, ev, data)
 			}
 			printf("\nChecksum is       : %x", ( (uint16_t)ibuffer[512] << 8 ) + ibuffer[513]);
 			printf("\nChecksum should be: %x", microSD_data_crc( ibuffer ));
+		}*/
+		rtimer_arch_init();
+		//start = RTIMER_NOW();
+		//for( j = 0; j < 30; j++ ) {
+		//	microSD_write_block( j, obuffer );
+		//}
+		//end = RTIMER_NOW();
+		//printf("\nWrite time = %lu (%lu)", end - start, (end - start) / 30);
+		rtimer_arch_init();
+		start = RTIMER_NOW();
+		for( j = 0; j < 3000; j++ ) {
+			if( microSD_read_block( j, obuffer ) != 0 ) {
+				printf("\n Block %u read error", j);
+				j--;
+				continue;
+			}
 		}
+		end = RTIMER_NOW();
+		printf("\nRead time = %lu (%lu)", end - start, (end - start) / 3000);
+		printf("\nSecond = %lu", RTIMER_SECOND);
+		printf("\n");
 		//if( microSD_write_block(38000L + j, buffer) != 0 ) {
 		//	printf("\n Error writing block %lu", 38000L + j);
 		//}
