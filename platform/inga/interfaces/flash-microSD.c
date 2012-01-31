@@ -298,7 +298,7 @@ uint8_t microSD_init(void) {
 		}
 		/* Set Block Length to 512 Bytes */
 		i = 0;
-		while( (ret = microSD_write_cmd( cmd16, NULL )) != 0x01 ) {
+		while( (ret = microSD_write_cmd( cmd16, NULL )) != 0x00 ) {
 			i++;
 			if (i > 500) {
 				#ifdef DEBUG
