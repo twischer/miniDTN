@@ -59,15 +59,16 @@ class Device(object):
 			output = subprocess.check_output(["make", "TARGET=%s"%(self.platform), self.program], stderr=subprocess.STDOUT, env={'CFLAGS': self.cflags})
 			self.logger.debug(output)
 			time.sleep(2)
-			touchcall = ["touch"]
-			touchcall.extend([os.path.join(self.contikibase, instrpat) for instrpat in self.instrument])
-			self.logger.debug(' '.join(touchcall))
-			## XXX:Danger, Will Robinson! Do not use shell with user input
-			output = subprocess.check_output(' '.join(touchcall), stderr=subprocess.STDOUT, shell=True)
-			self.logger.debug(output)
-			self.logger.info("Building instrumentation for %s", os.path.join(self.programdir, self.program))
-			output = subprocess.check_output(["make", "TARGET=%s"%(self.platform), self.program], stderr=subprocess.STDOUT, env={'CFLAGS': '-finstrument-functions %s'%(self.cflags)})
-			self.logger.debug(output)
+			if len(self.instrument) > 0:
+				touchcall = ["touch"]
+				touchcall.extend([os.path.join(self.contikibase, instrpat) for instrpat in self.instrument])
+				self.logger.debug(' '.join(touchcall))
+				## XXX:Danger, Will Robinson! Do not use shell with user input
+				output = subprocess.check_output(' '.join(touchcall), stderr=subprocess.STDOUT, shell=True)
+				self.logger.debug(output)
+				self.logger.info("Building instrumentation for %s", os.path.join(self.programdir, self.program))
+				output = subprocess.check_output(["make", "TARGET=%s"%(self.platform), self.program], stderr=subprocess.STDOUT, env={'CFLAGS': '-finstrument-functions %s'%(self.cflags)})
+				self.logger.debug(output)
 		except subprocess.CalledProcessError as err:
 			self.logger.error(err)
 			self.logger.error(err.output)
