@@ -329,7 +329,7 @@ class Testcase(object):
 
 			self.logger.info("%s:%s:%f:%s", item['name'], item['reason'], float(item['data'])/item['scale'], item['unit'])
 			if item['reason'] != "PASS":
-				err = Exception("Device %s reported failure"%(item['name'])
+				err = Exception("Device %s reported failure"%(item['name']))
 				self.logger.removeHandler(resulthandler)
 				self.logger.removeHandler(handler)
 				raise err
