@@ -42,6 +42,8 @@ class Device(object):
 		self.graph_options = config.setdefault('graph_options', "")
 
 	def build(self):
+		ser = serial.Serial(port=self.path, baudrate=1200, timeout=0.5)
+		ser.close()
 		try:
 			os.chdir(self.programdir)
 		except OSError as err:
