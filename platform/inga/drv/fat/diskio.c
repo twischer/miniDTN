@@ -97,7 +97,7 @@ int diskio_rw_op( struct diskio_device_info *dev, uint32_t block_start_address, 
 							microSD_init();
 						}
 					}
-					printf("\ndiskion_rw_op(): Unrecoverable Error!");
+					printf("\ndiskio_rw_op(): Unrecoverable Error!");
 					return DISKIO_ERROR_INTERNAL_ERROR;
 					break;
 				case DISKIO_OP_WRITE_BLOCKS:

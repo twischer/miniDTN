@@ -98,7 +98,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 		printf("\nWrite time = %lu (%lu)", end - start, (end - start) / 30);
 		rtimer_arch_init();
 		start = RTIMER_NOW();
-		for( j = 0; j < 3000; j++ ) {
+		for( j = 0; j < 30; j++ ) {
 			if( microSD_read_block( j, obuffer ) != 0 ) {
 				printf("\n Block %u read error", j);
 				microSD_init();
@@ -107,7 +107,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 			}
 		}
 		end = RTIMER_NOW();
-		printf("\nRead time = %lu (%lu)", end - start, (end - start) / 3000);
+		printf("\nRead time = %lu (%lu)", end - start, (end - start) / 30);
 		printf("\nSecond = %lu", RTIMER_SECOND);
 		printf("\n");
 		//if( microSD_write_block(38000L + j, buffer) != 0 ) {
