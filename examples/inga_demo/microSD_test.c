@@ -90,17 +90,18 @@ PROCESS_THREAD(hello_world_process, ev, data)
 			printf("\nChecksum should be: %x", microSD_data_crc( ibuffer ));
 		}*/
 		rtimer_arch_init();
-		//start = RTIMER_NOW();
-		//for( j = 0; j < 30; j++ ) {
-		//	microSD_write_block( j, obuffer );
-		//}
-		//end = RTIMER_NOW();
-		//printf("\nWrite time = %lu (%lu)", end - start, (end - start) / 30);
+		start = RTIMER_NOW();
+		for( j = 0; j < 30; j++ ) {
+			microSD_write_block( j, obuffer );
+		}
+		end = RTIMER_NOW();
+		printf("\nWrite time = %lu (%lu)", end - start, (end - start) / 30);
 		rtimer_arch_init();
 		start = RTIMER_NOW();
 		for( j = 0; j < 3000; j++ ) {
 			if( microSD_read_block( j, obuffer ) != 0 ) {
 				printf("\n Block %u read error", j);
+				microSD_init();
 				j--;
 				continue;
 			}
