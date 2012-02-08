@@ -141,9 +141,18 @@ class Device(object):
 
 				if line.startswith("TEST"):
 					testdata = line.split(':')
-					# TEST:FAIL/PASS:<value>:<unit>
-					queue.put({'status': 'Completed', 'reason': testdata[1], 'name': self.name, 'data': int(testdata[2]), 'scale': int(testdata[3]), 'unit': testdata[4]})
-					break
+					# Handle the following outputs
+					# TEST:FAIL:reason
+					# TEST:PASS
+					# TEST:REPORT:desc:value:scale:unit
+					if testdata[1] == "REPORT":
+						queue.put({'status': 'Report', 'desc': testdata[2], 'name': self.name, 'data': int(testdata[3]), 'scale': int(testdata[4]), 'unit': testdata[5]})
+					elif testdata[1] == "PASS":
+						queue.put({'status': 'Completed', 'name': self.name})
+						break
+					elif testdata[1] == "FAIL":
+						queue.put({'status': 'Failed', 'name': self.name, 'reason': testdata[2]})
+						break
 				line = ""
 
 			try:
@@ -284,14 +293,16 @@ class Testcase(object):
 						item = queue.get(True, 2)
 						self.logger.debug("Got item %s"%(item))
 						queue.task_done()
-						if item['status'] == "Aborted":
+						if item['status'] == "Aborted" or item['status'] == "Failed":
 							err = Exception("Test failed: Device %s aborted (%s)"%(item['name'], item['reason']))
 							for thread in threads.values():
 								thread[1].put("Exit")
 							time.sleep(2)
 							raise err
 						elif item['status'] == "Completed":
-							self.logger.info("Device %s completed test (%s) - %f %s", item['name'], item['reason'], float(item['data'])/item['scale'], item['unit'])
+							self.logger.info("Device %s completed test successfully", item['name'])
+						elif item['status'] == "Report":
+							self.logger.info("Device %s reported metric: %s is %f %s", item['name'], item['desc'], float(item['data'])/item['scale'], item['unit'])
 							result.append(item)
 					except Queue.Empty:
 						pass
@@ -325,14 +336,9 @@ class Testcase(object):
 		resulthandler.setFormatter(formatter)
 		resulthandler.setLevel(logging.DEBUG)
 		self.logger.addHandler(resulthandler)
+		self.logger.info("Test %s report:", self.name)
 		for item in result:
-
-			self.logger.info("%s:%s:%f:%s", item['name'], item['reason'], float(item['data'])/item['scale'], item['unit'])
-			if item['reason'] != "PASS":
-				err = Exception("Device %s reported failure"%(item['name']))
-				self.logger.removeHandler(resulthandler)
-				self.logger.removeHandler(handler)
-				raise err
+			self.logger.info("%s:%s:%f:%s", item['name'], item['desc'], float(item['data'])/item['scale'], item['unit'])
 
 		self.logger.removeHandler(resulthandler)
 		self.logger.removeHandler(handler)
