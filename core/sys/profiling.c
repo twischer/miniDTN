@@ -100,6 +100,7 @@ void profiling_init(void)
 
 	profile.sites = site;
 	profile.max_sites = MAX_PROFILES;
+	profile.num_sites = 0;
 	profile.time_run = 0;
 	profile.status = 0;
 	stacklevel = 0;

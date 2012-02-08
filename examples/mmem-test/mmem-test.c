@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Daniel Willmann <daniel@totalueberwachung.de>
+ * Copyright (c) 2012, Daniel Willmann <daniel@totalueberwachung.de>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -33,63 +33,82 @@
 
 /**
  * \file
- *         A simple LED test application demonstrating the profiling functionality
+ *         A program profiling various mmem usage scenarios
  * \author
  *         Daniel Willmann <daniel@totalueberwachung.de>
  */
 
 #include "contiki.h"
-#include "dev/leds.h"
+#include "lib/mmem.h"
 #include "sys/profiling.h"
-#include "sys/sprofiling.h"
 #include "sys/test.h"
 
-#include <stdio.h> /* For printf() */
+#include <stdio.h>
+
+#define NUM_CHUNKS 5
+#define CHUNK_SIZE 100
+
+uint32_t cycles;
 
 /*---------------------------------------------------------------------------*/
-PROCESS(led_test_green, "LED tester");
-PROCESS(led_test_red, "LED tester");
+PROCESS(mmem_inorder_tester, "MMEM free in order");
+PROCESS(mmem_revorder_tester, "MMEM free reverse order");
 PROCESS(profiler, "profiler");
-AUTOSTART_PROCESSES(&led_test_green, &led_test_red, &profiler);
+AUTOSTART_PROCESSES(&profiler);
 /*---------------------------------------------------------------------------*/
-PROCESS_THREAD(led_test_green, ev, data)
+PROCESS_THREAD(mmem_inorder_tester, ev, data)
 {
-  uint16_t i;
-  static struct etimer timer;
+  uint8_t i;
+  static struct mmem memlist[NUM_CHUNKS];
+
   PROCESS_BEGIN();
 
-  printf("Starting LED test (green)\n");
+  cycles = 0;
+  printf("Starting MMEM inorder test\n");
 
   while (1) {
-	  leds_on(LEDS_GREEN);
-	  for (i=0;i<1000;i++) {
-		  asm volatile("nop");
-	  }
-	  leds_off(LEDS_GREEN);
-	  etimer_set(&timer, CLOCK_SECOND/10);
-	  PROCESS_WAIT_UNTIL(etimer_expired(&timer));
+    /* Allocate the memory... */
+    for (i=0;i<NUM_CHUNKS;i++) {
+      if (!mmem_alloc(&memlist[i], CHUNK_SIZE))
+	      TEST_FAIL("mmem_alloc failed\n");
+    }
+
+    /* ...and free it again */
+    for (i=0;i<NUM_CHUNKS;i++) {
+      mmem_free(&memlist[i]);
+    }
+    cycles += 1;
+
+    PROCESS_PAUSE();
   }
 
   PROCESS_END();
 }
 /*---------------------------------------------------------------------------*/
-PROCESS_THREAD(led_test_red, ev, data)
+PROCESS_THREAD(mmem_revorder_tester, ev, data)
 {
-  uint16_t i;
-  static struct etimer timer;
+  uint8_t i;
+  static struct mmem memlist[NUM_CHUNKS];
+
   PROCESS_BEGIN();
 
-  printf("Starting LED test (red)\n");
+  cycles = 0;
+  printf("Starting MMEM reverse order test\n");
 
   while (1) {
-	  leds_on(LEDS_YELLOW);
-         for (i=0;i<48;i++) {
-                 asm volatile("nop");
+    /* Allocate the memory... */
+    for (i=0;i<NUM_CHUNKS;i++) {
+      if (!mmem_alloc(&memlist[i], CHUNK_SIZE))
+	      TEST_FAIL("mmem_alloc failed\n");
+    }
 
-         }
-	  leds_off(LEDS_YELLOW);
-	  etimer_set(&timer, CLOCK_SECOND/50);
-	  PROCESS_WAIT_UNTIL(etimer_expired(&timer));
+    /* ...and free it again - this time in reverse */
+    for (i=NUM_CHUNKS;i>0;i--) {
+      mmem_free(&memlist[i-1]);
+    }
+    cycles += 1;
+
+    PROCESS_PAUSE();
   }
 
   PROCESS_END();
@@ -101,34 +120,28 @@ PROCESS_THREAD(profiler, ev, data)
 	static struct etimer timer;
 	PROCESS_BEGIN();
 
-#ifdef STAT_PROFILE
-	sprofiling_init();
-	sprofiling_start();
-#else
+	mmem_init();
 	profiling_init();
 	profiling_start();
-#endif
+	process_start(&mmem_inorder_tester, NULL);
+	etimer_set(&timer, CLOCK_SECOND*20);
+	PROCESS_WAIT_UNTIL(etimer_expired(&timer));
+	process_exit(&mmem_inorder_tester);
+	profiling_stop();
+	profiling_report("mmem-inorder", 0);
+	TEST_REPORT("mmem-inorder", cycles*NUM_CHUNKS, 20, "mmem_alloc/s");
 
-	while (1) {
-		etimer_set(&timer, CLOCK_SECOND*30);
-		PROCESS_WAIT_UNTIL(etimer_expired(&timer));
-		etimer_set(&timer, CLOCK_SECOND*30);
-		PROCESS_WAIT_UNTIL(etimer_expired(&timer));
-		etimer_set(&timer, CLOCK_SECOND*30);
-		PROCESS_WAIT_UNTIL(etimer_expired(&timer));
-		etimer_set(&timer, CLOCK_SECOND*30);
-		PROCESS_WAIT_UNTIL(etimer_expired(&timer));
-#ifdef STAT_PROFILE
-		sprofiling_stop();
-		sprofiling_report("led-test", 0);
-		TEST_PASS();
-		sprofiling_start();
-#else
-		profiling_stop();
-		profiling_report("led-test", 0);
-		TEST_PASS();
-		profiling_start();
-#endif
-	}
+	/* Reset profiling for next test */
+	profiling_init();
+	profiling_start();
+	process_start(&mmem_revorder_tester, NULL);
+	etimer_set(&timer, CLOCK_SECOND*20);
+	PROCESS_WAIT_UNTIL(etimer_expired(&timer));
+	process_exit(&mmem_revorder_tester);
+	profiling_stop();
+	profiling_report("mmem-revorder", 0);
+	TEST_REPORT("mmem-revorder", cycles*NUM_CHUNKS, 20, "mmem_alloc/s");
+	TEST_PASS();
+
 	PROCESS_END();
 }

@@ -3,11 +3,13 @@ suite:
     logpattern: date
     contikibase: /home/alphaone/scm/diplomarbeit/eval/contiki
     testcases:
-        - profile-test
+#        - profile-test
         - generate-bundles-20
         - generate-bundles-80
         - generate-bundles-20-uninstr
         - generate-bundles-80-uninstr
+        - mmem-test
+        - mmem-test-uninstr
         #- throughput
 
 # List of devices
@@ -23,6 +25,24 @@ devices:
     id: 1
 
 tests:
+  - name: mmem-test
+    timeout: 60
+    devices:
+      - name: sender
+        programdir: examples/mmem-test
+        program: mmem-test
+        instrument: [examples/mmem-test/mmem-test.c,core/lib/mmem.c]
+        cflags: "-fno-inline"
+        graph_options: ""
+  - name: mmem-test-uninstr
+    timeout: 60
+    devices:
+      - name: sender
+        programdir: examples/mmem-test
+        program: mmem-test
+        instrument: []
+        cflags: "-fno-inline"
+        graph_options: ""
   - name: generate-bundles-20-uninstr
     timeout: 60
     devices:
