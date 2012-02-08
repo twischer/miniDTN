@@ -3,41 +3,42 @@ suite:
     logpattern: date
     contikibase: /home/alphaone/scm/diplomarbeit/eval/contiki
     testcases:
-        - profile-test
-        #- throughput
+        - mmem-test
+        - mmem-test-uninstr
 
 # List of devices
 # Each device has a name, a class (type of device), a path and an id
 devices:
-  - name: sender
+  - name: foo
     class: INGA
     path: /dev/inga/0
     id: 0
-  - name: receiver
-    class: INGA
-    path: /dev/inga/1
-    id: 1
 
 tests:
+  - name: mmem-test
+    timeout: 60
+    devices:
+      - name: foo
+        programdir: examples/mmem-test
+        program: mmem-test
+        instrument: [examples/mmem-test/mmem-test.c,core/lib/mmem.c]
+        cflags: "-fno-inline"
+        graph_options: ""
+  - name: mmem-test-uninstr
+    timeout: 60
+    devices:
+      - name: foo
+        programdir: examples/mmem-test
+        program: mmem-test
+        instrument: []
+        cflags: "-fno-inline"
+        graph_options: ""
   - name: profile-test
     timeout: 140
     devices:
-      - name: sender
+      - name: foo
         programdir: examples/profile-test
         program: profile-test
         instrument: [examples/profile-test/profile-test.c,core/dev/leds.c,cpu/avr/leds-arch.c]
         cflags: "-fno-inline"
-        graph_options: ""
-  - name: throughput
-    devices:
-      - name: sender
-        programdir: examples/uDTN/sender
-        program: uDTN-sender
-        instrument: [examples/uDTN/sender/uDTN-sender.c,platform/inga/*.c,core/net/uDTN/*.c]
-        cflags: "-fno-inline"
-        graph_options: ""
-      - name: receiver
-        programdir: examples/uDTN/sink
-        program: uDTN-sink
-        instrument: [examples/uDTN/sink/uDTN-sink.c,platform/inga/*.c]
         graph_options: ""
