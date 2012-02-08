@@ -42,6 +42,8 @@ class Device(object):
 		self.graph_options = config.setdefault('graph_options', "")
 
 	def build(self):
+		ser = serial.Serial(port=self.path, baudrate=1200, timeout=0.5)
+		ser.close()
 		try:
 			os.chdir(self.programdir)
 		except OSError as err:
@@ -57,15 +59,16 @@ class Device(object):
 			output = subprocess.check_output(["make", "TARGET=%s"%(self.platform), self.program], stderr=subprocess.STDOUT, env={'CFLAGS': self.cflags})
 			self.logger.debug(output)
 			time.sleep(2)
-			touchcall = ["touch"]
-			touchcall.extend([os.path.join(self.contikibase, instrpat) for instrpat in self.instrument])
-			self.logger.debug(' '.join(touchcall))
-			## XXX:Danger, Will Robinson! Do not use shell with user input
-			output = subprocess.check_output(' '.join(touchcall), stderr=subprocess.STDOUT, shell=True)
-			self.logger.debug(output)
-			self.logger.info("Building instrumentation for %s", os.path.join(self.programdir, self.program))
-			output = subprocess.check_output(["make", "TARGET=%s"%(self.platform), self.program], stderr=subprocess.STDOUT, env={'CFLAGS': '-finstrument-functions %s'%(self.cflags)})
-			self.logger.debug(output)
+			if len(self.instrument) > 0:
+				touchcall = ["touch"]
+				touchcall.extend([os.path.join(self.contikibase, instrpat) for instrpat in self.instrument])
+				self.logger.debug(' '.join(touchcall))
+				## XXX:Danger, Will Robinson! Do not use shell with user input
+				output = subprocess.check_output(' '.join(touchcall), stderr=subprocess.STDOUT, shell=True)
+				self.logger.debug(output)
+				self.logger.info("Building instrumentation for %s", os.path.join(self.programdir, self.program))
+				output = subprocess.check_output(["make", "TARGET=%s"%(self.platform), self.program], stderr=subprocess.STDOUT, env={'CFLAGS': '-finstrument-functions %s'%(self.cflags)})
+				self.logger.debug(output)
 		except subprocess.CalledProcessError as err:
 			self.logger.error(err)
 			self.logger.error(err.output)
@@ -84,7 +87,7 @@ class Device(object):
 		logging.info(output)
 		output = subprocess.check_output(["inkscape", "-A", pdfname, svgname])
 	def recordlog(self, queue, controlqueue):
-		logfile = os.path.join(self.logdir, self.name)
+		logfile = os.path.join(self.logdir, "%s.log"%(self.name))
 		self.reset()
 		# Make sure the device nodes are there again
 		time.sleep(1)
@@ -106,7 +109,11 @@ class Device(object):
 		profilelines = -1
 		line = ""
 		while True:
-			line += ser.readline()
+			try:
+				line += ser.readline()
+			except serial.SerialException as err:
+				queue.put({'status': 'Aborted', 'reason': err, 'name': self.name})
+				break
 			if (line.endswith('\n') or line.endswith('\r')):
 				line = line.strip()
 				self.logger.debug(line)
@@ -135,7 +142,8 @@ class Device(object):
 				if line.startswith("TEST"):
 					testdata = line.split(':')
 					# TEST:FAIL/PASS:<value>:<unit>
-					queue.put({'status': 'Completed', 'reason': testdata[1], 'name': self.name, 'data': testdata[2], 'scale': testdata[3], 'unit': testdata[4]})
+					queue.put({'status': 'Completed', 'reason': testdata[1], 'name': self.name, 'data': int(testdata[2]), 'scale': int(testdata[3]), 'unit': testdata[4]})
+					break
 				line = ""
 
 			try:
@@ -143,7 +151,6 @@ class Device(object):
 				controlqueue.task_done()
 				if item == "Exit":
 					self.logger.info("Aborted by test")
-					queue.put({'status': 'Aborted', 'reason': 'Aborted by test', 'name': self.name})
 					break
 				else:
 					self.logger.debug("Received unknown control item: %s", item)
@@ -231,6 +238,8 @@ class Testcase(object):
 		handler.setLevel(logging.DEBUG)
 		self.logger.addHandler(handler)
 
+		timeouttimer = threading.Timer(self.timeout+30, self.timeout_occured)
+		timeouttimer.daemon = True
 		self.timedout = False
 		result = []
 
@@ -257,7 +266,6 @@ class Testcase(object):
 					threads[device.name] = (thread, control)
 					thread.start()
 
-				timeouttimer = threading.Timer(self.timeout, self.timeout_occured)
 				self.logger.info("Starting timeout (%is)", self.timeout)
 				timeouttimer.start()
 
@@ -267,7 +275,9 @@ class Testcase(object):
 					for thread in threads.values():
 						if thread[0].isAlive():
 							alldead = False
+							break
 					if alldead:
+						self.logger.info("All devices completed")
 						break
 
 					try:
@@ -281,7 +291,7 @@ class Testcase(object):
 							time.sleep(2)
 							raise err
 						elif item['status'] == "Completed":
-							self.logger.info("Device %s completed test (%s) - %f %s", self.name, item['name'], item['reason'], float(item['data'])/item['scale'], item['unit'])
+							self.logger.info("Device %s completed test (%s) - %f %s", item['name'], item['reason'], float(item['data'])/item['scale'], item['unit'])
 							result.append(item)
 					except Queue.Empty:
 						pass
@@ -304,16 +314,27 @@ class Testcase(object):
 		except Exception:
 			# Catch all exceptions and remove logger before passing the exception on
 			self.logger.removeHandler(handler)
+			timeouttimer.cancel()
 			raise
 
+		timeouttimer.cancel()
 		self.logger.info("Test %s completed", self.name)
+		logfile = os.path.join(self.logbase, "result.log")
+		resulthandler = logging.FileHandler(logfile)
+		formatter = logging.Formatter(fmt='%(message)s')
+		resulthandler.setFormatter(formatter)
+		resulthandler.setLevel(logging.DEBUG)
+		self.logger.addHandler(resulthandler)
 		for item in result:
+
 			self.logger.info("%s:%s:%f:%s", item['name'], item['reason'], float(item['data'])/item['scale'], item['unit'])
 			if item['reason'] != "PASS":
-				err = Exception("Device %s reported failure"%(item['name'])
+				err = Exception("Device %s reported failure"%(item['name']))
+				self.logger.removeHandler(resulthandler)
 				self.logger.removeHandler(handler)
 				raise err
 
+		self.logger.removeHandler(resulthandler)
 		self.logger.removeHandler(handler)
 
 class Testsuite(object):
