@@ -86,7 +86,8 @@ PROCESS_THREAD(profiling_process, ev, data)
 	profiling_stop();
 	watchdog_stop();
 	profiling_report("bundle-generation", 0);
-	TEST_PASS(numbundles, 30000, "kbundles/s");
+	TEST_REPORT("bundle-gen", numbundles, 30000, "kbundles/s");
+	TEST_PASS();
 	PROCESS_END();
 }
 
