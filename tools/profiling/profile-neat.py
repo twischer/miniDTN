@@ -164,7 +164,6 @@ def graph_function(graph, func, callsite, label=None):
 	time_max = 0
 	time_min = 0xffff
 	for site in func_table.values():
-		print site['name'], func
 		if site['name'] == func:
 			time_spent += site['time_spent']
 			invocations += site['invocations']
