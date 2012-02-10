@@ -111,14 +111,6 @@ uint8_t microSD_read_csd( uint8_t *buffer );
 uint16_t microSD_get_block_size();
 
 /**
- * \brief This function returns the number of blocks on the SD-Card.
- *
- *
- * \return Number of blocks on the SD-Card
- */
-uint32_t microSD_get_card_block_count();
-
-/**
  * \brief This function indicates if a card is a SDSC or SDHC/SDXC card.
  *
  * microSD_init() must be called beforehand and be successful before this
@@ -168,6 +160,8 @@ uint8_t microSD_write_block(uint32_t addr, uint8_t *buffer);
 uint8_t microSD_write_cmd(uint8_t *cmd, uint8_t *resp );
 uint16_t microSD_data_crc( uint8_t *data );
 uint8_t microSD_set_CRC( uint8_t enable );
+uint64_t microSD_get_card_size();
+uint32_t microSD_get_block_num();
 
 
 
