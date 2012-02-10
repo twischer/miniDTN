@@ -51,6 +51,8 @@ struct file {
 	uint16_t dir_entry_offset;
 	struct dir_entry dir_entry;
 	uint32_t size;
+	uint32_t nth_cluster;
+	uint32_t n;
 };
 
 struct file_desc {

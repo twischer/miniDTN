@@ -33,13 +33,21 @@
 /**
  * Stores the necessary information to identify a device using the diskio-Library.
  */
-struct diskio_device_info{
-	uint8_t type; /** Specifies the recognized type of the memory */	
-	uint8_t number; /** Number to identify device */	
-	uint8_t partition; /** Will be ignored if PARTITION flag is not set in type, otherwise tells which partition of this device is meant */
-	uint32_t num_sectors; /** Number of sectors on this device */
-	uint16_t sector_size; /** How big is one sector in bytes */
-	uint32_t first_sector; /** If this is a Partition, this indicates which is the first_sector belonging to this partition on this device */
+struct diskio_device_info {
+	/** Specifies the recognized type of the memory */
+	uint8_t type;
+	/** Number to identify device */
+	uint8_t number;
+	/** Will be ignored if PARTITION flag is not set in type,
+	 * otherwise tells which partition of this device is meant */
+	uint8_t partition;
+	/** Number of sectors on this device */
+	uint32_t num_sectors;
+	/** How big is one sector in bytes */
+	uint16_t sector_size;
+	/** If this is a Partition, this indicates which is the
+	 * first_sector belonging to this partition on this device */
+	uint32_t first_sector;
 };
 
 void print_device_info( struct diskio_device_info *dev );
