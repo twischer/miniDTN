@@ -123,16 +123,16 @@ def lookup_symbol(symbol, funcptr=False):
 
 	element = {}
 
-	output = subprocess.check_output(["%s-addr2line"%(options.prefix), "-afe", options.bin, "0x%x"%(symbol)]).strip().split('\n')
+	output = subprocess.check_output(["%s-addr2line"%(options.prefix), "-fe", options.bin, "0x%x"%(symbol)]).strip().split('\n')
 
 	# Does the address point to the start of a function or not?
 	element['func'] = funcptr
 	# Address of the call site
 	element['addr'] = symbol #int(output[0], 16)
 	# Name of the function
-	element['name'] = output[1]
+	element['name'] = output[0]
 	# Filename and line number of the call site
-	element['file'], element['line'] = output[2].split(':')
+	element['file'], element['line'] = output[1].split(':')
 
 	file_el = file_table.setdefault(element['file'], [])
 	if not element['name'] in file_el:
