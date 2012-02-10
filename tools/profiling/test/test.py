@@ -56,7 +56,9 @@ class Device(object):
 			self.logger.debug(output)
 
 			self.logger.info("Building %s", os.path.join(self.programdir, self.program))
-			output = subprocess.check_output(["make", "TARGET=%s"%(self.platform), self.program], stderr=subprocess.STDOUT, env={'CFLAGS': self.cflags})
+			myenv = os.environ.copy()
+			myenv['CFLAGS'] = self.cflags
+			output = subprocess.check_output(["make", "TARGET=%s"%(self.platform), self.program], stderr=subprocess.STDOUT, env=myenv)
 			self.logger.debug(output)
 			time.sleep(2)
 			if len(self.instrument) > 0:
@@ -67,7 +69,9 @@ class Device(object):
 				output = subprocess.check_output(' '.join(touchcall), stderr=subprocess.STDOUT, shell=True)
 				self.logger.debug(output)
 				self.logger.info("Building instrumentation for %s", os.path.join(self.programdir, self.program))
-				output = subprocess.check_output(["make", "TARGET=%s"%(self.platform), self.program], stderr=subprocess.STDOUT, env={'CFLAGS': '-finstrument-functions %s'%(self.cflags)})
+				myenv = os.environ.copy()
+				myenv['CFLAGS'] = '-finstrument-functions %s'%(self.cflags)
+				output = subprocess.check_output(["make", "TARGET=%s"%(self.platform), self.program], stderr=subprocess.STDOUT, env=myenv)
 				self.logger.debug(output)
 		except subprocess.CalledProcessError as err:
 			self.logger.error(err)
@@ -220,6 +224,7 @@ class Testcase(object):
 		self.timeout = int(config.setdefault('timeout', "300"))
 		self.devices = []
 		self.timedout = False
+		self.result = []
 
 		mkdir_p(self.logbase)
 		for cfgdevice in devicecfg:
@@ -250,7 +255,7 @@ class Testcase(object):
 		timeouttimer = threading.Timer(self.timeout+30, self.timeout_occured)
 		timeouttimer.daemon = True
 		self.timedout = False
-		result = []
+		self.result = []
 
 		try:
 			self.logger.info("Starting test %s", self.name)
@@ -303,7 +308,7 @@ class Testcase(object):
 							self.logger.info("Device %s completed test successfully", item['name'])
 						elif item['status'] == "Report":
 							self.logger.info("Device %s reported metric: %s is %f %s", item['name'], item['desc'], float(item['data'])/item['scale'], item['unit'])
-							result.append(item)
+							self.result.append(item)
 					except Queue.Empty:
 						pass
 
@@ -337,7 +342,7 @@ class Testcase(object):
 		resulthandler.setLevel(logging.DEBUG)
 		self.logger.addHandler(resulthandler)
 		self.logger.info("Test %s report:", self.name)
-		for item in result:
+		for item in self.result:
 			self.logger.info("%s:%s:%f:%s", item['name'], item['desc'], float(item['data'])/item['scale'], item['unit'])
 
 		self.logger.removeHandler(resulthandler)
@@ -415,9 +420,11 @@ class Testsuite(object):
 
 		logging.info("Test summary:")
 		for test in success:
-			logging.info("OK  - %s", test.name)
+			logging.info("%s [OK]", test.name)
+			for item in test.result:
+				logging.info("* %s:%s:%f:%s", item['name'], item['desc'], float(item['data'])/item['scale'], item['unit'])
 		for test in failure:
-			logging.info("ERR - %s", test.name)
+			logging.info("%s [ERR]", test.name)
 
 
 # Create a logger for the console
