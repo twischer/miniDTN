@@ -56,7 +56,9 @@ class Device(object):
 			self.logger.debug(output)
 
 			self.logger.info("Building %s", os.path.join(self.programdir, self.program))
-			output = subprocess.check_output(["make", "TARGET=%s"%(self.platform), self.program], stderr=subprocess.STDOUT, env={'CFLAGS': self.cflags})
+			myenv = os.environ.copy()
+			myenv['CFLAGS'] = self.cflags
+			output = subprocess.check_output(["make", "TARGET=%s"%(self.platform), self.program], stderr=subprocess.STDOUT, env=myenv)
 			self.logger.debug(output)
 			time.sleep(2)
 			if len(self.instrument) > 0:
@@ -67,7 +69,9 @@ class Device(object):
 				output = subprocess.check_output(' '.join(touchcall), stderr=subprocess.STDOUT, shell=True)
 				self.logger.debug(output)
 				self.logger.info("Building instrumentation for %s", os.path.join(self.programdir, self.program))
-				output = subprocess.check_output(["make", "TARGET=%s"%(self.platform), self.program], stderr=subprocess.STDOUT, env={'CFLAGS': '-finstrument-functions %s'%(self.cflags)})
+				myenv = os.environ.copy()
+				myenv['CFLAGS'] = '-finstrument-functions %s'%(self.cflags)
+				output = subprocess.check_output(["make", "TARGET=%s"%(self.platform), self.program], stderr=subprocess.STDOUT, env=myenv)
 				self.logger.debug(output)
 		except subprocess.CalledProcessError as err:
 			self.logger.error(err)
