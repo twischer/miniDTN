@@ -55,6 +55,7 @@
 #include "net/uDTN/dtn_config.h"
 #include "net/uDTN/storage.h"
 #include "mmem.h"
+#include "sys/test.h"
 #include "sys/profiling.h"
 #include "watchdog.h"
 
@@ -92,6 +93,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 //		etimer_set(&timer, CLOCK_SECOND*0.1);
 //	}
 	etimer_set(&timer,  CLOCK_SECOND*0.05);
+	last_trans = clock_seconds();
 	while(1) {
 		PROCESS_YIELD();
 /*		if(ev == submit_data_to_application_event) {
@@ -106,9 +108,11 @@ PROCESS_THREAD(hello_world_process, ev, data)
 			if (rec == 1000) {
 				profiling_stop();
 				watchdog_stop();
-				profiling_report(0);
+				profiling_report("uDTN-sender", 0);
+				last_trans = clock_seconds() - last_trans;
+				TEST_REPORT("throughput", 1000, last_trans, "bundles/s");
+				TEST_PASS();
 				watchdog_start();
-				profiling_start();
 			}
 			rec++;
 	//		j++;
@@ -150,7 +154,6 @@ PROCESS_THREAD(hello_world_process, ev, data)
 			}
 //		printf("\n");
 			process_post(&agent_process,dtn_send_bundle_event,(void *) &bundle);
-			last_trans=clock_time();
 //			if (BUNDLE_STORAGE.get_bundle_num() <39){
 //			if (rec <1000){
 				//etimer_reset(&timer);
