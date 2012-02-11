@@ -325,7 +325,8 @@ class Testcase(object):
 				for thread in threads.values():
 					thread[1].put("Exit")
 				time.sleep(2)
-				raise
+				err = Exception("Aborted by user")
+				raise err
 
 		except Exception:
 			# Catch all exceptions and remove logger before passing the exception on
@@ -413,18 +414,22 @@ class Testsuite(object):
 			except Exception as err:
 				logging.error("Test %s failed, traceback follows", testname)
 				logging.error(traceback.format_exc())
+				test.failure = err
 				failure.append(test)
 				continue
 
 			success.append(test)
 
-		logging.info("Test summary:")
+		logging.info("Test summary (%i/%i succeeded):", len(success), len(success)+len(failure))
 		for test in success:
 			logging.info("%s [OK]", test.name)
 			for item in test.result:
 				logging.info("* %s:%s:%f:%s", item['name'], item['desc'], float(item['data'])/item['scale'], item['unit'])
 		for test in failure:
 			logging.info("%s [ERR]", test.name)
+			logging.info(" -> %s", test.failure)
+
+		return len(failure)
 
 
 # Create a logger for the console
@@ -439,4 +444,6 @@ config = yaml.load(configfile)
 
 suite = Testsuite(config['suite'], config['devices'], config['tests'])
 
-suite.run()
+ret = suite.run()
+
+sys.exit(ret)
