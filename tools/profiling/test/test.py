@@ -12,6 +12,24 @@ import time
 import copy
 import os,sys
 import traceback
+import argparse
+
+class MakeList(argparse.Action):
+	def __call__(self, parser, namespace, values, option_string=None):
+		setattr(namespace, self.dest, values.split(','))
+
+parser = argparse.ArgumentParser(description="Test tool for Contiki")
+
+parser.add_argument("-l", "--list", dest="list_tests", action="store_true", default=False,
+		help="only list what tests/devices are defined")
+parser.add_argument("-c", "--config", dest="configfile", default="config.yaml",
+		help="where to read the config from")
+parser.add_argument("--only-tests",
+		dest="only_tests", default=[],
+                action=MakeList,
+		help="only run the tests defined on the commandline")
+
+options = parser.parse_args()
 
 def mkdir_p(path):
 	try:
@@ -439,10 +457,17 @@ logging.basicConfig(level=logging.DEBUG,
 
 logging.getLogger().handlers[0].setLevel(logging.INFO)
 
-configfile = file('config.yaml', 'r')
+configfile = file(options.configfile, 'r')
 config = yaml.load(configfile)
 
+# Override with commandline tests if specified
+if len(options.only_tests) > 0:
+	config['suite']['testcases'] = options.only_tests
+
 suite = Testsuite(config['suite'], config['devices'], config['tests'])
+
+if (options.list_tests):
+	sys.exit(0)
 
 ret = suite.run()
 
