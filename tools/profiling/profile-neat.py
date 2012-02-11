@@ -9,9 +9,6 @@ class MakeList(argparse.Action):
 	def __call__(self, parser, namespace, values, option_string=None):
 		setattr(namespace, self.dest, values.split(','))
 
-def split_list(option, opt, value, parser):
-	setattr(parser.values, option.dest, value.split(','))
-
 parser = argparse.ArgumentParser(description="Process profiling data")
 
 display = parser.add_argument_group('display')
