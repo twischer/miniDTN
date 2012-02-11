@@ -39,10 +39,14 @@
  */
 
 #include "contiki.h"
+#include "watchdog.h"
 
 
 //#include "../platform/avr-raven/cfs-coffee-arch.h"
 //#include "cfs.h"
+
+#include "sys/profiling.h"
+#include "sys/test.h"
 
 #include "process.h"
 #include "net/netstack.h"
@@ -68,6 +72,8 @@ AUTOSTART_PROCESSES(&hello_world_process);
 PROCESS_THREAD(hello_world_process, ev, data)
 {
   PROCESS_BEGIN();
+  profiling_init();
+  profiling_start();
   printf("Hello, world\n");
   
   agent_init();
@@ -132,8 +138,11 @@ PROCESS_THREAD(hello_world_process, ev, data)
 			leds_off(1);
 			printf("done\n");
 			profiling_stop();
-			profiling_report(0);
-			profiling_start();
+			watchdog_stop();
+			profiling_report("uDTN-sink", 0);
+//			TEST_REPORT("throughput", 1000, last_trans, "bundles/s");
+			TEST_PASS();
+			watchdog_start();
 			uint16_t l=0;
 			for(i=0;i<j+1;i++){
 				watchdog_periodic();
