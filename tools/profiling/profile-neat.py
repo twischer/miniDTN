@@ -9,9 +9,6 @@ class MakeList(argparse.Action):
 	def __call__(self, parser, namespace, values, option_string=None):
 		setattr(namespace, self.dest, values.split(','))
 
-def split_list(option, opt, value, parser):
-	setattr(parser.values, option.dest, value.split(','))
-
 parser = argparse.ArgumentParser(description="Process profiling data")
 
 display = parser.add_argument_group('display')
@@ -62,7 +59,7 @@ filtering.add_argument("--only-files",
 
 graph = parser.add_argument_group('graph options')
 graph.add_argument("-g", "--graph", dest="graph",
-		help="generate a graph. The pattern %%n will be replaced by the name of the profiling result")
+		help="generate a graph (SVG). The pattern %%n will be replaced by the name of the profiling result")
 graph.add_argument("--highlight-functions",
 		dest="highlight_functions", default=[],
                 action=MakeList,

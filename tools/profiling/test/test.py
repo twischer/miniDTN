@@ -12,6 +12,24 @@ import time
 import copy
 import os,sys
 import traceback
+import argparse
+
+class MakeList(argparse.Action):
+	def __call__(self, parser, namespace, values, option_string=None):
+		setattr(namespace, self.dest, values.split(','))
+
+parser = argparse.ArgumentParser(description="Test tool for Contiki")
+
+parser.add_argument("-l", "--list", dest="list_tests", action="store_true", default=False,
+		help="only list what tests/devices are defined")
+parser.add_argument("-c", "--config", dest="configfile", default="config.yaml",
+		help="where to read the config from")
+parser.add_argument("--only-tests",
+		dest="only_tests", default=[],
+                action=MakeList,
+		help="only run the tests defined on the commandline")
+
+options = parser.parse_args()
 
 def mkdir_p(path):
 	try:
@@ -325,7 +343,8 @@ class Testcase(object):
 				for thread in threads.values():
 					thread[1].put("Exit")
 				time.sleep(2)
-				raise
+				err = Exception("Aborted by user")
+				raise err
 
 		except Exception:
 			# Catch all exceptions and remove logger before passing the exception on
@@ -413,18 +432,22 @@ class Testsuite(object):
 			except Exception as err:
 				logging.error("Test %s failed, traceback follows", testname)
 				logging.error(traceback.format_exc())
+				test.failure = err
 				failure.append(test)
 				continue
 
 			success.append(test)
 
-		logging.info("Test summary:")
+		logging.info("Test summary (%i/%i succeeded):", len(success), len(success)+len(failure))
 		for test in success:
 			logging.info("%s [OK]", test.name)
 			for item in test.result:
 				logging.info("* %s:%s:%f:%s", item['name'], item['desc'], float(item['data'])/item['scale'], item['unit'])
 		for test in failure:
 			logging.info("%s [ERR]", test.name)
+			logging.info(" -> %s", test.failure)
+
+		return len(failure)
 
 
 # Create a logger for the console
@@ -434,9 +457,18 @@ logging.basicConfig(level=logging.DEBUG,
 
 logging.getLogger().handlers[0].setLevel(logging.INFO)
 
-configfile = file('config.yaml', 'r')
+configfile = file(options.configfile, 'r')
 config = yaml.load(configfile)
+
+# Override with commandline tests if specified
+if len(options.only_tests) > 0:
+	config['suite']['testcases'] = options.only_tests
 
 suite = Testsuite(config['suite'], config['devices'], config['tests'])
 
-suite.run()
+if (options.list_tests):
+	sys.exit(0)
+
+ret = suite.run()
+
+sys.exit(ret)
