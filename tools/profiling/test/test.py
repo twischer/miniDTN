@@ -389,8 +389,9 @@ class Testsuite(object):
 		for testcfg in testcfg:
 			testcfg['logbase'] = self.logdir
 			testcfg['contikibase'] = self.config['contikibase']
-			testcase = Testcase(testcfg, self.devices, testcfg['devices'])
-			self.tests[testcfg['name']] = testcase
+			if testcfg['name'] in self.config['testcases']:
+				testcase = Testcase(testcfg, self.devices, testcfg['devices'])
+				self.tests[testcfg['name']] = testcase
 
 		# Set up logging to file
 		filehandler = logging.FileHandler(os.path.join(self.logdir, "build.log"))
