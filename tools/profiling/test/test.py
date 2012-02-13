@@ -42,16 +42,14 @@ def mkdir_p(path):
 class Device(object):
 	"""Represents the actual device (Sky, INGA, ...) partaking in the test"""
 	startpattern = "*******Booting Contiki"
-	endpattern = "ContikiEND"
 	profilepattern = ["PROF", "SPROF"]
 	def __init__(self, config):
 		self.name = config['name']
 		self.id = config['id']
 		self.path = config['path']
-		self.logger = logging.getLogger('dev.%s'%(self.name))
-	def configure(self, config):
-		self.logdir = os.path.join(config['logbase'], self.name)
-		mkdir_p(self.logdir)
+	def configure(self, config, testname):
+		self.logger = logging.getLogger("test.%s.%s"%(testname, self.name))
+		self.logdir = config['logbase']
 		self.contikibase = config['contikibase']
 		self.programdir = os.path.join(self.contikibase, config['programdir'])
 		self.program = config['program']
@@ -100,7 +98,7 @@ class Device(object):
 	def reset(self):
 		raise Exception('Unimplemented')
 	def create_graph(self, name, log):
-		basename = os.path.join(self.logdir, "profile")
+		basename = os.path.join(self.logdir, self.name)
 		svgname = "%s-%s.svg"%(basename, name)
 		pdfname = "%s-%s.pdf"%(basename, name)
 
@@ -215,7 +213,7 @@ class INGA(Device):
 		try:
 			self.logger.info("Uploading %s", os.path.join(self.programdir, self.program))
 			output = subprocess.check_output(["make", "TARGET=inga", "MOTES=%s"%(self.path), "%s.upload"%(self.program)], stderr=subprocess.STDOUT)
-			self.binary = os.path.join(self.logdir, self.program)
+			self.binary = os.path.join(self.logdir, "%s-%s"%(self.name, self.program))
 			shutil.copyfile("%s.inga"%(self.program), self.binary)
 			self.logger.debug(output)
 		except subprocess.CalledProcessError as err:
@@ -255,7 +253,7 @@ class Testcase(object):
 			device = copy.copy(device)
 			cfgdevice['logbase'] = self.logbase
 			cfgdevice['contikibase'] = self.contikibase
-			device.configure(cfgdevice)
+			device.configure(cfgdevice, self.name)
 			self.devices.append(device)
 
 	def timeout_occured(self):
