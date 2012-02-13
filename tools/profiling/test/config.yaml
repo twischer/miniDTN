@@ -1,7 +1,8 @@
 suite:
     logbase: /home/alphaone/scm/diplomarbeit/eval/logs
-    logpattern: date
+    logpattern: date-tag
     contikibase: /home/alphaone/scm/diplomarbeit/eval/contiki
+    contikiscm: git # Here only git and none are supported at the moment
     testcases:
         - mmem-test
         - mmem-test-uninstr

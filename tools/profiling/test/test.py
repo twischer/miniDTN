@@ -369,10 +369,21 @@ class Testsuite(object):
 	def __init__(self, suitecfg, devcfg, testcfg):
 		self.config = suitecfg
 
-		if (self.config['logpattern'] == 'date'):
+		if 'contikiscm' in self.config:
+			if self.config['contikiscm'] == 'git':
+				self.contikiversion = subprocess.check_output(["git", "describe", "--tags", "--dirty"], stderr=subprocess.STDOUT, cwd=self.config['contikibase']).rstrip()
+			elif self.config['contikiscm'] == 'none':
+				self.contikiversion = "NA"
+			else:
+				self.contikiversion = "unknown"
+
+		if self.config['logpattern'] == 'date':
 			logdir = time.strftime('%Y%m%d%H%M%S')
-		elif (self.config['logpattern'] == 'tag'):
-			pass
+		elif self.config['logpattern'] == 'tag':
+			logdir = self.contikiversion
+		elif self.config['logpattern'] == 'date-tag':
+			logdir = "%s-%s"%(time.strftime('%Y%m%d%H%M%S'), self.contikiversion)
+
 		self.logdir = os.path.join(self.config['logbase'], logdir)
 
 		mkdir_p(self.logdir)
@@ -399,10 +410,14 @@ class Testsuite(object):
 		filehandler.setFormatter(fileformat)
 		logging.getLogger('').addHandler(filehandler)
 
+		with open(os.path.join(self.logdir, 'contikiversion'), 'w') as verfile:
+			verfile.write(self.contikiversion)
+			verfile.write('\n')
 		# Info
 		logging.info("Profiling suite - initialized")
 		logging.info("Logs are located under %s", self.logdir)
 		logging.info("Contiki base path is %s", self.config['contikibase'])
+		logging.info("Contiki version is %s", self.contikiversion)
 		logging.info("The following devices are defined:")
 		for device in self.devices.values():
 			logging.info("* %s (%s platform) identified through %s", device.name,
