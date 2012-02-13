@@ -42,16 +42,14 @@ def mkdir_p(path):
 class Device(object):
 	"""Represents the actual device (Sky, INGA, ...) partaking in the test"""
 	startpattern = "*******Booting Contiki"
-	endpattern = "ContikiEND"
 	profilepattern = ["PROF", "SPROF"]
 	def __init__(self, config):
 		self.name = config['name']
 		self.id = config['id']
 		self.path = config['path']
-		self.logger = logging.getLogger('dev.%s'%(self.name))
-	def configure(self, config):
-		self.logdir = os.path.join(config['logbase'], self.name)
-		mkdir_p(self.logdir)
+	def configure(self, config, testname):
+		self.logger = logging.getLogger("test.%s.%s"%(testname, self.name))
+		self.logdir = config['logbase']
 		self.contikibase = config['contikibase']
 		self.programdir = os.path.join(self.contikibase, config['programdir'])
 		self.program = config['program']
@@ -100,7 +98,7 @@ class Device(object):
 	def reset(self):
 		raise Exception('Unimplemented')
 	def create_graph(self, name, log):
-		basename = os.path.join(self.logdir, "profile")
+		basename = os.path.join(self.logdir, self.name)
 		svgname = "%s-%s.svg"%(basename, name)
 		pdfname = "%s-%s.pdf"%(basename, name)
 
@@ -215,7 +213,7 @@ class INGA(Device):
 		try:
 			self.logger.info("Uploading %s", os.path.join(self.programdir, self.program))
 			output = subprocess.check_output(["make", "TARGET=inga", "MOTES=%s"%(self.path), "%s.upload"%(self.program)], stderr=subprocess.STDOUT)
-			self.binary = os.path.join(self.logdir, self.program)
+			self.binary = os.path.join(self.logdir, "%s-%s"%(self.name, self.program))
 			shutil.copyfile("%s.inga"%(self.program), self.binary)
 			self.logger.debug(output)
 		except subprocess.CalledProcessError as err:
@@ -255,7 +253,7 @@ class Testcase(object):
 			device = copy.copy(device)
 			cfgdevice['logbase'] = self.logbase
 			cfgdevice['contikibase'] = self.contikibase
-			device.configure(cfgdevice)
+			device.configure(cfgdevice, self.name)
 			self.devices.append(device)
 
 	def timeout_occured(self):
@@ -371,10 +369,21 @@ class Testsuite(object):
 	def __init__(self, suitecfg, devcfg, testcfg):
 		self.config = suitecfg
 
-		if (self.config['logpattern'] == 'date'):
+		if 'contikiscm' in self.config:
+			if self.config['contikiscm'] == 'git':
+				self.contikiversion = subprocess.check_output(["git", "describe", "--tags", "--dirty"], stderr=subprocess.STDOUT, cwd=self.config['contikibase']).rstrip()
+			elif self.config['contikiscm'] == 'none':
+				self.contikiversion = "NA"
+			else:
+				self.contikiversion = "unknown"
+
+		if self.config['logpattern'] == 'date':
 			logdir = time.strftime('%Y%m%d%H%M%S')
-		elif (self.config['logpattern'] == 'tag'):
-			pass
+		elif self.config['logpattern'] == 'tag':
+			logdir = self.contikiversion
+		elif self.config['logpattern'] == 'date-tag':
+			logdir = "%s-%s"%(time.strftime('%Y%m%d%H%M%S'), self.contikiversion)
+
 		self.logdir = os.path.join(self.config['logbase'], logdir)
 
 		mkdir_p(self.logdir)
@@ -389,8 +398,9 @@ class Testsuite(object):
 		for testcfg in testcfg:
 			testcfg['logbase'] = self.logdir
 			testcfg['contikibase'] = self.config['contikibase']
-			testcase = Testcase(testcfg, self.devices, testcfg['devices'])
-			self.tests[testcfg['name']] = testcase
+			if testcfg['name'] in self.config['testcases']:
+				testcase = Testcase(testcfg, self.devices, testcfg['devices'])
+				self.tests[testcfg['name']] = testcase
 
 		# Set up logging to file
 		filehandler = logging.FileHandler(os.path.join(self.logdir, "build.log"))
@@ -400,10 +410,14 @@ class Testsuite(object):
 		filehandler.setFormatter(fileformat)
 		logging.getLogger('').addHandler(filehandler)
 
+		with open(os.path.join(self.logdir, 'contikiversion'), 'w') as verfile:
+			verfile.write(self.contikiversion)
+			verfile.write('\n')
 		# Info
 		logging.info("Profiling suite - initialized")
 		logging.info("Logs are located under %s", self.logdir)
 		logging.info("Contiki base path is %s", self.config['contikibase'])
+		logging.info("Contiki version is %s", self.contikiversion)
 		logging.info("The following devices are defined:")
 		for device in self.devices.values():
 			logging.info("* %s (%s platform) identified through %s", device.name,
