@@ -382,12 +382,12 @@ class Testsuite(object):
 			else:
 				self.contikiversion = "unknown"
 
-		if self.config['logpattern'] == 'date':
-			logdir = time.strftime('%Y%m%d%H%M%S')
-		elif self.config['logpattern'] == 'tag':
+		if self.config['logpattern'] == 'tag':
 			logdir = self.contikiversion
 		elif self.config['logpattern'] == 'date-tag':
 			logdir = "%s-%s"%(time.strftime('%Y%m%d%H%M%S'), self.contikiversion)
+		else: # Date based is the default
+			logdir = time.strftime('%Y%m%d%H%M%S')
 
 		self.logdir = os.path.join(self.config['logbase'], logdir)
 
