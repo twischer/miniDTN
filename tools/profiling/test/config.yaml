@@ -44,7 +44,7 @@ tests:
         programdir: examples/mmem-test
         program: mmem-test
         instrument: []
-        cflags: "-fno-inline"
+        cflags: ""
         graph_options: ""
 ### Bundle generation tests with 20 and 80 bytes
   - name: generate-bundles-20
@@ -72,7 +72,7 @@ tests:
         programdir: examples/uDTN/generate-bundles
         program: uDTN-generate-bundles
         instrument: []
-        cflags: "-fno-inline -DDATASIZE=20"
+        cflags: "-DDATASIZE=20"
         graph_options: ""
   - name: generate-bundles-80-uninstr
     timeout: 60
@@ -81,7 +81,7 @@ tests:
         programdir: examples/uDTN/generate-bundles
         program: uDTN-generate-bundles
         instrument: []
-        cflags: "-fno-inline -DDATASIZE=80"
+        cflags: "-DDATASIZE=80"
         graph_options: ""
 ### Storage tests
 ### Test throughput and latency
@@ -106,12 +106,13 @@ tests:
         programdir: examples/uDTN/sender
         program: uDTN-sender
         instrument: []
-        cflags: "-fno-inline"
+        cflags: ""
         graph_options: ""
       - name: receiver
         programdir: examples/uDTN/sink
         program: uDTN-sink
         instrument: []
+        cflags: ""
         graph_options: ""
 ### Basic test to verify profiling infrastructure
   - name: profile-test
