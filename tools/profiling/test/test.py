@@ -22,6 +22,8 @@ parser = argparse.ArgumentParser(description="Test tool for Contiki")
 
 parser.add_argument("-l", "--list", dest="list_tests", action="store_true", default=False,
 		help="only list what tests/devices are defined")
+parser.add_argument("-d", "--dirty", dest="dirty", action="store_true", default=False,
+		help="don't clean the projects")
 parser.add_argument("-c", "--config", dest="configfile", default="config.yaml",
 		help="where to read the config from")
 parser.add_argument("--only-tests",
@@ -67,9 +69,10 @@ class Device(object):
 			raise
 
 		try:
-			self.logger.info("Cleaning %s", self.programdir)
-			output = subprocess.check_output(["make", "TARGET=%s"%(self.platform), "clean"], stderr=subprocess.STDOUT)
-			self.logger.debug(output)
+			if not options.dirty:
+				self.logger.info("Cleaning %s", self.programdir)
+				output = subprocess.check_output(["make", "TARGET=%s"%(self.platform), "clean"], stderr=subprocess.STDOUT)
+				self.logger.debug(output)
 
 			self.logger.info("Building %s", os.path.join(self.programdir, self.program))
 			myenv = os.environ.copy()
@@ -108,9 +111,6 @@ class Device(object):
 		output = subprocess.check_output(["inkscape", "-A", pdfname, svgname])
 	def recordlog(self, queue, controlqueue):
 		logfile = os.path.join(self.logdir, "%s.log"%(self.name))
-		self.reset()
-		# Make sure the device nodes are there again
-		time.sleep(1)
 
 		self.logger.info("Recording device log to %s", logfile)
 		handler = logging.FileHandler(logfile)
@@ -291,6 +291,11 @@ class Testcase(object):
 				threads = {}
 				queue = Queue.Queue()
 				for device in self.devices:
+					device.reset()
+				# Make sure the device nodes are there again
+				time.sleep(1)
+
+				for device in self.devices:
 					control = Queue.Queue()
 					thread = threading.Thread(target=device.recordlog, args=(queue,control))
 					threads[device.name] = (thread, control)
@@ -371,18 +376,18 @@ class Testsuite(object):
 
 		if 'contikiscm' in self.config:
 			if self.config['contikiscm'] == 'git':
-				self.contikiversion = subprocess.check_output(["git", "describe", "--tags", "--dirty"], stderr=subprocess.STDOUT, cwd=self.config['contikibase']).rstrip()
+				self.contikiversion = subprocess.check_output(["git", "describe", "--tags", "--always", "--dirty"], stderr=subprocess.STDOUT, cwd=self.config['contikibase']).rstrip()
 			elif self.config['contikiscm'] == 'none':
 				self.contikiversion = "NA"
 			else:
 				self.contikiversion = "unknown"
 
-		if self.config['logpattern'] == 'date':
-			logdir = time.strftime('%Y%m%d%H%M%S')
-		elif self.config['logpattern'] == 'tag':
+		if self.config['logpattern'] == 'tag':
 			logdir = self.contikiversion
 		elif self.config['logpattern'] == 'date-tag':
 			logdir = "%s-%s"%(time.strftime('%Y%m%d%H%M%S'), self.contikiversion)
+		else: # Date based is the default
+			logdir = time.strftime('%Y%m%d%H%M%S')
 
 		self.logdir = os.path.join(self.config['logbase'], logdir)
 
