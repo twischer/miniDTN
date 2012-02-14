@@ -22,6 +22,8 @@ parser = argparse.ArgumentParser(description="Test tool for Contiki")
 
 parser.add_argument("-l", "--list", dest="list_tests", action="store_true", default=False,
 		help="only list what tests/devices are defined")
+parser.add_argument("-d", "--dirty", dest="dirty", action="store_true", default=False,
+		help="don't clean the projects")
 parser.add_argument("-c", "--config", dest="configfile", default="config.yaml",
 		help="where to read the config from")
 parser.add_argument("--only-tests",
@@ -67,9 +69,10 @@ class Device(object):
 			raise
 
 		try:
-			self.logger.info("Cleaning %s", self.programdir)
-			output = subprocess.check_output(["make", "TARGET=%s"%(self.platform), "clean"], stderr=subprocess.STDOUT)
-			self.logger.debug(output)
+			if not options.dirty:
+				self.logger.info("Cleaning %s", self.programdir)
+				output = subprocess.check_output(["make", "TARGET=%s"%(self.platform), "clean"], stderr=subprocess.STDOUT)
+				self.logger.debug(output)
 
 			self.logger.info("Building %s", os.path.join(self.programdir, self.program))
 			myenv = os.environ.copy()
