@@ -111,9 +111,6 @@ class Device(object):
 		output = subprocess.check_output(["inkscape", "-A", pdfname, svgname])
 	def recordlog(self, queue, controlqueue):
 		logfile = os.path.join(self.logdir, "%s.log"%(self.name))
-		self.reset()
-		# Make sure the device nodes are there again
-		time.sleep(1)
 
 		self.logger.info("Recording device log to %s", logfile)
 		handler = logging.FileHandler(logfile)
@@ -293,6 +290,11 @@ class Testcase(object):
 			try:
 				threads = {}
 				queue = Queue.Queue()
+				for device in self.devices:
+					device.reset()
+				# Make sure the device nodes are there again
+				time.sleep(1)
+
 				for device in self.devices:
 					control = Queue.Queue()
 					thread = threading.Thread(target=device.recordlog, args=(queue,control))
