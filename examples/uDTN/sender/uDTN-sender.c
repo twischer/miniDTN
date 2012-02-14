@@ -38,6 +38,10 @@
  *         Adam Dunkels <adam@sics.se>
  */
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include "contiki.h"
 
 #include "net/netstack.h"
@@ -48,10 +52,8 @@
 #include "net/uDTN/API_events.h"
 #include "net/uDTN/API_registration.h"
 
-#include <string.h>
 //#include "net/dtn/realloc.h"
 
-#include "dev/button-sensor.h"
 #include "net/uDTN/dtn_config.h"
 #include "net/uDTN/storage.h"
 #include "mmem.h"
@@ -59,26 +61,25 @@
 #include "sys/profiling.h"
 #include "watchdog.h"
 
-#include <stdio.h> /* For printf() */
-#include <stdlib.h>
 /*---------------------------------------------------------------------------*/
 PROCESS(hello_world_process, "Hello world process");
 AUTOSTART_PROCESSES(&hello_world_process);
 static struct registration_api reg;
-/*---------------------------------------------------------------------------*/
-static struct etimer timer;
 struct bundle_t bundle;
-static uint16_t last_trans=0;
+/*---------------------------------------------------------------------------*/
 PROCESS_THREAD(hello_world_process, ev, data)
 {
+	uint8_t i;
+	static struct etimer timer;
+	static uint16_t bundles_sent = 0;
+	static uint32_t time_start, time_stop;
+	uint8_t userdata[80];
+	uint32_t tmp;
+
 	PROCESS_BEGIN();
 	profiling_init();
 	profiling_start();
-	SENSORS_ACTIVATE(button_sensor);
 	agent_init();
-	//test_init();
-	uint8_t c=0;
-	submit_data_to_application_event = process_alloc_event();
 	reg.status=1;
 	reg.application_process=&hello_world_process;
 	reg.app_id=25;
@@ -86,88 +87,100 @@ PROCESS_THREAD(hello_world_process, ev, data)
 	printf("main app_id %lu process %p\n", reg.app_id, &agent_process);
 	etimer_set(&timer,  CLOCK_SECOND*5);
 	PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&timer));
-	printf("foooooo\n");
 	process_post(&agent_process, dtn_application_registration_event,&reg);
-	static uint16_t	rec=0;
-//	if((ev == sensors_event && data == &button_sensor)){
-//		etimer_set(&timer, CLOCK_SECOND*0.1);
-//	}
-	etimer_set(&timer,  CLOCK_SECOND*0.05);
-	last_trans = clock_seconds();
+
+	/* Profile initialization separately */
+	profiling_stop();
+	watchdog_stop();
+	profiling_report("init", 0);
+	watchdog_start();
+	etimer_set(&timer,  CLOCK_SECOND/10);
+	printf("Init done, starting test\n");
+
+	profiling_init();
+	profiling_start();
+
+	time_start = clock_seconds();
 	while(1) {
-		PROCESS_YIELD();
-/*		if(ev == submit_data_to_application_event) {
-			printf("rtt:%u\n",clock_time()-last_trans);
+
+		PROCESS_WAIT_UNTIL(etimer_expired(&timer) ||
+				ev == submit_data_to_application_event);
+
+		/* We received a bundle - check if it is the sink telling us to
+		 * stop sending */
+		if (ev == submit_data_to_application_event) {
 			struct bundle_t *bun;
+
 			bun = (struct bundle_t *) data;
 			delete_bundle(bun);
-			rec=1;
+
+			profiling_stop();
+			watchdog_stop();
+			profiling_report("send-1000", 0);
+			watchdog_start();
+			TEST_REPORT("throughput", 1000, time_stop-time_start, "bundles/s");
+			TEST_PASS();
+			PROCESS_EXIT();
 		}
-*/		if(etimer_expired(&timer) || (ev == sensors_event && data == &button_sensor)) {
-		//if((ev == sensors_event && data == &button_sensor)) {
-			if (rec == 1000) {
-				profiling_stop();
-				watchdog_stop();
-				profiling_report("uDTN-sender", 0);
-				last_trans = clock_seconds() - last_trans;
-				TEST_REPORT("throughput", 1000, last_trans, "bundles/s");
-				TEST_PASS();
-				watchdog_start();
-			}
-			rec++;
-	//		j++;
-			//printf("Hello, world\n");
-			create_bundle(&bundle);
-			uint8_t i;
-			uint32_t bla=4;
-		//			rimeaddr_t dest={{3,0}};
-		//#if 0
-			bla=0x0001;
-			set_attr(&bundle, DEST_NODE, &bla);
-			bla=25;
-			set_attr(&bundle, DEST_SERV, &bla);
-			bla=dtn_node_id;
-			set_attr(&bundle, SRC_NODE, &bla);
-			set_attr(&bundle, SRC_SERV,&bla);
-			set_attr(&bundle, CUST_NODE, &bla);
-			set_attr(&bundle, CUST_SERV, &bla);
-			bla=0;
-			set_attr(&bundle, FLAGS, &bla);
-			bla=1;
-			set_attr(&bundle, REP_NODE, &bla);
-			set_attr(&bundle, REP_SERV, &bla);
-			set_attr(&bundle, TIME_STAMP_SEQ_NR, &bla);
-			bla=2000;
-			set_attr(&bundle, LIFE_TIME, &bla);
-			bla=4;
-			set_attr(&bundle, TIME_STAMP, &bla);
-			uint8_t foo[80]={10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10};
-			add_block(&bundle, 1,2,foo,80);
-			if (rec%50 == 0)
-				printf("%i\n", rec);
-//			printf("main size: %u\n",bundle.size);
-			uint8_t *tmp=(uint8_t *) bundle.mem.ptr;
-			for(i=0; i<bundle.size; i++){
-				//printf("%x ",*tmp);
-				tmp++;
 
-			}
-//		printf("\n");
-			process_post(&agent_process,dtn_send_bundle_event,(void *) &bundle);
-//			if (BUNDLE_STORAGE.get_bundle_num() <39){
-//			if (rec <1000){
-				//etimer_reset(&timer);
-				etimer_set(&timer, CLOCK_SECOND/10);
-//			}
-
-//			}else{
-//				etimer_set(&timer, CLOCK_SECOND*20);
-//			}
-			
-
-
-		continue;			
+		/* Check for timeout */
+		if (clock_seconds()-time_start > 400) {
+			profiling_stop();
+			watchdog_stop();
+			profiling_report("timeout", 0);
+			watchdog_start();
+			TEST_FAIL("Didn't receive ack from sink");
+			PROCESS_EXIT();
 		}
+
+		/* Stop profiling if we've sent 1000 bundles. We still need to send
+		 * more since some might have been lost on the way */
+		if (bundles_sent == 1000) {
+			profiling_stop();
+			time_stop = clock_seconds();
+		}
+
+		create_bundle(&bundle);
+
+		/* Source and destination */
+		tmp=0x0001;
+		set_attr(&bundle, DEST_NODE, &tmp);
+		tmp=25;
+		set_attr(&bundle, DEST_SERV, &tmp);
+		tmp=dtn_node_id;
+		set_attr(&bundle, SRC_NODE, &tmp);
+		set_attr(&bundle, SRC_SERV,&tmp);
+		set_attr(&bundle, CUST_NODE, &tmp);
+		set_attr(&bundle, CUST_SERV, &tmp);
+
+		tmp=0;
+		set_attr(&bundle, FLAGS, &tmp);
+		tmp=1;
+		set_attr(&bundle, REP_NODE, &tmp);
+		set_attr(&bundle, REP_SERV, &tmp);
+
+		/* Set the sequence number to the number of budles sent */
+		tmp = bundles_sent;
+		set_attr(&bundle, TIME_STAMP_SEQ_NR, &tmp);
+
+		tmp=2000;
+		set_attr(&bundle, LIFE_TIME, &tmp);
+		tmp=4;
+		set_attr(&bundle, TIME_STAMP, &tmp);
+
+		/* Add the payload */
+		for(i=0; i<80; i++)
+			userdata[i] = i;
+		add_block(&bundle, 1, 2, userdata, 80);
+
+		process_post(&agent_process, dtn_send_bundle_event, (void *) &bundle);
+
+		bundles_sent++;
+		/* Show progress every 50 bundles */
+		if (bundles_sent%50 == 0)
+			printf("%i\n", bundles_sent);
+
+		etimer_set(&timer, CLOCK_SECOND/10);
 	}
 	PROCESS_END();
 }

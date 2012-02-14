@@ -33,14 +33,15 @@
 
 /**
  * \file
- *         A very simple Contiki application showing how Contiki programs look
+ *	   A very simple Contiki application showing how Contiki programs look
  * \author
- *         Adam Dunkels <adam@sics.se>
+ *	   Adam Dunkels <adam@sics.se>
  */
+
+#include <stdio.h>
 
 #include "contiki.h"
 #include "watchdog.h"
-
 
 //#include "../platform/avr-raven/cfs-coffee-arch.h"
 //#include "cfs.h"
@@ -59,116 +60,136 @@
 #include "net/uDTN/bundle.h"
 #include "net/uDTN/sdnv.h"
 #include "etimer.h"
-  #define FOO { {4, 0 } }
 
 
-#include <stdio.h> /* For printf() */
-  struct etimer timer;
 /*---------------------------------------------------------------------------*/
 PROCESS(hello_world_process, "Hello world process");
 AUTOSTART_PROCESSES(&hello_world_process);
-  static struct registration_api reg;
+static struct registration_api reg;
 /*---------------------------------------------------------------------------*/
+
 PROCESS_THREAD(hello_world_process, ev, data)
 {
-  PROCESS_BEGIN();
-  profiling_init();
-  profiling_start();
-  printf("Hello, world\n");
-  
-  agent_init();
-  submit_data_to_application_event = process_alloc_event();
-//  test_init();
-  reg.status=1;
-  reg.application_process=&hello_world_process;
-  reg.app_id=25;
-  printf("MAIN: event= %u\n",dtn_application_registration_event);
-  printf("main app_id %lu process %p\n", reg.app_id, &agent_process);
-  uint32_t foo=0;
-  etimer_set(&timer,  CLOCK_SECOND*5);
-  PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&timer));
-  printf("foooooo\n");
-  process_post(&agent_process, dtn_application_registration_event,&reg);
-  static uint16_t count=0;
-  static uint32_t loss=1, iold=0;
-  static uint16_t nums[1000];
-  uint16_t i;
-  for(i=0;i<1000;i++){
-  	nums[i]=0;
-  }
-  while (1){
-  	PROCESS_WAIT_EVENT_UNTIL(ev);
-	if(ev == submit_data_to_application_event) {
-		leds_on(1);
+	static struct etimer timer;
+	static struct bundle_t bun;
+	static uint16_t bundles_recv = 0;
+	static uint32_t time_start, time_stop;
+	static uint8_t userdata[2];
+	uint32_t tmp;
+	uint32_t seqno;
+
+	PROCESS_BEGIN();
+	profiling_init();
+	profiling_start();
+
+	agent_init();
+	reg.status=1;
+	reg.application_process=&hello_world_process;
+	reg.app_id=25;
+	printf("MAIN: event= %u\n",dtn_application_registration_event);
+	printf("main app_id %lu process %p\n", reg.app_id, &agent_process);
+	etimer_set(&timer,  CLOCK_SECOND*5);
+	PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&timer));
+
+	process_post(&agent_process, dtn_application_registration_event,&reg);
+
+	/* Profile initialization separately */
+	profiling_stop();
+	watchdog_stop();
+	profiling_report("init", 0);
+	watchdog_start();
+	etimer_set(&timer,  CLOCK_SECOND);
+	printf("Init done, starting test\n");
+
+	profiling_init();
+	profiling_start();
+
+	time_start = clock_seconds();
+	while (1) {
+		etimer_set(&timer, CLOCK_SECOND*5);
+		PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&timer) ||
+				ev == submit_data_to_application_event);
+
+		/* Check for timeout */
+		if (etimer_expired(&timer)) {
+			if (clock_seconds()-time_start > 400) {
+				profiling_stop();
+				watchdog_stop();
+				profiling_report("timeout", 0);
+				watchdog_start();
+				TEST_FAIL("Didn't receive enough bundles");
+				PROCESS_EXIT();
+			}
+			/* No timeout - restart while-loop */
+			continue;
+		}
+
+		/* If the etimer didn't expire we're getting a submit_data_to_application_event */
 		struct bundle_t *bundle;
 		bundle = (struct bundle_t *) data;
-//		printf("Paketinhalt: ");
-//		for (i=0; i<27; i++){
-//			printf("%x " ,*((uint8_t *) bundle->mem.ptr+i));
-//		}
 
-		count++;
-		if (count%50 == 0)
-			printf("%u\n",count);
+		leds_toggle(1);
 
-		if(count > 8){
-//			leds_off(1);
-//			count=0;
-//			printf(" %u \n",clock_time());
-		}
-		if (count == 1){
-//			leds_on(1);
-		}
+		sdnv_decode(bundle->mem.ptr+bundle->offset_tab[TIME_STAMP_SEQ_NR][OFFSET],
+				bundle->offset_tab[TIME_STAMP_SEQ_NR][STATE], &seqno);
+		sdnv_decode(bundle->mem.ptr+bundle->offset_tab[SRC_NODE][OFFSET],
+				bundle->offset_tab[SRC_NODE][STATE], &tmp);
 
-		uint32_t j;
-		sdnv_decode(bundle->mem.ptr+bundle->offset_tab[TIME_STAMP_SEQ_NR][OFFSET],bundle->offset_tab[TIME_STAMP_SEQ_NR][STATE],&j);
-		if(j==iold){
-			loss+= (j-iold);
-		}
-		//printf("rec: %u %lu %lu \n",count,j, loss-1);
-		nums[j]=1;
-//		if (j==998||j==999){
-	//	}
-			
-		iold=j+1;
-		if (count==1){
-			printf("go\n");
-		}
-		if (count==1000){
+		delete_bundle(bundle);
+
+		bundles_recv++;
+		if (bundles_recv%50 == 0)
+			printf("%u\n", bundles_recv);
+
+		/* Report profiling data after receiving 1000 bundles */
+		if (bundles_recv==1000) {
 			leds_off(1);
-			printf("done\n");
 			profiling_stop();
+			time_stop = clock_seconds();
+
+			create_bundle(&bun);
+
+			/* tmp already holdy the src address of the sender */
+			set_attr(&bun, DEST_NODE, &tmp);
+			tmp=25;
+			set_attr(&bun, DEST_SERV, &tmp);
+			tmp=dtn_node_id;
+			set_attr(&bun, SRC_NODE, &tmp);
+			set_attr(&bun, SRC_SERV,&tmp);
+			set_attr(&bun, CUST_NODE, &tmp);
+			set_attr(&bun, CUST_SERV, &tmp);
+
+			tmp=0;
+			set_attr(&bun, FLAGS, &tmp);
+			tmp=1;
+			set_attr(&bun, REP_NODE, &tmp);
+			set_attr(&bun, REP_SERV, &tmp);
+
+			/* Set the sequence number to the number of budles sent */
+			tmp = 1;
+			set_attr(&bun, TIME_STAMP_SEQ_NR, &tmp);
+
+			tmp=2000;
+			set_attr(&bun, LIFE_TIME, &tmp);
+			tmp=4;
+			set_attr(&bun, TIME_STAMP, &tmp);
+
+			/* Add the payload */
+			userdata[0] = 'o';
+			userdata[1] = 'k';
+			add_block(&bun, 1, 2, userdata, 2);
+
+			process_post(&agent_process, dtn_send_bundle_event, (void *) &bun);
+
 			watchdog_stop();
-			profiling_report("uDTN-sink", 0);
-//			TEST_REPORT("throughput", 1000, last_trans, "bundles/s");
+			profiling_report("recv-1000", 0);
+			TEST_REPORT("throughput", 1000, time_stop-time_start, "bundles/s");
+			TEST_REPORT("packetloss", seqno-1000, seqno, "%%");
 			TEST_PASS();
 			watchdog_start();
-			uint16_t l=0;
-			for(i=0;i<j+1;i++){
-				watchdog_periodic();
-				if(nums[i]!=1){
-					l++;
-				}
-			}
-			printf("loss: %u\n",l);
+			PROCESS_EXIT();
 		}
-		delete_bundle(bundle);
 	}
-//	cc2420_read(packetbuf_dataptr(),128);
-  }
-#if 0
-	/*#define PRINTF printf
-	PRINTF("Formatting FLASH file system for coffee...");
-	cfs_coffee_format();
-	PRINTF("Done!\n");
-	int fa = cfs_open( "/index.html", CFS_WRITE);
-	int r = cfs_write(fa, &"It works!", 9);
-	if (r<0) PRINTF("Can''t create /index.html!\n");
-	cfs_close(fa);
-*/
-//	int foo=coffee_file_test();
-//	printf(" FAIL %d\n",foo);
-#endif
-  PROCESS_END();
+	PROCESS_END();
 }
 /*---------------------------------------------------------------------------*/
