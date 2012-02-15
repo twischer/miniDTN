@@ -26,6 +26,8 @@ parser.add_argument("-d", "--dirty", dest="dirty", action="store_true", default=
 		help="don't clean the projects")
 parser.add_argument("-c", "--config", dest="configfile", default="config.yaml",
 		help="where to read the config from")
+parser.add_argument("-x", "--xml", dest="xmlreport", action="store_true", default=False,
+		help="output the test reports in XML (for easy parsing with jenkins)")
 parser.add_argument("--only-tests",
 		dest="only_tests", default=[],
                 action=MakeList,
@@ -367,7 +369,10 @@ class Testcase(object):
 		self.logger.addHandler(resulthandler)
 		self.logger.info("Test %s report:", self.name)
 		for item in self.result:
-			self.logger.info("%s:%s:%f:%s", item['name'], item['desc'], float(item['data'])/item['scale'], item['unit'])
+			if options.xmlreport:
+				self.logger.info("<measurement><name>%s-%s (%s)</name><value>%f</value></measurement>", item['name'], item['desc'], item['unit'], float(item['data'])/item['scale'])
+			else:
+				self.logger.info("%s:%s:%f:%s", item['name'], item['desc'], float(item['data'])/item['scale'], item['unit'])
 
 		self.logger.removeHandler(resulthandler)
 		self.logger.removeHandler(handler)
