@@ -304,8 +304,9 @@ class Testcase(object):
 				self.logger.info("Starting timeout (%is)", self.timeout)
 				timeouttimer.start()
 
-				while not self.timedout:
-					# Exit if all threads have finished
+				alldead = False
+				while not self.timedout and not alldead:
+					# Exit if all threads have finished, but handle queue items first
 					alldead = True
 					for thread in threads.values():
 						if thread[0].isAlive():
@@ -316,20 +317,21 @@ class Testcase(object):
 						break
 
 					try:
-						item = queue.get(True, 2)
-						self.logger.debug("Got item %s"%(item))
-						queue.task_done()
-						if item['status'] == "Aborted" or item['status'] == "Failed":
-							err = Exception("Test failed: Device %s aborted (%s)"%(item['name'], item['reason']))
-							for thread in threads.values():
-								thread[1].put("Exit")
-							time.sleep(2)
-							raise err
-						elif item['status'] == "Completed":
-							self.logger.info("Device %s completed test successfully", item['name'])
-						elif item['status'] == "Report":
-							self.logger.info("Device %s reported metric: %s is %f %s", item['name'], item['desc'], float(item['data'])/item['scale'], item['unit'])
-							self.result.append(item)
+						while True:
+							item = queue.get(True, 2)
+							self.logger.debug("Got item %s"%(item))
+							queue.task_done()
+							if item['status'] == "Aborted" or item['status'] == "Failed":
+								err = Exception("Test failed: Device %s aborted (%s)"%(item['name'], item['reason']))
+								for thread in threads.values():
+									thread[1].put("Exit")
+								time.sleep(2)
+								raise err
+							elif item['status'] == "Completed":
+								self.logger.info("Device %s completed test successfully", item['name'])
+							elif item['status'] == "Report":
+								self.logger.info("Device %s reported metric: %s is %f %s", item['name'], item['desc'], float(item['data'])/item['scale'], item['unit'])
+								self.result.append(item)
 					except Queue.Empty:
 						pass
 
