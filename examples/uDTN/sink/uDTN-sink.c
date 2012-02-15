@@ -184,7 +184,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 			watchdog_stop();
 			profiling_report("recv-1000", 0);
 			TEST_REPORT("throughput", 1000, time_stop-time_start, "bundles/s");
-			TEST_REPORT("packetloss", seqno-1000, seqno, "%%");
+			TEST_REPORT("packetloss", (seqno-999)*100, seqno+1, "\%");
 			TEST_PASS();
 			watchdog_start();
 			PROCESS_EXIT();
