@@ -86,7 +86,7 @@ tests:
 ### Storage tests
 ### Test throughput and latency
   - name: throughput
-    timeout: 500
+    timeout: 600
     devices:
       - name: sender
         programdir: examples/uDTN/sender
@@ -101,6 +101,7 @@ tests:
         cflags: "-fno-inline"
         graph_options: ""
   - name: throughput-uninstr
+    timeout: 600
     devices:
       - name: sender
         programdir: examples/uDTN/sender
@@ -126,7 +127,7 @@ tests:
         graph_options: ""
 ### Basically the throughput test with the contiki network stack instrumented
   - name: contiki-net
-    timeout: 500
+    timeout: 600
     devices:
       - name: sender
         programdir: examples/uDTN/sender

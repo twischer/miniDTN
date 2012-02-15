@@ -124,7 +124,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 		}
 
 		/* Check for timeout */
-		if (clock_seconds()-time_start > 400) {
+		if (clock_seconds()-time_start > 600) {
 			profiling_stop();
 			watchdog_stop();
 			profiling_report("timeout", 0);
