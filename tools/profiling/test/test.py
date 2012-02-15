@@ -26,7 +26,7 @@ parser.add_argument("-d", "--dirty", dest="dirty", action="store_true", default=
 		help="don't clean the projects")
 parser.add_argument("-c", "--config", dest="configfile", default="config.yaml",
 		help="where to read the config from")
-parser.add_argument("-x", "--xml", dest="xmlreport", action="store_true", default=False,
+parser.add_argument("-x", "--xml", dest="xmlreport", default=False,
 		help="output the test reports in XML (for easy parsing with jenkins)")
 parser.add_argument("--only-tests",
 		dest="only_tests", default=[],
@@ -369,10 +369,7 @@ class Testcase(object):
 		self.logger.addHandler(resulthandler)
 		self.logger.info("Test %s report:", self.name)
 		for item in self.result:
-			if options.xmlreport:
-				self.logger.info("<measurement><name>%s-%s (%s)</name><value>%f</value></measurement>", item['name'], item['desc'], item['unit'], float(item['data'])/item['scale'])
-			else:
-				self.logger.info("%s:%s:%f:%s", item['name'], item['desc'], float(item['data'])/item['scale'], item['unit'])
+			self.logger.info("%s:%s:%f:%s", item['name'], item['desc'], float(item['data'])/item['scale'], item['unit'])
 
 		self.logger.removeHandler(resulthandler)
 		self.logger.removeHandler(handler)
@@ -471,10 +468,31 @@ class Testsuite(object):
 		for test in success:
 			logging.info("%s [OK]", test.name)
 			for item in test.result:
-				logging.info("* %s:%s:%f:%s", item['name'], item['desc'], float(item['data'])/item['scale'], item['unit'])
+				if options.xmlreport:
+					logging.info("<measurement><name>%s %s-%s (%s)</name><value>%f</value></measurement>", test.name, item['name'], item['desc'], item['unit'], float(item['data'])/item['scale'])
+				else:
+					logging.info("* %s:%s:%f:%s", item['name'], item['desc'], float(item['data'])/item['scale'], item['unit'])
 		for test in failure:
 			logging.info("%s [ERR]", test.name)
 			logging.info(" -> %s", test.failure)
+
+		if options.xmlreport:
+			with open(os.path.join(options.xmlreport, 'build.xml'), 'w') as xmlfile:
+				xmlfile.write('<testsuite errors="0" failures="%d" name="" tests="%d" time="0">\n'
+						%(len(failure), len(failure)+len(success)))
+
+				for test in success:
+					xmlfile.write('<testcase classname="" name="%s" time="0"/>\n'
+							%(test.name))
+				for test in failure:
+					xmlfile.write('<testcase classname="" name="%s" time="0">\n'
+							%(test.name))
+					xmlfile.write('<failure type="testfailure">%s</failure>\n'
+							%(test.failure))
+					xmlfile.write('</testcase>\n')
+
+
+				xmlfile.write('</testsuite>\n')
 
 		return len(failure)
 
