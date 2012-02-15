@@ -124,7 +124,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 		}
 
 		/* Check for timeout */
-		if (clock_seconds()-time_start > 600) {
+		if (clock_seconds()-time_start > 900) {
 			profiling_stop();
 			watchdog_stop();
 			profiling_report("timeout", 0);
@@ -180,7 +180,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 		if (bundles_sent%50 == 0)
 			printf("%i\n", bundles_sent);
 
-		etimer_set(&timer, CLOCK_SECOND/10);
+		etimer_set(&timer, CLOCK_SECOND/5);
 	}
 	PROCESS_END();
 }
