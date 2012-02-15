@@ -420,6 +420,9 @@ class Testsuite(object):
 		with open(os.path.join(self.logdir, 'contikiversion'), 'w') as verfile:
 			verfile.write(self.contikiversion)
 			verfile.write('\n')
+
+		shutil.copyfile(options.configfile, os.path.join(self.logdir, 'config.yaml'))
+
 		# Info
 		logging.info("Profiling suite - initialized")
 		logging.info("Logs are located under %s", self.logdir)
