@@ -61,6 +61,10 @@
 #include "sys/profiling.h"
 #include "watchdog.h"
 
+#ifndef CONF_SEND_TO_NODE
+#error "I need a destination node - set CONF_SEND_TO_NODE"
+#endif
+
 /*---------------------------------------------------------------------------*/
 PROCESS(hello_world_process, "Hello world process");
 AUTOSTART_PROCESSES(&hello_world_process);
@@ -143,7 +147,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 		create_bundle(&bundle);
 
 		/* Source and destination */
-		tmp=0x0001;
+		tmp=CONF_SEND_TO_NODE;
 		set_attr(&bundle, DEST_NODE, &tmp);
 		tmp=25;
 		set_attr(&bundle, DEST_SERV, &tmp);
