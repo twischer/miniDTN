@@ -468,10 +468,7 @@ class Testsuite(object):
 		for test in success:
 			logging.info("%s [OK]", test.name)
 			for item in test.result:
-				if options.xmlreport:
-					logging.info("<measurement><name>%s %s-%s (%s)</name><value>%f</value></measurement>", test.name, item['name'], item['desc'], item['unit'], float(item['data'])/item['scale'])
-				else:
-					logging.info("* %s:%s:%f:%s", item['name'], item['desc'], float(item['data'])/item['scale'], item['unit'])
+				logging.info("* %s:%s:%f:%s", item['name'], item['desc'], float(item['data'])/item['scale'], item['unit'])
 		for test in failure:
 			logging.info("%s [ERR]", test.name)
 			logging.info(" -> %s", test.failure)
@@ -480,17 +477,22 @@ class Testsuite(object):
 			with open(os.path.join(options.xmlreport, 'build.xml'), 'w') as xmlfile:
 				xmlfile.write('<testsuite errors="0" failures="%d" name="" tests="%d" time="0">\n'
 						%(len(failure), len(failure)+len(success)))
-
 				for test in success:
-					xmlfile.write('<testcase classname="" name="%s" time="0"/>\n'
+					xmlfile.write('<testcase classname="contiki" name="%s" time="0"/>\n'
 							%(test.name))
 				for test in failure:
-					xmlfile.write('<testcase classname="" name="%s" time="0">\n'
+					xmlfile.write('<testcase classname="contiki" name="%s" time="0">\n'
 							%(test.name))
 					xmlfile.write('<failure type="testfailure">%s</failure>\n'
 							%(test.failure))
 					xmlfile.write('</testcase>\n')
 
+				xmlfile.write('<system-out><![CDATA[')
+				for test in success:
+					for item in test.result:
+						xmlfile.write("<measurement><name>%s %s-%s (%s)</name><value>%f</value></measurement>\n"
+								%(test.name, item['name'], item['desc'], item['unit'], float(item['data'])/item['scale']))
+				xmlfile.write(']]></system-out>\n')
 
 				xmlfile.write('</testsuite>\n')
 
