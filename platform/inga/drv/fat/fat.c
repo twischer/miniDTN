@@ -487,7 +487,18 @@ uint32_t find_nth_cluster( uint32_t start_cluster, uint32_t n ) {
 
 uint8_t fat_read_file( int fd, uint32_t clusters, uint32_t clus_offset ) {
 	/*Read the clus_offset Sector of the clusters-th cluster of the file fd*/
-	uint32_t cluster = find_nth_cluster( fat_file_pool[fd].cluster, clusters );
+	uint32_t cluster = 0;
+	if( clusters == fat_file_pool[fd].n ) {
+		cluster = fat_file_pool[fd].nth_cluster;
+	} else if( clusters == fat_file_pool[fd].n + 1) {
+		cluster = read_fat_entry_cluster(fat_file_pool[fd].nth_cluster);
+		fat_file_pool[fd].nth_cluster = cluster;
+		fat_file_pool[fd].n++;
+	} else {
+		cluster = find_nth_cluster( fat_file_pool[fd].cluster, clusters );
+		fat_file_pool[fd].nth_cluster = cluster;
+		fat_file_pool[fd].n = clusters;
+	}
 	//printf("\nfat_read_file(): cluster = %lu", cluster);
 	//printf("\nfat_read_file(): sector = %lu", cluster2sector(cluster) + clus_offset);
 	if( cluster == 0 || is_EOC( cluster ) )
@@ -496,10 +507,25 @@ uint8_t fat_read_file( int fd, uint32_t clusters, uint32_t clus_offset ) {
 }
 
 uint8_t fat_write_file( int fd, uint32_t clusters, uint32_t clus_offset ) {
-	uint32_t cluster = find_nth_cluster( fat_file_pool[fd].cluster, clusters );
-	////printf("\nfat_write_file() : cluster = %lu", cluster);
+	uint32_t cluster = 0;
+	//If we know the nth Cluster already we do not have to recalculate it
+	if( clusters == fat_file_pool[fd].n ) {
+		cluster = fat_file_pool[fd].nth_cluster;
+	//If we now the nth-1 Cluster it is easy to get the next cluster
+	} else if( clusters == fat_file_pool[fd].n + 1) {
+		cluster = read_fat_entry_cluster(fat_file_pool[fd].nth_cluster);
+		fat_file_pool[fd].nth_cluster = cluster;
+		fat_file_pool[fd].n++;
+	//Somehow our cluster-information is out of sync. We have to calculate the cluster the hard way.
+	} else {
+		cluster = find_nth_cluster( fat_file_pool[fd].cluster, clusters );
+		fat_file_pool[fd].nth_cluster = cluster;
+		fat_file_pool[fd].n = clusters;
+	}
+	//printf("\nfat_write_file() : cluster = %lu", cluster);
 	if( cluster == 0 ) {
 		return 1;
+	//If this the last Cluster of the file, chain an additional cluster.
 	} else if( is_EOC( cluster ) ) {
 		uint32_t last_cluster_num = find_nth_cluster( fat_file_pool[fd].cluster, clusters-1 );
 		uint32_t free_cluster = get_free_cluster( last_cluster_num );
@@ -668,6 +694,8 @@ cfs_open(const char *name, int flags)
 		return -1;
 	}
 	fat_file_pool[fd].cluster = dir_ent.DIR_FstClusLO + (((uint32_t) dir_ent.DIR_FstClusHI) << 16);
+	fat_file_pool[fd].nth_cluster = fat_file_pool[fd].cluster;
+	fat_file_pool[fd].n = 0;
 	fat_fd_pool[fd].file = &(fat_file_pool[fd]);
 	fat_fd_pool[fd].flags = (uint8_t) flags;
 	// put read/write position in the right spot
