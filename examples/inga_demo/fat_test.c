@@ -41,6 +41,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 	uint8_t ret;
 	int read_ret;
 	uint8_t buffer[1024];
+	uint8_t buffer2[1024];
 	struct diskio_device_info *info = 0;
 	struct FAT_Info fat;
 	int fd;
@@ -49,6 +50,21 @@ PROCESS_THREAD(hello_world_process, ev, data)
 		_delay_ms(1000);
 		watchdog_periodic();
 	}
+	rtimer_arch_init();
+	start = RTIMER_NOW();
+	for(i = 0; i < 1024; i++) {
+		buffer[i] = buffer2[i];
+		if(buffer[i] == buffer2[i+1]) {
+			buffer[i]++;
+		}
+	}
+	end = RTIMER_NOW();
+	printf("\nByte Copy time = %lu", end - start);
+	start = RTIMER_NOW();
+	memcpy(buffer, buffer2, 1024);
+	end = RTIMER_NOW();
+	printf("\nmemcoy time = %lu", end - start);
+
 	redetect:
 	while((i = diskio_detect_devices()) != DISKIO_SUCCESS);
 	info = diskio_devices();
