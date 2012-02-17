@@ -31,6 +31,17 @@ struct PathResolver {
 struct file fat_file_pool[FAT_FD_POOL_SIZE];
 struct file_desc fat_fd_pool[FAT_FD_POOL_SIZE];
 
+#ifdef FAT_COOPERATIVE
+extern void coop_switch_sp();
+extern static uint8_t coop_step_allowed;
+extern static uint8_t next_step_type;
+enum {
+	READ = 1,
+	WRITE,
+	INTERNAL
+};
+#endif
+
 /* Declerations */
 uint16_t _get_free_cluster_16();
 uint16_t _get_free_cluster_32();
@@ -53,6 +64,14 @@ uint8_t get_dir_entry( const char *path, struct dir_entry *dir_ent, uint32_t *di
 void fat_flush() {
 	if( sector_buffer_dirty ) {
 		////printf("\nfat_flush() : Sector is dirty, writing back to addr = %lu", sector_buffer_addr);
+		#ifdef FAT_COOPERATIVE
+			if( !coop_step_allowed ) {
+				next_step_type = WRITE;
+				coop_switch_sp();
+			} else {
+				coop_step_allowed = 0;
+			}
+		#endif
 		if( diskio_write_block( mounted.dev, sector_buffer_addr, sector_buffer ) != DISKIO_SUCCESS ) {
 			////printf("\nfat_flush() : Error writing sector %lu", sector_buffer_addr);
 		}
@@ -230,6 +249,14 @@ uint8_t fat_read_block( uint32_t sector_addr ) {
 	fat_flush();
 	//printf("READ_BLOCK");
 	sector_buffer_addr = sector_addr;
+	#ifdef FAT_COOPERATIVE
+		if( !coop_step_allowed ) {
+			next_step_type = READ;
+			coop_switch_sp();
+		} else {
+			coop_step_allowed = 0;
+		}
+	#endif
 	return diskio_read_block( mounted.dev, sector_addr, sector_buffer );
 }
 

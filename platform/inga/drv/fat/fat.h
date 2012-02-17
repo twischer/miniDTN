@@ -6,7 +6,9 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <stdint.h>
-#include "cfs/cfs.h"
+#ifndef FAT_COOPERATIVE
+	#include "cfs/cfs.h"
+#endif
 
 #define FAT12 0
 #define FAT16 1
