@@ -33,13 +33,16 @@ struct file_desc fat_fd_pool[FAT_FD_POOL_SIZE];
 
 #ifdef FAT_COOPERATIVE
 extern void coop_switch_sp();
-extern static uint8_t coop_step_allowed;
-extern static uint8_t next_step_type;
+extern uint8_t coop_step_allowed;
+extern uint8_t next_step_type;
 enum {
 	READ = 1,
 	WRITE,
 	INTERNAL
 };
+
+extern QueueEntry queue[FAT_COOP_QUEUE_SIZE];
+extern uint16_t queue_start, queue_len;
 #endif
 
 /* Declerations */
@@ -171,7 +174,7 @@ uint8_t parse_bootsector( uint8_t *buffer, struct FAT_Info *info ) {
 		(((uint32_t) buffer[45]) << 8) +
 		(((uint32_t) buffer[46]) << 16) +
 		(((uint32_t) buffer[47]) << 24);
-	
+
 	if( is_a_power_of_2( info->BPB_BytesPerSec ) != 0)
 		ret += 1;
 	if( is_a_power_of_2( info->BPB_SecPerClus ) != 0)
@@ -695,6 +698,7 @@ cfs_open(const char *name, int flags)
 	int fd = -1;
 	uint8_t i = 0;
 	struct dir_entry dir_ent;
+	#ifndef FAT_COOPERATIVE
 	for( i = 0; i < FAT_FD_POOL_SIZE; i++ ) {
 		if( fat_fd_pool[i].file == 0 ) {
 			fd = i;
@@ -704,6 +708,9 @@ cfs_open(const char *name, int flags)
 	/*No free FileDesciptors available*/
 	if( fd == -1 )
 		return fd;
+	#else
+		fd = queue[queue_start].ret_value;
+	#endif
 	// find file on Disk
 	if( !get_dir_entry( name, &dir_ent, &fat_file_pool[fd].dir_entry_sector, &fat_file_pool[fd].dir_entry_offset ) ) {
 		if( flags & CFS_WRITE || flags & CFS_APPEND ) {
@@ -746,6 +753,8 @@ void
 cfs_close(int fd)
 {
 	if( fd < 0 || fd >= FAT_FD_POOL_SIZE )
+		return;
+	if( fat_fd_pool[fd].file == NULL )
 		return;
 	update_dir_entry( fd );
 	fat_flush( fd );

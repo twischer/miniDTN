@@ -7,7 +7,7 @@ enum {
 };
 
 typedef struct q_entry_generic_file_op {
-	int fd;	
+	int fd;
 	uint8_t *buffer;
 	uint16_t length;
 } GenericFileOp;
@@ -45,13 +45,13 @@ typedef struct q_entry {
 	int16_t ret_value;
 } QueueEntry;
 
-static uint8_t writeBuffer[FAT_COOP_BUFFER_SIZE];
-static uint16_t writeBuffer_start, writeBuffer_len;
+uint8_t writeBuffer[FAT_COOP_BUFFER_SIZE];
+uint16_t writeBuffer_start, writeBuffer_len;
 
-static QueueEntry queue[FAT_COOP_QUEUE_SIZE];
-static uint16_t queue_start, queue_len;
+QueueEntry queue[FAT_COOP_QUEUE_SIZE];
+uint16_t queue_start, queue_len;
 
-static uint8_t coop_step_allowed = 0;
+uint8_t coop_step_allowed = 0;
 
 #define MS_TO_TICKS(ms) ((uint32_t)(ms * (RTIMER_SECOND / 1000.0)))
 
@@ -68,17 +68,22 @@ static uint8_t next_step_type = INTERNAL;
 
 void operation(void *data) {
 	QueueEntry *entry = (QueueEntry *) data;
-	
+
 	coop_step_allowed = 1;
-	
+
 	if( entry->state != INPROGRESS ) {
 		entry->state = INPROGRESS;
 	}
-	
+
 	switch(entry->op){
 		case CFS_OPEN:
-			//_ccfs_open( entry );
-			entry->ret_value = cfs_open( entry->parameters.open.name, entry->parameters.open.flags );
+			{
+				int fd = entry->ret_value;
+				entry->ret_value = cfs_open( entry->parameters.open.name, entry->parameters.open.flags );
+				if( entry->ret_value == -1 ) {
+					fat_fd_pool[fd].file = NULL;
+				}
+			}			
 			break;
 		case CFS_CLOSE:
 			cfs_close( entry->parameters.generic.fd );
@@ -136,7 +141,7 @@ void coop_mt_init( void *data ) {
   /* Register r0-r23 in t->stack[MTARCH_STACKSIZE -  5] to
    *  t->stack[MTARCH_STACKSIZE -  28].
    *
-   * Per calling convention, the argument to the thread handler function 
+   * Per calling convention, the argument to the thread handler function
    *  (i.e. the 'data' pointer) is passed via r24-r25.
    * See http://www.nongnu.org/avr-libc/user-manual/FAQ.html#faq_reg_usage) */
   stack[FAT_COOP_STACK_SIZE - 29] = (unsigned char)((unsigned short)data) & 0xff;
@@ -233,24 +238,33 @@ void coop_switch_sp() {
   sei ();
 }
 
+static struct process fsp;
+
 PROCESS(fsp, "FileSystemProcess");
 PROCESS_THREAD(fsp, ev, data)
 {
-	PROCESS_BEGIN();	
-	rtimer_arch_init();
-	static uint32_t start_time = RTIMER_NOW();
-	static QueueEntry *entry = queue_current_entry();
-	while( entry != NULL && time_left_for_step( entry, start_time ) ) {
-		perform_next_step( entry );
-		if( entry->state == DONE ) {
-			finish_operation( entry );
+	PROCESS_BEGIN();
+	while(1) {
+		PROCESS_WAIT_EVENT();
+		rtimer_arch_init();
+		static uint32_t start_time = RTIMER_NOW();
+		static QueueEntry *entry = queue_current_entry();
+	
+		while( entry != NULL && time_left_for_step( entry, start_time ) ) {
+			perform_next_step( entry );
+			if( entry->state == DONE ) {
+				finish_operation( entry );
+			}
+		}
+		if( queue_len == 0 ) {
+			if( !try_internal_operation() ) {
+				goto end_fsp;
+			}
+		} else {
+			process_post( &fsp, PROCESS_EVENT_CONTINUE, NULL );
 		}
 	}
-	if( queue_len == 0 ) {
-		try_internal_operation();
-	} else {
-		//reschedule
-	}
+	end_fsp:
 	PROCESS_END();
 }
 
@@ -278,7 +292,7 @@ uint8_t time_left_for_step( QueueEntry *entry, uint32_t start_time ) {
 	if( step_type == INTERNAL ) {
 		return 1;
 	}
-	
+
 	time_left = FAT_COOP_SLOT_SIZE_TICKS - (RTIMER_NOW() - start_time);
 	if( step_type == READ ) {
 		if( time_left > FAT_COOP_TIME_READ_BLOCK_TICKS ) {
@@ -286,7 +300,7 @@ uint8_t time_left_for_step( QueueEntry *entry, uint32_t start_time ) {
 		}
 		return 0;
 	}
-	
+
 	if( step_type == WRITE ) {
 		if( time_left > FAT_COOP_TIME_WRITE_BLOCK_TICKS ) {
 			return 1;
@@ -329,17 +343,17 @@ void push_on_buffer( uint8_t *source, uint16_t length ) {
 	if( pos == writeBuffer_start ) {
 		return 1;
 	}
-	
+
 	if( pos < writeBuffer_start ) {
 		free = writeBuffer_start - pos;
 	} else {
 		free = (FAT_COOP_BUFFER_SIZE - pos) + writeBuffer_start;
 	}
-	
+
 	if( length > free ) {
 		return 2;
 	}
-	
+
 	if( pos + length > FAT_COOP_BUFFER_SIZE ) {
 		memcpy( &(writeBuffer[pos]), source, FAT_COOP_BUFFER_SIZE - pos );
 		memcpy( &(writeBuffer[0]), source, length - (FAT_COOP_BUFFER_SIZE - pos) );
@@ -357,3 +371,270 @@ void pop_from_buffer( uint16_t length ) {
 	writeBuffer_len -= length;
 }
 
+/** From fat.c */
+extern struct file_system mounted;
+/** From fat.c */
+extern struct file fat_file_pool[FAT_FD_POOL_SIZE];
+/** From fat.c */
+extern struct filde_desc fat_fd_pool[FAT_FD_POOL_SIZE];
+
+int8_t ccfs_open( const char *name, int flags, uint8_t *token ) {
+	int fd = -1;
+	uint8_t i = 0;
+	QueueEntry entry;
+	for( i = 0; i < FAT_FD_POOL_SIZE; i++ ) {
+		if( fat_fd_pool[i].file == 0 ) {
+			fd = i;
+			break;
+		}
+	}
+	if( fd == -1 ) {
+		return 2;
+	}
+
+	if( queue_len == FAT_COOP_QUEUE_SIZE ) {
+		return 1;
+	}
+	
+	process_start( fsp, NULL );	
+	if( process_post( &fsp, PROCESS_EVENT_CONTINUE, NULL ) == PROCESS_ERR_FULL ) {
+		return 3;
+	}
+
+	entry.token = queue[(queue_start + queue_len) % FAT_COOP_QUEUE_SIZE].token + 1;
+	if( token != NULL ) {
+		*token = entry.token;
+	}
+	entry.op = CFS_OPEN;
+	entry.source_process = PROCESS_CURRENT();
+	entry.parameters.open.name = name;
+	entry.parameters.open.flags = flags;
+	entry.ret_value = fd;
+	entry.state = QUEUED;
+
+	fat_fd_pool[fd].file = &(fat_file_pool[fd]);
+	
+	return 0;
+}
+
+int8_t ccfs_close( int fd, uint8_t *token) {
+	if( queue_len == FAT_COOP_QUEUE_SIZE ) {
+		return 1;
+	}
+	
+	process_start( fsp, NULL );	
+	if( process_post( &fsp, PROCESS_EVENT_CONTINUE, NULL ) == PROCESS_ERR_FULL ) {
+		return 3;
+	}
+
+	entry.token = queue[(queue_start + queue_len) % FAT_COOP_QUEUE_SIZE].token + 1;
+	if( token != NULL ) {
+		*token = entry.token;
+	}
+	entry.op = CFS_CLOSE;
+	entry.source_process = PROCESS_CURRENT();
+	entry.parameters.generic.fd = fd;
+	entry.state = QUEUED;
+	return 0;
+}
+
+int8_t ccfs_read( int fd, uint8_t *buf, uint16_t length, uint8_t *token ) {
+	if( queue_len == FAT_COOP_QUEUE_SIZE ) {
+		return 1;
+	}
+	
+	process_start( fsp, NULL );	
+	if( process_post( &fsp, PROCESS_EVENT_CONTINUE, NULL ) == PROCESS_ERR_FULL ) {
+		return 3;
+	}
+
+	entry.token = queue[(queue_start + queue_len) % FAT_COOP_QUEUE_SIZE].token + 1;
+	if( token != NULL ) {
+		*token = entry.token;
+	}
+	entry.op = CFS_READ;
+	entry.source_process = PROCESS_CURRENT();
+	entry.parameters.generic.fd = fd;
+	entry.parameters.generic.buffer = buf;
+	entry.parameters.generic.length = length;
+	entry.state = QUEUED;
+
+	return 0;
+}
+
+int8_t ccfs_write( int fd, uint8_t *buf, uint16_t length, uint8_t *token ) {
+	if( queue_len == FAT_COOP_QUEUE_SIZE ) {
+		return 1;
+	}
+	
+	process_start( fsp, NULL );	
+	if( process_post( &fsp, PROCESS_EVENT_CONTINUE, NULL ) == PROCESS_ERR_FULL ) {
+		return 3;
+	}
+
+	entry.token = queue[(queue_start + queue_len) % FAT_COOP_QUEUE_SIZE].token + 1;
+	if( token != NULL ) {
+		*token = entry.token;
+	}
+	entry.op = CFS_WRITE;
+	entry.source_process = PROCESS_CURRENT();
+	entry.parameters.generic.fd = fd;
+
+	if( !fat_buffer_available( length ) ) {
+		return 2;
+	}
+	entry.parameters.generic.buffer = &(writeBuffer[(writeBuffer_start + writeBuffer_len) % FAT_COOP_BUFFER_SIZE]);
+	push_on_buffer( buf, length );
+	entry.parameters.generic.length = length;
+	entry.state = QUEUED;
+
+	return 0;
+}
+
+int8_t ccfs_seek( int fd, cfs_offset_t offset, int whence, uint8_t *token) {
+	if( queue_len == FAT_COOP_QUEUE_SIZE ) {
+		return 1;
+	}
+	
+	process_start( fsp, NULL );	
+	if( process_post( &fsp, PROCESS_EVENT_CONTINUE, NULL ) == PROCESS_ERR_FULL ) {
+		return 3;
+	}
+
+	entry.token = queue[(queue_start + queue_len) % FAT_COOP_QUEUE_SIZE].token + 1;
+	if( token != NULL ) {
+		*token = entry.token;
+	}
+	entry.op = CFS_SEEK;
+	entry.source_process = PROCESS_CURRENT();
+	entry.parameters.seek.fd = fd;
+	entry.parameters.seek.offset = offset;
+	entry.parameters.seek.whence = whence;
+	entry.state = QUEUED;
+
+	return 0;
+}
+
+int8_t ccfs_remove( const char *name, uint8_t *token ) {
+	if( queue_len == FAT_COOP_QUEUE_SIZE ) {
+		return 1;
+	}
+	
+	process_start( fsp, NULL );	
+	if( process_post( &fsp, PROCESS_EVENT_CONTINUE, NULL ) == PROCESS_ERR_FULL ) {
+		return 3;
+	}
+
+	entry.token = queue[(queue_start + queue_len) % FAT_COOP_QUEUE_SIZE].token + 1;
+	if( token != NULL ) {
+		*token = entry.token;
+	}
+	entry.op = CFS_REMOVE;
+	entry.source_process = PROCESS_CURRENT();
+	entry.parameters.open.name = name;
+	entry.state = QUEUED;
+
+	return 0;
+}
+
+int8_t ccfs_opendir( struct cfs_dir *dirp, const char *name, uint8_t *token ) {
+	if( queue_len == FAT_COOP_QUEUE_SIZE ) {
+		return 1;
+	}
+	
+	process_start( fsp, NULL );	
+	if( process_post( &fsp, PROCESS_EVENT_CONTINUE, NULL ) == PROCESS_ERR_FULL ) {
+		return 3;
+	}
+
+	entry.token = queue[(queue_start + queue_len) % FAT_COOP_QUEUE_SIZE].token + 1;
+	if( token != NULL ) {
+		*token = entry.token;
+	}
+	entry.op = CFS_OPENDIR;
+	entry.source_process = PROCESS_CURRENT();
+	entry.parameters.dir.dirp = dirp;
+	entry.parameters.dir.u.name = name;
+	entry.state = QUEUED;
+
+	return 0;
+}
+
+int8_t ccfs_readdir( struct cfs_dir *dirp, struct cfs_dirent *dirent, uint8_t *token) {
+	if( queue_len == FAT_COOP_QUEUE_SIZE ) {
+		return 1;
+	}
+	
+	process_start( fsp, NULL );	
+	if( process_post( &fsp, PROCESS_EVENT_CONTINUE, NULL ) == PROCESS_ERR_FULL ) {
+		return 3;
+	}
+
+	entry.token = queue[(queue_start + queue_len) % FAT_COOP_QUEUE_SIZE].token + 1;
+	if( token != NULL ) {
+		*token = entry.token;
+	}
+	entry.op = CFS_READDIR;
+	entry.source_process = PROCESS_CURRENT();
+	entry.parameters.dir.dirp = dirp;
+	entry.parameters.dir.u.dirent = dirent;
+	entry.state = QUEUED;
+
+	return 0;
+}
+
+int8_t ccfs_closedir(struct cfs_dir *dirp, uint8_t *token) {
+	if( queue_len == FAT_COOP_QUEUE_SIZE ) {
+		return 1;
+	}
+	
+	process_start( fsp, NULL );	
+	if( process_post( &fsp, PROCESS_EVENT_CONTINUE, NULL ) == PROCESS_ERR_FULL ) {
+		return 3;
+	}
+
+	entry.token = queue[(queue_start + queue_len) % FAT_COOP_QUEUE_SIZE].token + 1;
+	if( token != NULL ) {
+		*token = entry.token;
+	}
+	entry.op = CFS_CLOSEDIR;
+	entry.source_process = PROCESS_CURRENT();
+	entry.parameters.dir.dirp = dirp;
+	entry.state = QUEUED;
+
+	return 0;
+}
+
+uint8_t fat_op_status( uint8_t token ) {
+	uint16_t i = 0;
+	QueueEntry *entry
+	for( i = 0; i < queue_len; i++ ) {
+		entry = &(queue[(queue_start + i) % FAT_COOP_QUEUE_SIZE].token);
+		if( entry->token == token ) {
+			return entry->state;
+		}
+	}
+	return 0;
+}
+
+uint16_t fat_estimate_by_token( uint8_t token ) {}
+uint16_t fat_estimate_by_parameter( Operation type, uint16_t length ) {}
+
+uint8_t fat_buffer_available( uint16_t length ) {
+	uint16_t pos = (writeBuffer_start + writeBuffer_len) % FAT_COOP_BUFFER_SIZE;
+	uint16_t free = 0;
+	if( pos == writeBuffer_start ) {
+		return 0;
+	}
+
+	if( pos < writeBuffer_start ) {
+		free = writeBuffer_start - pos;
+	} else {
+		free = (FAT_COOP_BUFFER_SIZE - pos) + writeBuffer_start;
+	}
+
+	if( length > free ) {
+		return 0;
+	}
+	return 1;
+}
