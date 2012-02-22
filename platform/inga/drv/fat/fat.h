@@ -6,9 +6,7 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <stdint.h>
-#ifndef FAT_COOPERATIVE
-	#include "cfs/cfs.h"
-#endif
+#include "cfs/cfs.h"
 
 #define FAT12 0
 #define FAT16 1
@@ -16,6 +14,8 @@
 #define FAT_INVALID 3
 
 #define EOC 0x0FFFFFFF
+
+#define FAT_FD_POOL_SIZE 5
 
 struct FAT_Info {
 	uint8_t type; /** Either FAT16, FAT32 or FAT_INVALID */

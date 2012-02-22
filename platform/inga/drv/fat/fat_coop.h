@@ -10,23 +10,23 @@
 #define FAT_COOP_TIME_WRITE_BLOCK_MS 12
 
 enum {
-	QUEUED = 1,
-	INPROGRESS,
-	DONE
+	STATUS_QUEUED = 1,
+	STATUS_INPROGRESS,
+	STATUS_DONE
 };
 
 #include "fat.h"
 
 typedef enum {
-	CFS_OPEN,
-	CFS_CLOSE,
-	CFS_WRITE,
-	CFS_READ,
-	CFS_SEEK,
-	CFS_REMOVE,
-	CFS_OPENDIR,
-	CFS_READDIR,
-	CFS_CLOSEDIR
+	COOP_CFS_OPEN,
+	COOP_CFS_CLOSE,
+	COOP_CFS_WRITE,
+	COOP_CFS_READ,
+	COOP_CFS_SEEK,
+	COOP_CFS_REMOVE,
+	COOP_CFS_OPENDIR,
+	COOP_CFS_READDIR,
+	COOP_CFS_CLOSEDIR
 } Operation;
 
 int8_t ccfs_open( const char *name, int flags, uint8_t *token );

@@ -66,17 +66,35 @@ static uint8_t *sp = 0;
 static uint8_t *sp_save = 0;
 static uint8_t next_step_type = INTERNAL;
 
+
+/** From fat.c */
+extern struct file_system mounted;
+/** From fat.c */
+extern struct file fat_file_pool[FAT_FD_POOL_SIZE];
+/** From fat.c */
+extern struct file_desc fat_fd_pool[FAT_FD_POOL_SIZE];
+
+void coop_mt_init( void *data );
+void coop_switch_sp();
+QueueEntry* queue_current_entry();
+void perform_next_step( QueueEntry *entry );
+void finish_operation( QueueEntry *entry );
+uint8_t time_left_for_step( QueueEntry *entry, uint32_t start_time );
+uint8_t try_internal_operation();
+uint8_t queue_rm_top_entry();
+uint8_t queue_add_entry( QueueEntry *entry );
+
 void operation(void *data) {
 	QueueEntry *entry = (QueueEntry *) data;
 
 	coop_step_allowed = 1;
 
-	if( entry->state != INPROGRESS ) {
-		entry->state = INPROGRESS;
+	if( entry->state != STATUS_INPROGRESS ) {
+		entry->state = STATUS_INPROGRESS;
 	}
 
 	switch(entry->op){
-		case CFS_OPEN:
+		case COOP_CFS_OPEN:
 			{
 				int fd = entry->ret_value;
 				entry->ret_value = cfs_open( entry->parameters.open.name, entry->parameters.open.flags );
@@ -85,45 +103,43 @@ void operation(void *data) {
 				}
 			}			
 			break;
-		case CFS_CLOSE:
+		case COOP_CFS_CLOSE:
 			cfs_close( entry->parameters.generic.fd );
 			break;
-		case CFS_WRITE:
+		case COOP_CFS_WRITE:
 			entry->ret_value = cfs_write( entry->parameters.generic.fd, entry->parameters.generic.buffer,
 				entry->parameters.generic.length );
 			break;
-		case CFS_READ:
+		case COOP_CFS_READ:
 			entry->ret_value = cfs_read( entry->parameters.generic.fd, entry->parameters.generic.buffer,
 				entry->parameters.generic.length );
 			break;
-		case CFS_SEEK:
+		case COOP_CFS_SEEK:
 			entry->ret_value = cfs_seek( entry->parameters.seek.fd, entry->parameters.seek.offset,
 				entry->parameters.seek.whence );
 			break;
-		case CFS_REMOVE:
+		case COOP_CFS_REMOVE:
 			entry->ret_value = cfs_remove( entry->parameters.open.name );
 			break;
-		case CFS_OPENDIR:
+		case COOP_CFS_OPENDIR:
 			entry->ret_value = cfs_opendir( entry->parameters.dir.dirp, entry->parameters.dir.u.name );
-			break
-		case CFS_READDIR:
+			break;
+		case COOP_CFS_READDIR:
 			entry->ret_value = cfs_readdir( entry->parameters.dir.dirp, entry->parameters.dir.u.dirent );
 			break;
-		case CFS_CLOSEDIR:
-			entry->ret_value = cfs_closedir( entry->parameters.dir.dirp );
+		case COOP_CFS_CLOSEDIR:
+			cfs_closedir( entry->parameters.dir.dirp );
 			break;
 	}
-	entry->state = DONE;
+	entry->state = STATUS_DONE;
 }
 
 /**
  * This Function jumps back to perform_next_step()
  */
-void coop_finsihed_op() {
+void coop_finished_op() {
 	/* Change SP back to original */
 	coop_switch_sp();
-	/* Init the internal Stack for the next Operation */
-	coop_mt_init();
 }
 
 /**
@@ -238,8 +254,6 @@ void coop_switch_sp() {
   sei ();
 }
 
-static struct process fsp;
-
 PROCESS(fsp, "FileSystemProcess");
 PROCESS_THREAD(fsp, ev, data)
 {
@@ -247,25 +261,30 @@ PROCESS_THREAD(fsp, ev, data)
 	while(1) {
 		PROCESS_WAIT_EVENT();
 		rtimer_arch_init();
-		static uint32_t start_time = RTIMER_NOW();
-		static QueueEntry *entry = queue_current_entry();
+		static uint32_t start_time = 0;
+		static QueueEntry *entry;
+		entry = queue_current_entry();
+		start_time = RTIMER_NOW();
 	
 		while( entry != NULL && time_left_for_step( entry, start_time ) ) {
 			perform_next_step( entry );
-			if( entry->state == DONE ) {
+			if( entry->state == STATUS_DONE ) {
 				finish_operation( entry );
 			}
 		}
 		if( queue_len == 0 ) {
 			if( !try_internal_operation() ) {
-				goto end_fsp;
+				break;
 			}
 		} else {
 			process_post( &fsp, PROCESS_EVENT_CONTINUE, NULL );
 		}
 	}
-	end_fsp:
 	PROCESS_END();
+}
+
+uint8_t try_internal_operation() {
+	return 0;
 }
 
 /**
@@ -283,6 +302,11 @@ void finish_operation( QueueEntry *entry ) {
 	// Reset memory
 	// Remove entry
 	queue_rm_top_entry();
+	/* Init the internal Stack for the next Operation */
+	entry = queue_current_entry();
+	if( entry != NULL ) {
+		coop_mt_init( (void *) entry );
+	}
 }
 
 uint8_t time_left_for_step( QueueEntry *entry, uint32_t start_time ) {
@@ -323,6 +347,9 @@ uint8_t queue_add_entry( QueueEntry *entry ) {
 		return 1;
 	}
 	memcpy( &(queue[pos]), entry, sizeof(QueueEntry) );
+	if( queue_len == 0 ) {
+		coop_mt_init( (void *) &(queue[pos]) );
+	}
 	queue_len++;
 	return 0;
 }
@@ -337,7 +364,7 @@ uint8_t queue_rm_top_entry() {
 	return 0;
 }
 
-void push_on_buffer( uint8_t *source, uint16_t length ) {
+uint8_t push_on_buffer( uint8_t *source, uint16_t length ) {
 	uint16_t pos = (writeBuffer_start + writeBuffer_len) % FAT_COOP_BUFFER_SIZE;
 	uint16_t free = 0;
 	if( pos == writeBuffer_start ) {
@@ -361,6 +388,7 @@ void push_on_buffer( uint8_t *source, uint16_t length ) {
 		memcpy( &(writeBuffer[pos]), source, length );
 	}
 	writeBuffer_len += length;
+	return 0;
 }
 
 void pop_from_buffer( uint16_t length ) {
@@ -370,13 +398,6 @@ void pop_from_buffer( uint16_t length ) {
 	writeBuffer_start = (writeBuffer_start + length) % FAT_COOP_BUFFER_SIZE;
 	writeBuffer_len -= length;
 }
-
-/** From fat.c */
-extern struct file_system mounted;
-/** From fat.c */
-extern struct file fat_file_pool[FAT_FD_POOL_SIZE];
-/** From fat.c */
-extern struct filde_desc fat_fd_pool[FAT_FD_POOL_SIZE];
 
 int8_t ccfs_open( const char *name, int flags, uint8_t *token ) {
 	int fd = -1;
@@ -396,7 +417,7 @@ int8_t ccfs_open( const char *name, int flags, uint8_t *token ) {
 		return 1;
 	}
 	
-	process_start( fsp, NULL );	
+	process_start( &fsp, NULL );	
 	if( process_post( &fsp, PROCESS_EVENT_CONTINUE, NULL ) == PROCESS_ERR_FULL ) {
 		return 3;
 	}
@@ -405,24 +426,25 @@ int8_t ccfs_open( const char *name, int flags, uint8_t *token ) {
 	if( token != NULL ) {
 		*token = entry.token;
 	}
-	entry.op = CFS_OPEN;
+	entry.op = COOP_CFS_OPEN;
 	entry.source_process = PROCESS_CURRENT();
 	entry.parameters.open.name = name;
 	entry.parameters.open.flags = flags;
 	entry.ret_value = fd;
-	entry.state = QUEUED;
+	entry.state = STATUS_QUEUED;
 
 	fat_fd_pool[fd].file = &(fat_file_pool[fd]);
 	
 	return 0;
 }
 
-int8_t ccfs_close( int fd, uint8_t *token) {
+int8_t ccfs_close( int fd, uint8_t *token ) {
+	QueueEntry entry;
 	if( queue_len == FAT_COOP_QUEUE_SIZE ) {
 		return 1;
 	}
 	
-	process_start( fsp, NULL );	
+	process_start( &fsp, NULL );	
 	if( process_post( &fsp, PROCESS_EVENT_CONTINUE, NULL ) == PROCESS_ERR_FULL ) {
 		return 3;
 	}
@@ -431,19 +453,20 @@ int8_t ccfs_close( int fd, uint8_t *token) {
 	if( token != NULL ) {
 		*token = entry.token;
 	}
-	entry.op = CFS_CLOSE;
+	entry.op = COOP_CFS_CLOSE;
 	entry.source_process = PROCESS_CURRENT();
 	entry.parameters.generic.fd = fd;
-	entry.state = QUEUED;
+	entry.state = STATUS_QUEUED;
 	return 0;
 }
 
 int8_t ccfs_read( int fd, uint8_t *buf, uint16_t length, uint8_t *token ) {
+	QueueEntry entry;
 	if( queue_len == FAT_COOP_QUEUE_SIZE ) {
 		return 1;
 	}
 	
-	process_start( fsp, NULL );	
+	process_start( &fsp, NULL );	
 	if( process_post( &fsp, PROCESS_EVENT_CONTINUE, NULL ) == PROCESS_ERR_FULL ) {
 		return 3;
 	}
@@ -452,22 +475,23 @@ int8_t ccfs_read( int fd, uint8_t *buf, uint16_t length, uint8_t *token ) {
 	if( token != NULL ) {
 		*token = entry.token;
 	}
-	entry.op = CFS_READ;
+	entry.op = COOP_CFS_READ;
 	entry.source_process = PROCESS_CURRENT();
 	entry.parameters.generic.fd = fd;
 	entry.parameters.generic.buffer = buf;
 	entry.parameters.generic.length = length;
-	entry.state = QUEUED;
+	entry.state = STATUS_QUEUED;
 
 	return 0;
 }
 
 int8_t ccfs_write( int fd, uint8_t *buf, uint16_t length, uint8_t *token ) {
+	QueueEntry entry;
 	if( queue_len == FAT_COOP_QUEUE_SIZE ) {
 		return 1;
 	}
 	
-	process_start( fsp, NULL );	
+	process_start( &fsp, NULL );	
 	if( process_post( &fsp, PROCESS_EVENT_CONTINUE, NULL ) == PROCESS_ERR_FULL ) {
 		return 3;
 	}
@@ -476,7 +500,7 @@ int8_t ccfs_write( int fd, uint8_t *buf, uint16_t length, uint8_t *token ) {
 	if( token != NULL ) {
 		*token = entry.token;
 	}
-	entry.op = CFS_WRITE;
+	entry.op = COOP_CFS_WRITE;
 	entry.source_process = PROCESS_CURRENT();
 	entry.parameters.generic.fd = fd;
 
@@ -486,17 +510,18 @@ int8_t ccfs_write( int fd, uint8_t *buf, uint16_t length, uint8_t *token ) {
 	entry.parameters.generic.buffer = &(writeBuffer[(writeBuffer_start + writeBuffer_len) % FAT_COOP_BUFFER_SIZE]);
 	push_on_buffer( buf, length );
 	entry.parameters.generic.length = length;
-	entry.state = QUEUED;
+	entry.state = STATUS_QUEUED;
 
 	return 0;
 }
 
 int8_t ccfs_seek( int fd, cfs_offset_t offset, int whence, uint8_t *token) {
+	QueueEntry entry;
 	if( queue_len == FAT_COOP_QUEUE_SIZE ) {
 		return 1;
 	}
 	
-	process_start( fsp, NULL );	
+	process_start( &fsp, NULL );	
 	if( process_post( &fsp, PROCESS_EVENT_CONTINUE, NULL ) == PROCESS_ERR_FULL ) {
 		return 3;
 	}
@@ -505,22 +530,23 @@ int8_t ccfs_seek( int fd, cfs_offset_t offset, int whence, uint8_t *token) {
 	if( token != NULL ) {
 		*token = entry.token;
 	}
-	entry.op = CFS_SEEK;
+	entry.op = COOP_CFS_SEEK;
 	entry.source_process = PROCESS_CURRENT();
 	entry.parameters.seek.fd = fd;
 	entry.parameters.seek.offset = offset;
 	entry.parameters.seek.whence = whence;
-	entry.state = QUEUED;
+	entry.state = STATUS_QUEUED;
 
 	return 0;
 }
 
 int8_t ccfs_remove( const char *name, uint8_t *token ) {
+	QueueEntry entry;
 	if( queue_len == FAT_COOP_QUEUE_SIZE ) {
 		return 1;
 	}
 	
-	process_start( fsp, NULL );	
+	process_start( &fsp, NULL );	
 	if( process_post( &fsp, PROCESS_EVENT_CONTINUE, NULL ) == PROCESS_ERR_FULL ) {
 		return 3;
 	}
@@ -529,20 +555,21 @@ int8_t ccfs_remove( const char *name, uint8_t *token ) {
 	if( token != NULL ) {
 		*token = entry.token;
 	}
-	entry.op = CFS_REMOVE;
+	entry.op = COOP_CFS_REMOVE;
 	entry.source_process = PROCESS_CURRENT();
 	entry.parameters.open.name = name;
-	entry.state = QUEUED;
+	entry.state = STATUS_QUEUED;
 
 	return 0;
 }
 
 int8_t ccfs_opendir( struct cfs_dir *dirp, const char *name, uint8_t *token ) {
+	QueueEntry entry;
 	if( queue_len == FAT_COOP_QUEUE_SIZE ) {
 		return 1;
 	}
 	
-	process_start( fsp, NULL );	
+	process_start( &fsp, NULL );	
 	if( process_post( &fsp, PROCESS_EVENT_CONTINUE, NULL ) == PROCESS_ERR_FULL ) {
 		return 3;
 	}
@@ -551,21 +578,22 @@ int8_t ccfs_opendir( struct cfs_dir *dirp, const char *name, uint8_t *token ) {
 	if( token != NULL ) {
 		*token = entry.token;
 	}
-	entry.op = CFS_OPENDIR;
+	entry.op = COOP_CFS_OPENDIR;
 	entry.source_process = PROCESS_CURRENT();
 	entry.parameters.dir.dirp = dirp;
 	entry.parameters.dir.u.name = name;
-	entry.state = QUEUED;
+	entry.state = STATUS_QUEUED;
 
 	return 0;
 }
 
 int8_t ccfs_readdir( struct cfs_dir *dirp, struct cfs_dirent *dirent, uint8_t *token) {
+	QueueEntry entry;
 	if( queue_len == FAT_COOP_QUEUE_SIZE ) {
 		return 1;
 	}
 	
-	process_start( fsp, NULL );	
+	process_start( &fsp, NULL );	
 	if( process_post( &fsp, PROCESS_EVENT_CONTINUE, NULL ) == PROCESS_ERR_FULL ) {
 		return 3;
 	}
@@ -574,21 +602,22 @@ int8_t ccfs_readdir( struct cfs_dir *dirp, struct cfs_dirent *dirent, uint8_t *t
 	if( token != NULL ) {
 		*token = entry.token;
 	}
-	entry.op = CFS_READDIR;
+	entry.op = COOP_CFS_READDIR;
 	entry.source_process = PROCESS_CURRENT();
 	entry.parameters.dir.dirp = dirp;
 	entry.parameters.dir.u.dirent = dirent;
-	entry.state = QUEUED;
+	entry.state = STATUS_QUEUED;
 
 	return 0;
 }
 
 int8_t ccfs_closedir(struct cfs_dir *dirp, uint8_t *token) {
+	QueueEntry entry;
 	if( queue_len == FAT_COOP_QUEUE_SIZE ) {
 		return 1;
 	}
 	
-	process_start( fsp, NULL );	
+	process_start( &fsp, NULL );	
 	if( process_post( &fsp, PROCESS_EVENT_CONTINUE, NULL ) == PROCESS_ERR_FULL ) {
 		return 3;
 	}
@@ -597,19 +626,19 @@ int8_t ccfs_closedir(struct cfs_dir *dirp, uint8_t *token) {
 	if( token != NULL ) {
 		*token = entry.token;
 	}
-	entry.op = CFS_CLOSEDIR;
+	entry.op = COOP_CFS_CLOSEDIR;
 	entry.source_process = PROCESS_CURRENT();
 	entry.parameters.dir.dirp = dirp;
-	entry.state = QUEUED;
+	entry.state = STATUS_QUEUED;
 
 	return 0;
 }
 
 uint8_t fat_op_status( uint8_t token ) {
 	uint16_t i = 0;
-	QueueEntry *entry
+	QueueEntry *entry;
 	for( i = 0; i < queue_len; i++ ) {
-		entry = &(queue[(queue_start + i) % FAT_COOP_QUEUE_SIZE].token);
+		entry = &(queue[(queue_start + i) % FAT_COOP_QUEUE_SIZE]);
 		if( entry->token == token ) {
 			return entry->state;
 		}
@@ -617,8 +646,8 @@ uint8_t fat_op_status( uint8_t token ) {
 	return 0;
 }
 
-uint16_t fat_estimate_by_token( uint8_t token ) {}
-uint16_t fat_estimate_by_parameter( Operation type, uint16_t length ) {}
+uint16_t fat_estimate_by_token( uint8_t token ) { return 0; }
+uint16_t fat_estimate_by_parameter( Operation type, uint16_t length ) { return 0; }
 
 uint8_t fat_buffer_available( uint16_t length ) {
 	uint16_t pos = (writeBuffer_start + writeBuffer_len) % FAT_COOP_BUFFER_SIZE;
