@@ -299,13 +299,16 @@ void perform_next_step( QueueEntry *entry ) {
 
 void finish_operation( QueueEntry *entry ) {
 	// Send Event to source process
-	// Reset memory
+	// TODO Make a extra event struct with token and ret_value
+	process_post( entry->source_process, COOP_EVENT_OPERATION_DONE, &entry->ret_value);
 	// Remove entry
 	queue_rm_top_entry();
 	/* Init the internal Stack for the next Operation */
 	entry = queue_current_entry();
 	if( entry != NULL ) {
 		coop_mt_init( (void *) entry );
+	} else {
+		sp = NULL;
 	}
 }
 
