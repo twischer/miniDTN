@@ -8,6 +8,9 @@
 #define ATTR_ARCHIVE   0x20
 #define ATTR_LONG_NAME (ATTR_READ_ONLY | ATTR_HIDDEN | ATTR_SYSTEM | ATTR_VOLUME_ID)
 
+#define FAT_COOPERATIVE 1
+#define FAT_COOP_QUEUE_SIZE 15
+
 uint8_t sector_buffer[512];
 uint32_t sector_buffer_addr = 0;
 uint8_t sector_buffer_dirty = 0;
@@ -30,6 +33,7 @@ struct file fat_file_pool[FAT_FD_POOL_SIZE];
 struct file_desc fat_fd_pool[FAT_FD_POOL_SIZE];
 
 #ifdef FAT_COOPERATIVE
+#include "fat_coop.h"
 extern void coop_switch_sp();
 extern uint8_t coop_step_allowed;
 extern uint8_t next_step_type;
@@ -68,7 +72,9 @@ void fat_flush() {
 		#ifdef FAT_COOPERATIVE
 			if( !coop_step_allowed ) {
 				next_step_type = WRITE;
+			//printf("\n fat_flush : switch");
 				coop_switch_sp();
+			//printf("\n fat_flush : switch returned");
 			} else {
 				coop_step_allowed = 0;
 			}
@@ -218,7 +224,10 @@ uint8_t fat_mount_device( struct diskio_device_info *dev ) {
 	RootDirSectors = ((mounted.info.BPB_RootEntCnt * 32) + (mounted.info.BPB_BytesPerSec - 1)) / mounted.info.BPB_BytesPerSec;
 	mounted.first_data_sector = mounted.info.BPB_RsvdSecCnt + (mounted.info.BPB_NumFATs * mounted.info.BPB_FATSz) + RootDirSectors;
 	//printf("\nfat_mount_device(): first_data_sector = %lu", mounted.first_data_sector );
-	fat_read_block( mounted.first_data_sector );
+	#ifdef FAT_COOPERATIVE
+		//coop_step_allowed = 1;
+	#endif
+	//fat_read_block( mounted.first_data_sector );
 	//print_current_sector();
 	//printf("\nfat_mount_device(): Looking for \"Traum.txt\" = %lu", find_file_cluster("traum.txt") );
 	//printf("\nfat_mount_device(): Looking for \"prog1.txt\" = %lu", find_file_cluster("prog1.txt") );
@@ -253,11 +262,14 @@ uint8_t fat_read_block( uint32_t sector_addr ) {
 	#ifdef FAT_COOPERATIVE
 		if( !coop_step_allowed ) {
 			next_step_type = READ;
+			//printf("\n fat_read_block : switch");
 			coop_switch_sp();
+			//printf("\n fat_read_block : switch returned");
 		} else {
 			coop_step_allowed = 0;
 		}
 	#endif
+	//printf("\nfat_read_block : diskio_read_block call before");
 	return diskio_read_block( mounted.dev, sector_addr, sector_buffer );
 }
 
@@ -516,6 +528,7 @@ uint32_t find_nth_cluster( uint32_t start_cluster, uint32_t n ) {
 uint8_t fat_read_file( int fd, uint32_t clusters, uint32_t clus_offset ) {
 	/*Read the clus_offset Sector of the clusters-th cluster of the file fd*/
 	uint32_t cluster = 0;
+	uint8_t ret = 0;
 	if( clusters == fat_file_pool[fd].n ) {
 		cluster = fat_file_pool[fd].nth_cluster;
 	} else if( clusters == fat_file_pool[fd].n + 1) {
@@ -531,7 +544,10 @@ uint8_t fat_read_file( int fd, uint32_t clusters, uint32_t clus_offset ) {
 	//printf("\nfat_read_file(): sector = %lu", cluster2sector(cluster) + clus_offset);
 	if( cluster == 0 || is_EOC( cluster ) )
 		return 1;
-	return fat_read_block( cluster2sector(cluster) + clus_offset );
+	//printf("\nfat_read_file(): fat_read_block before");
+	ret = fat_read_block( cluster2sector(cluster) + clus_offset );
+	//printf("\nfat_read_file(): fat_read_block after");
+	return ret;
 }
 
 uint8_t fat_write_file( int fd, uint32_t clusters, uint32_t clus_offset ) {
@@ -697,6 +713,7 @@ cfs_open(const char *name, int flags)
 	uint8_t i = 0;
 	struct dir_entry dir_ent;
 	#ifndef FAT_COOPERATIVE
+		printf("\nNO COOP");
 	for( i = 0; i < FAT_FD_POOL_SIZE; i++ ) {
 		if( fat_fd_pool[i].file == 0 ) {
 			fd = i;
@@ -708,6 +725,7 @@ cfs_open(const char *name, int flags)
 		return fd;
 	#else
 		fd = queue[queue_start].ret_value;
+		printf("\ncfs_open() : fd = %d", fd);
 	#endif
 	// find file on Disk
 	if( !get_dir_entry( name, &dir_ent, &fat_file_pool[fd].dir_entry_sector, &fat_file_pool[fd].dir_entry_offset ) ) {

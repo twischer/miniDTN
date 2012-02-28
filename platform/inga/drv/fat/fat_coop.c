@@ -6,44 +6,58 @@ enum {
 	INTERNAL
 };
 
-typedef struct q_entry_generic_file_op {
-	int fd;
-	uint8_t *buffer;
-	uint16_t length;
-} GenericFileOp;
-
-typedef struct q_entry_open_file_op {
-	const char *name;
-	int flags;
-} OpenFileOp;
-
-typedef struct q_entry_seek_file_op {
-	int fd;
-	cfs_offset_t offset;
-	int whence;
-} SeekFileOp;
-
-typedef struct q_entry_dir_op {
-	struct cfs_dir *dirp;
-	union {
-		struct cfs_dirent *dirent;
-		const char *name;
-	} u;
-} DirOp;
-
-typedef struct q_entry {
-	uint8_t token;
-	Operation op;
-	struct process *source_process;
-	union {
-		GenericFileOp generic;
-		OpenFileOp open;
-		SeekFileOp seek;
-		DirOp dir;
-	} parameters;
-	uint8_t state;
-	int16_t ret_value;
-} QueueEntry;
+void printQueueEntry( QueueEntry *entry ) {
+	printf("\nQueueEntry %u", (uint16_t) entry);
+	printf("\n\ttoken = %u", entry->token);
+	printf("\n\tsource_process = %u", (uint16_t) entry->source_process);
+	printf("\n\top = ");
+	switch(entry->op) {
+		case COOP_CFS_OPEN:
+			printf("COOP_CFS_OPEN");
+			printf("\n\tname = %s", entry->parameters.open.name);
+			printf("\n\tflags = %d", entry->parameters.open.flags);
+			break;
+		case COOP_CFS_CLOSE:
+			printf("COOP_CFS_CLOSE");
+			printf("\n\tfd = %d", entry->parameters.generic.fd);
+			printf("\n\tbuffer = %u", (uint16_t)entry->parameters.generic.buffer);
+			printf("\n\tlength = %u", entry->parameters.generic.length);
+			break;
+		case COOP_CFS_WRITE:
+			printf("COOP_CFS_WRITE");
+			printf("\n\tfd = %d", entry->parameters.generic.fd);
+			printf("\n\tbuffer = %u", (uint16_t)entry->parameters.generic.buffer);
+			printf("\n\tlength = %u", entry->parameters.generic.length);
+			break;
+		case COOP_CFS_READ:
+			printf(" COOP_CFS_READ");
+			printf("\n\tfd = %d", entry->parameters.generic.fd);
+			printf("\n\tbuffer = %u", (uint16_t)entry->parameters.generic.buffer);
+			printf("\n\tlength = %u", entry->parameters.generic.length);
+			break;
+		case COOP_CFS_SEEK:
+			printf(" COOP_CFS_SEEK");
+			printf("\n\tfd = %d", entry->parameters.seek.fd);
+			printf("\n\toffset = %d", entry->parameters.seek.offset);
+			printf("\n\twhence = %d", entry->parameters.seek.whence);
+			break;
+		case COOP_CFS_REMOVE:
+			printf("OOP_CFS_REMOVE");
+			printf("\n\tname = %s", entry->parameters.open.name);
+			break;
+		case COOP_CFS_OPENDIR:
+			printf("OP_CFS_OPENDIR");
+			break;
+		case COOP_CFS_READDIR:
+			printf("OP_CFS_READDIR");
+			break;
+		case COOP_CFS_CLOSEDIR:
+			printf("OP_CFS_CLOSEDIR");
+			break;
+	}
+	printf("\n\tstate = %u", entry->state);
+	printf("\n\tret_value = %d", entry->ret_value);
+}
 
 uint8_t writeBuffer[FAT_COOP_BUFFER_SIZE];
 uint16_t writeBuffer_start, writeBuffer_len;
@@ -53,7 +67,7 @@ uint16_t queue_start, queue_len;
 
 uint8_t coop_step_allowed = 0;
 
-#define MS_TO_TICKS(ms) ((uint32_t)(ms * (RTIMER_SECOND / 1000.0)))
+#define MS_TO_TICKS(ms) ((uint32_t)(ms * (RTIMER_SECOND / 1000.0f)))
 
 #define FAT_COOP_SLOT_SIZE_TICKS MS_TO_TICKS(FAT_COOP_SLOT_SIZE_MS)
 #define FAT_COOP_TIME_READ_BLOCK_TICKS MS_TO_TICKS(FAT_COOP_TIME_READ_BLOCK_MS)
@@ -64,7 +78,7 @@ uint8_t coop_step_allowed = 0;
 static uint8_t stack[FAT_COOP_STACK_SIZE];
 static uint8_t *sp = 0;
 static uint8_t *sp_save = 0;
-static uint8_t next_step_type = INTERNAL;
+uint8_t next_step_type = INTERNAL;
 
 
 /** From fat.c */
@@ -86,6 +100,9 @@ uint8_t queue_add_entry( QueueEntry *entry );
 
 void operation(void *data) {
 	QueueEntry *entry = (QueueEntry *) data;
+	
+	//printf("\noperation");
+	//printQueueEntry( entry );
 
 	coop_step_allowed = 1;
 
@@ -101,6 +118,7 @@ void operation(void *data) {
 				if( entry->ret_value == -1 ) {
 					fat_fd_pool[fd].file = NULL;
 				}
+				//printQueueEntry( entry );
 			}			
 			break;
 		case COOP_CFS_CLOSE:
@@ -111,8 +129,10 @@ void operation(void *data) {
 				entry->parameters.generic.length );
 			break;
 		case COOP_CFS_READ:
+			//printf("\noperation() : cfs_read call");
 			entry->ret_value = cfs_read( entry->parameters.generic.fd, entry->parameters.generic.buffer,
 				entry->parameters.generic.length );
+			//printf("\noperation() : cfs_read call returned");
 			break;
 		case COOP_CFS_SEEK:
 			entry->ret_value = cfs_seek( entry->parameters.seek.fd, entry->parameters.seek.offset,
@@ -138,6 +158,9 @@ void operation(void *data) {
  * This Function jumps back to perform_next_step()
  */
 void coop_finished_op() {
+	//printf("\nOperation finished - switch back");
+	//printf("\nOperation finished - sp = %u", (uint16_t)sp);
+	//printf("\nOperation finished - sp_save = %u", (uint16_t)sp_save);
 	/* Change SP back to original */
 	coop_switch_sp();
 }
@@ -250,7 +273,7 @@ void coop_switch_sp() {
   __asm__("pop r1");
   __asm__("pop r0");
 
-  /* Renable interrupts */
+  /* Reenable interrupts */
   sei ();
 }
 
@@ -260,18 +283,25 @@ PROCESS_THREAD(fsp, ev, data)
 	PROCESS_BEGIN();
 	while(1) {
 		PROCESS_WAIT_EVENT();
-		rtimer_arch_init();
-		static uint32_t start_time = 0;
+		//rtimer_arch_init();
+		static uint32_t start_time = 0, p_time = 0;
 		static QueueEntry *entry;
+		printf("\n\nFileSystemProcess working");
 		entry = queue_current_entry();
+		//printQueueEntry( entry );
 		start_time = RTIMER_NOW();
 	
+	printf("\ntime_left...: start_time = %lu", start_time);
 		while( entry != NULL && time_left_for_step( entry, start_time ) ) {
+			watchdog_periodic();
 			perform_next_step( entry );
 			if( entry->state == STATUS_DONE ) {
 				finish_operation( entry );
+				entry = queue_current_entry();
 			}
 		}
+		p_time = RTIMER_NOW();
+		printf("\nFileSystemProcess: No More time? %lu", p_time);
 		if( queue_len == 0 ) {
 			if( !try_internal_operation() ) {
 				break;
@@ -292,15 +322,19 @@ uint8_t try_internal_operation() {
  */
 void perform_next_step( QueueEntry *entry ) {
 	if( sp == NULL ) {
+		//printf("\nperform_next_step() : sp == NULL");
 		coop_mt_init( (void *) entry );
 	}
+	//printf("\nperform_next_step() : switch");
 	coop_switch_sp();
+	//printf("\nperform_next_step() : switch returned");
+	//printf("\nperform_next_step() : next_step_type = %u", next_step_type);
 }
 
 void finish_operation( QueueEntry *entry ) {
 	// Send Event to source process
 	// TODO Make a extra event struct with token and ret_value
-	process_post( entry->source_process, COOP_EVENT_OPERATION_DONE, &entry->ret_value);
+	process_post( entry->source_process, /*COOP_EVENT_OPERATION_DONE*/PROCESS_EVENT_MSG, &(entry->ret_value));
 	// Remove entry
 	queue_rm_top_entry();
 	/* Init the internal Stack for the next Operation */
@@ -314,13 +348,24 @@ void finish_operation( QueueEntry *entry ) {
 
 uint8_t time_left_for_step( QueueEntry *entry, uint32_t start_time ) {
 	uint8_t step_type = 0;
-	uint32_t time_left = 0;
+	uint32_t time_left = RTIMER_NOW();
 	step_type = next_step_type;
+//	printf("\ntime_left...: start_time = %lu", start_time);
+//	printf("\ntime_left...: current_time = %lu", time_left);
+//	printf("\ntime_left...: FAT_COOP_SLOT_SIZE_TICKS = %lu", FAT_COOP_SLOT_SIZE_TICKS);
+//	printf("\ntime_left...: FAT_COOP_TIME_READ_BLOCK_TICKS = %lu", FAT_COOP_TIME_READ_BLOCK_TICKS);
+//	printf("\ntime_left...: 8 ms = %lu ticks", MS_TO_TICKS(8));
+//	printf("\ntime_left...: %lu ms = %lu ticks", FAT_COOP_SLOT_SIZE_MS, MS_TO_TICKS(FAT_COOP_SLOT_SIZE_MS));
+	time_left = RTIMER_NOW() - start_time;
+	if( FAT_COOP_SLOT_SIZE_TICKS < time_left) {
+		return 0;
+	}
+
 	if( step_type == INTERNAL ) {
 		return 1;
 	}
 
-	time_left = FAT_COOP_SLOT_SIZE_TICKS - (RTIMER_NOW() - start_time);
+	time_left = FAT_COOP_SLOT_SIZE_TICKS - time_left;
 	if( step_type == READ ) {
 		if( time_left > FAT_COOP_TIME_READ_BLOCK_TICKS ) {
 			return 1;
@@ -346,13 +391,13 @@ QueueEntry* queue_current_entry() {
 
 uint8_t queue_add_entry( QueueEntry *entry ) {
 	uint16_t pos = (queue_start + queue_len) % FAT_COOP_QUEUE_SIZE;
-	if( pos == queue_start ) {
+	if( pos == queue_start && queue_len > 0 ) {
 		return 1;
 	}
 	memcpy( &(queue[pos]), entry, sizeof(QueueEntry) );
-	if( queue_len == 0 ) {
-		coop_mt_init( (void *) &(queue[pos]) );
-	}
+	//if( queue_len == 0 ) {
+	//	coop_mt_init( (void *) &(queue[pos]) );
+	//}
 	queue_len++;
 	return 0;
 }
@@ -361,7 +406,7 @@ uint8_t queue_rm_top_entry() {
 	if( queue_len == 0 ) {
 		return 1;
 	}
-	memset( &(queue[queue_start]), 0, sizeof(QueueEntry) );
+	//memset( &(queue[queue_start]), 0, sizeof(QueueEntry) );
 	queue_start = (queue_start + 1) % FAT_COOP_QUEUE_SIZE;
 	queue_len--;
 	return 0;
@@ -435,9 +480,12 @@ int8_t ccfs_open( const char *name, int flags, uint8_t *token ) {
 	entry.parameters.open.flags = flags;
 	entry.ret_value = fd;
 	entry.state = STATUS_QUEUED;
+	//printQueueEntry( &entry );
 
 	fat_fd_pool[fd].file = &(fat_file_pool[fd]);
-	
+
+	queue_add_entry( &entry );
+
 	return 0;
 }
 
@@ -484,6 +532,8 @@ int8_t ccfs_read( int fd, uint8_t *buf, uint16_t length, uint8_t *token ) {
 	entry.parameters.generic.buffer = buf;
 	entry.parameters.generic.length = length;
 	entry.state = STATUS_QUEUED;
+
+	queue_add_entry( &entry );
 
 	return 0;
 }

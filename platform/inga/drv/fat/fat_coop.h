@@ -4,20 +4,45 @@
 #define FAT_COOPERATIVE 1
 #define FAT_COOP_BUFFER_SIZE 128
 #define FAT_COOP_QUEUE_SIZE 15
-#define FAT_COOP_SLOT_SIZE_MS 50
+#define FAT_COOP_SLOT_SIZE_MS 50L
 
 #define FAT_COOP_TIME_READ_BLOCK_MS 8
 #define FAT_COOP_TIME_WRITE_BLOCK_MS 12
 
 #define COOP_EVENT_OPERATION_DONE 59
+#include <stdint.h>
 
+#include "fat.h"
 enum {
 	STATUS_QUEUED = 1,
 	STATUS_INPROGRESS,
 	STATUS_DONE
 };
 
-#include "fat.h"
+typedef struct q_entry_generic_file_op {
+	int fd;
+	uint8_t *buffer;
+	uint16_t length;
+} GenericFileOp;
+
+typedef struct q_entry_open_file_op {
+	const char *name;
+	int flags;
+} OpenFileOp;
+
+typedef struct q_entry_seek_file_op {
+	int fd;
+	cfs_offset_t offset;
+	int whence;
+} SeekFileOp;
+
+typedef struct q_entry_dir_op {
+	struct cfs_dir *dirp;
+	union {
+		struct cfs_dirent *dirent;
+		const char *name;
+	} u;
+} DirOp;
 
 typedef enum {
 	COOP_CFS_OPEN,
@@ -30,6 +55,21 @@ typedef enum {
 	COOP_CFS_READDIR,
 	COOP_CFS_CLOSEDIR
 } Operation;
+
+typedef struct q_entry {
+	uint8_t token;
+	Operation op;
+	struct process *source_process;
+	union {
+		GenericFileOp generic;
+		OpenFileOp open;
+		SeekFileOp seek;
+		DirOp dir;
+	} parameters;
+	uint8_t state;
+	int16_t ret_value;
+} QueueEntry;
+
 
 int8_t ccfs_open( const char *name, int flags, uint8_t *token );
 int8_t ccfs_close( int fd, uint8_t *token);
@@ -45,4 +85,5 @@ uint16_t fat_estimate_by_token( uint8_t token );
 uint16_t fat_estimate_by_parameter( Operation type, uint16_t length );
 uint8_t fat_buffer_available( uint16_t length );
 
+void printQueueEntry( QueueEntry *entry );
 #endif

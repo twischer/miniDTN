@@ -6,15 +6,13 @@
 static struct diskio_device_info *default_device = 0;
 static struct diskio_device_info devices[DISKIO_MAX_DEVICES];
 
-/* TODO: Länge des Buffers sollte mitübergeben werden, macht die Nutzung einfacher */
-
 #define DISKIO_OP_WRITE_BLOCK  1
 #define DISKIO_OP_READ_BLOCK   2
 #define DISKIO_OP_WRITE_BLOCKS 3
 #define DISKIO_OP_READ_BLOCKS  4
 
 void print_device_info( struct diskio_device_info *dev ) {
-	printf("DiskIO Device Info\n");
+	printf("\nDiskIO Device Info\n");
 	printf("\ttype = ");
 	switch(dev->type & 0x7F) {
 		case DISKIO_DEVICE_TYPE_SD_CARD:
@@ -179,17 +177,17 @@ int diskio_detect_devices() {
 		return DISKIO_FAILURE;
 	}
 
-	if( at45db_init() == 0 ) {
-		devices[index].type = DISKIO_DEVICE_TYPE_GENERIC_FLASH;
-		devices[index].number = dev_num;
+//	if( at45db_init() == 0 ) {
+//		devices[index].type = DISKIO_DEVICE_TYPE_GENERIC_FLASH;
+//		devices[index].number = dev_num;
 		/* This Flash has 4096 Pages */
-		devices[index].num_sectors = 4096;
+//		devices[index].num_sectors = 4096;
 		/* A Page is 528 Bytes long, but for easier acces we use only 512 Byte*/
-		devices[index].sector_size = 512;
-		devices[index].first_sector = 0;
-		index += 1;
-	} else {
-		return DISKIO_FAILURE;
-	}
+//		devices[index].sector_size = 512;
+//		devices[index].first_sector = 0;
+//		index += 1;
+//	} else {
+//		return DISKIO_FAILURE;
+//	}
 	return DISKIO_SUCCESS;
 }

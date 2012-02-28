@@ -92,8 +92,6 @@ int mbr_hasPartition(struct mbr *mbr, uint8_t part_num) {
 	if( part_num > 4 || part_num < 1 ) {
 		return 0;
 	}
-	printf("status = %d\n", mbr->partition[part_num - 1].status);
-	printf("type = %d\n", mbr->partition[part_num - 1].type);
 	if( mbr->partition[part_num - 1].status != 0x00 && mbr->partition[part_num - 1].status != 0x80 ) {
 		return 0;
 	}

@@ -268,14 +268,18 @@ uint8_t microSD_init(void) {
 	i = 0;
 	while( (ret = microSD_write_cmd( cmd8, resp )) != 0x01 ) {
 		if( ret & 0x04 && ret != 0xFF ) {
+			#ifdef DEBUG
 			printf("\nmicroSD_init(): cmd8 not supported -> legacy card");
+			#endif
 			break;
 		}
 		i++;
 		if( i > 200 ) {
 			mspi_chip_release( MICRO_SD_CS );
 			microSD_deinit();
+			#ifdef DEBUG
 			printf("\nmicroSD_init(): cmd8 timeout -> %d", ret);
+			#endif
 			return 4;
 		}
 	}
@@ -404,7 +408,9 @@ uint8_t microSD_read_block(uint32_t addr, uint8_t *buffer) {
 	/* send CMD17 with address information. Chip select is done by
 	 * the microSD_write_cmd method and */
 	if ((i = microSD_write_cmd( cmd, NULL)) != 0x00) {
+		#ifdef DEBUG
 		printf("\nmicroSD_read_block(): CMD17 failure! (%u)",i);
+		#endif
 		return 1;
 	}
 
@@ -416,7 +422,9 @@ uint8_t microSD_read_block(uint32_t addr, uint8_t *buffer) {
 		}
 		//printf("%x ", ret);
 	}
+	#ifdef DEBUG
 	printf("\nmicroSD_read_block(): No Start Byte recieved, last was %d", ret);
+	#endif
 	return 2;
 
 	read:
