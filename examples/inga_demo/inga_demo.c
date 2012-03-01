@@ -149,20 +149,28 @@ PROCESS_THREAD(hello_world_process, ev, data)
                 //
                 /*############################################################*/
                 //Flash Test
-                //              uint8_t buffer[512];
-                //              uint16_t j, i;
-                //
-                //              for (i = 0; i < 10; i++) {
-                //                      //at45db_erase_page(i);
-                //                      for (j = 0; j < 512; j++) {
-                //                              buffer[j] = i;
-                //                      }
-                //                      at45db_write_buffer(0, buffer, 512);
-                //
-                //                      at45db_buffer_to_page(i);
-                //
-                //                      at45db_read_page_bypassed(i, 0, buffer, 512);
-                //              }
+                              uint8_t buffer[512];
+                              uint16_t j, i;
+                
+                              for (i = 0; i < 10; i++) {
+                                      //at45db_erase_page(i);
+                                      for (j = 0; j < 512; j++) {
+                                              buffer[j] = i;
+                                      }
+                                      at45db_write_buffer(0, buffer, 512);
+                
+                                      at45db_buffer_to_page(i);
+                
+                                      at45db_read_page_bypassed(i, 0, buffer, 512);
+
+									  	for(j = 0; j < 512; j++) {
+											printf("%02x", buffer[j]);
+											if( ((j+1) % 2) == 0 )
+												printf(" ");
+											if( ((j+1) % 32) == 0 )
+												printf("\n");
+										}
+                              }
 
         }
 
