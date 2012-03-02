@@ -64,6 +64,9 @@
 #include <avr/wdt.h>
 #include <avr/interrupt.h>
 
+/* Keep address over reboots */
+void *watchdog_return_addr __attribute__ ((section (".noinit")));
+
 //Not all AVR toolchains alias MCUSR to the older MSUSCR name
 //#if defined (__AVR_ATmega8__) || defined (__AVR_ATmega8515__) || defined (__AVR_ATmega16__)
 #if !defined (MCUSR) && defined (MCUCSR)
@@ -82,6 +85,7 @@ watchdog_init(void)
 /*  Clear startup bit and disable the wdt, whether or not it will be used.
     Random code may have caused the last reset.
  */
+    watchdog_return_addr = 0;
 	MCUSR&=~(1<<WDRF);
     wdt_disable();
 #if WATCHDOG_CONF_BALANCE && WATCHDOG_CONF_TIMEOUT >= 0
@@ -97,7 +101,12 @@ watchdog_start(void)
 	stopped--;
 	if(!stopped)
 #endif
+	{
 		wdt_enable(WATCHDOG_CONF_TIMEOUT);
+#if defined (__AVR_ATmega1284P__)
+		WDTCSR |= _BV(WDIE);
+#endif
+	}
 #endif  
 }
 /*---------------------------------------------------------------------------*/
@@ -120,6 +129,9 @@ watchdog_stop(void)
 	stopped++;
 #endif
 	wdt_disable();
+#if defined (__AVR_ATmega1284P__)
+	WDTCSR &= ~_BV(WDIE);
+#endif
 #endif
 }
 /*---------------------------------------------------------------------------*/
@@ -131,9 +143,12 @@ watchdog_reboot(void)
 	while(1); //loop
 }
 /*---------------------------------------------------------------------------*/
-#if 0
 /* Not all AVRs implement the wdt interrupt */
+#if defined (__AVR_ATmega1284P__)
 ISR(WDT_vect)
 {
+	/* The address is given in words (16-bit), but all GNU tools use bytes
+	 * so we need to multiply with 2 here. */
+	watchdog_return_addr = (void *)((unsigned int)__builtin_return_address(0)<<1);
 }
 #endif
