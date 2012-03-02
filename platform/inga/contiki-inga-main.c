@@ -445,6 +445,10 @@ get_txpower_from_eeprom(void) {
 void initialize(void)
 {
   uint8_t reason;
+  extern void *watchdog_return_addr;
+
+  /* Save the address where the watchdog occurred */
+  void *wdt_addr = watchdog_return_addr;
 
   /* Save the reset reason for later */
   reason = MCUSR;
@@ -511,6 +515,8 @@ uint8_t i;
   if (reason & _BV(PORF))
          PRINTA("Power-on ");
   PRINTA("\n");
+  if (reason & _BV(WDRF))
+	PRINTA("Watchdog possibly occured at address %p\n", wdt_addr);
 
   /* Flash initialization */
   at45db_init();
