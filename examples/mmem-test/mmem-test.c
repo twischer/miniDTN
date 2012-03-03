@@ -44,6 +44,7 @@
 #include "sys/test.h"
 
 #include <stdio.h>
+#include <string.h>
 
 #define NUM_CHUNKS 5
 #define CHUNK_SIZE 100
@@ -53,6 +54,7 @@ uint32_t cycles;
 /*---------------------------------------------------------------------------*/
 PROCESS(mmem_inorder_tester, "MMEM free in order");
 PROCESS(mmem_revorder_tester, "MMEM free reverse order");
+PROCESS(mmem_realloc_tester, "MMEM reallocation");
 PROCESS(profiler, "profiler");
 AUTOSTART_PROCESSES(&profiler);
 /*---------------------------------------------------------------------------*/
@@ -114,6 +116,54 @@ PROCESS_THREAD(mmem_revorder_tester, ev, data)
   PROCESS_END();
 }
 /*---------------------------------------------------------------------------*/
+PROCESS_THREAD(mmem_realloc_tester, ev, data)
+{
+  uint8_t i;
+  static int diff = 10;
+  int ret;
+  static struct mmem memlist[NUM_CHUNKS];
+
+  PROCESS_BEGIN();
+
+  cycles = 0;
+  printf("Starting MMEM reallocation test\n");
+
+  /* Allocate the memory... */
+  for (i=0;i<NUM_CHUNKS;i++) {
+    if (!mmem_alloc(&memlist[i], CHUNK_SIZE))
+      TEST_FAIL("mmem_alloc failed\n");
+    memset(memlist[i].ptr, i, CHUNK_SIZE);
+  }
+
+  while (1) {
+    /* and reallocate it */
+    for (i=0;i<NUM_CHUNKS;i++) {
+      /* Test that the end of memory is still intact */
+      if (*((char *)memlist[i].ptr+memlist[i].size-1) != i) {
+	      printf("got: %u, wanted %u\n", *((char *)memlist[i].ptr+memlist[i].size-1), i);
+	      TEST_FAIL("mmem_realloc memory corruption at end\n");
+      }
+      /* Test that the beginning of the memory is still intact */
+      if (*(char *)memlist[i].ptr != i)
+	      TEST_FAIL("mmem_realloc memory corruption at beginning\n");
+      ret = mmem_realloc(&memlist[i], memlist[i].size + diff);
+      if (!ret) {
+	      TEST_FAIL("realloc failed\n");
+	      continue;
+      }
+      if (diff > 0)
+	      memset((char *)memlist[i].ptr + memlist[i].size-diff, i, diff);
+    }
+
+    cycles += 1;
+    diff = -diff;
+
+    PROCESS_PAUSE();
+  }
+
+  PROCESS_END();
+}
+/*---------------------------------------------------------------------------*/
 
 PROCESS_THREAD(profiler, ev, data)
 {
@@ -141,6 +191,17 @@ PROCESS_THREAD(profiler, ev, data)
 	profiling_stop();
 	profiling_report("mmem-revorder", 0);
 	TEST_REPORT("mmem-revorder", cycles*NUM_CHUNKS, 20, "mmem_alloc/s");
+
+	/* Reset profiling for next test */
+	profiling_init();
+	profiling_start();
+	process_start(&mmem_realloc_tester, NULL);
+	etimer_set(&timer, CLOCK_SECOND*20);
+	PROCESS_WAIT_UNTIL(etimer_expired(&timer));
+	process_exit(&mmem_realloc_tester);
+	profiling_stop();
+	profiling_report("mmem-realloc", 0);
+	TEST_REPORT("mmem-realloc", cycles*NUM_CHUNKS, 20, "mmem_realloc/s");
 	TEST_PASS();
 
 	PROCESS_END();
