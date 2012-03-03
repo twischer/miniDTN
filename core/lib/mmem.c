@@ -188,8 +188,14 @@ mmem_reorg(struct mmem *old, struct mmem *new)
 void
 mmem_init(void)
 {
+  static int inited = 0;
+  if (inited) {
+	  PRINTF("Duplicate init\n");
+	  return;
+  }
   list_init(mmemlist);
   avail_memory = MMEM_SIZE;
+  inited = 1;
 }
 /*---------------------------------------------------------------------------*/
 
