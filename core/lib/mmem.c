@@ -50,6 +50,14 @@
 #include "contiki-conf.h"
 #include <string.h>
 
+#define DEBUG 0
+#if DEBUG
+#include <stdio.h>
+#define PRINTF(...) printf(__VA_ARGS__)
+#else
+#define PRINTF(...)
+#endif
+
 #ifdef MMEM_CONF_SIZE
 #define MMEM_SIZE MMEM_CONF_SIZE
 #else
@@ -85,11 +93,11 @@ mmem_alloc(struct mmem *m, unsigned int size)
 {
   /* Check if we have enough memory left for this allocation. */
   if((avail_memory < size) ) {
-    printf("MMEM: %u < %u\n",avail_memory,size);
+    PRINTF("MMEM: %u < %u\n",avail_memory,size);
     return 0;
   }
   if (avail_memory> MMEM_SIZE){
-    	printf("MMEM: %u >  %u\n",avail_memory,MMEM_SIZE);
+	PRINTF("MMEM: %u >  %u\n",avail_memory,MMEM_SIZE);
 	return 0;
   }
 
@@ -124,7 +132,7 @@ void
 mmem_free(struct mmem *m)
 {
   if(m->size > MMEM_SIZE - avail_memory){
-  	printf("MMEM: too much free %u\n",m->size);
+	PRINTF("MMEM: too much free %u\n",m->size);
 	watchdog_stop();
 	while(1);
         return;
@@ -144,7 +152,7 @@ mmem_free(struct mmem *m)
   }
 
   avail_memory += m->size;
-//  printf("MMEM: free %u\n",avail_memory);
+//  PRINTF("MMEM: free %u\n",avail_memory);
 
   /* Remove the memory block from the list. */
   list_remove(mmemlist, m);
