@@ -19,16 +19,6 @@
 #endif
 
 
-
-void mmem_realloc(struct mmem * mem, int oldsize, int size) {
-	struct mmem mmem_tmp;
-	mmem_alloc(&mmem_tmp, size);
-	memcpy(mmem_tmp.ptr, mem->ptr, oldsize);
-	mmem_free(mem);
-	memset(mem, 0, sizeof(struct mmem));
-	memcpy(mem, &mmem_tmp, sizeof(struct mmem));
-}
-
 uint8_t create_bundle(struct bundle_t *bundle)
 {
 	memset(bundle, 0, sizeof(struct bundle_t));
@@ -139,16 +129,10 @@ uint8_t add_block(struct bundle_t *bundle, uint8_t type, uint8_t flags, uint8_t 
 	bundle->mem=mmem_tmp;
 	*/
 
-	struct mmem mmem_tmp;
-	if(!mmem_alloc(&mmem_tmp, d_len + len + 2  + bundle->size)){
+	if(!mmem_realloc(&bundle->mem, d_len + len + 2 + bundle->size)){
 		mmem_free(&mem);
 		return 0;
 	}
-	memcpy((uint8_t*)mmem_tmp.ptr, (uint8_t*) bundle->mem.ptr, bundle->size);
-	mmem_free(&bundle->mem);
-	memset(&bundle->mem, 0, sizeof(struct mmem));
-	memcpy(&bundle->mem, &mmem_tmp, sizeof(mmem_tmp));
-	mmem_reorg(&mmem_tmp,&bundle->mem);
 
 	/*
 	mmem_realloc(&bundle->mem, bundle->size, d_len + len + 2  + bundle->size);
@@ -244,26 +228,18 @@ uint8_t set_attr(struct bundle_t *bundle, uint8_t attr, uint32_t *val)
 		PRINTF("BUNDLE: realloc (%u-%u)+%u= %u\n",len,bundle->offset_tab[attr][STATE],bundle->mem.size,(len-bundle->offset_tab[attr][STATE]) + bundle->mem.size);
 
 		hexdump("vorher  ", bundle->mem.ptr, bundle->mem.size);
-		struct mmem mmem_tmp ;
-		if(!mmem_alloc(&mmem_tmp,(len-bundle->offset_tab[attr][STATE]) + bundle->mem.size)){
+		unsigned int old_size = bundle->mem.size;
+		if(!mmem_realloc(&bundle->mem,(len-bundle->offset_tab[attr][STATE]) + old_size)){
 			PRINTF("MMEM ERROR\n");
 			//while(1);
 		}
 		hexdump("vorher  ", bundle->mem.ptr, bundle->mem.size);
-		//memset((uint8_t*)mmem_tmp.ptr,7,mmem_tmp.size);
-		hexdump("vorher  ", bundle->mem.ptr, bundle->mem.size);
-		PRINTF("cpy: %u  %p --> %p\n", bundle->offset_tab[attr][OFFSET],bundle->mem.ptr,mmem_tmp.ptr);
-		memcpy((uint8_t*)mmem_tmp.ptr,(uint8_t*)bundle->mem.ptr,bundle->offset_tab[attr][OFFSET]);
-		hexdump("memcpy 1", mmem_tmp.ptr, mmem_tmp.size);
-		
-		memcpy((uint8_t*)mmem_tmp.ptr + bundle->offset_tab[attr][OFFSET]+(len-bundle->offset_tab[attr][STATE]), (uint8_t*)bundle->mem.ptr + bundle->offset_tab[attr][OFFSET], bundle->size - bundle->offset_tab[attr][OFFSET]);
-		hexdump("memcpy 2", mmem_tmp.ptr, mmem_tmp.size);
-		PRINTF("mmem_tmp.ptr %p %p\n",mmem_tmp.ptr,mmem_tmp.next);
-		mmem_free(&bundle->mem);
-		PRINTF("mmem_tmp.ptr %p\n",MMEM_PTR(&mmem_tmp));
-		memcpy(&bundle->mem, &mmem_tmp, sizeof(mmem_tmp));
-		mmem_reorg(&mmem_tmp,&bundle->mem);
 		PRINTF("bundle->mem.ptr %p\n",bundle->mem.ptr);
+
+		memmove((uint8_t*)bundle->mem.ptr + bundle->offset_tab[attr][OFFSET]+len, (uint8_t*)bundle->mem.ptr + bundle->offset_tab[attr][OFFSET] + bundle->offset_tab[attr][STATE], old_size - bundle->offset_tab[attr][OFFSET] - bundle->offset_tab[attr][STATE]);
+
+
+
 		/*
 		struct mmem *mmem_tmp = (struct mmem*) malloc(sizeof(struct mmem));
 		if (!mmem_tmp){
@@ -290,16 +266,12 @@ uint8_t set_attr(struct bundle_t *bundle, uint8_t attr, uint32_t *val)
 	}
 	if (((int16_t)(len-bundle->offset_tab[attr][STATE])) < 0){
 		PRINTF("BUNDLE: smaller\n");
-		struct mmem mmem_tmp ;
-		if(!mmem_alloc(&mmem_tmp,bundle->size + ((int16_t)(len-bundle->offset_tab[attr][STATE]))))
+		unsigned int old_size = bundle->size;
+		if(!mmem_realloc(&bundle->mem, old_size + ((int16_t)(len-bundle->offset_tab[attr][STATE]))))
 			return 0;
-		memcpy((uint8_t*)mmem_tmp.ptr,(uint8_t*)bundle->mem.ptr,bundle->offset_tab[attr][OFFSET]);
-		memcpy((uint8_t*)mmem_tmp.ptr + bundle->offset_tab[attr][OFFSET] + len,(uint8_t*)bundle->mem.ptr + bundle->offset_tab[attr][OFFSET] + bundle->offset_tab[attr][STATE],bundle->size + ((int16_t)(len-bundle->offset_tab[attr][STATE])) );
-		mmem_free(&bundle->mem);
-		memcpy(&bundle->mem, &mmem_tmp, sizeof(mmem_tmp));
-		mmem_reorg(&mmem_tmp,&bundle->mem);
-		
-		
+
+		memmove((uint8_t*)bundle->mem.ptr + bundle->offset_tab[attr][OFFSET] + len, (uint8_t*)bundle->mem.ptr + bundle->offset_tab[attr][OFFSET] + bundle->offset_tab[attr][STATE], old_size - bundle->offset_tab[attr][OFFSET] - bundle->offset_tab[attr][STATE]);
+
 		/*struct mmem *mmem_tmp = (struct mmem*) malloc(sizeof(struct mmem));
 		if (!mmem_tmp){
 			printf(" \n\n BUNDLE ERROR\n\n");

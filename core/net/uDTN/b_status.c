@@ -120,19 +120,15 @@ uint8_t b_stat_send(struct bundle_t *bundle,uint8_t status, uint8_t reason)
 	dtn_seq_nr++;
 	tmp=3000;
 	set_attr(&rep_bundle, LIFE_TIME, &tmp);
-	struct mmem tmp_mem;
-	if(!mmem_alloc(&tmp_mem, rep_bundle.mem.size + size)){
+	unsigned int old_size = rep_bundle.mem.size;
+	if(!mmem_realloc(&rep_bundle.mem, rep_bundle.mem.size + size)){
 		printf("STAT: mmem ERROR3\n");
 		mmem_free(&report);
 		mmem_free(&rep_bundle.mem);
 		return 0;
 	}
-	memcpy(tmp_mem.ptr , rep_bundle.mem.ptr , rep_bundle.mem.size);
-	memcpy(tmp_mem.ptr+ rep_bundle.mem.size, report.ptr, size);
+	memcpy((char *)rep_bundle.mem.ptr+ old_size, report.ptr, size);
 	mmem_free(&report);
-	mmem_free(&rep_bundle.mem);
-	memcpy(&rep_bundle.mem, &tmp_mem, sizeof(tmp_mem));
-	mmem_reorg(&tmp_mem,&rep_bundle.mem);
 	uint8_t i;
 	for (i=0; i< rep_bundle.mem.size; i++){
 		printf("%x:",*((uint8_t *)rep_bundle.mem.ptr + i));
