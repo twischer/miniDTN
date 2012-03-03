@@ -160,18 +160,46 @@ mmem_free(struct mmem *m)
 
 /*---------------------------------------------------------------------------*/
 /**
- * \brief      updates the list after realloc-like operations
- * \author     Georg von Zengen
+ * \brief      Change the size of allocated memory
+ * \param mem  mmem chunk whose size should be changed
+ * \param size Size to change the chunk to
+ * \return     1 on success, 0 on failure
+ * \author     Daniel Willmann
  *
- *             This function must be called after allocating new mmem
- *             and storing it an old mmem pointer.
- *
+ *             This function is the mmem equivalent of realloc(). If the size
+ *             could not be changed the original chunk is preserved.
  */
-void
-mmem_reorg(struct mmem *old, struct mmem *new)
+int
+mmem_realloc(struct mmem *mem, unsigned int size)
 {
-  list_remove(mmemlist, old);
-  list_add(mmemlist, new);
+  int diff = (int)size - mem->size;
+
+  /* Already the correct size */
+  if (diff == 0)
+    return 1;
+
+  /* Check if request is to big */
+  if (diff > 0 && diff > avail_memory) {
+    PRINTF("MMEM: realloc failed (diff: %i, avail: %u\n", diff, avail_memory);
+    return 0;
+  }
+
+  /* We need to do the same thing as in mmem_free */
+  struct mmem *n;
+  if (mem->next != NULL) {
+    memmove((char *)mem->next->ptr+diff, (char *)mem->next->ptr,
+		    &memory[MMEM_SIZE - avail_memory] - (char *)mem->next->ptr);
+
+    /* Update all the memory pointers that points to memory that is
+       after the allocation that is to be moved. */
+    for(n = mem->next; n != NULL; n = n->next) {
+      n->ptr = (void *)((char *)n->ptr + diff);
+    }
+  }
+
+  mem->size = size;
+  avail_memory -= diff;
+  return 1;
 }
 
 	
