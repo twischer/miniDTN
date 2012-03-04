@@ -47,14 +47,20 @@
  * \brief The number of bytes in one block on the SD-Card.
  */
 uint16_t microSD_block_size = 512;
+
 /**
  * \brief Number of blocks on the SD-Card.
  */
 uint32_t microSD_card_block_count = 0;
+
 /**
  * \brief Indicates if the inserted card is a SDSC card (!=0) or not (==0).
  */
 uint8_t microSD_sdsc_card = 1;
+
+/**
+ * \brief Indicates if the cards CRC mode is on (1) or off (0). Default is off.
+ */
 uint8_t microSD_crc_enable = 0;
 
 uint64_t microSD_get_card_size() {
@@ -65,6 +71,12 @@ uint32_t microSD_get_block_num() {
 	return (microSD_card_block_count / microSD_block_size) * microSD_get_block_size();
 }
 
+/**
+ * Returns the size of one block in bytes.
+ *
+ * Currently it's fixed at 512 Bytes.
+ * \return Number of Bytes in one Block.
+ */
 uint16_t microSD_get_block_size() {
 	return 512;
 }
@@ -73,17 +85,28 @@ uint8_t microSD_is_SDSC() {
 	return microSD_sdsc_card;
 }
 
+uint16_t microSD_get_status();
+
+/**
+ * Turns crc capabilities of the card on or off.
+ *
+ * Does not work properly at this time. (FIXME)
+ * \param enable 0 if CRC should be disabled, 1 if it should be enabled
+ * \return 0 on success, !=0 otherwise
+ */
 uint8_t microSD_set_CRC( uint8_t enable ) {
 	uint8_t cmd[6] = { 0x7A, 0x00, 0x00, 0x00, 0x00, 0xFF };
 	uint8_t ret;
-	if( 0x01 & enable ) {
+	if( enable != 0 ) {
 		cmd[1] = 0xFF;
 		cmd[2] = 0xFF;
 		cmd[3] = 0xFF;
 		cmd[4] = 0xFF;
 	}
 	if( (ret = microSD_write_cmd( cmd, NULL )) != 0x00 ) {
-		//printf("\nmicroSD_set_CRC(): ret = %u", ret);
+		#ifdef DEBUG
+		printf("\nmicroSD_set_CRC(): ret = %u", ret);
+		#endif
 		return 1;
 	}
 	microSD_crc_enable = cmd[1];
@@ -96,9 +119,9 @@ uint8_t microSD_read_csd( uint8_t *buffer ) {
 	uint8_t cmd[6] = { 0x49, 0x00, 0x00, 0x00, 0x00, 0xFF };
 	uint8_t i = 0;
 	if( (i = microSD_write_cmd( cmd, NULL )) != 0x00 ) {
-#if DEBUG
-		//printf("\nmicroSD_read_csd(): CMD9 failure! (%u)", i);
-#endif
+		#if DEBUG
+		printf("\nmicroSD_read_csd(): CMD9 failure! (%u)", i);
+		#endif
 		return 1;
 	}
 
@@ -119,8 +142,11 @@ uint8_t microSD_read_csd( uint8_t *buffer ) {
 	return 0;
 }
 
-uint16_t microSD_get_status();
-
+/**
+ * Parse the given csd and extract the needed information out of it.
+ *
+ * \param *csd A Buffer in which the contents of the csd are saved (get them with microSD_read_csd()).
+ */
 void microSD_setSDCInfo( uint8_t *csd ) {
 	uint8_t csd_version = ((csd[0] & (12 << 4)) >> 6);
 		uint8_t READ_BL_LEN = 0; 
@@ -460,7 +486,7 @@ uint8_t microSD_write_block(uint32_t addr, uint8_t *buffer) {
 	uint16_t i;
 	/*CMD24 write block*/
 	uint8_t cmd[6] = { 0x58, 0x00, 0x00, 0x00, 0x00, 0xFF };
-	uint16_t crc = MSPI_DUMMY_BYTE + ((uint16_t) MSPI_DUMMY_BYTE << 8);
+	//uint16_t crc = MSPI_DUMMY_BYTE + ((uint16_t) MSPI_DUMMY_BYTE << 8);
 
 	/* calculate the start address: block_addr = addr * 512
 	 * this is only needed if the card is a SDSC card and uses
