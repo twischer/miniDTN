@@ -1,6 +1,6 @@
 ﻿#ifndef _DISKIO_H_
 #define _DISKIO_H_
-/** Allows raw access to disks, used my MBR-Subsystem*/
+/** Allows raw access to disks, used by the MBR-Subsystem*/
 
 #define DISKIO_DEVICE_TYPE_NOT_RECOGNIZED 0
 #define DISKIO_DEVICE_TYPE_SD_CARD 1
@@ -13,10 +13,6 @@
 //Mask used to ignore modifiers like the PARTITION flag
 #define DISKIO_DEVICE_TYPE_MASK 0x7f
 
-#define DISKIO_DEBUG_FILE_NUM_SECTORS 2048
-#define DISKIO_DEBUG_FILE_SECTOR_SIZE 512
-#define DISKIO_DEBUG_FILE_NAME "diskio.img"
-
 #define DISKIO_SUCCESS 0
 #define DISKIO_ERROR_NO_DEVICE_SELECTED 1
 #define DISKIO_ERROR_INTERNAL_ERROR 2
@@ -24,8 +20,10 @@
 #define DISKIO_ERROR_OPERATION_NOT_SUPPORTED 4
 #define DISKIO_ERROR_TO_BE_IMPLEMENTED 5
 #define DISKIO_FAILURE 6
+#define DISKIO_ERROR_TRY_AGAIN 7
+#define DISKIO_ERROR_FATAL 8
 
-#define DISKIO_MAX_DEVICES 8
+#define DISKIO_MAX_DEVICES 5
 
 #include <stdint.h>
 

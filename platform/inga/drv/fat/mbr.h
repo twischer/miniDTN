@@ -74,9 +74,33 @@ int mbr_read( struct diskio_device_info *from, struct mbr *to );
  */
 int mbr_write( struct mbr *from, struct diskio_device_info *to );
 
+/**
+ * Adds a Partition to the mbr-structure.
+ *
+ * \param *mbr The mbr-structure in which to insert the partition.
+ * \param part_num Number of the Partition which should be added.
+ * \param part_type Type of the partition.
+ * \param start LBA-style start of the partition.
+ * \param len LBA-style length of the partition.
+ * \return MBR_SUCCESS on success or MBR_ERROR_PARTITION_EXISTS.
+ */
 int mbr_addPartition(struct mbr *mbr, uint8_t part_num, uint8_t part_type, uint32_t start, uint32_t len );
+
+/**
+ * Deletes a Partition from the mbr-structure.
+ *
+ * \param *mbr The mbr-structure which should be edited.
+ * \param part_num Number of the partition which should be removed.
+ * \return MBR_SUCCESS on success or MBR_ERROR_INVALID_PARTITION.
+ */
 int mbr_delPartition(struct mbr *mbr, uint8_t part_num );
 
+/**
+ * Checks if the given Partition exists.
+ *
+ * \param part_num Number of the Partition which should be checked.
+ * \return 1 if there is a Partition with the given number, otherwise 0.
+ */
 int mbr_hasPartition(struct mbr *mbr, uint8_t part_num );
 
 #endif
