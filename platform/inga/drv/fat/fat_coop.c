@@ -1,10 +1,20 @@
-#include "fat_coop.h"
+﻿#include "fat_coop.h"
 
 enum {
 	READ = 1,
 	WRITE,
 	INTERNAL
 };
+
+static process_event_t coop_global_event_id = 0;
+
+process_event_t get_coop_event_id() {
+	if( coop_global_event_id == 0 ) {
+		// Request global ID from contiki
+		coop_global_event_id = process_alloc_event();
+	}
+	return coop_global_event_id;
+}
 
 void printQueueEntry( QueueEntry *entry ) {
 	printf("\nQueueEntry %u", (uint16_t) entry);
@@ -63,6 +73,7 @@ uint8_t writeBuffer[FAT_COOP_BUFFER_SIZE];
 uint16_t writeBuffer_start, writeBuffer_len;
 
 QueueEntry queue[FAT_COOP_QUEUE_SIZE];
+Event_OperationFinished op_results[FAT_COOP_QUEUE_SIZE];
 uint16_t queue_start, queue_len;
 
 uint8_t coop_step_allowed = 0;
@@ -152,15 +163,14 @@ void operation(void *data) {
 			break;
 	}
 	entry->state = STATUS_DONE;
+	op_results[queue_start].token = entry->token;
+	op_results[queue_start].ret_value = entry->ret_value;
 }
 
 /**
  * This Function jumps back to perform_next_step()
  */
 void coop_finished_op() {
-	//printf("\nOperation finished - switch back");
-	//printf("\nOperation finished - sp = %u", (uint16_t)sp);
-	//printf("\nOperation finished - sp_save = %u", (uint16_t)sp_save);
 	/* Change SP back to original */
 	coop_switch_sp();
 }
@@ -191,6 +201,9 @@ void coop_mt_init( void *data ) {
   sp = &stack[FAT_COOP_STACK_SIZE - 1 - 4 - 32];
 }
 
+/**
+ * Function switches the stack pointers for Atmel based devices (32 GPR's).
+ */
 void coop_switch_sp() {
 /* Disable interrupts while we perform the context switch */
   cli ();
@@ -283,12 +296,10 @@ PROCESS_THREAD(fsp, ev, data)
 	PROCESS_BEGIN();
 	while(1) {
 		PROCESS_WAIT_EVENT();
-		//rtimer_arch_init();
 		static uint32_t start_time = 0, p_time = 0;
 		static QueueEntry *entry;
 		printf("\n\nFileSystemProcess working");
 		entry = queue_current_entry();
-		//printQueueEntry( entry );
 		start_time = RTIMER_NOW();
 	
 	printf("\ntime_left...: start_time = %lu", start_time);
@@ -319,22 +330,27 @@ uint8_t try_internal_operation() {
 
 /**
  * Changes Stack pointer to internal Thread. Returns after one step has been completed.
+ *
+ * If this function was called with one specific QueueEntry, then this function must be
+ * called again and again with the same QueueEntry, until the QueueEntry is finished
+ * executing.
+ * \param *entry The QueueEntry, which should be processed.
  */
 void perform_next_step( QueueEntry *entry ) {
 	if( sp == NULL ) {
-		//printf("\nperform_next_step() : sp == NULL");
 		coop_mt_init( (void *) entry );
 	}
-	//printf("\nperform_next_step() : switch");
 	coop_switch_sp();
-	//printf("\nperform_next_step() : switch returned");
-	//printf("\nperform_next_step() : next_step_type = %u", next_step_type);
 }
 
+/**
+ * Sends a Message to the source_process of the Entry and removes the Entry from the queue.
+ *
+ * \param *entry The entry which should be finished.
+ */
 void finish_operation( QueueEntry *entry ) {
 	// Send Event to source process
-	// TODO Make a extra event struct with token and ret_value
-	process_post( entry->source_process, /*COOP_EVENT_OPERATION_DONE*/PROCESS_EVENT_MSG, &(entry->ret_value));
+	process_post( entry->source_process, get_coop_event_id(), &(op_results[queue_start]));
 	// Remove entry
 	queue_rm_top_entry();
 	/* Init the internal Stack for the next Operation */
@@ -350,12 +366,6 @@ uint8_t time_left_for_step( QueueEntry *entry, uint32_t start_time ) {
 	uint8_t step_type = 0;
 	uint32_t time_left = RTIMER_NOW();
 	step_type = next_step_type;
-//	printf("\ntime_left...: start_time = %lu", start_time);
-//	printf("\ntime_left...: current_time = %lu", time_left);
-//	printf("\ntime_left...: FAT_COOP_SLOT_SIZE_TICKS = %lu", FAT_COOP_SLOT_SIZE_TICKS);
-//	printf("\ntime_left...: FAT_COOP_TIME_READ_BLOCK_TICKS = %lu", FAT_COOP_TIME_READ_BLOCK_TICKS);
-//	printf("\ntime_left...: 8 ms = %lu ticks", MS_TO_TICKS(8));
-//	printf("\ntime_left...: %lu ms = %lu ticks", FAT_COOP_SLOT_SIZE_MS, MS_TO_TICKS(FAT_COOP_SLOT_SIZE_MS));
 	time_left = RTIMER_NOW() - start_time;
 	if( FAT_COOP_SLOT_SIZE_TICKS < time_left) {
 		return 0;
@@ -395,9 +405,6 @@ uint8_t queue_add_entry( QueueEntry *entry ) {
 		return 1;
 	}
 	memcpy( &(queue[pos]), entry, sizeof(QueueEntry) );
-	//if( queue_len == 0 ) {
-	//	coop_mt_init( (void *) &(queue[pos]) );
-	//}
 	queue_len++;
 	return 0;
 }
@@ -406,7 +413,6 @@ uint8_t queue_rm_top_entry() {
 	if( queue_len == 0 ) {
 		return 1;
 	}
-	//memset( &(queue[queue_start]), 0, sizeof(QueueEntry) );
 	queue_start = (queue_start + 1) % FAT_COOP_QUEUE_SIZE;
 	queue_len--;
 	return 0;
@@ -480,7 +486,6 @@ int8_t ccfs_open( const char *name, int flags, uint8_t *token ) {
 	entry.parameters.open.flags = flags;
 	entry.ret_value = fd;
 	entry.state = STATUS_QUEUED;
-	//printQueueEntry( &entry );
 
 	fat_fd_pool[fd].file = &(fat_file_pool[fd]);
 

@@ -1,11 +1,12 @@
+﻿#include "fat.h"
 
-#include "fat.h"
+#define DEBUG
 
 void mkfs_write_root_directory( uint8_t *buffer, struct diskio_device_info *dev, struct FAT_Info *fi ) {
 	uint32_t FirstRootDirSecNum = fi->BPB_RsvdSecCnt + (fi->BPB_NumFATs * fi->BPB_FATSz);
 //	set_fat_entry( fi, 2, EOC );
 }
-#define DEBUG
+
 int mkfs_fat( struct diskio_device_info *dev ) {
 	uint8_t buffer[512];
 	struct FAT_Info fi;

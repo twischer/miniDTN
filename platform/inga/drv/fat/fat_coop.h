@@ -1,4 +1,4 @@
-#ifndef FAT_COOP_H
+﻿#ifndef FAT_COOP_H
 #define FAT_COOP_H
 
 #define FAT_COOPERATIVE 1
@@ -13,6 +13,7 @@
 #include <stdint.h>
 
 #include "fat.h"
+
 enum {
 	STATUS_QUEUED = 1,
 	STATUS_INPROGRESS,
@@ -70,6 +71,10 @@ typedef struct q_entry {
 	int16_t ret_value;
 } QueueEntry;
 
+typedef struct event_op_finished {
+	uint8_t token;
+	int16_t ret_value;
+} Event_OperationFinished;
 
 int8_t ccfs_open( const char *name, int flags, uint8_t *token );
 int8_t ccfs_close( int fd, uint8_t *token);
@@ -84,6 +89,7 @@ uint8_t fat_op_status( uint8_t token );
 uint16_t fat_estimate_by_token( uint8_t token );
 uint16_t fat_estimate_by_parameter( Operation type, uint16_t length );
 uint8_t fat_buffer_available( uint16_t length );
-
 void printQueueEntry( QueueEntry *entry );
+process_event_t get_coop_event_id();
+
 #endif
