@@ -194,7 +194,36 @@ class Device(object):
 
 
 class Sky(Device):
-	pass
+	"""TMote Sky"""
+	prefix="msp430"
+	platform="sky"
+	baudrate=""
+
+	def upload(self):
+		try:
+			os.chdir(self.programdir)
+		except OSError as err:
+			self.logger.error("Could not change to %s", self.programdir)
+			raise
+
+		try:
+			self.logger.info("Uploading %s", os.path.join(self.programdir, self.program))
+			output = subprocess.check_output(["make", "TARGET=sky", "MOTES=%s"%(self.path), "%s.upload"%(self.program)], stderr=subprocess.STDOUT)
+			self.binary = os.path.join(self.logdir, "%s-%s"%(self.name, self.program))
+			shutil.copyfile("%s.sky"%(self.program), self.binary)
+			self.logger.debug(output)
+		except subprocess.CalledProcessError as err:
+			self.logger.error(err)
+			self.logger.error(err.output)
+			raise
+	def reset(self):
+		try:
+			self.logger.info( "Resetting")
+			output = subprocess.check_output(["make", "TARGET=sky", "MOTES=%s"%(self.path), "sky-reset-sequence"], stderr=subprocess.STDOUT)
+		except subprocess.CalledProcessError as err:
+			self.logger.error(err)
+			self.logger.error(err.output)
+			raise
 
 class SkyMonitor(Sky):
 	pass
