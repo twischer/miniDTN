@@ -54,7 +54,6 @@
 
 #include "net/uDTN/dtn_config.h"
 #include "net/uDTN/storage.h"
-#include "dmem.h"
 
 /* Needed for profiling/testing */
 #include "watchdog.h"
