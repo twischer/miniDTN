@@ -77,7 +77,7 @@ PROCESS_THREAD(profiling_process, ev, data)
 	agent_init();
 	etimer_set(&timer, CLOCK_SECOND*1);
 	PROCESS_WAIT_UNTIL(etimer_expired(&timer));
-	printf_P(PSTR("Starting bundle generation\n"));
+	printf("Starting bundle generation\n");
 	profiling_init();
 	profiling_start();
 	process_start(&bundle_generator_process, NULL);
