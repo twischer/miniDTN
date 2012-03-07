@@ -55,8 +55,24 @@ static struct profile_t profile;
 static struct profile_site_t site[MAX_PROFILES];
 static int fine_count;
 
-static struct profile_callstack_t callstack[PROFILE_STACKSIZE];
-static int stacklevel;
+static struct profile_callstack_t callstack[PROFILE_STACKSIZE] __attribute__ ((section (".noinit")));
+static int stacklevel __attribute__ ((section (".noinit")));
+
+void profiling_stack_trace(void)
+{
+	int i;
+	if ((stacklevel <= 0) || (stacklevel > PROFILE_STACKSIZE)) {
+		printf("Stack corrupted or not recorded.\n");
+		return;
+	}
+
+	printf("Stacktrace: %i frames, %lu ticks/s\n", stacklevel, CLOCK_SECOND*256l);
+
+	for (i=0; i<stacklevel; i++) {
+		printf("%i: %p->%p @%lu\n", i, callstack[i].caller, callstack[i].func, callstack[i].time_start);
+	}
+	printf("\n");
+}
 
 static inline void profiling_internal(uint8_t internal)  __attribute__ ((no_instrument_function));
 static inline void profiling_internal(uint8_t internal)

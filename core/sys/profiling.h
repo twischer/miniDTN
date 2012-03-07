@@ -38,5 +38,6 @@ void profiling_start(void) __attribute__ ((no_instrument_function));
 void profiling_stop(void) __attribute__ ((no_instrument_function));
 void profiling_report(const char *name, uint8_t pretty) __attribute__ ((no_instrument_function));
 struct profile_t *profiling_get(void) __attribute__ ((no_instrument_function));
+void profiling_stack_trace(void) __attribute__ ((no_instrument_function));
 
 #endif /* __PROFILING_H__ */
