@@ -465,6 +465,10 @@ void initialize(void)
   rs232_redirect_stdout(RS232_PORT_0);
   clock_init();
 
+  /* Print the stack trace if we're here without a "proper" reset */
+  if (!(reason & (_BV(BORF) | _BV(EXTRF) | _BV(PORF))))
+		  profiling_stack_trace();
+
 #if STACKMONITOR
   /* Simple stack pointer highwater monitor. Checks for magic numbers in the main
    * loop. In conjuction with PERIODICPRINTS, never-used stack will be printed
