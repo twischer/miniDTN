@@ -342,7 +342,6 @@ uint8_t recover_bundel(struct bundle_t *bundle,struct mmem *mem, int size)
 	bundle->offset_tab[VERSION][STATE]=1;
 	bundle->offset_tab[FLAGS][OFFSET]=1;
 	if (*block != 0){
-		mmem_free(mem);
 		block=NULL;
 		return 0;
 	}
@@ -364,7 +363,6 @@ uint8_t recover_bundel(struct bundle_t *bundle,struct mmem *mem, int size)
 		tmp+=bundle->offset_tab[i][STATE];
 		if(i==DIRECTORY_LEN && *(block + bundle->offset_tab[i][OFFSET]) != 0){
 			PRINTF("\n\n NO CBHE %u\n\n",*(block + bundle->offset_tab[i][OFFSET]));
-			mmem_free(mem);
 			block=NULL;
 			return 0;
 		}
@@ -386,6 +384,7 @@ uint8_t recover_bundel(struct bundle_t *bundle,struct mmem *mem, int size)
 			return 0;
 		}
 	*/
+
 	mmem_alloc(&bundle->mem,size);
 	//bundle->mem.ptr = (uint8_t *) MMEM_PTR(bundle->mem);
 	//if (bundle->mem.ptr==NULL){
@@ -398,7 +397,6 @@ uint8_t recover_bundel(struct bundle_t *bundle,struct mmem *mem, int size)
 	}
 	PRINTF("\n");
 	memcpy((uint8_t*)bundle->mem.ptr,(uint8_t*)block,size);
-	mmem_free(mem);
 	block=NULL;
 	return 1;
 }

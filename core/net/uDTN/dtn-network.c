@@ -102,8 +102,11 @@ static void dtn_network_input(void)
 			memset(&bundle, 0, sizeof(struct bundle_t));
 			if ( !recover_bundel(&bundle,&mem, (uint8_t)size)){
 				PRINTF("DTN: recover ERROR\n");	
+				mmem_free(&mem);
 				return;
 			}
+			mmem_free(&mem);
+
 			if (bundle.flags&2){
 				//printf("NET: %u\n",*((uint8_t *)bundle.mem.ptr + bundle.offset_tab[DATA][OFFSET]));
 			}

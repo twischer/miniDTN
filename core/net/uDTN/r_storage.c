@@ -284,8 +284,7 @@ uint16_t rs_read_bundle(uint16_t bundle_num,struct bundle_t *bundle)
 	
 	if(MMEM_PTR(&file_list[bundle_num].ptr) != 0) {
 		PRINTF("file-size %u %p %u\n", file_list[bundle_num].file_size, file_list[bundle_num], bundle_num);
-		mmem_alloc(&bundle->mem,file_list[bundle_num].file_size);
-		memcpy(bundle->mem.ptr, file_list[bundle_num].ptr.ptr, file_list[bundle_num].file_size);
+
 #if DEBUG
 		uint8_t i;
 		for (i = 0; i<17; i++){
@@ -293,7 +292,7 @@ uint16_t rs_read_bundle(uint16_t bundle_num,struct bundle_t *bundle)
 		}
 		PRINTF("test\n");
 #endif
-		recover_bundel(bundle,&bundle->mem,(int) file_list[bundle_num].file_size);
+		recover_bundel(bundle, &file_list[bundle_num].ptr,(int) file_list[bundle_num].file_size);
 #if DEBUG
 		for (i = 0; i<17; i++){
 	//		PRINTF("STORAGE: val in [%u]; %u ,%u\n",i,bundle->offset_tab[i][0], bundle->offset_tab[i][1]);
