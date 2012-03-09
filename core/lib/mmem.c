@@ -202,7 +202,27 @@ mmem_realloc(struct mmem *mem, unsigned int size)
   return 1;
 }
 
-	
+/*---------------------------------------------------------------------------*/
+/**
+ * \brief        Assign a chunk of memory form one mem struct to another
+ * \param m_old  Old mmem struct that contains the memory
+ * \param m_new  New mmem struct that will contain the memory after this call
+ * \author     Daniel Willmann
+ *
+ *             This function is needed as mmem expects the mmem structs to be
+ *             in the same order as the chunks of memory are. The new struct
+ *             will be inserted into mmem's internal list at the same place
+ *             the old one was.
+ */
+void
+mmem_reparent(struct mmem *m_old, struct mmem *m_new)
+{
+	m_new->ptr = m_old->ptr;
+	list_insert(mmemlist, m_old, m_new);
+	list_remove(mmemlist, m_old);
+	m_old->size = 0;
+}
+
 /*---------------------------------------------------------------------------*/
 /**
  * \brief      Initialize the managed memory module
