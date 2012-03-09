@@ -21,7 +21,7 @@
 #include "dtn_config.h"
 #include "delivery.h"
 #include "status-report.h"
-#include "forwarding.c"
+#include "forwarding.h"
 
 #define DEBUG 0
 #if DEBUG
