@@ -29,6 +29,7 @@
 #include "contiki.h"
 #include <string.h>
 
+#undef DEBUG
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)

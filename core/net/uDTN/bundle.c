@@ -188,16 +188,18 @@ uint8_t add_block(struct bundle_t *bundle, uint8_t type, uint8_t flags, uint8_t 
 /**
 *brief converts an integer value in sdnv and copies this to the right place in bundel
 */
-void hexdump(char * string, uint8_t * bla, int length) {
 #if DEBUG
+void hexdump(char * string, uint8_t * bla, int length) {
 	printf("Hex: (%s) ", string);
 	int i;
 	for(i=0; i<length; i++) {
 		printf("%02X ", *(bla+i));
 	}
 	printf("\n");
-#endif
 }
+#else
+#define hexdump(...)
+#endif
 
 uint8_t set_attr(struct bundle_t *bundle, uint8_t attr, uint32_t *val)
 {
