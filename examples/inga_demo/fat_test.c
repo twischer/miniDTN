@@ -121,6 +121,42 @@ PROCESS_THREAD(hello_world_process, ev, data)
 	end = RTIMER_NOW();
 	printf("\nClose time = %lu", end - start);
 	/*start = RTIMER_NOW();
+	fd = cfs_open("dir1/book.pdf", CFS_READ);
+	end = RTIMER_NOW();
+	printf("\nOpening time = %lu (fd = %u)", end - start, fd);
+	count = 0;
+	for(i = 0; i < 2000; i++) {
+		rtimer_arch_init();
+		start = RTIMER_NOW();
+		read_ret = cfs_read(fd, buffer, 10);
+		end = RTIMER_NOW();
+		printf("\nRead time (10B) = %lu (ret = %d)", end - start, read_ret);
+		count += (end - start);
+	}
+	printf("\nSum = %lu", count);
+	start = RTIMER_NOW();
+	cfs_close( fd );
+	end = RTIMER_NOW();
+	printf("\nClose time = %lu", end - start);
+	start = RTIMER_NOW();
+	fd = cfs_open("test.pdf", CFS_WRITE);
+	end = RTIMER_NOW();
+	printf("\nOpening time = %lu (fd = %u)", end - start, fd);
+	count = 0;
+	for(i = 0; i < 2000; i++) {
+		rtimer_arch_init();
+		start = RTIMER_NOW();
+		read_ret = cfs_write(fd, buffer, 10);
+		end = RTIMER_NOW();
+		printf("\nWrite time (10B) = %lu (ret = %d)", end - start, read_ret);
+		count += (end - start);
+	}
+	printf("\nSum = %lu", count);
+	start = RTIMER_NOW();
+	cfs_close( fd );
+	end = RTIMER_NOW();
+	printf("\nClose time = %lu", end - start);*/
+	/*start = RTIMER_NOW();
 	fd = cfs_open("prog2.txt", CFS_WRITE);
 	end = RTIMER_NOW();
 	printf("\nOpening time = %lu", end - start);

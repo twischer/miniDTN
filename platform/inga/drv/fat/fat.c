@@ -8,8 +8,8 @@
 #define ATTR_ARCHIVE   0x20
 #define ATTR_LONG_NAME (ATTR_READ_ONLY | ATTR_HIDDEN | ATTR_SYSTEM | ATTR_VOLUME_ID)
 
-#define FAT_COOPERATIVE 1
 #define FAT_COOP_QUEUE_SIZE 15
+#define FAT_COOPERATIVE 1
 
 uint8_t sector_buffer[512];
 uint32_t sector_buffer_addr = 0;
@@ -550,9 +550,11 @@ uint8_t fat_read_file( int fd, uint32_t clusters, uint32_t clus_offset ) {
 	return ret;
 }
 
-uint8_t fat_write_file( int fd, uint32_t clusters, uint32_t clus_offset ) {
+uint8_t fat_write_file( int fd, uint32_t clusters, uint8_t clus_offset ) {
 	uint32_t cluster = 0;
 	//If we know the nth Cluster already we do not have to recalculate it
+	//printf("\nfat_write_file() : clusters = %lu", clusters);
+	//printf("\nfat_write_file() : clus_offset = %u", ((uint16_t)0 + clus_offset));
 	if( clusters == fat_file_pool[fd].n ) {
 		cluster = fat_file_pool[fd].nth_cluster;
 	//If we now the nth-1 Cluster it is easy to get the next cluster
@@ -573,9 +575,13 @@ uint8_t fat_write_file( int fd, uint32_t clusters, uint32_t clus_offset ) {
 	} else if( is_EOC( cluster ) ) {
 		uint32_t last_cluster_num = find_nth_cluster( fat_file_pool[fd].cluster, clusters-1 );
 		uint32_t free_cluster = get_free_cluster( last_cluster_num );
-		////printf("\nfat_write_file() : cluster = EOC");
+		//printf("\nfat_write_file() : cluster = EOC");
+		//printf("\nfat_write_file() : last_cluster_num = %lu", last_cluster_num);
+		//printf("\nfat_write_file() : free_cluster = %lu", free_cluster);
 		write_fat_entry( last_cluster_num, free_cluster );
 		write_fat_entry( free_cluster, EOC );
+		fat_file_pool[fd].nth_cluster = free_cluster;
+		fat_file_pool[fd].n = clusters;
 		return fat_read_block( cluster2sector( free_cluster ) );
 	}
 	return fat_read_block( cluster2sector(cluster) + clus_offset );
@@ -713,7 +719,6 @@ cfs_open(const char *name, int flags)
 	uint8_t i = 0;
 	struct dir_entry dir_ent;
 	#ifndef FAT_COOPERATIVE
-		printf("\nNO COOP");
 	for( i = 0; i < FAT_FD_POOL_SIZE; i++ ) {
 		if( fat_fd_pool[i].file == 0 ) {
 			fd = i;
@@ -725,7 +730,6 @@ cfs_open(const char *name, int flags)
 		return fd;
 	#else
 		fd = queue[queue_start].ret_value;
-		printf("\ncfs_open() : fd = %d", fd);
 	#endif
 	// find file on Disk
 	if( !get_dir_entry( name, &dir_ent, &fat_file_pool[fd].dir_entry_sector, &fat_file_pool[fd].dir_entry_offset ) ) {
@@ -815,6 +819,8 @@ void _add_cluster_to_empty_file( int fd, uint32_t free_cluster ) {
 	fat_file_pool[fd].dir_entry.DIR_FstClusLO = (uint16_t) (free_cluster);
 	update_dir_entry( fd );
 	fat_file_pool[fd].cluster = free_cluster;
+	fat_file_pool[fd].n = 0;
+	fat_file_pool[fd].nth_cluster = free_cluster;
 }
 
 void add_cluster_to_file( int fd ) {
@@ -831,38 +837,42 @@ void add_cluster_to_file( int fd ) {
 		cluster = n;
 		n = read_fat_entry_cluster( cluster );
 	}
-	////printf("\nadd_cluster_to_file() : cluster = %lu, free = %lu, n = %lx", cluster, free, n );
+	//printf("\nadd_cluster_to_file() : cluster = %lu, free = %lu, n = %lx", cluster, free, n );
 	write_fat_entry( cluster, free );
 	write_fat_entry( free, EOC );
 }
 
 int cfs_write(int fd, const void *buf, unsigned int len) {
-	uint32_t offset = fat_fd_pool[fd].offset % mounted.info.BPB_BytesPerSec;
+	uint16_t offset = fat_fd_pool[fd].offset % (uint32_t)mounted.info.BPB_BytesPerSec;
 	uint32_t clusters = (fat_fd_pool[fd].offset / mounted.info.BPB_BytesPerSec) / mounted.info.BPB_SecPerClus;
 	uint8_t clus_offset = (fat_fd_pool[fd].offset / mounted.info.BPB_BytesPerSec) % mounted.info.BPB_SecPerClus;
 	uint16_t i, j = 0;
 	uint8_t *buffer = (uint8_t *) buf;
-	uint32_t start, end, part1 = 0, part2 = 0, part3 = 0, part4 = 0;
-	rtimer_arch_init();
-	start = RTIMER_NOW();
-	if( len > 0 && fat_file_pool[fd].dir_entry.DIR_FileSize == 0 ) {
+	//printf("\nBPS = %u", mounted.info.BPB_BytesPerSec);
+	//uint32_t start, end, part1 = 0, part2 = 0, part3 = 0, part4 = 0;
+	//rtimer_arch_init();
+	//start = RTIMER_NOW();
+	if( len > 0 && fat_file_pool[fd].dir_entry.DIR_FileSize == 0 && fat_file_pool[fd].cluster == 0) {
 		add_cluster_to_file( fd );
 	}
-	end = RTIMER_NOW();
-	part1 = end-start;
-	part2 = RTIMER_NOW();
+	//printf("\nfoffset, offset,clusters, clus_offset = %lu, %u, %lu, %u", fat_fd_pool[fd].offset, offset, clusters, (uint16_t)clus_offset);
+	//end = RTIMER_NOW();
+	//part1 = end-start;
+	//part2 = RTIMER_NOW();
 	while( fat_write_file( fd, clusters, clus_offset ) == 0 ) {
-		start = RTIMER_NOW();
-		for( i = offset; i < 512 && j < len; i++,j++,fat_fd_pool[fd].offset++ ) {
+		//printf("\nfat_write_file ok");
+		//start = RTIMER_NOW();
+		for( i = offset; i < mounted.info.BPB_BytesPerSec && j < len; i++,j++,fat_fd_pool[fd].offset++ ) {
 			sector_buffer[i] = buffer[j];
 			if( fat_fd_pool[fd].offset == fat_file_pool[fd].dir_entry.DIR_FileSize ) {
 				fat_file_pool[fd].dir_entry.DIR_FileSize++;
 			}
 		}
-		end = RTIMER_NOW();
-		part3 += end - start;
-		start = RTIMER_NOW();
+		//end = RTIMER_NOW();
+		//part3 += end - start;
+		//start = RTIMER_NOW();
 		sector_buffer_dirty = 1;
+		offset = 0;
 		if( (clus_offset + 1) % mounted.info.BPB_SecPerClus == 0 ) {
 			clus_offset = 0;
 			clusters++;
@@ -870,15 +880,15 @@ int cfs_write(int fd, const void *buf, unsigned int len) {
 			clus_offset++;
 		}
 		if( j >= len ) {
-			end = RTIMER_NOW();
-			part4 += end - start;
+			//end = RTIMER_NOW();
+			//part4 += end - start;
 			break;
 		}
-		end = RTIMER_NOW();
-		part4 += end - start;
+		//end = RTIMER_NOW();
+		//part4 += end - start;
 	}
-	part2 = RTIMER_NOW() - part2;
-	printf("cfs_write():\n\tPart 1: %lu\n\tPart 2: %lu\n\tPart 3: %lu\n\tPart 4: %lu", part1, part2, part3, part4);
+	//part2 = RTIMER_NOW() - part2;
+	//printf("cfs_write():\n\tPart 1: %lu\n\tPart 2: %lu\n\tPart 3: %lu\n\tPart 4: %lu", part1, part2, part3, part4);
 	return j;
 }
 
