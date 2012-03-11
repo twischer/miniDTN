@@ -70,7 +70,8 @@ PROCESS_THREAD(hello_world_process, ev, data)
 	info = diskio_devices();
 	for(i = 0; i < DISKIO_MAX_DEVICES; i++) {
 		print_device_info( info + i );
-		if( (info + i)->type == (DISKIO_DEVICE_TYPE_SD_CARD | DISKIO_DEVICE_TYPE_PARTITION) ) {
+		//if( (info + i)->type == (DISKIO_DEVICE_TYPE_SD_CARD | DISKIO_DEVICE_TYPE_PARTITION) ) {
+		if( (info + i)->type == DISKIO_DEVICE_TYPE_GENERIC_FLASH ) {
 			info += i;
 			goto run;
 		}
@@ -85,34 +86,34 @@ PROCESS_THREAD(hello_world_process, ev, data)
 	end = RTIMER_NOW();
 	printf("\nMount time = %lu", end - start);
 	start = RTIMER_NOW();
-	fd = cfs_open("dir1/book.pdf", CFS_READ);
+	/*fd = cfs_open("dir1/book.pdf", CFS_READ);
 	end = RTIMER_NOW();
 	printf("\nOpening time = %lu (fd = %u)", end - start, fd);
 	count = 0;
-	for(i = 0; i < 20; i++) {
+	for(i = 0; i < 40; i++) {
 		rtimer_arch_init();
 		start = RTIMER_NOW();
-		read_ret = cfs_read(fd, buffer, 1024);
+		read_ret = cfs_read(fd, buffer, 512);
 		end = RTIMER_NOW();
-		printf("\nRead time (1024B) = %lu (ret = %d)", end - start, read_ret);
+		printf("\nRead time (512B) = %lu (ret = %d)", end - start, read_ret);
 		count += (end - start);
 	}
 	printf("\nSum = %lu", count);
 	start = RTIMER_NOW();
 	cfs_close( fd );
 	end = RTIMER_NOW();
-	printf("\nClose time = %lu", end - start);
+	printf("\nClose time = %lu", end - start);*/
 	start = RTIMER_NOW();
 	fd = cfs_open("test.pdf", CFS_WRITE);
 	end = RTIMER_NOW();
 	printf("\nOpening time = %lu (fd = %u)", end - start, fd);
 	count = 0;
-	for(i = 0; i < 20; i++) {
+	for(i = 0; i < 40; i++) {
 		rtimer_arch_init();
 		start = RTIMER_NOW();
-		read_ret = cfs_write(fd, buffer, 1024);
+		read_ret = cfs_write(fd, buffer, 512);
 		end = RTIMER_NOW();
-		printf("\nWrite time (1024B) = %lu (ret = %d)", end - start, read_ret);
+		printf("\nWrite time (512B) = %lu (ret = %d)", end - start, read_ret);
 		count += (end - start);
 	}
 	printf("\nSum = %lu", count);
