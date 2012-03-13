@@ -1049,3 +1049,11 @@ uint32_t round_down_to_power_of_2( uint32_t value ) {
 	}
 	return po2;
 }
+
+uint32_t fat_file_size(int fd) {
+	if( fd < 0 || fd >= FAT_FD_POOL_SIZE )
+		return 0;
+	if( fat_fd_pool[fd].file == NULL )
+		return 0;
+	return fat_file_pool[fd].size;
+}
