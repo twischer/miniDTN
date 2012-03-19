@@ -111,6 +111,8 @@ class Device(object):
 		(output, tmp) = profile.communicate(log)
 		logging.info(output)
 		output = subprocess.check_output(["inkscape", "-A", pdfname, svgname])
+	def reset_occurred(self):
+		self.abort_by_reset = True
 	def recordlog(self, queue, controlqueue):
 		logfile = os.path.join(self.logdir, "%s.log"%(self.name))
 
@@ -122,12 +124,16 @@ class Device(object):
 		handler.setLevel(logging.DEBUG)
 		self.logger.addHandler(handler)
 
+		resetseen = 0
+		resettimer = threading.Timer(5, self.reset_occurred)
+		resettimer.daemon = True
+		self.abort_by_reset = False
+
 		# Some bug somewhere in the system prevents the baud rate to be set correctly after a USB reset
 		# Setting the baud rate twice works around that
 		ser = serial.Serial(port=self.path, baudrate=1200, timeout=0.5)
 		ser.baudrate = self.baudrate
 
-		resetseen = 0
 		profilelines = -1
 		line = ""
 		while True:
@@ -142,10 +148,9 @@ class Device(object):
 
 				if line.startswith(self.startpattern):
 					resetseen += 1
-				if resetseen > 1:
-					self.logger.error("Device resetted unexpectedly, aborting test")
-					queue.put({'status': 'Aborted', 'reason': 'Node restart detected', 'name': self.name})
-					break
+					if resetseen == 2:
+						# Delay aborting the test to record valuable log data
+						resettimer.start()
 
 				for profpat in self.profilepattern:
 					if line.startswith(profpat):
@@ -177,6 +182,10 @@ class Device(object):
 						break
 				line = ""
 
+			if self.abort_by_reset:
+				self.logger.error("Device resetted unexpectedly, aborting test")
+				queue.put({'status': 'Aborted', 'reason': 'Node restart detected', 'name': self.name})
+				break
 			try:
 				item = controlqueue.get_nowait()
 				controlqueue.task_done()
@@ -188,6 +197,7 @@ class Device(object):
 			except Queue.Empty:
 				pass
 
+		resettimer.cancel()
 		ser.close()
 		self.logger.removeHandler(handler)
 		self.logger.info("Finished logging")
