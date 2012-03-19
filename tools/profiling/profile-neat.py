@@ -113,10 +113,6 @@ def ignore_site(site, onlyfile=False, onlyname=False):
 
 
 def lookup_symbol(symbol, funcptr=False):
-	# AVR stores the address in words, correct that
-	if options.prefix == "avr":
-		symbol = 2*symbol
-
 	if symbol in func_table:
 		return func_table[symbol]
 
