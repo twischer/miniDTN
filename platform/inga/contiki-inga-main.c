@@ -638,10 +638,10 @@ uint8_t i;
     PRINTA("Formatting FLASH file system for coffee...");
     cfs_coffee_format();
     PRINTA("Done!\n");
-    fa = cfs_open( "/index.html", CFS_WRITE);
+    /*fa = cfs_open( "/index.html", CFS_WRITE);
     int r = cfs_write(fa, &"It works!", 9);
-    if (r<0) PRINTA("Can''t create /index.html!\n");
-    cfs_close(fa);
+    if (r<0) printf("Can''t create /index.html!\n");
+    cfs_close(fa);*/
 //  fa = cfs_open("upload.html"), CFW_WRITE);
 // <html><body><form action="upload.html" enctype="multipart/form-data" method="post"><input name="userfile" type="file" size="50" /><input value="Upload" type="submit" /></form></body></html>
   }else{

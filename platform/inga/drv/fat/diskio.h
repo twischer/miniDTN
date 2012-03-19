@@ -1,4 +1,51 @@
-﻿#ifndef _DISKIO_H_
+﻿/* Copyright (c) 2012, Christoph Peltz
+ *
+ * Permission is hereby granted, free of charge, to any person
+ * obtaining a copy of this software and associated documentation
+ * files (the "Software"), to deal in the Software without
+ * restriction, including without limitation the rights to use,
+ * copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following
+ * conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+ * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+ * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+ * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+ * OTHER DEALINGS IN THE SOFTWARE.
+ */
+
+/**
+ * \addtogroup Device Interfaces
+ * @{
+ *
+ * \defgroup diskio_layer DiskIO Abstraction Layer
+ *
+ *	\note This interface was inspired by the diskio-interface of the FatFS-Module.
+ *
+ * <p> It's normally not important for Filesystem-Drivers to know, what type the underlying
+ * storage device is. It's only important that the Driver can write and read on this device.
+ * This abstraction layer enabled the filesystem drivers to do exactly that.</p>
+ *
+ * @{
+ *
+ */
+
+/**
+ * \file
+ *		DiskIO Layer definitions
+ * \author
+ * 		Original Source Code:
+ * 		Christoph Peltz <peltz@ibr.cs.tu-bs.de
+ */
+#ifndef _DISKIO_H_
 #define _DISKIO_H_
 /** Allows raw access to disks, used by the MBR-Subsystem*/
 

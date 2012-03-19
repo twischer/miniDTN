@@ -84,11 +84,14 @@ coffee_file_test(void)
   int32_t r, i, j, total_read;
   CFS_CONF_OFFSET_TYPE offset;
 
+  PRINTF("REMOVE OLD FILES");
   cfs_remove("T1");
+  PRINTF("1");
   cfs_remove("T2");
   cfs_remove("T3");
   cfs_remove("T4");
   cfs_remove("T5");
+  PRINTF("REMOVED");
 
   wfd = rfd = afd = -1;
 
@@ -721,12 +724,13 @@ avr_flash_write(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE si
 #endif /* COFFEE_AVR_FLASH */
 
 
-#ifdef COFFEE_AVR_EXTERNAL
-
-#include "interfaces/flash-at45db.h"
+#ifdef COFFEE_AVR_SDCARD
+#include "drv/fat/diskio.h"
+static uint8_t cfs_buffer[512];
+struct diskio_device_info *cfs_info = 0;
 
 void external_flash_write_page(coffee_page_t page, CFS_CONF_OFFSET_TYPE offset, uint8_t * buf, CFS_CONF_OFFSET_TYPE size) {
-	PRINTF("external_flash_write_page(page %u, offset %u, buf %p, size %u) \n", page, offset, buf, size);
+	PRINTF("external_flash_write_page(page %lu, offset %lu, buf %p, size %lu) \n", page, offset, buf, size);
 
 	if( size < 1 ) {
 		return;
@@ -736,26 +740,24 @@ void external_flash_write_page(coffee_page_t page, CFS_CONF_OFFSET_TYPE offset, 
 		return;
 	}
 
-	unsigned char buffer[COFFEE_PAGE_SIZE];
-
 	// Now read the current content of that page
-	at45db_read_page_bypassed(page, 0, buffer, COFFEE_PAGE_SIZE);
+	diskio_read_block( cfs_info, page, cfs_buffer );
 
 	watchdog_periodic();
 
 	// Copy over the new content
-	memcpy(buffer + offset, buf, size);
+	memcpy(cfs_buffer + offset, buf, size);
 
 	// And write the page again
-	at45db_write_page(page, 0, buffer, COFFEE_PAGE_SIZE);
+	diskio_write_block( cfs_info, page, cfs_buffer );
 
 	watchdog_periodic();
 
-	PRINTF("Page %u programmed with %u bytes (%u new)\n", page, COFFEE_PAGE_SIZE, size);
+	PRINTF("Page %lu programmed with %lu bytes (%lu new)\n", page, COFFEE_PAGE_SIZE, size);
 }
 
 void external_flash_write(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE size) {
-	PRINTF(">>>>> external_flash_write(addr %u, buf %p, size %u)\n", addr, buf, size);
+	PRINTF(">>>>> external_flash_write(addr %lu, buf %p, size %lu)\n", addr, buf, size);
 
 	if( addr > COFFEE_SIZE ) {
 		return;
@@ -790,34 +792,35 @@ void external_flash_write(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFS
 	int g;
 	printf("WROTE: ");
 	for(g=0; g<size; g++) {
-		printf("%02X %c ", buf[g] & 0xFF, buf[g] & 0xFF);
+		printf("%02X ", buf[g] & 0xFF, buf[g] & 0xFF);
 	}
 	printf("\n");
 #endif
 }
 
 void external_flash_read_page(coffee_page_t page, CFS_CONF_OFFSET_TYPE offset, uint8_t *buf, CFS_CONF_OFFSET_TYPE size) {
-	PRINTF("external_flash_read_page(page %u, offset %u, buf %p, size %u)\n", page, offset, buf, size );
+	PRINTF("external_flash_read_page(page %lu, offset %lu, buf %p, size %lu)\n", page, offset, buf, size );
 
 	if( page > COFFEE_PAGES ) {
 		return;
 	}
 
-	at45db_read_page_bypassed(page, offset, buf, size);
-	watchdog_periodic();
+	diskio_read_block( cfs_info, page, cfs_buffer );
+	memcpy(buf, cfs_buffer + offset, size);
 
 #if DEBUG
 	int g;
 	printf("READ: ");
 	for(g=0; g<size; g++) {
-		printf("%02X %c ", buf[g] & 0xFF, buf[g] & 0xFF);
+		printf("%02X ", buf[g] & 0xFF, buf[g] & 0xFF);
 	}
 	printf("\n");
 #endif
+
 }
 
 void external_flash_read(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE size) {
-	PRINTF(">>>>> external_flash_read(addr %u, buf %p, size %u)\n", addr, buf, size );
+	PRINTF(">>>>> external_flash_read(addr %lu, buf %p, size %lu)\n", addr, buf, size );
 
 	if( size < 1 ) {
 		return;
@@ -849,7 +852,7 @@ void external_flash_read(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSE
 
 		external_flash_read_page(current_page, offset, buf + read, length);
 
-		PRINTF("Page %u read with %u bytes (offset %u)\n", h, length, offset);
+		PRINTF("Page %lu read with %lu bytes (offset %lu)\n", current_page, length, offset);
 
 		read += length;
 		current_page++;
@@ -859,7 +862,7 @@ void external_flash_read(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSE
 	int g;
 	printf("READ: ");
 	for(g=0; g<size; g++) {
-		printf("%02X %c ", buf[g] & 0xFF, buf[g] & 0xFF);
+		printf("%02X ", buf[g] & 0xFF, buf[g] & 0xFF);
 	}
 	printf("\n");
 #endif
@@ -870,9 +873,10 @@ void external_flash_erase(coffee_page_t page) {
 		return;
 	}
 
-	PRINTF("external_flash_erase(page %u)\n", page);
+	PRINTF("external_flash_erase(page %lu)\n", page);
+	memset(cfs_buffer, 0, 512);
 
-	at45db_erase_page(page);
+	diskio_write_block( cfs_info, page, cfs_buffer );
 	watchdog_periodic();
 }
 

@@ -45,8 +45,8 @@ PROCESS_THREAD(hello_world_process, ev, data)
 	info = diskio_devices();
 	for(i = 0; i < DISKIO_MAX_DEVICES; i++) {
 		print_device_info( info + i );
-		//if( (info + i)->type == (DISKIO_DEVICE_TYPE_SD_CARD/* | DISKIO_DEVICE_TYPE_PARTITION*/) ) {
-		if( (info + i)->type == DISKIO_DEVICE_TYPE_GENERIC_FLASH ) {
+		if( (info + i)->type == (DISKIO_DEVICE_TYPE_SD_CARD | DISKIO_DEVICE_TYPE_PARTITION) ) {
+		//if( (info + i)->type == DISKIO_DEVICE_TYPE_GENERIC_FLASH ) {
 			info += i;
 			break;
 		}

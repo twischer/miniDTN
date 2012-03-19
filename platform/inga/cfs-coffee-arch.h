@@ -57,6 +57,8 @@
 #define COFFEE_STATIC     1
 #elif COFFEE_FILES==4           //4=program flash with full file system
 #define COFFEE_AVR_FLASH  1
+#elif COFFEE_FILES==5           //5=sdcar flash for full file system
+#define COFFEE_AVR_SDCARD  1
 #else
 #define COFFEE_AVR_EXTERNAL 1
 #endif
@@ -168,16 +170,15 @@ int     avr_httpd_fs_strcmp (char *addr,char *ram);
 #endif /* COFFEE_AVR_FLASH */
 
 
-#ifdef COFFEE_AVR_EXTERNAL
-
+#ifdef COFFEE_AVR_SDCARD
 /* Byte page size, starting address on page boundary, and size of the file system */
-#define COFFEE_PAGE_SIZE          528
+#define COFFEE_PAGE_SIZE          512
 #ifndef COFFEE_ADDRESS
 #define COFFEE_ADDRESS            0x0
 #endif
-#define COFFEE_PAGES              4096UL
+#define COFFEE_PAGES              70UL
 #define COFFEE_START              (COFFEE_ADDRESS)
-#define COFFEE_SIZE               2162688UL
+#define COFFEE_SIZE               (COFFEE_PAGES * COFFEE_PAGE_SIZE)
 
 /* These must agree with the parameters passed to makefsdata */
 #define COFFEE_SECTOR_SIZE        COFFEE_PAGE_SIZE
@@ -198,7 +199,7 @@ int     avr_httpd_fs_strcmp (char *addr,char *ram);
  * If CFS_CONF_OFFSET_TYPE is not defined it defaults to int.
  * uint16_t can handle up to a 65535 byte file system.
  */
-#define coffee_page_t uint16_t
+#define coffee_page_t uint32_t
 #define CFS_CONF_OFFSET_TYPE uint32_t
 
 #define COFFEE_WRITE(buf, size, offset) \
