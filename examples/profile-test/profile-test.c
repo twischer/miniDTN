@@ -83,12 +83,16 @@ PROCESS_THREAD(led_test_red, ev, data)
 
   while (1) {
 	  leds_on(LEDS_YELLOW);
-         for (i=0;i<48;i++) {
-                 asm volatile("nop");
-
-         }
+	  etimer_set(&timer, CLOCK_SECOND/10);
+	  PROCESS_WAIT_UNTIL(etimer_expired(&timer));
 	  leds_off(LEDS_YELLOW);
-	  etimer_set(&timer, CLOCK_SECOND/50);
+	  etimer_set(&timer, CLOCK_SECOND/20);
+	  PROCESS_WAIT_UNTIL(etimer_expired(&timer));
+	  leds_on(LEDS_YELLOW);
+	  etimer_set(&timer, CLOCK_SECOND/5);
+	  PROCESS_WAIT_UNTIL(etimer_expired(&timer));
+	  leds_off(LEDS_YELLOW);
+	  etimer_set(&timer, CLOCK_SECOND/2);
 	  PROCESS_WAIT_UNTIL(etimer_expired(&timer));
   }
 
