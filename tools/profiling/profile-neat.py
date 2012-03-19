@@ -60,6 +60,8 @@ filtering.add_argument("--only-files",
 graph = parser.add_argument_group('graph options')
 graph.add_argument("-g", "--graph", dest="graph",
 		help="generate a graph (SVG). The pattern %%n will be replaced by the name of the profiling result")
+graph.add_argument("-l", "--label", dest="label",
+		help="Label of the graph", default="")
 graph.add_argument("--highlight-functions",
 		dest="highlight_functions", default=[],
                 action=MakeList,
@@ -227,6 +229,17 @@ def generate_callgraph(calls, outfile):
 			cumel['count'] = call['count']
 			cumel['time'] = call['time']
 			cumel['site'] = 1
+
+			if 'time_min' in cumel:
+				cumel['time_min'] = min(cumel['time_min'], call['time_min'])
+			else:
+				cumel['time_min'] = call['time_min']
+
+			if 'time_max' in cumel:
+				cumel['time_max'] = max(cumel['time_max'], call['time_max'])
+			else:
+				cumel['time_max'] = call['time_max']
+
 			allcount += call['count']
 			alltime += call['time']
 	else:
@@ -237,13 +250,24 @@ def generate_callgraph(calls, outfile):
 			cumel['count'] += call['count']
 			cumel['time'] += call['time']
 			cumel['site'] += 1
+
+			if 'time_min' in cumel:
+				cumel['time_min'] = min(cumel['time_min'], call['time_min'])
+			else:
+				cumel['time_min'] = call['time_min']
+
+			if 'time_max' in cumel:
+				cumel['time_max'] = max(cumel['time_max'], call['time_max'])
+			else:
+				cumel['time_max'] = call['time_max']
+
 			allcount += call['count']
 			alltime += call['time']
 
 
 	opts['time_all'] = alltime
 	opts['count_all'] = allcount
-	graph = pydot.Dot(graph_name='G', graph_type='digraph', label="%s callgraph\\ndotted: #calls < 0.1%% / \dashed: 0.1%% <= #calls < 1%% / solid: #calls >= 1%%"%(options.bin),
+	graph = pydot.Dot(graph_name='G', graph_type='digraph', label=options.label,
 			splines="spline", nodesep=0.4, compound=True);
 
 	graph.set_node_defaults(shape="ellipse", fontsize=10);
@@ -273,8 +297,10 @@ def generate_callgraph(calls, outfile):
 				reltime = 0
 			duration = "%.3fms/call"%(reltime/opts['ticks_per_sec']*1000)
 
-		edge = pydot.Edge(fpair[0], fpair[1], label="%i site%s\n%s\n%i call%s"%(cumulative[fpair]['site'], plural(cumulative[fpair]['site']),
-							 duration, cumulative[fpair]['count'], plural(cumulative[fpair]['count'])))
+		time_min = float(cumulative[fpair]['time_min'])/opts['ticks_per_sec']*1000
+		time_max = float(cumulative[fpair]['time_max'])/opts['ticks_per_sec']*1000
+		edge = pydot.Edge(fpair[0], fpair[1], label="%i site%s\n%s\n%3.2f-%3.2fms\n%i call%s"%(cumulative[fpair]['site'], plural(cumulative[fpair]['site']),
+			duration, time_min, time_max, cumulative[fpair]['count'], plural(cumulative[fpair]['count'])))
 
 		if cumulative[fpair]['count'] < 0.001* allcount:
 			style = "dotted"
