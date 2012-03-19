@@ -279,7 +279,7 @@ rs232_init (uint8_t port, uint8_t bd, uint8_t ffmt)
 }
 
 void
-rs232_print_p(uint8_t port, prog_char *buf)
+rs232_print_p(uint8_t port, char *buf)
 {
   while(pgm_read_byte(buf)) {
     rs232_send(port, pgm_read_byte(buf));

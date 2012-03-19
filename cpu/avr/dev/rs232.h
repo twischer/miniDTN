@@ -111,7 +111,7 @@ rs232_set_input(uint8_t port, int (* f)(unsigned char));
  *             configured for this function to work.
  */
 void
-rs232_print_p(uint8_t port, prog_char *buf);
+rs232_print_p(uint8_t port, char *buf);
 
 /**
  * \brief      Print a text string on RS232
