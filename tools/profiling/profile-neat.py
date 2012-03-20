@@ -208,9 +208,16 @@ def generate_callgraph(calls, outfile):
 	allcount = 0
 	alltime = 0
 
-	for site in func_table.values():
-		if site['invocations'] > 0:
-			alltime += site['time_spent']
+	funcs = {}
+	for func in func_table.values():
+		fn = funcs.setdefault(func['name'], {'invocations': 0, 'time': 0})
+		fn['invocations'] += func['invocations']
+		fn['time'] += func['time_spent']
+
+	for fn in funcs.keys():
+		if funcs[fn]['invocations'] > 0:
+			alltime += funcs[fn]['time']
+
 	opts['time_fns'] = alltime
 
 	alltime = 0
@@ -263,7 +270,11 @@ def generate_callgraph(calls, outfile):
 
 	opts['time_all'] = alltime
 	opts['count_all'] = allcount
-	graph = pydot.Dot(graph_name='G', graph_type='digraph', label=options.label,
+
+	mylabel = " %.3fs/%.3fs profiled"%(float(opts['time_fns'])/opts['ticks_per_sec'], float(opts['time_run'])/opts['ticks_per_sec'])
+	if options.label:
+		mylabel = options.label + " - " + mylabel
+	graph = pydot.Dot(graph_name='G', graph_type='digraph', label=mylabel,
 			splines="spline", nodesep=0.4, compound=True);
 
 	graph.set_node_defaults(shape="ellipse", fontsize=10);
@@ -398,13 +409,11 @@ def handle_prof(logfile, header):
 		fn['invocations'] += func['invocations']
 		fn['time'] += func['time_spent']
 
-	combtime = 0
 	for fn in funcs.keys():
 		if funcs[fn]['invocations'] > 0:
-			combtime += funcs[fn]['time']
 			print "%s %i times %.3fs"%(fn, funcs[fn]['invocations'], float(funcs[fn]['time'])/opts['ticks_per_sec'])
 
-	print "Function time combined: %.3fs, Profiling time: %.3fs"%(float(combtime)/opts['ticks_per_sec'], float(opts['time_run'])/opts['ticks_per_sec'])
+	print "Function time combined: %.3fs, Profiling time: %.3fs"%(float(opts['time_fns'])/opts['ticks_per_sec'], float(opts['time_run'])/opts['ticks_per_sec'])
 
 
 def handle_sprof(logfile, header):
