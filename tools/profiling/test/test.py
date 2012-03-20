@@ -419,7 +419,7 @@ class Testsuite(object):
 
 		if 'contikiscm' in self.config:
 			if self.config['contikiscm'] == 'git':
-				self.contikiversion = subprocess.check_output(["git", "describe", "--tags", "--always", "--dirty"], stderr=subprocess.STDOUT, cwd=self.config['contikibase']).rstrip()
+				self.contikiversion = subprocess.check_output(["git", "describe", "--tags", "--always", "--dirty", "--long"], stderr=subprocess.STDOUT, cwd=self.config['contikibase']).rstrip()
 			elif self.config['contikiscm'] == 'none':
 				self.contikiversion = "NA"
 			else:

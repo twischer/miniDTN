@@ -38,6 +38,7 @@
 
 #include "contiki.h"
 #include "sys/profiling.h"
+#include "profiling_arch.h"
 
 #ifdef PROFILES_CONF_MAX
 #define MAX_PROFILES PROFILES_CONF_MAX
@@ -69,7 +70,7 @@ void profiling_stack_trace(void)
 	printf("Stacktrace: %i frames, %lu ticks/s\n", stacklevel, CLOCK_SECOND*256l);
 
 	for (i=0; i<stacklevel; i++) {
-		printf("%i: %p->%p @%lu\n", i, callstack[i].caller, callstack[i].func, callstack[i].time_start);
+		printf("%i: %p->%p @%lu\n", i, ARCHADDR2ADDR(callstack[i].caller), ARCHADDR2ADDR(callstack[i].func), callstack[i].time_start);
 	}
 	printf("\n");
 }
@@ -99,7 +100,7 @@ void profiling_report(const char *name, uint8_t pretty)
 		printf("PROF:%s:%u:%u:%lu:%lu\n", name, profile.num_sites, profile.max_sites, profile.time_run, CLOCK_SECOND*256l);
 
 	for(i=0; i<profile.num_sites;i++) {
-		printf("%p:%p:%lu:%lu:%u:%u\n", profile.sites[i].from, profile.sites[i].addr,
+		printf("%p:%p:%lu:%lu:%u:%u\n", ARCHADDR2ADDR(profile.sites[i].from), ARCHADDR2ADDR(profile.sites[i].addr),
 				profile.sites[i].calls, profile.sites[i].time_accum, profile.sites[i].time_min, profile.sites[i].time_max);
 	}
 	printf("\n");
