@@ -55,6 +55,9 @@ struct pack_list_t {
 	rimeaddr_t dest[ROUTING_NEI_MEM];
 };
 
+/** memory for route_ts */
+MEMB(route_mem, struct route_t, ROUTING_ROUTE_MAX_MEM);
+
 LIST(pack_list);
 MEMB(pack_mem, struct pack_list_t, ROUTING_MAX_MEM);
 LIST(route_list);
