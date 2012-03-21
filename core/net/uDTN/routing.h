@@ -53,8 +53,6 @@ struct routing_driver {
 };
 extern const struct routing_driver ROUTING;
 
-/** memory for route_ts */
-MEMB(route_mem, struct route_t, ROUTING_ROUTE_MAX_MEM);
 #endif
 /** @} */
 /** @} */
