@@ -58,7 +58,7 @@ uint8_t create_bundle(struct bundle_t *bundle)
 	*((uint8_t*)bundle->mem.ptr) = 0;
 	bundle->size=1;
 	uint8_t i;
-	bundle->rec_time=(uint32_t) clock_seconds(); 
+	bundle->rec_time=(uint32_t) clock_seconds();
 	bundle->offset_tab[VERSION][STATE]=1;
 	for (i=1;i<18;i++){
 		bundle->offset_tab[i][OFFSET]=1;
@@ -79,13 +79,13 @@ uint8_t create_bundle(struct bundle_t *bundle)
 	}
 	printf("\n");
 	*/
-	uint32_t len64 ;
+	uint32_t len32;
 	//set_attr(bundle, P_LENGTH, &len64);
-	len64=0;
+	len32=0;
 	PRINTF("BUNDLE: set len\n");
-	i=set_attr(bundle, LENGTH, &len64);
+	i=set_attr(bundle, LENGTH, &len32);
 	PRINTF("BUNDLE: set dir_len\n");
-	i+=set_attr(bundle, DIRECTORY_LEN, &len64);
+	i+=set_attr(bundle, DIRECTORY_LEN, &len32);
 //	bundle->size += len64 + i; 
 #if DEBUG
 	PRINTF("BUNDLE: CREATE ");
