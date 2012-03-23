@@ -107,7 +107,7 @@ void flood_new_neigh(rimeaddr_t *dest)
 		}
 	}
 	if (count){
-		process_post(&agent_process,dtn_send_bundle_to_node_event, list_head(route_list));
+		agent_send_bundles(list_head(route_list));
 	}
 	return ;
 }

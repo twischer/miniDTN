@@ -19,6 +19,7 @@
 #define AGENT_H
 
 #include "contiki.h"
+#include "routing.h"
 
 extern uint32_t dtn_node_id;
 extern uint32_t dtn_seq_nr;
@@ -48,7 +49,7 @@ process_event_t dtn_send_bundle_to_node_event;
 *&agent_process
 */
 void agent_init(void);
-
+void agent_send_bundles(struct route_t *route);
 void agent_del_bundle(void);
 
 #endif

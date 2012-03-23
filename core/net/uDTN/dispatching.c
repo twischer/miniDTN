@@ -36,6 +36,7 @@ void dispatch_bundle(struct bundle_t *bundle) {
 	PRINTF("DISPATCHING: bundle: %p\n", bundle->mem.ptr);
 	struct registration *n;
 
+	uint16_t *saved_as_mem;
 	uint32_t dest=1;
 	sdnv_decode(bundle->mem.ptr + bundle->offset_tab[DEST_NODE][OFFSET], bundle->offset_tab[DEST_NODE][STATE], &dest);
 //	sdnv_decode(bundle->mem.ptr + bundle->offset_tab[FLAGS][OFFSET], bundle->offset_tab[FLAGS][STATE], &flags);
@@ -120,8 +121,10 @@ void dispatch_bundle(struct bundle_t *bundle) {
 			return;
 		}
 	}
-				
-	forwarding_bundle(bundle);
+
+	saved_as_mem = forwarding_bundle(bundle);
+	if (saved_as_mem)
+		process_post(&agent_process,dtn_bundle_in_storage_event, saved_as_mem);
 	PRINTF("DISPATCHING: Bundle forwarded\n");
 
 }

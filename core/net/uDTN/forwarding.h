@@ -16,7 +16,7 @@
 * \brief forwards the bundle
 * \param bundle pointer to bundle 
 */
-void forwarding_bundle(struct bundle_t *bundle) ;
+uint16_t forwarding_bundle(struct bundle_t *bundle) ;
 
 #endif
 /** @} */
