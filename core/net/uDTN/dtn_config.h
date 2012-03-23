@@ -14,7 +14,7 @@
 #define STATUS_REPORT b_status
 #define DISCOVER_CYCLE 0.2
 #define WATCHDOG_CONF_TIMEOUT 4
-#define DISCOVERY b_discovery
+#define DISCOVERY s_discovery
 /** @} */
 
 
