@@ -98,7 +98,8 @@ PROCESS_THREAD(hello_world_process, ev, data)
 	watchdog_stop();
 	profiling_report("init", 0);
 	watchdog_start();
-	etimer_set(&timer,  CLOCK_SECOND/10);
+	etimer_set(&timer,  CLOCK_SECOND);
+	PROCESS_WAIT_UNTIL(etimer_expired(&timer));
 	printf("Init done, starting test\n");
 
 	profiling_init();
@@ -107,8 +108,8 @@ PROCESS_THREAD(hello_world_process, ev, data)
 	time_start = clock_seconds();
 	while(1) {
 
-		PROCESS_WAIT_UNTIL(etimer_expired(&timer) ||
-				ev == submit_data_to_application_event);
+		/* Shortest possible pause */
+		PROCESS_PAUSE();
 
 		/* We received a bundle - check if it is the sink telling us to
 		 * stop sending */
@@ -183,8 +184,6 @@ PROCESS_THREAD(hello_world_process, ev, data)
 		/* Show progress every 50 bundles */
 		if (bundles_sent%50 == 0)
 			printf("%i\n", bundles_sent);
-
-		etimer_set(&timer, CLOCK_SECOND/10);
 	}
 	PROCESS_END();
 }
