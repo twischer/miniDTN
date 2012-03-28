@@ -4,10 +4,20 @@ CONTIKI_CORE=contiki-inga-main
 CONTIKI_TARGET_MAIN = ${CONTIKI_CORE}.o
 CONTIKI_TARGET_SOURCEFILES += contiki-inga-main.c contiki-inga-default-init-net.c
 #The avr cpu makefile will also add these files if COFFEE_FILES is specified.
+#CFS=1
+ifdef CFS
+CFLAGS += -DCOFFEE_FILES=5
 CONTIKI_TARGET_SOURCEFILES += cfs-coffee.c cfs-coffee-arch.c
+endif
+FAT=1
+ifdef FAT
+CONTIKI_TARGET_SOURCEFILES += fat.c fat_coop.c
+endif
+CONTIKI_TARGET_SOURCEFILES += diskio.c mbr.c
+
 #Needed for slip
 CONTIKI_TARGET_SOURCEFILES += button-sensor.c sensors.c slip_uart0.c slip.c acc-sensor.c gyro-sensor.c pressure-sensor.c radio-sensor.c
-CONTIKI_TARGET_SOURCEFILES += adc-drv.c  i2c-drv.c  mspi-drv.c acc-adxl345.c   flash-microSD.c  pressure-bmp085.c flash-at45db.c  gyro-l3g4200d.c  pressure-mpl115a.c diskio.c mbr.c
+CONTIKI_TARGET_SOURCEFILES += adc-drv.c  i2c-drv.c  mspi-drv.c acc-adxl345.c   flash-microSD.c  pressure-bmp085.c flash-at45db.c  gyro-l3g4200d.c  pressure-mpl115a.c 
 
 CONTIKIAVR=$(CONTIKI)/cpu/avr
 CONTIKIBOARD=.
@@ -35,7 +45,6 @@ ifdef CONF_DTN
 CFLAGS += -DWITH_DTN=1
 endif
 CFLAGS += -DWITH_NODE_ID=1
-CFLAGS += -DCOFFEE_FILES=5
 
 ifdef MOTES
   MOTELIST=1
