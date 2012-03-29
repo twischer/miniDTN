@@ -1,2 +1,2 @@
 #undef MMEM_CONF_SIZE
-#define MMEM_CONF_SIZE 5000 
+#define MMEM_CONF_SIZE 3000
