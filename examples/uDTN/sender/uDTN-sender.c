@@ -79,6 +79,8 @@ PROCESS_THREAD(hello_world_process, ev, data)
 	static uint32_t time_start, time_stop;
 	uint8_t userdata[80];
 	uint32_t tmp;
+        clock_time_t now;
+        unsigned short now_fine;
 
 	PROCESS_BEGIN();
 	profiling_init();
@@ -98,14 +100,19 @@ PROCESS_THREAD(hello_world_process, ev, data)
 	watchdog_stop();
 	profiling_report("init", 0);
 	watchdog_start();
-	etimer_set(&timer,  CLOCK_SECOND);
+	etimer_set(&timer,  CLOCK_SECOND*2);
 	PROCESS_WAIT_UNTIL(etimer_expired(&timer));
 	printf("Init done, starting test\n");
 
 	profiling_init();
 	profiling_start();
 
-	time_start = clock_seconds();
+        do {
+                now_fine = clock_time();
+                now = clock_seconds();
+        } while (now_fine != clock_time());
+        time_start = ((unsigned long)now)*CLOCK_SECOND + now_fine%CLOCK_SECOND;
+
 	while(1) {
 
 		/* Shortest possible pause */
@@ -123,13 +130,13 @@ PROCESS_THREAD(hello_world_process, ev, data)
 			watchdog_stop();
 			profiling_report("send-1000", 0);
 			watchdog_start();
-			TEST_REPORT("throughput", 1000, time_stop-time_start, "bundles/s");
+			TEST_REPORT("throughput", 1000*CLOCK_SECOND, time_stop-time_start, "bundles/s");
 			TEST_PASS();
 			PROCESS_EXIT();
 		}
 
 		/* Check for timeout */
-		if (clock_seconds()-time_start > 600) {
+		if (clock_seconds()-(time_start/CLOCK_SECOND) > 900) {
 			profiling_stop();
 			watchdog_stop();
 			profiling_report("timeout", 0);
@@ -142,7 +149,11 @@ PROCESS_THREAD(hello_world_process, ev, data)
 		 * more since some might have been lost on the way */
 		if (bundles_sent == 1000) {
 			profiling_stop();
-			time_stop = clock_seconds();
+		        do {
+		                now_fine = clock_time();
+		                now = clock_seconds();
+		        } while (now_fine != clock_time());
+		        time_stop = ((unsigned long)now)*CLOCK_SECOND + now_fine%CLOCK_SECOND;
 		}
 
 		create_bundle(&bundle);
