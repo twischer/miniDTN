@@ -1,1 +1,0 @@
-#define MMEM_CONF_SIZE 2000
