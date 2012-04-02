@@ -195,7 +195,7 @@ unsigned long clock_seconds(void);
 
 
 #if WITH_DTN
-#define CHANNEL_802_15_4          26
+#define CHANNEL_802_15_4          23
 #define NETSTACK_CONF_MAC	  csma_driver
 #define NETSTACK_CONF_RDC    	  nullrdc_driver 
 #define NETSTACK_CONF_FRAMER      framer_802154
