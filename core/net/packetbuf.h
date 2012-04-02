@@ -249,6 +249,7 @@ void packetbuf_compact(void);
  *
  */
 int packetbuf_copyfrom(const void *from, uint16_t len);
+int packetbuf_ext_copyfrom(const void *from, uint16_t len, uint8_t seg_head, uint8_t ext_seg);
 
 /**
  * \brief      Copy the entire packetbuf to an external buffer
