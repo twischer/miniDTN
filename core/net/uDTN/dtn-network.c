@@ -80,10 +80,10 @@ static void dtn_network_input(void)
 	int16_t rssi = packetbuf_attr(PACKETBUF_ATTR_RSSI);
 	//printf("NET: rssi = %d\n", rssi-45);
 	PRINTF("%x%x: dtn_network_input\n",dest.u8[0],dest.u8[1]);
-	if((dest.u8[0]==0) & (dest.u8[1]==0)) { //broadcast message
+	if((*input_packet==0x08) & (*(input_packet+1)==0x80)) { //broadcast message
 		PRINTF("Broadcast\n");
 			
-		DISCOVERY.is_discover(input_packet);
+		DISCOVERY.receive(&bsrc, input_packet,(uint8_t)size);
 		packetbuf_clear();
 			
         } else {
@@ -126,6 +126,7 @@ static void dtn_network_input(void)
 #endif
 			bundle.msrc.u8[0]=bsrc.u8[0];
 			bundle.msrc.u8[1]=bsrc.u8[1];
+			DISCOVERY.alive(&bsrc);
 			//printf("NETWORK: %u:%u\n", bundle.msrc.u8[0],bundle.msrc.u8[1]);
 			PRINTF("NETWORK: size of received bundle: %u block pointer %p\n",bundle.size, bundle.mem.ptr);
 //			printf("rec: %u\n",cnt2++);
@@ -228,6 +229,5 @@ const struct network_driver dtn_network_driver =
 {
   "DTN",
   dtn_network_init,
-  dtn_network_input,
-  dtn_send_discover
+  dtn_network_input
 };
