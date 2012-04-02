@@ -35,6 +35,7 @@
 #define DEBUG 0
 #if DEBUG
 #include <stdio.h>
+#include <../cpu/stm32w108/e_stdio/src/small_mprec.h>
 #define PRINTF(...) printf(__VA_ARGS__)
 #else
 #define PRINTF(...)
@@ -171,10 +172,12 @@ static void packet_sent(void *ptr, int status, int num_tx)
 	last_send--;
 	if (!last_send){
 	}
-	struct route_t *route= (struct route_t *)ptr;
-	PRINTF("DTN: bundle_num : %u    %p\n",route->bundle_num,ptr);
-	//printf("sent to %u:%u\n",route->dest.u8[0],route->dest.u8[1]);
-	ROUTING.sent(route,status,num_tx);
+	if(ptr){
+		struct route_t *route= (struct route_t *)ptr;
+		PRINTF("DTN: bundle_num : %u    %p\n",route->bundle_num,ptr);
+		//printf("sent to %u:%u\n",route->dest.u8[0],route->dest.u8[1]);
+		ROUTING.sent(route,status,num_tx);
+	}
 		
 }
 
@@ -196,7 +199,7 @@ int dtn_network_send(struct bundle_t *bundle, struct route_t *route)
 	printf("\n");
 #endif
 	/* kopiere die Daten in den packetbuf(fer) */
-	packetbuf_copyfrom(payload, len);
+	packetbuf_ext_copyfrom(payload, len,0x30,0);
 	/*setze Zieladresse und übergebe das Paket an die MAC schicht */
 	packetbuf_set_addr(PACKETBUF_ADDR_RECEIVER, &route->dest);
 	packetbuf_set_attr(PACKETBUF_ADDRSIZE, 2);
@@ -212,11 +215,19 @@ int dtn_network_send(struct bundle_t *bundle, struct route_t *route)
 	return 1;
 }
 
+int dtn_send_discover(uint8_t *payload,uint8_t len, rimeaddr_t *dst)
+{
+	packetbuf_ext_copyfrom(payload, len,0x08,0x80);
+	packetbuf_set_addr(PACKETBUF_ADDR_RECEIVER, dst);
+	packetbuf_set_attr(PACKETBUF_ADDRSIZE, 2);
+	NETSTACK_MAC.send(NULL, NULL); 
+}
 
 
 const struct network_driver dtn_network_driver = 
 {
   "DTN",
   dtn_network_init,
-  dtn_network_input
+  dtn_network_input,
+  dtn_send_discover
 };
