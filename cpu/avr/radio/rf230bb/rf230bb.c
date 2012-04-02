@@ -1354,6 +1354,9 @@ rf230_read_fakeack(void *buf, unsigned short bufsize)
 static int
 rf230_read(void *buf, unsigned short bufsize)
 {
+#if IBR_COMP
+  bufsize-=2;
+#endif
   uint8_t len,*framep;
 #if FOOTER_LEN
   uint8_t footer[FOOTER_LEN];
