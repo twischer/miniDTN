@@ -18,7 +18,6 @@
 #define PRINTF(...)
 #endif
 
-
 uint8_t create_bundle(struct bundle_t *bundle)
 {
 	memset(bundle, 0, sizeof(struct bundle_t));

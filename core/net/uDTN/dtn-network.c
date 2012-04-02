@@ -32,10 +32,9 @@
 	#include <stings.h>
 #endif
 
-#define DEBUG 0
+#define DEBUG 1
 #if DEBUG
 #include <stdio.h>
-#include <../cpu/stm32w108/e_stdio/src/small_mprec.h>
 #define PRINTF(...) printf(__VA_ARGS__)
 #else
 #define PRINTF(...)
@@ -83,10 +82,10 @@ static void dtn_network_input(void)
 	if((*input_packet==0x08) & (*(input_packet+1)==0x80)) { //broadcast message
 		PRINTF("Broadcast\n");
 			
-		DISCOVERY.receive(&bsrc, input_packet,(uint8_t)size);
+		DISCOVERY.receive(&bsrc, input_packet + 2,(uint8_t) size - 4);
 		packetbuf_clear();
 			
-        } else {
+	} else {
 		//leds_on(4);
 		packetbuf_clear();
 		PRINTF("%p  %p\n",&bundle,&input_packet);	

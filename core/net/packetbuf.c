@@ -115,7 +115,7 @@ packetbuf_ext_copyfrom(const void *from, uint16_t len, uint8_t seg_head, uint8_t
   }else{
 	  ext_len=1;
   }
-  l = len  > PACKETBUF_SIZE? PACKETBUF_SIZE: len;
+  l = len  > (PACKETBUF_SIZE - ext_len) ? (PACKETBUF_SIZE - ext_len): len;
   memcpy((packetbufptr+ext_len), from, l);
   buflen = l+ext_len;
   return l+ext_len;

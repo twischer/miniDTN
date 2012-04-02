@@ -52,6 +52,7 @@ uint8_t s_dis_is_discover(uint8_t *msg)
 {
 			return 0;
 }
+
 const struct discovery_driver s_discovery ={
 	"S_DISCOVERY",
 	s_dis_send,
