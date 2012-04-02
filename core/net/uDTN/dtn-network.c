@@ -87,60 +87,51 @@ static void dtn_network_input(void)
 		packetbuf_clear();
 			
         } else {
-		if (!DISCOVERY.is_beacon(input_packet)){ //packet is a bundle
-			//leds_on(4);
-			packetbuf_clear();
-			PRINTF("%p  %p\n",&bundle,&input_packet);	
-			//printf(".\n");
-			struct mmem mem;
-			mmem_alloc(&mem,114);
-			if (!MMEM_PTR(&mem)){
-				PRINTF("DTN: MMEM ERROR\n");
-				return;
-			}
+		//leds_on(4);
+		packetbuf_clear();
+		PRINTF("%p  %p\n",&bundle,&input_packet);	
+		//printf(".\n");
+		struct mmem mem;
+		mmem_alloc(&mem,114);
+		if (!MMEM_PTR(&mem)){
+			PRINTF("DTN: MMEM ERROR\n");
+			return;
+		}
 
-			memcpy(MMEM_PTR(&mem),&input_packet,114);
-			memset(&bundle, 0, sizeof(struct bundle_t));
-			if ( !recover_bundel(&bundle,&mem, (uint8_t)size)){
-				PRINTF("DTN: recover ERROR\n");	
-				mmem_free(&mem);
-				return;
-			}
+		memcpy(MMEM_PTR(&mem),&input_packet,114);
+		memset(&bundle, 0, sizeof(struct bundle_t));
+		if ( !recover_bundel(&bundle,&mem, (uint8_t)size)){
+			PRINTF("DTN: recover ERROR\n");	
 			mmem_free(&mem);
+			return;
+		}
+		mmem_free(&mem);
 
-			if (bundle.flags&2){
-				//printf("NET: %u\n",*((uint8_t *)bundle.mem.ptr + bundle.offset_tab[DATA][OFFSET]));
-			}
-			bundle.rec_time=(uint32_t) clock_seconds();
+		if (bundle.flags&2){
+			//printf("NET: %u\n",*((uint8_t *)bundle.mem.ptr + bundle.offset_tab[DATA][OFFSET]));
+		}
+		bundle.rec_time=(uint32_t) clock_seconds();
 #if DEBUG_H
-			bundle.debug_time=clock_time();
+		bundle.debug_time=clock_time();
 #endif
-			bundle.size= (uint8_t) size;
+		bundle.size= (uint8_t) size;
 #if DEBUG
-			uint8_t i;
-			printf("NETWORK: input ");
-			for (i=0; i<bundle.size; i++){
-				printf("%x:",*((uint8_t *)bundle.mem.ptr + i));
-			}
-			printf("\n");
+		uint8_t i;
+		printf("NETWORK: input ");
+		for (i=0; i<bundle.size; i++){
+			printf("%x:",*((uint8_t *)bundle.mem.ptr + i));
+		}
+		printf("\n");
 #endif
-			bundle.msrc.u8[0]=bsrc.u8[0];
-			bundle.msrc.u8[1]=bsrc.u8[1];
-			DISCOVERY.alive(&bsrc);
-			//printf("NETWORK: %u:%u\n", bundle.msrc.u8[0],bundle.msrc.u8[1]);
-			PRINTF("NETWORK: size of received bundle: %u block pointer %p\n",bundle.size, bundle.mem.ptr);
+		bundle.msrc.u8[0]=bsrc.u8[0];
+		bundle.msrc.u8[1]=bsrc.u8[1];
+		DISCOVERY.alive(&bsrc);
+		//printf("NETWORK: %u:%u\n", bundle.msrc.u8[0],bundle.msrc.u8[1]);
+		PRINTF("NETWORK: size of received bundle: %u block pointer %p\n",bundle.size, bundle.mem.ptr);
 //			printf("rec: %u\n",cnt2++);
-			dispatch_bundle(&bundle);			
+		dispatch_bundle(&bundle);			
 //			process_post(&agent_process, dtn_receive_bundle_event, &bundle);
 			//leds_off(4);
-		}else{
-			
-			memcpy(&beacon_src,&bsrc,sizeof(beacon_src));
-			packetbuf_clear();
-	//		printf("NETWORK: got beacon from %u,%u\n",beacon_src.u8[0],beacon_src.u8[1]);
-			process_post(&agent_process, dtn_beacon_event, &beacon_src);
-//			process_post(&agent_process, dtn_send_admin_record_event, NULL);
-		}		
 	}
 		
 }
