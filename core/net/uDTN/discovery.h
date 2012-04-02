@@ -21,15 +21,48 @@
 #include "bundle.h"
 #include "mmem.h"
 
+PROCESS_NAME(discovery_process);
+
 /** interface for discovery modules */
 struct discovery_driver {
 	char *name;
-	/** sends discovery message */
-	void (* send)(uint16_t num);
-	/** return 1 if msg is a discovery answer*/
-	uint8_t (* is_beacon)(uint8_t *msg);
-	/** return 1 if msg is a discovery message */
-	uint8_t (* is_discover)(uint8_t *msg);
+
+	/**
+	 * Initialize discovery module
+	 */
+	void (* init)();
+
+	/**
+	 * Ask discovery, if this node is currently in range
+	 * return 1 if yes,
+	 * return 0 otherwise
+	 */
+	uint8_t (* is_neighbour)(rimeaddr_t * dest);
+
+	/**
+	 * Enable discovery module
+	 */
+	void (* enable)();
+
+	/**
+	 * Disable discovery module
+	 */
+	void (* disable)();
+
+	/**
+	 * Pass incoming discovery beacons to the discovery module
+	 */
+	void (* receive)(rimeaddr_t * source, uint8_t * payload, uint8_t length);
+
+	/**
+	 * Bundle from node has been received, cache this node as available
+	 */
+	void (* alive)(rimeaddr_t * source);
+
+	/**
+	 * Starts to discover a neighbour
+	 */
+	uint8_t (* discover)(rimeaddr_t * dest);
 };
 
 extern const struct discovery_driver DISCOVERY;

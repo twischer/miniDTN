@@ -127,6 +127,7 @@ PROCESS_THREAD(agent_process, ev, data)
 
 	
 	CUSTODY.init();
+	DISCOVERY.init();
 	PRINTF("starting DTN Bundle Protocol \n");
 		
 	static struct bundle_t * bundleptr;
@@ -198,12 +199,12 @@ PROCESS_THREAD(agent_process, ev, data)
 		}
 
 		if(ev == dtn_beacon_event){
-			rimeaddr_t* src =(rimeaddr_t*) data;	
+			rimeaddr_t* src =(rimeaddr_t*) data;
 			ROUTING.new_neighbor(src);
 			PRINTF("BUNDLEPROTOCOL: foooooo\n");
 			continue;
 		}
-	
+
 		if(ev == dtn_bundle_in_storage_event){
 			uint16_t b_num = *(uint16_t *) data;
 			PRINTF("BUNDLEPROTOCOL: bundle in storage %u %p %p\n",b_num, data, saved_as_mem);	
@@ -212,8 +213,25 @@ PROCESS_THREAD(agent_process, ev, data)
 				PRINTF("BUNDLEPROTOCOL: ERROR\n");
 				continue;
 			}
+
 			PRINTF("BUNDLEPROTOCOL: discover\n");
-			DISCOVERY.send(b_num);
+			// FIME: We need the destination of this bundle as argument here
+			if (BUNDLE_STORAGE.read_bundle(b_num, &bundle) <=0){
+				PRINTF("read bundle ERROR\n\n");
+				return -1;
+			}
+			uint32_t destination_eid;
+			sdnv_decode(bundle.mem.ptr+bundle.offset_tab[DEST_NODE][OFFSET],bundle.offset_tab[DEST_NODE][STATE],&destination_eid);
+
+			rimeaddr_t neighbour;
+			neighbour.u8[0] = (destination_eid & 0x000000FF) >> 0;
+			neighbour.u8[1] = (destination_eid & 0x0000FF00) >> 8;
+
+			if( DISCOVERY.discover(&neighbour) ) {
+				ROUTING.new_neighbor(&neighbour);
+				continue;
+			}
+
 			if (BUNDLE_STORAGE.get_bundle_num() == 1){
 				etimer_set(&discover_timer, DISCOVER_CYCLE*CLOCK_SECOND);
 			}
@@ -232,7 +250,7 @@ PROCESS_THREAD(agent_process, ev, data)
 			if (BUNDLE_STORAGE.get_bundle_num()>0){
 				PRINTF("BUNDLEPROTOCOL: sending discover and reschedule timer to %f seconds %u bundles in storage\n",DISCOVER_CYCLE,BUNDLE_STORAGE.get_bundle_num());
 				etimer_set(&discover_timer, DISCOVER_CYCLE*CLOCK_SECOND);
-				DISCOVERY.send(255);
+				DISCOVERY.discover(255);
 			}else{
 				PRINTF("BUNDLEPROTOCOL: no more bundles to transmit\n");
 			}
