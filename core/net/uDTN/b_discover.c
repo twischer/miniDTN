@@ -253,18 +253,26 @@ void b_dis_save_neighbour(rimeaddr_t * neighbour)
  */
 uint8_t b_dis_discover(rimeaddr_t * dest)
 {
-	PRINTF("DISCOVERY: agent asks to discover %u:%u\n", dest->u8[0], dest->u8[1]);
+	if (dest==0){
+		rimeaddr_t tmp={{0,0}};
+		dest=&tmp;
+		PRINTF("DISCOVERY: agent asks to discover broadcast\n");
+		b_dis_send(dest);
+		return 0;
+	}else{
+		PRINTF("DISCOVERY: agent asks to discover %u:%u\n", dest->u8[0], dest->u8[1]);
 
-	// Check, if we already know this neighbour
-	if(b_dis_neighbour(dest)) {
-		PRINTF("FOUND\n");
-		return 1;
+		// Check, if we already know this neighbour
+		if(b_dis_neighbour(dest)) {
+			PRINTF("FOUND\n");
+			return 1;
+		}
+
+		// Otherwise, send out a discovery beacon
+		b_dis_send(dest);
+
+		return 0;
 	}
-
-	// Otherwise, send out a discovery beacon
-	b_dis_send(dest);
-
-	return 0;
 }
 
 /**

@@ -131,7 +131,7 @@ PROCESS_THREAD(agent_process, ev, data)
 	PRINTF("starting DTN Bundle Protocol \n");
 		
 	static struct bundle_t * bundleptr;
-	struct bundle_t bundle;
+	static struct bundle_t bundle;
 
 	struct registration_api *reg;
 	
@@ -250,7 +250,7 @@ PROCESS_THREAD(agent_process, ev, data)
 			if (BUNDLE_STORAGE.get_bundle_num()>0){
 				PRINTF("BUNDLEPROTOCOL: sending discover and reschedule timer to %f seconds %u bundles in storage\n",DISCOVER_CYCLE,BUNDLE_STORAGE.get_bundle_num());
 				etimer_set(&discover_timer, DISCOVER_CYCLE*CLOCK_SECOND);
-				DISCOVERY.discover(255);
+				DISCOVERY.discover(NULL);
 			}else{
 				PRINTF("BUNDLEPROTOCOL: no more bundles to transmit\n");
 			}
