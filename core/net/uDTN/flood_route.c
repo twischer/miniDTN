@@ -28,9 +28,12 @@
 #include "lib/memb.h"
 #include "contiki.h"
 #include <string.h>
+#include "discovery.h"
+#include "bundle.h"
 
 #undef DEBUG
-#if DEBUG
+#define DEBUG 1
+#if DEBUG 
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)
 #else
@@ -123,6 +126,42 @@ void flood_delete_list(void)
 	}
 }
 
+uint8_t flood_sent_to_known(struct bundle_t *bundle)
+{
+	struct discovery_neighbour_list_entry *nei_list =DISCOVERY.neighbours();
+	struct discovery_neighbour_list_entry *nei_l;
+	PRINTF("send to known neighbours:\n");
+	struct pack_list_t *pack;
+	for(nei_l = nei_list; nei_l != NULL; nei_l = list_item_next(nei_l)) {
+		uint8_t count=0;
+		for(pack = list_head(pack_list); pack != NULL; pack = list_item_next(pack)) { 
+			uint8_t i, sent=0;
+			for (i =0 ; i < ROUTING_NEI_MEM ; i++) {
+				//PRINTF("FLOOD: bundle %u already sent to node %u:%u == %u:%u? %lu\n",pack->num, dest->u8[1] ,dest->u8[0], pack->dest[i].u8[1], pack->dest[i].u8[0], pack->scr_node);
+				if ( rimeaddr_cmp(&pack->dest[i],&nei_l->neighbour)){
+					sent=1;
+				}
+			}
+			if(!sent){
+				PRINTF("FLOOD send bundle %u to %u:%u\n",pack->num,nei_l->neighbour.u8[0],nei_l->neighbour.u8[1]);
+				PRINTF("%u:%u\n",nei_l->neighbour.u8[0],nei_l->neighbour.u8[1]);
+				struct route_t *route; route= memb_alloc(&route_mem);
+				memcpy(route->dest.u8,nei_l->neighbour.u8,sizeof(nei_l->neighbour.u8));
+				route->bundle_num=pack->num;
+				pack->action=1;
+				list_add(route_list,route);	
+				count++;
+			}
+		}
+		if (count){
+			agent_send_bundles(list_head(route_list));
+		}
+	}
+	return 1 ;
+	
+	
+}
+
 /**
 * \brief addes a new bundle to the list of bundles
 * \param bundle_num bundle number of the bundle
@@ -161,6 +200,7 @@ int flood_new_bundle(uint16_t bundle_num)
 		PRINTF("FLOOD: %u:%u\n",pack->dest[0].u8[0],pack->dest[0].u8[1]);
 		list_add(pack_list,pack);
 		PRINTF("FLOOD: pack_list %p\n",list_head(pack_list));
+		flood_sent_to_known(&bundle);
 		delete_bundle(&bundle);
 	}
 	return 1;
@@ -199,6 +239,9 @@ void flood_sent(struct route_t *route,int status, int num_tx)
 {
     struct pack_list_t *pack;
 	pack = list_head(pack_list);
+	if (pack ==NULL){
+		PRINTF("FLOOD: no list\n");
+	}
 	PRINTF("FLOOD: pack_list %p, %u\n",list_head(pack_list),pack->num);
 	for(pack = list_head(pack_list); pack != NULL && pack->num != route->bundle_num ; pack = list_item_next(pack)){
 		PRINTF("FLOOD: pack_num:%u != %u\n",pack->num,route->bundle_num);
@@ -223,6 +266,32 @@ void flood_sent(struct route_t *route,int status, int num_tx)
 		    PRINTF("FLOOD: bundle %u sent to %u nodes\n",route->bundle_num, pack->send_to);	
 		    memb_free(&route_mem,route);
 		    PRINTF("FLOOD: bundle %u cleared\n",route->bundle_num);
+			struct bundle_t bundle;
+			rimeaddr_t dest_n;
+			PRINTF("FLOOD: memory\n");
+			if (BUNDLE_STORAGE.read_bundle(route->bundle_num, &bundle) <=0){
+				PRINTF("\n\nread bundle ERROR\n\n");
+				return -1;
+			}
+			PRINTF("FLOOD: red bundle\n");
+			uint32_t dest;
+			sdnv_decode(bundle.mem.ptr+bundle.offset_tab[DEST_NODE][OFFSET],bundle.offset_tab[DEST_NODE][STATE],&dest);
+			dest_n.u8[1]=(dest&0xff00)>>8;
+			dest_n.u8[0]=(dest&0xff)>>0;
+			if (rimeaddr_cmp(&route->dest,&dest_n)){
+				flood_del_bundle(route->bundle_num);
+				uint16_t tmp= route->bundle_num;
+				memb_free(&route_mem,route);
+				PRINTF("FLOOD: bundle sent to destination node, deleting bundle\n");
+				BUNDLE_STORAGE.del_bundle(tmp,4);
+			}else{
+				PRINTF("FLOOD: different dests %u:%u != %u:%u %x\n",route->dest.u8[0],route->dest.u8[1],dest_n.u8[0],dest_n.u8[1]);
+			}
+			delete_bundle(&bundle);
+			
+			    
+			    
+		
 
 	    }else{
 	    	    if(pack->send_to >= ROUTING_NEI_MEM){
