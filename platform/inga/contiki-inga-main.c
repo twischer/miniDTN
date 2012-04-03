@@ -556,8 +556,8 @@ uint8_t i;
 #if WITH_NODE_ID
   // IPv6 + Node_ID
   node_id=get_panaddr_from_eeprom();
-  addr.u8[0]=node_id&0xff;
-  addr.u8[1]=(node_id&0xff00)>>8;
+  addr.u8[1]=node_id&0xff;
+  addr.u8[0]=(node_id&0xff00)>>8;
   PRINTA("Node ID from eeprom: %X\n",node_id);
   //uint16_t inv_node_id=((node_id&0xff00)>>8)+((node_id&0xff)<<8); // chance order of bytes for rf23x
 
@@ -578,8 +578,8 @@ uint8_t i;
 #if WITH_NODE_ID
   // No IPv6 + Node_ID
   node_id=get_panaddr_from_eeprom();
-  addr.u8[0]=node_id&0xff;
-  addr.u8[1]=(node_id&0xff00)>>8;
+  addr.u8[1]=node_id&0xff;
+  addr.u8[0]=(node_id&0xff00)>>8;
   PRINTA("Node ID from eeprom: %X\n",node_id);
   //uint16_t inv_node_id=((node_id&0xff00)>>8)+((node_id&0xff)<<8); // chance order of bytes for rf23x
 
@@ -770,7 +770,7 @@ main(void)
   process_start(&sensors_process, NULL);
 
   profiling_start();
-
+  
   while(1) {
     process_run();
     watchdog_periodic();
