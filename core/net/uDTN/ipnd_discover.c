@@ -176,7 +176,8 @@ void ipnd_dis_receive(rimeaddr_t * source, uint8_t * payload, uint8_t length)
 	uint8_t flags = payload[offset++];
 
 	// Sequence Number
-	uint16_t sequenceNumber = (payload[offset++] << 8) + (payload[offset++] << 0);
+	uint16_t sequenceNumber = ((payload[offset] & 0xFF)<< 8) + (payload[offset+1] & 0xFF);
+	offset += 2;
 
 	uint32_t eid = 0;
 	if( flags & IPND_FLAGS_SOURCE_EID ) {
