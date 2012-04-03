@@ -78,7 +78,7 @@ uint8_t b_dis_neighbour(rimeaddr_t * dest)
 {
 	int g;
 	for(g=0; g<DISCOVERY_NEIGHBOUR_CACHE; g++) {
-		if( discovery_neighbours[g].active > 0 && rimeaddr_cmp(&discovery_neighbours[g].neighbour, dest) ) {
+		if( discovery_neighbours[g].active && rimeaddr_cmp(&(discovery_neighbours[g].neighbour), dest) ) {
 			return 1;
 		}
 	}
@@ -92,8 +92,8 @@ void b_dis_send(rimeaddr_t * destination) {
 	}
 
 	rimeaddr_t dest={{0,0}};
-	dtn_send_discover((uint8_t *) "DTN_DISCOVERY", 13, &dest);
 	PRINTF("dtn_send_discover\n");
+	dtn_send_discover((uint8_t *) "DTN_DISCOVERY", 13, &dest);
 }
 
 /**
@@ -178,7 +178,7 @@ void b_dis_receive(rimeaddr_t * source, uint8_t * payload, uint8_t length)
 void b_dis_neighbour_found(rimeaddr_t * neighbour)
 {
 	PRINTF("DISCOVERY: sending DTN BEACON Event for %u.%u\n", neighbour->u8[0], neighbour->u8[1]);
-	process_post(&agent_process, dtn_beacon_event, &neighbour);
+	process_post(&agent_process, dtn_beacon_event, neighbour);
 }
 
 /**
@@ -190,7 +190,7 @@ void b_dis_refresh_neighbour(rimeaddr_t * neighbour) {
 	int g;
 
 	for(g=0; g<DISCOVERY_NEIGHBOUR_CACHE; g++) {
-		if( discovery_neighbours[g].active > 0 && rimeaddr_cmp(&discovery_neighbours[g].neighbour, neighbour) ) {
+		if( discovery_neighbours[g].active && rimeaddr_cmp(&(discovery_neighbours[g].neighbour), neighbour) ) {
 			discovery_neighbours[g].timestamp = clock_time();
 			return;
 		}
@@ -225,7 +225,7 @@ void b_dis_save_neighbour(rimeaddr_t * neighbour)
 
 	int g;
 	for(g=0; g<DISCOVERY_NEIGHBOUR_CACHE; g++) {
-		if( discovery_neighbours[g].active < 1 ) {
+		if( !discovery_neighbours[g].active ) {
 			PRINTF("DISCOVERY: Saving neighbour %u:%u to %u\n", neighbour->u8[0], neighbour->u8[1], g);
 			b_dis_save_neighbour_at(neighbour, g);
 			return;
@@ -264,7 +264,6 @@ uint8_t b_dis_discover(rimeaddr_t * dest)
 
 		// Check, if we already know this neighbour
 		if(b_dis_neighbour(dest)) {
-			PRINTF("FOUND\n");
 			return 1;
 		}
 
@@ -293,8 +292,8 @@ PROCESS_THREAD(discovery_process, ev, data)
 
 			for(g=0; g<DISCOVERY_NEIGHBOUR_CACHE; g++) {
 				if( discovery_neighbours[g].active &&
-						(clock_time() - discovery_neighbours[g].timestamp) > DISCOVERY_NEIGHBOUR_TIMEOUT ) {
-					PRINTF("DISCOVERY: Neighbour %u:%u at %u timed out\n", discovery_neighbours[g].neighbour.u8[0], discovery_neighbours[g].neighbour.u8[1], g);
+						(clock_time() - discovery_neighbours[g].timestamp) > (DISCOVERY_NEIGHBOUR_TIMEOUT * CLOCK_SECOND) ) {
+					PRINTF("DISCOVERY: Neighbour %u:%u at %u timed out: %lu vs. %lu = %lu\n", discovery_neighbours[g].neighbour.u8[0], discovery_neighbours[g].neighbour.u8[1], g, clock_time(), discovery_neighbours[g].timestamp, clock_time() - discovery_neighbours[g].timestamp);
 					memset(&discovery_neighbours[g], 0, sizeof(struct discovery_neighbour_entry));
 				}
 			}
