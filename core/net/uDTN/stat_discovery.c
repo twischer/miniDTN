@@ -22,41 +22,61 @@
 #define PRINTF(...)
 #endif
 
-
-
-static rimeaddr_t dest;
-void s_dis_send(uint16_t num)
+void s_dis_init()
 {
-//	printf("Discovery: send\n");
-	if (num ==255)
-		return;
-	struct bundle_t bundle;
-	BUNDLE_STORAGE.read_bundle(num,&bundle);
 
-	dest.u8[0]=*((uint8_t*)bundle.mem.ptr+bundle.offset_tab[DEST_NODE][OFFSET]);
-//	printf(" dest node %u= %u\n",bundle.offset_tab[DEST_NODE][OFFSET],*((uint8_t*)bundle.mem.ptr+bundle.offset_tab[DEST_NODE][OFFSET]));
-	delete_bundle(&bundle);
-//	printf(" %u \n",BUNDLE_STORAGE.get_bundle_num());
-//	if( BUNDLE_STORAGE.get_bundle_num() ==40){
-	process_post(&agent_process, dtn_beacon_event, &dest);
-//	}
-	return;
 }
 
-uint8_t s_dis_is_beacon(uint8_t *msg)
+uint8_t s_dis_neighbour(rimeaddr_t * dest)
 {
-			return 0;
+	return 1;
 }
 
-uint8_t s_dis_is_discover(uint8_t *msg)
+void s_dis_enable()
 {
-			return 0;
+
+}
+
+void s_dis_disable()
+{
+
+}
+
+void s_dis_receive(rimeaddr_t * source, uint8_t * payload, uint8_t length)
+{
+
+}
+
+void s_dis_alive(rimeaddr_t * source)
+{
+
+}
+
+uint8_t d_dis_discover(rimeaddr_t * dest)
+{
+	return 1;
+}
+
+struct discovery_neighbour_list_entry * s_dis_neighbours()
+{
+	return NULL;
+}
+
+void s_dis_stop_pending()
+{
+
 }
 
 const struct discovery_driver s_discovery ={
 	"S_DISCOVERY",
-	s_dis_send,
-	s_dis_is_beacon,
-	s_dis_is_discover,
+	s_dis_init,
+	s_dis_neighbour,
+	s_dis_enable,
+	s_dis_disable,
+	s_dis_receive,
+	s_dis_alive,
+	d_dis_discover,
+	s_dis_neighbours,
+	s_dis_stop_pending,
 };
 
