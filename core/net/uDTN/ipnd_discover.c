@@ -33,7 +33,7 @@
 #include "sdnv.h"
 #include "net/mac/frame802154.h" // for IEEE802154_PANID
 
-#define DEBUG 1
+#define DEBUG 0
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)

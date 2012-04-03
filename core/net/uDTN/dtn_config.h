@@ -13,7 +13,7 @@
 #define ROUTING flood_route
 #define STATUS_REPORT b_status
 #define WATCHDOG_CONF_TIMEOUT 4
-#define DISCOVERY b_discovery
+#define DISCOVERY ipnd_discovery
 /** @} */
 
 
