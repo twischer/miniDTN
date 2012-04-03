@@ -88,7 +88,7 @@ PROCESS_THREAD(dtnping_process, ev, data)
 
 	etimer_set(&timer, CLOCK_SECOND);
 
-	printf("ECHO ipn:%u.%u %u bytes of data.\n", DTN_PING_NODE, DTN_PING_NODE, DTN_PING_LENGTH);
+	printf("ECHO ipn:%u.%u %u bytes of data.\n", DTN_PING_NODE, DTN_PING_ENDPOINT, DTN_PING_LENGTH);
 
 	while (1) {
 		PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&timer));
