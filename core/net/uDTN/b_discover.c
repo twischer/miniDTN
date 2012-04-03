@@ -343,7 +343,7 @@ PROCESS_THREAD(discovery_process, ev, data)
 {
 	PROCESS_BEGIN();
 
-	// etimer_set(&discovery_timeout_timer, DISCOVERY_NEIGHBOUR_TIMEOUT * CLOCK_SECOND);
+	etimer_set(&discovery_timeout_timer, DISCOVERY_NEIGHBOUR_TIMEOUT * CLOCK_SECOND);
 	PRINTF("DISCOVERY: process running\n");
 
 	while(1) {
