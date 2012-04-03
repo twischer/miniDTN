@@ -43,28 +43,41 @@ void b_dis_neighbour_found(rimeaddr_t * neighbour);
 void b_dis_refresh_neighbour(rimeaddr_t * neighbour);
 void b_dis_save_neighbour(rimeaddr_t * neighbour);
 
-#define DISCOVERY_NEIGHBOUR_CACHE	10
+#define DISCOVERY_NEIGHBOUR_CACHE	3
 #define DISCOVERY_NEIGHBOUR_TIMEOUT	5
+
+/**
+ * This "internal" struct extends the discovery_neighbour_list_entry struct with
+ * more attributes for internal use
+ */
+struct discovery_basic_neighbour_list_entry {
+	struct discovery_basic_neighbour_list_entry *next;
+	rimeaddr_t neighbour;
+	clock_time_t timestamp;
+	uint8_t active;
+};
 
 PROCESS(discovery_process, "DISCOVERY process");
 
-struct discovery_neighbour_entry {
-	uint8_t active;
-	rimeaddr_t neighbour;
-	clock_time_t timestamp;
-};
+/**
+ * List and memory blocks to save information about neighbours
+ */
+LIST(neighbour_list);
+MEMB(neighbour_mem, struct discovery_basic_neighbour_list_entry, DISCOVERY_NEIGHBOUR_CACHE);
 
-struct discovery_neighbour_entry discovery_neighbours[DISCOVERY_NEIGHBOUR_CACHE];
 uint8_t discovery_status;
 struct etimer discovery_timeout_timer;
 
 void b_dis_init()
 {
-	// Clean neighbour database
-	memset(discovery_neighbours, 0, DISCOVERY_NEIGHBOUR_CACHE * sizeof(struct discovery_neighbour_entry));
-
 	// Enable discovery module
 	discovery_status = 1;
+
+	// Initialize the neighbour list
+	list_init(neighbour_list);
+
+	// Initialize the neighbour memory block
+	memb_init(&neighbour_mem);
 
 	// Start discovery process
 	process_start(&discovery_process, NULL);
@@ -76,9 +89,13 @@ void b_dis_init()
 */
 uint8_t b_dis_neighbour(rimeaddr_t * dest)
 {
-	int g;
-	for(g=0; g<DISCOVERY_NEIGHBOUR_CACHE; g++) {
-		if( discovery_neighbours[g].active && rimeaddr_cmp(&(discovery_neighbours[g].neighbour), dest) ) {
+	struct discovery_basic_neighbour_list_entry * entry;
+
+	for(entry = list_head(neighbour_list);
+			entry != NULL;
+			entry = entry->next) {
+		if( entry->active &&
+				rimeaddr_cmp(&(entry->neighbour), dest) ) {
 			return 1;
 		}
 	}
@@ -187,30 +204,19 @@ void b_dis_neighbour_found(rimeaddr_t * neighbour)
  * No:  Create entry
  */
 void b_dis_refresh_neighbour(rimeaddr_t * neighbour) {
-	int g;
+	struct discovery_basic_neighbour_list_entry * entry;
 
-	for(g=0; g<DISCOVERY_NEIGHBOUR_CACHE; g++) {
-		if( discovery_neighbours[g].active && rimeaddr_cmp(&(discovery_neighbours[g].neighbour), neighbour) ) {
-			discovery_neighbours[g].timestamp = clock_time();
+	for(entry = list_head(neighbour_list);
+			entry != NULL;
+			entry = entry->next) {
+		if( entry->active &&
+				rimeaddr_cmp(&(entry->neighbour), neighbour) ) {
+			entry->timestamp = clock_time();
 			return;
 		}
 	}
 
 	b_dis_save_neighbour(neighbour);
-}
-
-void b_dis_peer_alive(rimeaddr_t * neighbour)
-{
-	b_dis_refresh_neighbour(neighbour);
-}
-
-void b_dis_save_neighbour_at(rimeaddr_t * neighbour, uint8_t where)
-{
-	memset(&discovery_neighbours[where], 0, sizeof(struct discovery_neighbour_entry));
-
-	discovery_neighbours[where].active = 1;
-	rimeaddr_copy(&discovery_neighbours[where].neighbour, neighbour);
-	discovery_neighbours[where].timestamp = clock_time();
 }
 
 /**
@@ -223,26 +229,43 @@ void b_dis_save_neighbour(rimeaddr_t * neighbour)
 		return;
 	}
 
-	int g;
-	for(g=0; g<DISCOVERY_NEIGHBOUR_CACHE; g++) {
-		if( !discovery_neighbours[g].active ) {
-			PRINTF("DISCOVERY: Saving neighbour %u:%u to %u\n", neighbour->u8[0], neighbour->u8[1], g);
-			b_dis_save_neighbour_at(neighbour, g);
-			return;
+	struct discovery_basic_neighbour_list_entry * entry;
+	entry = memb_alloc(&neighbour_mem);
+
+	if( entry == NULL ) {
+		// Now we have to delete an existing entry - which one to choose?
+		struct discovery_basic_neighbour_list_entry * delete = list_head(neighbour_list);
+		clock_time_t age = 0;
+
+		// We select the entry with the hightest age
+		for(entry = list_head(neighbour_list);
+				entry != NULL;
+				entry = entry->next) {
+			if( entry->active && (clock_time() - entry->timestamp) > age ) {
+				age = clock_time() - entry->timestamp;
+				delete = entry;
+			}
 		}
+
+		PRINTF("DISCOVERY: Removing neighbour %u.%u to make room\n", delete->neighbour.u8[0], delete->neighbour.u8[1]);
+
+		// And remove if from the list and free the memory
+		memb_free(&neighbour_mem, delete);
+		list_remove(neighbour_list, delete);
+
+		// Now we can allocate memory again - has to work, no need to check return value
+		entry = memb_alloc(&neighbour_mem);
 	}
 
-	clock_time_t age = 0;
-	uint8_t where = 0;
-	for(g=0; g<DISCOVERY_NEIGHBOUR_CACHE; g++) {
-		if( (clock_time() - discovery_neighbours[g].timestamp) > age ) {
-			age = clock_time() - discovery_neighbours[g].timestamp;
-			where = g;
-		}
-	}
+	// Clean the entry struct, so that "active" becomes zero
+	memset(entry, 0, sizeof(struct discovery_basic_neighbour_list_entry));
 
-	PRINTF("DISCOVERY: Overwriting neighbour %u:%u to %u\n", neighbour->u8[0], neighbour->u8[1], where);
-	b_dis_save_neighbour_at(neighbour, where);
+	PRINTF("DISCOVERY: Saving neighbour %u:%u \n", neighbour->u8[0], neighbour->u8[1]);
+	entry->active = 1;
+	rimeaddr_copy(&(entry->neighbour), neighbour);
+	entry->timestamp = clock_time();
+
+	list_add(neighbour_list, entry);
 }
 
 
@@ -275,6 +298,13 @@ uint8_t b_dis_discover(rimeaddr_t * dest)
 }
 
 /**
+ * Returns the list of currently known neighbours
+ */
+struct discovery_neighbour_list_entry * b_dis_list_neighbours() {
+	return list_head(neighbour_list);
+}
+
+/**
  * Basic Discovery Persistent Process
  */
 PROCESS_THREAD(discovery_process, ev, data)
@@ -288,13 +318,16 @@ PROCESS_THREAD(discovery_process, ev, data)
 		PROCESS_WAIT_EVENT_UNTIL(ev);
 
 		if( etimer_expired(&discovery_timeout_timer) ) {
-			int g;
+			struct discovery_basic_neighbour_list_entry * entry;
 
-			for(g=0; g<DISCOVERY_NEIGHBOUR_CACHE; g++) {
-				if( discovery_neighbours[g].active &&
-						(clock_time() - discovery_neighbours[g].timestamp) > (DISCOVERY_NEIGHBOUR_TIMEOUT * CLOCK_SECOND) ) {
-					PRINTF("DISCOVERY: Neighbour %u:%u at %u timed out: %lu vs. %lu = %lu\n", discovery_neighbours[g].neighbour.u8[0], discovery_neighbours[g].neighbour.u8[1], g, clock_time(), discovery_neighbours[g].timestamp, clock_time() - discovery_neighbours[g].timestamp);
-					memset(&discovery_neighbours[g], 0, sizeof(struct discovery_neighbour_entry));
+			for(entry = list_head(neighbour_list);
+					entry != NULL;
+					entry = entry->next) {
+				if( entry->active && (clock_time() - entry->timestamp) > (DISCOVERY_NEIGHBOUR_TIMEOUT * CLOCK_SECOND) ) {
+					PRINTF("DISCOVERY: Neighbour %u:%u timed out: %lu vs. %lu = %lu\n", entry->neighbour.u8[0], entry->neighbour.u8[1], clock_time(), entry->timestamp, clock_time() - entry->timestamp);
+
+					memb_free(&neighbour_mem, entry);
+					list_remove(neighbour_list, entry);
 				}
 			}
 
@@ -312,8 +345,9 @@ const struct discovery_driver b_discovery ={
 	b_dis_enable,
 	b_dis_disable,
 	b_dis_receive,
-	b_dis_peer_alive,
+	b_dis_refresh_neighbour,
 	b_dis_discover,
+	b_dis_list_neighbours,
 };
 /** @} */
 /** @} */

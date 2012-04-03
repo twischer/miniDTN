@@ -23,6 +23,11 @@
 
 PROCESS_NAME(discovery_process);
 
+struct discovery_neighbour_list_entry {
+	struct discovery_neighbour_list_entry *next;
+	rimeaddr_t neighbour;
+};
+
 /** interface for discovery modules */
 struct discovery_driver {
 	char *name;
@@ -63,6 +68,11 @@ struct discovery_driver {
 	 * Starts to discover a neighbour
 	 */
 	uint8_t (* discover)(rimeaddr_t * dest);
+
+	/**
+	 * Returns the list of currently known neighbours
+	 */
+	struct discovery_neighbour_list_entry * (* neighbours)();
 };
 
 extern const struct discovery_driver DISCOVERY;
