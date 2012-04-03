@@ -42,9 +42,12 @@
 void b_dis_neighbour_found(rimeaddr_t * neighbour);
 void b_dis_refresh_neighbour(rimeaddr_t * neighbour);
 void b_dis_save_neighbour(rimeaddr_t * neighbour);
+void b_dis_stop_pending();
 
 #define DISCOVERY_NEIGHBOUR_CACHE	3
 #define DISCOVERY_NEIGHBOUR_TIMEOUT	5
+#define DISCOVERY_CYCLE 			0.2
+#define DISCOVERY_TRIES				5
 
 /**
  * This "internal" struct extends the discovery_neighbour_list_entry struct with
@@ -65,8 +68,11 @@ PROCESS(discovery_process, "DISCOVERY process");
 LIST(neighbour_list);
 MEMB(neighbour_mem, struct discovery_basic_neighbour_list_entry, DISCOVERY_NEIGHBOUR_CACHE);
 
-uint8_t discovery_status;
-struct etimer discovery_timeout_timer;
+uint8_t discovery_status = 0;
+uint8_t discovery_pending = 0;
+uint8_t discovery_pending_start = 0;
+static struct etimer discovery_timeout_timer;
+static struct etimer discovery_pending_timer;
 
 void b_dis_init()
 {
@@ -103,7 +109,8 @@ uint8_t b_dis_neighbour(rimeaddr_t * dest)
 	return 0;
 }
 
-void b_dis_send(rimeaddr_t * destination) {
+void b_dis_send(rimeaddr_t * destination)
+{
 	if( discovery_status == 0 ) {
 		return;
 	}
@@ -172,6 +179,9 @@ void b_dis_disable()
 	discovery_status = 0;
 }
 
+/**
+ * DTN Network has received an incoming packet, save the sender as neighbour
+ */
 void b_dis_receive(rimeaddr_t * source, uint8_t * payload, uint8_t length)
 {
 	PRINTF("DISCOVERY: received from %u:%u\n", source->u8[0], source->u8[1]);
@@ -192,10 +202,16 @@ void b_dis_receive(rimeaddr_t * source, uint8_t * payload, uint8_t length)
 	}
 }
 
+/**
+ * We have found a new neighbour, now go and notify the agent
+ */
 void b_dis_neighbour_found(rimeaddr_t * neighbour)
 {
 	PRINTF("DISCOVERY: sending DTN BEACON Event for %u.%u\n", neighbour->u8[0], neighbour->u8[1]);
 	process_post(&agent_process, dtn_beacon_event, neighbour);
+
+	// Once we have found a new neighbour, we will stop discovering other nodes
+	b_dis_stop_pending();
 }
 
 /**
@@ -203,7 +219,8 @@ void b_dis_neighbour_found(rimeaddr_t * neighbour)
  * Yes: refresh timestamp
  * No:  Create entry
  */
-void b_dis_refresh_neighbour(rimeaddr_t * neighbour) {
+void b_dis_refresh_neighbour(rimeaddr_t * neighbour)
+{
 	struct discovery_basic_neighbour_list_entry * entry;
 
 	for(entry = list_head(neighbour_list);
@@ -276,32 +293,47 @@ void b_dis_save_neighbour(rimeaddr_t * neighbour)
  */
 uint8_t b_dis_discover(rimeaddr_t * dest)
 {
-	if (dest==0){
-		rimeaddr_t tmp={{0,0}};
-		dest=&tmp;
-		PRINTF("DISCOVERY: agent asks to discover broadcast\n");
-		b_dis_send(dest);
-		return 0;
-	}else{
-		PRINTF("DISCOVERY: agent asks to discover %u:%u\n", dest->u8[0], dest->u8[1]);
+	PRINTF("DISCOVERY: agent asks to discover %u:%u\n", dest->u8[0], dest->u8[1]);
 
-		// Check, if we already know this neighbour
-		if(b_dis_neighbour(dest)) {
-			return 1;
-		}
-
-		// Otherwise, send out a discovery beacon
-		b_dis_send(dest);
-
-		return 0;
+	// Check, if we already know this neighbour
+	if(b_dis_neighbour(dest)) {
+		return 1;
 	}
+
+	// Memorize, that we still have a discovery pending
+	discovery_pending_start = 1;
+	process_poll(&discovery_process);
+
+	// Otherwise, send out a discovery beacon
+	b_dis_send(dest);
+
+	return 0;
 }
 
 /**
  * Returns the list of currently known neighbours
  */
-struct discovery_neighbour_list_entry * b_dis_list_neighbours() {
+struct discovery_neighbour_list_entry * b_dis_list_neighbours()
+{
 	return list_head(neighbour_list);
+}
+
+/**
+ * Stops pending discoveries
+ */
+void b_dis_stop_pending()
+{
+	discovery_pending = 0;
+	etimer_stop(&discovery_pending_timer);
+}
+
+/**
+ * Starts a periodic rediscovery
+ */
+void b_dis_start_pending()
+{
+	discovery_pending = 1;
+	etimer_set(&discovery_pending_timer, DISCOVERY_CYCLE * CLOCK_SECOND);
 }
 
 /**
@@ -311,11 +343,11 @@ PROCESS_THREAD(discovery_process, ev, data)
 {
 	PROCESS_BEGIN();
 
-	etimer_set(&discovery_timeout_timer, DISCOVERY_NEIGHBOUR_TIMEOUT * CLOCK_SECOND);
+	// etimer_set(&discovery_timeout_timer, DISCOVERY_NEIGHBOUR_TIMEOUT * CLOCK_SECOND);
 	PRINTF("DISCOVERY: process running\n");
 
 	while(1) {
-		PROCESS_WAIT_EVENT_UNTIL(ev);
+		PROCESS_WAIT_EVENT();
 
 		if( etimer_expired(&discovery_timeout_timer) ) {
 			struct discovery_basic_neighbour_list_entry * entry;
@@ -333,12 +365,34 @@ PROCESS_THREAD(discovery_process, ev, data)
 
 			etimer_reset(&discovery_timeout_timer);
 		}
+
+		/**
+		 * If we have a discovery pending, resend the beacon multiple times
+		 */
+		if( discovery_pending && etimer_expired(&discovery_pending_timer) ) {
+			b_dis_send(NULL);
+			discovery_pending ++;
+
+			if( discovery_pending > (DISCOVERY_TRIES + 1)) {
+				b_dis_stop_pending();
+			} else {
+				etimer_reset(&discovery_pending_timer);
+			}
+		}
+
+		/**
+		 * In case we should start the periodic discovery, do it here and now
+		 */
+		if( discovery_pending_start ) {
+			b_dis_start_pending();
+			discovery_pending_start = 0;
+		}
 	}
 
 	PROCESS_END();
 }
 
-const struct discovery_driver b_discovery ={
+const struct discovery_driver b_discovery = {
 	"B_DISCOVERY",
 	b_dis_init,
 	b_dis_neighbour,
@@ -348,6 +402,7 @@ const struct discovery_driver b_discovery ={
 	b_dis_refresh_neighbour,
 	b_dis_discover,
 	b_dis_list_neighbours,
+	b_dis_stop_pending,
 };
 /** @} */
 /** @} */
