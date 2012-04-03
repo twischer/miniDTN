@@ -276,16 +276,16 @@ void flood_sent(struct route_t *route,int status, int num_tx)
 			PRINTF("FLOOD: red bundle\n");
 			uint32_t dest;
 			sdnv_decode(bundle.mem.ptr+bundle.offset_tab[DEST_NODE][OFFSET],bundle.offset_tab[DEST_NODE][STATE],&dest);
-			dest_n.u8[1]=(dest&0xff00)>>8;
-			dest_n.u8[0]=(dest&0xff)>>0;
+			dest_n.u8[0]=(dest&0xff00)>>8;
+			dest_n.u8[1]=(dest&0xff)>>0;
 			if (rimeaddr_cmp(&route->dest,&dest_n)){
 				flood_del_bundle(route->bundle_num);
 				uint16_t tmp= route->bundle_num;
 				memb_free(&route_mem,route);
-				PRINTF("FLOOD: bundle sent to destination node, deleting bundle\n");
+				printf("FLOOD: bundle sent to destination node, deleting bundle\n");
 				BUNDLE_STORAGE.del_bundle(tmp,4);
 			}else{
-				PRINTF("FLOOD: different dests %u:%u != %u:%u %x\n",route->dest.u8[0],route->dest.u8[1],dest_n.u8[0],dest_n.u8[1]);
+				printf("FLOOD: different dests %u:%u != %u:%u %x\n",route->dest.u8[0],route->dest.u8[1],dest_n.u8[0],dest_n.u8[1]);
 			}
 			delete_bundle(&bundle);
 			

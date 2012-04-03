@@ -184,7 +184,7 @@ void b_dis_disable()
  */
 void b_dis_receive(rimeaddr_t * source, uint8_t * payload, uint8_t length)
 {
-	PRINTF("DISCOVERY: received from %u:%u\n", source->u8[0], source->u8[1]);
+	PRINTF("DISCOVERY: received from %u:%u\n", source->u8[1], source->u8[0]);
 
 	// Save all peer from which we receive packets to the active neighbours list
 	b_dis_refresh_neighbour(source);
@@ -293,7 +293,7 @@ void b_dis_save_neighbour(rimeaddr_t * neighbour)
  */
 uint8_t b_dis_discover(rimeaddr_t * dest)
 {
-	PRINTF("DISCOVERY: agent asks to discover %u:%u\n", dest->u8[0], dest->u8[1]);
+	PRINTF("DISCOVERY: agent asks to discover %u:%u\n", dest->u8[1], dest->u8[0]);
 
 	// Check, if we already know this neighbour
 	if(b_dis_neighbour(dest)) {
@@ -356,7 +356,7 @@ PROCESS_THREAD(discovery_process, ev, data)
 					entry != NULL;
 					entry = entry->next) {
 				if( entry->active && (clock_time() - entry->timestamp) > (DISCOVERY_NEIGHBOUR_TIMEOUT * CLOCK_SECOND) ) {
-					PRINTF("DISCOVERY: Neighbour %u:%u timed out: %lu vs. %lu = %lu\n", entry->neighbour.u8[0], entry->neighbour.u8[1], clock_time(), entry->timestamp, clock_time() - entry->timestamp);
+					PRINTF("DISCOVERY: Neighbour %u:%u timed out: %lu vs. %lu = %lu\n", entry->neighbour.u8[1], entry->neighbour.u8[0], clock_time(), entry->timestamp, clock_time() - entry->timestamp);
 
 					memb_free(&neighbour_mem, entry);
 					list_remove(neighbour_list, entry);

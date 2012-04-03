@@ -69,7 +69,7 @@ agent_send_bundles(struct route_t *route)
 
 	while (route !=NULL) {
 		listcount++;
-		PRINTF("BUNDLEPROTOCOL: send bundle %u to node %u:%u\n",route->bundle_num, route->dest.u8[1], route->dest.u8[0]);
+		PRINTF("BUNDLEPROTOCOL: send bundle %u to node %u:%u\n",route->bundle_num, route->dest.u8[0], route->dest.u8[1]);
 		memset(&bundle, 0, sizeof(struct bundle_t));
 		bundleptr = &bundle;
 		if(BUNDLE_STORAGE.read_bundle(route->bundle_num,bundleptr)<=0){
@@ -223,8 +223,8 @@ PROCESS_THREAD(agent_process, ev, data)
 			sdnv_decode(bundle.mem.ptr+bundle.offset_tab[DEST_NODE][OFFSET],bundle.offset_tab[DEST_NODE][STATE],&destination_eid);
 			delete_bundle(&bundle);
 			rimeaddr_t neighbour;
-			neighbour.u8[0] = (destination_eid & 0x000000FF) >> 0;
-			neighbour.u8[1] = (destination_eid & 0x0000FF00) >> 8;
+			neighbour.u8[1] = (destination_eid & 0x000000FF) >> 0;
+			neighbour.u8[0] = (destination_eid & 0x0000FF00) >> 8;
 
 			if( DISCOVERY.discover(&neighbour) ) {
 				ROUTING.new_neighbor(&neighbour);
