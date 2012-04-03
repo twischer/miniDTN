@@ -32,7 +32,7 @@
 #include "bundle.h"
 
 #undef DEBUG
-#define DEBUG 1
+#define DEBUG 0
 #if DEBUG 
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)
@@ -64,6 +64,7 @@ MEMB(route_mem, struct route_t, ROUTING_ROUTE_MAX_MEM);
 LIST(pack_list);
 MEMB(pack_mem, struct pack_list_t, ROUTING_MAX_MEM);
 LIST(route_list);
+static struct bundle_t bundle;
 
 /**
 * \brief called by agent at startup
@@ -126,7 +127,7 @@ void flood_delete_list(void)
 	}
 }
 
-uint8_t flood_sent_to_known(struct bundle_t *bundle)
+uint8_t flood_sent_to_known(void)
 {
 	struct discovery_neighbour_list_entry *nei_list =DISCOVERY.neighbours();
 	struct discovery_neighbour_list_entry *nei_l;
@@ -179,7 +180,6 @@ int flood_new_bundle(uint16_t bundle_num)
 	PRINTF("FLOOD: its new\n");
 	pack =  memb_alloc(&pack_mem);
 	if (pack !=NULL ){
-		struct bundle_t bundle;
 		pack->num=bundle_num;
 		PRINTF("FLOOD: memory\n");
 		if (BUNDLE_STORAGE.read_bundle(bundle_num, &bundle) <=0){
@@ -200,7 +200,7 @@ int flood_new_bundle(uint16_t bundle_num)
 		PRINTF("FLOOD: %u:%u\n",pack->dest[0].u8[0],pack->dest[0].u8[1]);
 		list_add(pack_list,pack);
 		PRINTF("FLOOD: pack_list %p\n",list_head(pack_list));
-		flood_sent_to_known(&bundle);
+		flood_sent_to_known();
 		delete_bundle(&bundle);
 	}
 	return 1;
@@ -266,7 +266,7 @@ void flood_sent(struct route_t *route,int status, int num_tx)
 		    PRINTF("FLOOD: bundle %u sent to %u nodes\n",route->bundle_num, pack->send_to);	
 		    memb_free(&route_mem,route);
 		    PRINTF("FLOOD: bundle %u cleared\n",route->bundle_num);
-			struct bundle_t bundle;
+//TODO			//struct bundle_t bundle;
 			rimeaddr_t dest_n;
 			PRINTF("FLOOD: memory\n");
 			if (BUNDLE_STORAGE.read_bundle(route->bundle_num, &bundle) <=0){

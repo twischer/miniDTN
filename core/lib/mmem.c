@@ -49,8 +49,9 @@
 #include "list.h"
 #include "contiki-conf.h"
 #include <string.h>
+#include "profiling.h"
 
-#define DEBUG 0
+#define DEBUG 1
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)
@@ -58,6 +59,7 @@
 #define PRINTF(...)
 #endif
 
+#define MMEM_CONF_SIZE 2000
 #ifdef MMEM_CONF_SIZE
 #define MMEM_SIZE MMEM_CONF_SIZE
 #else
@@ -93,7 +95,7 @@ mmem_alloc(struct mmem *m, unsigned int size)
 {
   /* Check if we have enough memory left for this allocation. */
   if((avail_memory < size) ) {
-    PRINTF("MMEM: %u < %u\n",avail_memory,size);
+    PRINTF("MMEM:ii %u < %u\n",avail_memory,size);
     return 0;
   }
   if (avail_memory> MMEM_SIZE){
@@ -132,9 +134,8 @@ void
 mmem_free(struct mmem *m)
 {
   if(m->size > MMEM_SIZE - avail_memory){
-	PRINTF("MMEM: too much free %u\n",m->size);
-	watchdog_stop();
-	while(1);
+	printf("MMEM: too much free %u\n",m->size);
+	profiling_stack_trace();
         return;
   }
   struct mmem *n;
