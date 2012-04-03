@@ -54,7 +54,7 @@ uint8_t create_bundle(struct bundle_t *bundle)
 	}
 	*/
 
-	*((uint8_t*)bundle->mem.ptr) = 0;
+	*((uint8_t*)bundle->mem.ptr) = 6;
 	bundle->size=1;
 	uint8_t i;
 	bundle->rec_time=(uint32_t) clock_seconds();
@@ -340,8 +340,9 @@ uint8_t recover_bundel(struct bundle_t *bundle,struct mmem *mem, int size)
 	bundle->offset_tab[VERSION][OFFSET]=0;
 	bundle->offset_tab[VERSION][STATE]=1;
 	bundle->offset_tab[FLAGS][OFFSET]=1;
-	if (*block != 0){
+	if (*block != 6){
 		block=NULL;
+		PRINTF("BP Version mismatch\n");
 		return 0;
 	}
 	uint8_t *tmp=block;
