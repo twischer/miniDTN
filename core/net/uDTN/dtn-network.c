@@ -175,6 +175,11 @@ static void packet_sent(void *ptr, int status, int num_tx)
 		struct route_t *route= (struct route_t *)ptr;
 		PRINTF("DTN: bundle_num : %u    %p\n",route->bundle_num,ptr);
 		//printf("sent to %u:%u\n",route->dest.u8[0],route->dest.u8[1]);
+
+		if( status == MAC_TX_OK ) {
+			// Notify discovery that peer is still alive
+			DISCOVERY.alive(&(route->dest));
+		}
 		ROUTING.sent(route,status,num_tx);
 	}
 		
