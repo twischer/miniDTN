@@ -73,6 +73,11 @@ struct discovery_driver {
 	 * Returns the list of currently known neighbours
 	 */
 	struct discovery_neighbour_list_entry * (* neighbours)();
+
+	/**
+	 * Stops pending discoveries
+	 */
+	void (* stop_pending)();
 };
 
 extern const struct discovery_driver DISCOVERY;

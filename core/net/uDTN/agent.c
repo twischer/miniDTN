@@ -50,7 +50,6 @@
 
 uint32_t dtn_node_id;
 uint32_t dtn_seq_nr;
-static struct etimer discover_timer;
 PROCESS(agent_process, "AGENT process");
 AUTOSTART_PROCESSES(&agent_process);
 
@@ -229,11 +228,6 @@ PROCESS_THREAD(agent_process, ev, data)
 
 			if( DISCOVERY.discover(&neighbour) ) {
 				ROUTING.new_neighbor(&neighbour);
-				continue;
-			}
-
-			if (BUNDLE_STORAGE.get_bundle_num() == 1){
-				etimer_set(&discover_timer, DISCOVER_CYCLE*CLOCK_SECOND);
 			}
 
 			continue;
@@ -242,18 +236,6 @@ PROCESS_THREAD(agent_process, ev, data)
 		if(ev == dtn_bundle_deleted_event){
 			ROUTING.del_bundle( del_num);
 			CUSTODY.del_from_list(del_num);
-			continue;
-		}
-		
-		if(etimer_expired(&discover_timer)){
-			PRINTF("BUNDLEPROTOCOL: discover_timer\n");
-			if (BUNDLE_STORAGE.get_bundle_num()>0){
-				PRINTF("BUNDLEPROTOCOL: sending discover and reschedule timer to %f seconds %u bundles in storage\n",DISCOVER_CYCLE,BUNDLE_STORAGE.get_bundle_num());
-				etimer_set(&discover_timer, DISCOVER_CYCLE*CLOCK_SECOND);
-				DISCOVERY.discover(NULL);
-			}else{
-				PRINTF("BUNDLEPROTOCOL: no more bundles to transmit\n");
-			}
 			continue;
 		}
 	}
