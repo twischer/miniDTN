@@ -132,10 +132,7 @@ uint8_t ipnd_parse_eid(uint32_t * eid, uint8_t * buffer, uint8_t length) {
 	int offset = 0;
 
 	// int sdnv_decode(const uint8_t* bp, size_t len, uint32_t* val)
-	offset += sdnv_decode(&buffer[offset], length - offset, &sdnv_length);
-
-	// FIXME: sdnv_decode's return value is -1 - WTF?
-	offset = 1;
+	offset += sdnv_decode(&buffer[offset], 4 , &sdnv_length);
 
 	if( strncmp((char *) &buffer[offset], "ipn:", 4) == 0 ) {
 		*eid = atoi((char *) &buffer[offset + 4]);

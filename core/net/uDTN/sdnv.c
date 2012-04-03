@@ -89,9 +89,10 @@ int sdnv_decode(const uint8_t* bp, size_t len, uint32_t* val)
 		--len;
 	} while (1);
 
-	if ((val_len > MAX_LENGTH) || ((val_len == MAX_LENGTH) && (*start != 0x81)))
+	if ((val_len > MAX_LENGTH) || ((val_len == MAX_LENGTH) && (*start != 0x81))){
 		PRINTF("SDNV: val_len >= %u\n",MAX_LENGTH);
 		return -1;
+	}
 	
 	PRINTF("SDNV: val: %lu\n", *val);
 	return val_len;
