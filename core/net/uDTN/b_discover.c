@@ -294,8 +294,8 @@ PROCESS_THREAD(discovery_process, ev, data)
 			for(g=0; g<DISCOVERY_NEIGHBOUR_CACHE; g++) {
 				if( discovery_neighbours[g].active &&
 						(clock_time() - discovery_neighbours[g].timestamp) > DISCOVERY_NEIGHBOUR_TIMEOUT ) {
-					// PRINTF("DISCOVERY: Neighbour %u:%u at %u timed out\n", discovery_neighbours[g].neighbour.u8[0], discovery_neighbours[g].neighbour.u8[1], g);
-					// memset(&discovery_neighbours[g], 0, sizeof(struct discovery_neighbour_entry));
+					PRINTF("DISCOVERY: Neighbour %u:%u at %u timed out\n", discovery_neighbours[g].neighbour.u8[0], discovery_neighbours[g].neighbour.u8[1], g);
+					memset(&discovery_neighbours[g], 0, sizeof(struct discovery_neighbour_entry));
 				}
 			}
 
