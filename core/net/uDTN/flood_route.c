@@ -282,7 +282,7 @@ void flood_sent(struct route_t *route,int status, int num_tx)
 				flood_del_bundle(route->bundle_num);
 				uint16_t tmp= route->bundle_num;
 				memb_free(&route_mem,route);
-				printf("FLOOD: bundle sent to destination node, deleting bundle\n");
+				PRINTF("FLOOD: bundle sent to destination node, deleting bundle\n");
 				BUNDLE_STORAGE.del_bundle(tmp,4);
 			}else{
 				printf("FLOOD: different dests %u:%u != %u:%u %x\n",route->dest.u8[0],route->dest.u8[1],dest_n.u8[0],dest_n.u8[1]);
