@@ -32,7 +32,7 @@
 	#include <stings.h>
 #endif
 
-#define DEBUG 1
+#define DEBUG 0
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)
@@ -69,37 +69,45 @@ static void dtn_network_init(void)
 /**
 *called for incomming packages
 */
+#define SUFFIX_LENGTH	2
 static void dtn_network_input(void) 
 {
 //	printf("DTN-NETWORK: got packet\n");
 	uint8_t input_packet[114];
-	int size=packetbuf_copyto(input_packet);
+	int size = packetbuf_copyto(input_packet);
 	rimeaddr_t dest = *packetbuf_addr(PACKETBUF_ADDR_RECEIVER);
 	rimeaddr_t bsrc = *packetbuf_addr(PACKETBUF_ADDR_SENDER);
 	int16_t rssi = packetbuf_attr(PACKETBUF_ATTR_RSSI);
 	//printf("NET: rssi = %d\n", rssi-45);
 	PRINTF("%x%x: dtn_network_input\n",dest.u8[0],dest.u8[1]);
 	if((*input_packet==0x08) & (*(input_packet+1)==0x80)) { //broadcast message
+
+		uint8_t * discovery_data = input_packet + 2;
+		uint8_t discovery_length = (uint8_t) (size - 2 - SUFFIX_LENGTH);
+
 		PRINTF("Broadcast\n");
 			
-		DISCOVERY.receive(&bsrc, input_packet + 2,(uint8_t) size - 4);
+		DISCOVERY.receive(&bsrc, discovery_data, discovery_length);
 		packetbuf_clear();
 			
 	} else {
+		uint8_t * payload_data = input_packet + 1;
+		uint8_t payload_length = (uint8_t) (size - 1 - SUFFIX_LENGTH);
+
 		//leds_on(4);
 		packetbuf_clear();
-		PRINTF("%p  %p\n",&bundle,&input_packet);	
+		PRINTF("%p  %p\n", &bundle, &payload_data);
 		//printf(".\n");
 		struct mmem mem;
-		mmem_alloc(&mem,114);
+		mmem_alloc(&mem, 114 - 1 - SUFFIX_LENGTH);
 		if (!MMEM_PTR(&mem)){
 			PRINTF("DTN: MMEM ERROR\n");
 			return;
 		}
 
-		memcpy(MMEM_PTR(&mem),&input_packet,114);
+		memcpy(MMEM_PTR(&mem), payload_data, 114 - 1 - SUFFIX_LENGTH);
 		memset(&bundle, 0, sizeof(struct bundle_t));
-		if ( !recover_bundel(&bundle,&mem, (uint8_t)size)){
+		if ( !recover_bundel(&bundle, &mem, payload_length)){
 			PRINTF("DTN: recover ERROR\n");	
 			mmem_free(&mem);
 			return;
