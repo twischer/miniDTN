@@ -31,6 +31,7 @@
 #include "discovery.h"
 #include <string.h> // for memset
 #include "sdnv.h"
+#include "net/mac/frame802154.h" // for IEEE802154_PANID
 
 #define DEBUG 1
 #if DEBUG
@@ -46,6 +47,9 @@ void ipnd_dis_save_neighbour(rimeaddr_t * neighbour);
 #define DISCOVERY_NEIGHBOUR_CACHE	3
 #define DISCOVERY_CYCLE				1
 #define DISCOVERY_NEIGHBOUR_TIMEOUT	(5*DISCOVERY_CYCLE)
+#define DISCOVERY_IPND_SERVICE		"lowpancl"
+#define DISCOVERY_IPND_BUFFER_LEN 	60
+
 
 #define IPND_FLAGS_SOURCE_EID		(1<<0)
 #define IPND_FLAGS_SERVICE_BLOCK	(1<<1)
@@ -194,36 +198,58 @@ void ipnd_dis_receive(rimeaddr_t * source, uint8_t * payload, uint8_t length)
 
 
 void ipnd_dis_send() {
-	uint8_t buffer[20];
+	uint8_t ipnd_buffer[DISCOVERY_IPND_BUFFER_LEN];
+	char string_buffer[20];
 	int offset = 0;
+	int len;
 
-	// Clear the buffer
-	memset(buffer, 0, 20);
+	// Clear the ipnd_buffer
+	memset(ipnd_buffer, 0, DISCOVERY_IPND_BUFFER_LEN);
 
 	// Version
-	buffer[offset++] = 0x02;
+	ipnd_buffer[offset++] = 0x02;
 
 	// Flags
-	buffer[offset++] = IPND_FLAGS_SOURCE_EID;
+	ipnd_buffer[offset++] = IPND_FLAGS_SOURCE_EID | IPND_FLAGS_SERVICE_BLOCK;
 
 	// Beacon Sequence Number
-	buffer[offset++] = (discovery_sequencenumber & 0xFF00) << 8;
-	buffer[offset++] = (discovery_sequencenumber & 0x00FF) << 0;
+	ipnd_buffer[offset++] = (discovery_sequencenumber & 0xFF00) << 8;
+	ipnd_buffer[offset++] = (discovery_sequencenumber & 0x00FF) << 0;
 	discovery_sequencenumber ++;
 
-	// EID Length
-	char EID[20];
-	int len;
-	len = sprintf(EID, "ipn:%lu", dtn_node_id);
-	offset += sdnv_encode(len, &buffer[offset], 20 - offset);
+	/**
+	 * Add node's EID
+	 */
+	// Print to buffer, determine length
+	len = sprintf(string_buffer, "ipn:%lu", dtn_node_id);
+	// SDNV encode length
+	offset += sdnv_encode(len, &ipnd_buffer[offset], DISCOVERY_IPND_BUFFER_LEN - offset);
+	// Copy string to buffer
+	memcpy(&ipnd_buffer[offset], string_buffer, len);
+	// Shift buffer
+	offset += len;
 
-	// EID
-	memcpy(&buffer[offset], EID, len);
+	/**
+	 * Add static Service block
+	 */
+	// We have one static service
+	ipnd_buffer[offset++] = 1; // Number of services
+
+	// The service is called DISCOVERY_IPND_SERVICE
+	len = sprintf(string_buffer, DISCOVERY_IPND_SERVICE);
+	offset += sdnv_encode(len, &ipnd_buffer[offset], DISCOVERY_IPND_BUFFER_LEN - offset);
+	memcpy(&ipnd_buffer[offset], string_buffer, len);
+	offset += len;
+
+	// We exploit ip and port here
+	len = sprintf(string_buffer, "ip=%lu;port=%u;", dtn_node_id, IEEE802154_PANID);
+	offset += sdnv_encode(len, &ipnd_buffer[offset], DISCOVERY_IPND_BUFFER_LEN - offset);
+	memcpy(&ipnd_buffer[offset], string_buffer, len);
 	offset += len;
 
 	// Now: Send it
 	rimeaddr_t destination = {{0, 0}}; // Broadcast
-	dtn_send_discover(buffer, offset, &destination);
+	dtn_send_discover(ipnd_buffer, offset, &destination);
 }
 
 /**
