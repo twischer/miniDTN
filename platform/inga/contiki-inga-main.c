@@ -329,9 +329,13 @@ get_eui64_from_eeprom(uint8_t macptr[sizeof(rimeaddr_t)]) {
   sei();
   return macptr[0]!=0xFF;
 }
+/**
+ * Getting the PANID from EEPROM cannot work, because the 802154framer always uses the
+ * IEEE802154_PANID define for outgoing frames
+ */
 static uint16_t
 get_panid_from_eeprom(void) {
-  return eeprom_read_word(&eemem_panid);
+  return IEEE802154_PANID;
 }
 static uint16_t
 get_panaddr_from_eeprom(void) {
@@ -398,19 +402,13 @@ get_eui64_from_eeprom(uint8_t macptr[8]) {
   }
   return true;
 }
+/**
+ * Getting the PANID from EEPROM cannot work, because the 802154framer always uses the
+ * IEEE802154_PANID define for outgoing frames
+ */
 static uint16_t
 get_panid_from_eeprom(void) {
-  uint16_t x;
-  size_t  size = 2;
-  if (settings_get(SETTINGS_KEY_PAN_ID, 0,(unsigned char*)&x, &size) == SETTINGS_STATUS_OK) {
-    PRINTD("<-Get PAN ID of %04x.\n",x);
-  } else {
-    x=pgm_read_word_near(&default_panid);
-    if (settings_add_uint16(SETTINGS_KEY_PAN_ID,x)==SETTINGS_STATUS_OK) {
-      PRINTD("->Set EEPROM PAN ID to %04x.\n",x);
-    }
-  }
-  return x;
+  return IEEE802154_PANID;
 }
 static uint16_t
 get_panaddr_from_eeprom(void) {
