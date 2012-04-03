@@ -29,6 +29,7 @@
 #include "dtn_config.h"
 #include "status-report.h"
 #include "forwarding.h"
+#include "profiling.h"
 
 #define DEBUG 0
 #if DEBUG
@@ -245,6 +246,8 @@ static struct bundle_t bundle_str;
 */
 uint16_t rs_del_bundle(uint16_t bundle_num,uint8_t reason)
 {
+	PRINTF("STORAGE: delete %u  %u\n",bundle_num,reason);
+	
 	if(bundles_in_storage >0){
 		if(rs_read_bundle(bundle_num,&bundle_str)){
 			bundle_str.del_reason=reason;

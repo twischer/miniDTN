@@ -48,6 +48,8 @@
 #define PRINTF(...)
 #endif
 
+	static struct bundle_t * bundleptr;
+	static struct bundle_t bundle;
 uint32_t dtn_node_id;
 uint32_t dtn_seq_nr;
 PROCESS(agent_process, "AGENT process");
@@ -61,8 +63,8 @@ void agent_init(void) {
 void
 agent_send_bundles(struct route_t *route)
 {
-	struct bundle_t bundle;
-	struct bundle_t *bundleptr;
+	//struct bundle_t bundle;
+	//struct bundle_t *bundleptr;
 	uint8_t listcount=0;
 
 	while (route !=NULL) {
@@ -129,8 +131,6 @@ PROCESS_THREAD(agent_process, ev, data)
 	DISCOVERY.init();
 	PRINTF("starting DTN Bundle Protocol \n");
 		
-	static struct bundle_t * bundleptr;
-	static struct bundle_t bundle;
 
 	struct registration_api *reg;
 	
@@ -221,7 +221,7 @@ PROCESS_THREAD(agent_process, ev, data)
 			}
 			uint32_t destination_eid;
 			sdnv_decode(bundle.mem.ptr+bundle.offset_tab[DEST_NODE][OFFSET],bundle.offset_tab[DEST_NODE][STATE],&destination_eid);
-
+			delete_bundle(&bundle);
 			rimeaddr_t neighbour;
 			neighbour.u8[0] = (destination_eid & 0x000000FF) >> 0;
 			neighbour.u8[1] = (destination_eid & 0x0000FF00) >> 8;
