@@ -241,9 +241,10 @@ PROCESS_THREAD(agent_process, ev, data)
 	}
 	PROCESS_END();
 }
+
 void agent_del_bundle(void){
 
-			ROUTING.del_bundle( del_num);
-			CUSTODY.del_from_list(del_num);
+	ROUTING.del_bundle( del_num);
+	CUSTODY.del_from_list(del_num);
 }
 /** @} */
