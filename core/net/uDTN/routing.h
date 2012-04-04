@@ -27,6 +27,8 @@
 
 #define ROUTING_ROUTE_MAX_MEM 10
 
+process_event_t dtn_bundle_resubmission_event;
+
 /** the route_t struct is used to inform the network interface which bundle should be transmitted to whicht node*/
 struct route_t	{
 	struct route_t *next;
@@ -50,6 +52,8 @@ struct routing_driver {
 	/** callback funktion is called by network interface */
 	void (* sent)(struct route_t *route,int status, int num_tx);
 	void (* delete_list)(void);
+	/** function to resubmit bundles currently in storage */
+	void (* resubmit_bundles)(uint16_t);
 };
 extern const struct routing_driver ROUTING;
 
