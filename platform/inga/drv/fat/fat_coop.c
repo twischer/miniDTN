@@ -374,6 +374,10 @@ PROCESS_THREAD(fsp, ev, data)
 }
 
 uint8_t try_internal_operation() {
+	// Write dirty cache back
+	// fat_flush()
+	// Write max. n changed sectors of the FAT (To be implemented in FAT-Driver)
+	// fat_sync_fats(x);
 	return 0;
 }
 
@@ -765,8 +769,49 @@ uint8_t fat_op_status( uint8_t token ) {
 	return 0;
 }
 
-uint16_t fat_estimate_by_token( uint8_t token ) { return 0; }
-uint16_t fat_estimate_by_parameter( Operation type, uint16_t length ) { return 0; }
+uint16_t _get_time_of_operation( Operation op, uint16_t length ) {
+	uint8_t op_multiplikator = (length / 512) + ((length % 512 != 0) ? 1 : 0);
+	switch(op){
+		case COOP_CFS_OPENDIR:
+		case COOP_CFS_READDIR:
+		case COOP_CFS_READ:
+		case COOP_CFS_OPEN:
+			return (FAT_COOP_TIME_READ_BLOCK_MS) * op_multiplikator;
+		case COOP_CFS_CLOSEDIR:
+		case COOP_CFS_SEEK:
+		case COOP_CFS_CLOSE:
+			return 0;
+		case COOP_CFS_REMOVE:
+		case COOP_CFS_WRITE:
+			return (FAT_COOP_TIME_READ_BLOCK_MS + FAT_COOP_TIME_WRITE_BLOCK_MS)  * op_multiplikator;
+	}
+	return 0;
+}
+
+uint16_t fat_estimate_by_token( uint8_t token ) { 
+	uint16_t estimated_time = 0;
+	uint16_t i;
+	QueueEntry *entry;
+	for( i = 0; i < queue_len; i++ ) {
+		entry = &(queue[(queue_start + i) % FAT_COOP_QUEUE_SIZE]);
+		estimated_time += _get_time_of_operation( entry->op );
+		if(entry->token == token) {
+			break;
+		}
+	}
+	return estimated_time;
+}
+
+uint16_t fat_estimate_by_parameter( Operation type, uint16_t length ) { 
+	uint16_t estimated_time = _get_time_of_operation( type );
+	uint16_t i;
+	QueueEntry *entry;
+	for( i = 0; i < queue_len; i++ ) {
+		entry = &(queue[(queue_start + i) % FAT_COOP_QUEUE_SIZE]);
+		estimated_time += _get_time_of_operation( entry->op );
+	}
+	return estimated_time;
+}
 
 uint8_t fat_buffer_available( uint16_t length ) {
 	uint16_t pos = (writeBuffer_start + writeBuffer_len) % FAT_COOP_BUFFER_SIZE;
