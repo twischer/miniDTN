@@ -95,10 +95,9 @@ void flood_new_neigh(rimeaddr_t *dest)
 			PRINTF("FLOOD: bundle %u already sent to node %u:%u == %u:%u? %lu\n",pack->num, dest->u8[1] ,dest->u8[0], pack->dest[i].u8[1], pack->dest[i].u8[0], pack->scr_node);
 			if ((pack->dest[i].u8[0] == dest->u8[0] && pack->dest[i].u8[1] == dest->u8[1])|| pack->scr_node == dest->u8[0] || pack->action==1){
 				sent=1;
-				if (pack->action==1){
-				}
 			}
 		}
+
 		if(!sent){
 			struct route_t *route;
 			route= memb_alloc(&route_mem);
@@ -110,9 +109,11 @@ void flood_new_neigh(rimeaddr_t *dest)
 
 		}
 	}
+
 	if (count){
 		agent_send_bundles(list_head(route_list));
 	}
+
 	return ;
 }
 
@@ -143,6 +144,7 @@ uint8_t flood_sent_to_known(void)
 					sent=1;
 				}
 			}
+
 			if(!sent){
 				PRINTF("FLOOD send bundle %u to %u:%u\n",pack->num,nei_l->neighbour.u8[0],nei_l->neighbour.u8[1]);
 				PRINTF("%u:%u\n",nei_l->neighbour.u8[0],nei_l->neighbour.u8[1]);
@@ -154,6 +156,7 @@ uint8_t flood_sent_to_known(void)
 				count++;
 			}
 		}
+
 		if (count){
 			agent_send_bundles(list_head(route_list));
 		}
@@ -235,13 +238,14 @@ void flood_del_bundle(uint16_t bundle_num)
 * \param status status code
 * \num_tx number of retransmissions 
 */
-void flood_sent(struct route_t *route,int status, int num_tx)
+void flood_sent(struct route_t *route, int status, int num_tx)
 {
     struct pack_list_t *pack;
 	pack = list_head(pack_list);
-	if (pack ==NULL){
+	if (pack == NULL){
 		PRINTF("FLOOD: no list\n");
 	}
+
 	PRINTF("FLOOD: pack_list %p, %u\n",list_head(pack_list),pack->num);
 	for(pack = list_head(pack_list); pack != NULL && pack->num != route->bundle_num ; pack = list_item_next(pack)){
 		PRINTF("FLOOD: pack_num:%u != %u\n",pack->num,route->bundle_num);
@@ -253,25 +257,26 @@ void flood_sent(struct route_t *route,int status, int num_tx)
 		 //   printf("coll for %lu\n",pack->seq_num);
 	    PRINTF("FLOOD: collision after %d tx\n", num_tx);
 	    break;
-	  case MAC_TX_NOACK:
-		  //  printf("noack for %lu\n",pack->seq_num);
+
+	case MAC_TX_NOACK:
 	    PRINTF("FLOOD: noack after %d tx\n", num_tx);
 	    break;
-	  case MAC_TX_OK:
-	    PRINTF("FLOOD: sent after %d tx\n", num_tx);
-	    if (pack !=NULL && pack->send_to < ROUTING_NEI_MEM){
-		    memcpy(pack->dest[pack->send_to].u8,route->dest.u8,sizeof(route->dest.u8));
-		    pack->send_to++;
-		//    printf("ack for %lu\n",pack->seq_num);
-		    PRINTF("FLOOD: bundle %u sent to %u nodes\n",route->bundle_num, pack->send_to);	
-		    memb_free(&route_mem,route);
-		    PRINTF("FLOOD: bundle %u cleared\n",route->bundle_num);
-//TODO			//struct bundle_t bundle;
+
+	case MAC_TX_OK:
+		PRINTF("FLOOD: sent after %d tx\n", num_tx);
+		if (pack !=NULL && pack->send_to < ROUTING_NEI_MEM){
+			memcpy(pack->dest[pack->send_to].u8,route->dest.u8,sizeof(route->dest.u8));
+			pack->send_to++;
+			//    printf("ack for %lu\n",pack->seq_num);
+			PRINTF("FLOOD: bundle %u sent to %u nodes\n",route->bundle_num, pack->send_to);
+			memb_free(&route_mem,route);
+			PRINTF("FLOOD: bundle %u cleared\n",route->bundle_num);
+			//TODO			//struct bundle_t bundle;
 			rimeaddr_t dest_n;
 			PRINTF("FLOOD: memory\n");
 			if (BUNDLE_STORAGE.read_bundle(route->bundle_num, &bundle) <=0){
 				PRINTF("\n\nread bundle ERROR\n\n");
-				return -1;
+				return;
 			}
 			PRINTF("FLOOD: red bundle\n");
 			uint32_t dest;
@@ -285,30 +290,24 @@ void flood_sent(struct route_t *route,int status, int num_tx)
 				PRINTF("FLOOD: bundle sent to destination node, deleting bundle\n");
 				BUNDLE_STORAGE.del_bundle(tmp,4);
 			}else{
-				printf("FLOOD: different dests %u:%u != %u:%u %x\n",route->dest.u8[0],route->dest.u8[1],dest_n.u8[0],dest_n.u8[1]);
+				printf("FLOOD: different dests %u:%u != %u:%u\n",route->dest.u8[0],route->dest.u8[1],dest_n.u8[0],dest_n.u8[1]);
 			}
 			delete_bundle(&bundle);
-			
-			    
-			    
-		
-
-	    }else{
-	    	    if(pack->send_to >= ROUTING_NEI_MEM){
-		   	flood_del_bundle(route->bundle_num);
+	    }else if(pack != NULL && pack->send_to >= ROUTING_NEI_MEM){
+			flood_del_bundle(route->bundle_num);
 			uint16_t tmp= route->bundle_num;
 			memb_free(&route_mem,route);
-	    	    	PRINTF("FLOOD: bundle sent to max number of nodes, deleting bundle\n");
+			PRINTF("FLOOD: bundle sent to max number of nodes, deleting bundle\n");
 			BUNDLE_STORAGE.del_bundle(tmp,4);
-		    }else{
-		    	PRINTF("FLOOD: ERROR\n");
-		    }
-		    	
-	    }
+		}else{
+			PRINTF("FLOOD: ERROR\n");
+		}
 	    break;
-	  default:
+
+	default:
 	    PRINTF("FLOOD: error %d after %d tx\n", status, num_tx);
-	  }
+	    break;
+	}
 }
 
 const struct routing_driver flood_route ={
