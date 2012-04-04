@@ -1,8 +1,15 @@
-#ifndef __G_STORAGE_H__
-#define __G_STORAGE_H__
+#ifndef __R_STORAGE_H__
+#define __R_STORAGE_H__
 
-#define BUNDLE_STORAGE_SIZE 10 
-#define BUNDLE_STARAGE_FILE_NAME "list_file"
+/**
+ * How many bundles can possibly be stored in the data structures?
+ */
+#define BUNDLE_STORAGE_SIZE 	10
+/**
+ * How much MMEM memory has to remain free after all bundles have been stored?
+ */
+#define STORAGE_HIGH_WATERMARK	128
+
 #include "bundle.h"
 #include "lib/mmem.h"
 #include "net/rime/rimeaddr.h"
