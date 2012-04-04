@@ -125,7 +125,7 @@ PROCESS_THREAD(agent_process, ev, data)
 	dtn_bundle_in_storage_event = process_alloc_event();
 	dtn_bundle_deleted_event = process_alloc_event();
 	dtn_send_bundle_to_node_event = process_alloc_event();
-
+	dtn_bundle_resubmission_event = process_alloc_event();
 	
 	CUSTODY.init();
 	DISCOVERY.init();
@@ -238,12 +238,17 @@ PROCESS_THREAD(agent_process, ev, data)
 			CUSTODY.del_from_list(del_num);
 			continue;
 		}
+
+		if(ev == dtn_bundle_resubmission_event) {
+			uint16_t b_num = *(uint16_t *) data;
+			ROUTING.resubmit_bundles(b_num);
+			continue;
+		}
 	}
 	PROCESS_END();
 }
 
 void agent_del_bundle(void){
-
 	ROUTING.del_bundle( del_num);
 	CUSTODY.del_from_list(del_num);
 }

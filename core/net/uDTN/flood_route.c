@@ -40,8 +40,10 @@
 #define PRINTF(...)
 #endif
 
-#define ROUTING_MAX_MEM 10
-#define ROUTING_NEI_MEM 1
+#define ROUTING_MAX_MEM 	10
+#define ROUTING_NEI_MEM 	 1
+#define ROUTING_MAX_TRIES	 3
+
 /** struct to store the bundels to be routed */
 struct pack_list_t {
 	/** pointer to next bundle */
@@ -56,7 +58,13 @@ struct pack_list_t {
 	uint8_t action;
 	/** addresses of nodes this bundle was sent to */
 	rimeaddr_t dest[ROUTING_NEI_MEM];
+	/** address of the last node this bundle was attempted to send to */
+	rimeaddr_t last_node;
+	/** number of tries to send this bundle to the 'last_node' peer */
+	uint8_t last_counter;
 };
+
+static struct ctimer flood_retransmit_timer;
 
 /** memory for route_ts */
 MEMB(route_mem, struct route_t, ROUTING_ROUTE_MAX_MEM);
@@ -162,8 +170,13 @@ uint8_t flood_sent_to_known(void)
 		}
 	}
 	return 1 ;
-	
-	
+}
+
+/**
+ * Wrapper function for agent calls to resubmit bundles for already known neighbours
+ */
+void flood_resubmit_bundles(uint16_t bundle_num) {
+	flood_sent_to_known();
 }
 
 /**
@@ -195,6 +208,11 @@ int flood_new_bundle(uint16_t bundle_num)
 		sdnv_decode(bundle.mem.ptr+bundle.offset_tab[SRC_NODE][OFFSET],bundle.offset_tab[SRC_NODE][STATE],&pack->scr_node);
 		sdnv_decode(bundle.mem.ptr+bundle.offset_tab[TIME_STAMP_SEQ_NR][OFFSET],bundle.offset_tab[TIME_STAMP_SEQ_NR][STATE],&pack->seq_num);
 		pack->send_to=0;
+
+		pack->last_node.u8[0] = 0;
+		pack->last_node.u8[1] = 0;
+		pack->last_counter = 0;
+
 		uint8_t i;
 		for (i=0; i<ROUTING_NEI_MEM; i++){
 			pack->dest[i].u8[0]=0;
@@ -253,18 +271,42 @@ void flood_sent(struct route_t *route, int status, int num_tx)
 	pack->action=0;
 		
 	switch(status) {
-	  case MAC_TX_COLLISION:
-		 //   printf("coll for %lu\n",pack->seq_num);
-	    PRINTF("FLOOD: collision after %d tx\n", num_tx);
-	    break;
-
+	case MAC_TX_ERR:
+	case MAC_TX_COLLISION:
 	case MAC_TX_NOACK:
-	    PRINTF("FLOOD: noack after %d tx\n", num_tx);
-	    break;
+		// dtn-network tried to send bundle but failed, has to be retried
+		if( status == MAC_TX_ERR ) {
+			PRINTF("FLOOD: MAC_TX_ERR\n");
+		} else if( status == MAC_TX_COLLISION ) {
+		    PRINTF("FLOOD: collision after %d tx\n", num_tx);
+		} else if( status == MAC_TX_NOACK ) {
+		    PRINTF("FLOOD: noack after %d tx\n", num_tx);
+		}
+
+		if( pack != NULL ) {
+			if( rimeaddr_cmp(&pack->last_node, &route->dest) && pack->last_counter >= ROUTING_MAX_TRIES ) {
+				// We should avoid resubmitting this bundle now, because it failed too many times already
+				PRINTF("FLOOD: Not resubmitting bundle to peer %u.%u\n", route->dest.u8[0], route->dest.u8[1]);
+				break;
+			} else if( rimeaddr_cmp(&pack->last_node, &route->dest) ) {
+				pack->last_counter ++;
+			} else {
+				rimeaddr_copy(&pack->last_node, &route->dest);
+				pack->last_counter = 0;
+			}
+		}
+
+		process_post(&agent_process, dtn_bundle_resubmission_event, &route->bundle_num);
+		break;
 
 	case MAC_TX_OK:
 		PRINTF("FLOOD: sent after %d tx\n", num_tx);
-		if (pack !=NULL && pack->send_to < ROUTING_NEI_MEM){
+		if( pack == NULL ) {
+			PRINTF("FLOOD: 	\n");
+			break;
+		}
+
+		if (pack->send_to < ROUTING_NEI_MEM){
 			memcpy(pack->dest[pack->send_to].u8,route->dest.u8,sizeof(route->dest.u8));
 			pack->send_to++;
 			//    printf("ack for %lu\n",pack->seq_num);
@@ -293,14 +335,12 @@ void flood_sent(struct route_t *route, int status, int num_tx)
 				printf("FLOOD: different dests %u:%u != %u:%u\n",route->dest.u8[0],route->dest.u8[1],dest_n.u8[0],dest_n.u8[1]);
 			}
 			delete_bundle(&bundle);
-	    }else if(pack != NULL && pack->send_to >= ROUTING_NEI_MEM){
+	    }else if(pack->send_to >= ROUTING_NEI_MEM){
 			flood_del_bundle(route->bundle_num);
 			uint16_t tmp= route->bundle_num;
 			memb_free(&route_mem,route);
 			PRINTF("FLOOD: bundle sent to max number of nodes, deleting bundle\n");
 			BUNDLE_STORAGE.del_bundle(tmp,4);
-		}else{
-			PRINTF("FLOOD: ERROR\n");
 		}
 	    break;
 
@@ -318,5 +358,6 @@ const struct routing_driver flood_route ={
 	flood_del_bundle,
 	flood_sent,
 	flood_delete_list,
+	flood_resubmit_bundles,
 };
 
