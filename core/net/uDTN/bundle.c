@@ -412,8 +412,17 @@ uint16_t delete_bundle(struct bundle_t *bundle)
 		PRINTF("BUNDLE: bundle deleted too often\n");
 		return 0;
 	}
-	//free(bundle->mem);
-	//bundle->mem=NULL;
-//	free(bundle);
-//	bundle=NULL;
+}
+
+rimeaddr_t convert_eid_to_rime(uint32_t eid) {
+	rimeaddr_t dest;
+	dest.u8[1] = (eid & 0x000000FF) >> 0;
+	dest.u8[0] = (eid & 0x0000FF00) >> 8;
+	return dest;
+}
+
+uint32_t convert_rime_to_eid(rimeaddr_t * dest) {
+	uint32_t eid = 0;
+	eid = (dest->u8[1] & 0xFF) + ((dest->u8[0] & 0xFF) << 8);
+	return eid;
 }

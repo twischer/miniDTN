@@ -107,6 +107,15 @@ uint16_t delete_bundle(struct bundle_t *bundel);
 * \return 1 on success or 0 on error
 */
 uint8_t add_block(struct bundle_t *bundle, uint8_t type, uint8_t flags, uint8_t *data, uint8_t d_len);
+/**
+ * \brief converts IPN EIDs (uint32_t) into the RIME address
+ */
+rimeaddr_t convert_eid_to_rime(uint32_t eid);
+/**
+ * \brief converts a RIME address into an IPN EID
+ */
+uint32_t convert_rime_to_eid(rimeaddr_t * dest);
+
 #endif
 /** @} */
 /** @} */

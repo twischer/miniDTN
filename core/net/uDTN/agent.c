@@ -222,9 +222,13 @@ PROCESS_THREAD(agent_process, ev, data)
 			uint32_t destination_eid;
 			sdnv_decode(bundle.mem.ptr+bundle.offset_tab[DEST_NODE][OFFSET],bundle.offset_tab[DEST_NODE][STATE],&destination_eid);
 			delete_bundle(&bundle);
+
+			rimeaddr_t neighbour = convert_eid_to_rime(destination_eid);
+			/*
 			rimeaddr_t neighbour;
 			neighbour.u8[1] = (destination_eid & 0x000000FF) >> 0;
 			neighbour.u8[0] = (destination_eid & 0x0000FF00) >> 8;
+			 */
 
 			if( DISCOVERY.discover(&neighbour) ) {
 				ROUTING.new_neighbor(&neighbour);
