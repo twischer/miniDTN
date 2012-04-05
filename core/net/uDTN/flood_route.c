@@ -109,7 +109,7 @@ void flood_new_neigh(rimeaddr_t *dest)
 		if(!sent){
 			struct route_t *route;
 			route= memb_alloc(&route_mem);
-			memcpy(route->dest.u8,dest->u8,sizeof(dest->u8));
+			rimeaddr_copy(&route->dest, dest);
 			route->bundle_num=pack->num;
 			pack->action=1;
 			list_add(route_list,route);	
@@ -157,7 +157,7 @@ uint8_t flood_sent_to_known(void)
 				PRINTF("FLOOD send bundle %u to %u:%u\n",pack->num,nei_l->neighbour.u8[0],nei_l->neighbour.u8[1]);
 				PRINTF("%u:%u\n",nei_l->neighbour.u8[0],nei_l->neighbour.u8[1]);
 				struct route_t *route; route= memb_alloc(&route_mem);
-				memcpy(route->dest.u8,nei_l->neighbour.u8,sizeof(nei_l->neighbour.u8));
+				rimeaddr_copy(&route->dest, &nei_l->neighbour);
 				route->bundle_num=pack->num;
 				pack->action=1;
 				list_add(route_list,route);	
@@ -307,27 +307,28 @@ void flood_sent(struct route_t *route, int status, int num_tx)
 		}
 
 		if (pack->send_to < ROUTING_NEI_MEM){
-			memcpy(pack->dest[pack->send_to].u8,route->dest.u8,sizeof(route->dest.u8));
+			rimeaddr_copy(&pack->dest[pack->send_to], &route->dest);
 			pack->send_to++;
 			//    printf("ack for %lu\n",pack->seq_num);
 			PRINTF("FLOOD: bundle %u sent to %u nodes\n",route->bundle_num, pack->send_to);
 			memb_free(&route_mem,route);
-			PRINTF("FLOOD: bundle %u cleared\n",route->bundle_num);
-			//TODO			//struct bundle_t bundle;
-			rimeaddr_t dest_n;
+
 			PRINTF("FLOOD: memory\n");
 			if (BUNDLE_STORAGE.read_bundle(route->bundle_num, &bundle) <=0){
 				PRINTF("\n\nread bundle ERROR\n\n");
 				return;
 			}
+
 			PRINTF("FLOOD: red bundle\n");
 			uint32_t dest;
 			sdnv_decode(bundle.mem.ptr+bundle.offset_tab[DEST_NODE][OFFSET],bundle.offset_tab[DEST_NODE][STATE],&dest);
-			dest_n.u8[0]=(dest&0xff00)>>8;
-			dest_n.u8[1]=(dest&0xff)>>0;
-			if (rimeaddr_cmp(&route->dest,&dest_n)){
+
+			rimeaddr_t dest_n;
+			dest_n = convert_eid_to_rime(dest);
+
+			if (rimeaddr_cmp(&route->dest, &dest_n)){
 				flood_del_bundle(route->bundle_num);
-				uint16_t tmp= route->bundle_num;
+				uint16_t tmp = route->bundle_num;
 				memb_free(&route_mem,route);
 				PRINTF("FLOOD: bundle sent to destination node, deleting bundle\n");
 				BUNDLE_STORAGE.del_bundle(tmp,4);
