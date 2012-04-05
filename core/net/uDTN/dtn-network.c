@@ -86,22 +86,28 @@ static void dtn_network_input(void)
 		uint8_t discovery_length = (uint8_t) (size - 2 - SUFFIX_LENGTH);
 
 		PRINTF("Broadcast\n");
-			
+
+		leds_on(LEDS_ALL);
+
 		DISCOVERY.receive(&bsrc, discovery_data, discovery_length);
 		packetbuf_clear();
-			
+
+		leds_off(LEDS_ALL);
 	} else {
 		uint8_t * payload_data = input_packet + 1;
 		uint8_t payload_length = (uint8_t) (size - 1 - SUFFIX_LENGTH);
 
-		//leds_on(4);
+		leds_on(LEDS_GREEN);
+
 		packetbuf_clear();
 		PRINTF("%p  %p\n", &bundle, &payload_data);
-		//printf(".\n");
+
 		struct mmem mem;
+		// FIXME: Wuerde es hier nicht reichen, payload_length zu allozieren?
 		mmem_alloc(&mem, 114 - 1 - SUFFIX_LENGTH);
 		if (!MMEM_PTR(&mem)){
 			PRINTF("DTN: MMEM ERROR\n");
+			leds_off(LEDS_GREEN);
 			return;
 		}
 
@@ -110,6 +116,7 @@ static void dtn_network_input(void)
 		if ( !recover_bundel(&bundle, &mem, payload_length)){
 			PRINTF("DTN: recover ERROR\n");	
 			mmem_free(&mem);
+			leds_off(LEDS_GREEN);
 			return;
 		}
 		mmem_free(&mem);
@@ -130,15 +137,15 @@ static void dtn_network_input(void)
 		}
 		printf("\n");
 #endif
-		bundle.msrc.u8[0]=bsrc.u8[0];
-		bundle.msrc.u8[1]=bsrc.u8[1];
+		rimeaddr_copy(&bundle.msrc, &bsrc);
+
 		DISCOVERY.alive(&bsrc);
 		//printf("NETWORK: %u:%u\n", bundle.msrc.u8[0],bundle.msrc.u8[1]);
 		PRINTF("NETWORK: size of received bundle: %u block pointer %p\n",bundle.size, bundle.mem.ptr);
-//			printf("rec: %u\n",cnt2++);
+
 		dispatch_bundle(&bundle);			
-//			process_post(&agent_process, dtn_receive_bundle_event, &bundle);
-			//leds_off(4);
+
+		leds_off(LEDS_GREEN);
 	}
 		
 }
@@ -187,6 +194,8 @@ static void packet_sent(void *ptr, int status, int num_tx)
 
 int dtn_network_send(struct bundle_t *bundle, struct route_t *route) 
 {
+	leds_on(LEDS_YELLOW);
+
 	uint8_t *payload = bundle->mem.ptr;
 	uint8_t len = bundle->size;
 	uint32_t i, time;
@@ -215,7 +224,8 @@ int dtn_network_send(struct bundle_t *bundle, struct route_t *route)
 //	}
 //	last_trans=clock_time();
 	
-	
+	leds_off(LEDS_YELLOW);
+
 	return 1;
 }
 
@@ -225,6 +235,8 @@ int dtn_send_discover(uint8_t *payload,uint8_t len, rimeaddr_t *dst)
 	packetbuf_set_addr(PACKETBUF_ADDR_RECEIVER, dst);
 	packetbuf_set_attr(PACKETBUF_ADDRSIZE, 2);
 	NETSTACK_MAC.send(NULL, NULL); 
+
+	return 1;
 }
 
 
