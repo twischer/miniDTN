@@ -49,6 +49,7 @@ void ipnd_dis_save_neighbour(rimeaddr_t * neighbour);
 #define DISCOVERY_NEIGHBOUR_TIMEOUT	(5*DISCOVERY_CYCLE)
 #define DISCOVERY_IPND_SERVICE		"lowpancl"
 #define DISCOVERY_IPND_BUFFER_LEN 	60
+#define DISCOVERY_IPND_WHITELIST	0
 
 
 #define IPND_FLAGS_SOURCE_EID		(1<<0)
@@ -79,6 +80,8 @@ static struct etimer discovery_timeout_timer;
 static struct etimer discovery_cycle_timer;
 uint16_t discovery_sequencenumber = 0;
 
+rimeaddr_t discovery_whitelist[DISCOVERY_IPND_WHITELIST];
+
 void ipnd_dis_init()
 {
 	// Enable discovery module
@@ -89,6 +92,15 @@ void ipnd_dis_init()
 
 	// Initialize the neighbour memory block
 	memb_init(&neighbour_mem);
+
+#if DISCOVERY_IPND_WHITELIST > 0
+	// Clear the discovery whitelist
+	memset(&discovery_whitelist, 0, sizeof(rimeaddr_t) * DISCOVERY_IPND_WHITELIST);
+
+ // Fill the datastructure here
+
+	printf("DISCOVERY: whitelist enabled\n");
+#endif
 
 	// Start discovery process
 	process_start(&discovery_process, NULL);
@@ -164,8 +176,6 @@ void ipnd_dis_receive(rimeaddr_t * source, uint8_t * payload, uint8_t length)
 
 	// Save all peer from which we receive packets to the active neighbours list
 	ipnd_dis_refresh_neighbour(source);
-
-	// FIXME: Parse IP-ND format here
 
 	// Version
 	if( payload[offset++] != 0x02 ) {
@@ -259,6 +269,22 @@ void ipnd_dis_send() {
  */
 void ipnd_dis_refresh_neighbour(rimeaddr_t * neighbour)
 {
+#if DISCOVERY_IPND_WHITELIST > 0
+	int i;
+	int found = 0;
+	for(i=0; i<DISCOVERY_IPND_WHITELIST; i++) {
+		if( rimeaddr_cmp(&discovery_whitelist[i], neighbour) ) {
+			found = 1;
+			break;
+		}
+	}
+
+	if( !found ) {
+		PRINTF("DISCOVERY: ignoring peer %u.%u, not on whitelist\n", neighbour->u8[0], neighbour->u8[1]);
+		return;
+	}
+#endif
+
 	struct discovery_basic_neighbour_list_entry * entry;
 
 	for(entry = list_head(neighbour_list);
