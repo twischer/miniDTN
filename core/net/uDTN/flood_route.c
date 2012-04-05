@@ -94,11 +94,47 @@ void flood_init(void)
 */
 void flood_new_neigh(rimeaddr_t *dest)
 {
-	PRINTF("FLOOD: new node: %u:%u\n",dest->u8[1] ,dest->u8[0]);
-	struct pack_list_t *pack;
+	struct pack_list_t * pack;
 	uint8_t count=0;
+
+	PRINTF("FLOOD: new node: %u:%u\n", dest->u8[1], dest->u8[0]);
+
+	/**
+	 * First step: look, if we know the direct destination already
+	 * If so, always use direct delivery, never send to another node
+	 */
+	for(pack = list_head(pack_list); pack != NULL; pack = list_item_next(pack)) {
+		// Who is the destination for this bundle?
+		rimeaddr_t dest_node = convert_eid_to_rime(pack->dest_node);
+
+		if( rimeaddr_cmp(dest, &dest_node) ) {
+			// We know the neighbour, send it
+
+			PRINTF("FLOOD: send bundle %u to %u:%u directly\n", pack->num, dest->u8[0], dest->u8[1]);
+
+			struct route_t *route; route= memb_alloc(&route_mem);
+			rimeaddr_copy(&route->dest, dest);
+			route->bundle_num=pack->num;
+			pack->action=1;
+			list_add(route_list,route);
+			count ++;
+		}
+	}
+
+	if (count){
+		agent_send_bundles(list_head(route_list));
+		return;
+	}
+
 	for(pack = list_head(pack_list); pack != NULL; pack = list_item_next(pack)) {
 		uint8_t sent=0,i;
+
+		rimeaddr_t source_node = convert_eid_to_rime(pack->scr_node);
+		if( rimeaddr_cmp(&source_node, dest) ) {
+			printf("FLOOD: not sending bundle to originator\n");
+			sent = 1;
+		}
+
 		for (i =0 ; i < ROUTING_NEI_MEM ; i++) {
 			PRINTF("FLOOD: bundle %u already sent to node %u:%u == %u:%u? %lu\n",pack->num, dest->u8[1] ,dest->u8[0], pack->dest[i].u8[1], pack->dest[i].u8[0], pack->scr_node);
 			if ((pack->dest[i].u8[0] == dest->u8[0] && pack->dest[i].u8[1] == dest->u8[1])|| pack->scr_node == dest->u8[0] || pack->action==1){
@@ -122,7 +158,7 @@ void flood_new_neigh(rimeaddr_t *dest)
 		agent_send_bundles(list_head(route_list));
 	}
 
-	return ;
+	return;
 }
 
 
@@ -140,15 +176,58 @@ uint8_t flood_sent_to_known(void)
 {
 	struct discovery_neighbour_list_entry *nei_list =DISCOVERY.neighbours();
 	struct discovery_neighbour_list_entry *nei_l;
-	PRINTF("send to known neighbours:\n");
 	struct pack_list_t *pack;
+	uint8_t count = 0;
+
+	PRINTF("FLOOD: send to known neighbours\n");
+
+	/**
+	 * First step: look, if we know the direct destination already
+	 * If so, always use direct delivery, never send to another node
+	 */
+	for(pack = list_head(pack_list); pack != NULL; pack = list_item_next(pack)) {
+		// Who is the destination for this bundle?
+		rimeaddr_t source_node = convert_eid_to_rime(pack->dest_node);
+
+		for(nei_l = nei_list; nei_l != NULL; nei_l = list_item_next(nei_l)) {
+			if( rimeaddr_cmp(&nei_l->neighbour, &source_node) ) {
+				// We know the neighbour, send it
+
+				PRINTF("FLOOD: send bundle %u to %u:%u directly\n",pack->num,nei_l->neighbour.u8[0],nei_l->neighbour.u8[1]);
+
+				struct route_t *route; route= memb_alloc(&route_mem);
+				rimeaddr_copy(&route->dest, &nei_l->neighbour);
+				route->bundle_num=pack->num;
+				pack->action=1;
+				list_add(route_list,route);
+				count ++;
+			}
+		}
+	}
+
+	if (count){
+		agent_send_bundles(list_head(route_list));
+		return 1;
+	}
+
+	/**
+	 * If we do not happen to have the destination as neighbour,
+	 * flood it to everyone
+	 */
 	for(nei_l = nei_list; nei_l != NULL; nei_l = list_item_next(nei_l)) {
-		uint8_t count=0;
+		count=0;
 		for(pack = list_head(pack_list); pack != NULL; pack = list_item_next(pack)) { 
 			uint8_t i, sent=0;
+
+			rimeaddr_t source_node = convert_eid_to_rime(pack->scr_node);
+			if( rimeaddr_cmp(&nei_l->neighbour, &source_node) ) {
+				printf("FLOOD: not sending bundle to originator\n");
+				sent = 1;
+			}
+
 			for (i =0 ; i < ROUTING_NEI_MEM ; i++) {
-				//PRINTF("FLOOD: bundle %u already sent to node %u:%u == %u:%u? %lu\n",pack->num, dest->u8[1] ,dest->u8[0], pack->dest[i].u8[1], pack->dest[i].u8[0], pack->scr_node);
-				if ( rimeaddr_cmp(&pack->dest[i],&nei_l->neighbour)){
+				if ( rimeaddr_cmp(&pack->dest[i], &nei_l->neighbour)){
+					PRINTF("FLOOD: bundle %u already sent to node %u:%u!\n",pack->num, pack->dest[i].u8[1], pack->dest[i].u8[0]);
 					sent=1;
 				}
 			}
@@ -215,12 +294,11 @@ int flood_new_bundle(uint16_t bundle_num)
 
 		uint8_t i;
 		for (i=0; i<ROUTING_NEI_MEM; i++){
-			pack->dest[i].u8[0]=0;
-			pack->dest[i].u8[1]=0;
+			pack->dest[i].u8[0] = 0;
+			pack->dest[i].u8[1] = 0;
 		}
-		PRINTF("FLOOD: %u:%u\n",pack->dest[0].u8[0],pack->dest[0].u8[1]);
+
 		list_add(pack_list,pack);
-		PRINTF("FLOOD: pack_list %p\n",list_head(pack_list));
 		flood_sent_to_known();
 		delete_bundle(&bundle);
 	}
@@ -240,12 +318,13 @@ void flood_del_bundle(uint16_t bundle_num)
 			break;
 		}
 	}
+
 	if (pack != NULL){
 		PRINTF("FLOOD: deleting bundle %u\n",bundle_num);
-		list_remove(pack_list ,pack);
-		memb_free(&pack_mem,pack);
-	}else{	
-		PRINTF("FLOOD: bundle allready deleted\n");
+		list_remove(pack_list, pack);
+		memb_free(&pack_mem, pack);
+	} else {
+		PRINTF("FLOOD: bundle already deleted\n");
 	}
 	return;
 }
@@ -302,14 +381,14 @@ void flood_sent(struct route_t *route, int status, int num_tx)
 	case MAC_TX_OK:
 		PRINTF("FLOOD: sent after %d tx\n", num_tx);
 		if( pack == NULL ) {
-			PRINTF("FLOOD: 	\n");
+			PRINTF("FLOOD: ERROR\n");
 			break;
 		}
 
 		if (pack->send_to < ROUTING_NEI_MEM){
 			rimeaddr_copy(&pack->dest[pack->send_to], &route->dest);
 			pack->send_to++;
-			//    printf("ack for %lu\n",pack->seq_num);
+
 			PRINTF("FLOOD: bundle %u sent to %u nodes\n",route->bundle_num, pack->send_to);
 			memb_free(&route_mem,route);
 
@@ -330,10 +409,10 @@ void flood_sent(struct route_t *route, int status, int num_tx)
 				flood_del_bundle(route->bundle_num);
 				uint16_t tmp = route->bundle_num;
 				memb_free(&route_mem,route);
-				PRINTF("FLOOD: bundle sent to destination node, deleting bundle\n");
+				printf("FLOOD: bundle sent to destination node, deleting bundle\n");
 				BUNDLE_STORAGE.del_bundle(tmp,4);
 			}else{
-				printf("FLOOD: different dests %u:%u != %u:%u\n",route->dest.u8[0],route->dest.u8[1],dest_n.u8[0],dest_n.u8[1]);
+				printf("FLOOD: bundle for %u:%u delivered to %u:%u\n",dest_n.u8[0], dest_n.u8[1], route->dest.u8[0], route->dest.u8[1]);
 			}
 			delete_bundle(&bundle);
 	    }else if(pack->send_to >= ROUTING_NEI_MEM){

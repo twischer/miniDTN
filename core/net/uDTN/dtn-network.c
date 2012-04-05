@@ -140,7 +140,7 @@ static void dtn_network_input(void)
 		rimeaddr_copy(&bundle.msrc, &bsrc);
 
 		DISCOVERY.alive(&bsrc);
-		//printf("NETWORK: %u:%u\n", bundle.msrc.u8[0],bundle.msrc.u8[1]);
+		PRINTF("NETWORK: %u:%u\n", bundle.msrc.u8[0],bundle.msrc.u8[1]);
 		PRINTF("NETWORK: size of received bundle: %u block pointer %p\n",bundle.size, bundle.mem.ptr);
 
 		dispatch_bundle(&bundle);			
