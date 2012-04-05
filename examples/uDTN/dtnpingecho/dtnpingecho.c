@@ -84,8 +84,6 @@ PROCESS_THREAD(dtnping_process, ev, data)
 		struct bundle_t * bundle;
 		bundle = (struct bundle_t *) data;
 
-		leds_toggle(1);
-
 		// preserve the payload to send it back
 		uint8_t payload_buffer[64];
 		uint32_t payload_length;

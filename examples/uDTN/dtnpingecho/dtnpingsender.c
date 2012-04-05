@@ -122,7 +122,6 @@ PROCESS_THREAD(dtnping_process, ev, data)
 		// Set the sequence number to the number of bundles sent
 		set_attr(&bun, TIME_STAMP_SEQ_NR, &bundles_sent);
 
-		// Set the same lifetime and timestamp as the incoming bundle
 		/**
 		 * Hardcoded creation timestamp based on:
 		 * date -j +%s   -    date -j 010100002000 +%s
@@ -168,8 +167,6 @@ PROCESS_THREAD(dtnping_process, ev, data)
 		// Reconstruct the bundle struct from the event
 		struct bundle_t * bundle;
 		bundle = (struct bundle_t *) data;
-
-		leds_toggle(1);
 
 		// Extract payload for further analysis
 		// Processing flags
