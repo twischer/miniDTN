@@ -22,7 +22,7 @@ value(int type)
   case Z_AS:
     return l3g4200d_get_y_angle();
 
-  case TEMP_AS:
+  case TEMP_AS: //only for relative temperature measurements 
 		return (int16_t) l3g4200d_get_temp();
   }
   return 0;

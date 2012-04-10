@@ -75,7 +75,7 @@ uint16_t l3g4200d_get_z_angle(void) {
 }
 
 int8_t l3g4200d_get_temp(void){
-	return 48-(int8_t)l3g4200d_read8bit(L3G4000D_OUT_TEMP);
+	return 45-(int8_t)l3g4200d_read8bit(L3G4000D_OUT_TEMP);
 }
 
 uint8_t l3g4200d_read8bit(uint8_t addr) {
