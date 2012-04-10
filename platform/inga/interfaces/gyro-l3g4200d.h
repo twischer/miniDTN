@@ -84,7 +84,7 @@ angle_data_t l3g4200d_get_angle(void);
 uint16_t l3g4200d_get_x_angle(void);
 uint16_t l3g4200d_get_y_angle(void);
 uint16_t l3g4200d_get_z_angle(void);
-uint8_t l3g4200d_get_temp(void);
+int8_t l3g4200d_get_temp(void);
 uint16_t l3g4200d_read16bit(uint8_t addr);
 uint8_t l3g4200d_read8bit(uint8_t addr);
 void l3g4200d_write8bit(uint8_t addr, uint8_t data);
