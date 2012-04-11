@@ -16,16 +16,20 @@
 
 extern const struct storage_driver g_storage_driver;
 
-struct file_list_entry_t{
+struct file_list_entry_t {
 	uint16_t bundle_num;
 	uint16_t file_size;
 	uint32_t lifetime;
+
 	uint32_t src;
+	uint32_t dest;
+
 	uint32_t time_stamp;
 	uint32_t time_stamp_seq;
 	uint32_t fraq_offset;
 	uint32_t rec_time;
 	uint8_t  custody;
+
 	struct mmem ptr;
 	rimeaddr_t msrc;
 	uint8_t not_del;
