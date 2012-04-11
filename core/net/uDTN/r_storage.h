@@ -13,13 +13,16 @@
 #include "bundle.h"
 #include "lib/mmem.h"
 #include "net/rime/rimeaddr.h"
+#include "routing.h"
 
 extern const struct storage_driver g_storage_driver;
 
 struct file_list_entry_t {
 	uint16_t bundle_num;
 	uint16_t file_size;
-	uint32_t lifetime;
+
+	/** The remaining lifetime in storage */
+	uint32_t storage_lifetime;
 
 	uint32_t src;
 	uint32_t dest;
@@ -32,7 +35,6 @@ struct file_list_entry_t {
 
 	struct mmem ptr;
 	rimeaddr_t msrc;
-	uint8_t not_del;
 };
 extern struct file_list_entry_t file_list[BUNDLE_STORAGE_SIZE];
 

@@ -50,7 +50,7 @@ process_event_t dtn_send_bundle_to_node_event;
 */
 void agent_init(void);
 void agent_send_bundles(struct route_t *route);
-void agent_del_bundle(void);
+void agent_del_bundle(uint16_t bundle_number);
 
 #endif
 
