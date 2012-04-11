@@ -174,6 +174,7 @@ static void packet_sent(void *ptr, int status, int num_tx)
 	    break;
 	  default:
 	    PRINTF("DTN: error %d after %d tx\n", status, num_tx);
+	    break;
 	  }
 	last_send--;
 	if (!last_send){
