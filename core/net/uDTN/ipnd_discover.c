@@ -64,7 +64,8 @@ void ipnd_dis_save_neighbour(rimeaddr_t * neighbour);
 struct discovery_basic_neighbour_list_entry {
 	struct discovery_basic_neighbour_list_entry *next;
 	rimeaddr_t neighbour;
-	clock_time_t timestamp;
+	clock_time_t timestamp_last;
+	unsigned long timestamp_discovered;
 	uint8_t active;
 };
 
@@ -293,12 +294,36 @@ void ipnd_dis_refresh_neighbour(rimeaddr_t * neighbour)
 			entry = entry->next) {
 		if( entry->active &&
 				rimeaddr_cmp(&(entry->neighbour), neighbour) ) {
-			entry->timestamp = clock_time();
+			entry->timestamp_last = clock_time();
 			return;
 		}
 	}
 
 	ipnd_dis_save_neighbour(neighbour);
+}
+
+/**
+ * Marks a neighbour as 'dead' after multiple transmission attempts have failed
+ */
+void ipnd_dis_delete_neighbour(rimeaddr_t * neighbour)
+{
+	struct discovery_basic_neighbour_list_entry * entry;
+
+	for(entry = list_head(neighbour_list);
+			entry != NULL;
+			entry = entry->next) {
+		if( entry->active &&
+				rimeaddr_cmp(&(entry->neighbour), neighbour) ) {
+
+			// Notify the statistics module
+			statistics_contacts_down(neighbour, clock_seconds() - entry->timestamp_discovered);
+
+			memb_free(&neighbour_mem, entry);
+			list_remove(neighbour_list, entry);
+
+			break;
+		}
+	}
 }
 
 /**
@@ -325,7 +350,11 @@ void ipnd_dis_save_neighbour(rimeaddr_t * neighbour)
 	PRINTF("DISCOVERY: Saving neighbour %u:%u \n", neighbour->u8[0], neighbour->u8[1]);
 	entry->active = 1;
 	rimeaddr_copy(&(entry->neighbour), neighbour);
-	entry->timestamp = clock_time();
+	entry->timestamp_last = clock_time();
+	entry->timestamp_discovered = clock_seconds();
+
+	// Notify the statistics module
+	statistics_contacts_up(neighbour);
 
 	list_add(neighbour_list, entry);
 
@@ -369,8 +398,11 @@ PROCESS_THREAD(discovery_process, ev, data)
 			for(entry = list_head(neighbour_list);
 					entry != NULL;
 					entry = entry->next) {
-				if( entry->active && (clock_time() - entry->timestamp) > (DISCOVERY_NEIGHBOUR_TIMEOUT * CLOCK_SECOND) ) {
-					PRINTF("DISCOVERY: Neighbour %u:%u timed out: %lu vs. %lu = %lu\n", entry->neighbour.u8[0], entry->neighbour.u8[1], clock_time(), entry->timestamp, clock_time() - entry->timestamp);
+				if( entry->active && (clock_time() - entry->timestamp_last) > (DISCOVERY_NEIGHBOUR_TIMEOUT * CLOCK_SECOND) ) {
+					PRINTF("DISCOVERY: Neighbour %u:%u timed out: %lu vs. %lu = %lu\n", entry->neighbour.u8[0], entry->neighbour.u8[1], clock_time(), entry->timestamp_last, clock_time() - entry->timestamp_last);
+
+					// Notify the statistics module
+					statistics_contacts_down(&entry->neighbour, clock_seconds() - entry->timestamp_discovered);
 
 					memb_free(&neighbour_mem, entry);
 					list_remove(neighbour_list, entry);
@@ -400,6 +432,7 @@ const struct discovery_driver ipnd_discovery = {
 	ipnd_dis_disable,
 	ipnd_dis_receive,
 	ipnd_dis_refresh_neighbour,
+	ipnd_dis_delete_neighbour,
 	ipnd_dis_neighbour,
 	ipnd_dis_list_neighbours,
 	ipnd_dis_stop_pending,

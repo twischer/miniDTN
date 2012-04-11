@@ -65,6 +65,11 @@ struct discovery_driver {
 	void (* alive)(rimeaddr_t * source);
 
 	/**
+	 * Multiple transmission attempts to this neighbour have failed
+	 */
+	void (* dead)(rimeaddr_t * destination);
+
+	/**
 	 * Starts to discover a neighbour
 	 */
 	uint8_t (* discover)(rimeaddr_t * dest);
