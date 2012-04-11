@@ -55,7 +55,7 @@ void r_store_reduce_lifetime();
  * \brief internal function to send statistics to statistics module
  */
 void rs_update_statistics() {
-	statistics_storage_bundles(BUNDLE_STORAGE_SIZE - bundles_in_storage);
+	statistics_storage_bundles(bundles_in_storage);
 	statistics_storage_memory(avail_memory);
 }
 
@@ -250,6 +250,7 @@ int32_t rs_save_bundle(struct bundle_t *bundle)
 	file_list[i].fraq_offset = fraq_offset;
 	file_list[i].rec_time = bundle->rec_time;
 	file_list[i].storage_lifetime = bundle->lifetime;
+	rimeaddr_copy(&file_list[i].msrc, &bundle->msrc);
 
 	// Copy bundle into memory storage
 	memcpy(file_list[i].ptr.ptr,bundle->mem.ptr,bundle->size);
