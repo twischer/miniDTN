@@ -30,6 +30,7 @@
 #include <string.h>
 #include "discovery.h"
 #include "bundle.h"
+#include "statistics.h"
 
 #undef DEBUG
 #define DEBUG 0

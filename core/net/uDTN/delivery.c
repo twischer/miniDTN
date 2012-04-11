@@ -27,6 +27,7 @@
 #include "custody.h"
 #include "redundance.h"
 #include "dev/leds.h"
+#include "statistics.h"
 
 #define DEBUG 0
 #if DEBUG
@@ -52,6 +53,7 @@ void deliver_bundle(struct bundle_t *bundle, struct registration *n) {
 #endif
 		if( !REDUNDANCE.check(bundle)){ //packet was not delivert befor
 			REDUNDANCE.set(bundle);
+			statistics_bundle_delivered(1);
 			process_post(n->application_process, submit_data_to_application_event, bundle);
 			block = bundle->mem.ptr+1;
 			if (*block & 0x08){
