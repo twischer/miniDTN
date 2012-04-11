@@ -69,8 +69,8 @@ void rs_init(void)
 	mmem_init();
 
 	bundles_in_storage=0;
-	MEMB(saved_as_memb,uint16_t , 100);
-	saved_as_mem=&saved_as_memb;
+	MEMB(saved_as_memb, uint16_t, 50);
+	saved_as_mem = &saved_as_memb;
 	memb_init(saved_as_mem);
 
 	rs_reinit();
