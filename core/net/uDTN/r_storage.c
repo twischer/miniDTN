@@ -30,6 +30,7 @@
 #include "status-report.h"
 #include "forwarding.h"
 #include "profiling.h"
+#include "statistics.h"
 
 #define DEBUG 0
 #if DEBUG
@@ -51,6 +52,14 @@ LIST(store_l);
 uint16_t del_num;
 
 void r_store_reduce_lifetime();
+
+/**
+ * \brief internal function to send statistics to statistics module
+ */
+void rs_update_statistics() {
+	statistics_storage_bundles(BUNDLE_STORAGE_SIZE - bundles_in_storage);
+	statistics_storage_memory(avail_memory);
+}
 
 /**
 * /brief called by agent at startup
@@ -253,6 +262,10 @@ int32_t rs_save_bundle(struct bundle_t *bundle)
 	file_list[i].rec_time= bundle->rec_time;
 
 	PRINTF("STORAGE: bundle_num %u %p\n",file_list[i].bundle_num, (void *) &file_list[i]);
+
+	// Notify the statistics module
+	rs_update_statistics();
+
 	return (int32_t)file_list[i].bundle_num;
 }
 
@@ -295,6 +308,10 @@ uint16_t rs_del_bundle(uint16_t bundle_num,uint8_t reason)
 
 		agent_del_bundle();
 	}
+
+	// Notify the statistics module
+	rs_update_statistics();
+
 	return 1;
 }
 
@@ -320,6 +337,7 @@ uint16_t rs_read_bundle(uint16_t bundle_num,struct bundle_t *bundle)
 	}
 	return 0;
 }
+
 
 /**
 * \brief checks if there is space for a bundle

@@ -38,7 +38,7 @@
 #include "status-report.h"
 #include "lib/memb.h"
 #include "discovery.h"
-
+#include "statistics.h"
 
 #define DEBUG 0
 #if DEBUG
@@ -181,6 +181,9 @@ PROCESS_THREAD(agent_process, ev, data)
 			set_attr(bundleptr,TIME_STAMP_SEQ_NR,&dtn_seq_nr);
 			PRINTF("\nBUNDLEPROTOCOL: seq_num = %lu\n",dtn_seq_nr);	
 			dtn_seq_nr++;
+
+			// Notify statistics module
+			statistics_bundle_generated(1);
 				
 			/* Fall through to dtn_bundle_in_storage_event if forwarding_bundle succeeded */
 			data = forwarding_bundle(bundleptr);

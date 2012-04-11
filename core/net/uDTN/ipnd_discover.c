@@ -31,6 +31,7 @@
 #include "discovery.h"
 #include <string.h> // for memset
 #include "sdnv.h"
+#include "statistics.h"
 #include "net/mac/frame802154.h" // for IEEE802154_PANID
 
 #define DEBUG 0
