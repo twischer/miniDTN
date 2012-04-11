@@ -131,17 +131,25 @@ int32_t rs_save_bundle(struct bundle_t *bundle)
 	uint16_t i=0;
 	int32_t free=-1;
 	uint8_t *tmp=bundle->mem.ptr;
-	tmp=tmp+bundle->offset_tab[SRC_NODE][OFFSET];
+
 	uint32_t src;
+	tmp=tmp+bundle->offset_tab[SRC_NODE][OFFSET];
 	sdnv_decode(tmp ,bundle->offset_tab[SRC_NODE][STATE], &src);
-	tmp=bundle->mem.ptr+bundle->offset_tab[TIME_STAMP][OFFSET];
+
+	uint32_t dest;
+	tmp=bundle->mem.ptr+bundle->offset_tab[DEST_NODE][OFFSET];
+	sdnv_decode(tmp ,bundle->offset_tab[DEST_NODE][STATE], &dest);
+
 	uint32_t time_stamp;
+	tmp=bundle->mem.ptr+bundle->offset_tab[TIME_STAMP][OFFSET];
 	sdnv_decode(tmp, bundle->offset_tab[TIME_STAMP][STATE], &time_stamp);
-	tmp=bundle->mem.ptr+bundle->offset_tab[TIME_STAMP_SEQ_NR][OFFSET];
+
 	uint32_t time_stamp_seq;
+	tmp=bundle->mem.ptr+bundle->offset_tab[TIME_STAMP_SEQ_NR][OFFSET];
 	sdnv_decode(tmp, bundle->offset_tab[TIME_STAMP_SEQ_NR][STATE], &time_stamp_seq);
-	tmp=bundle->mem.ptr+bundle->offset_tab[FRAG_OFFSET][OFFSET];
+
 	uint32_t fraq_offset;
+	tmp=bundle->mem.ptr+bundle->offset_tab[FRAG_OFFSET][OFFSET];
 	sdnv_decode(tmp, bundle->offset_tab[FRAG_OFFSET][STATE], &fraq_offset);
 
 	#if DEBUG
@@ -216,6 +224,7 @@ int32_t rs_save_bundle(struct bundle_t *bundle)
 	}
 
 	if( (avail_memory - bundle->size) < STORAGE_HIGH_WATERMARK ) {
+		// FIXME: manchmal gibt es Platz im array aber (auch nach dem Lšschen eines BŸndels) keinen Platz
 		printf("STORAGE: cannot store bundle, only %u bytes left, bundle is %u bytes\n", avail_memory, bundle->size);
 		return -1;
 	}
@@ -223,7 +232,12 @@ int32_t rs_save_bundle(struct bundle_t *bundle)
 	i=(uint16_t)free;
 	PRINTF("STORAGE: bundle will be saved in slot %u, size of bundle is %u\n",i,bundle->size);
 
+	memset(&file_list[i], 0, sizeof(struct file_list_entry_t));
+	file_list[i].bundle_num = i;
 	file_list[i].file_size = bundle->size; 
+
+	PRINTF("\n\n\nSTORAGE: New Bundle %u at %u, Src %lu, Dest %lu, Seq %lu, Size %u\n", file_list[i].bundle_num, i, src, dest, time_stamp_seq, file_list[i].file_size);
+
 
 	#if DEBUG
 	for (i=0; i<BUNDLE_STORAGE_SIZE; i++){
@@ -257,7 +271,8 @@ int32_t rs_save_bundle(struct bundle_t *bundle)
 
 	file_list[i].time_stamp_seq = time_stamp_seq;
 	file_list[i].time_stamp = time_stamp;
-	file_list[i].src = src ;
+	file_list[i].src = src;
+	file_list[i].dest = dest;
 	file_list[i].fraq_offset = fraq_offset;
 	file_list[i].rec_time= bundle->rec_time;
 
