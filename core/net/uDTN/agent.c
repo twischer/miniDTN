@@ -123,7 +123,6 @@ PROCESS_THREAD(agent_process, ev, data)
 	dtn_beacon_event = process_alloc_event();
 	dtn_send_admin_record_event = process_alloc_event();
 	dtn_bundle_in_storage_event = process_alloc_event();
-	dtn_bundle_deleted_event = process_alloc_event();
 	dtn_send_bundle_to_node_event = process_alloc_event();
 	dtn_bundle_resubmission_event = process_alloc_event();
 	
@@ -195,7 +194,6 @@ PROCESS_THREAD(agent_process, ev, data)
 		}
 		
 		if(ev == dtn_send_admin_record_event) {
-			
 			PRINTF("BUNDLEPROTOCOL: send admin record \n");
 			continue;
 		}
@@ -240,12 +238,6 @@ PROCESS_THREAD(agent_process, ev, data)
 			continue;
 		}
 		
-		if(ev == dtn_bundle_deleted_event){
-			ROUTING.del_bundle( del_num);
-			CUSTODY.del_from_list(del_num);
-			continue;
-		}
-
 		if(ev == dtn_bundle_resubmission_event) {
 			uint16_t b_num = *(uint16_t *) data;
 			ROUTING.resubmit_bundles(b_num);
@@ -255,8 +247,8 @@ PROCESS_THREAD(agent_process, ev, data)
 	PROCESS_END();
 }
 
-void agent_del_bundle(void){
-	ROUTING.del_bundle( del_num);
-	CUSTODY.del_from_list(del_num);
+void agent_del_bundle(uint16_t bundle_number){
+	ROUTING.del_bundle(bundle_number);
+	CUSTODY.del_from_list(bundle_number);
 }
 /** @} */

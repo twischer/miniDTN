@@ -51,7 +51,6 @@ static uint16_t bundles_in_storage;
 static struct ctimer g_store_timer;
 static struct bundle_t bundle_str;
 struct memb *saved_as_mem;
-uint16_t del_num;
 
 /**
 * /brief called by agent at startup
@@ -270,8 +269,8 @@ uint16_t del_bundle(uint16_t bundle_num,uint8_t reason)
 {
 	R_PRINTF("STORAGE: delete bundle %u\n",bundle_num);
 	if(read_bundle(bundle_num,&bundle_str)){
-		uint8_t i;
 #if DEBUG
+		uint8_t i;
 		printf("STORAGE: ");
 		for (i=0;i<bundle_str.mem.size;i++){
 			printf("%x:",*((uint8_t*) bundle_str.mem.ptr+ i));
@@ -279,7 +278,6 @@ uint16_t del_bundle(uint16_t bundle_num,uint8_t reason)
 		printf("\n");
 #endif
 		bundle_str.del_reason=reason;
-		del_num=bundle_num;
 		if( ((bundle_str.flags & 8 ) || (bundle_str.flags & 0x40000)) &&(reason !=0xff )){
 			uint32_t src;
 			sdnv_decode(bundle_str.mem.ptr+ bundle_str.offset_tab[SRC_NODE][OFFSET],bundle_str.offset_tab[SRC_NODE][STATE],&src);
@@ -310,7 +308,7 @@ uint16_t del_bundle(uint16_t bundle_num,uint8_t reason)
 	}
 	
 	
-	agent_del_bundle();
+	agent_del_bundle(bundle_num);
 	return 1;
 }
 
