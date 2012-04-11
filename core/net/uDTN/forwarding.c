@@ -33,7 +33,7 @@ uint16_t *forwarding_bundle(struct bundle_t *bundle)
 	int32_t saved;
 	//sdnv_decode(bundle->mem.ptr + bundle->offset_tab[FLAGS][OFFSET], bundle->offset_tab[FLAGS][STATE], &flags);
 	if (bundle->flags & 0x08){ // bundle is custody
-		
+
 		saved =CUSTODY.decide(bundle);
 	}else{
 		saved = BUNDLE_STORAGE.save_bundle(bundle);
@@ -41,7 +41,7 @@ uint16_t *forwarding_bundle(struct bundle_t *bundle)
 	}
 	PRINTF("FORWARDING saved in %ld\n", saved);
 	if( saved >=0){
-		
+
 		saved_as_num=memb_alloc(saved_as_mem);
 		if(saved_as_num==NULL){
 			delete_bundle(bundle);

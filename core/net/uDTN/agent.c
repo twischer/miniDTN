@@ -207,8 +207,8 @@ PROCESS_THREAD(agent_process, ev, data)
 
 		if(ev == dtn_bundle_in_storage_event){
 			uint16_t b_num = *(uint16_t *) data;
-			PRINTF("BUNDLEPROTOCOL: bundle in storage %u %p %p\n",b_num, data, saved_as_mem);	
 			memb_free(saved_as_mem,data);
+			PRINTF("BUNDLEPROTOCOL: bundle in storage %u %p\n",b_num, data);
 			if(ROUTING.new_bundle(b_num) < 0){
 				PRINTF("BUNDLEPROTOCOL: ERROR\n");
 				continue;

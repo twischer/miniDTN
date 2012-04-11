@@ -24,8 +24,6 @@
 #include "bundle.h"
 #include "memb.h"
 
-//static uint16_t saved_as_num;
-
 struct saved_as_t{
 	uint16_t saved_as_num;
 };
