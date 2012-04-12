@@ -91,7 +91,7 @@ static void dtn_network_input(void)
 	leds_on(LEDS_GREEN);
 
 	// packetbuf_clear();
-	PRINTF("NETWORK: Bundle received %p  %p\n", &bundle, &payload_data);
+	PRINTF("NETWORK: Bundle received %p  %p\n", &bundle, payload_data);
 
 	struct mmem mem;
 	// FIXME: Wuerde es hier nicht reichen, payload_length zu allozieren?
