@@ -352,7 +352,10 @@ uint16_t rs_read_bundle(uint16_t bundle_num,struct bundle_t *bundle)
 		return 0;
 	}
 
-	recover_bundel(bundle, &entry->ptr, (int) entry->file_size);
+	if (!recover_bundel(bundle, MMEM_PTR(&entry->ptr), (int) entry->file_size)) {
+		// FIXME: Mark slot free
+		return 0;
+	}
 
 	bundle->rec_time = entry->rec_time;
 	bundle->custody = entry->custody;

@@ -93,25 +93,13 @@ static void dtn_network_input(void)
 	// packetbuf_clear();
 	PRINTF("NETWORK: Bundle received %p  %p\n", &bundle, payload_data);
 
-	struct mmem mem;
-	// FIXME: Wuerde es hier nicht reichen, payload_length zu allozieren?
-	mmem_alloc(&mem, 114 - 1 - SUFFIX_LENGTH);
-	if (!MMEM_PTR(&mem)){
-		PRINTF("DTN: MMEM ERROR\n");
-		leds_off(LEDS_GREEN);
-		return;
-	}
-
-	memcpy(MMEM_PTR(&mem), payload_data, 114 - 1 - SUFFIX_LENGTH);
 	memset(&bundle, 0, sizeof(struct bundle_t));
 
-	if ( !recover_bundel(&bundle, &mem, payload_length)){
+	if ( !recover_bundel(&bundle, payload_data, payload_length)){
 		PRINTF("DTN: recover ERROR\n");
-		mmem_free(&mem);
 		leds_off(LEDS_GREEN);
 		return;
 	}
-	mmem_free(&mem);
 
 	bundle.rec_time=(uint32_t) clock_seconds();
 	bundle.size = payload_length;
