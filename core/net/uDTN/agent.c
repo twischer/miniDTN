@@ -48,54 +48,41 @@
 #define PRINTF(...)
 #endif
 
-	static struct bundle_t * bundleptr;
-	static struct bundle_t bundle;
+static struct bundle_t * bundleptr;
+static struct bundle_t bundle;
 uint32_t dtn_node_id;
 uint32_t dtn_seq_nr;
 PROCESS(agent_process, "AGENT process");
 AUTOSTART_PROCESSES(&agent_process);
+struct etimer resubmission_timer;
 
 void agent_init(void) {
-		
 	process_start(&agent_process, NULL);
 }
 
 void
-agent_send_bundles(struct route_t *route)
+agent_send_bundles(struct route_t * route)
 {
-	//struct bundle_t bundle;
-	//struct bundle_t *bundleptr;
-	uint8_t listcount=0;
-
-	while (route !=NULL) {
-		listcount++;
-		PRINTF("BUNDLEPROTOCOL: send bundle %u to node %u:%u\n",route->bundle_num, route->dest.u8[0], route->dest.u8[1]);
-		memset(&bundle, 0, sizeof(struct bundle_t));
-		bundleptr = &bundle;
-		if(BUNDLE_STORAGE.read_bundle(route->bundle_num,bundleptr)<=0){
-			route= route->next;
-			return;
-		}
-		PRINTF("BUNDLEPROTOCOL: bundleptr->mem->ptr %p\n", bundleptr->mem.ptr);
-		PRINTF("BUNDLEPROTOCOL: bundle ready\n");
-		bundleptr->bundle_num =  route->bundle_num;
-		uint32_t remaining_time= bundleptr->lifetime-(((uint32_t) clock_seconds())-bundleptr->rec_time);
-		if (remaining_time <= bundleptr->lifetime) {
-			PRINTF("BUNDLEPROTOCOL: %lu-%lu-%lu=%lu\n",bundleptr->lifetime, (uint32_t) clock_seconds(),bundleptr->rec_time,bundleptr->lifetime-(((uint32_t) clock_seconds())-bundleptr->rec_time));
-			set_attr(bundleptr,LIFE_TIME,&remaining_time);
-			PRINTF("BUNDLEPROTOCOL: bundleptr->mem->ptr %p %u\n", bundleptr->mem.ptr, bundleptr->mem.size);
-			dtn_network_send(bundleptr,route);
-			delete_bundle(bundleptr);
-		}else{
-			ROUTING.sent(route,MAC_TX_NOACK,0);
-			uint16_t tmp=bundleptr->bundle_num;
-			delete_bundle(bundleptr);
-			BUNDLE_STORAGE.del_bundle(tmp,1);
-		}
-		route= route->next;
+	if(BUNDLE_STORAGE.read_bundle(route->bundle_num, bundleptr)<=0){
+		return;
 	}
-	ROUTING.delete_list();
-	return;;
+
+	uint32_t elapsed_time = clock_seconds() - bundleptr->rec_time;
+	uint32_t remaining_time = bundleptr->lifetime - elapsed_time;
+
+	if( bundleptr->lifetime < elapsed_time ) {
+		// Bundle is outdated
+		uint16_t tmp = bundleptr->bundle_num;
+		delete_bundle(bundleptr);
+		BUNDLE_STORAGE.del_bundle(tmp,1);
+
+		return;
+	}
+
+	// Bundle can still be sent
+	set_attr(bundleptr, LIFE_TIME, &remaining_time);
+	dtn_network_send(bundleptr, route);
+	delete_bundle(bundleptr);
 }
 
 
@@ -130,6 +117,8 @@ PROCESS_THREAD(agent_process, ev, data)
 	DISCOVERY.init();
 	PRINTF("starting DTN Bundle Protocol \n");
 		
+
+	etimer_set(&resubmission_timer, CLOCK_SECOND);
 
 	struct registration_api *reg;
 	
@@ -207,7 +196,7 @@ PROCESS_THREAD(agent_process, ev, data)
 
 		if(ev == dtn_bundle_in_storage_event){
 			uint16_t b_num = *(uint16_t *) data;
-			memb_free(saved_as_mem,data);
+			memb_free(saved_as_mem, data);
 			PRINTF("BUNDLEPROTOCOL: bundle in storage %u %p\n",b_num, data);
 			if(ROUTING.new_bundle(b_num) < 0){
 				PRINTF("BUNDLEPROTOCOL: ERROR\n");
@@ -239,8 +228,25 @@ PROCESS_THREAD(agent_process, ev, data)
 		}
 		
 		if(ev == dtn_bundle_resubmission_event) {
-			uint16_t b_num = *(uint16_t *) data;
-			ROUTING.resubmit_bundles(b_num);
+			uint16_t wait = *(uint16_t *) data;
+
+			if( wait < 1 ) {
+				ROUTING.resubmit_bundles(0);
+			} else {
+				etimer_set(&resubmission_timer, wait);
+			}
+
+			memb_free(saved_as_mem, data);
+
+			continue;
+		}
+
+
+		if( etimer_expired(&resubmission_timer) ) {
+			ROUTING.resubmit_bundles(0);
+
+			// Even if there is nothing to do, call resubmit every second just to be absolutely sure
+			etimer_set(&resubmission_timer, CLOCK_SECOND);
 			continue;
 		}
 	}

@@ -4,7 +4,7 @@
 /**
  * How many bundles can possibly be stored in the data structures?
  */
-#define BUNDLE_STORAGE_SIZE 	10
+#define BUNDLE_STORAGE_SIZE 	80
 /**
  * How much MMEM memory has to remain free after all bundles have been stored?
  */
@@ -35,6 +35,7 @@ struct file_list_entry_t {
 
 	struct mmem ptr;
 	rimeaddr_t msrc;
+	struct routing_pack_list_t routing;
 };
 extern struct file_list_entry_t file_list[BUNDLE_STORAGE_SIZE];
 

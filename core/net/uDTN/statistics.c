@@ -32,6 +32,10 @@ struct statistics_element_t statistics_array[STATISTICS_ELEMENTS];
  * \brief Internal function to find out, into which array slot the information is written
  */
 uint8_t statistics_get_pointer() {
+	if( statistics_interval < 1 ) {
+		return 0;
+	}
+
 	// Calculate since when we are recording statistics
 	unsigned long elapsed = clock_seconds() - statistics_timestamp;
 
