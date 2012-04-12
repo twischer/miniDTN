@@ -80,13 +80,13 @@ struct bundle_t{
 };
 
 /**
-* \brief generates the bundle struct from row data
+* \brief generates the bundle struct from raw data
 * \param bundle_t pointer to empty bundle struct
-* \param mmem pointer to mmem struct with row data
+* \param mmem pointer to the buffer with raw data
 * \param size size of row data
-* \return 1 on success or 0 if something fails 
+* \return 1 on success or 0 if something fails
 */
-uint8_t recover_bundel(struct bundle_t *bundle,struct mmem *mem,int size);
+uint8_t recover_bundel(struct bundle_t *bundle, uint8_t *block,int size);
 /**
 * \brief stets an attribute of a bundle
 * \param bundle_t pointer to bundle

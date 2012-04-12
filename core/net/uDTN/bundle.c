@@ -333,9 +333,8 @@ uint8_t set_attr(struct bundle_t *bundle, uint8_t attr, uint32_t *val)
 
 }
 
-uint8_t recover_bundel(struct bundle_t *bundle,struct mmem *mem, int size)
+uint8_t recover_bundel(struct bundle_t *bundle, uint8_t *block, int size)
 {
-	uint8_t *block=(uint8_t *) MMEM_PTR(mem);
 	PRINTF("rec bptr: %p  blptr:%p \n",bundle,block);
 	bundle->offset_tab[VERSION][OFFSET]=0;
 	bundle->offset_tab[VERSION][STATE]=1;
