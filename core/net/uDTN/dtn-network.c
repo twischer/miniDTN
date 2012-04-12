@@ -128,7 +128,7 @@ static void dtn_network_input(void)
 #if DEBUG_H
 		bundle.debug_time=clock_time();
 #endif
-		bundle.size= payload_length;
+		bundle.size = payload_length;
 #if DEBUG
 		uint8_t i;
 		printf("NETWORK: input ");

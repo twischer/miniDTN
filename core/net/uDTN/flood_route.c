@@ -30,9 +30,10 @@
 #include <string.h>
 #include "discovery.h"
 #include "bundle.h"
+#include "storage.h"
+#include "r_storage.h"
 #include "statistics.h"
 
-#undef DEBUG
 #define DEBUG 0
 #if DEBUG 
 #include <stdio.h>
@@ -41,39 +42,12 @@
 #define PRINTF(...)
 #endif
 
-#define ROUTING_MAX_MEM 	10
-#define ROUTING_NEI_MEM 	 1
-#define ROUTING_MAX_TRIES	 3
+uint8_t flood_transmitting;
 
-/** struct to store the bundels to be routed */
-struct pack_list_t {
-	/** pointer to next bundle */
-	struct pack_list_t *next;
-	/** bundle number*/
-	uint16_t num;
-	/** bundle processing flags, destination node, source node, sequence number */
-	uint32_t flags, dest_node, scr_node, seq_num;
-	/** number of nodes this bundle was sent to */
-	uint8_t send_to;
-	/** 1 if bundle is in processing */
-	uint8_t action;
-	/** addresses of nodes this bundle was sent to */
-	rimeaddr_t dest[ROUTING_NEI_MEM];
-	/** address of the last node this bundle was attempted to send to */
-	rimeaddr_t last_node;
-	/** number of tries to send this bundle to the 'last_node' peer */
-	uint8_t last_counter;
-};
-
-static struct ctimer flood_retransmit_timer;
-
-/** memory for route_ts */
 MEMB(route_mem, struct route_t, ROUTING_ROUTE_MAX_MEM);
 
-LIST(pack_list);
-MEMB(pack_mem, struct pack_list_t, ROUTING_MAX_MEM);
-LIST(route_list);
-static struct bundle_t bundle;
+
+uint8_t flood_sent_to_known(void);
 
 /**
 * \brief called by agent at startup
@@ -81,13 +55,7 @@ static struct bundle_t bundle;
 void flood_init(void)
 {
 	PRINTF("FLOOD: init flood_route\n");
-	memb_init(&pack_mem);
-	memb_init(&route_mem);
-	list_init(pack_list);
-	list_init(route_list);
-	PRINTF("FLOOD: pack_list %p\n",list_head(pack_list));
-
-	return;
+	flood_transmitting = 0;
 }
 /**
 * \brief checks if there are bundle to send to dest
@@ -95,90 +63,30 @@ void flood_init(void)
 */
 void flood_new_neigh(rimeaddr_t *dest)
 {
-	struct pack_list_t * pack;
-	uint8_t count=0;
-
-	PRINTF("FLOOD: new node: %u:%u\n", dest->u8[1], dest->u8[0]);
-
-	/**
-	 * First step: look, if we know the direct destination already
-	 * If so, always use direct delivery, never send to another node
-	 */
-	for(pack = list_head(pack_list); pack != NULL; pack = list_item_next(pack)) {
-		// Who is the destination for this bundle?
-		rimeaddr_t dest_node = convert_eid_to_rime(pack->dest_node);
-
-		if( rimeaddr_cmp(dest, &dest_node) ) {
-			// We know the neighbour, send it
-
-			PRINTF("FLOOD: send bundle %u to %u:%u directly\n", pack->num, dest->u8[0], dest->u8[1]);
-
-			struct route_t *route; route= memb_alloc(&route_mem);
-			rimeaddr_copy(&route->dest, dest);
-			route->bundle_num=pack->num;
-			pack->action=1;
-			list_add(route_list,route);
-			count ++;
-		}
-	}
-
-	if (count){
-		agent_send_bundles(list_head(route_list));
-		return;
-	}
-
-	for(pack = list_head(pack_list); pack != NULL; pack = list_item_next(pack)) {
-		uint8_t sent=0,i;
-
-		rimeaddr_t source_node = convert_eid_to_rime(pack->scr_node);
-		if( rimeaddr_cmp(&source_node, dest) ) {
-			printf("FLOOD: not sending bundle to originator\n");
-			sent = 1;
-		}
-
-		for (i =0 ; i < ROUTING_NEI_MEM ; i++) {
-			PRINTF("FLOOD: bundle %u already sent to node %u:%u == %u:%u? %lu\n",pack->num, dest->u8[1] ,dest->u8[0], pack->dest[i].u8[1], pack->dest[i].u8[0], pack->scr_node);
-			if ((pack->dest[i].u8[0] == dest->u8[0] && pack->dest[i].u8[1] == dest->u8[1])|| pack->scr_node == dest->u8[0] || pack->action==1){
-				sent=1;
-			}
-		}
-
-		if(!sent){
-			struct route_t *route;
-			route= memb_alloc(&route_mem);
-			rimeaddr_copy(&route->dest, dest);
-			route->bundle_num=pack->num;
-			pack->action=1;
-			list_add(route_list,route);	
-			count++;
-
-		}
-	}
-
-	if (count){
-		agent_send_bundles(list_head(route_list));
-	}
-
-	return;
+	flood_sent_to_known();
 }
 
 
 void flood_delete_list(void)
 {
-	struct route_list_t *route;
-	while(list_length(route_list)>0){
-		PRINTF("FLOOD: list length %u\n",list_length(route_list));
-		route=list_pop(route_list);
-		memb_free(&route_mem,route);
-	}
 }
 
 uint8_t flood_sent_to_known(void)
 {
-	struct discovery_neighbour_list_entry *nei_list =DISCOVERY.neighbours();
+	struct discovery_neighbour_list_entry *nei_list = DISCOVERY.neighbours();
 	struct discovery_neighbour_list_entry *nei_l;
-	struct pack_list_t *pack;
-	uint8_t count = 0;
+	struct file_list_entry_t * pack = NULL;
+	int h;
+
+	if( flood_transmitting ) {
+		uint16_t * wait = memb_alloc(saved_as_mem);
+		*wait = 5;
+
+		// Tell the agent to call us again to resubmit bundles
+		process_post(&agent_process, dtn_bundle_resubmission_event, wait);
+
+		return -1;
+	}
 
 	PRINTF("FLOOD: send to known neighbours\n");
 
@@ -186,29 +94,41 @@ uint8_t flood_sent_to_known(void)
 	 * First step: look, if we know the direct destination already
 	 * If so, always use direct delivery, never send to another node
 	 */
-	for(pack = list_head(pack_list); pack != NULL; pack = list_item_next(pack)) {
+	for(h=0; h<BUNDLE_STORAGE_SIZE; h++) {
+		pack = &file_list[h];
+
+		if( pack->file_size < 1 || pack->routing.action == 1 ) {
+			continue;
+		}
+
 		// Who is the destination for this bundle?
-		rimeaddr_t source_node = convert_eid_to_rime(pack->dest_node);
+		rimeaddr_t dest_node = convert_eid_to_rime(pack->dest);
 
 		for(nei_l = nei_list; nei_l != NULL; nei_l = list_item_next(nei_l)) {
-			if( rimeaddr_cmp(&nei_l->neighbour, &source_node) ) {
-				// We know the neighbour, send it
+			if( rimeaddr_cmp(&nei_l->neighbour, &dest_node) ) {
 
-				PRINTF("FLOOD: send bundle %u to %u:%u directly\n",pack->num,nei_l->neighbour.u8[0],nei_l->neighbour.u8[1]);
+				if( rimeaddr_cmp(&pack->routing.last_node, &nei_l->neighbour) && pack->routing.last_counter >= ROUTING_MAX_TRIES ) {
+					// We should avoid resubmitting this bundle now, because it failed too many times already
+					printf("FLOOD: Not resubmitting bundle to peer %u.%u\n", nei_l->neighbour.u8[0], nei_l->neighbour.u8[1]);
+					continue;
+				}
 
-				struct route_t *route; route= memb_alloc(&route_mem);
+				// We know the neighbour, send it directly
+				printf("FLOOD: send bundle %u with SeqNo %lu to %u:%u directly\n", pack->bundle_num, pack->time_stamp_seq, nei_l->neighbour.u8[0], nei_l->neighbour.u8[1]);
+
+				struct route_t * route = memb_alloc(&route_mem);
+
 				rimeaddr_copy(&route->dest, &nei_l->neighbour);
-				route->bundle_num=pack->num;
-				pack->action=1;
-				list_add(route_list,route);
-				count ++;
+				route->bundle_num = pack->bundle_num;
+				pack->routing.action = 1;
+
+				flood_transmitting = 1;
+				agent_send_bundles(route);
+
+				// Only one bundle at a time
+				return 1;
 			}
 		}
-	}
-
-	if (count){
-		agent_send_bundles(list_head(route_list));
-		return 1;
 	}
 
 	/**
@@ -216,39 +136,61 @@ uint8_t flood_sent_to_known(void)
 	 * flood it to everyone
 	 */
 	for(nei_l = nei_list; nei_l != NULL; nei_l = list_item_next(nei_l)) {
-		count=0;
-		for(pack = list_head(pack_list); pack != NULL; pack = list_item_next(pack)) { 
-			uint8_t i, sent=0;
+		PRINTF("FLOOD: neighbour %u.%u\n", nei_l->neighbour.u8[0], nei_l->neighbour.u8[1]);
 
-			rimeaddr_t source_node = convert_eid_to_rime(pack->scr_node);
+		for(h=0; h<BUNDLE_STORAGE_SIZE; h++) {
+			pack = &file_list[h];
+
+			if( pack->file_size < 1 || pack->routing.action == 1 ) {
+				continue;
+			}
+
+			PRINTF("FLOOD: Bundle %u at %u, SRC %lu, DEST %lu, MSRC %u.%u, SEQ %lu\n", pack->bundle_num, h, pack->src, pack->dest, pack->msrc.u8[0], pack->msrc.u8[1], pack->time_stamp_seq);
+
+			uint8_t i, sent = 0;
+
+			rimeaddr_t source_node = convert_eid_to_rime(pack->src);
 			if( rimeaddr_cmp(&nei_l->neighbour, &source_node) ) {
-				printf("FLOOD: not sending bundle to originator\n");
+				PRINTF("FLOOD: not sending bundle to originator\n");
 				sent = 1;
 			}
 
-			for (i =0 ; i < ROUTING_NEI_MEM ; i++) {
-				if ( rimeaddr_cmp(&pack->dest[i], &nei_l->neighbour)){
-					PRINTF("FLOOD: bundle %u already sent to node %u:%u!\n",pack->num, pack->dest[i].u8[1], pack->dest[i].u8[0]);
+			if( rimeaddr_cmp(&nei_l->neighbour, &pack->msrc) ) {
+				PRINTF("FLOOD: not sending back to sender\n");
+				sent = 1;
+			}
+
+			for (i = 0 ; i < ROUTING_NEI_MEM ; i++) {
+				if ( rimeaddr_cmp(&pack->routing.dest[i], &nei_l->neighbour)){
+					PRINTF("FLOOD: bundle %u already sent to node %u:%u!\n", pack->bundle_num, pack->routing.dest[i].u8[0], pack->routing.dest[i].u8[1]);
 					sent=1;
 				}
 			}
 
+			if( rimeaddr_cmp(&pack->routing.last_node, &nei_l->neighbour) && pack->routing.last_counter >= ROUTING_MAX_TRIES ) {
+				// We should avoid resubmitting this bundle now, because it failed too many times already
+				printf("FLOOD: Not resubmitting bundle to peer %u.%u\n", nei_l->neighbour.u8[0], nei_l->neighbour.u8[1]);
+				sent = 1;
+			}
+
 			if(!sent){
-				PRINTF("FLOOD send bundle %u to %u:%u\n",pack->num,nei_l->neighbour.u8[0],nei_l->neighbour.u8[1]);
-				PRINTF("%u:%u\n",nei_l->neighbour.u8[0],nei_l->neighbour.u8[1]);
-				struct route_t *route; route= memb_alloc(&route_mem);
+				printf("FLOOD: send bundle %u with SeqNo %lu to %u:%u\n", pack->bundle_num, pack->time_stamp_seq, nei_l->neighbour.u8[0], nei_l->neighbour.u8[1]);
+
+				struct route_t * route = memb_alloc(&route_mem);
+
 				rimeaddr_copy(&route->dest, &nei_l->neighbour);
-				route->bundle_num=pack->num;
-				pack->action=1;
-				list_add(route_list,route);	
-				count++;
+				route->bundle_num = pack->bundle_num;
+				pack->routing.action=1;
+
+				flood_transmitting = 1;
+				agent_send_bundles(route);
+
+				// Only one bundle at a time
+				return 1;
 			}
 		}
-
-		if (count){
-			agent_send_bundles(list_head(route_list));
-		}
 	}
+
 	return 1 ;
 }
 
@@ -266,44 +208,9 @@ void flood_resubmit_bundles(uint16_t bundle_num) {
 */
 int flood_new_bundle(uint16_t bundle_num)
 {
-	struct pack_list_t *pack;
-	for(pack = list_head(pack_list); pack != NULL; pack = list_item_next(pack)) {
-		if (pack->num==bundle_num){
-			PRINTF("FLOOD: bundle is already known\n");
-			return -1;
-		}
-	}
-	PRINTF("FLOOD: its new\n");
-	pack =  memb_alloc(&pack_mem);
-	if (pack !=NULL ){
-		pack->num=bundle_num;
-		PRINTF("FLOOD: memory\n");
-		if (BUNDLE_STORAGE.read_bundle(bundle_num, &bundle) <=0){
-			PRINTF("\n\nread bundle ERROR\n\n");
-			return -1;
-		}
-		PRINTF("FLOOD: red bundle\n");
-		sdnv_decode(bundle.mem.ptr+bundle.offset_tab[FLAGS][OFFSET],bundle.offset_tab[FLAGS][STATE],&pack->flags);
-		sdnv_decode(bundle.mem.ptr+bundle.offset_tab[DEST_NODE][OFFSET],bundle.offset_tab[DEST_NODE][STATE],&pack->dest_node);
-		sdnv_decode(bundle.mem.ptr+bundle.offset_tab[SRC_NODE][OFFSET],bundle.offset_tab[SRC_NODE][STATE],&pack->scr_node);
-		sdnv_decode(bundle.mem.ptr+bundle.offset_tab[TIME_STAMP_SEQ_NR][OFFSET],bundle.offset_tab[TIME_STAMP_SEQ_NR][STATE],&pack->seq_num);
-		pack->send_to=0;
+	statistics_bundle_incoming(1);
 
-		pack->last_node.u8[0] = 0;
-		pack->last_node.u8[1] = 0;
-		pack->last_counter = 0;
-
-		uint8_t i;
-		for (i=0; i<ROUTING_NEI_MEM; i++){
-			pack->dest[i].u8[0] = 0;
-			pack->dest[i].u8[1] = 0;
-		}
-
-		list_add(pack_list,pack);
-		flood_sent_to_known();
-		delete_bundle(&bundle);
-	}
-	return 1;
+	return flood_sent_to_known();
 }
 
 /**
@@ -312,21 +219,6 @@ int flood_new_bundle(uint16_t bundle_num)
 */
 void flood_del_bundle(uint16_t bundle_num)
 {
-	PRINTF("FLOOD: delete bundle %u\n",bundle_num);
-	struct pack_list_t *pack;
-	for(pack = list_head(pack_list); pack != NULL; pack = list_item_next(pack)) {
-		if( pack->num == bundle_num ){
-			break;
-		}
-	}
-
-	if (pack != NULL){
-		PRINTF("FLOOD: deleting bundle %u\n",bundle_num);
-		list_remove(pack_list, pack);
-		memb_free(&pack_mem, pack);
-	} else {
-		PRINTF("FLOOD: bundle already deleted\n");
-	}
 	return;
 }
 
@@ -338,97 +230,106 @@ void flood_del_bundle(uint16_t bundle_num)
 */
 void flood_sent(struct route_t *route, int status, int num_tx)
 {
-    struct pack_list_t *pack;
-	pack = list_head(pack_list);
-	if (pack == NULL){
-		PRINTF("FLOOD: no list\n");
+	flood_transmitting = 0;
+	uint16_t * wait = memb_alloc(saved_as_mem);
+	*wait = 0;
+	int i;
+
+	struct file_list_entry_t * pack = NULL;
+	for(i=0; i<BUNDLE_STORAGE_SIZE; i++) {
+		if( file_list[i].file_size < 0 ) {
+			continue;
+		}
+
+		if( file_list[i].bundle_num == route->bundle_num ) {
+			pack = &file_list[i];
+			break;
+		}
 	}
 
-	PRINTF("FLOOD: pack_list %p, %u\n",list_head(pack_list),pack->num);
-	for(pack = list_head(pack_list); pack != NULL && pack->num != route->bundle_num ; pack = list_item_next(pack)){
-		PRINTF("FLOOD: pack_num:%u != %u\n",pack->num,route->bundle_num);
+	if( pack == NULL ) {
+		printf("FLOOD: Bundle %u not found\n", route->bundle_num );
+		memb_free(&route_mem, route);
+		memb_free(saved_as_mem, wait);
+		return;
 	}
-	pack->action=0;
-		
+
+	pack->routing.action = 0;
+
 	switch(status) {
 	case MAC_TX_ERR:
 	case MAC_TX_COLLISION:
 	case MAC_TX_NOACK:
 		// dtn-network tried to send bundle but failed, has to be retried
 		if( status == MAC_TX_ERR ) {
-			PRINTF("FLOOD: MAC_TX_ERR\n");
+			printf("FLOOD: MAC_TX_ERR\n");
 		} else if( status == MAC_TX_COLLISION ) {
-		    PRINTF("FLOOD: collision after %d tx\n", num_tx);
+			printf("FLOOD: collision after %d tx\n", num_tx);
 		} else if( status == MAC_TX_NOACK ) {
-		    PRINTF("FLOOD: noack after %d tx\n", num_tx);
+			printf("FLOOD: noack after %d tx\n", num_tx);
 		}
 
-		if( pack != NULL ) {
-			if( rimeaddr_cmp(&pack->last_node, &route->dest) && pack->last_counter >= ROUTING_MAX_TRIES ) {
+		if( rimeaddr_cmp(&pack->routing.last_node, &route->dest) ) {
+			pack->routing.last_counter ++;
+
+			if( pack->routing.last_counter >= ROUTING_MAX_TRIES ) {
 				// We should avoid resubmitting this bundle now, because it failed too many times already
 				PRINTF("FLOOD: Not resubmitting bundle to peer %u.%u\n", route->dest.u8[0], route->dest.u8[1]);
+
+				// Notify discovery, that this peer apparently disappeared
+				DISCOVERY.dead(&route->dest);
+
+				// Reset our internal blacklist
+				rimeaddr_copy(&pack->routing.last_node, &rimeaddr_null);
+				pack->routing.last_counter = 0;
+
+				// BREAK! ;)
 				break;
-			} else if( rimeaddr_cmp(&pack->last_node, &route->dest) ) {
-				pack->last_counter ++;
-			} else {
-				rimeaddr_copy(&pack->last_node, &route->dest);
-				pack->last_counter = 0;
 			}
+		} else {
+			rimeaddr_copy(&pack->routing.last_node, &route->dest);
+			pack->routing.last_counter = 0;
 		}
 
-		process_post(&agent_process, dtn_bundle_resubmission_event, &route->bundle_num);
 		break;
 
 	case MAC_TX_OK:
 		PRINTF("FLOOD: sent after %d tx\n", num_tx);
-		if( pack == NULL ) {
-			PRINTF("FLOOD: ERROR\n");
-			break;
-		}
+		statistics_bundle_outgoing(1);
 
-		if (pack->send_to < ROUTING_NEI_MEM){
-			rimeaddr_copy(&pack->dest[pack->send_to], &route->dest);
-			pack->send_to++;
+		if (pack->routing.send_to < ROUTING_NEI_MEM) {
+			rimeaddr_copy(&pack->routing.dest[pack->routing.send_to], &route->dest);
+			pack->routing.send_to++;
 
-			PRINTF("FLOOD: bundle %u sent to %u nodes\n",route->bundle_num, pack->send_to);
-			memb_free(&route_mem,route);
+			PRINTF("FLOOD: bundle %u sent to %u nodes\n", route->bundle_num, pack->routing.send_to);
 
-			PRINTF("FLOOD: memory\n");
-			if (BUNDLE_STORAGE.read_bundle(route->bundle_num, &bundle) <=0){
-				PRINTF("\n\nread bundle ERROR\n\n");
-				return;
-			}
-
-			PRINTF("FLOOD: red bundle\n");
-			uint32_t dest;
-			sdnv_decode(bundle.mem.ptr+bundle.offset_tab[DEST_NODE][OFFSET],bundle.offset_tab[DEST_NODE][STATE],&dest);
-
-			rimeaddr_t dest_n;
-			dest_n = convert_eid_to_rime(dest);
-
-			if (rimeaddr_cmp(&route->dest, &dest_n)){
+			rimeaddr_t dest_n = convert_eid_to_rime(pack->dest);
+			if (rimeaddr_cmp(&route->dest, &dest_n)) {
 				flood_del_bundle(route->bundle_num);
-				uint16_t tmp = route->bundle_num;
-				memb_free(&route_mem,route);
-				printf("FLOOD: bundle sent to destination node, deleting bundle\n");
-				BUNDLE_STORAGE.del_bundle(tmp,4);
-			}else{
-				printf("FLOOD: bundle for %u:%u delivered to %u:%u\n",dest_n.u8[0], dest_n.u8[1], route->dest.u8[0], route->dest.u8[1]);
+				PRINTF("FLOOD: bundle sent to destination node, deleting bundle\n");
+				BUNDLE_STORAGE.del_bundle(route->bundle_num, 4);
+			} else {
+				PRINTF("FLOOD: bundle for %u:%u delivered to %u:%u\n",dest_n.u8[0], dest_n.u8[1], route->dest.u8[0], route->dest.u8[1]);
 			}
-			delete_bundle(&bundle);
-	    }else if(pack->send_to >= ROUTING_NEI_MEM){
+	    } else if (pack->routing.send_to >= ROUTING_NEI_MEM) {
+	    	// Here we can delete the bundle from storage, because it will not be routed anyway
 			flood_del_bundle(route->bundle_num);
-			uint16_t tmp= route->bundle_num;
-			memb_free(&route_mem,route);
 			PRINTF("FLOOD: bundle sent to max number of nodes, deleting bundle\n");
-			BUNDLE_STORAGE.del_bundle(tmp,4);
+			BUNDLE_STORAGE.del_bundle(route->bundle_num,4);
 		}
+
+		*wait = 5;
 	    break;
 
 	default:
 	    PRINTF("FLOOD: error %d after %d tx\n", status, num_tx);
 	    break;
 	}
+
+	memb_free(&route_mem, route);
+
+	// Tell the agent to call us again to resubmit bundles
+	process_post(&agent_process, dtn_bundle_resubmission_event, wait);
 }
 
 const struct routing_driver flood_route ={

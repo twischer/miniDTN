@@ -59,11 +59,12 @@
 
 #include "r_storage.h"
 
-#define CONF_SEND_TO_NODE	 2
+#define CONF_SEND_TO_NODE	2
 #define CONF_SEND_TO_APP	25
 #define CONF_SEND_FROM_NODE	46
 #define CONF_SEND_FROM_APP	25
 #define CONF_APP_INTERVAL  300
+#define CONF_STATS_INTER  3600
 #define FORMAT_BINARY		 1
 #define DTN_PING_ENDPOINT	11
 
@@ -127,7 +128,7 @@ void send_bundle(uint8_t * payload, uint8_t length)
 	 * Hardcoded creation timestamp based on:
 	 * date -j +%s   -    date -j 010100002000 +%s
 	 */
-	tmp = 387397464 + (clock_time() / CLOCK_SECOND);
+	tmp = 387500411 + (clock_time() / CLOCK_SECOND);
 	set_attr(&bundle_out, TIME_STAMP, &tmp);
 
 	// Add the payload block
@@ -246,7 +247,7 @@ PROCESS_THREAD(temperature_process, ev, data)
 	process_post(&agent_process, dtn_application_registration_event, &reg);
 
 	// Initialize the statistics module and set a timer
-	uint16_t interval = statistics_setup(3600);
+	uint16_t interval = statistics_setup(CONF_STATS_INTER);
 	etimer_set(&statistics_timer, CLOCK_SECOND * interval);
 
 	// Wait a second to send our STARTUP bundle
@@ -286,13 +287,34 @@ PROCESS_THREAD(temperature_process, ev, data)
 		}
 
 		if( etimer_expired(&packet_timer) && dtn_node_id == CONF_SEND_FROM_NODE ) {
+			printf("%lu bundles sent (SeqNo %lu)\n", bundles_sent, sequence_number);
 			send_application_bundle(TYPE_MEASUREMENT);
 			bundles_sent++;
-			printf("%lu bundles sent\n", bundles_sent);
+
+			// Send the next bundle after CONF_APP_INTERVAL seconds
+			etimer_set(&packet_timer, CLOCK_SECOND * CONF_APP_INTERVAL);
 		}
 
-		// Send the next bundle after CONF_APP_INTERVAL seconds
-		etimer_set(&packet_timer, CLOCK_SECOND * CONF_APP_INTERVAL);
+		if( ev == submit_data_to_application_event ) {
+			// Bundle has arrived
+			struct bundle_t * bundle = (struct bundle_t *) data;
+
+			uint32_t payload_length;
+			uint8_t payload_buffer[80];
+
+			sdnv_decode(bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET] + 2, 4, &payload_length);
+			memcpy(payload_buffer, bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET] + 3, payload_length);
+
+			delete_bundle(bundle);
+
+			printf("Payload (%lu): ", payload_length);
+			int i;
+			for(i=0; i<payload_length; i++) {
+				printf("%02X ", payload_buffer[i]);
+			}
+			printf("\n");
+		}
+
 	}
 
 	PROCESS_END();
@@ -381,7 +403,8 @@ PROCESS_THREAD(dtnping_process, ev, data)
 		set_attr(&bundle_out, FLAGS, &tmp);
 
 		// Set the sequence number to the number of bundles sent
-		set_attr(&bundle_out, TIME_STAMP_SEQ_NR, &bundles_recv);
+		tmp = sequence_number ++;
+		set_attr(&bundle_out, TIME_STAMP_SEQ_NR, &tmp);
 
 		// Set the same lifetime and timestamp as the incoming bundle
 		set_attr(&bundle_out, LIFE_TIME, &incoming_lifetime);

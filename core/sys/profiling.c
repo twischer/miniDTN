@@ -40,6 +40,12 @@
 #include "sys/profiling.h"
 #include "profiling_arch.h"
 
+// Disable profiling for now
+#undef PROFILES_CONF_MAX
+#define PROFILES_CONF_MAX 0
+#undef PROFILES_CONF_STACKSIZE
+#define PROFILES_CONF_STACKSIZE 0
+
 #ifdef PROFILES_CONF_MAX
 #define MAX_PROFILES PROFILES_CONF_MAX
 #else
