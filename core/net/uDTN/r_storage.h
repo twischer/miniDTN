@@ -13,7 +13,7 @@
 /**
  * How much MMEM memory has to remain free after all bundles have been stored?
  */
-#define STORAGE_HIGH_WATERMARK	128
+#define STORAGE_HIGH_WATERMARK	150
 
 #include "bundle.h"
 #include "lib/mmem.h"
