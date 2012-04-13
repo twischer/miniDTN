@@ -148,7 +148,8 @@ uint8_t rs_make_room(struct bundle_t * bundle)
 		}
 
 		if( !rs_del_bundle(pointer_maximum_storagetime, 4) ){
-				return -1;
+			PRINTF("STORAGE: bundle %u deletion failed\n", pointer_maximum_storagetime);
+			return -1;
 		}
 
 	}
@@ -209,7 +210,7 @@ int32_t rs_save_bundle(struct bundle_t *bundle)
 		}
 	}
 
-	if( free == -1 ) {
+	if( free == -1 || (avail_memory - bundle->size) < STORAGE_HIGH_WATERMARK ) {
 		if( !rs_make_room(bundle) ) {
 			// Cannot store bundle, no room
 			PRINTF("STORAGE: Cannot store bundle, no room\n");
@@ -234,7 +235,7 @@ int32_t rs_save_bundle(struct bundle_t *bundle)
 	// Allocate some memory
 	int mem = mmem_alloc(&file_list[i].ptr,bundle->size);
 	if( !mem ) {
-		PRINTF("STORAGE: write failed\n");
+		PRINTF("STORAGE: write of %u bytes failed\n", bundle->size);
 		return -1;
 	}
 
