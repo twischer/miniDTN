@@ -24,7 +24,6 @@
 #define PRINTF(...)
 #endif
 
-uint16_t statistics_interval = 0;
 unsigned long statistics_timestamp = 0;
 struct statistics_element_t statistics_array[STATISTICS_ELEMENTS];
 
@@ -32,15 +31,11 @@ struct statistics_element_t statistics_array[STATISTICS_ELEMENTS];
  * \brief Internal function to find out, into which array slot the information is written
  */
 uint8_t statistics_get_pointer() {
-	if( statistics_interval < 1 ) {
-		return 0;
-	}
-
 	// Calculate since when we are recording statistics
 	unsigned long elapsed = clock_seconds() - statistics_timestamp;
 
 	// Find out in which "slot" of the array we are currently writing
-	uint8_t ptr = elapsed / statistics_interval;
+	uint8_t ptr = elapsed / STATISTICS_PERIOD;
 
 	if( ptr >= STATISTICS_ELEMENTS ) {
 		ptr = STATISTICS_ELEMENTS - 1;
@@ -55,17 +50,14 @@ uint8_t statistics_get_pointer() {
  * \brief Init function to be called by application
  * \return Seconds after which the statistics have to be sent off
  */
-uint16_t statistics_setup(uint16_t interval)
+uint16_t statistics_setup()
 {
-	PRINTF("STATISTICS: setup(%u)\n", interval);
-
-	// Copy config paramters
-	statistics_interval = interval;
+	PRINTF("STATISTICS: setup()\n");
 
 	// Reset the results (just to be sure)
 	statistics_reset();
 
-	return interval * STATISTICS_ELEMENTS;
+	return STATISTICS_PERIOD * STATISTICS_ELEMENTS;
 }
 
 /**
@@ -74,10 +66,6 @@ uint16_t statistics_setup(uint16_t interval)
  */
 uint8_t statistics_get_bundle(uint8_t * buffer, uint8_t maximum_length)
 {
-	if( statistics_interval < 1 ) {
-		return 0;
-	}
-
 	int offset = 0;
 
 	PRINTF("STATISTICS: get_bundle(%p, %u)\n", buffer, maximum_length);
@@ -87,8 +75,8 @@ uint8_t statistics_get_bundle(uint8_t * buffer, uint8_t maximum_length)
 	offset += sizeof(statistics_timestamp);
 
 	// Store how long each step is
-	memcpy(buffer + offset, &statistics_interval, sizeof(statistics_interval));
-	offset += sizeof(statistics_interval);
+	buffer[offset++] = (STATISTICS_PERIOD & 0x00FF) >> 0;
+	buffer[offset++] = (STATISTICS_PERIOD & 0xFF00) >> 8;
 
 	// Store how many periods are recorded
 	buffer[offset++] = STATISTICS_ELEMENTS;
@@ -119,10 +107,6 @@ void statistics_reset(void)
  */
 void statistics_bundle_incoming(uint8_t count)
 {
-	if( statistics_interval < 1 ) {
-		return;
-	}
-
 	PRINTF("STATISTICS: bundle_incoming(%u)\n", count);
 
 	statistics_array[statistics_get_pointer()].bundles_incoming += count;
@@ -133,10 +117,6 @@ void statistics_bundle_incoming(uint8_t count)
  */
 void statistics_bundle_outgoing(uint8_t count)
 {
-	if( statistics_interval < 1 ) {
-		return;
-	}
-
 	PRINTF("STATISTICS: bundle_outgoing(%u)\n", count);
 
 	statistics_array[statistics_get_pointer()].bundles_outgoing += count;
@@ -147,10 +127,6 @@ void statistics_bundle_outgoing(uint8_t count)
  */
 void statistics_bundle_generated(uint8_t count)
 {
-	if( statistics_interval < 1 ) {
-		return;
-	}
-
 	PRINTF("STATISTICS: bundle_generated(%u)\n", count);
 
 	statistics_array[statistics_get_pointer()].bundles_generated += count;
@@ -161,10 +137,6 @@ void statistics_bundle_generated(uint8_t count)
  */
 void statistics_bundle_delivered(uint8_t count)
 {
-	if( statistics_interval < 1 ) {
-		return;
-	}
-
 	PRINTF("STATISTICS: statistics_bundle_delivered(%u)\n", count);
 
 	statistics_array[statistics_get_pointer()].bundles_delivered += count;
@@ -175,10 +147,6 @@ void statistics_bundle_delivered(uint8_t count)
  */
 void statistics_storage_bundles(uint8_t bundles)
 {
-	if( statistics_interval < 1 ) {
-		return;
-	}
-
 	PRINTF("STATISTICS: storage_bundles(%u)\n", bundles);
 
 	statistics_array[statistics_get_pointer()].storage_bundles = bundles;
@@ -189,10 +157,6 @@ void statistics_storage_bundles(uint8_t bundles)
  */
 void statistics_storage_memory(uint16_t free)
 {
-	if( statistics_interval < 1 ) {
-		return;
-	}
-
 	PRINTF("STATISTICS: storage_memory(%u)\n", free);
 
 	statistics_array[statistics_get_pointer()].storage_memory = free;
@@ -203,10 +167,6 @@ void statistics_storage_memory(uint16_t free)
  */
 void statistics_contacts_up(rimeaddr_t * peer)
 {
-	if( statistics_interval < 1 ) {
-		return;
-	}
-
 	PRINTF("STATISTICS: contacts_up(%u.%u)\n", peer->u8[0], peer->u8[1]);
 }
 
@@ -215,9 +175,6 @@ void statistics_contacts_up(rimeaddr_t * peer)
  */
 void statistics_contacts_down(rimeaddr_t * peer, uint16_t duration)
 {
-	if( statistics_interval < 1 ) {
-		return;
-	}
 
 	PRINTF("STATISTICS: contacts_down(%u.%u, %u)\n", peer->u8[0], peer->u8[1], duration);
 
