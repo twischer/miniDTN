@@ -365,10 +365,10 @@ PROCESS_THREAD(dtnping_process, ev, data)
 		delete_bundle(bundle_in);
 
 		bundles_recv++;
-        uint32_t seqno = (((uint32_t) (payload_buffer[0] & 0xFF)) << 24) +
-                         (((uint32_t) (payload_buffer[1] & 0xFF)) << 16) +
-                         (((uint32_t) (payload_buffer[2] & 0xFF)) <<  8) +
-                         (((uint32_t) (payload_buffer[3] & 0xFF)) <<  0);
+        uint32_t seqno = (((uint32_t) (payload_buffer[0] & 0xFF)) <<  0) +
+                         (((uint32_t) (payload_buffer[1] & 0xFF)) <<  8) +
+                         (((uint32_t) (payload_buffer[2] & 0xFF)) << 16) +
+                         (((uint32_t) (payload_buffer[3] & 0xFF)) << 24);
 
 		printf("PING %lu (SeqNo %lu) received\n", bundles_recv, seqno);
 
