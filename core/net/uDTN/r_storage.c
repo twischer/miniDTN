@@ -128,14 +128,14 @@ uint8_t rs_make_room(struct bundle_t * bundle)
 		// We need space, delete bundles
 		int i;
 		uint32_t maximum_storagetime_value = 0;
-		uint16_t pointer_maximum_storagetime = -1;
+		int16_t pointer_maximum_storagetime = -1;
 
 		for(i=0; i<BUNDLE_STORAGE_SIZE; i++) {
-			if( file_list[i].file_size < 1 ) {
+			if( file_list[i].file_size == 0 ) {
 				continue;
 			}
 
-			if( (clock_seconds() - file_list[i].rec_time) > maximum_storagetime_value ) {
+			if( (clock_seconds() - file_list[i].rec_time) >= maximum_storagetime_value ) {
 				// Here we have a bundle that could be deleted
 				maximum_storagetime_value = clock_seconds() - file_list[i].rec_time;
 				pointer_maximum_storagetime = i;
@@ -144,12 +144,12 @@ uint8_t rs_make_room(struct bundle_t * bundle)
 
 		if( pointer_maximum_storagetime == -1 ) {
 			PRINTF("STORAGE: no bundle for deletion found\n");
-			return -1;
+			return 0;
 		}
 
 		if( !rs_del_bundle(pointer_maximum_storagetime, 4) ){
 			PRINTF("STORAGE: bundle %u deletion failed\n", pointer_maximum_storagetime);
-			return -1;
+			return 0;
 		}
 
 	}
@@ -167,6 +167,10 @@ int32_t rs_save_bundle(struct bundle_t *bundle)
 	uint16_t i=0;
 	int32_t free=-1;
 	uint8_t *tmp=bundle->mem.ptr;
+
+	if( bundle->size == 0 ) {
+		return -1;
+	}
 
 	uint32_t src;
 	tmp=tmp+bundle->offset_tab[SRC_NODE][OFFSET];
@@ -213,7 +217,6 @@ int32_t rs_save_bundle(struct bundle_t *bundle)
 	if( free == -1 || (avail_memory - bundle->size) < STORAGE_HIGH_WATERMARK ) {
 		if( !rs_make_room(bundle) ) {
 			// Cannot store bundle, no room
-			PRINTF("STORAGE: Cannot store bundle, no room\n");
 			return -1;
 		}
 
@@ -315,6 +318,10 @@ uint16_t rs_del_bundle(uint16_t bundle_num, uint8_t reason)
 */
 uint16_t rs_read_bundle(uint16_t bundle_num,struct bundle_t *bundle)
 {
+	if( file_list[bundle_num].file_size == 0 ) {
+		return 0;
+	}
+
 	if(MMEM_PTR(&file_list[bundle_num].ptr) != 0) {
 		recover_bundel(bundle, &file_list[bundle_num].ptr,(int) file_list[bundle_num].file_size);
 
