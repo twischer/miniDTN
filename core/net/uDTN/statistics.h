@@ -15,7 +15,17 @@
 
 #include "net/rime/rimeaddr.h"
 
-#define STATISTICS_ELEMENTS	4
+#ifdef STATISTICS_CONF_ELEMENTS
+#define STATISTICS_ELEMENTS STATISTICS_CONF_ELEMENTS
+#else
+#define STATISTICS_ELEMENTS	0
+#endif
+
+#ifdef STATISTICS_CONF_PERIOD
+#define STATISTICS_PERIOD STATISTICS_CONF_PERIOD
+#else
+#define STATISTICS_PERIOD 0
+#endif
 
 struct statistics_element_t
 {
@@ -31,7 +41,7 @@ struct statistics_element_t
 	uint16_t storage_memory;
 };
 
-uint16_t statistics_setup(uint16_t interval);
+uint16_t statistics_setup();
 uint8_t statistics_get_bundle(uint8_t * buffer, uint8_t maximum_length);
 void statistics_reset(void);
 
