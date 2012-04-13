@@ -116,6 +116,11 @@ uint8_t ipnd_dis_neighbour(rimeaddr_t * dest)
 {
 	struct discovery_basic_neighbour_list_entry * entry;
 
+	if( discovery_status == 0 ) {
+		// Not initialized yet
+		return 0;
+	}
+
 	for(entry = list_head(neighbour_list);
 			entry != NULL;
 			entry = entry->next) {
@@ -175,6 +180,11 @@ uint8_t ipnd_parse_bloomfilter(uint8_t * buffer, uint8_t length) {
 void ipnd_dis_receive(rimeaddr_t * source, uint8_t * payload, uint8_t length)
 {
 	int offset = 0;
+
+	if( discovery_status == 0 ) {
+		// Not initialized yet
+		return;
+	}
 
 	// Save all peer from which we receive packets to the active neighbours list
 	ipnd_dis_refresh_neighbour(source);
@@ -289,6 +299,11 @@ void ipnd_dis_refresh_neighbour(rimeaddr_t * neighbour)
 
 	struct discovery_basic_neighbour_list_entry * entry;
 
+	if( discovery_status == 0 ) {
+		// Not initialized yet
+		return;
+	}
+
 	for(entry = list_head(neighbour_list);
 			entry != NULL;
 			entry = entry->next) {
@@ -308,6 +323,11 @@ void ipnd_dis_refresh_neighbour(rimeaddr_t * neighbour)
 void ipnd_dis_delete_neighbour(rimeaddr_t * neighbour)
 {
 	struct discovery_basic_neighbour_list_entry * entry;
+
+	if( discovery_status == 0 ) {
+		// Not initialized yet
+		return;
+	}
 
 	for(entry = list_head(neighbour_list);
 			entry != NULL;
@@ -331,6 +351,11 @@ void ipnd_dis_delete_neighbour(rimeaddr_t * neighbour)
  */
 void ipnd_dis_save_neighbour(rimeaddr_t * neighbour)
 {
+	if( discovery_status == 0 ) {
+		// Not initialized yet
+		return;
+	}
+
 	// If we know that neighbour already, no need to re-add it
 	if( ipnd_dis_neighbour(neighbour) ) {
 		return;
