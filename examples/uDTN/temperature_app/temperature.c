@@ -85,7 +85,6 @@ PROCESS(dtnping_process, "DTN Ping process");
 AUTOSTART_PROCESSES(&temperature_process, &dtnping_process);
 static struct registration_api reg;
 struct bundle_t bundle_out;
-static uint32_t sequence_number;
 static uint32_t bundles_sent;
 static struct registration_api reg_ping;
 /*---------------------------------------------------------------------------*/
@@ -114,10 +113,6 @@ void send_bundle(uint8_t * payload, uint8_t length)
 
 	tmp = 0x10; // Endpoint is Singleton
 	set_attr(&bundle_out, FLAGS, &tmp);
-
-	/* Set the sequence number to the number of bundles sent */
-	tmp = sequence_number ++;
-	set_attr(&bundle_out, TIME_STAMP_SEQ_NR, &tmp);
 
 	// Lifetime of a full day
 	tmp = 86400;
@@ -229,7 +224,6 @@ PROCESS_THREAD(temperature_process, ev, data)
 
 	PROCESS_BEGIN();
 
-	sequence_number = 0;
 	bundles_sent = 0;
 
 	SENSORS_ACTIVATE(pressure_sensor);
@@ -286,7 +280,7 @@ PROCESS_THREAD(temperature_process, ev, data)
 		}
 
 		if( etimer_expired(&packet_timer) && dtn_node_id == CONF_SEND_FROM_NODE ) {
-			printf("%lu bundles sent (SeqNo %lu)\n", bundles_sent, sequence_number);
+			printf("%lu bundles sent\n", bundles_sent);
 			send_application_bundle(TYPE_MEASUREMENT);
 			bundles_sent++;
 
@@ -400,10 +394,6 @@ PROCESS_THREAD(dtnping_process, ev, data)
 		// Now set the flags
 		tmp = 0x10; // Endpoint is Singleton
 		set_attr(&bundle_out, FLAGS, &tmp);
-
-		// Set the sequence number to the number of bundles sent
-		tmp = sequence_number ++;
-		set_attr(&bundle_out, TIME_STAMP_SEQ_NR, &tmp);
 
 		// Set the same lifetime and timestamp as the incoming bundle
 		set_attr(&bundle_out, LIFE_TIME, &incoming_lifetime);
