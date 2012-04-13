@@ -4,7 +4,12 @@
 /**
  * How many bundles can possibly be stored in the data structures?
  */
-#define BUNDLE_STORAGE_SIZE 	80
+#ifdef BUNDLE_CONF_STORAGE_SIZE
+#define BUNDLE_STORAGE_SIZE BUNDLE_CONF_STORAGE_SIZE
+#else
+#define BUNDLE_STORAGE_SIZE 	10
+#endif
+
 /**
  * How much MMEM memory has to remain free after all bundles have been stored?
  */
