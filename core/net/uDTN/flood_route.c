@@ -109,12 +109,12 @@ uint8_t flood_sent_to_known(void)
 
 				if( rimeaddr_cmp(&pack->routing.last_node, &nei_l->neighbour) && pack->routing.last_counter >= ROUTING_MAX_TRIES ) {
 					// We should avoid resubmitting this bundle now, because it failed too many times already
-					printf("FLOOD: Not resubmitting bundle to peer %u.%u\n", nei_l->neighbour.u8[0], nei_l->neighbour.u8[1]);
+					PRINTF("FLOOD: Not resubmitting bundle to peer %u.%u\n", nei_l->neighbour.u8[0], nei_l->neighbour.u8[1]);
 					continue;
 				}
 
 				// We know the neighbour, send it directly
-				printf("FLOOD: send bundle %u with SeqNo %lu to %u:%u directly\n", pack->bundle_num, pack->time_stamp_seq, nei_l->neighbour.u8[0], nei_l->neighbour.u8[1]);
+				PRINTF("FLOOD: send bundle %u with SeqNo %lu to %u:%u directly\n", pack->bundle_num, pack->time_stamp_seq, nei_l->neighbour.u8[0], nei_l->neighbour.u8[1]);
 
 				struct route_t * route = memb_alloc(&route_mem);
 
@@ -169,12 +169,12 @@ uint8_t flood_sent_to_known(void)
 
 			if( rimeaddr_cmp(&pack->routing.last_node, &nei_l->neighbour) && pack->routing.last_counter >= ROUTING_MAX_TRIES ) {
 				// We should avoid resubmitting this bundle now, because it failed too many times already
-				printf("FLOOD: Not resubmitting bundle to peer %u.%u\n", nei_l->neighbour.u8[0], nei_l->neighbour.u8[1]);
+				PRINTF("FLOOD: Not resubmitting bundle to peer %u.%u\n", nei_l->neighbour.u8[0], nei_l->neighbour.u8[1]);
 				sent = 1;
 			}
 
 			if(!sent){
-				printf("FLOOD: send bundle %u with SeqNo %lu to %u:%u\n", pack->bundle_num, pack->time_stamp_seq, nei_l->neighbour.u8[0], nei_l->neighbour.u8[1]);
+				PRINTF("FLOOD: send bundle %u with SeqNo %lu to %u:%u\n", pack->bundle_num, pack->time_stamp_seq, nei_l->neighbour.u8[0], nei_l->neighbour.u8[1]);
 
 				struct route_t * route = memb_alloc(&route_mem);
 
@@ -262,11 +262,11 @@ void flood_sent(struct route_t *route, int status, int num_tx)
 	case MAC_TX_NOACK:
 		// dtn-network tried to send bundle but failed, has to be retried
 		if( status == MAC_TX_ERR ) {
-			printf("FLOOD: MAC_TX_ERR\n");
+			PRINTF("FLOOD: MAC_TX_ERR\n");
 		} else if( status == MAC_TX_COLLISION ) {
-			printf("FLOOD: collision after %d tx\n", num_tx);
+			PRINTF("FLOOD: collision after %d tx\n", num_tx);
 		} else if( status == MAC_TX_NOACK ) {
-			printf("FLOOD: noack after %d tx\n", num_tx);
+			PRINTF("FLOOD: noack after %d tx\n", num_tx);
 		}
 
 		if( rimeaddr_cmp(&pack->routing.last_node, &route->dest) ) {
