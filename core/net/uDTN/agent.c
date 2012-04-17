@@ -231,11 +231,11 @@ PROCESS_THREAD(agent_process, ev, data)
 			uint16_t wait = *(uint16_t *) data;
 			memb_free(saved_as_mem, data);
 
-			if( wait < 1 ) {
+			// if( wait < 1 ) {
 				ROUTING.resubmit_bundles(0);
-			} else {
-				etimer_set(&resubmission_timer, wait);
-			}
+			// } else {
+			// 	etimer_set(&resubmission_timer, wait);
+			// }
 
 			continue;
 		}
