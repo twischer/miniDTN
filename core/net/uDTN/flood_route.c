@@ -94,10 +94,11 @@ uint8_t flood_sent_to_known(void)
 	 * First step: look, if we know the direct destination already
 	 * If so, always use direct delivery, never send to another node
 	 */
-	for(h=0; h<BUNDLE_STORAGE_SIZE; h++) {
-		pack = &file_list[h];
+	for(pack = (struct file_list_entry_t *) BUNDLE_STORAGE.get_bundles();
+			pack != NULL;
+			pack = list_item_next(pack)) {
 
-		if( pack->file_size < 1 || pack->routing.action == 1 ) {
+		if( pack->routing.action == 1 ) {
 			continue;
 		}
 
@@ -138,14 +139,15 @@ uint8_t flood_sent_to_known(void)
 	for(nei_l = nei_list; nei_l != NULL; nei_l = list_item_next(nei_l)) {
 		PRINTF("FLOOD: neighbour %u.%u\n", nei_l->neighbour.u8[0], nei_l->neighbour.u8[1]);
 
-		for(h=0; h<BUNDLE_STORAGE_SIZE; h++) {
-			pack = &file_list[h];
+		for(pack = (struct file_list_entry_t *) BUNDLE_STORAGE.get_bundles();
+				pack != NULL;
+				pack = list_item_next(pack)) {
 
-			if( pack->file_size < 1 || pack->routing.action == 1 ) {
+			if( pack->routing.action == 1 ) {
 				continue;
 			}
 
-			PRINTF("FLOOD: Bundle %u at %u, SRC %lu, DEST %lu, MSRC %u.%u, SEQ %lu\n", pack->bundle_num, h, pack->src, pack->dest, pack->msrc.u8[0], pack->msrc.u8[1], pack->time_stamp_seq);
+			PRINTF("FLOOD: Bundle %u, SRC %lu, DEST %lu, MSRC %u.%u, SEQ %lu\n", pack->bundle_num,  pack->src, pack->dest, pack->msrc.u8[0], pack->msrc.u8[1], pack->time_stamp_seq);
 
 			uint8_t i, sent = 0;
 
@@ -236,13 +238,11 @@ void flood_sent(struct route_t *route, int status, int num_tx)
 	int i;
 
 	struct file_list_entry_t * pack = NULL;
-	for(i=0; i<BUNDLE_STORAGE_SIZE; i++) {
-		if( file_list[i].file_size < 0 ) {
-			continue;
-		}
+	for(pack = (struct file_list_entry_t *) BUNDLE_STORAGE.get_bundles();
+			pack != NULL;
+			pack = list_item_next(pack)) {
 
-		if( file_list[i].bundle_num == route->bundle_num ) {
-			pack = &file_list[i];
+		if( pack->bundle_num == route->bundle_num ) {
 			break;
 		}
 	}

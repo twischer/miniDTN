@@ -24,8 +24,15 @@
 #include "bundle.h"
 #include "memb.h"
 
-struct saved_as_t{
+struct saved_as_t {
 	uint16_t saved_as_num;
+};
+
+struct storage_entry_t {
+	struct storage_entry_t * next;
+
+	uint16_t bundle_num;
+	uint16_t file_size;
 };
 
 extern struct memb *saved_as_mem;
@@ -45,6 +52,8 @@ struct storage_driver {
 	uint16_t (* free_space)(struct bundle_t *bundle);
 	/** returns the number of saved bundles */
 	uint16_t (* get_bundle_num)(void);
+	/** returns pointer to list of bundles */
+	struct storage_entry_t * (* get_bundles)(void);
 };
 extern const struct storage_driver BUNDLE_STORAGE;
 #endif
