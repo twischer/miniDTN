@@ -307,7 +307,8 @@ void flood_sent(struct route_t *route, int status, int num_tx)
 			if (rimeaddr_cmp(&route->dest, &dest_n)) {
 				flood_del_bundle(route->bundle_num);
 				PRINTF("FLOOD: bundle sent to destination node, deleting bundle\n");
-				BUNDLE_STORAGE.del_bundle(route->bundle_num, 4);
+				agent_del_bundle(route->bundle_num);
+				BUNDLE_STORAGE.del_bundle(route->bundle_num, REASON_NO_INFORMATION);
 			} else {
 				PRINTF("FLOOD: bundle for %u:%u delivered to %u:%u\n",dest_n.u8[0], dest_n.u8[1], route->dest.u8[0], route->dest.u8[1]);
 			}
@@ -315,7 +316,8 @@ void flood_sent(struct route_t *route, int status, int num_tx)
 	    	// Here we can delete the bundle from storage, because it will not be routed anyway
 			flood_del_bundle(route->bundle_num);
 			PRINTF("FLOOD: bundle sent to max number of nodes, deleting bundle\n");
-			BUNDLE_STORAGE.del_bundle(route->bundle_num,4);
+			agent_del_bundle(route->bundle_num);
+			BUNDLE_STORAGE.del_bundle(route->bundle_num, REASON_NO_ROUTE);
 		}
 
 		*wait = 5;

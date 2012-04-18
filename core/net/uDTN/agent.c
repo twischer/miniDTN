@@ -74,7 +74,7 @@ agent_send_bundles(struct route_t * route)
 		// Bundle is outdated
 		uint16_t tmp = bundleptr->bundle_num;
 		delete_bundle(bundleptr);
-		BUNDLE_STORAGE.del_bundle(tmp,1);
+		BUNDLE_STORAGE.del_bundle(tmp, REASON_LIFETIME_EXPIRED);
 
 		return;
 	}
