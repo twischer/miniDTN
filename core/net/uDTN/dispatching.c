@@ -123,9 +123,10 @@ void dispatch_bundle(struct bundle_t *bundle) {
 	}
 
 	saved_as_mem = forwarding_bundle(bundle);
-	if (saved_as_mem)
-		process_post(&agent_process,dtn_bundle_in_storage_event, saved_as_mem);
-	PRINTF("DISPATCHING: Bundle forwarded\n");
+	if (saved_as_mem) {
+		process_post(&agent_process, dtn_bundle_in_storage_event, saved_as_mem);
+	}
 
+	PRINTF("DISPATCHING: Bundle forwarded\n");
 }
 /** @} */
