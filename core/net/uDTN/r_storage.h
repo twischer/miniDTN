@@ -23,11 +23,13 @@
 extern const struct storage_driver g_storage_driver;
 
 struct file_list_entry_t {
+	struct file_list_entry_t * next;
+
 	uint16_t bundle_num;
 	uint16_t file_size;
 
 	/** The remaining lifetime in storage */
-	uint32_t storage_lifetime;
+	uint32_t lifetime;
 
 	uint32_t src;
 	uint32_t dest;
@@ -42,8 +44,6 @@ struct file_list_entry_t {
 	rimeaddr_t msrc;
 	struct routing_pack_list_t routing;
 };
-extern struct file_list_entry_t file_list[BUNDLE_STORAGE_SIZE];
-
 
 void rs_init(void);
 void rs_reinit(void);
