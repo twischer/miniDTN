@@ -43,9 +43,9 @@
 #endif
 
 uint8_t flood_transmitting;
+uint8_t flood_agent_event_pending = 0;
 
 MEMB(route_mem, struct route_t, ROUTING_ROUTE_MAX_MEM);
-
 
 uint8_t flood_sent_to_known(void);
 
@@ -56,7 +56,9 @@ void flood_init(void)
 {
 	PRINTF("FLOOD: init flood_route\n");
 	flood_transmitting = 0;
+	flood_agent_event_pending = 0;
 }
+
 /**
 * \brief checks if there are bundle to send to dest
 * \param dest pointer to the address of the new neighbor
@@ -76,16 +78,15 @@ uint8_t flood_sent_to_known(void)
 	struct discovery_neighbour_list_entry *nei_list = DISCOVERY.neighbours();
 	struct discovery_neighbour_list_entry *nei_l;
 	struct file_list_entry_t * pack = NULL;
-	int h;
 
 	if( flood_transmitting ) {
-		uint16_t * wait = memb_alloc(saved_as_mem);
-		*wait = 5;
+		if( !flood_agent_event_pending ) {
+			flood_agent_event_pending = 1;
+			// Tell the agent to call us again to resubmit bundles
+			process_post(&agent_process, dtn_bundle_resubmission_event, NULL);
+		}
 
-		// Tell the agent to call us again to resubmit bundles
-		process_post(&agent_process, dtn_bundle_resubmission_event, wait);
-
-		return -1;
+		return 0;
 	}
 
 	PRINTF("FLOOD: send to known neighbours\n");
@@ -118,6 +119,11 @@ uint8_t flood_sent_to_known(void)
 				PRINTF("FLOOD: send bundle %u with SeqNo %lu to %u:%u directly\n", pack->bundle_num, pack->time_stamp_seq, nei_l->neighbour.u8[0], nei_l->neighbour.u8[1]);
 
 				struct route_t * route = memb_alloc(&route_mem);
+
+				if( route == NULL ) {
+					printf("FLOOD: cannot allocate route MEMB\n");
+					return 0;
+				}
 
 				rimeaddr_copy(&route->dest, &nei_l->neighbour);
 				route->bundle_num = pack->bundle_num;
@@ -180,6 +186,11 @@ uint8_t flood_sent_to_known(void)
 
 				struct route_t * route = memb_alloc(&route_mem);
 
+				if( route == NULL ) {
+					printf("FLOOD: cannot allocate route MEMB\n");
+					return 0;
+				}
+
 				rimeaddr_copy(&route->dest, &nei_l->neighbour);
 				route->bundle_num = pack->bundle_num;
 				pack->routing.action=1;
@@ -193,13 +204,17 @@ uint8_t flood_sent_to_known(void)
 		}
 	}
 
-	return 1 ;
+	return 0;
 }
 
 /**
  * Wrapper function for agent calls to resubmit bundles for already known neighbours
  */
 void flood_resubmit_bundles(uint16_t bundle_num) {
+	if( bundle_num == 1 ) {
+		flood_agent_event_pending = 0;
+	}
+
 	flood_sent_to_known();
 }
 
@@ -212,7 +227,7 @@ int flood_new_bundle(uint16_t bundle_num)
 {
 	statistics_bundle_incoming(1);
 
-	return flood_sent_to_known();
+	return 1;
 }
 
 /**
@@ -232,10 +247,8 @@ void flood_del_bundle(uint16_t bundle_num)
 */
 void flood_sent(struct route_t *route, int status, int num_tx)
 {
+	int post_resubmission_event_to_agent = 1;
 	flood_transmitting = 0;
-	uint16_t * wait = memb_alloc(saved_as_mem);
-	*wait = 0;
-	int i;
 
 	struct file_list_entry_t * pack = NULL;
 	for(pack = (struct file_list_entry_t *) BUNDLE_STORAGE.get_bundles();
@@ -248,9 +261,8 @@ void flood_sent(struct route_t *route, int status, int num_tx)
 	}
 
 	if( pack == NULL ) {
-		printf("FLOOD: Bundle %u not found\n", route->bundle_num );
+		PRINTF("FLOOD: Bundle %u not found\n", route->bundle_num );
 		memb_free(&route_mem, route);
-		memb_free(saved_as_mem, wait);
 		return;
 	}
 
@@ -258,8 +270,16 @@ void flood_sent(struct route_t *route, int status, int num_tx)
 
 	switch(status) {
 	case MAC_TX_ERR:
+		// This is the default state value of nullrdc, if the return value of NETSTACK_RADIO.transmit is none of RADIO_TX_OK and RADIO_TX_COLLISION applies.
+		// Unfortunately, we cannot distinguish the original errors here
 	case MAC_TX_COLLISION:
+		// This status can either mean, that the packet could not be transmitted because another packet is pending
+		// Or it means that the packet was transmitted, but an ack for another packet was received
+		// It seems to even mean, that CSMA will try a retransmit, but we cannot distinguish that
+		// In any case, retransmitting the packet seems to be the more sensible choice
 	case MAC_TX_NOACK:
+		// This status should never come back for CSMA, NULLRDC and RF230BB
+
 		// dtn-network tried to send bundle but failed, has to be retried
 		if( status == MAC_TX_ERR ) {
 			PRINTF("FLOOD: MAC_TX_ERR\n");
@@ -283,6 +303,8 @@ void flood_sent(struct route_t *route, int status, int num_tx)
 				rimeaddr_copy(&pack->routing.last_node, &rimeaddr_null);
 				pack->routing.last_counter = 0;
 
+				post_resubmission_event_to_agent = 0;
+
 				// BREAK! ;)
 				break;
 			}
@@ -297,6 +319,9 @@ void flood_sent(struct route_t *route, int status, int num_tx)
 		PRINTF("FLOOD: sent after %d tx\n", num_tx);
 		statistics_bundle_outgoing(1);
 
+		rimeaddr_copy(&pack->routing.last_node, &route->dest);
+		pack->routing.last_counter = 0;
+
 		if (pack->routing.send_to < ROUTING_NEI_MEM) {
 			rimeaddr_copy(&pack->routing.dest[pack->routing.send_to], &route->dest);
 			pack->routing.send_to++;
@@ -305,7 +330,6 @@ void flood_sent(struct route_t *route, int status, int num_tx)
 
 			rimeaddr_t dest_n = convert_eid_to_rime(pack->dest);
 			if (rimeaddr_cmp(&route->dest, &dest_n)) {
-				flood_del_bundle(route->bundle_num);
 				PRINTF("FLOOD: bundle sent to destination node, deleting bundle\n");
 				agent_del_bundle(route->bundle_num);
 				BUNDLE_STORAGE.del_bundle(route->bundle_num, REASON_NO_INFORMATION);
@@ -314,24 +338,25 @@ void flood_sent(struct route_t *route, int status, int num_tx)
 			}
 	    } else if (pack->routing.send_to >= ROUTING_NEI_MEM) {
 	    	// Here we can delete the bundle from storage, because it will not be routed anyway
-			flood_del_bundle(route->bundle_num);
 			PRINTF("FLOOD: bundle sent to max number of nodes, deleting bundle\n");
 			agent_del_bundle(route->bundle_num);
 			BUNDLE_STORAGE.del_bundle(route->bundle_num, REASON_NO_ROUTE);
 		}
 
-		*wait = 5;
 	    break;
 
 	default:
-	    PRINTF("FLOOD: error %d after %d tx\n", status, num_tx);
+	    printf("FLOOD: error %d after %d tx\n", status, num_tx);
 	    break;
 	}
 
 	memb_free(&route_mem, route);
 
 	// Tell the agent to call us again to resubmit bundles
-	process_post(&agent_process, dtn_bundle_resubmission_event, wait);
+	if( post_resubmission_event_to_agent && !flood_agent_event_pending ) {
+		flood_agent_event_pending = 1;
+		process_post(&agent_process, dtn_bundle_resubmission_event, NULL);
+	}
 }
 
 const struct routing_driver flood_route ={
