@@ -49,7 +49,6 @@
 #endif
 
 static struct bundle_t * bundleptr;
-static struct bundle_t bundle;
 uint32_t dtn_node_id;
 uint32_t dtn_seq_nr;
 PROCESS(agent_process, "AGENT process");
@@ -64,14 +63,18 @@ void
 agent_send_bundles(struct route_t * route)
 {
 	if(BUNDLE_STORAGE.read_bundle(route->bundle_num, bundleptr)<=0){
+		PRINTF("BUNDLEPROTOCOL: agent_send_bundles() cannot find bundle %u\n", route->bundle_num);
 		return;
 	}
 
+	// How long did this bundle rot in our storage?
 	uint32_t elapsed_time = clock_seconds() - bundleptr->rec_time;
-	uint32_t remaining_time = bundleptr->lifetime - elapsed_time;
 
+	// Do not send bundles that are expired
 	if( bundleptr->lifetime < elapsed_time ) {
-		// Bundle is outdated
+		PRINTF("BUNDLEPROTOCOL: bundle expired\n");
+
+		// Bundle is expired
 		uint16_t tmp = bundleptr->bundle_num;
 		delete_bundle(bundleptr);
 		BUNDLE_STORAGE.del_bundle(tmp, REASON_LIFETIME_EXPIRED);
@@ -80,8 +83,10 @@ agent_send_bundles(struct route_t * route)
 	}
 
 	// Bundle can still be sent
+	uint32_t remaining_time = bundleptr->lifetime - elapsed_time;
 	set_attr(bundleptr, LIFE_TIME, &remaining_time);
 	dtn_network_send(bundleptr, route);
+
 	delete_bundle(bundleptr);
 }
 
@@ -124,8 +129,8 @@ PROCESS_THREAD(agent_process, ev, data)
 	
 	while(1) {
 		PROCESS_WAIT_EVENT_UNTIL(ev);
+
 		if(ev == dtn_application_registration_event) {
-			
 			reg = (struct registration_api *) data;
 			registration_new_app(reg->app_id, reg->application_process);
 			PRINTF("BUNDLEPROTOCOL: Event empfangen, Registration, Name: %lu\n", reg->app_id);
@@ -142,15 +147,14 @@ PROCESS_THREAD(agent_process, ev, data)
 			else if(reg->status == APP_PASSIVE)
 				status = registration_set_passive(reg->app_id);
 			
-			#if DEBUG
-			if(status == -1)
+			if(status == -1) {
 				PRINTF("BUNDLEPROTOCOL: no registration found to switch \n");
-			#endif
+			}
+
 			continue;
 		}
 		
 		if(ev == dtn_application_remove_event) {
-			
 			reg = (struct registration_api *) data;
 			PRINTF("BUNDLEPROTOCOL: Event empfangen, Remove, Name: %lu \n", reg->app_id);
 			registration_remove_app(reg->app_id);
@@ -167,7 +171,7 @@ PROCESS_THREAD(agent_process, ev, data)
 				continue;
 			}
 			set_attr(bundleptr,TIME_STAMP_SEQ_NR,&dtn_seq_nr);
-			PRINTF("\nBUNDLEPROTOCOL: seq_num = %lu\n",dtn_seq_nr);	
+			PRINTF("BUNDLEPROTOCOL: seq_num = %lu\n",dtn_seq_nr);
 			dtn_seq_nr++;
 
 			// Notify statistics module
@@ -175,6 +179,7 @@ PROCESS_THREAD(agent_process, ev, data)
 				
 			/* Fall through to dtn_bundle_in_storage_event if forwarding_bundle succeeded */
 			data = forwarding_bundle(bundleptr);
+
 			if (data) {
 				ev = dtn_bundle_in_storage_event;
 			} else {
@@ -197,55 +202,31 @@ PROCESS_THREAD(agent_process, ev, data)
 		if(ev == dtn_bundle_in_storage_event){
 			uint16_t b_num = *(uint16_t *) data;
 			memb_free(saved_as_mem, data);
+
 			PRINTF("BUNDLEPROTOCOL: bundle in storage %u %p\n",b_num, data);
 			if(ROUTING.new_bundle(b_num) < 0){
 				PRINTF("BUNDLEPROTOCOL: ERROR\n");
 				continue;
 			}
 
-			PRINTF("BUNDLEPROTOCOL: discover\n");
-			// FIME: We need the destination of this bundle as argument here
-			if (BUNDLE_STORAGE.read_bundle(b_num, &bundle) <=0){
-				PRINTF("read bundle ERROR\n\n");
-				return -1;
-			}
-			uint32_t destination_eid;
-			sdnv_decode(bundle.mem.ptr+bundle.offset_tab[DEST_NODE][OFFSET],bundle.offset_tab[DEST_NODE][STATE],&destination_eid);
-			delete_bundle(&bundle);
-
-			rimeaddr_t neighbour = convert_eid_to_rime(destination_eid);
-			/*
-			rimeaddr_t neighbour;
-			neighbour.u8[1] = (destination_eid & 0x000000FF) >> 0;
-			neighbour.u8[0] = (destination_eid & 0x0000FF00) >> 8;
-			 */
-
-			if( DISCOVERY.discover(&neighbour) ) {
-				ROUTING.new_neighbor(&neighbour);
-			}
-
+			ROUTING.resubmit_bundles(0);
 			continue;
 		}
 		
 		if(ev == dtn_bundle_resubmission_event) {
-			uint16_t wait = *(uint16_t *) data;
-			memb_free(saved_as_mem, data);
+			ROUTING.resubmit_bundles(1);
 
-			// if( wait < 1 ) {
-				ROUTING.resubmit_bundles(0);
-			// } else {
-			// 	etimer_set(&resubmission_timer, wait);
-			// }
+			etimer_restart(&resubmission_timer);
 
 			continue;
 		}
-
 
 		if( etimer_expired(&resubmission_timer) ) {
 			ROUTING.resubmit_bundles(0);
 
 			// Even if there is nothing to do, call resubmit every second just to be absolutely sure
-			etimer_set(&resubmission_timer, CLOCK_SECOND);
+			etimer_reset(&resubmission_timer);
+
 			continue;
 		}
 	}
