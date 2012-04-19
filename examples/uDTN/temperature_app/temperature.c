@@ -64,7 +64,6 @@
 #define CONF_SEND_FROM_NODE	46
 #define CONF_SEND_FROM_APP	25
 #define CONF_APP_INTERVAL  300
-#define FORMAT_BINARY		 1
 #define DTN_PING_ENDPOINT	11
 
 #ifndef CONF_SEND_TO_NODE
@@ -78,6 +77,8 @@
 #define TYPE_MEASUREMENT	1
 #define TYPE_TIMESYNC		2
 #define TYPE_STARTUP		3
+#define TYPE_CONTACTS		4
+#define TYPE_STATISTICS		5
 
 /*---------------------------------------------------------------------------*/
 PROCESS(temperature_process, "Temperature process");
@@ -122,7 +123,7 @@ void send_bundle(uint8_t * payload, uint8_t length)
 	 * Hardcoded creation timestamp based on:
 	 * date -j +%s   -    date -j 010100002000 +%s
 	 */
-	tmp = 387654213 + (clock_time() / CLOCK_SECOND);
+	tmp = 388152261 + clock_seconds();
 	set_attr(&bundle_out, TIME_STAMP, &tmp);
 
 	// Add the payload block
@@ -140,15 +141,15 @@ void send_application_bundle(uint8_t bundle_type)
 
 	// Create our payload
 	offset = 0;
+	userdata[offset++] = bundle_type;
 
 	if( bundle_type == TYPE_MEASUREMENT ) {
 		// Measurement bundle
-#if FORMAT_BINARY
 		userdata[offset++] = (bundles_sent & 0x0000FF) >>  0;
 		userdata[offset++] = (bundles_sent & 0x00FF00) >>  8;
 		userdata[offset++] = (bundles_sent & 0xFF0000) >> 16;
 
-		tmp = clock_time();
+		tmp = clock_seconds();
 		userdata[offset++] = (tmp & 0x000000FF) >>  0;
 		userdata[offset++] = (tmp & 0x0000FF00) >>  8;
 		userdata[offset++] = (tmp & 0x00FF0000) >> 16;
@@ -156,20 +157,8 @@ void send_application_bundle(uint8_t bundle_type)
 		tmp = pressure_sensor.value(TEMP);
 		userdata[offset++] = (tmp & 0x00FF) >> 0;
 		userdata[offset++] = (tmp & 0xFF00) >> 8;
-#else
-		offset += sprintf((char *) userdata + offset, "%lu ", bundles_sent);
-		offset += sprintf((char *) userdata + offset, "%lu ", clock_time() / CLOCK_SECOND);
-		offset += sprintf((char *) userdata + offset, "%u ", pressure_sensor.value(TEMP));
-		offset += sprintf((char *) userdata + offset, "\n");
-#endif
 	} else if( bundle_type == TYPE_TIMESYNC) {
 		// Timesync bundle
-#if FORMAT_BINARY
-		userdata[offset++] = 0x12;
-		userdata[offset++] = 0x34;
-		userdata[offset++] = 0x56;
-		userdata[offset++] = 0x78;
-
 		tmp = clock_time();
 		userdata[offset++] = (tmp & 0x000000FF) >>  0;
 		userdata[offset++] = (tmp & 0x0000FF00) >>  8;
@@ -181,19 +170,8 @@ void send_application_bundle(uint8_t bundle_type)
 		userdata[offset++] = (tmp & 0x0000FF00) >>  8;
 		userdata[offset++] = (tmp & 0x00FF0000) >> 16;
 		userdata[offset++] = (tmp & 0xFF000000) >> 24;
-
-		userdata[offset++] = 0x90;
-#else
-		offset = sprintf((char *) userdata, "TIMESYNC %lu %lu\n", clock_time(), CLOCK_SECOND);
-#endif
 	} else if( bundle_type == TYPE_STARTUP) {
 		// Startup bundle
-#if FORMAT_BINARY
-		userdata[offset++] = 0x78;
-		userdata[offset++] = 0x56;
-		userdata[offset++] = 0x34;
-		userdata[offset++] = 0x12;
-
 		tmp = clock_time();
 		userdata[offset++] = (tmp & 0x000000FF) >>  0;
 		userdata[offset++] = (tmp & 0x0000FF00) >>  8;
@@ -205,11 +183,6 @@ void send_application_bundle(uint8_t bundle_type)
 		userdata[offset++] = (tmp & 0x0000FF00) >>  8;
 		userdata[offset++] = (tmp & 0x00FF0000) >> 16;
 		userdata[offset++] = (tmp & 0xFF000000) >> 24;
-
-		userdata[offset++] = 0x09;
-#else
-		offset = sprintf((char *) userdata, "STARTUP %lu %lu\n", clock_time(), CLOCK_SECOND);
-#endif
 	} else {
 		printf("Bundle type %u unknown\n", bundle_type);
 	}
@@ -217,10 +190,33 @@ void send_application_bundle(uint8_t bundle_type)
 	send_bundle(userdata, offset);
 }
 /*---------------------------------------------------------------------------*/
+void send_contacts_bundle()
+{
+	uint8_t userdata[80];
+	uint8_t length;
+	userdata[0] = TYPE_CONTACTS;
+
+	length = statistics_get_contacts_bundle(userdata + 1, 80);
+
+	send_bundle(userdata, length + 1);
+}
+/*---------------------------------------------------------------------------*/
+void send_statistics_bundle()
+{
+	uint8_t userdata[80];
+	uint8_t length;
+	userdata[0] = TYPE_STATISTICS;
+
+	length = statistics_get_bundle(userdata + 1, 80);
+
+	send_bundle(userdata, length + 1);
+}
+/*---------------------------------------------------------------------------*/
 PROCESS_THREAD(temperature_process, ev, data)
 {
 	static struct etimer packet_timer;
 	static struct etimer statistics_timer;
+	static struct etimer contacts_timer;
 
 	PROCESS_BEGIN();
 
@@ -240,7 +236,7 @@ PROCESS_THREAD(temperature_process, ev, data)
 	process_post(&agent_process, dtn_application_registration_event, &reg);
 
 	// Initialize the statistics module and set a timer
-	uint16_t interval = statistics_setup();
+	uint16_t interval = statistics_setup(&temperature_process);
 	etimer_set(&statistics_timer, CLOCK_SECOND * interval);
 
 	// Wait a second to send our STARTUP bundle
@@ -249,23 +245,20 @@ PROCESS_THREAD(temperature_process, ev, data)
 
 	// Send STARTUP bundle
 	send_application_bundle(TYPE_STARTUP);
-	printf("STARTUP bundle sent\n");
+	printf("APP: STARTUP bundle sent\n");
 
 	// Set the timer for our next data packet
 	etimer_set(&packet_timer, CLOCK_SECOND * CONF_APP_INTERVAL);
+	etimer_set(&contacts_timer, CLOCK_SECOND * 3600 * 4);
 
 	while(1) {
 		PROCESS_YIELD();
 
 		if( etimer_expired(&statistics_timer)) {
-			uint8_t userdata[80];
-			uint8_t length;
-
-			length = statistics_get_bundle(userdata, 80);
+			send_statistics_bundle();
 			statistics_reset();
 
-			send_bundle(userdata, length);
-			printf("STATISTICS bundle sent\n");
+			printf("APP: STATISTICS bundle sent\n");
 
 			etimer_reset(&statistics_timer);
 
@@ -275,12 +268,12 @@ PROCESS_THREAD(temperature_process, ev, data)
 		if( ev == sensors_event && data == &button_sensor ) {
 			// Button pressed, next bundle will be timesync
 			send_application_bundle(TYPE_TIMESYNC);
-			printf("TIMESYNC bundle sent\n");
+			printf("APP: TIMESYNC bundle sent\n");
 			continue;
 		}
 
 		if( etimer_expired(&packet_timer) && dtn_node_id == CONF_SEND_FROM_NODE ) {
-			printf("%lu bundles sent\n", bundles_sent);
+			printf("APP: %lu bundles sent\n", bundles_sent);
 			send_application_bundle(TYPE_MEASUREMENT);
 			bundles_sent++;
 
@@ -300,12 +293,26 @@ PROCESS_THREAD(temperature_process, ev, data)
 
 			delete_bundle(bundle);
 
-			printf("Payload (%lu): ", payload_length);
+			printf("APP: Payload (%lu): ", payload_length);
 			int i;
 			for(i=0; i<payload_length; i++) {
 				printf("%02X ", payload_buffer[i]);
 			}
 			printf("\n");
+
+			continue;
+		}
+
+		if( ev == dtn_statistics_overrun || etimer_expired(&contacts_timer) ) {
+			// Contacts statistics are running over, send them out
+			send_contacts_bundle();
+			statistics_reset_contacts();
+
+			printf("APP: CONTACTS bundle sent\n");
+
+			etimer_restart(&contacts_timer);
+
+			continue;
 		}
 
 	}
@@ -370,7 +377,7 @@ PROCESS_THREAD(dtnping_process, ev, data)
                          (((uint32_t) (payload_buffer[2] & 0xFF)) << 16) +
                          (((uint32_t) (payload_buffer[3] & 0xFF)) << 24);
 
-		printf("PING %lu (SeqNo %lu) received\n", bundles_recv, seqno);
+		printf("PING: PING %lu (SeqNo %lu) received\n", bundles_recv, seqno);
 
 		// Create the reply bundle
 		create_bundle(&bundle_out);
