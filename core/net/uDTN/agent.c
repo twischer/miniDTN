@@ -49,6 +49,8 @@
 #endif
 
 static struct bundle_t * bundleptr;
+static struct bundle_t bundle;
+
 uint32_t dtn_node_id;
 uint32_t dtn_seq_nr;
 PROCESS(agent_process, "AGENT process");
@@ -62,34 +64,33 @@ void agent_init(void) {
 void
 agent_send_bundles(struct route_t * route)
 {
-	if(BUNDLE_STORAGE.read_bundle(route->bundle_num, bundleptr)<=0){
+	if(BUNDLE_STORAGE.read_bundle(route->bundle_num, &bundle)<=0){
 		PRINTF("BUNDLEPROTOCOL: agent_send_bundles() cannot find bundle %u\n", route->bundle_num);
 		return;
 	}
 
 	// How long did this bundle rot in our storage?
-	uint32_t elapsed_time = clock_seconds() - bundleptr->rec_time;
+	uint32_t elapsed_time = clock_seconds() - bundle.rec_time;
 
 	// Do not send bundles that are expired
-	if( bundleptr->lifetime < elapsed_time ) {
+	if( bundle.lifetime < elapsed_time ) {
 		PRINTF("BUNDLEPROTOCOL: bundle expired\n");
 
 		// Bundle is expired
-		uint16_t tmp = bundleptr->bundle_num;
-		delete_bundle(bundleptr);
+		uint16_t tmp = bundle.bundle_num;
+		delete_bundle(&bundle);
 		BUNDLE_STORAGE.del_bundle(tmp, REASON_LIFETIME_EXPIRED);
 
 		return;
 	}
 
 	// Bundle can still be sent
-	uint32_t remaining_time = bundleptr->lifetime - elapsed_time;
-	set_attr(bundleptr, LIFE_TIME, &remaining_time);
-	dtn_network_send(bundleptr, route);
+	uint32_t remaining_time = bundle.lifetime - elapsed_time;
+	set_attr(&bundle, LIFE_TIME, &remaining_time);
+	dtn_network_send(&bundle, route);
 
-	delete_bundle(bundleptr);
+	delete_bundle(&bundle);
 }
-
 
 /*  Bundle Protocol Prozess */
 PROCESS_THREAD(agent_process, ev, data)
@@ -123,7 +124,7 @@ PROCESS_THREAD(agent_process, ev, data)
 	PRINTF("starting DTN Bundle Protocol \n");
 		
 
-	etimer_set(&resubmission_timer, CLOCK_SECOND);
+	etimer_set(&resubmission_timer, 5 * CLOCK_SECOND);
 
 	struct registration_api *reg;
 	
@@ -179,6 +180,9 @@ PROCESS_THREAD(agent_process, ev, data)
 				
 			/* Fall through to dtn_bundle_in_storage_event if forwarding_bundle succeeded */
 			data = forwarding_bundle(bundleptr);
+
+			// make sure, that nobody overwrites our pointer
+			bundleptr = NULL;
 
 			if (data) {
 				ev = dtn_bundle_in_storage_event;
