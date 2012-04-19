@@ -45,7 +45,7 @@
 
 #define BLACKLIST_TIMEOUT	10
 #define BLACKLIST_THRESHOLD	3
-#define BLACKLIST_SIZE		10
+#define BLACKLIST_SIZE		3
 
 uint8_t flood_transmitting;
 uint8_t flood_agent_event_pending = 0;
@@ -65,36 +65,6 @@ LIST(blacklist_list);
 uint8_t flood_sent_to_known(void);
 
 /**
- * \brief Checks whether 'neighbour' is currently blacklisted
- */
-int flood_blacklisted(rimeaddr_t * neighbour)
-{
-	struct blacklist_entry_t * entry;
-
-	for(entry = list_head(blacklist_list);
-		entry != NULL;
-		entry = list_item_next(entry)) {
-		if( rimeaddr_cmp(neighbour, &entry->node) ) {
-			if( (clock_time() - entry->timestamp) > (BLACKLIST_TIMEOUT * CLOCK_SECOND) ) {
-				PRINTF("FLOOD: %u.%u timed out, deleting\n", entry->node.u8[0], entry->node.u8[1]);
-				list_remove(blacklist_list, entry);
-				memb_free(&blacklist_mem, entry);
-				return 0;
-			}
-
-			// Transmissions to neighbour failed too often, blacklist him
-			if( entry->counter > BLACKLIST_THRESHOLD ) {
-				return 1;
-			}
-
-			return 0;
-		}
-	}
-
-	return 0;
-}
-
-/**
  * \brief Adds (or refreshes) the entry of 'neighbour' on the blacklist
  */
 int flood_blacklist_add(rimeaddr_t * neighbour)
@@ -105,6 +75,11 @@ int flood_blacklist_add(rimeaddr_t * neighbour)
 		entry != NULL;
 		entry = list_item_next(entry)) {
 		if( rimeaddr_cmp(neighbour, &entry->node) ) {
+			if( (clock_time() - entry->timestamp) > (BLACKLIST_TIMEOUT * CLOCK_SECOND) ) {
+				// Reusing existing (timedout) entry
+				entry->counter = 0;
+			}
+
 			entry->counter ++;
 			entry->timestamp = clock_time();
 
@@ -210,11 +185,6 @@ uint8_t flood_sent_to_known(void)
 	 * If so, always use direct delivery, never send to another node
 	 */
 	for(nei_l = DISCOVERY.neighbours(); nei_l != NULL; nei_l = list_item_next(nei_l)) {
-		// Check if this neighbour is currently on our blacklist
-		if( flood_blacklisted(&nei_l->neighbour) ) {
-			continue;
-		}
-
 		// Now go through all bundles
 		for(pack = (struct file_list_entry_t *) BUNDLE_STORAGE.get_bundles();
 				pack != NULL;
@@ -252,11 +222,6 @@ uint8_t flood_sent_to_known(void)
 	 * flood it to everyone
 	 */
 	for(nei_l = DISCOVERY.neighbours(); nei_l != NULL; nei_l = list_item_next(nei_l)) {
-		// Check if this neighbour is currently on our blacklist
-		if( flood_blacklisted(&nei_l->neighbour) ) {
-			continue;
-		}
-
 		PRINTF("FLOOD: neighbour %u.%u\n", nei_l->neighbour.u8[0], nei_l->neighbour.u8[1]);
 
 		for(pack = (struct file_list_entry_t *) BUNDLE_STORAGE.get_bundles();
@@ -396,6 +361,7 @@ void flood_sent(struct route_t *route, int status, int num_tx)
 		if( flood_blacklist_add(&route->dest) ) {
 			// Node is now past threshold and blacklisted, notify discovery
 			DISCOVERY.dead(&route->dest);
+			flood_blacklist_delete(&route->dest);
 		}
 
 		break;
