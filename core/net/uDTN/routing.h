@@ -33,9 +33,6 @@ struct routing_pack_list_t {
 	/** number of nodes this bundle was sent to */
 	uint8_t send_to;
 
-	/** 1 if bundle is in processing */
-	uint8_t action;
-
 	/** addresses of nodes this bundle was sent to */
 	rimeaddr_t dest[ROUTING_NEI_MEM];
 };
