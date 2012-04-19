@@ -64,7 +64,7 @@ void ipnd_dis_save_neighbour(rimeaddr_t * neighbour);
 struct discovery_basic_neighbour_list_entry {
 	struct discovery_basic_neighbour_list_entry *next;
 	rimeaddr_t neighbour;
-	clock_time_t timestamp_last;
+	unsigned long timestamp_last;
 	unsigned long timestamp_discovered;
 	uint8_t active;
 };
@@ -186,6 +186,11 @@ void ipnd_dis_receive(rimeaddr_t * source, uint8_t * payload, uint8_t length)
 		return;
 	}
 
+	if( length < 3 ) {
+		// IPND must have at least 3 bytes
+		return;
+	}
+
 	// Save all peer from which we receive packets to the active neighbours list
 	ipnd_dis_refresh_neighbour(source);
 
@@ -199,7 +204,7 @@ void ipnd_dis_receive(rimeaddr_t * source, uint8_t * payload, uint8_t length)
 	uint8_t flags = payload[offset++];
 
 	// Sequence Number
-	uint16_t sequenceNumber = ((payload[offset] & 0xFF)<< 8) + (payload[offset+1] & 0xFF);
+	uint16_t sequenceNumber = ((payload[offset] & 0xFF) << 8) + (payload[offset+1] & 0xFF);
 	offset += 2;
 
 	uint32_t eid = 0;
@@ -309,7 +314,7 @@ void ipnd_dis_refresh_neighbour(rimeaddr_t * neighbour)
 			entry = entry->next) {
 		if( entry->active &&
 				rimeaddr_cmp(&(entry->neighbour), neighbour) ) {
-			entry->timestamp_last = clock_time();
+			entry->timestamp_last = clock_seconds();
 			return;
 		}
 	}
@@ -329,6 +334,8 @@ void ipnd_dis_delete_neighbour(rimeaddr_t * neighbour)
 		return;
 	}
 
+	printf("DISCOVERY: Neighbour %u.%u disappeared\n", neighbour->u8[0], neighbour->u8[1]);
+
 	for(entry = list_head(neighbour_list);
 			entry != NULL;
 			entry = entry->next) {
@@ -336,7 +343,7 @@ void ipnd_dis_delete_neighbour(rimeaddr_t * neighbour)
 				rimeaddr_cmp(&(entry->neighbour), neighbour) ) {
 
 			// Notify the statistics module
-			statistics_contacts_down(neighbour, clock_seconds() - entry->timestamp_discovered);
+			statistics_contacts_down(&entry->neighbour, entry->timestamp_last - entry->timestamp_discovered);
 
 			memb_free(&neighbour_mem, entry);
 			list_remove(neighbour_list, entry);
@@ -369,13 +376,15 @@ void ipnd_dis_save_neighbour(rimeaddr_t * neighbour)
 		return;
 	}
 
+	printf("DISCOVERY: Found new neighbour %u.%u\n", neighbour->u8[0], neighbour->u8[1]);
+
 	// Clean the entry struct, so that "active" becomes zero
 	memset(entry, 0, sizeof(struct discovery_basic_neighbour_list_entry));
 
 	PRINTF("DISCOVERY: Saving neighbour %u:%u \n", neighbour->u8[0], neighbour->u8[1]);
 	entry->active = 1;
 	rimeaddr_copy(&(entry->neighbour), neighbour);
-	entry->timestamp_last = clock_time();
+	entry->timestamp_last = clock_seconds();
 	entry->timestamp_discovered = clock_seconds();
 
 	// Notify the statistics module
@@ -423,14 +432,9 @@ PROCESS_THREAD(discovery_process, ev, data)
 			for(entry = list_head(neighbour_list);
 					entry != NULL;
 					entry = entry->next) {
-				if( entry->active && (clock_time() - entry->timestamp_last) > (DISCOVERY_NEIGHBOUR_TIMEOUT * CLOCK_SECOND) ) {
+				if( entry->active && (clock_seconds() - entry->timestamp_last) > DISCOVERY_NEIGHBOUR_TIMEOUT ) {
 					PRINTF("DISCOVERY: Neighbour %u:%u timed out: %lu vs. %lu = %lu\n", entry->neighbour.u8[0], entry->neighbour.u8[1], clock_time(), entry->timestamp_last, clock_time() - entry->timestamp_last);
-
-					// Notify the statistics module
-					statistics_contacts_down(&entry->neighbour, clock_seconds() - entry->timestamp_discovered);
-
-					memb_free(&neighbour_mem, entry);
-					list_remove(neighbour_list, entry);
+					ipnd_dis_delete_neighbour(&entry->neighbour);
 				}
 			}
 
