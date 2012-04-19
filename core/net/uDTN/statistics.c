@@ -15,6 +15,7 @@
 #include "dtn_config.h"
 #include "agent.h"
 #include "contiki.h"
+#include "bundle.h"
 
 #define DEBUG 0
 #if DEBUG
@@ -24,13 +25,20 @@
 #define PRINTF(...)
 #endif
 
+process_event_t dtn_statistics_overrun;
+
 unsigned long statistics_timestamp = 0;
 struct statistics_element_t statistics_array[STATISTICS_ELEMENTS];
+struct contact_element_t statistics_contacts[STATISTICS_CONTACTS];
+struct process * statistics_event_process = NULL;
+uint8_t contacts_pointer = 0;
+unsigned long contacts_timestamp = 0;
 
 /**
  * \brief Internal function to find out, into which array slot the information is written
  */
-uint8_t statistics_get_pointer() {
+uint8_t statistics_get_pointer()
+{
 	// Calculate since when we are recording statistics
 	unsigned long elapsed = clock_seconds() - statistics_timestamp;
 
@@ -41,8 +49,6 @@ uint8_t statistics_get_pointer() {
 		ptr = STATISTICS_ELEMENTS - 1;
 	}
 
-	PRINTF("STATISTICS: ptr %u\n", ptr);
-
 	return ptr;
 }
 
@@ -50,12 +56,18 @@ uint8_t statistics_get_pointer() {
  * \brief Init function to be called by application
  * \return Seconds after which the statistics have to be sent off
  */
-uint16_t statistics_setup()
+uint16_t statistics_setup(struct process * process)
 {
 	PRINTF("STATISTICS: setup()\n");
 
 	// Reset the results (just to be sure)
 	statistics_reset();
+
+	// Store to which process we have to send the events
+	statistics_event_process = process;
+
+	// Allocate our event
+	dtn_statistics_overrun = process_alloc_event();
 
 	return STATISTICS_PERIOD * STATISTICS_ELEMENTS;
 }
@@ -89,6 +101,48 @@ uint8_t statistics_get_bundle(uint8_t * buffer, uint8_t maximum_length)
 }
 
 /**
+ * \brief Copy the contacts bundle into the provided buffer
+ * \return Length of the payload
+ */
+uint8_t statistics_get_contacts_bundle(uint8_t * buffer, uint8_t maximum_length)
+{
+	int offset = 0;
+
+	PRINTF("STATISTICS: get_contacts_bundle(%p, %u)\n", buffer, maximum_length);
+
+	// This should never happen
+	if( contacts_pointer > STATISTICS_CONTACTS ) {
+		contacts_pointer = STATISTICS_CONTACTS;
+	}
+
+	// Store how many entries are following
+	buffer[offset++] = contacts_pointer;
+
+	buffer[offset++] = (contacts_timestamp & 0x000000FF) >>  0;
+	buffer[offset++] = (contacts_timestamp & 0x0000FF00) >>  8;
+	buffer[offset++] = (contacts_timestamp & 0x00FF0000) >> 16;
+	buffer[offset++] = (contacts_timestamp & 0xFF000000) >> 24;
+
+	// And now copy over the struct
+	memcpy(buffer + offset, &statistics_contacts, sizeof(struct contact_element_t) * contacts_pointer);
+	offset += sizeof(struct contact_element_t) * contacts_pointer;
+
+	return offset;
+}
+
+/**
+ * \brief Resets the contact information, to be called by application after contacts bundle has been retrieved
+ */
+void statistics_reset_contacts()
+{
+	PRINTF("STATISTICS: reset_contacts()\n");
+
+	memset(statistics_contacts, 0, sizeof(struct contact_element_t) * STATISTICS_CONTACTS);
+	contacts_pointer = 0;
+	contacts_timestamp = 0;
+}
+
+/**
  * \brief Resets the statistics, to be called by application after bundle has been retrieved
  */
 void statistics_reset(void)
@@ -107,9 +161,11 @@ void statistics_reset(void)
  */
 void statistics_bundle_incoming(uint8_t count)
 {
+#if STATISTICS_ELEMENTS > 0
 	PRINTF("STATISTICS: bundle_incoming(%u)\n", count);
 
 	statistics_array[statistics_get_pointer()].bundles_incoming += count;
+#endif
 }
 
 /**
@@ -117,9 +173,11 @@ void statistics_bundle_incoming(uint8_t count)
  */
 void statistics_bundle_outgoing(uint8_t count)
 {
+#if STATISTICS_ELEMENTS > 0
 	PRINTF("STATISTICS: bundle_outgoing(%u)\n", count);
 
 	statistics_array[statistics_get_pointer()].bundles_outgoing += count;
+#endif
 }
 
 /**
@@ -127,9 +185,11 @@ void statistics_bundle_outgoing(uint8_t count)
  */
 void statistics_bundle_generated(uint8_t count)
 {
+#if STATISTICS_ELEMENTS > 0
 	PRINTF("STATISTICS: bundle_generated(%u)\n", count);
 
 	statistics_array[statistics_get_pointer()].bundles_generated += count;
+#endif
 }
 
 /**
@@ -137,9 +197,11 @@ void statistics_bundle_generated(uint8_t count)
  */
 void statistics_bundle_delivered(uint8_t count)
 {
+#if STATISTICS_ELEMENTS > 0
 	PRINTF("STATISTICS: statistics_bundle_delivered(%u)\n", count);
 
 	statistics_array[statistics_get_pointer()].bundles_delivered += count;
+#endif
 }
 
 /**
@@ -147,9 +209,11 @@ void statistics_bundle_delivered(uint8_t count)
  */
 void statistics_storage_bundles(uint8_t bundles)
 {
+#if STATISTICS_ELEMENTS > 0
 	PRINTF("STATISTICS: storage_bundles(%u)\n", bundles);
 
 	statistics_array[statistics_get_pointer()].storage_bundles = bundles;
+#endif
 }
 
 /**
@@ -157,9 +221,11 @@ void statistics_storage_bundles(uint8_t bundles)
  */
 void statistics_storage_memory(uint16_t free)
 {
+#if STATISTICS_ELEMENTS > 0
 	PRINTF("STATISTICS: storage_memory(%u)\n", free);
 
 	statistics_array[statistics_get_pointer()].storage_memory = free;
+#endif
 }
 
 /**
@@ -167,7 +233,9 @@ void statistics_storage_memory(uint16_t free)
  */
 void statistics_contacts_up(rimeaddr_t * peer)
 {
+#if STATISTICS_ELEMENTS > 0
 	PRINTF("STATISTICS: contacts_up(%u.%u)\n", peer->u8[0], peer->u8[1]);
+#endif
 }
 
 /**
@@ -175,10 +243,47 @@ void statistics_contacts_up(rimeaddr_t * peer)
  */
 void statistics_contacts_down(rimeaddr_t * peer, uint16_t duration)
 {
-
+#if STATISTICS_ELEMENTS > 0
 	PRINTF("STATISTICS: contacts_down(%u.%u, %u)\n", peer->u8[0], peer->u8[1], duration);
 
 	statistics_array[statistics_get_pointer()].contacts_count ++;
 	statistics_array[statistics_get_pointer()].contacts_duration += duration;
+#endif
+
+#if STATISTICS_CONTACTS > 0
+	uint32_t id = convert_rime_to_eid(peer);
+
+	// We record only contacts with nodes that have a lower id than ourselves to avoid recording contacts twice (on both sides)
+	if( duration == 0 || id > dtn_node_id ) {
+		return;
+	}
+
+	if( contacts_pointer >= STATISTICS_CONTACTS ) {
+		// This can only happen, when nobody picks up the data (or if somebody forgot to reset)
+		contacts_pointer = STATISTICS_CONTACTS - 1;
+	}
+
+	// Record the contact
+	unsigned long timestamp = clock_seconds() - duration;
+
+	if( contacts_timestamp == 0 && contacts_pointer == 0 ) {
+		contacts_timestamp = timestamp;
+	}
+
+	statistics_contacts[contacts_pointer].time_difference = (uint16_t) (timestamp - contacts_timestamp);
+	statistics_contacts[contacts_pointer].peer = (uint8_t) id;
+	statistics_contacts[contacts_pointer].duration = duration;
+	contacts_pointer ++;
+
+	// Avoid overrunning the array
+	if( contacts_pointer >= STATISTICS_CONTACTS && statistics_event_process != NULL ) {
+		PRINTF("STATISTICS: contacts full, sending event\n");
+		process_post(statistics_event_process, dtn_statistics_overrun, NULL);
+	} else if( statistics_event_process == NULL ) {
+		// Nobody is interested in our data anyway, start from the beginning
+		PRINTF("STATISTICS: contacts full, clearing array\n");
+		statistics_reset_contacts();
+	}
+#endif
 }
 /** @} */
