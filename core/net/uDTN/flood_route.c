@@ -220,10 +220,6 @@ uint8_t flood_sent_to_known(void)
 				pack != NULL;
 				pack = list_item_next(pack)) {
 
-			if( pack->routing.action == 1 ) {
-				continue;
-			}
-
 			// Who is the destination for this bundle?
 			rimeaddr_t dest_node = convert_eid_to_rime(pack->dest);
 
@@ -241,7 +237,6 @@ uint8_t flood_sent_to_known(void)
 
 				rimeaddr_copy(&route->dest, &nei_l->neighbour);
 				route->bundle_num = pack->bundle_num;
-				pack->routing.action = 1;
 
 				flood_transmitting = 1;
 				agent_send_bundles(route);
@@ -267,10 +262,6 @@ uint8_t flood_sent_to_known(void)
 		for(pack = (struct file_list_entry_t *) BUNDLE_STORAGE.get_bundles();
 				pack != NULL;
 				pack = list_item_next(pack)) {
-
-			if( pack->routing.action == 1 ) {
-				continue;
-			}
 
 			PRINTF("FLOOD: Bundle %u, SRC %lu, DEST %lu, MSRC %u.%u, SEQ %lu\n", pack->bundle_num,  pack->src, pack->dest, pack->msrc.u8[0], pack->msrc.u8[1], pack->time_stamp_seq);
 
@@ -309,7 +300,6 @@ uint8_t flood_sent_to_known(void)
 
 				rimeaddr_copy(&route->dest, &nei_l->neighbour);
 				route->bundle_num = pack->bundle_num;
-				pack->routing.action=1;
 
 				flood_transmitting = 1;
 				agent_send_bundles(route);
@@ -380,8 +370,6 @@ void flood_sent(struct route_t *route, int status, int num_tx)
 		memb_free(&route_mem, route);
 		return;
 	}
-
-	pack->routing.action = 0;
 
 	switch(status) {
 	case MAC_TX_ERR:
