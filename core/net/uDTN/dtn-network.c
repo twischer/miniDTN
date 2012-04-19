@@ -42,47 +42,43 @@
 
 const struct mac_driver *dtn_network_mac;
 
-uint16_t *output_offset_ptr;
-
-//static uint8_t bundle_seqno = 0;
-
-
-static void packet_sent(void *ptr, int status, int num_tx);
-
 static struct bundle_t bundle;	
 
 static void dtn_network_init(void) 
 {
 	packetbuf_clear();
-//	input_buffer_clear();
 	dtn_network_mac = &NETSTACK_MAC;
-//	stimer_set(&wait_timer, 1);
-	PRINTF("DTN init\n");
+	PRINTF("NETWORK: init\n");
 }
 
-
 /**
-*called for incomming packages
+*called for incoming packages
 */
+#if IBR_COMP
 #define SUFFIX_LENGTH	2
+#else
+#define SUFFIX_LENGTH	0
+#endif
+
 static void dtn_network_input(void) 
 {
 	uint8_t input_packet[114];
 	int size = packetbuf_copyto(input_packet);
 	rimeaddr_t bsrc = *packetbuf_addr(PACKETBUF_ADDR_SENDER);
+	packetbuf_clear();
 
-	PRINTF("NETWORK: dtn_network_input from %x%x\n", bsrc.u8[0], bsrc.u8[1]);
-	if((*input_packet==0x08) & (*(input_packet+1)==0x80)) { //broadcast message
+	PRINTF("NETWORK: dtn_network_input from %u.%u\n", bsrc.u8[0], bsrc.u8[1]);
+
+	if((*input_packet==0x08) & (*(input_packet+1)==0x80)) {
 		// Skip the first two bytes
 		uint8_t * discovery_data = input_packet + 2;
 		uint8_t discovery_length = (uint8_t) (size - 2 - SUFFIX_LENGTH);
 
-		PRINTF("NETWORK: Broadcast received\n");
+		PRINTF("NETWORK: Discovery received\n");
 
 		leds_on(LEDS_ALL);
 
 		DISCOVERY.receive(&bsrc, discovery_data, discovery_length);
-		packetbuf_clear();
 
 		leds_off(LEDS_ALL);
 		return;
@@ -95,7 +91,7 @@ static void dtn_network_input(void)
 	leds_on(LEDS_GREEN);
 
 	// packetbuf_clear();
-	PRINTF("NETWORK: %p  %p\n", &bundle, &payload_data);
+	PRINTF("NETWORK: Bundle received %p  %p\n", &bundle, &payload_data);
 
 	struct mmem mem;
 	// FIXME: Wuerde es hier nicht reichen, payload_length zu allozieren?
@@ -125,13 +121,13 @@ static void dtn_network_input(void)
 	uint8_t i;
 	printf("NETWORK: input ");
 	for (i=0; i<bundle.size; i++){
-		printf("%x:",*((uint8_t *)bundle.mem.ptr + i));
+		printf("%02X ", *((uint8_t *)bundle.mem.ptr + i) & 0xFF);
 	}
 	printf("\n");
 #endif
 
+	// Notify the discovery module, that we have seen a peer
 	DISCOVERY.alive(&bsrc);
-	PRINTF("NETWORK: %u:%u\n", bundle.msrc.u8[0],bundle.msrc.u8[1]);
 	PRINTF("NETWORK: size of received bundle: %u block pointer %p\n",bundle.size, bundle.mem.ptr);
 
 	dispatch_bundle(&bundle);
@@ -172,7 +168,7 @@ static void packet_sent(void *ptr, int status, int num_tx)
 	}
 
 	struct route_t * route= (struct route_t *) ptr;
-	PRINTF("NETWORK: bundle_num : %u    %p\n",route->bundle_num,ptr);
+	PRINTF("NETWORK: MAC Callback for bundle_num %u with ptr %p\n",route->bundle_num,ptr);
 
 	if( status == MAC_TX_OK ) {
 		// Notify discovery that peer is still alive
@@ -189,7 +185,7 @@ int dtn_network_send(struct bundle_t *bundle, struct route_t *route)
 
 	leds_on(LEDS_YELLOW);
 
-	PRINTF("seq_num %lu lifetime %lu bundle pointer %p bundel->block %p \n ",i,time,bundle,bundle->mem.ptr);
+	PRINTF("NETWORK: send %p via %p\n", bundle, route);
 
 	/* kopiere die Daten in den packetbuf(fer) */
 	packetbuf_ext_copyfrom(payload, len,0x30,0);
