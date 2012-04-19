@@ -90,6 +90,7 @@ void rs_init(void)
 
 	ctimer_set(&r_store_timer, CLOCK_SECOND*5, r_store_prune, NULL);
 }
+
 /**
 * \brief deletes expired bundles from storage
 */
@@ -123,7 +124,7 @@ void rs_reinit(void)
 	// Delete all bundles from storage
 	for(entry = list_head(bundle_list);
 			entry != NULL;
-			entry = entry->next) {
+			entry = list_item_next(entry)) {
 		rs_del_bundle(entry->bundle_num, REASON_NO_INFORMATION);
 	}
 }
