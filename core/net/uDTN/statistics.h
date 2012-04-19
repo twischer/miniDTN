@@ -14,6 +14,7 @@
 #define STATISTICS_H
 
 #include "net/rime/rimeaddr.h"
+#include "contiki.h"
 
 #ifdef STATISTICS_CONF_ELEMENTS
 #define STATISTICS_ELEMENTS STATISTICS_CONF_ELEMENTS
@@ -26,6 +27,15 @@
 #else
 #define STATISTICS_PERIOD 0
 #endif
+
+// 8 bytes per contact
+#ifdef STATISTICS_CONF_CONTACTS
+#define STATISTICS_CONTACTS STATISTICS_CONF_CONTACTS
+#else
+#define STATISTICS_CONTACTS 0
+#endif
+
+extern process_event_t dtn_statistics_overrun;
 
 struct statistics_element_t
 {
@@ -41,9 +51,18 @@ struct statistics_element_t
 	uint16_t storage_memory;
 };
 
+struct contact_element_t
+{
+	uint8_t peer;
+	uint16_t time_difference;
+	uint16_t duration;
+};
+
 uint16_t statistics_setup();
 uint8_t statistics_get_bundle(uint8_t * buffer, uint8_t maximum_length);
+uint8_t statistics_get_contacts_bundle(uint8_t * buffer, uint8_t maximum_length);
 void statistics_reset(void);
+void statistics_reset_contacts();
 
 void statistics_bundle_incoming(uint8_t count);
 void statistics_bundle_outgoing(uint8_t count);
