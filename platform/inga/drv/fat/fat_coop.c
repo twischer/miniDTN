@@ -45,6 +45,7 @@
  */
  
 #include "fat_coop.h"
+#include "watchdog.h"
 
 enum {
 	READ = 1,
@@ -791,10 +792,18 @@ uint16_t _get_time_of_operation( Operation op, uint16_t length ) {
 uint16_t fat_estimate_by_token( uint8_t token ) { 
 	uint16_t estimated_time = 0;
 	uint16_t i;
+	int length;
+
 	QueueEntry *entry;
 	for( i = 0; i < queue_len; i++ ) {
 		entry = &(queue[(queue_start + i) % FAT_COOP_QUEUE_SIZE]);
-		estimated_time += _get_time_of_operation( entry->op );
+
+		length = 0;
+		if( entry->op == COOP_CFS_CLOSE || entry->op == COOP_CFS_READ || entry->op == COOP_CFS_WRITE ) {
+		  length = entry->parameters.generic.length;
+		}
+
+		estimated_time += _get_time_of_operation( entry->op, length);
 		if(entry->token == token) {
 			break;
 		}
@@ -803,12 +812,20 @@ uint16_t fat_estimate_by_token( uint8_t token ) {
 }
 
 uint16_t fat_estimate_by_parameter( Operation type, uint16_t length ) { 
-	uint16_t estimated_time = _get_time_of_operation( type );
+	uint16_t estimated_time = _get_time_of_operation( type , length);
 	uint16_t i;
+	int sublength = 0;
+
 	QueueEntry *entry;
 	for( i = 0; i < queue_len; i++ ) {
 		entry = &(queue[(queue_start + i) % FAT_COOP_QUEUE_SIZE]);
-		estimated_time += _get_time_of_operation( entry->op );
+
+		sublength = 0;
+		if( entry->op == COOP_CFS_CLOSE || entry->op == COOP_CFS_READ || entry->op == COOP_CFS_WRITE ) {
+			sublength = entry->parameters.generic.length;
+		}
+
+		estimated_time += _get_time_of_operation( entry->op , sublength);
 	}
 	return estimated_time;
 }
