@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (c) 2012, Institute of Operating Systems and Computer Networks (TU Brunswick).
  * All rights reserved.
  *
