@@ -56,6 +56,7 @@
 #include "net/uDTN/bundle.h"
 #include "net/uDTN/sdnv.h"
 #include "statistics.h"
+#include "leds.h"
 
 #include "r_storage.h"
 
@@ -192,7 +193,7 @@ void send_application_bundle(uint8_t bundle_type)
 /*---------------------------------------------------------------------------*/
 void send_contacts_bundle()
 {
-	uint8_t userdata[80];
+	uint8_t userdata[81];
 	uint8_t length;
 	userdata[0] = TYPE_CONTACTS;
 
@@ -203,7 +204,7 @@ void send_contacts_bundle()
 /*---------------------------------------------------------------------------*/
 void send_statistics_bundle()
 {
-	uint8_t userdata[80];
+	uint8_t userdata[81];
 	uint8_t length;
 	userdata[0] = TYPE_STATISTICS;
 
@@ -227,8 +228,14 @@ PROCESS_THREAD(temperature_process, ev, data)
 
 	agent_init();
 
+	// Turn LEDs on to show, that we are running
+	leds_on(LEDS_ALL);
+
 	etimer_set(&packet_timer, CLOCK_SECOND);
 	PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&packet_timer));
+
+	// Turn green LED off to show, that we are running
+	leds_off(LEDS_GREEN);
 
 	reg.status = 1;
 	reg.application_process = &temperature_process;
@@ -250,6 +257,9 @@ PROCESS_THREAD(temperature_process, ev, data)
 	// Set the timer for our next data packet
 	etimer_set(&packet_timer, CLOCK_SECOND * CONF_APP_INTERVAL);
 	etimer_set(&contacts_timer, CLOCK_SECOND * 3600 * 4);
+
+	// Turn LEDs off again, so that the agent can use them
+	leds_off(LEDS_ALL);
 
 	while(1) {
 		PROCESS_YIELD();

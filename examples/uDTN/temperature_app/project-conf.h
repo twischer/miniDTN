@@ -11,16 +11,16 @@
  
 // Set our MMEM size
 #undef MMEM_CONF_SIZE
-#define MMEM_CONF_SIZE 4000
+#define MMEM_CONF_SIZE 4150
 
 // Set our storage elements
 #undef BUNDLE_CONF_STORAGE_SIZE
-#define BUNDLE_CONF_STORAGE_SIZE 110
+#define BUNDLE_CONF_STORAGE_SIZE 115
 
 // Enable statistics
 #define STATISTICS_CONF_ELEMENTS 4
 #define STATISTICS_CONF_PERIOD 3600
-#define STATISTICS_CONF_CONTACTS 16
+#define STATISTICS_CONF_CONTACTS 15
 
 // Set the link layer compatibility to IBR-DTN
 #define IBR_COMP 1
