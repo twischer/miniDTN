@@ -63,6 +63,8 @@ ifdef COFFEE_FILES                #if files are defined force definition of COFF
    COFFEE_ADDRESS=0x10000
   else ifeq ($(COFFEE_FILES), 5)  #5=INGA external flash
    COFFEE_ADDRESS=0x0
+  else ifeq ($(COFFEE_FILES), 6)  #6=INGA SDCard slot
+   COFFEE_ADDRESS=0x0
   else
    print "Unsupported coffee file type!"
   endif

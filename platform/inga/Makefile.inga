@@ -4,16 +4,12 @@ CONTIKI_CORE=contiki-inga-main
 CONTIKI_TARGET_MAIN = ${CONTIKI_CORE}.o
 CONTIKI_TARGET_SOURCEFILES += contiki-inga-main.c contiki-inga-default-init-net.c
 #The avr cpu makefile will also add these files if COFFEE_FILES is specified.
-#CFS=1
-ifdef CFS
-CFLAGS += -DCOFFEE_FILES=5
-CONTIKI_TARGET_SOURCEFILES += cfs-coffee.c cfs-coffee-arch.c
-endif
-FAT=1
+#CONTIKI_TARGET_SOURCEFILES += cfs-coffee.c cfs-coffee-arch.c
+
 ifdef FAT
 CONTIKI_TARGET_SOURCEFILES += fat.c fat_coop.c
-endif
 CONTIKI_TARGET_SOURCEFILES += diskio.c mbr.c
+endif
 
 #Needed for slip
 CONTIKI_TARGET_SOURCEFILES += button-sensor.c sensors.c slip_uart0.c slip.c acc-sensor.c gyro-sensor.c pressure-sensor.c radio-sensor.c
