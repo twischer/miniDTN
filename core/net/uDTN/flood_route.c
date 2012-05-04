@@ -191,11 +191,11 @@ uint8_t flood_sent_to_known(void)
 				pack = list_item_next(pack)) {
 
 			// Who is the destination for this bundle?
-			rimeaddr_t dest_node = convert_eid_to_rime(pack->dest);
+			rimeaddr_t dest_node = convert_eid_to_rime(pack->bundle.dst_node);
 
 			if( rimeaddr_cmp(&nei_l->neighbour, &dest_node) ) {
 				// We know the neighbour, send it directly
-				PRINTF("FLOOD: send bundle %u with SeqNo %lu to %u:%u directly\n", pack->bundle_num, pack->time_stamp_seq, nei_l->neighbour.u8[0], nei_l->neighbour.u8[1]);
+				PRINTF("FLOOD: send bundle %u with SeqNo %lu to %u:%u directly\n", pack->bundle_num, pack->bundle.tstamp_seq, nei_l->neighbour.u8[0], nei_l->neighbour.u8[1]);
 
 				struct route_t * route = memb_alloc(&route_mem);
 
@@ -228,18 +228,18 @@ uint8_t flood_sent_to_known(void)
 				pack != NULL;
 				pack = list_item_next(pack)) {
 
-			PRINTF("FLOOD: Bundle %u, SRC %lu, DEST %lu, MSRC %u.%u, SEQ %lu\n", pack->bundle_num,  pack->src, pack->dest, pack->msrc.u8[0], pack->msrc.u8[1], pack->time_stamp_seq);
+			PRINTF("FLOOD: Bundle %u, SRC %lu, DEST %lu, MSRC %u.%u, SEQ %lu\n", pack->bundle_num,  pack->bundle.src_node, pack->bundle.dst_node, pack->bundle.msrc.u8[0], pack->bundle.msrc.u8[1], pack->bundle.tstamp_seq);
 
 			uint8_t i, sent = 0;
 
-			rimeaddr_t source_node = convert_eid_to_rime(pack->src);
+			rimeaddr_t source_node = convert_eid_to_rime(pack->bundle.src_node);
 			if( rimeaddr_cmp(&nei_l->neighbour, &source_node) ) {
 				PRINTF("FLOOD: not sending bundle to originator\n");
 				sent = 1;
 				continue;
 			}
 
-			if( rimeaddr_cmp(&nei_l->neighbour, &pack->msrc) ) {
+			if( rimeaddr_cmp(&nei_l->neighbour, &pack->bundle.msrc) ) {
 				PRINTF("FLOOD: not sending back to sender\n");
 				sent = 1;
 				continue;
@@ -254,7 +254,7 @@ uint8_t flood_sent_to_known(void)
 			}
 
 			if(!sent){
-				PRINTF("FLOOD: send bundle %u with SeqNo %lu to %u:%u\n", pack->bundle_num, pack->time_stamp_seq, nei_l->neighbour.u8[0], nei_l->neighbour.u8[1]);
+				PRINTF("FLOOD: send bundle %u with SeqNo %lu to %u:%u\n", pack->bundle_num, pack->bundle.tstamp_seq, nei_l->neighbour.u8[0], nei_l->neighbour.u8[1]);
 
 				struct route_t * route = memb_alloc(&route_mem);
 
@@ -372,7 +372,7 @@ void flood_sent(struct route_t *route, int status, int num_tx)
 
 		flood_blacklist_delete(&route->dest);
 
-		rimeaddr_t dest_n = convert_eid_to_rime(pack->dest);
+		rimeaddr_t dest_n = convert_eid_to_rime(pack->bundle.dst_node);
 		if (rimeaddr_cmp(&route->dest, &dest_n)) {
 			PRINTF("FLOOD: bundle sent to destination node, deleting bundle\n");
 			agent_del_bundle(route->bundle_num);

@@ -20,6 +20,8 @@ static struct mmem report;
 * \param status status code for the bundle
 * \param reason reason code for the status
 */
+
+/* XXX FIXME: Status reporting is not supported at the moment
 uint8_t b_stat_send(struct bundle_t *bundle,uint8_t status, uint8_t reason)
 {
 	//printf("STAT: send %u %u\n",status,reason);
@@ -150,13 +152,12 @@ uint8_t b_stat_send(struct bundle_t *bundle,uint8_t status, uint8_t reason)
 		return 0;
 	}
 
+}
+*/
 
-
-
-		
-			
-
-
+uint8_t b_stat_send(struct bundle_t *bundle,uint8_t status, uint8_t reason)
+{
+	return 0;
 }
 
 const struct status_report_driver b_status ={
