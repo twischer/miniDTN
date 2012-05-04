@@ -65,6 +65,7 @@
 
 /*---------------------------------------------------------------------------*/
 PROCESS(bundle_generator_process, "Bundle generator process");
+PROCESS(bundle_verificator_process, "Bundle verificator process");
 PROCESS(profiling_process, "Profiling process");
 AUTOSTART_PROCESSES(&profiling_process);
 /*---------------------------------------------------------------------------*/
@@ -77,6 +78,15 @@ PROCESS_THREAD(profiling_process, ev, data)
 	agent_init();
 	etimer_set(&timer, CLOCK_SECOND*1);
 	PROCESS_WAIT_UNTIL(etimer_expired(&timer));
+	printf("Checking bundle encoding/decoding\n");
+	profiling_init();
+	profiling_start();
+	process_start(&bundle_verificator_process, NULL);
+	PROCESS_WAIT_UNTIL(ev == PROCESS_EVENT_EXITED && data == &bundle_verificator_process);
+	profiling_stop();
+	watchdog_stop();
+	profiling_report("bundle-check", 0);
+	watchdog_start();
 	printf("Starting bundle generation\n");
 	profiling_init();
 	profiling_start();
@@ -86,8 +96,78 @@ PROCESS_THREAD(profiling_process, ev, data)
 	profiling_stop();
 	watchdog_stop();
 	profiling_report("bundle-generation", 0);
+	watchdog_start();
 	TEST_REPORT("bundle-gen", numbundles, 30000, "kbundles/s");
 	TEST_PASS();
+	PROCESS_END();
+}
+
+PROCESS_THREAD(bundle_verificator_process, ev, data)
+{
+	uint32_t val;
+	static struct bundle_t bundle1, bundle2;
+	static uint8_t databuf[DATASIZE];
+	uint8_t buffer1[120], buffer2[120], len1, len2;
+	int i, first;
+
+	for (i=0; i<DATASIZE; i++) {
+		databuf[i] = i;
+	}
+
+	PROCESS_BEGIN();
+
+	PROCESS_PAUSE();
+
+	create_bundle(&bundle1);
+	/* Set node destination and source address */
+	val=0x0001;
+	set_attr(&bundle1, DEST_NODE, &val);
+	val=23;
+	set_attr(&bundle1, DEST_SERV, &val);
+	val=0x0002;
+	set_attr(&bundle1, SRC_NODE, &val);
+	set_attr(&bundle1, CUST_NODE, &val);
+	val=42;
+	set_attr(&bundle1, SRC_SERV,&val);
+	set_attr(&bundle1, CUST_SERV, &val);
+
+	val=0;
+	set_attr(&bundle1, FLAGS, &val);
+
+	val=1;
+	set_attr(&bundle1, REP_NODE, &val);
+	set_attr(&bundle1, REP_SERV, &val);
+
+	val = numbundles;
+	set_attr(&bundle1, TIME_STAMP_SEQ_NR, &val);
+	val=1;
+	set_attr(&bundle1, LIFE_TIME, &val);
+	val=4;
+	set_attr(&bundle1, TIME_STAMP, &val);
+
+	/* Add the data block to the bundle */
+	add_block(&bundle1, 1, 2, databuf, DATASIZE);
+
+	len1 = encode_bundle(&bundle1, buffer1, 120);
+	recover_bundle(&bundle2, buffer1, len1);
+	len2 = encode_bundle(&bundle2, buffer2, 120);
+
+	first = -1;
+	for (i=0; i<len1; i++) {
+		if (buffer1[i] != buffer2[i]) {
+			if (first == -1)
+				first = i;
+			printf("Mismatch in byte %i (%u != %u)\n", i, buffer1[i], buffer2[i]);
+		}
+	}
+	delete_bundle(&bundle1);
+	delete_bundle(&bundle2);
+	if (first != -1 || len1 != len2) {
+		printf("len1: %u, len2: %u\n", len1, len2);
+		TEST_FAIL("Buffer mismatch");
+		process_exit(&bundle_verificator_process);
+		PROCESS_WAIT_EVENT();
+	}
 	PROCESS_END();
 }
 
@@ -107,7 +187,7 @@ PROCESS_THREAD(bundle_generator_process, ev, data)
 		PROCESS_PAUSE();
 
 		create_bundle(&bundle);
-		/* Set node destination and source address */ 
+		/* Set node destination and source address */
 		val=0x0001;
 		set_attr(&bundle, DEST_NODE, &val);
 		val=23;
