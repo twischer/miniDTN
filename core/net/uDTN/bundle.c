@@ -22,168 +22,30 @@ uint8_t create_bundle(struct bundle_t *bundle)
 {
 	memset(bundle, 0, sizeof(struct bundle_t));
 
-	bundle->offset_tab[VERSION][OFFSET]=0;
-	bundle->offset_tab[FLAGS][OFFSET]=1;
-
-/*
-	bundle->mem = (struct mmem*) malloc(sizeof(struct mmem));
-	if (!bundle->mem){
-		printf(" \n\n BUNDLE ERROR\n\n");
-		while(1) ;	
-		return 0;
-	}
-	memset(bundle->mem, 0, sizeof(struct mmem));
-
-	mmem_alloc(bundle->mem,1);
-	// bundle->mem.ptr = (uint8_t *) MMEM_PTR(bundle->mem);
-	if (bundle->mem.ptr==NULL){
-		PRINTF("\n\n MALLOC ERROR\n\n");
-		while(1) ;	
-	}
-*/
-	if( !mmem_alloc(&bundle->mem, 1) ) {
-		PRINTF("\n\n MALLOC ERROR\n\n");
-		return 0;
-		//while(1) ;	
-	}
-
-	/*
-	if (bundle->mem.ptr==NULL){
-		PRINTF("\n\n MALLOC ERROR\n\n");
-		while(1) ;	
-	}
-	*/
-
-	*((uint8_t*)bundle->mem.ptr) = 6;
-	bundle->size=1;
-	uint8_t i;
 	bundle->rec_time=(uint32_t) clock_seconds();
-	bundle->offset_tab[VERSION][STATE]=1;
-	for (i=1;i<18;i++){
-		bundle->offset_tab[i][OFFSET]=1;
-		bundle->offset_tab[i][STATE]=0;
-	}
-	//memcpy(bundle->mem.ptr + 2, payload, len);
-	//bundle->offset_tab[PAYLOAD][STATE] = len;
-	//uint8_t *tmp=bundle->mem.ptr;
-	/*for(i=0; i<bundle->size; i++){
-		printf("%x ",*tmp);
-		tmp++;
-	}
-	printf("\n"); 
-	tmp = payload;
-	for(i=0; i<len; i++){
-		printf("%x ",*tmp);
-		tmp++;
-	}
-	printf("\n");
-	*/
-	uint32_t len32;
-	//set_attr(bundle, P_LENGTH, &len64);
-	len32=0;
-	PRINTF("BUNDLE: set len\n");
-	i=set_attr(bundle, LENGTH, &len32);
-	PRINTF("BUNDLE: set dir_len\n");
-	i+=set_attr(bundle, DIRECTORY_LEN, &len32);
-//	bundle->size += len64 + i; 
-#if DEBUG
-	PRINTF("BUNDLE: CREATE ");
-	uint8_t* tmp= bundle->mem.ptr;
-	for (i=1;i<bundle->offset_tab[DATA][OFFSET];i++){
-		PRINTF("%u ",*tmp);
-		tmp++;
-	}
-	PRINTF("\n");
-#endif
+
 	return 1;
 }
 
 uint8_t add_block(struct bundle_t *bundle, uint8_t type, uint8_t flags, uint8_t *data, uint8_t d_len)
 {
-//	sdnv_t s_len;
-	size_t len = sdnv_encoding_len((uint32_t )d_len);
-	struct mmem mem;
-	if(!mmem_alloc(&mem,len))
-		return 0;
+	bundle->block.type = type;
+	bundle->block.block_size = d_len;
 
-//	s_len = (uint8_t *) malloc(len);
-//	if (s_len==NULL){
-//		PRINTF("\n\n MALLOC ERROR\n\n");
-//		while(1);
-//	}
-
-	sdnv_encode((uint32_t) d_len, (sdnv_t) mem.ptr, len);
-
-	/*
-	struct mmem *mmem_tmp = (struct mmem*) malloc(sizeof(struct mmem));
-
-		if (!mmem_tmp){
-			printf(" \n\n BUNDLE ERROR\n\n");
-			return 0;
-		}
-	mmem_alloc(mmem_tmp,d_len + len + 2  + bundle->size);
-	memcpy(mmem_tmp->ptr,bundle->mem.ptr,bundle->size);
-	mmem_free(bundle->mem);
-	free(bundle->mem),
-	bundle->mem=mmem_tmp;
-	*/
-
-	if(!mmem_realloc(&bundle->mem, d_len + len + 2 + bundle->size)){
-		mmem_free(&mem);
+	if (!mmem_alloc(&bundle->block.payload, d_len)) {
 		return 0;
 	}
 
-	/*
-	mmem_realloc(&bundle->mem, bundle->size, d_len + len + 2  + bundle->size);
-	*/
+	memcpy(MMEM_PTR(&bundle->block.payload), data, d_len);
 
-	/*
-	struct mmem mmem_tmp;
-	mmem_alloc(&mmem_tmp,d_len + len + 2  + bundle->size);
-	memcpy(mmem_tmp.ptr,bundle->mem.ptr,bundle->size);
-	mmem_free(&bundle->mem);
-	memset(&bundle->mem, 0, sizeof(struct mmem));
-	memcpy(&bundle->mem, &mmem_tmp, sizeof(struct mmem));
-	*/
-
-/*#if CONTIKI_TARGET_SKY
-	bundle->mem.ptr = (uint8_t *) realloc(bundle->mem.ptr,d_len + len + 2  + bundle->size,bundle->size);
-#else
-	bundle->mem.ptr = (uint8_t *) realloc(bundle->mem.ptr,d_len + len + 2  + bundle->size);
-#endif
-*/
-	if (bundle->mem.ptr == NULL) {
-		mmem_free(&mem);
-		mmem_free(&bundle->mem);
-		return 0;
-	}
-	memcpy((uint8_t*)bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET] + bundle->offset_tab[DATA][STATE], &type, 1);
-	bundle->offset_tab[DATA][STATE] +=1;
-	memcpy((uint8_t*)bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET] + bundle->offset_tab[DATA][STATE], &flags, 1);
-	bundle->offset_tab[DATA][STATE] +=1;
-	memcpy((uint8_t*)bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET] + bundle->offset_tab[DATA][STATE], (uint8_t*)mem.ptr, len);
-	bundle->offset_tab[DATA][STATE] +=len;
-	memcpy((uint8_t*)bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET] + bundle->offset_tab[DATA][STATE],data,d_len);
-	bundle->offset_tab[DATA][STATE] +=d_len;
-	bundle->size = bundle->offset_tab[DATA][OFFSET] + bundle->offset_tab[DATA][STATE]; 
-	mmem_free(&mem);
-#if DEBUG
-	uint8_t *tmp= (uint8_t*)bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET];
-	PRINTF("BUNDLE: ADD_BLOCK: Type: %u , ",*tmp);
-	tmp++;
-	PRINTF("flags: %u , ",*tmp);
-	tmp++;
-	PRINTF("data_len: %u, data: ",d_len);
-	tmp++;
-	uint8_t i;
-	for (i=0; i<d_len; i++){
-		PRINTF("%u ",*tmp);
-		tmp++;
-	}
-	PRINTF("\n");
-#endif
-	return d_len + len + 2;
+	return d_len;
 }
+
+struct bundle_block_t *get_block(struct bundle_t *bundle)
+{
+	return &bundle->block;
+}
+
 /**
 *brief converts an integer value in sdnv and copies this to the right place in bundel
 */
@@ -203,214 +65,361 @@ void hexdump(char * string, uint8_t * bla, int length) {
 uint8_t set_attr(struct bundle_t *bundle, uint8_t attr, uint32_t *val)
 {
 	PRINTF("set attr %lx\n",*val);
-	if (attr == FLAGS){
-		bundle->custody = 0x08 &(uint8_t) *val;
-	}
-	if( attr == LIFE_TIME){
-		bundle->lifetime= *val;
-	}
-	if (attr == FLAGS){
-		bundle->flags = *val;
-	}
-	//sdnv_t sdnv;
-	size_t len = sdnv_encoding_len(*val);
-//	printf("tpr %u\n ",len);  // this fixes everything
-	//sdnv = (uint8_t *) malloc(len);
-	uint8_t sdnv[30];
-	/*
-	if (sdnv==NULL){
-		PRINTF("\n\n MALLOC ERROR\n\n");
-	}
-	*/
-
-	sdnv_encode(*val,sdnv,len);
-
-	if(((int16_t)(len-bundle->offset_tab[attr][STATE])) > 0){
-		PRINTF("BUNDLE: realloc (%u-%u)+%u= %u\n",len,bundle->offset_tab[attr][STATE],bundle->mem.size,(len-bundle->offset_tab[attr][STATE]) + bundle->mem.size);
-
-		hexdump("vorher  ", bundle->mem.ptr, bundle->mem.size);
-		unsigned int old_size = bundle->mem.size;
-		if(!mmem_realloc(&bundle->mem,(len-bundle->offset_tab[attr][STATE]) + old_size)){
-			PRINTF("MMEM ERROR\n");
-			//while(1);
-		}
-		hexdump("vorher  ", bundle->mem.ptr, bundle->mem.size);
-		PRINTF("bundle->mem.ptr %p\n",bundle->mem.ptr);
-
-		memmove((uint8_t*)bundle->mem.ptr + bundle->offset_tab[attr][OFFSET]+len, (uint8_t*)bundle->mem.ptr + bundle->offset_tab[attr][OFFSET] + bundle->offset_tab[attr][STATE], old_size - bundle->offset_tab[attr][OFFSET] - bundle->offset_tab[attr][STATE]);
-
-
-
-		/*
-		struct mmem *mmem_tmp = (struct mmem*) malloc(sizeof(struct mmem));
-		if (!mmem_tmp){
-			printf(" \n\n BUNDLE ERROR\n\n");
+	switch (attr) {
+		case FLAGS:
+			bundle->flags = *val;
+			bundle->custody = 0x08 &(uint8_t) *val;
+			break;
+		case DEST_NODE:
+			bundle->dst_node = *val;
+			break;
+		case DEST_SERV:
+			bundle->dst_srv = *val;
+			break;
+		case SRC_NODE:
+			bundle->src_node = *val;
+			break;
+		case SRC_SERV:
+			bundle->src_srv = *val;
+			break;
+		case REP_NODE:
+			bundle->rep_node = *val;
+			break;
+		case REP_SERV:
+			bundle->rep_srv = *val;
+			break;
+		case CUST_NODE:
+			bundle->cust_node = *val;
+			break;
+		case CUST_SERV:
+			bundle->cust_srv = *val;
+			break;
+		case TIME_STAMP:
+			bundle->tstamp = *val;
+			break;
+		case TIME_STAMP_SEQ_NR:
+			bundle->tstamp_seq = *val;
+			break;
+		case LIFE_TIME:
+			bundle->lifetime = *val;
+			break;
+		case DIRECTORY_LEN:
+			if (*val != 0)
+				PRINTF("Dictionary length needs to be 0 for CBHE\n");
+			break;
+		case FRAG_OFFSET:
+			bundle->frag_offs = *val;
+			break;
+		case LENGTH:
+			/* FIXME */
+		default:
+			PRINTF("Unknown attribute\n");
 			return 0;
-		}
-		mmem_alloc(mmem_tmp,(len-bundle->offset_tab[attr][STATE]) + bundle->size);
-		memcpy(mmem_tmp->ptr,bundle->mem.ptr,bundle->offset_tab[attr][OFFSET]);
-		memcpy(mmem_tmp->ptr + bundle->offset_tab[attr][OFFSET]+(len-bundle->offset_tab[attr][STATE]), bundle->mem.ptr + bundle->offset_tab[attr][OFFSET], bundle->size - bundle->offset_tab[attr][OFFSET]);
-		mmem_free(bundle->mem);
-		free(bundle->mem),
-		bundle->mem=mmem_tmp;
-		*/
-
-		/*
-#if CONTIKI_TARGET_SKY
-		bundle->mem.ptr = (uint8_t *) realloc(bundle->mem.ptr,((int16_t)(len-bundle->offset_tab[attr][STATE])) + bundle->size,bundle->size);
-		PRINTF("BUNDLE: mem-size %u\n",((int16_t)(len-bundle->offset_tab[attr][STATE])) + bundle->size);
-#else
-		bundle->mem.ptr = (uint8_t *) realloc(bundle->mem.ptr,((int16_t)(len-bundle->offset_tab[attr][STATE])) + bundle->size);
-#endif
-*/
-	//	memmove((bundle->mem.ptr + bundle->offset_tab[attr][OFFSET] + len), bundle->mem.ptr + bundle->offset_tab[attr][OFFSET], bundle->size - bundle->offset_tab[attr][OFFSET] );
 	}
-	if (((int16_t)(len-bundle->offset_tab[attr][STATE])) < 0){
-		PRINTF("BUNDLE: smaller\n");
-		unsigned int old_size = bundle->size;
-		if(!mmem_realloc(&bundle->mem, old_size + ((int16_t)(len-bundle->offset_tab[attr][STATE]))))
-			return 0;
-
-		memmove((uint8_t*)bundle->mem.ptr + bundle->offset_tab[attr][OFFSET] + len, (uint8_t*)bundle->mem.ptr + bundle->offset_tab[attr][OFFSET] + bundle->offset_tab[attr][STATE], old_size - bundle->offset_tab[attr][OFFSET] - bundle->offset_tab[attr][STATE]);
-
-		/*struct mmem *mmem_tmp = (struct mmem*) malloc(sizeof(struct mmem));
-		if (!mmem_tmp){
-			printf(" \n\n BUNDLE ERROR\n\n");
-			return 0;
-		}
-		mmem_alloc(mmem_tmp,bundle->size + ((int16_t)(len-bundle->offset_tab[attr][STATE])));
-		uint8_t *tmp=(uint8_t*) MMEM_PTR(mmem_tmp);
-		if (*tmp==NULL){
-			PRINTF("\n\n MALLOC ERROR\n\n");
-		}
-
-		memcpy(tmp,bundle->mem.ptr,bundle->offset_tab[attr][OFFSET]);
-		memcpy(tmp + bundle->offset_tab[attr][OFFSET] + len,bundle->mem.ptr + bundle->offset_tab[attr][OFFSET] + bundle->offset_tab[attr][STATE],bundle->size + ((int16_t)(len-bundle->offset_tab[attr][STATE])) );
-		mmem_free(bundle->mem);
-		free(bundle->mem);
-		bundle->mem=mmem_tmp;
-
-		bundle->mem.ptr=tmp;
-		*/
-	}
-	PRINTF("%p + %d = %p -> %u (%d)\n", bundle->mem.ptr, bundle->offset_tab[attr][OFFSET], (bundle->mem.ptr + bundle->offset_tab[attr][OFFSET]), sdnv, len);
-	memcpy((uint8_t*)bundle->mem.ptr + bundle->offset_tab[attr][OFFSET], sdnv, len);
-	hexdump("memcpy 3", bundle->mem.ptr, bundle->mem.size);
-
-	uint8_t i;
-	PRINTF("BUNDLE: val= %lu\n",*val);
-	for(i=attr+1;i<18;i++){
-		bundle->offset_tab[i][OFFSET] += (len - bundle->offset_tab[attr][STATE]);
-//		PRINTF("BUNDLE: offset_tab[%u][OFFSET]=%u offset_tab[%u][STATE]=%u\n",i,bundle->offset_tab[i][OFFSET],i,bundle->offset_tab[i][STATE]);
-	}
-	PRINTF("bundle->size %u+(%u-%u)\n",bundle->size,len,bundle->offset_tab[attr][STATE]);
-	bundle->size += (len - bundle->offset_tab[attr][STATE]);
-	bundle->offset_tab[attr][STATE] = len;
-	PRINTF("BUNDLE: offset_tab[%u][OFFSET]=%u offset_tab[%u][STATE]=%u\n",attr,bundle->offset_tab[attr][OFFSET],attr,bundle->offset_tab[attr][STATE]);
-	uint8_t size=0;
-	if (attr >2 && attr <17){
-		for (i=3; i<17; i++){
-			size+=bundle->offset_tab[i][STATE];
-		}
-		PRINTF("set new len %u\n",size);
-		memset((uint8_t*)bundle->mem.ptr+bundle->offset_tab[LENGTH][OFFSET],size,1);
-	}
-	// free(sdnv);
-	// sdnv=NULL;
-#if DEBUG
-	PRINTF("BUNDLE: bundle->size= %u\n",bundle->size);
-	PRINTF("BUNDLE: SET_ATTR  %u %u : ",attr,bundle->offset_tab[DATA][OFFSET]);
-	uint8_t* tmp= bundle->mem.ptr;
-	for (i=1;i<bundle->size;i++){
-		PRINTF("%x ",*tmp);
-		tmp++;
-	}
-	PRINTF("\n");
-#endif
-	hexdump("ende   ", bundle->mem.ptr, bundle->mem.size);
-	PRINTF("\n");	
-	return len;
-
-}
-
-uint8_t recover_bundel(struct bundle_t *bundle, uint8_t *block, int size)
-{
-	PRINTF("rec bptr: %p  blptr:%p \n",bundle,block);
-	bundle->offset_tab[VERSION][OFFSET]=0;
-	bundle->offset_tab[VERSION][STATE]=1;
-	bundle->offset_tab[FLAGS][OFFSET]=1;
-	if (*block != 6){
-		block=NULL;
-		PRINTF("BP Version mismatch\n");
-		return 0;
-	}
-	uint8_t *tmp=block;
-	tmp+=1;
-	uint8_t fields=0;
-	if (*tmp & 0x1){ //fragmented	
-		PRINTF("fragment\n");
-		fields=16;
-	}else{
-		fields=14;
-	}
-	uint8_t i;
-	for (i = 1; i<=fields; i++){
-		uint8_t len= sdnv_len(tmp);
-		bundle->offset_tab[i][STATE]=len;
-		bundle->offset_tab[i][OFFSET]=(tmp-block);
-		PRINTF("BUNDLE: RECOVER: %u: state: %u offset: %u value %u \n",i,bundle->offset_tab[i][STATE],bundle->offset_tab[i][OFFSET],*(block + bundle->offset_tab[i][OFFSET]) );
-		tmp+=bundle->offset_tab[i][STATE];
-		if(i==DIRECTORY_LEN && *(block + bundle->offset_tab[i][OFFSET]) != 0){
-			PRINTF("\n\n NO CBHE %u\n\n",*(block + bundle->offset_tab[i][OFFSET]));
-			block=NULL;
-			return 0;
-		}
-
-	}
-	if (!(*tmp & 0x40)){ //not fragmented
-		bundle->offset_tab[FRAG_OFFSET][OFFSET] = bundle->offset_tab[LIFE_TIME][OFFSET]+1;
-		bundle->offset_tab[APP_DATA_LEN][OFFSET] = bundle->offset_tab[LIFE_TIME][OFFSET]+1;
-	}
-	bundle->offset_tab[DATA][STATE]= size- ((uint8_t)(tmp - block));
-	PRINTF("BUNDLE: RECOVER: data size: %u=%u-%u\n",bundle->offset_tab[DATA][STATE], size,((uint8_t)(tmp - block)));
-	sdnv_decode(block+bundle->offset_tab[LIFE_TIME][OFFSET],bundle->offset_tab[LIFE_TIME][STATE],&bundle->lifetime);
-	sdnv_decode(block+bundle->offset_tab[FLAGS][OFFSET],bundle->offset_tab[FLAGS][STATE],&bundle->flags);
-	bundle->offset_tab[DATA][OFFSET]= tmp-block;
-	bundle->size=size;
-	/*bundle->mem = (struct mmem *) malloc(sizeof(struct mmem));
-		if (!bundle->mem){
-			printf(" \n\n BUNDLE ERROR\n\n");
-			return 0;
-		}
-	*/
-
-	mmem_alloc(&bundle->mem,size);
-	//bundle->mem.ptr = (uint8_t *) MMEM_PTR(bundle->mem);
-	//if (bundle->mem.ptr==NULL){
-	//	PRINTF("\n\n MALLOC ERROR\n\n");
-	//}
-
-	PRINTF("BUNDLE: RECOVER: block ptr: %p   ",bundle->offset_tab);
-	for (i=0; i<27; i++){
-		PRINTF("%u:",*(block+i));
-	}
-	PRINTF("\n");
-	memcpy((uint8_t*)bundle->mem.ptr,(uint8_t*)block,size);
-	block=NULL;
 	return 1;
 }
+
+uint8_t get_attr(struct bundle_t *bundle, uint8_t attr, uint32_t *val)
+{
+	PRINTF("get attr %lx\n",*val);
+	switch (attr) {
+		case FLAGS:
+			*val = bundle->flags;
+			break;
+		case DEST_NODE:
+			*val = bundle->dst_node;
+			break;
+		case DEST_SERV:
+			*val = bundle->dst_srv;
+			break;
+		case SRC_NODE:
+			*val = bundle->src_node;
+			break;
+		case SRC_SERV:
+			*val = bundle->src_srv;
+			break;
+		case REP_NODE:
+			*val = bundle->rep_node;
+			break;
+		case REP_SERV:
+			*val = bundle->rep_srv;
+			break;
+		case CUST_NODE:
+			*val = bundle->cust_node;
+			break;
+		case CUST_SERV:
+			*val = bundle->cust_srv;
+			break;
+		case TIME_STAMP:
+			*val = bundle->tstamp = *val;
+			break;
+		case TIME_STAMP_SEQ_NR:
+			*val = bundle->tstamp_seq = *val;
+			break;
+		case LIFE_TIME:
+			*val = bundle->lifetime = *val;
+			break;
+		case DIRECTORY_LEN:
+			*val = 0;
+			break;
+		case FRAG_OFFSET:
+			*val = bundle->frag_offs;
+			break;
+		case LENGTH:
+			/* FIXME */
+		default:
+			PRINTF("Unknown attribute\n");
+			return 0;
+	}
+	return 1;
+}
+
+uint8_t recover_bundle(struct bundle_t *bundle, uint8_t *buffer, int size)
+{
+	uint32_t primary_size, value;
+	uint8_t offs = 0;
+
+	PRINTF("rec bptr: %p  blptr:%p \n",bundle,buffer);
+	create_bundle(bundle);
+
+	/* Version 0x06 is the one described and supported in RFC5050 */
+	if (buffer[0] != 0x06) {
+		PRINTF("Version 0x%02x not supported\n", buffer[0]);
+		return 0;
+	}
+	offs++;
+
+	/* Flags */
+	offs += sdnv_decode(&buffer[offs], size-offs, &bundle->flags);
+
+	/* Block Length - Number of bytes in this block following this
+	 * field */
+	offs += sdnv_decode(&buffer[offs], size-offs, &primary_size);
+	primary_size += offs;
+
+	/* Destination node + SSP */
+	offs += sdnv_decode(&buffer[offs], size-offs, &bundle->dst_node);
+	offs += sdnv_decode(&buffer[offs], size-offs, &bundle->dst_srv);
+
+	/* Source node + SSP */
+	offs += sdnv_decode(&buffer[offs], size-offs, &bundle->src_node);
+	offs += sdnv_decode(&buffer[offs], size-offs, &bundle->src_srv);
+
+	/* Report-to node + SSP */
+	offs += sdnv_decode(&buffer[offs], size-offs, &bundle->rep_node);
+	offs += sdnv_decode(&buffer[offs], size-offs, &bundle->rep_srv);
+
+	/* Custodian node + SSP */
+	offs += sdnv_decode(&buffer[offs], size-offs, &bundle->cust_node);
+	offs += sdnv_decode(&buffer[offs], size-offs, &bundle->cust_srv);
+
+	/* Creation Timestamp */
+	offs += sdnv_decode(&buffer[offs], size-offs, &bundle->tstamp);
+
+	/* Creation Timestamp Sequence Number */
+	offs += sdnv_decode(&buffer[offs], size-offs, &bundle->tstamp_seq);
+
+	/* Lifetime */
+	offs += sdnv_decode(&buffer[offs], size-offs, &bundle->lifetime);
+
+	/* Directory Length */
+	offs += sdnv_decode(&buffer[offs], size-offs, &value);
+	if (value != 0) {
+		PRINTF("Bundle does not use CBHE.\n");
+		return 0;
+	}
+
+	if (bundle->flags & BUNDLE_FLAG_FRAGMENT) {
+		PRINTF("Bundle is a fragment\n");
+
+		/* Fragment Offset */
+		offs += sdnv_decode(&buffer[offs], size-offs, &bundle->frag_offs);
+
+		/* Total App Data Unit Length */
+		offs += sdnv_decode(&buffer[offs], size-offs, &bundle->app_len);
+	}
+
+	if (offs != primary_size) {
+		PRINTF("Problem decoding the primary bundle block.\n");
+		return 0;
+	}
+
+	/* Decode the next block
+	 * FIXME: Only support for one block after the primary for now */
+
+	bundle->block.type = buffer[offs];
+	offs++;
+
+	/* Flags */
+	offs += sdnv_decode(&buffer[offs], size-offs, &bundle->block.flags);
+
+	/* Payload Size */
+	offs += sdnv_decode(&buffer[offs], size-offs, &value);
+	if (value > 255) {
+		PRINTF("Bundle payload length too big.\n");
+		return 0;
+	}
+	bundle->block.block_size = value;
+
+	if (bundle->block.block_size != offs-size) {
+		PRINTF("Bundle payload length doesn't match buffer size.\n");
+		return 0;
+	}
+
+	/* Copy the actual payload over */
+	memcpy(MMEM_PTR(&bundle->block.payload), &buffer[offs], bundle->block.block_size);
+
+	return 1;
+}
+
+uint8_t encode_bundle(struct bundle_t *bundle, uint8_t *buffer, int max_len)
+{
+	uint32_t value;
+	uint8_t offs = 0, blklen_offs;
+	int ret, blklen_size;
+
+	/* Hardcode the version to 0x06 */
+	buffer[0] = 0x06;
+	offs++;
+
+	/* Flags */
+	ret = sdnv_encode(bundle->flags, &buffer[offs], max_len - offs);
+	if (ret < 0)
+		return -1;
+	offs += ret;
+
+	/* Block length will be calculated later
+	 * reserve one byte for now */
+	blklen_offs = offs;
+	offs++;
+
+	/* Destination node + SSP */
+	ret = sdnv_encode(bundle->dst_node, &buffer[offs], max_len - offs);
+	if (ret < 0)
+		return -1;
+	offs += ret;
+
+	ret = sdnv_encode(bundle->dst_srv, &buffer[offs], max_len - offs);
+	if (ret < 0)
+		return -1;
+	offs += ret;
+
+	/* Source node + SSP */
+	ret = sdnv_encode(bundle->src_node, &buffer[offs], max_len - offs);
+	if (ret < 0)
+		return -1;
+	offs += ret;
+
+	ret = sdnv_encode(bundle->src_srv, &buffer[offs], max_len - offs);
+	if (ret < 0)
+		return -1;
+	offs += ret;
+
+	/* Report-to node + SSP */
+	ret = sdnv_encode(bundle->rep_node, &buffer[offs], max_len - offs);
+	if (ret < 0)
+		return -1;
+	offs += ret;
+
+	ret = sdnv_encode(bundle->rep_srv, &buffer[offs], max_len - offs);
+	if (ret < 0)
+		return -1;
+	offs += ret;
+
+	/* Custodian node + SSP */
+	ret = sdnv_encode(bundle->cust_node, &buffer[offs], max_len - offs);
+	if (ret < 0)
+		return -1;
+	offs += ret;
+
+	ret = sdnv_encode(bundle->cust_srv, &buffer[offs], max_len - offs);
+	if (ret < 0)
+		return -1;
+	offs += ret;
+
+	/* Creation Timestamp */
+	ret = sdnv_encode(bundle->tstamp, &buffer[offs], max_len - offs);
+	if (ret < 0)
+		return -1;
+	offs += ret;
+
+	/* Creation Timestamp Sequence Number */
+	ret = sdnv_encode(bundle->tstamp_seq, &buffer[offs], max_len - offs);
+	if (ret < 0)
+		return -1;
+	offs += ret;
+
+	/* Lifetime */
+	ret = sdnv_encode(bundle->lifetime, &buffer[offs], max_len - offs);
+	if (ret < 0)
+		return -1;
+	offs += ret;
+
+	/* Directory Length */
+	ret = sdnv_encode(0l, &buffer[offs], max_len - offs);
+	if (ret < 0)
+		return -1;
+	offs += ret;
+
+	if (bundle->flags & BUNDLE_FLAG_FRAGMENT) {
+		PRINTF("Bundle is a fragment\n");
+
+		/* Fragment Offset */
+		ret = sdnv_encode(bundle->frag_offs, &buffer[offs], max_len - offs);
+		if (ret < 0)
+			return -1;
+		offs += ret;
+
+		/* Total App Data Unit Length */
+		ret = sdnv_encode(bundle->app_len, &buffer[offs], max_len - offs);
+		if (ret < 0)
+			return -1;
+		offs += ret;
+	}
+
+	/* Calculate block length value */
+	value = offs - blklen_offs - 1;
+	blklen_size = sdnv_encoding_len(value);
+	/* Move the data around */
+	if (blklen_size > 1) {
+		memmove(&buffer[blklen_offs+blklen_size], &buffer[blklen_offs+1], value);
+	}
+	ret = sdnv_encode(value, &buffer[blklen_offs], blklen_size);
+
+	offs += ret-1;
+
+	/* Encode the next block */
+	buffer[offs] = bundle->block.type;
+	offs++;
+
+	/* Flags */
+	ret = sdnv_encode(bundle->block.flags, &buffer[offs], max_len - offs);
+	if (ret < 0)
+		return -1;
+	offs += ret;
+
+	/* Blocksize */
+	value = bundle->block.block_size;
+	ret = sdnv_encode(value, &buffer[offs], max_len - offs);
+	if (ret < 0)
+		return -1;
+	offs += ret;
+
+	/* Payload */
+	memcpy(&buffer[offs], MMEM_PTR(&bundle->block.payload), bundle->block.block_size);
+	offs += bundle->block.block_size;
+
+	return offs;
+}
+
 uint16_t delete_bundle(struct bundle_t *bundle)
 {
 	PRINTF("BUNDLE: delete %p %p %p %u\n", bundle, bundle->mem, bundle->mem.ptr,bundle->rec_time);
-	if (bundle->size){
-		PRINTF("BUNDLE: bundle->mem.ptr %p\n",bundle->mem.ptr);
-		mmem_free(&bundle->mem);
-		bundle->size=0;
-		return 1;
-	}else{
-		PRINTF("BUNDLE: bundle deleted too often\n");
-		return 0;
+	if (bundle->block.block_size){
+		mmem_free(&bundle->block.payload);
+		bundle->block.block_size = 0;
 	}
+	return 1;
 }
 
 rimeaddr_t convert_eid_to_rime(uint32_t eid) {

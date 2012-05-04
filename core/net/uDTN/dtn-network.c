@@ -62,8 +62,9 @@ static void dtn_network_init(void)
 
 static void dtn_network_input(void) 
 {
-	uint8_t input_packet[114];
-	int size = packetbuf_copyto(input_packet);
+	uint8_t *input_packet;
+	int size = packetbuf_datalen();
+	input_packet = packetbuf_dataptr();
 	rimeaddr_t bsrc = *packetbuf_addr(PACKETBUF_ADDR_SENDER);
 	packetbuf_clear();
 
@@ -95,14 +96,12 @@ static void dtn_network_input(void)
 
 	memset(&bundle, 0, sizeof(struct bundle_t));
 
-	if ( !recover_bundel(&bundle, payload_data, payload_length)){
+	if ( !recover_bundle(&bundle, payload_data, payload_length)){
 		PRINTF("DTN: recover ERROR\n");
 		leds_off(LEDS_GREEN);
 		return;
 	}
 
-	bundle.rec_time=(uint32_t) clock_seconds();
-	bundle.size = payload_length;
 	rimeaddr_copy(&bundle.msrc, &bsrc);
 
 #if DEBUG
@@ -168,17 +167,26 @@ static void packet_sent(void *ptr, int status, int num_tx)
 
 int dtn_network_send(struct bundle_t *bundle, struct route_t *route) 
 {
-	uint8_t * payload = bundle->mem.ptr;
-	uint8_t len = bundle->size;
+	uint8_t *buffer;
+	uint8_t len;
 
 	leds_on(LEDS_YELLOW);
 
 	PRINTF("NETWORK: send %p via %p\n", bundle, route);
 
-	/* kopiere die Daten in den packetbuf(fer) */
-	packetbuf_ext_copyfrom(payload, len,0x30,0);
+	/* We're not going to use packetbuf_copyfrom here but instead assemble the packet
+	 * in the buffer ourself */
+	packetbuf_clear();
 
-	/* setze Zieladresse und Ÿbergebe das Paket an die MAC Schicht */
+	buffer = packetbuf_dataptr();
+
+	//Extended buffer byte
+	buffer[0] = 0x30;
+
+	len = encode_bundle(bundle, buffer+1, PACKETBUF_SIZE-1);
+	packetbuf_set_datalen(len+1);
+
+	/*setze Zieladresse und übergebe das Paket an die MAC schicht */
 	packetbuf_set_addr(PACKETBUF_ADDR_RECEIVER, &route->dest);
 	packetbuf_set_attr(PACKETBUF_ADDRSIZE, 2);
 
