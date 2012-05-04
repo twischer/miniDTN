@@ -72,9 +72,6 @@
 //payload block defines
 #define DATA 17
 
-#define OFFSET 0
-#define STATE 1
-
 #define DEBUG_H 1
 
 struct bundle_block_t {

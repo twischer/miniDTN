@@ -41,15 +41,9 @@
 void deliver_bundle(struct bundle_t *bundle, struct registration *n) {
 
 	PRINTF("DELIVERY\n");
-	if(n->status == APP_ACTIVE) {  
-	PRINTF("DELIVERY: Service is active\n");
+	if(n->status == APP_ACTIVE) {
+		PRINTF("DELIVERY: Service is active\n");
 
-	
-
-		uint32_t len;
-#if DEBUG
-		uint8_t block_count=0;
-#endif
 		if (!REDUNDANCE.check(bundle)) { //Bundle was not delivered before
 			REDUNDANCE.set(bundle);
 			statistics_bundle_delivered(1);
@@ -60,8 +54,8 @@ void deliver_bundle(struct bundle_t *bundle, struct registration *n) {
 		} else {
 			delete_bundle(bundle);
 		}
-	}			
-	
+	}
+
 	#if DEBUG_H
 	uint16_t time = clock_time();
 	time -= bundle->debug_time;
