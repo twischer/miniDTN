@@ -102,9 +102,9 @@ void r_store_prune()
 	for(entry = list_head(bundle_list);
 			entry != NULL;
 			entry = list_item_next(entry)) {
-		uint32_t elapsed_time = clock_seconds() - entry->rec_time;
+		uint32_t elapsed_time = clock_seconds() - entry->bundle.rec_time;
 
-		if( entry->lifetime < elapsed_time ) {
+		if( entry->bundle.lifetime < elapsed_time ) {
 			PRINTF("STORAGE: bundle lifetime expired of bundle %u\n", entry->bundle_num);
 			rs_del_bundle(entry->bundle_num, REASON_LIFETIME_EXPIRED);
 		}
@@ -136,7 +136,7 @@ void rs_reinit(void)
  */
 uint8_t rs_make_room(struct bundle_t * bundle)
 {
-	if( bundles_in_storage < BUNDLE_STORAGE_SIZE && (avail_memory - bundle->size) > STORAGE_HIGH_WATERMARK ) {
+	if( bundles_in_storage < BUNDLE_STORAGE_SIZE && (avail_memory - bundle->block.block_size) > STORAGE_HIGH_WATERMARK ) {
 		// We have enough memory, no need to do anything
 		return 1;
 	}
@@ -145,7 +145,7 @@ uint8_t rs_make_room(struct bundle_t * bundle)
 	r_store_prune();
 
 	// Keep deleting bundles until we have enough MMEM and slots
-	while( bundles_in_storage >= BUNDLE_STORAGE_SIZE || (avail_memory - bundle->size) < STORAGE_HIGH_WATERMARK ) {
+	while( bundles_in_storage >= BUNDLE_STORAGE_SIZE || (avail_memory - bundle->block.block_size) < STORAGE_HIGH_WATERMARK ) {
 		struct file_list_entry_t * entry = list_head(bundle_list);
 
 		if( entry == NULL ) {
@@ -166,42 +166,16 @@ uint8_t rs_make_room(struct bundle_t * bundle)
 */
 int32_t rs_save_bundle(struct bundle_t * bundle)
 {
-	uint8_t *tmp = bundle->mem.ptr;
 	struct file_list_entry_t * entry;
-
-	if( bundle->size == 0 ) {
-		printf("STORAGE: Bundle not saved, size is 0\n");
-		return -1;
-	}
-
-	uint32_t src;
-	tmp=tmp+bundle->offset_tab[SRC_NODE][OFFSET];
-	sdnv_decode(tmp ,bundle->offset_tab[SRC_NODE][STATE], &src);
-
-	uint32_t dest;
-	tmp=bundle->mem.ptr+bundle->offset_tab[DEST_NODE][OFFSET];
-	sdnv_decode(tmp ,bundle->offset_tab[DEST_NODE][STATE], &dest);
-
-	uint32_t time_stamp;
-	tmp=bundle->mem.ptr+bundle->offset_tab[TIME_STAMP][OFFSET];
-	sdnv_decode(tmp, bundle->offset_tab[TIME_STAMP][STATE], &time_stamp);
-
-	uint32_t time_stamp_seq;
-	tmp=bundle->mem.ptr+bundle->offset_tab[TIME_STAMP_SEQ_NR][OFFSET];
-	sdnv_decode(tmp, bundle->offset_tab[TIME_STAMP_SEQ_NR][STATE], &time_stamp_seq);
-
-	uint32_t fraq_offset;
-	tmp=bundle->mem.ptr+bundle->offset_tab[FRAG_OFFSET][OFFSET];
-	sdnv_decode(tmp, bundle->offset_tab[FRAG_OFFSET][STATE], &fraq_offset);
 
 	// Look for duplicates in the storage
 	for(entry = list_head(bundle_list);
 		entry != NULL;
 		entry = list_item_next(entry)) {
-		if ( time_stamp_seq == entry->time_stamp_seq &&
-		    time_stamp == entry->time_stamp &&
-		    src == entry->src &&
-		    fraq_offset == entry->fraq_offset) {
+		if ( bundle->tstamp_seq == entry->bundle.tstamp_seq &&
+		    bundle->tstamp == entry->bundle.tstamp &&
+		    bundle->src_node == entry->bundle.src_node &&
+		    bundle->frag_offs == entry->bundle.frag_offs) {
 
 			PRINTF("STORAGE: %u is the same bundle\n", entry->bundle_num);
 			return (int32_t) entry->bundle_num;
@@ -222,10 +196,12 @@ int32_t rs_save_bundle(struct bundle_t * bundle)
 	// Clear the memory area
 	memset(entry, 0, sizeof(struct file_list_entry_t));
 
-	// Allocate some memory
-	int mem = mmem_alloc(&entry->ptr, bundle->size);
+	// Copy the primary block over
+	memcpy(&entry->bundle, bundle, sizeof(struct bundle_t));
+	// And allocate and copy the block
+	int mem = mmem_alloc(&entry->bundle.block.payload, bundle->block.block_size);
 	if( !mem ) {
-		printf("STORAGE: write of %u bytes failed\n", bundle->size);
+		printf("STORAGE: write of %u bytes failed\n", bundle->block.block_size);
 		memb_free(&bundle_mem, entry);
 		return -1;
 	}
@@ -234,20 +210,9 @@ int32_t rs_save_bundle(struct bundle_t * bundle)
 
 	// Set all required fields
 	entry->bundle_num = bundle_number ++;
-	entry->file_size = bundle->size;
-	entry->time_stamp_seq = time_stamp_seq;
-	entry->time_stamp = time_stamp;
-	entry->src = src;
-	entry->dest = dest;
-	entry->fraq_offset = fraq_offset;
-	entry->rec_time = bundle->rec_time;
-	entry->lifetime = bundle->lifetime;
-	rimeaddr_copy(&entry->msrc, &bundle->msrc);
+	entry->file_size = bundle->block.block_size;
 
-	// Copy bundle into memory storage
-	memcpy(entry->ptr.ptr, bundle->mem.ptr, bundle->size);
-
-	PRINTF("STORAGE: New Bundle %u, Src %lu, Dest %lu, Seq %lu, Size %u\n", entry->bundle_num, src, dest, time_stamp_seq, entry->file_size);
+	PRINTF("STORAGE: New Bundle %u, Src %lu, Dest %lu, Seq %lu, Size %u\n", entry->bundle_num, bundle->src_node, bundle->dst_node, bundle->tstamp_seq, entry->file_size);
 
 	// Notify the statistics module
 	rs_update_statistics();
@@ -289,7 +254,7 @@ uint16_t rs_del_bundle(uint16_t bundle_num, uint8_t reason)
 		bundle_str.del_reason = reason;
 
 		if( ((bundle_str.flags & 8 ) || (bundle_str.flags & 0x40000)) && (reason !=0xff )){
-			if (entry->src != dtn_node_id){
+			if (entry->bundle.src_node != dtn_node_id){
 				STATUS_REPORT.send(&bundle_str, 16, bundle_str.del_reason);
 			}
 		}
@@ -297,8 +262,8 @@ uint16_t rs_del_bundle(uint16_t bundle_num, uint8_t reason)
 	delete_bundle(&bundle_str);
 
 	// Free the MMEM block inside the bundle
-	if (MMEM_PTR(&entry->ptr) != 0){
-		mmem_free(&entry->ptr);
+	if (MMEM_PTR(&entry->bundle.block.payload) != 0){
+		mmem_free(&entry->bundle.block.payload);
 	}
 
 	// Remove the bundle from the list
@@ -347,19 +312,10 @@ uint16_t rs_read_bundle(uint16_t bundle_num,struct bundle_t *bundle)
 		return 0;
 	}
 
-	if(MMEM_PTR(&entry->ptr) == NULL ) {
-		printf("STORAGE: bundle contains no MMEM ptr\n");
-		return 0;
-	}
-
-	if (!recover_bundel(bundle, MMEM_PTR(&entry->ptr), (int) entry->file_size)) {
-		// FIXME: Mark slot free
-		return 0;
-	}
-
-	bundle->rec_time = entry->rec_time;
-	bundle->custody = entry->custody;
-	rimeaddr_copy(&bundle->msrc, &entry->msrc);
+	memcpy(bundle, &entry->bundle, sizeof(struct bundle_t));
+	/* FIXME: Error handling */
+	mmem_alloc(&bundle->block.payload, bundle->block.block_size);
+	memcpy(MMEM_PTR(&bundle->block.payload), MMEM_PTR(&entry->bundle.block.payload), bundle->block.block_size);
 
 	return entry->file_size;
 }

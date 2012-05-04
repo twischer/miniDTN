@@ -72,7 +72,7 @@ void b_cust_init(void)
 }
 
 void retransmit(){
-	//search bundle to be retranmited in cust_list
+	//search bundle to be retransmitted in cust_list
 	struct cust_t *cust;
 	uint16_t mintime=0xFFFF;
 	for(cust = list_head(cust_list); cust != NULL; cust= list_item_next(cust)){
@@ -97,6 +97,7 @@ void retransmit(){
 	
 }
 
+/* XXX FIXME: Custody not implemented yet!
 uint8_t b_cust_release(struct bundle_t *bundle)
 {
 	struct cust_t *cust;
@@ -441,6 +442,28 @@ void b_cust_del_from_list(uint16_t bundle_num)
 			}
 		}
 	}
+}
+*/
+
+uint8_t b_cust_release(struct bundle_t *bundle)
+{
+	return 0;
+}
+uint8_t b_cust_restransmit(struct bundle_t *bundle)
+{
+	return 0;
+}
+uint8_t b_cust_report(struct bundle_t *bundle, uint8_t status)
+{
+	return 0;
+}
+int32_t b_cust_decide(struct bundle_t *bundle)
+{
+	return 0;
+}
+void b_cust_del_from_list(uint16_t bundle_num)
+{
+	return;
 }
 
 const struct custody_driver b_custody ={

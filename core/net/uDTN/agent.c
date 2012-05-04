@@ -167,10 +167,6 @@ PROCESS_THREAD(agent_process, ev, data)
 			bundleptr = (struct bundle_t *) data;
 			
 			bundleptr->rec_time=(uint32_t) clock_seconds(); 
-			if (bundleptr->size >= 110){
-				PRINTF("BUNDLEPROTOCOL: bundle too big size: %u\n" , bundleptr->size);
-				continue;
-			}
 			set_attr(bundleptr,TIME_STAMP_SEQ_NR,&dtn_seq_nr);
 			PRINTF("BUNDLEPROTOCOL: seq_num = %lu\n",dtn_seq_nr);
 			dtn_seq_nr++;
@@ -179,7 +175,7 @@ PROCESS_THREAD(agent_process, ev, data)
 			statistics_bundle_generated(1);
 				
 			/* Fall through to dtn_bundle_in_storage_event if forwarding_bundle succeeded */
-			data = forwarding_bundle(bundleptr);
+			data = (void *)forwarding_bundle(bundleptr);
 
 			// make sure, that nobody overwrites our pointer
 			bundleptr = NULL;

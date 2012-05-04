@@ -52,7 +52,7 @@ void s_dis_alive(rimeaddr_t * source)
 
 }
 
-uint8_t d_dis_discover(rimeaddr_t * dest)
+uint8_t s_dis_discover(rimeaddr_t * dest)
 {
 	return 1;
 }
@@ -68,15 +68,16 @@ void s_dis_stop_pending()
 }
 
 const struct discovery_driver s_discovery ={
-	"S_DISCOVERY",
-	s_dis_init,
-	s_dis_neighbour,
-	s_dis_enable,
-	s_dis_disable,
-	s_dis_receive,
-	s_dis_alive,
-	d_dis_discover,
-	s_dis_neighbours,
-	s_dis_stop_pending,
+	.name = "S_DISCOVERY",
+	.init = s_dis_init,
+	.is_neighbour = s_dis_neighbour,
+	.enable = s_dis_enable,
+	.disable = s_dis_disable,
+	.receive = s_dis_receive,
+	.alive = s_dis_alive,
+	.dead = NULL,
+	.discover = s_dis_discover,
+	.neighbours = s_dis_neighbours,
+	.stop_pending = s_dis_stop_pending,
 };
 

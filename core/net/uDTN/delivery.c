@@ -47,19 +47,17 @@ void deliver_bundle(struct bundle_t *bundle, struct registration *n) {
 	
 
 		uint32_t len;
-		uint8_t *block = bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET];
 #if DEBUG
 		uint8_t block_count=0;
 #endif
-		if( !REDUNDANCE.check(bundle)){ //packet was not delivert befor
+		if (!REDUNDANCE.check(bundle)) { //Bundle was not delivered before
 			REDUNDANCE.set(bundle);
 			statistics_bundle_delivered(1);
 			process_post(n->application_process, submit_data_to_application_event, bundle);
-			block = bundle->mem.ptr+1;
-			if (*block & 0x08){
+			if (bundle->flags & BUNDLE_FLAG_CUST_REQ) {
 				CUSTODY.report(bundle,128);
 			}
-		}else{
+		} else {
 			delete_bundle(bundle);
 		}
 	}			
