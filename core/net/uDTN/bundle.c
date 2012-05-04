@@ -261,12 +261,13 @@ uint8_t recover_bundle(struct bundle_t *bundle, uint8_t *buffer, int size)
 	}
 	bundle->block.block_size = value;
 
-	if (bundle->block.block_size != offs-size) {
-		PRINTF("Bundle payload length doesn't match buffer size.\n");
+	if (bundle->block.block_size != size-offs) {
+		printf("Bundle payload length %i doesn't match buffer size (%i, %i).\n", bundle->block.block_size, offs, size);
 		return 0;
 	}
 
 	/* Copy the actual payload over */
+	mmem_alloc(&bundle->block.payload, bundle->block.block_size);
 	memcpy(MMEM_PTR(&bundle->block.payload), &buffer[offs], bundle->block.block_size);
 
 	return 1;
