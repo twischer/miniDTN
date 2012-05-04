@@ -151,6 +151,9 @@ endif
 %.hex: %.$(TARGET)
 	$(OBJCOPY) $^ -j .text -j .data -O ihex $@
 
+%.bin: %.$(TARGET)
+	$(OBJCOPY) $^ -j .text -j .data -O binary $@
+
 %.ihex: %.$(TARGET)
 	$(OBJCOPY) $^ -O ihex $@
 
