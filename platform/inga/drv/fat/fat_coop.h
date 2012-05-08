@@ -53,7 +53,6 @@
 #include <stdint.h>
 #include "fat.h"
 
-// #define FAT_COOPERATIVE 1
 #define FAT_COOP_BUFFER_SIZE 128
 #define FAT_COOP_QUEUE_SIZE 15
 #define FAT_COOP_SLOT_SIZE_MS 50L

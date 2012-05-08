@@ -57,6 +57,14 @@
 #include <stdint.h>
 #include "cfs/cfs.h"
 
+#ifdef FAT_CONF_COOPERATIVE
+#define FAT_COOPERATIVE FAT_CONF_COOPERATIVE
+#else
+#undef FAT_COOPERATIVE
+#endif
+
+#define FAT_COOP_QUEUE_SIZE 15
+
 #define FAT12 0
 #define FAT16 1
 #define FAT32 2

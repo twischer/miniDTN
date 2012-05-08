@@ -54,9 +54,6 @@
 #define ATTR_ARCHIVE   0x20
 #define ATTR_LONG_NAME (ATTR_READ_ONLY | ATTR_HIDDEN | ATTR_SYSTEM | ATTR_VOLUME_ID)
 
-#define FAT_COOP_QUEUE_SIZE 15
-// #define FAT_COOPERATIVE 1
-
 uint8_t sector_buffer[512];
 uint32_t sector_buffer_addr = 0;
 uint8_t sector_buffer_dirty = 0;
