@@ -95,7 +95,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 		}
 
 		for(i=0; i<FILE_SIZE; i++) {
-			buffer[i] = cnt % 0xFF;
+			buffer[i] = (cnt + i) % 0xFF;
 		}
 
 		// Open was successful, write has to be successful too since the size has been reserved
@@ -108,8 +108,6 @@ PROCESS_THREAD(hello_world_process, ev, data)
 		}
 
 		printf("\t%s written\n", b_file);
-
-		PROCESS_PAUSE();
 
 		// Determine the filename
 		sprintf(b_file,"%u.bbb", cnt);
@@ -133,7 +131,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 		cfs_close(fd);
 
 		for(i=0; i<FILE_SIZE; i++) {
-			if( buffer[i] != cnt % 0xFF ) {
+			if( buffer[i] != (cnt + i) % 0xFF ) {
 				printf("############# STORAGE: verify error\n");
 				fail();
 			}
@@ -148,6 +146,8 @@ PROCESS_THREAD(hello_world_process, ev, data)
 
 		cnt ++;
 	}
+
+	fat_umount_device();
 
 	printf("PASS\n");
 	watchdog_stop();
