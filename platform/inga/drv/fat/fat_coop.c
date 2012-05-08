@@ -632,6 +632,8 @@ int8_t ccfs_close( int fd, uint8_t *token ) {
 	entry.parameters.generic.fd = fd;
 	entry.state = STATUS_QUEUED;
 
+	queue_add_entry( &entry );
+
 	return 0;
 }
 
