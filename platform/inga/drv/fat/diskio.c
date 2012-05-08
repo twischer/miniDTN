@@ -221,17 +221,17 @@ int diskio_detect_devices() {
 	int dev_num = 0;
 	int i = 0, index = 0;
 
-//	memset( devices, 0, DISKIO_MAX_DEVICES * sizeof(struct diskio_device_info) );
-//	if( at45db_init() == 0 ) {
-//		devices[index].type = DISKIO_DEVICE_TYPE_GENERIC_FLASH;
-//		devices[index].number = dev_num;
-//		/* This Flash has 4096 Pages */
-//		devices[index].num_sectors = 4096;
-//		/* A Page is 528 Bytes long, but for easier acces we use only 512 Byte*/
-//		devices[index].sector_size = 512;
-//		devices[index].first_sector = 0;
-//		index += 1;
-//	}
+	memset( devices, 0, DISKIO_MAX_DEVICES * sizeof(struct diskio_device_info) );
+	if( at45db_init() == 0 ) {
+		devices[index].type = DISKIO_DEVICE_TYPE_GENERIC_FLASH;
+		devices[index].number = dev_num;
+		/* This Flash has 4096 Pages */
+		devices[index].num_sectors = 4096;
+		/* A Page is 528 Bytes long, but for easier acces we use only 512 Byte*/
+		devices[index].sector_size = 512;
+		devices[index].first_sector = 0;
+		index += 1;
+	}
 
 	if( microSD_init() == 0 ) {
 		devices[index].type = DISKIO_DEVICE_TYPE_SD_CARD;
