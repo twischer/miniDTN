@@ -48,6 +48,14 @@
 #include "fat_coop.h"
 #include "watchdog.h"
 
+#define DEBUG 0
+#if DEBUG
+#include <stdio.h>
+#define PRINTF(...) printf(__VA_ARGS__)
+#else
+#define PRINTF(...)
+#endif
+
 #define MS_TO_TICKS(ms) ((uint32_t)(ms * (RTIMER_SECOND / 1000.0f)))
 
 #define FAT_COOP_SLOT_SIZE_TICKS MS_TO_TICKS(FAT_COOP_SLOT_SIZE_MS)
@@ -176,15 +184,15 @@ void operation(void *data) {
 
 	switch(entry->op){
 		case COOP_CFS_OPEN:
-			{
-				int fd = entry->ret_value;
-				entry->ret_value = cfs_open( entry->parameters.open.name, entry->parameters.open.flags );
-				if( entry->ret_value == -1 ) {
-					fat_fd_pool[fd].file = NULL;
-				}
-			}			
+			PRINTF("FSP: opening file %s\n", entry->parameters.open.name);
+			int fd = entry->ret_value;
+			entry->ret_value = cfs_open( entry->parameters.open.name, entry->parameters.open.flags );
+			if( entry->ret_value == -1 ) {
+				fat_fd_pool[fd].file = NULL;
+			}
 			break;
 		case COOP_CFS_CLOSE:
+			PRINTF("FSP: closing file %d\n", entry->parameters.generic.fd);
 			cfs_close( entry->parameters.generic.fd );
 			break;
 		case COOP_CFS_WRITE:
@@ -361,15 +369,19 @@ PROCESS_THREAD(fsp, ev, data) {
 	while(1) {
 		PROCESS_WAIT_EVENT();
 
+		PRINTF("FSP: active\n");
+
 		static uint32_t start_time = 0, p_time = 0;
 		static QueueEntry *entry;
 		entry = queue_current_entry();
 		start_time = RTIMER_NOW();
 	
 		while( entry != NULL && time_left_for_step( entry, start_time ) ) {
+			PRINTF("FSP: Processing...\n");
 			watchdog_periodic();
 			perform_next_step( entry );
 			if( entry->state == STATUS_DONE ) {
+				PRINTF("FSP: Operation finished\n");
 				finish_operation( entry );
 				entry = queue_current_entry();
 			}
@@ -377,6 +389,7 @@ PROCESS_THREAD(fsp, ev, data) {
 
 		p_time = RTIMER_NOW();
 		if( queue_len == 0 ) {
+			PRINTF("FSP: queue is empty\n");
 			if( !try_internal_operation() ) {
 				break;
 			}
@@ -386,7 +399,6 @@ PROCESS_THREAD(fsp, ev, data) {
 		}
 	}
 
-	//printf("\n free stack = %u", calc_free_stack());
 	PROCESS_END();
 }
 
@@ -642,11 +654,13 @@ int8_t ccfs_write( int fd, uint8_t *buf, uint16_t length, uint8_t *token ) {
 	QueueEntry entry;
 
 	if( queue_len == FAT_COOP_QUEUE_SIZE ) {
+		PRINTF("ccfs_write: Buffer full\n");
 		return 1;
 	}
 	
 	process_start( &fsp, NULL );	
 	if( process_post( &fsp, PROCESS_EVENT_CONTINUE, NULL ) == PROCESS_ERR_FULL ) {
+		PRINTF("ccfs_write: Event Queue full\n");
 		return 3;
 	}
 
@@ -660,6 +674,7 @@ int8_t ccfs_write( int fd, uint8_t *buf, uint16_t length, uint8_t *token ) {
 	entry.parameters.generic.fd = fd;
 
 	if( !fat_buffer_available( length ) ) {
+		PRINTF("ccfs_write: Buffer full\n");
 		return 2;
 	}
 
