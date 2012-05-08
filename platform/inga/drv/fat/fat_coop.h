@@ -50,17 +50,16 @@
 #ifndef FAT_COOP_H
 #define FAT_COOP_H
 
-#define FAT_COOPERATIVE 1
+#include <stdint.h>
+#include "fat.h"
+
+// #define FAT_COOPERATIVE 1
 #define FAT_COOP_BUFFER_SIZE 128
 #define FAT_COOP_QUEUE_SIZE 15
 #define FAT_COOP_SLOT_SIZE_MS 50L
 
 #define FAT_COOP_TIME_READ_BLOCK_MS 8
 #define FAT_COOP_TIME_WRITE_BLOCK_MS 12
-
-#include <stdint.h>
-
-#include "fat.h"
 
 enum {
 	STATUS_QUEUED = 1,

@@ -172,8 +172,4 @@ uint8_t microSD_set_CRC( uint8_t enable );
 uint64_t microSD_get_card_size();
 uint32_t microSD_get_block_num();
 
-
-
-
-
 #endif /* FLASH_MICROSD_H_ */

@@ -46,46 +46,49 @@
  
 #include "fat.h"
 
-#define DEBUG
+#define DEBUG 0
+#if DEBUG
+#include <stdio.h>
+#define PRINTF(...) printf(__VA_ARGS__)
+#else
+#define PRINTF(...)
+#endif
 
 void mkfs_write_root_directory( uint8_t *buffer, struct diskio_device_info *dev, struct FAT_Info *fi ) {
 	uint32_t FirstRootDirSecNum = fi->BPB_RsvdSecCnt + (fi->BPB_NumFATs * fi->BPB_FATSz);
-//	set_fat_entry( fi, 2, EOC );
 }
 
 int mkfs_fat( struct diskio_device_info *dev ) {
 	uint8_t buffer[512];
 	struct FAT_Info fi;
 	int ret = 0;
-	#ifdef DEBUG
-		printf("\nWriting boot sector ... ");
-	#endif
+
+	PRINTF("\nWriting boot sector ... ");
+
 	memset( buffer, 0, 512 );
 	ret = mkfs_write_boot_sector( buffer, dev, &fi );
-	#ifdef DEBUG
-		if( ret != 0 ) {
-			printf("Error(%d).");
-		} else {
-			printf("done.");
-		}
-		printf("\nWriting FATs ... ");
-	#endif
+
+	if( ret != 0 ) {
+		PRINTF("Error(%d).");
+	} else {
+		PRINTF("done.");
+	}
+	PRINTF("\nWriting FATs ... ");
+
 	memset( buffer, 0, 512 );
 	mkfs_write_fats( buffer, dev, &fi );
 	memset( buffer, 0, 512 );
+
 	if( fi.type == FAT32 ) {
-		#ifdef DEBUG
-			printf("done.\nWriting FSINFO ... ");
-		#endif
+		PRINTF("done.\nWriting FSINFO ... ");
 		mkfs_write_fsinfo( buffer, dev, &fi );
 	}
-	#ifdef DEBUG
-		printf("done.\nWriting root directory ... ");
-	#endif
+	PRINTF("done.\n");
+
+	PRINTF("Writing root directory ... ");
 	mkfs_write_root_directory( buffer, dev, &fi );
-	#ifdef DEBUG
-		printf("done.");
-	#endif
+	PRINTF("done.");
+
 	return 0;
 }
 
@@ -98,15 +101,20 @@ int mkfs_fat( struct diskio_device_info *dev ) {
  */
 uint8_t SPC( uint16_t sec_size, uint16_t bytes ) {
 	uint8_t SecPerCluster = 0;
-	SecPerCluster = (uint8_t)(bytes / sec_size);
-	if( SecPerCluster == 0 )
-		return 1;
 
-	if( is_a_power_of_2( SecPerCluster ) != 0 )
-		SecPerCluster = (uint8_t) round_down_to_power_of_2( SecPerCluster );
-	
-	if( SecPerCluster > 128 || SecPerCluster * sec_size > 32 * ((uint32_t) 1024) )
+	SecPerCluster = (uint8_t)(bytes / sec_size);
+
+	if( SecPerCluster == 0 ) {
 		return 1;
+	}
+
+	if( is_a_power_of_2( SecPerCluster ) != 0 ) {
+		SecPerCluster = (uint8_t) round_down_to_power_of_2( SecPerCluster );
+	}
+	
+	if( SecPerCluster > 128 || SecPerCluster * sec_size > 32 * ((uint32_t) 1024) ) {
+		return 1;
+	}
 	
 	return SecPerCluster;
 }
@@ -124,6 +132,7 @@ uint8_t SPC( uint16_t sec_size, uint16_t bytes ) {
  */
 uint16_t mkfs_determine_fat_type_and_SPC( uint32_t total_sec_count, uint16_t bytes_per_sec ) {
 	uint64_t vol_size = (total_sec_count * bytes_per_sec) / 512;
+
 	if( vol_size < ((uint32_t) 8400) ) {
 		return (FAT16 << 8) + SPC(bytes_per_sec,512);
 	} else if( vol_size < 32680 ) {
@@ -164,8 +173,11 @@ uint32_t mkfs_compute_fat_size( struct FAT_Info *fi ) {
 	uint32_t TmpVal1 = fi->BPB_TotSec - (fi->BPB_RsvdSecCnt + RootDirSectors);
 	uint32_t TmpVal2 = (256 * fi->BPB_BytesPerSec) + fi->BPB_NumFATs;
 	uint32_t FATSz = 0;
-	if( fi->type == FAT32 )
+
+	if( fi->type == FAT32 ) {
 		TmpVal2 /= 2;
+	}
+
 	FATSz = (TmpVal1 + (TmpVal2 - 1)) / TmpVal2;
 	if( FATSz % 512 != 0 ) {
 		FATSz /= 512;
@@ -173,6 +185,7 @@ uint32_t mkfs_compute_fat_size( struct FAT_Info *fi ) {
 	} else {
 		FATSz /= 512;
 	}
+
 	return FATSz;
 }
 
@@ -181,6 +194,7 @@ int mkfs_write_boot_sector( uint8_t *buffer, struct diskio_device_info *dev, str
 	uint16_t type_SPC = mkfs_determine_fat_type_and_SPC( dev->num_sectors, dev->sector_size ); 
 	uint8_t sectors_per_cluster = (uint8_t) type_SPC;
 	uint16_t j;
+
 	fi->BPB_FATSz = 0;
 	fi->type = (uint8_t) (type_SPC >> 8);
 	
@@ -337,10 +351,13 @@ int mkfs_write_boot_sector( uint8_t *buffer, struct diskio_device_info *dev, str
 	diskio_write_block( dev, 0, buffer );
 	for(j = 0; j < 512; j++) {
 		printf("%02x", buffer[j]);
-		if( ((j+1) % 2) == 0 )
+		if( ((j+1) % 2) == 0 ) {
 			printf(" ");
-		if( ((j+1) % 32) == 0 )
+		}
+
+		if( ((j+1) % 32) == 0 ) {
 			printf("\n");
+		}
 	}
 	
 	return 0;
@@ -390,6 +407,7 @@ void mkfs_write_fats( uint8_t *buffer, struct diskio_device_info *dev, struct FA
 void mkfs_write_fsinfo( uint8_t *buffer, struct diskio_device_info *dev, struct FAT_Info *fi ) {
 	uint32_t fsi_free_count = 0;
 	uint32_t fsi_nxt_free = 0;
+
 	// FSI_LeadSig
 	buffer[0] = 0x52; buffer[1] = 0x52; buffer[2] = 0x61; buffer[3] = 0x41;
 	

@@ -50,16 +50,22 @@
 #include "../../interfaces/flash-microSD.h"
 #include "../../interfaces/flash-at45db.h"
 
+#define DEBUG 0
+#if DEBUG
+#include <stdio.h>
+#define PRINTF(...) printf(__VA_ARGS__)
+#else
+#define PRINTF(...)
+#endif
+
 static struct diskio_device_info *default_device = 0;
 static struct diskio_device_info devices[DISKIO_MAX_DEVICES];
 
-#define DISKIO_OP_WRITE_BLOCK  1
-#define DISKIO_OP_READ_BLOCK   2
-#define DISKIO_OP_WRITE_BLOCKS 3
-#define DISKIO_OP_READ_BLOCKS  4
+int diskio_rw_op( struct diskio_device_info *dev, uint32_t block_start_address, uint8_t num_blocks, uint8_t *buffer, uint8_t op );
 
 void print_device_info( struct diskio_device_info *dev ) {
-	printf("\nDiskIO Device Info\n");
+	printf("DiskIO Device Info\n");
+
 	printf("\ttype = ");
 	switch(dev->type & 0x7F) {
 		case DISKIO_DEVICE_TYPE_SD_CARD:
@@ -70,9 +76,13 @@ void print_device_info( struct diskio_device_info *dev ) {
 			break;
 		default:
 			printf("Unknown");
+			break;
 	}
-	if(dev->type & DISKIO_DEVICE_TYPE_PARTITION)
+
+	if(dev->type & DISKIO_DEVICE_TYPE_PARTITION) {
 		printf(" (Partition)");
+	}
+
 	printf("\n");
 	printf("\tnumber = %d\n", dev->number);
 	printf("\tpartition = %d\n", dev->partition);
@@ -80,8 +90,6 @@ void print_device_info( struct diskio_device_info *dev ) {
 	printf("\tsector_size = %d\n", dev->sector_size);
 	printf("\tfirst_sector = %ld\n", dev->first_sector);
 }
-
-int diskio_rw_op( struct diskio_device_info *dev, uint32_t block_start_address, uint8_t num_blocks, uint8_t *buffer, uint8_t op );
 
 int diskio_read_block( struct diskio_device_info *dev, uint32_t block_address, uint8_t *buffer ) {
 	return diskio_rw_op( dev, block_address, 1, buffer, DISKIO_OP_READ_BLOCK );
@@ -101,10 +109,12 @@ int diskio_write_blocks( struct diskio_device_info *dev, uint32_t block_start_ad
 
 int diskio_rw_op( struct diskio_device_info *dev, uint32_t block_start_address, uint8_t num_blocks, uint8_t *buffer, uint8_t op ) {
 	if( dev == NULL ) {
-		if( default_device == 0 )
+		if( default_device == 0 ) {
 			return DISKIO_ERROR_NO_DEVICE_SELECTED;
+		}
 		dev = default_device;
 	}
+
 	block_start_address += dev->first_sector;
 	switch( dev->type & DISKIO_DEVICE_TYPE_MASK ) {
 		uint8_t ret_code = 0;
@@ -112,35 +122,34 @@ int diskio_rw_op( struct diskio_device_info *dev, uint32_t block_start_address, 
 		case DISKIO_DEVICE_TYPE_SD_CARD:
 			switch( op ) {
 				case DISKIO_OP_READ_BLOCK:
-					#ifndef DISKIO_OLD_STYLE
+#ifndef DISKIO_OLD_STYLE
 					for(tries = 0; tries < 50; tries++) {
 						ret_code = microSD_read_block( block_start_address, buffer );
 						if( ret_code == 0 ) {
 							return DISKIO_SUCCESS;
 						}
 						_delay_ms(1);
+
 						if( reinit == 0 && tries == 49 ) {
 							tries = 0;
 							reinit = 1;
 							microSD_init();
 						}
 					}
-					#ifdef DEBUG
-					printf("\ndiskion_rw_op(): Unrecoverable Error!");
-					#endif
+					PRINTF("diskion_rw_op(): Unrecoverable Error!");
 					return DISKIO_ERROR_INTERNAL_ERROR;
-					#else
+#else
 					if( microSD_read_block( block_start_address, buffer ) == 0) {
 						return DISKIO_SUCCESS;
 					}
 					return DISKIO_ERROR_TRY_AGAIN;
-					#endif
+#endif
 					break;
 				case DISKIO_OP_READ_BLOCKS:
 					return DISKIO_ERROR_TO_BE_IMPLEMENTED;
 					break;
 				case DISKIO_OP_WRITE_BLOCK:
-					#ifndef DISKIO_OLD_STYLE
+#ifndef DISKIO_OLD_STYLE
 					for(tries = 0; tries < 50; tries++) {
 						ret_code = microSD_write_block( block_start_address, buffer );
 						if( ret_code == 0 ) {
@@ -153,16 +162,14 @@ int diskio_rw_op( struct diskio_device_info *dev, uint32_t block_start_address, 
 							microSD_init();
 						}
 					}
-					#ifdef DEBUG
-					printf("\ndiskion_rw_op(): Unrecoverable Error!");
-					#endif
+					PRINTF("diskion_rw_op(): Unrecoverable Error!");
 					return DISKIO_ERROR_INTERNAL_ERROR;
-					#else
+#else
 					if( microSD_write_block( block_start_address, buffer ) == 0) {
 						return DISKIO_SUCCESS;
 					}
 					return DISKIO_ERROR_TRY_AGAIN;
-					#endif
+#endif
 					break;
 				case DISKIO_OP_WRITE_BLOCKS:
 					return DISKIO_ERROR_TO_BE_IMPLEMENTED;
@@ -214,17 +221,17 @@ int diskio_detect_devices() {
 	int dev_num = 0;
 	int i = 0, index = 0;
 
-	memset( devices, 0, DISKIO_MAX_DEVICES * sizeof(struct diskio_device_info) );
-	if( at45db_init() == 0 ) {
-		devices[index].type = DISKIO_DEVICE_TYPE_GENERIC_FLASH;
-		devices[index].number = dev_num;
-		/* This Flash has 4096 Pages */
-		devices[index].num_sectors = 4096;
-		/* A Page is 528 Bytes long, but for easier acces we use only 512 Byte*/
-		devices[index].sector_size = 512;
-		devices[index].first_sector = 0;
-		index += 1;
-	}
+//	memset( devices, 0, DISKIO_MAX_DEVICES * sizeof(struct diskio_device_info) );
+//	if( at45db_init() == 0 ) {
+//		devices[index].type = DISKIO_DEVICE_TYPE_GENERIC_FLASH;
+//		devices[index].number = dev_num;
+//		/* This Flash has 4096 Pages */
+//		devices[index].num_sectors = 4096;
+//		/* A Page is 528 Bytes long, but for easier acces we use only 512 Byte*/
+//		devices[index].sector_size = 512;
+//		devices[index].first_sector = 0;
+//		index += 1;
+//	}
 
 	if( microSD_init() == 0 ) {
 		devices[index].type = DISKIO_DEVICE_TYPE_SD_CARD;
@@ -257,8 +264,9 @@ int diskio_detect_devices() {
 
 	end_of_function:
 
-	if(index == 0)
+	if(index == 0) {
 		return DISKIO_FAILURE;
+	}
 
 	return DISKIO_SUCCESS;
 }

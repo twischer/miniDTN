@@ -50,12 +50,12 @@
  *		DiskIO Layer definitions
  * \author
  * 		Original Source Code:
- * 		Christoph Peltz <peltz@ibr.cs.tu-bs.de
+ * 		Christoph Peltz <peltz@ibr.cs.tu-bs.de>
  */
 #ifndef _DISKIO_H_
 #define _DISKIO_H_
-/** Allows raw access to disks, used by the MBR-Subsystem*/
 
+/** Allows raw access to disks, used by the MBR-Subsystem */
 #define DISKIO_DEVICE_TYPE_NOT_RECOGNIZED 0
 #define DISKIO_DEVICE_TYPE_SD_CARD 1
 #define DISKIO_DEVICE_TYPE_GENERIC_FLASH 2
@@ -64,7 +64,7 @@
 /** Bigger sectors then this are not supported. May be reduced down to 512 to use less memory. */
 #define DISKIO_MAX_SECTOR_SIZE 512 
 
-//Mask used to ignore modifiers like the PARTITION flag
+/** Mask used to ignore modifiers like the PARTITION flag */
 #define DISKIO_DEVICE_TYPE_MASK 0x7f
 
 #define DISKIO_SUCCESS 0
@@ -78,6 +78,12 @@
 #define DISKIO_ERROR_FATAL 8
 
 #define DISKIO_MAX_DEVICES 5
+
+#define DISKIO_OP_WRITE_BLOCK  1
+#define DISKIO_OP_READ_BLOCK   2
+#define DISKIO_OP_WRITE_BLOCKS 3
+#define DISKIO_OP_READ_BLOCKS  4
+
 
 #include <stdint.h>
 

@@ -52,6 +52,7 @@ uint8_t mbr_buffer[512];
 
 void mbr_init( struct mbr *mbr ) {
 	int i = 0;
+
 	for( i = 0; i < 4; ++i ) {
 		// Everything else is set to 0
 		memset( (&(mbr->partition[i])), 0, 16 );		
@@ -62,9 +63,11 @@ void mbr_init( struct mbr *mbr ) {
 int mbr_read( struct diskio_device_info *from, struct mbr *to ) {
 	int ret = diskio_read_block( from, 0, mbr_buffer );
 	int i = 0;
+
 	if( ret != 0 ) {
 		return MBR_ERROR_DISKIO_ERROR;
 	}
+
 	/*test if 0x55AA is at the end, otherwise it is no MBR*/
 	if( mbr_buffer[510] == 0x55 && mbr_buffer[511] == 0xAA ) {
 		for( i = 0; i < 4; ++i ) {
@@ -72,15 +75,19 @@ int mbr_read( struct diskio_device_info *from, struct mbr *to ) {
 		}
 		return MBR_SUCCESS;
 	}
+
 	return MBR_ERROR_NO_MBR_FOUND;
 }
 
 int mbr_write( struct mbr *from, struct diskio_device_info *to ) {
 	int i = 0;
+
 	memset( mbr_buffer, 0, 512 );
+
 	for( i = 0; i < 4; ++i ) {
 		memcpy( &(mbr_buffer[446 + 16 * i]), &(from->partition[i]), 16 );
 	}
+
 	mbr_buffer[510] = 0x55;
 	mbr_buffer[511] = 0xAA;
 	return diskio_write_block( to, 0, mbr_buffer );
@@ -120,6 +127,7 @@ int mbr_addPartition(struct mbr *mbr, uint8_t part_num, uint8_t part_type, uint3
 	}	
 	mbr->partition[part_num - 1].lba_first_sector = start;
 	mbr->partition[part_num - 1].lba_num_sectors = len;
+
 	return MBR_SUCCESS;
 }
 
@@ -127,10 +135,12 @@ int mbr_delPartition(struct mbr *mbr, uint8_t part_num) {
 	if( part_num > 4 || part_num < 1 ) {
 		return MBR_ERROR_INVALID_PARTITION;
 	}
+
 	// Set Status to invalid (everything other than 0x00 and 0x80 is invalid
 	mbr->partition[part_num - 1].status = 0x01;
 	// Everything else is set to 0
 	memset( (&(mbr->partition[part_num - 1])) + 1, 0, 15 );
+
 	return MBR_SUCCESS;
 }
 
@@ -138,10 +148,14 @@ int mbr_hasPartition(struct mbr *mbr, uint8_t part_num) {
 	if( part_num > 4 || part_num < 1 ) {
 		return 0;
 	}
+
 	if( mbr->partition[part_num - 1].status != 0x00 && mbr->partition[part_num - 1].status != 0x80 ) {
 		return 0;
 	}
-	if( mbr->partition[part_num - 1].type == 0 )
+
+	if( mbr->partition[part_num - 1].type == 0 ) {
 		return 0;
+	}
+
 	return 1;
 }
