@@ -1,0 +1,1 @@
+#define FAT_CONF_COOPERATIVE 1
