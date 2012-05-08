@@ -284,6 +284,9 @@ uint8_t microSD_init(void) {
 
 	/*set SPI mode by chip select (only necessary when mspi manager is active)*/
 
+	/** FIXME: For unknown reasons we have to wait here, otherwise INGA will reset */
+	_delay_ms(2);
+
 	mspi_chip_select(MICRO_SD_CS);
 	mspi_chip_release(MICRO_SD_CS);
 
