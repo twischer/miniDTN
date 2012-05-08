@@ -196,8 +196,10 @@ void operation(void *data) {
 			cfs_close( entry->parameters.generic.fd );
 			break;
 		case COOP_CFS_WRITE:
+			/** FIXME: Ring Buffer functionality does not work, because cfs_write does not know, that the buffer may wrap arround */
 			entry->ret_value = cfs_write( entry->parameters.generic.fd, entry->parameters.generic.buffer,
 				entry->parameters.generic.length );
+			pop_from_buffer(entry->parameters.generic.length);
 			break;
 		case COOP_CFS_READ:
 			entry->ret_value = cfs_read( entry->parameters.generic.fd, entry->parameters.generic.buffer,
@@ -513,13 +515,20 @@ uint8_t queue_rm_top_entry() {
 	return 0;
 }
 
+/**
+ * This function is used to buffer the payload of write requests in a ring buffer
+ * However, the ring functionality does not work
+ */
 uint8_t push_on_buffer( uint8_t *source, uint16_t length ) {
 	uint16_t pos = (writeBuffer_start + writeBuffer_len) % FAT_COOP_BUFFER_SIZE;
 	uint16_t free = 0;
 
+	/*
+	 * FIXME: Why is this code in here?
 	if( pos == writeBuffer_start ) {
 		return 1;
 	}
+	*/
 
 	if( pos < writeBuffer_start ) {
 		free = writeBuffer_start - pos;
@@ -550,6 +559,11 @@ void pop_from_buffer( uint16_t length ) {
 
 	writeBuffer_start = (writeBuffer_start + length) % FAT_COOP_BUFFER_SIZE;
 	writeBuffer_len -= length;
+
+	if( writeBuffer_len == 0 ) {
+		// If the buffer is empty, we can set the start pointer to the beginning
+		writeBuffer_start = 0;
+	}
 }
 
 int8_t ccfs_open( const char *name, int flags, uint8_t *token ) {
@@ -679,7 +693,11 @@ int8_t ccfs_write( int fd, uint8_t *buf, uint16_t length, uint8_t *token ) {
 	}
 
 	entry.parameters.generic.buffer = &(writeBuffer[(writeBuffer_start + writeBuffer_len) % FAT_COOP_BUFFER_SIZE]);
-	push_on_buffer( buf, length );
+
+	/** FIXME: We push information in a ring buffer, which actually does not work as a ring, because the eventual cfs_write call does not know anything about rings */
+	if( push_on_buffer( buf, length ) != 0 ) {
+		return 4;
+	}
 	entry.parameters.generic.length = length;
 	entry.state = STATUS_QUEUED;
 
