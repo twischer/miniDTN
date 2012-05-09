@@ -142,7 +142,7 @@ static uint8_t inline bundle_convenience(struct bundle_t *bundle, uint16_t dest,
 	tmp=4;
 	set_attr(bundle, TIME_STAMP, &tmp);
 
-	add_block(bundle, 1, 2, data, len);
+	add_block(bundle, 1, 0, data, len);
 
 	return rc;
 }
@@ -235,7 +235,7 @@ PROCESS_THREAD(ping_process, ev, data)
 
 		/* Check receiver */
 		block = get_block(recv);
-		u32_ptr = MMEM_PTR(&block->payload);
+		u32_ptr = (uint32_t *)MMEM_PTR(&block->payload);
 
 		if (!synced) {
 			/* We're synced */
