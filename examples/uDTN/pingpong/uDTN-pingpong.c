@@ -187,7 +187,8 @@ PROCESS_THREAD(ping_process, ev, data)
 	static uint32_t diff = 0, latency = 0;
 	static uint8_t synced = 0;
 	static struct etimer timer;
-	uint8_t *u8_ptr, i;
+	struct bundle_block_t *block;
+	uint8_t i;
 	uint8_t userdata[PAYLOAD_LEN];
 	uint32_t *u32_ptr;
 
@@ -233,9 +234,8 @@ PROCESS_THREAD(ping_process, ev, data)
 		diff = get_time();
 
 		/* Check receiver */
-		u32_ptr = (uint32_t *)((uint8_t *)recv->mem.ptr + recv->offset_tab[DATA][OFFSET]+3);
-		u8_ptr = (uint8_t *)u32_ptr;
-//		printf("Packet: %02X%02X%02X%02X\n", u8_ptr[0], u8_ptr[1], u8_ptr[2], u8_ptr[3]);
+		block = get_block(recv);
+		u32_ptr = MMEM_PTR(&block->payload);
 
 		if (!synced) {
 			/* We're synced */
@@ -286,7 +286,7 @@ PROCESS_THREAD(pong_process, ev, data)
 {
 	static struct etimer timer;
 	static uint16_t bundle_sent = 0;
-	uint8_t *u8_ptr;
+	struct bundle_block_t *block;
 	uint32_t *u32_ptr, tmp;
 
 	PROCESS_BEGIN();
@@ -308,12 +308,7 @@ PROCESS_THREAD(pong_process, ev, data)
 		struct bundle_t *recv;
 		recv = (struct bundle_t *) data;
 
-		if (sdnv_decode((uint8_t *)recv->mem.ptr + recv->offset_tab[SRC_NODE][OFFSET], recv->offset_tab[SRC_NODE][STATE], &tmp) < 0) {
-			// FIXME: This fails, but tmp still contains the SRC_NODE_ID
-//			printf("Could not decode sdnv: %lu.\n", tmp);
-			//delete_bundle(recv);
-			//continue;
-		}
+		get_attr(recv, SRC_NODE, &tmp);
 
 		/* Check receiver */
 		if (tmp != CONF_DEST_NODE) {
@@ -322,14 +317,13 @@ PROCESS_THREAD(pong_process, ev, data)
 			continue;
 		}
 
-		u32_ptr = (uint32_t *)((uint8_t *)recv->mem.ptr + recv->offset_tab[DATA][OFFSET]+3);
-		u8_ptr = (uint8_t *)u32_ptr;
+		block = get_block(recv);
+		u32_ptr = MMEM_PTR(&block->payload);
 
 		/* Send PONG */
 		if (bundle_convenience(&bundle, CONF_DEST_NODE, 5, 7, (uint8_t *) u32_ptr, 4))
 			process_post(&agent_process, dtn_send_bundle_event, (void *) &bundle);
 
-//		printf("Packet: %02X%02X%02X%02X\n", u8_ptr[0], u8_ptr[1], u8_ptr[2], u8_ptr[3]);
 		delete_bundle(recv);
 
 		bundle_sent++;

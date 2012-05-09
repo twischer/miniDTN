@@ -82,27 +82,27 @@ PROCESS_THREAD(dtnping_process, ev, data)
 
 		// Reconstruct the bundle struct from the event
 		struct bundle_t * bundle;
+		struct bundle_block_t *block;
 		bundle = (struct bundle_t *) data;
 
 		// preserve the payload to send it back
 		uint8_t payload_buffer[64];
-		uint32_t payload_length;
-		uint8_t offset;
+		uint8_t payload_length;
 
-		offset = sdnv_decode(bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET], 4, &payload_length);
-		memcpy(payload_buffer, bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET] + offset, payload_length);
+		block = get_block(bundle);
+		payload_length = block->block_size;
+		if (payload_length > 64) {
+			printf("Payload too big, clamping to maximum size.\n");
+		}
+		memcpy(payload_buffer, MMEM_PTR(&block->payload), payload_length);
 
 		// Extract the source information to send a reply back
-		sdnv_decode(bundle->mem.ptr+bundle->offset_tab[SRC_NODE][OFFSET],
-				bundle->offset_tab[SRC_NODE][STATE], &source_node);
-		sdnv_decode(bundle->mem.ptr+bundle->offset_tab[SRC_SERV][OFFSET],
-				bundle->offset_tab[SRC_SERV][STATE], &source_service);
+		get_attr(bundle, SRC_NODE, &source_node);
+		get_attr(bundle, SRC_SERV, &source_service);
 
 		// Extract timestamp and lifetime from incoming bundle
-		sdnv_decode(bundle->mem.ptr+bundle->offset_tab[TIME_STAMP][OFFSET],
-				bundle->offset_tab[TIME_STAMP][STATE], &incoming_timestamp);
-		sdnv_decode(bundle->mem.ptr+bundle->offset_tab[LIFE_TIME][OFFSET],
-				bundle->offset_tab[LIFE_TIME][STATE], &incoming_lifetime);
+		get_attr(bundle, TIME_STAMP, &incoming_timestamp);
+		get_attr(bundle, LIFE_TIME, &incoming_lifetime);
 
 		// Delete the incoming bundle
 		delete_bundle(bundle);
@@ -141,8 +141,8 @@ PROCESS_THREAD(dtnping_process, ev, data)
 		set_attr(&bun, TIME_STAMP, &incoming_timestamp);
 
 		// Copy payload from incoming bundle
-		// Flag 0x08 is last_block Flag
-		add_block(&bun, 1, 0x08, payload_buffer, payload_length);
+		// Flag 0x08 is last_block Flag, this is handled by add_block
+		add_block(&bun, 1, 0, payload_buffer, payload_length);
 
 		// And submit the bundle to the agent
 		process_post(&agent_process, dtn_send_bundle_event, (void *) &bun);

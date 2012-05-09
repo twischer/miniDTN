@@ -66,12 +66,10 @@ PROCESS_THREAD(dtnping_process, ev, data)
 
 	uint32_t tmp;
 	uint32_t payload_length;
-	uint8_t offset;
 
 	uint8_t payload_buffer[DTN_PING_LENGTH];
 	uint32_t source_node;
 	uint32_t source_service;
-	uint32_t incoming_timestamp;
 	uint32_t incoming_lifetime;
 
 	PROCESS_BEGIN();
@@ -166,25 +164,22 @@ PROCESS_THREAD(dtnping_process, ev, data)
 
 		// Reconstruct the bundle struct from the event
 		struct bundle_t * bundle;
+		struct bundle_block_t *block;
 		bundle = (struct bundle_t *) data;
 
 		// Extract payload for further analysis
-		// Processing flags
-		offset = sdnv_decode(bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET] + 1, 4, &tmp) + 1;
+		block = get_block(bundle);
 
 		// Payload Length
-		offset += sdnv_decode(bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET] + offset, 4, &payload_length);
-		memcpy(payload_buffer, bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET] + offset, payload_length);
+		payload_length = block->block_size;
+		memcpy(payload_buffer, MMEM_PTR(&block->payload), payload_length);
 
 		// Extract source information
-		sdnv_decode(bundle->mem.ptr+bundle->offset_tab[SRC_NODE][OFFSET],
-				bundle->offset_tab[SRC_NODE][STATE], &source_node);
-		sdnv_decode(bundle->mem.ptr+bundle->offset_tab[SRC_SERV][OFFSET],
-				bundle->offset_tab[SRC_SERV][STATE], &source_service);
+		get_attr(bundle, SRC_NODE, &source_node);
+		get_attr(bundle, SRC_SERV, &source_service);
 
 		// Extract lifetime information
-		sdnv_decode(bundle->mem.ptr+bundle->offset_tab[LIFE_TIME][OFFSET],
-				bundle->offset_tab[LIFE_TIME][STATE], &incoming_lifetime);
+		get_attr(bundle, LIFE_TIME, &incoming_lifetime);
 
 		// Delete the incoming bundle
 		delete_bundle(bundle);
@@ -201,7 +196,7 @@ PROCESS_THREAD(dtnping_process, ev, data)
 		}
 
 		// 64 bytes from ipn:2.11: seq=1 ttl=30 time=22.41 ms
-		printf("%lu bytes from ipn:%lu.%lu: seq=%lu ttl=%lu time=%d ms\n",
+		printf("%lu bytes from ipn:%lu.%lu: seq=%lu ttl=%lu time=%lu ms\n",
 				payload_length,
 				source_node,
 				source_service,
