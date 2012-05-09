@@ -30,6 +30,7 @@ uint8_t create_bundle(struct bundle_t *bundle)
 uint8_t add_block(struct bundle_t *bundle, uint8_t type, uint8_t flags, uint8_t *data, uint8_t d_len)
 {
 	bundle->block.type = type;
+	bundle->block.flags = BUNDLE_BLOCK_FLAG_LAST;
 	bundle->block.block_size = d_len;
 
 	if (!mmem_alloc(&bundle->block.payload, d_len)) {
@@ -255,7 +256,7 @@ uint8_t recover_bundle(struct bundle_t *bundle, uint8_t *buffer, int size)
 
 	/* Payload Size */
 	offs += sdnv_decode(&buffer[offs], size-offs, &value);
-	if (value > 255) {
+	if (value > 127) {
 		PRINTF("Bundle payload length too big.\n");
 		return 0;
 	}

@@ -69,6 +69,14 @@
 #define BUNDLE_FLAG_REP_DELETE	0x40000
 /* Bit 19 and 20 reserved */
 
+#define BUNDLE_BLOCK_FLAG_REPL	0x01
+#define BUNDLE_BLOCK_FLAG_STAT	0x02
+#define BUNDLE_BLOCK_FLAG_DEL	0x04
+#define BUNDLE_BLOCK_FLAG_LAST	0x08
+#define BUNDLE_BLOCK_FLAG_DISC	0x10
+#define BUNDLE_BLOCK_FLAG_NOTPR	0x20
+#define BUNDLE_BLOCK_FLAG_EID	0x40
+
 //payload block defines
 #define DATA 17
 
