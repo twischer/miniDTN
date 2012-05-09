@@ -130,11 +130,8 @@ PROCESS_THREAD(hello_world_process, ev, data)
 
 		leds_toggle(1);
 
-		sdnv_decode(bundle->mem.ptr+bundle->offset_tab[TIME_STAMP_SEQ_NR][OFFSET],
-				bundle->offset_tab[TIME_STAMP_SEQ_NR][STATE], &seqno);
-		sdnv_decode(bundle->mem.ptr+bundle->offset_tab[SRC_NODE][OFFSET],
-				bundle->offset_tab[SRC_NODE][STATE], &tmp);
-
+		get_attr(bundle, TIME_STAMP_SEQ_NR, &seqno);
+		get_attr(bundle, SRC_NODE, &tmp);
 		delete_bundle(bundle);
 
 		bundles_recv++;

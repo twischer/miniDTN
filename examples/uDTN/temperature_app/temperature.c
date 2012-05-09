@@ -128,7 +128,7 @@ void send_bundle(uint8_t * payload, uint8_t length)
 	set_attr(&bundle_out, TIME_STAMP, &tmp);
 
 	// Add the payload block
-	add_block(&bundle_out, 1, 0x08, payload, length);
+	add_block(&bundle_out, 1, 0, payload, length);
 
 	// Submit the bundle to the agent
 	process_post(&agent_process, dtn_send_bundle_event, (void *) &bundle_out);
@@ -294,18 +294,18 @@ PROCESS_THREAD(temperature_process, ev, data)
 		if( ev == submit_data_to_application_event ) {
 			// Bundle has arrived
 			struct bundle_t * bundle = (struct bundle_t *) data;
+			struct bundle_block_t *block;
 
-			uint32_t payload_length;
 			uint8_t payload_buffer[80];
 
-			sdnv_decode(bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET] + 2, 4, &payload_length);
-			memcpy(payload_buffer, bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET] + 3, payload_length);
+			block = get_block(bundle);
+			memcpy(payload_buffer, MMEM_PTR(&block->payload), block->block_size);
 
 			delete_bundle(bundle);
 
-			printf("APP: Payload (%lu): ", payload_length);
+			printf("APP: Payload (%u): ", block->block_size);
 			int i;
-			for(i=0; i<payload_length; i++) {
+			for(i=0; i<block->block_size; i++) {
 				printf("%02X ", payload_buffer[i]);
 			}
 			printf("\n");
@@ -357,26 +357,31 @@ PROCESS_THREAD(dtnping_process, ev, data)
 
 		// Reconstruct the bundle struct from the event
 		struct bundle_t * bundle_in = (struct bundle_t *) data;
+		struct bundle_block_t *block_in;
 
 		// preserve the payload to send it back
 		uint8_t payload_buffer[64];
-		uint32_t payload_length;
+		uint8_t payload_length;
 		uint8_t offset;
 
-		offset = sdnv_decode(bundle_in->mem.ptr + bundle_in->offset_tab[DATA][OFFSET], 4, &payload_length);
-		memcpy(payload_buffer, bundle_in->mem.ptr + bundle_in->offset_tab[DATA][OFFSET] + offset, payload_length);
+		block_in = get_block(bundle_in);
+		payload_length = block_in->block_size;
+
+		// Safeguard agains buffer overflow
+		if (payload_length > 64) {
+			printf("Error, buffer too small! Clamping payload\n");
+			payload_length = 64;
+		}
+
+		memcpy(payload_buffer, MMEM_PTR(&block_in->payload), payload_length);
 
 		// Extract the source information to send a reply back
-		sdnv_decode(bundle_in->mem.ptr+bundle_in->offset_tab[SRC_NODE][OFFSET],
-				bundle_in->offset_tab[SRC_NODE][STATE], &source_node);
-		sdnv_decode(bundle_in->mem.ptr+bundle_in->offset_tab[SRC_SERV][OFFSET],
-				bundle_in->offset_tab[SRC_SERV][STATE], &source_service);
+		get_attr(bundle_in, SRC_NODE, &source_node);
+		get_attr(bundle_in, SRC_SERV, &source_service);
 
 		// Extract timestamp and lifetime from incoming bundle
-		sdnv_decode(bundle_in->mem.ptr+bundle_in->offset_tab[TIME_STAMP][OFFSET],
-				bundle_in->offset_tab[TIME_STAMP][STATE], &incoming_timestamp);
-		sdnv_decode(bundle_in->mem.ptr+bundle_in->offset_tab[LIFE_TIME][OFFSET],
-				bundle_in->offset_tab[LIFE_TIME][STATE], &incoming_lifetime);
+		get_attr(bundle_in, TIME_STAMP, &incoming_timestamp);
+		get_attr(bundle_in, LIFE_TIME, &incoming_lifetime);
 
 		// Delete the incoming bundle
 		delete_bundle(bundle_in);
@@ -417,8 +422,8 @@ PROCESS_THREAD(dtnping_process, ev, data)
 		set_attr(&bundle_out, TIME_STAMP, &incoming_timestamp);
 
 		// Copy payload from incoming bundle
-		// Flag 0x08 is last_block Flag
-		add_block(&bundle_out, 1, 0x08, payload_buffer, payload_length);
+		// Flag 0x08 is last_block Flag, add_block takes care of this
+		add_block(&bundle_out, 1, 0, payload_buffer, payload_length);
 
 		// And submit the bundle to the agent
 		process_post(&agent_process, dtn_send_bundle_event, (void *) &bundle_out);
