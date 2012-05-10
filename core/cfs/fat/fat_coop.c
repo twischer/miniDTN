@@ -367,13 +367,12 @@ uint8_t push_on_buffer( uint8_t *source, uint16_t length ) {
 	uint16_t pos = (writeBuffer_start + writeBuffer_len) % FAT_COOP_BUFFER_SIZE;
 	uint16_t free = 0;
 
-	/*
-	 * FIXME: Why is this code in here?
-	if( pos == writeBuffer_start ) {
+    // Test if writeBuffer is full
+    if( pos == writeBuffer_start - 1 ) {
 		return 1;
 	}
-	*/
 
+    // Calculate free space in Buffer
 	if( pos < writeBuffer_start ) {
 		free = writeBuffer_start - pos;
 	} else {
@@ -385,7 +384,7 @@ uint8_t push_on_buffer( uint8_t *source, uint16_t length ) {
 	}
 
 	if( pos + length > FAT_COOP_BUFFER_SIZE ) {
-		memcpy( &(writeBuffer[pos]), source, FAT_COOP_BUFFER_SIZE - pos );
+        memcpy( &(writeBuffer[pos]), source, FAT_COOP_BUFFER_SIZE - pos );
 		memcpy( &(writeBuffer[0]), source, length - (FAT_COOP_BUFFER_SIZE - pos) );
 	} else {
 		memcpy( &(writeBuffer[pos]), source, length );
@@ -408,6 +407,12 @@ void pop_from_buffer( uint16_t length ) {
 		// If the buffer is empty, we can set the start pointer to the beginning
 		writeBuffer_start = 0;
 	}
+}
+
+uint8_t get_item_from_buffer( uint8_t *start, uint16_t index ) {
+    // Calculate the start_index from the start-Buffer Offset from the writeBuffer
+    uint16_t start_index = (uint16_t)(start - writeBuffer);
+    return writeBuffer[(start_index + index) % FAT_COOP_BUFFER_SIZE];
 }
 
 int8_t ccfs_open( const char *name, int flags, uint8_t *token ) {
