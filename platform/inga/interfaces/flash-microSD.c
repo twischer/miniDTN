@@ -546,7 +546,7 @@ uint8_t microSD_write_block(uint32_t addr, uint8_t *buffer) {
 	 * SDHC and SDXC card use block-addressing with a block size of
 	 * 512 Bytes.
 	 */
-	if( microSD_sdsc_card ) 
+	if( microSD_sdsc_card ) {
 		addr = addr << 9;
 	}
 
