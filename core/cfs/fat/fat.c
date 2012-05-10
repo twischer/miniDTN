@@ -1035,11 +1035,12 @@ int cfs_write(int fd, const void *buf, unsigned int len) {
 
     while( fat_write_file( fd, clusters, clus_offset ) == 0 ) {
         for( i = offset; i < mounted.info.BPB_BytesPerSec && j < len; i++,j++,fat_fd_pool[fd].offset++ ) {
-            #ifndef FAT_COOPERATIVE
-                sector_buffer[i] = buffer[j];
-            #else
-                sector_buffer[i] = get_item_from_buffer(buffer, j);
-            #endif
+#ifdef FAT_COOPERATIVE
+            sector_buffer[i] = get_item_from_buffer(buffer, j);
+#else
+            sector_buffer[i] = buffer[j];
+#endif
+
             if( fat_fd_pool[fd].offset == fat_file_pool[fd].dir_entry.DIR_FileSize ) {
                 fat_file_pool[fd].dir_entry.DIR_FileSize++;
             }
