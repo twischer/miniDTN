@@ -140,6 +140,7 @@ uint16_t fat_estimate_by_parameter( Operation type, uint16_t length );
 uint8_t fat_buffer_available( uint16_t length );
 void printQueueEntry( QueueEntry *entry );
 process_event_t get_coop_event_id();
+uint8_t get_item_from_buffer( uint8_t *start, uint16_t index);
 
 void operation(void *data);
 
