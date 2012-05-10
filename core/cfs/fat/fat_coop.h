@@ -60,6 +60,9 @@
 #define FAT_COOP_TIME_READ_BLOCK_MS 8
 #define FAT_COOP_TIME_WRITE_BLOCK_MS 12
 
+#define FAT_COOP_STACK_SIZE 192
+
+
 enum {
 	STATUS_QUEUED = 1,
 	STATUS_INPROGRESS,
@@ -137,5 +140,7 @@ uint16_t fat_estimate_by_parameter( Operation type, uint16_t length );
 uint8_t fat_buffer_available( uint16_t length );
 void printQueueEntry( QueueEntry *entry );
 process_event_t get_coop_event_id();
+
+void operation(void *data);
 
 #endif

@@ -47,8 +47,7 @@
 #include "diskio.h"
 #include "mbr.h"
 #include <string.h>
-#include "../../interfaces/flash-microSD.h"
-#include "../../interfaces/flash-at45db.h"
+#include "cfs-fat-arch.h"
 
 #define DEBUG 0
 #if DEBUG
@@ -119,12 +118,14 @@ int diskio_rw_op( struct diskio_device_info *dev, uint32_t block_start_address, 
 	switch( dev->type & DISKIO_DEVICE_TYPE_MASK ) {
 		uint8_t ret_code = 0;
 		uint8_t tries = 0, reinit = 0;
+
+#ifdef SD_INIT
 		case DISKIO_DEVICE_TYPE_SD_CARD:
 			switch( op ) {
 				case DISKIO_OP_READ_BLOCK:
 #ifndef DISKIO_OLD_STYLE
 					for(tries = 0; tries < 50; tries++) {
-						ret_code = microSD_read_block( block_start_address, buffer );
+						ret_code = SD_READ_BLOCK(block_start_address, buffer);
 						if( ret_code == 0 ) {
 							return DISKIO_SUCCESS;
 						}
@@ -139,7 +140,7 @@ int diskio_rw_op( struct diskio_device_info *dev, uint32_t block_start_address, 
 					PRINTF("diskion_rw_op(): Unrecoverable Error!");
 					return DISKIO_ERROR_INTERNAL_ERROR;
 #else
-					if( microSD_read_block( block_start_address, buffer ) == 0) {
+					if( SD_READ_BLOCK( block_start_address, buffer ) == 0) {
 						return DISKIO_SUCCESS;
 					}
 					return DISKIO_ERROR_TRY_AGAIN;
@@ -151,7 +152,7 @@ int diskio_rw_op( struct diskio_device_info *dev, uint32_t block_start_address, 
 				case DISKIO_OP_WRITE_BLOCK:
 #ifndef DISKIO_OLD_STYLE
 					for(tries = 0; tries < 50; tries++) {
-						ret_code = microSD_write_block( block_start_address, buffer );
+						ret_code = SD_WRITE_BLOCK( block_start_address, buffer );
 						if( ret_code == 0 ) {
 							return DISKIO_SUCCESS;
 						}
@@ -165,7 +166,7 @@ int diskio_rw_op( struct diskio_device_info *dev, uint32_t block_start_address, 
 					PRINTF("diskion_rw_op(): Unrecoverable Error!");
 					return DISKIO_ERROR_INTERNAL_ERROR;
 #else
-					if( microSD_write_block( block_start_address, buffer ) == 0) {
+					if( SD_WRITE_BLOCK( block_start_address, buffer ) == 0) {
 						return DISKIO_SUCCESS;
 					}
 					return DISKIO_ERROR_TRY_AGAIN;
@@ -179,18 +180,20 @@ int diskio_rw_op( struct diskio_device_info *dev, uint32_t block_start_address, 
 					break;
 			}
 			break;
+#endif
+
+#ifdef FLASH_INIT
 		case DISKIO_DEVICE_TYPE_GENERIC_FLASH:
 			switch( op ) {
 				case DISKIO_OP_READ_BLOCK:
-					at45db_read_page_bypassed( block_start_address, 0, buffer, 512 );
+					FLASH_READ_BLOCK( block_start_address, 0, buffer, 512 );
 					return DISKIO_SUCCESS;
 					break;
 				case DISKIO_OP_READ_BLOCKS:
 					return DISKIO_ERROR_TO_BE_IMPLEMENTED;
 					break;
 				case DISKIO_OP_WRITE_BLOCK:
-					at45db_write_buffer( 0, buffer, 512 );
-					at45db_buffer_to_page( block_start_address );
+					FLASH_WRITE_BLOCK( block_start_address, 0, buffer, 512 );
 					return DISKIO_SUCCESS;
 					break;
 				case DISKIO_OP_WRITE_BLOCKS:
@@ -201,6 +204,8 @@ int diskio_rw_op( struct diskio_device_info *dev, uint32_t block_start_address, 
 					break;
 			}			
 			break;
+#endif
+
 		case DISKIO_DEVICE_TYPE_NOT_RECOGNIZED:
 		default:
 			return DISKIO_ERROR_DEVICE_TYPE_NOT_RECOGNIZED;
@@ -222,7 +227,9 @@ int diskio_detect_devices() {
 	int i = 0, index = 0;
 
 	memset( devices, 0, DISKIO_MAX_DEVICES * sizeof(struct diskio_device_info) );
-	if( at45db_init() == 0 ) {
+
+#ifdef FLASH_INIT
+	if( FLASH_INIT() == 0 ) {
 		devices[index].type = DISKIO_DEVICE_TYPE_GENERIC_FLASH;
 		devices[index].number = dev_num;
 		/* This Flash has 4096 Pages */
@@ -232,8 +239,10 @@ int diskio_detect_devices() {
 		devices[index].first_sector = 0;
 		index += 1;
 	}
+#endif
 
-	if( microSD_init() == 0 ) {
+#ifdef SD_INIT
+	if( SD_INIT() == 0 ) {
 		devices[index].type = DISKIO_DEVICE_TYPE_SD_CARD;
 		devices[index].number = dev_num;
 		devices[index].num_sectors = microSD_get_block_num();
@@ -261,6 +270,7 @@ int diskio_detect_devices() {
 		dev_num += 1;
 		index += 1;
 	}
+#endif
 
 	end_of_function:
 
