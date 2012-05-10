@@ -48,8 +48,6 @@
 #include <string.h>
 #include <stdio.h>
 
-uint8_t mbr_buffer[512];
-
 void mbr_init( struct mbr *mbr ) {
 	int i = 0;
 
@@ -61,6 +59,8 @@ void mbr_init( struct mbr *mbr ) {
 }
 
 int mbr_read( struct diskio_device_info *from, struct mbr *to ) {
+	uint8_t mbr_buffer[512];
+
 	int ret = diskio_read_block( from, 0, mbr_buffer );
 	int i = 0;
 
@@ -81,6 +81,7 @@ int mbr_read( struct diskio_device_info *from, struct mbr *to ) {
 
 int mbr_write( struct mbr *from, struct diskio_device_info *to ) {
 	int i = 0;
+	uint8_t mbr_buffer[512];
 
 	memset( mbr_buffer, 0, 512 );
 
@@ -90,6 +91,7 @@ int mbr_write( struct mbr *from, struct diskio_device_info *to ) {
 
 	mbr_buffer[510] = 0x55;
 	mbr_buffer[511] = 0xAA;
+
 	return diskio_write_block( to, 0, mbr_buffer );
 }
 
