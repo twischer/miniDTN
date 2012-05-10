@@ -80,14 +80,11 @@ uint8_t microSD_sdsc_card = 1;
  */
 uint8_t microSD_crc_enable = 0;
 
-uint16_t microSD_get_status();
-
-
-uint64_t microSD_get_card_size() {
+uint64_t microSD_get_card_size(void) {
 	return ((uint64_t) microSD_card_block_count) * microSD_block_size;
 }
 
-uint32_t microSD_get_block_num() {
+uint32_t microSD_get_block_num(void) {
 	return (microSD_card_block_count / microSD_block_size) * microSD_get_block_size();
 }
 
@@ -97,11 +94,11 @@ uint32_t microSD_get_block_num() {
  * Currently it's fixed at 512 Bytes.
  * \return Number of Bytes in one Block.
  */
-uint16_t microSD_get_block_size() {
+uint16_t microSD_get_block_size(void) {
 	return 512;
 }
 
-uint8_t microSD_is_SDSC() {
+uint8_t microSD_is_SDSC(void) {
 	return microSD_sdsc_card;
 }
 
@@ -394,24 +391,28 @@ uint8_t microSD_init(void) {
 		PRINTF("\nmicroSD_init():\tWriting cmd55");
 
 		resp[0] = 0x01;
-		i = 0;
-		ACMD41:
-		while( microSD_write_cmd( cmd55, NULL ) != 0x01 ) {
-			i++;
-			if (i > 500) {
-				PRINTF("\nmicroSD_init(): acmd41 timeout reached, last return value was %u", ret);
-
-				mspi_chip_release(MICRO_SD_CS);
-				microSD_deinit();
-				return 6;
+		uint16_t j=0;
+		do{
+			j++;
+			i = 0;
+			while( microSD_write_cmd( cmd55, NULL ) != 0x01 ) {
+				i++;
+				if (i > 500) {
+					
+					PRINTF("\nmicroSD_init(): acmd41 timeout reached, last return value was %u", ret);
+					
+					mspi_chip_release(MICRO_SD_CS);
+					microSD_deinit();
+					return 6;
+				}
 			}
-		}
-
-		PRINTF("\nmicroSD_init():\tWriting cmd41");
-
-		if( microSD_write_cmd( cmd41, NULL ) != 0 ) {
-			goto ACMD41;
-		}
+			
+			PRINTF("\nmicroSD_init():\tWriting cmd41");
+			
+			if(j>12000){
+				return 8;
+			}
+		}while( (microSD_write_cmd( cmd41, NULL ) != 0)  );
 		resp[0] = 0x03;
 		i = 0;
 
@@ -491,16 +492,18 @@ uint8_t microSD_read_block(uint32_t addr, uint8_t *buffer) {
 	}
 
 	/*wait for the 0xFE start byte*/
+    uint8_t success=0;
 	for(i = 0; i < 100; i++) {
 		if((ret = mspi_transceive(MSPI_DUMMY_BYTE)) == 0xFE ) {
-			goto read;
+			success=1;
+			break;
 		}
 	}
+	if(success == 0){
+		PRINTF("\nmicroSD_read_block(): No Start Byte recieved, last was %d", ret);
+		return 2;
+    }
 
-	PRINTF("\nmicroSD_read_block(): No Start Byte recieved, last was %d", ret);
-	return 2;
-
-	read:
 	for (i = 0; i < 512; i++) {
 		buffer[i] = mspi_transceive(MSPI_DUMMY_BYTE);
 	}
@@ -520,7 +523,7 @@ uint8_t microSD_deinit(void) {
 	return 0;
 }
 
-uint16_t microSD_get_status() {
+uint16_t microSD_get_status(void) {
 	uint8_t cmd[6] = { 0x4D, 0x00, 0x00, 0x00, 0x00, 0xFF };
 	uint8_t resp[5]  = { 0x02, 0x00, 0x00, 0x00, 0x00 };
 
@@ -543,7 +546,7 @@ uint8_t microSD_write_block(uint32_t addr, uint8_t *buffer) {
 	 * SDHC and SDXC card use block-addressing with a block size of
 	 * 512 Bytes.
 	 */
-	if( microSD_sdsc_card ) {
+	if( microSD_sdsc_card ) 
 		addr = addr << 9;
 	}
 
@@ -584,8 +587,10 @@ uint8_t microSD_write_block(uint32_t addr, uint8_t *buffer) {
 	}
 
 	/*wait while microSD card is busy*/
-	while (mspi_transceive(MSPI_DUMMY_BYTE) != 0xff) ;
-
+	i=0;
+	while ((mspi_transceive(MSPI_DUMMY_BYTE) != 0xff)&& (i<100)) {
+		i++;
+	}
 	/*release chip select and disable microSD spi*/
 	mspi_chip_release(MICRO_SD_CS);
 
