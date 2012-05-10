@@ -583,7 +583,7 @@ uint8_t microSD_write_block(uint32_t addr, uint8_t *buffer) {
 	/*failure check: Data Response XXX00101 = OK*/
 	if (((i = mspi_transceive(MSPI_DUMMY_BYTE)) & 0x1F) != 0x05) {
 		mspi_chip_release(MICRO_SD_CS);
-		return -2;
+		return 2;
 	}
 
 	/*wait while microSD card is busy*/
