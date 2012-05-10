@@ -4,9 +4,8 @@
 #include "dev/watchdog.h"
 #include "clock.h"
 
-#include "interfaces/flash-microSD.h"           //tested
-#include "drv/fat/diskio.h"           //tested
-#include "drv/fat/fat.h"           //tested
+#include "fat/diskio.h"           //tested
+#include "fat/fat.h"           //tested
 
 #define FILE_SIZE 128
 #define LOOPS 1024

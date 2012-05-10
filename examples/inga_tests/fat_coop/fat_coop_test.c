@@ -15,9 +15,8 @@
 #include "node-id.h"
 #include "leds.h"
 
-#include "interfaces/flash-microSD.h"           //tested
-#include "drv/fat/diskio.h"           //tested
-#include "drv/fat/fat_coop.h"           //tested
+#include "fat/diskio.h"           //tested
+#include "fat/fat_coop.h"           //tested
 #include "dev/watchdog.h"
 #include "clock.h"
 
