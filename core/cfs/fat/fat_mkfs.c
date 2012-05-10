@@ -54,8 +54,20 @@
 #define PRINTF(...)
 #endif
 
+
+void mkfs_write_root_directory( uint8_t *buffer, struct diskio_device_info *dev, struct FAT_Info *fi );
+int mkfs_fat( struct diskio_device_info *dev );
+uint8_t SPC( uint16_t sec_size, uint16_t bytes );
+uint16_t mkfs_determine_fat_type_and_SPC( uint32_t total_sec_count, uint16_t bytes_per_sec );
+uint32_t mkfs_compute_fat_size( struct FAT_Info *fi );
+int mkfs_write_boot_sector( uint8_t *buffer, struct diskio_device_info *dev, struct FAT_Info *fi );
+void mkfs_write_fats( uint8_t *buffer, struct diskio_device_info *dev, struct FAT_Info *fi );
+void mkfs_write_fsinfo( uint8_t *buffer, struct diskio_device_info *dev, struct FAT_Info *fi );
+
+
+
 void mkfs_write_root_directory( uint8_t *buffer, struct diskio_device_info *dev, struct FAT_Info *fi ) {
-	uint32_t FirstRootDirSecNum = fi->BPB_RsvdSecCnt + (fi->BPB_NumFATs * fi->BPB_FATSz);
+	// uint32_t FirstRootDirSecNum = fi->BPB_RsvdSecCnt + (fi->BPB_NumFATs * fi->BPB_FATSz);
 }
 
 int mkfs_fat( struct diskio_device_info *dev ) {
@@ -372,7 +384,7 @@ int mkfs_write_boot_sector( uint8_t *buffer, struct diskio_device_info *dev, str
 void mkfs_write_fats( uint8_t *buffer, struct diskio_device_info *dev, struct FAT_Info *fi ) {
 	uint32_t *fat32_buf = (uint32_t *) buffer;
 	uint16_t *fat16_buf = (uint16_t *) buffer;
-	uint32_t i = 0, j = 0;
+	uint32_t j = 0;
 	
 	if( fi->type == FAT32 ) {
 		// BPB_Media Copy
