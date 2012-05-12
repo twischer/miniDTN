@@ -100,7 +100,7 @@ uint8_t fat_read_block( uint32_t sector_addr );
 uint8_t is_a_power_of_2( uint32_t value );
 void calc_fat_block( uint32_t cur_block, uint32_t *fat_sec_num, uint32_t *ent_offset );
 uint32_t get_free_cluster(uint32_t start_cluster);
-uint32_t read_fat_entry( uint32_t sec_addr );
+uint32_t read_fat_entry(uint32_t cluster_num );
 uint32_t find_file_cluster( const char *path );
 void pr_reset( struct PathResolver *rsolv );
 uint8_t pr_get_next_path_part( struct PathResolver *rsolv );
@@ -192,7 +192,7 @@ uint32_t find_nth_cluster( uint32_t start_cluster, uint32_t n ) {
             i = 0;
 
     for( i = 0; i < n; i++ ) {
-        cluster = read_fat_entry_cluster( cluster );
+        cluster = read_fat_entry( cluster );
     }
 
     return cluster;
@@ -238,19 +238,16 @@ void add_cluster_to_file( int fd ) {
     uint32_t cluster = fat_file_pool[fd].cluster;
     uint32_t n = cluster;
 
-    //printf("\nadd_cluster_to_file()");
     if( fat_file_pool[fd].cluster == 0 ) {
         _add_cluster_to_empty_file( fd, free );
         return;
     }
 
     while( !is_EOC( n ) ) {
-        //printf("\nadd_cluster_to_file() : n = %lu", n );
         cluster = n;
-        n = read_fat_entry_cluster( cluster );
+        n = read_fat_entry( cluster );
     }
 
-    //printf("\nadd_cluster_to_file() : cluster = %lu, free = %lu, n = %lx", cluster, free, n );
     write_fat_entry( cluster, free );
     write_fat_entry( free, EOC );
 }
@@ -308,33 +305,32 @@ void make_readable_entry( struct dir_entry *dir, struct cfs_dirent *dirent ) {
 
 /*FAT entry functions*/
 
-uint32_t read_fat_entry_cluster( uint32_t cluster ) {
-    return read_fat_entry( CLUSTER_TO_SECTOR( cluster ) );
-}
-
-uint32_t read_fat_entry( uint32_t sec_addr ) {
+uint32_t read_fat_entry( uint32_t cluster_num ) {
     uint32_t fat_sec_num = 0,
-            ent_offset = 0,
-            ret = 0;
+            ent_offset = 0;
 
-    calc_fat_block( sec_addr, &fat_sec_num, &ent_offset );
+    calc_fat_block( cluster_num, &fat_sec_num, &ent_offset );
     fat_read_block( fat_sec_num );
 
     if( mounted.info.type == FAT16 ) {
-        ret = (((uint16_t) sector_buffer[ent_offset+1]) << 8) + ((uint16_t) sector_buffer[ent_offset]);
+        return (uint32_t) (((uint16_t) sector_buffer[ent_offset+1]) << 8) + ((uint16_t) sector_buffer[ent_offset]);
     } else if( mounted.info.type == FAT32 ) {
-        ret = (((uint32_t) sector_buffer[ent_offset+3]) << 24) + (((uint32_t) sector_buffer[ent_offset+2]) << 16) + (((uint32_t) sector_buffer[ent_offset+1]) << 8) + ((uint32_t) sector_buffer[ent_offset+0]);
-        ret &= 0x0FFFFFFF;
+        /* First read a uint32_t out of the sector_buffer (first 4 lines) and then mask the highest order bit (5th line)*/
+        return (((((uint32_t) sector_buffer[ent_offset+3]) << 24) +
+                 (((uint32_t) sector_buffer[ent_offset+2]) << 16) +
+                 (((uint32_t) sector_buffer[ent_offset+1]) << 8) +
+                 ((uint32_t) sector_buffer[ent_offset+0]))
+                 & 0x0FFFFFFF);
     }
 
-    return ret;
+    return EOC;
 }
 
 void write_fat_entry( uint32_t cluster_num, uint32_t value ) {
     uint32_t fat_sec_num = 0,
             ent_offset = 0;
 
-    calc_fat_block( CLUSTER_TO_SECTOR(cluster_num), &fat_sec_num, &ent_offset );
+    calc_fat_block( cluster_num, &fat_sec_num, &ent_offset );
     fat_read_block( fat_sec_num );
 
     if( mounted.info.type == FAT16 ) {
@@ -350,10 +346,9 @@ void write_fat_entry( uint32_t cluster_num, uint32_t value ) {
     sector_buffer_dirty = 1;
 }
 
-void calc_fat_block( uint32_t cur_sec, uint32_t *fat_sec_num, uint32_t *ent_offset ) {
-    uint32_t N = SECTOR_TO_CLUSTER( cur_sec );
+void calc_fat_block( uint32_t cur_cluster, uint32_t *fat_sec_num, uint32_t *ent_offset ) {
+    uint32_t N = cur_cluster;
 
-    //printf("\ncalc_fat_block() : N = %lu", N);
     if( mounted.info.type == FAT16 ) {
         *ent_offset = N * 2;
     } else if( mounted.info.type == FAT32 ) {
@@ -362,8 +357,6 @@ void calc_fat_block( uint32_t cur_sec, uint32_t *fat_sec_num, uint32_t *ent_offs
 
     *fat_sec_num = mounted.info.BPB_RsvdSecCnt + (*ent_offset / mounted.info.BPB_BytesPerSec);
     *ent_offset = *ent_offset % mounted.info.BPB_BytesPerSec;
-    //printf("\ncalc_fat_block(): fat_sec_num = %lu", *fat_sec_num);
-    //printf("\ncalc_fat_block(): ent_offset = %lu", *ent_offset);
 }
 
 /*Path Resolver Functions*/
@@ -452,18 +445,16 @@ uint8_t pr_is_current_path_part_a_file( struct PathResolver *rsolv ) {
  */
 void fat_flush() {
     if( sector_buffer_dirty ) {
-        ////printf("\nfat_flush() : Sector is dirty, writing back to addr = %lu", sector_buffer_addr);
-#ifdef FAT_COOPERATIVE
+        #ifdef FAT_COOPERATIVE
             if( !coop_step_allowed ) {
                 next_step_type = WRITE;
                 coop_switch_sp();
             } else {
                 coop_step_allowed = 0;
             }
-#endif
+        #endif
 
         if( diskio_write_block( mounted.dev, sector_buffer_addr, sector_buffer ) != DISKIO_SUCCESS ) {
-            ////printf("\nfat_flush() : Error writing sector %lu", sector_buffer_addr);
         }
 
         sector_buffer_dirty = 0;
@@ -479,18 +470,15 @@ uint8_t fat_read_block( uint32_t sector_addr ) {
 
     sector_buffer_addr = sector_addr;
 
-#ifdef FAT_COOPERATIVE
+    #ifdef FAT_COOPERATIVE
         if( !coop_step_allowed ) {
             next_step_type = READ;
-            //printf("\n fat_read_block : switch");
             coop_switch_sp();
-            //printf("\n fat_read_block : switch returned");
         } else {
             coop_step_allowed = 0;
         }
-#endif
+    #endif
 
-        //printf("\nfat_read_block : diskio_read_block call before");
     return diskio_read_block( mounted.dev, sector_addr, sector_buffer );
 }
 
@@ -499,15 +487,17 @@ uint8_t fat_next_block() {
 
     /* Are we on a Cluster edge? */
     if( (sector_buffer_addr + 1) % mounted.info.BPB_SecPerClus == 0 ) {
-        uint32_t entry = read_fat_entry( sector_buffer_addr );
-        //printf("\nfat_next_block(): Cluster edge reached");
+        /* We need to change the cluster, for this we have to read the FAT entry corresponding to the current sector number */
+        uint32_t entry = read_fat_entry( SECTOR_TO_CLUSTER(sector_buffer_addr) );
+        /* If the returned entry is an End Of Clusterchain, return error code 128 */
         if( is_EOC( entry ) ) {
             return 128;
         }
 
+        /* The entry is valid and we calculate the first sector number of this new cluster and read it */
         return fat_read_block( CLUSTER_TO_SECTOR(entry) );
     } else {
-        //printf("\nfat_next_block(): read sector %lu", sector_buffer_addr + 1);
+        /* We are still inside a cluster, so we only need to read the next sector */
         return fat_read_block( sector_buffer_addr + 1 );
     }
 }
@@ -1086,7 +1076,7 @@ uint8_t fat_read_file( int fd, uint32_t clusters, uint32_t clus_offset ) {
     if( clusters == fat_file_pool[fd].n ) {
         cluster = fat_file_pool[fd].nth_cluster;
     } else if( clusters == fat_file_pool[fd].n + 1) {
-        cluster = read_fat_entry_cluster(fat_file_pool[fd].nth_cluster);
+        cluster = read_fat_entry( fat_file_pool[fd].nth_cluster );
         fat_file_pool[fd].nth_cluster = cluster;
         fat_file_pool[fd].n++;
     } else {
@@ -1112,7 +1102,7 @@ uint8_t fat_write_file( int fd, uint32_t clusters, uint8_t clus_offset ) {
         cluster = fat_file_pool[fd].nth_cluster;
     //If we now the nth-1 Cluster it is easy to get the next cluster
     } else if( clusters == fat_file_pool[fd].n + 1) {
-        cluster = read_fat_entry_cluster(fat_file_pool[fd].nth_cluster);
+        cluster = read_fat_entry( fat_file_pool[fd].nth_cluster );
         fat_file_pool[fd].nth_cluster = cluster;
         fat_file_pool[fd].n++;
     //Somehow our cluster-information is out of sync. We have to calculate the cluster the hard way.
@@ -1212,7 +1202,6 @@ uint32_t round_down_to_power_of_2( uint32_t value ) {
 
     return po2;
 }
-
 
 uint8_t _is_file( struct dir_entry *dir_ent ) {
     if( dir_ent->DIR_Attr & ATTR_DIRECTORY ) {
