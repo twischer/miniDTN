@@ -274,22 +274,6 @@ void get_fat_info( struct FAT_Info *info ) {
     memcpy( info, &(mounted.info), sizeof(struct FAT_Info) );
 }
 
-void make_readable_entry( struct dir_entry *dir, struct cfs_dirent *dirent ) {
-    uint8_t i, j;
-
-    for( i = 0, j = 0; i < 11; i++ ) {
-        if( dir->DIR_Name[i] != ' ' ) {
-            dirent->name[j] = dir->DIR_Name[i];
-            j++;
-        }
-
-        if( i == 7 ) {
-            dirent->name[j] = '.';
-            j++;
-        }
-    }
-}
-
 /*FAT entry functions*/
 
 uint32_t read_fat_entry( uint32_t cluster_num ) {
@@ -852,8 +836,21 @@ int cfs_readdir(struct cfs_dir *dirp, struct cfs_dirent *dirent) {
     struct dir_entry *dir_ent = (struct dir_entry *) dirp;
     struct dir_entry entry;
 
-    if( get_dir_entry_old( dir_ent, cfs_readdir_offset, &entry ) != 0 ) {
-        return -1;
+    { /* Get the next directory_entry */
+        uint32_t dir_off = cfs_readdir_offset * 32;
+        uint16_t cluster_num = dir_off / mounted.info.BPB_SecPerClus;
+        uint32_t cluster;
+
+        cluster = find_nth_cluster( (((uint32_t) dir_ent->DIR_FstClusHI) << 16) + dir_ent->DIR_FstClusLO, (uint32_t) cluster_num );
+        if( cluster == 0 ) {
+            return -1;
+        }
+
+        if( fat_read_block( CLUSTER_TO_SECTOR(cluster) + dir_off / mounted.info.BPB_BytesPerSec ) != 0 ) {
+            return -1;
+        }
+
+        memcpy( &entry, &(sector_buffer[dir_off % mounted.info.BPB_BytesPerSec]), sizeof(struct dir_entry) );
     }
 
     make_readable_entry( &entry, dirent );
@@ -932,25 +929,6 @@ uint8_t get_dir_entry( const char *path, struct dir_entry *dir_ent, uint32_t *di
 	}
 
 	return 1;
-}
-
-uint8_t get_dir_entry_old( struct dir_entry *dir, uint16_t offset, struct dir_entry *entry ) {
-    uint32_t dir_off = offset * 32;
-    uint16_t cluster_num = dir_off / mounted.info.BPB_SecPerClus;
-    uint32_t cluster;
-
-    cluster = find_nth_cluster( (((uint32_t) dir->DIR_FstClusHI) << 16) + dir->DIR_FstClusLO, (uint32_t) cluster_num );
-    if( cluster == 0 ) {
-        return 1;
-    }
-
-    if( fat_read_block( CLUSTER_TO_SECTOR(cluster) + dir_off / mounted.info.BPB_BytesPerSec ) != 0 ) {
-        return 2;
-    }
-
-    memcpy( entry, &(sector_buffer[dir_off % mounted.info.BPB_BytesPerSec]), sizeof(struct dir_entry) );
-
-    return 0;
 }
 
 uint8_t add_directory_entry_to_current( struct dir_entry *dir_ent, uint32_t *dir_entry_sector, uint16_t *dir_entry_offset ) {
@@ -1074,6 +1052,22 @@ void fat_sync_fats() {
 }
 
 /*Helper Functions*/
+void make_readable_entry( struct dir_entry *dir, struct cfs_dirent *dirent ) {
+    uint8_t i, j;
+
+    for( i = 0, j = 0; i < 11; i++ ) {
+        if( dir->DIR_Name[i] != ' ' ) {
+            dirent->name[j] = dir->DIR_Name[i];
+            j++;
+        }
+
+        if( i == 7 ) {
+            dirent->name[j] = '.';
+            j++;
+        }
+    }
+}
+
 /**
  * Tests if the given value is a power of 2.
  *
