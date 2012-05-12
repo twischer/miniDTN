@@ -196,16 +196,6 @@ uint32_t find_nth_cluster( uint32_t start_cluster, uint32_t n ) {
     return cluster;
 }
 
-uint32_t add_cluster_to_current_chain() {
-    uint32_t current_sector = sector_buffer_addr;
-    uint32_t free_cluster = get_free_cluster( SECTOR_TO_CLUSTER( current_sector ) );
-
-    write_fat_entry( SECTOR_TO_CLUSTER( current_sector ), free_cluster );
-    write_fat_entry( free_cluster, EOC );
-
-    return free_cluster;
-}
-
 void reset_cluster_chain( struct dir_entry *dir_ent ) {
     uint32_t cluster = (((uint32_t) dir_ent->DIR_FstClusHI) << 16) + dir_ent->DIR_FstClusLO;
     uint32_t next_cluster = read_fat_entry( cluster );
@@ -740,7 +730,7 @@ int cfs_read(int fd, void *buf, unsigned int len) {
         return -1;
     }
 
-    while( fat_read_file( fd, clusters, clus_offset ) == 0 ) {
+    while( load_next_sector_of_file( fd, clusters, clus_offset, 0 ) == 0 ) {
         for( i = offset; i < 512 && j < len; i++,j++,fat_fd_pool[fd].offset++ ) {
             buffer[j] = sector_buffer[i];
         }
@@ -766,11 +756,7 @@ int cfs_write(int fd, const void *buf, unsigned int len) {
     uint16_t i, j = 0;
     uint8_t *buffer = (uint8_t *) buf;
 
-    if( len > 0 && fat_file_pool[fd].dir_entry.DIR_FileSize == 0 && fat_file_pool[fd].cluster == 0) {
-        add_cluster_to_file( fd );
-    }
-
-    while( fat_write_file( fd, clusters, clus_offset ) == 0 ) {
+    while( load_next_sector_of_file( fd, clusters, clus_offset, 1 ) == 0 ) {
         for( i = offset; i < mounted.info.BPB_BytesPerSec && j < len; i++,j++,fat_fd_pool[fd].offset++ ) {
             #ifndef FAT_COOPERATIVE
                 sector_buffer[i] = buffer[j];
@@ -784,11 +770,9 @@ int cfs_write(int fd, const void *buf, unsigned int len) {
 
         sector_buffer_dirty = 1;
         offset = 0;
-        if( (clus_offset + 1) % mounted.info.BPB_SecPerClus == 0 ) {
-            clus_offset = 0;
+        clus_offset = (clus_offset + 1) % mounted.info.BPB_SecPerClus;
+        if(  clus_offset == 0 ) {
             clusters++;
-        } else {
-            clus_offset++;
         }
 
         if( j >= len ) {
@@ -987,16 +971,19 @@ uint8_t add_directory_entry_to_current( struct dir_entry *dir_ent, uint32_t *dir
 
 		if( (ret = fat_next_block()) != 0 ) {
 			if( ret == 128 ) {
-				uint32_t cluster = add_cluster_to_current_chain();
-                if( fat_read_block( CLUSTER_TO_SECTOR( cluster ) ) == 0 ) {
+                uint32_t free_cluster = get_free_cluster( SECTOR_TO_CLUSTER( sector_buffer_addr ) );
+
+                write_fat_entry( SECTOR_TO_CLUSTER( sector_buffer_addr ), free_cluster );
+                write_fat_entry( free_cluster, EOC );
+
+                if( fat_read_block( CLUSTER_TO_SECTOR( free_cluster ) ) == 0 ) {
 					memcpy( &(sector_buffer[0]), dir_ent, sizeof(struct dir_entry) );
-					sector_buffer_dirty = 1;
+                    sector_buffer_dirty = 1;
 					*dir_entry_sector = sector_buffer_addr;
 					*dir_entry_offset = 0;
 					return 0;
 				}
 			}
-
 			return 1;
 		}
 	}
@@ -1024,30 +1011,7 @@ void remove_dir_entry( uint32_t dir_entry_sector, uint16_t dir_entry_offset ) {
 }
 
 /*FAT Implementation Functions*/
-uint8_t fat_read_file( int fd, uint32_t clusters, uint32_t clus_offset ) {
-    /*Read the clus_offset Sector of the clusters-th cluster of the file fd*/
-    uint32_t cluster = 0;
-
-    if( clusters == fat_file_pool[fd].n ) {
-        cluster = fat_file_pool[fd].nth_cluster;
-    } else if( clusters == fat_file_pool[fd].n + 1) {
-        cluster = read_fat_entry( fat_file_pool[fd].nth_cluster );
-        fat_file_pool[fd].nth_cluster = cluster;
-        fat_file_pool[fd].n++;
-    } else {
-        cluster = find_nth_cluster( fat_file_pool[fd].cluster, clusters );
-        fat_file_pool[fd].nth_cluster = cluster;
-        fat_file_pool[fd].n = clusters;
-    }
-
-    if( cluster == 0 || is_EOC( cluster ) ) {
-        return 1;
-    }
-
-    return fat_read_block( CLUSTER_TO_SECTOR(cluster) + clus_offset );
-}
-
-uint8_t fat_write_file( int fd, uint32_t clusters, uint8_t clus_offset ) {
+uint8_t load_next_sector_of_file( int fd, uint32_t clusters, uint8_t clus_offset, uint8_t write ) {
     uint32_t cluster = 0;
 
     //If we know the nth Cluster already we do not have to recalculate it
@@ -1065,12 +1029,15 @@ uint8_t fat_write_file( int fd, uint32_t clusters, uint8_t clus_offset ) {
         fat_file_pool[fd].n = clusters;
     }
 
-    if( cluster == 0 ) {
-        return 1;
-    //If this the last Cluster of the file, chain an additional cluster.
-    } else if( is_EOC( cluster ) ) {
-        add_cluster_to_file( fd );
-        return fat_read_block( CLUSTER_TO_SECTOR( fat_file_pool[fd].nth_cluster ) );
+    // If there is no cluster allocated to the file or the current cluster is EOC then add another cluster to the file
+    if( cluster == 0 || is_EOC( cluster ) ) {
+        if( write ) {
+            add_cluster_to_file( fd );
+            // Remember that after the add_cluster_to_file-Function the nth_cluster and n is set to the added cluster
+            cluster = CLUSTER_TO_SECTOR( fat_file_pool[fd].nth_cluster );
+        } else {
+            return 1;
+        }
     }
 
     return fat_read_block( CLUSTER_TO_SECTOR(cluster) + clus_offset );
