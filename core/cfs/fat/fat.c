@@ -94,39 +94,39 @@ extern uint16_t queue_start, queue_len;
 #endif
 
 /* Declerations */
-uint8_t is_EOC( uint32_t fat_entry );
-uint32_t get_free_cluster(uint32_t start_cluster);
-uint16_t _get_free_cluster_16();
-uint16_t _get_free_cluster_32();
-uint32_t find_nth_cluster( uint32_t start_cluster, uint32_t n );
-void reset_cluster_chain( struct dir_entry *dir_ent );
-void add_cluster_to_file( int fd );
+static uint8_t is_EOC( uint32_t fat_entry );
+static uint32_t get_free_cluster(uint32_t start_cluster);
+static uint16_t _get_free_cluster_16();
+static uint16_t _get_free_cluster_32();
+static uint32_t find_nth_cluster( uint32_t start_cluster, uint32_t n );
+static void reset_cluster_chain( struct dir_entry *dir_ent );
+static void add_cluster_to_file( int fd );
 void print_current_sector();
 void print_dir_entry( struct dir_entry *dir_entry );
 void get_fat_info( struct FAT_Info *info );
-uint32_t read_fat_entry( uint32_t cluster_num );
-void write_fat_entry( uint32_t cluster_num, uint32_t value );
-void calc_fat_block( uint32_t cur_cluster, uint32_t *fat_sec_num, uint32_t *ent_offset );
-uint8_t _make_valid_name( const char *path, uint8_t start, uint8_t end, char *name );
-void pr_reset( struct PathResolver *rsolv );
-uint8_t pr_get_next_path_part( struct PathResolver *rsolv );
-uint8_t pr_is_current_path_part_a_file( struct PathResolver *rsolv );
-uint8_t fat_read_block( uint32_t sector_addr );
-uint8_t fat_next_block();
-uint8_t lookup( const char *name, struct dir_entry *dir_entry, uint32_t *dir_entry_sector, uint16_t *dir_entry_offset );
-uint8_t get_dir_entry( const char *path, struct dir_entry *dir_ent, uint32_t *dir_entry_sector, uint16_t *dir_entry_offset, uint8_t create );
-uint8_t add_directory_entry_to_current( struct dir_entry *dir_ent, uint32_t *dir_entry_sector, uint16_t *dir_entry_offset );
-void update_dir_entry( int fd );
-void remove_dir_entry( uint32_t dir_entry_sector, uint16_t dir_entry_offset );
-uint8_t load_next_sector_of_file( int fd, uint32_t clusters, uint8_t clus_offset, uint8_t write );
-void make_readable_entry( struct dir_entry *dir, struct cfs_dirent *dirent );
-uint8_t is_a_power_of_2( uint32_t value );
-uint32_t round_down_to_power_of_2( uint32_t value );
-uint8_t _is_file( struct dir_entry *dir_ent );
-uint8_t _cfs_flags_ok( int flags, struct dir_entry *dir_ent );
+static uint32_t read_fat_entry( uint32_t cluster_num );
+static void write_fat_entry( uint32_t cluster_num, uint32_t value );
+static void calc_fat_block( uint32_t cur_cluster, uint32_t *fat_sec_num, uint32_t *ent_offset );
+static uint8_t _make_valid_name( const char *path, uint8_t start, uint8_t end, char *name );
+static void pr_reset( struct PathResolver *rsolv );
+static uint8_t pr_get_next_path_part( struct PathResolver *rsolv );
+static uint8_t pr_is_current_path_part_a_file( struct PathResolver *rsolv );
+static uint8_t fat_read_block( uint32_t sector_addr );
+static uint8_t fat_next_block();
+static uint8_t lookup( const char *name, struct dir_entry *dir_entry, uint32_t *dir_entry_sector, uint16_t *dir_entry_offset );
+static uint8_t get_dir_entry( const char *path, struct dir_entry *dir_ent, uint32_t *dir_entry_sector, uint16_t *dir_entry_offset, uint8_t create );
+static uint8_t add_directory_entry_to_current( struct dir_entry *dir_ent, uint32_t *dir_entry_sector, uint16_t *dir_entry_offset );
+static void update_dir_entry( int fd );
+static void remove_dir_entry( uint32_t dir_entry_sector, uint16_t dir_entry_offset );
+static uint8_t load_next_sector_of_file( int fd, uint32_t clusters, uint8_t clus_offset, uint8_t write );
+static void make_readable_entry( struct dir_entry *dir, struct cfs_dirent *dirent );
+static uint8_t is_a_power_of_2( uint32_t value );
+static uint32_t round_down_to_power_of_2( uint32_t value );
+static uint8_t _is_file( struct dir_entry *dir_ent );
+static uint8_t _cfs_flags_ok( int flags, struct dir_entry *dir_ent );
 
 /*Cluster Chain Functions*/
-uint8_t is_EOC( uint32_t fat_entry ) {
+static uint8_t is_EOC( uint32_t fat_entry ) {
     if( mounted.info.type == FAT16 ) {
         if( fat_entry >= 0xFFF8 ) {
             return 1;
@@ -146,7 +146,7 @@ uint8_t is_EOC( uint32_t fat_entry ) {
  * \TODO Check for end of FAT and no free clusters.
  * \return Returns the number of a free cluster.
  */
-uint32_t get_free_cluster(uint32_t start_cluster) {
+static uint32_t get_free_cluster(uint32_t start_cluster) {
     uint32_t fat_sec_num = 0;
     uint32_t ent_offset = 0;
     uint16_t i = 0;
@@ -173,7 +173,7 @@ uint32_t get_free_cluster(uint32_t start_cluster) {
     return ent_offset;
 }
 
-uint16_t _get_free_cluster_16() {
+static uint16_t _get_free_cluster_16() {
     uint16_t entry = 0;
     uint16_t i = 0;
 
@@ -187,7 +187,7 @@ uint16_t _get_free_cluster_16() {
     return 512;
 }
 
-uint16_t _get_free_cluster_32() {
+static uint16_t _get_free_cluster_32() {
     uint32_t entry = 0;
     uint16_t i = 0;
 
@@ -202,7 +202,7 @@ uint16_t _get_free_cluster_32() {
     return 512;
 }
 
-uint32_t find_nth_cluster( uint32_t start_cluster, uint32_t n ) {
+static uint32_t find_nth_cluster( uint32_t start_cluster, uint32_t n ) {
     uint32_t cluster = start_cluster,
             i = 0;
 
@@ -213,7 +213,7 @@ uint32_t find_nth_cluster( uint32_t start_cluster, uint32_t n ) {
     return cluster;
 }
 
-void reset_cluster_chain( struct dir_entry *dir_ent ) {
+static void reset_cluster_chain( struct dir_entry *dir_ent ) {
     uint32_t cluster = (((uint32_t) dir_ent->DIR_FstClusHI) << 16) + dir_ent->DIR_FstClusLO;
     uint32_t next_cluster = read_fat_entry( cluster );
 
@@ -226,7 +226,7 @@ void reset_cluster_chain( struct dir_entry *dir_ent ) {
     write_fat_entry( cluster, 0L );
 }
 
-void add_cluster_to_file( int fd ) {
+static void add_cluster_to_file( int fd ) {
     uint32_t free_cluster = get_free_cluster( 0 );
     uint32_t cluster = fat_file_pool[fd].nth_cluster;
     uint32_t n = cluster;
@@ -292,7 +292,7 @@ void get_fat_info( struct FAT_Info *info ) {
 }
 
 /*FAT entry functions*/
-uint32_t read_fat_entry( uint32_t cluster_num ) {
+static uint32_t read_fat_entry( uint32_t cluster_num ) {
     uint32_t fat_sec_num = 0,
             ent_offset = 0;
 
@@ -313,7 +313,7 @@ uint32_t read_fat_entry( uint32_t cluster_num ) {
     return EOC;
 }
 
-void write_fat_entry( uint32_t cluster_num, uint32_t value ) {
+static void write_fat_entry( uint32_t cluster_num, uint32_t value ) {
     uint32_t fat_sec_num = 0,
             ent_offset = 0;
 
@@ -333,7 +333,7 @@ void write_fat_entry( uint32_t cluster_num, uint32_t value ) {
     sector_buffer_dirty = 1;
 }
 
-void calc_fat_block( uint32_t cur_cluster, uint32_t *fat_sec_num, uint32_t *ent_offset ) {
+static void calc_fat_block( uint32_t cur_cluster, uint32_t *fat_sec_num, uint32_t *ent_offset ) {
     uint32_t N = cur_cluster;
 
     if( mounted.info.type == FAT16 ) {
@@ -347,7 +347,7 @@ void calc_fat_block( uint32_t cur_cluster, uint32_t *fat_sec_num, uint32_t *ent_
 }
 
 /*Path Resolver Functions*/
-uint8_t _make_valid_name( const char *path, uint8_t start, uint8_t end, char *name ) {
+static uint8_t _make_valid_name( const char *path, uint8_t start, uint8_t end, char *name ) {
     uint8_t i = 0,
             idx = 0,
             dot_found = 0;
@@ -383,14 +383,14 @@ uint8_t _make_valid_name( const char *path, uint8_t start, uint8_t end, char *na
     return 0;
 }
 
-void pr_reset( struct PathResolver *rsolv ) {
+static void pr_reset( struct PathResolver *rsolv ) {
     rsolv->start = 0;
     rsolv->end = 0;
     rsolv->path = NULL;
     memset(rsolv->name, '\0', 11);
 }
 
-uint8_t pr_get_next_path_part( struct PathResolver *rsolv ) {
+static uint8_t pr_get_next_path_part( struct PathResolver *rsolv ) {
     uint16_t i = 0;
 
     if( rsolv->path == NULL ) {
@@ -416,7 +416,7 @@ uint8_t pr_get_next_path_part( struct PathResolver *rsolv ) {
     return 1;
 }
 
-uint8_t pr_is_current_path_part_a_file( struct PathResolver *rsolv ) {
+static uint8_t pr_is_current_path_part_a_file( struct PathResolver *rsolv ) {
     if( rsolv->path[rsolv->end] == '/') {
         return 0;
     } else if(rsolv->path[rsolv->end] == '\0' ) {
@@ -448,7 +448,7 @@ void fat_flush() {
     }
 }
 
-uint8_t fat_read_block( uint32_t sector_addr ) {
+static uint8_t fat_read_block( uint32_t sector_addr ) {
     if( sector_buffer_addr == sector_addr && sector_addr != 0 ) {
         return 0;
     }
@@ -469,7 +469,7 @@ uint8_t fat_read_block( uint32_t sector_addr ) {
     return diskio_read_block( mounted.dev, sector_addr, sector_buffer );
 }
 
-uint8_t fat_next_block() {
+static uint8_t fat_next_block() {
     fat_flush();
 
     /* Are we on a Cluster edge? */
@@ -493,7 +493,7 @@ uint8_t fat_next_block() {
 /**
  * Determines the type of the fat by using the BPB.
  */
-uint8_t determine_fat_type( struct FAT_Info *info ) {
+static uint8_t determine_fat_type( struct FAT_Info *info ) {
     uint16_t RootDirSectors = ((info->BPB_RootEntCnt * 32) + (info->BPB_BytesPerSec - 1)) / info->BPB_BytesPerSec;
     uint32_t DataSec = info->BPB_TotSec - (info->BPB_RsvdSecCnt + (info->BPB_NumFATs * info->BPB_FATSz) + RootDirSectors);
     uint32_t CountofClusters = DataSec / info->BPB_SecPerClus;
@@ -527,7 +527,7 @@ uint8_t determine_fat_type( struct FAT_Info *info ) {
  *         </ul>
  *         More than one error flag may be set but return is 0 on no error.
  */
-uint8_t parse_bootsector( uint8_t *buffer, struct FAT_Info *info ) {
+static uint8_t parse_bootsector( uint8_t *buffer, struct FAT_Info *info ) {
     int ret = 0;
 
     info->BPB_BytesPerSec = (((uint16_t) buffer[12]) << 8) + buffer[11];
@@ -880,7 +880,7 @@ void cfs_closedir(struct cfs_dir *dirp) {
 }
 
 /*Dir_entry Functions*/
-uint8_t lookup( const char *name, struct dir_entry *dir_entry, uint32_t *dir_entry_sector, uint16_t *dir_entry_offset ) {
+static uint8_t lookup( const char *name, struct dir_entry *dir_entry, uint32_t *dir_entry_sector, uint16_t *dir_entry_offset ) {
 	uint16_t i = 0;
 	for(;;) {
 		for( i = 0; i < 512; i+=32 ) {
@@ -908,7 +908,7 @@ uint8_t lookup( const char *name, struct dir_entry *dir_entry, uint32_t *dir_ent
 	return 0;
 }
 
-uint8_t get_dir_entry( const char *path, struct dir_entry *dir_ent, uint32_t *dir_entry_sector, uint16_t *dir_entry_offset, uint8_t create ) {
+static uint8_t get_dir_entry( const char *path, struct dir_entry *dir_ent, uint32_t *dir_entry_sector, uint16_t *dir_entry_offset, uint8_t create ) {
 	uint32_t first_root_dir_sec_num = 0;
 	uint32_t file_sector_num = 0;
 	uint8_t i = 0;
@@ -947,7 +947,7 @@ uint8_t get_dir_entry( const char *path, struct dir_entry *dir_ent, uint32_t *di
 	return 1;
 }
 
-uint8_t add_directory_entry_to_current( struct dir_entry *dir_ent, uint32_t *dir_entry_sector, uint16_t *dir_entry_offset ) {
+static uint8_t add_directory_entry_to_current( struct dir_entry *dir_ent, uint32_t *dir_entry_sector, uint16_t *dir_entry_offset ) {
 	uint16_t i = 0;
 	uint8_t ret = 0;
 
@@ -985,7 +985,7 @@ uint8_t add_directory_entry_to_current( struct dir_entry *dir_ent, uint32_t *dir
 	return 1;
 }
 
-void update_dir_entry( int fd ) {
+static void update_dir_entry( int fd ) {
 	if( fat_read_block( fat_file_pool[fd].dir_entry_sector ) != 0 ) {
 		return;
 	}
@@ -994,7 +994,7 @@ void update_dir_entry( int fd ) {
 	sector_buffer_dirty = 1;
 }
 
-void remove_dir_entry( uint32_t dir_entry_sector, uint16_t dir_entry_offset ) {
+static void remove_dir_entry( uint32_t dir_entry_sector, uint16_t dir_entry_offset ) {
 	if( fat_read_block( dir_entry_sector ) != 0 ) {
 		return;
 	}
@@ -1005,7 +1005,7 @@ void remove_dir_entry( uint32_t dir_entry_sector, uint16_t dir_entry_offset ) {
 }
 
 /*FAT Implementation Functions*/
-uint8_t load_next_sector_of_file( int fd, uint32_t clusters, uint8_t clus_offset, uint8_t write ) {
+static uint8_t load_next_sector_of_file( int fd, uint32_t clusters, uint8_t clus_offset, uint8_t write ) {
     uint32_t cluster = 0;
 
     //If we know the nth Cluster already we do not have to recalculate it
@@ -1068,7 +1068,7 @@ void fat_sync_fats() {
 }
 
 /*Helper Functions*/
-void make_readable_entry( struct dir_entry *dir, struct cfs_dirent *dirent ) {
+static void make_readable_entry( struct dir_entry *dir, struct cfs_dirent *dirent ) {
     uint8_t i, j;
 
     for( i = 0, j = 0; i < 11; i++ ) {
@@ -1090,7 +1090,7 @@ void make_readable_entry( struct dir_entry *dir, struct cfs_dirent *dirent ) {
  * \param value Number which should be testet if it is a power of 2.
  * \return 1 on failure and 0 if value is a power of 2.
  */
-uint8_t is_a_power_of_2( uint32_t value ) {
+static uint8_t is_a_power_of_2( uint32_t value ) {
     uint32_t test = 1;
     uint8_t i = 0;
 
@@ -1114,7 +1114,7 @@ uint8_t is_a_power_of_2( uint32_t value ) {
  * \param value The number which should be rounded down.
  * \return the next lower number which is a power of 2
  */
-uint32_t round_down_to_power_of_2( uint32_t value ) {
+static uint32_t round_down_to_power_of_2( uint32_t value ) {
     uint32_t po2 = ((uint32_t) 1) << 31;
 
     while( value < po2 ) {
@@ -1124,7 +1124,7 @@ uint32_t round_down_to_power_of_2( uint32_t value ) {
     return po2;
 }
 
-uint8_t _is_file( struct dir_entry *dir_ent ) {
+static uint8_t _is_file( struct dir_entry *dir_ent ) {
     if( dir_ent->DIR_Attr & ATTR_DIRECTORY ) {
         return 0;
     }
@@ -1136,7 +1136,7 @@ uint8_t _is_file( struct dir_entry *dir_ent ) {
     return 1;
 }
 
-uint8_t _cfs_flags_ok( int flags, struct dir_entry *dir_ent ) {
+static uint8_t _cfs_flags_ok( int flags, struct dir_entry *dir_ent ) {
     if( ((flags & CFS_APPEND) || (flags & CFS_WRITE)) && (dir_ent->DIR_Attr & ATTR_READ_ONLY) ) {
         return 0;
     }
