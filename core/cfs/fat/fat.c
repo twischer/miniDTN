@@ -1038,6 +1038,176 @@ static void update_dir_entry( int fd ) {
 	sector_buffer_dirty = 1;
 }
 
+void cfs_close(int fd) {
+	if( fd < 0 || fd >= FAT_FD_POOL_SIZE ) {
+		return;
+	}
+
+	if( fat_fd_pool[fd].file == NULL ) {
+		return;
+	}
+
+	update_dir_entry( fd );
+	fat_flush( fd );
+	fat_fd_pool[fd].file = NULL;
+}
+
+int cfs_read(int fd, void *buf, unsigned int len) {
+	uint32_t offset = fat_fd_pool[fd].offset % mounted.info.BPB_BytesPerSec;
+	uint32_t clusters = (fat_fd_pool[fd].offset / mounted.info.BPB_BytesPerSec) / mounted.info.BPB_SecPerClus;
+	uint8_t clus_offset = (fat_fd_pool[fd].offset / mounted.info.BPB_BytesPerSec) % mounted.info.BPB_SecPerClus;
+	uint16_t i, j = 0;
+	uint8_t *buffer = (uint8_t *) buf;
+
+	if( fd < 0 || fd >= FAT_FD_POOL_SIZE ) {
+		return -1;
+	}
+
+	/*Special case of empty file, cluster is zero, no data*/
+	if( fat_file_pool[fd].cluster == 0 ) {
+		return 0;
+	}
+
+	if( !(fat_fd_pool[fd].flags & CFS_READ) ) {
+		return -1;
+	}
+
+	while( fat_read_file( fd, clusters, clus_offset ) == 0 ) {
+		for( i = offset; i < 512 && j < len; i++,j++,fat_fd_pool[fd].offset++ ) {
+			buffer[j] = sector_buffer[i];
+		}
+
+		if( (clus_offset + 1) % mounted.info.BPB_SecPerClus == 0 ) {
+			clus_offset = 0;
+			clusters++;
+		} else {
+			clus_offset++;
+		}
+
+		if( j >= len ) {
+			break;
+		}
+	}
+	return (int) j;
+}
+
+void _add_cluster_to_empty_file( int fd, uint32_t free_cluster ) {
+	//printf("\n_add_cluster_to_empty_file( %d, %lu )", fd, free_cluster);
+	write_fat_entry( free_cluster, EOC );
+	fat_file_pool[fd].dir_entry.DIR_FstClusHI = (uint16_t) (free_cluster >> 16);
+	fat_file_pool[fd].dir_entry.DIR_FstClusLO = (uint16_t) (free_cluster);
+	update_dir_entry( fd );
+	fat_file_pool[fd].cluster = free_cluster;
+	fat_file_pool[fd].n = 0;
+	fat_file_pool[fd].nth_cluster = free_cluster;
+}
+
+void add_cluster_to_file( int fd ) {
+	uint32_t free = get_free_cluster( 0 );
+	uint32_t cluster = fat_file_pool[fd].cluster;
+	uint32_t n = cluster;
+
+	//printf("\nadd_cluster_to_file()");
+	if( fat_file_pool[fd].cluster == 0 ) {
+		_add_cluster_to_empty_file( fd, free );
+		return;
+	}
+
+	while( !is_EOC( n ) ) {
+		//printf("\nadd_cluster_to_file() : n = %lu", n );
+		cluster = n;
+		n = read_fat_entry_cluster( cluster );
+	}
+
+	//printf("\nadd_cluster_to_file() : cluster = %lu, free = %lu, n = %lx", cluster, free, n );
+	write_fat_entry( cluster, free );
+	write_fat_entry( free, EOC );
+}
+
+int cfs_write(int fd, const void *buf, unsigned int len) {
+	uint16_t offset = fat_fd_pool[fd].offset % (uint32_t)mounted.info.BPB_BytesPerSec;
+	uint32_t clusters = (fat_fd_pool[fd].offset / mounted.info.BPB_BytesPerSec) / mounted.info.BPB_SecPerClus;
+	uint8_t clus_offset = (fat_fd_pool[fd].offset / mounted.info.BPB_BytesPerSec) % mounted.info.BPB_SecPerClus;
+	uint16_t i, j = 0;
+	uint8_t *buffer = (uint8_t *) buf;
+
+	if( len > 0 && fat_file_pool[fd].dir_entry.DIR_FileSize == 0 && fat_file_pool[fd].cluster == 0) {
+		add_cluster_to_file( fd );
+	}
+
+    while( fat_write_file( fd, clusters, clus_offset ) == 0 ) {
+        for( i = offset; i < mounted.info.BPB_BytesPerSec && j < len; i++,j++,fat_fd_pool[fd].offset++ ) {
+#ifdef FAT_COOPERATIVE
+            sector_buffer[i] = get_item_from_buffer(buffer, j);
+#else
+            sector_buffer[i] = buffer[j];
+#endif
+
+            if( fat_fd_pool[fd].offset == fat_file_pool[fd].dir_entry.DIR_FileSize ) {
+                fat_file_pool[fd].dir_entry.DIR_FileSize++;
+            }
+        }
+
+        sector_buffer_dirty = 1;
+        offset = 0;
+        if( (clus_offset + 1) % mounted.info.BPB_SecPerClus == 0 ) {
+            clus_offset = 0;
+            clusters++;
+		} else {
+			clus_offset++;
+		}
+
+		if( j >= len ) {
+			break;
+		}
+	}
+
+	return j;
+}
+
+cfs_offset_t cfs_seek(int fd, cfs_offset_t offset, int whence) {
+	if( fd < 0 || fd >= FAT_FD_POOL_SIZE ) {
+		return -1;
+	}
+
+	switch(whence) {
+		case CFS_SEEK_SET:
+			fat_fd_pool[fd].offset = offset;
+			break;
+		case CFS_SEEK_CUR:
+			fat_fd_pool[fd].offset += offset;
+			break;
+		case CFS_SEEK_END:
+			fat_fd_pool[fd].offset = (fat_file_pool[fd].dir_entry.DIR_FileSize - 1) + offset;
+			break;
+		default:
+			break;
+	}
+
+	if( fat_fd_pool[fd].offset >= fat_file_pool[fd].dir_entry.DIR_FileSize ) {
+		fat_fd_pool[fd].offset = (fat_file_pool[fd].dir_entry.DIR_FileSize - 1);
+	}
+
+	if( fat_fd_pool[fd].offset < 0 ) {
+		fat_fd_pool[fd].offset = 0;
+	}
+
+	return fat_fd_pool[fd].offset;
+}
+
+void reset_cluster_chain( struct dir_entry *dir_ent ) {
+	uint32_t cluster = (((uint32_t) dir_ent->DIR_FstClusHI) << 16) + dir_ent->DIR_FstClusLO;
+	uint32_t next_cluster = read_fat_entry( cluster );
+
+	while( !is_EOC( cluster ) && cluster >= 2 ) {
+		write_fat_entry( cluster, 0L );
+		cluster = next_cluster;
+		next_cluster = read_fat_entry( cluster );
+	}
+
+	write_fat_entry( cluster, 0L );
+}
+
 static void remove_dir_entry( uint32_t dir_entry_sector, uint16_t dir_entry_offset ) {
 	PRINTF("\nfat.c: remove_dir_entry( dir_entry_sector = %lu, dir_entry_offset = %u ) = void ", dir_entry_sector, dir_entry_offset);
 	if( fat_read_block( dir_entry_sector ) != 0 ) {
