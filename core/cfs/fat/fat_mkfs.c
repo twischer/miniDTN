@@ -64,6 +64,12 @@ int mkfs_write_boot_sector( uint8_t *buffer, struct diskio_device_info *dev, str
 void mkfs_write_fats( uint8_t *buffer, struct diskio_device_info *dev, struct FAT_Info *fi );
 void mkfs_write_fsinfo( uint8_t *buffer, struct diskio_device_info *dev, struct FAT_Info *fi );
 
+/*Defined in fat.c*/
+uint32_t get_free_cluster(uint32_t start_cluster);
+void write_fat_entry( uint32_t cluster_num, uint32_t value );
+uint8_t is_a_power_of_2( uint32_t value );
+uint32_t round_down_to_power_of_2( uint32_t value );
+
 
 
 void mkfs_write_root_directory( uint8_t *buffer, struct diskio_device_info *dev, struct FAT_Info *fi ) {

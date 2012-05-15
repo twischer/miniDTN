@@ -151,12 +151,7 @@ void get_fat_info( struct FAT_Info *info );
  */
 void fat_sync_fats();
 
-uint32_t get_free_cluster(uint32_t start_cluster);
-void write_fat_entry( uint32_t cluster_num, uint32_t value );
 void fat_flush();
 uint32_t fat_file_size(int fd);
-
-uint8_t is_a_power_of_2( uint32_t value );
-uint32_t round_down_to_power_of_2( uint32_t value );
 
 #endif
