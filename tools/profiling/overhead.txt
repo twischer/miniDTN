@@ -1,0 +1,17 @@
+# uDTN-sender sending 1000 packets
+# without -finstrument-functions
+PROF:0:200:3243144:32768
+98.97s (100%)
+
+# Functions in uDTN-sender.c ../../../platform/inga/contiki-inga-main.c
+# ../../../core/net/uDTN/*.c ../../../core/lib/memb.c ../../../core/lib/mmem.c
+# instrumented:
+##############
+
+# Linear search
+PROF:93:200:5797496:32768
+176.93s (179%)
+
+# Binary search
+PROF:93:200:4518768:32768
+137.90s (139%)
