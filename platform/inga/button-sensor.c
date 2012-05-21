@@ -21,8 +21,7 @@ ISR(INT2_vect){
 static int
 value(int type)
 {
-
- return ~(PINB & (1<<PB2)) || !timer_expired(&debouncetimer);
+	return 1-((PINB & (1<<PB2))>>PB2) || !timer_expired(&debouncetimer);
 }
 
 static int

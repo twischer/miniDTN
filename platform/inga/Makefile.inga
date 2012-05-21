@@ -55,6 +55,7 @@ ifeq ($(UNAME), Darwin)
 	CMOTES=$(MOTES)
 endif
 
+INGA_RESET = $(CONTIKI)/tools/inga/inga_tool/inga_tool
 ifndef MOTELIST
   SERIALDUMP = $(CONTIKI)/tools/sky/serialdump-linux
   MOTELIST = $(CONTIKI)/tools/sky/motelist-linux
@@ -62,6 +63,7 @@ ifndef MOTELIST
      cut -f 4 -d \  | \
      perl -ne 'print $$1 . " " if(m-(/dev/\w+)-);')
   CMOTES=$(MOTES)
+
 endif
 
 motelist: sky-motelist
@@ -75,11 +77,14 @@ login:
 	$(SERIALDUMP) -b19200 $(firstword $(CMOTES))
 ifdef MOTE
 AVRDUDE_PORT=$(CMOTES)
-%.upload:  %.u 		
+%.upload:  %.hex
+	if test -x $(INGA_RESET); then $(INGA_RESET) -d $(MOTES) -r;sleep 0.5;fi
+	avrdude $(AVRDUDE_OPTIONS) -P $(MOTES) $(AVRDUDE_PROGRAMMER) -p $(MCU) -U flash:w:$< 
 	@echo DONE
 else
 %.upload: %.hex 
-	
+	$(foreach PORT, $(MOTES), $(shell if test -x $(INGA_RESET); then $(INGA_RESET) -d $(PORT) -r;fi)) echo DONE; wait $!;
+	sleep 0.5
 	$(foreach PORT, $(MOTES), avrdude $(AVRDUDE_OPTIONS) -P $(PORT) $(AVRDUDE_PROGRAMMER) -p $(MCU) -U flash:w:$<& )echo DONE; wait $!
 endif
 include $(CONTIKIAVR)/Makefile.avr

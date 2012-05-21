@@ -64,6 +64,7 @@ typedef struct {
   volatile uint8_t * udr;
   volatile uint8_t * ubrrh;
   volatile uint8_t * ubrrl;
+  volatile uint8_t * ucsra;
   volatile uint8_t * ucsrb;
   volatile uint8_t * ucsrc;
   volatile uint8_t txwait;
@@ -76,6 +77,7 @@ static rs232_t rs232_ports[2] = {
     &UDR0,
     &UBRR0H,
     &UBRR0L,
+    &UCSR0A,
     &UCSR0B,
     &UCSR0C,
     0,
@@ -86,6 +88,7 @@ static rs232_t rs232_ports[2] = {
     &UDR1,
     &UBRR1H,
     &UBRR1L,
+    &UCSR1A,
     &UCSR1B,
     &UCSR1C,
     0,
@@ -258,7 +261,7 @@ rs232_init (uint8_t port, uint8_t bd, uint8_t ffmt)
    * - Enable receiver and transmitter,
    * - Enable interrupts for receiver and transmitter
    */
-  *(rs232_ports[port].ucsrb) = USART_INTERRUPT_RX_COMPLETE | USART_INTERRUPT_TX_COMPLETE | \
+  *(rs232_ports[port].ucsrb) = USART_INTERRUPT_RX_COMPLETE | \
     USART_RECEIVER_ENABLE | USART_TRANSMITTER_ENABLE;
 
   /*
@@ -313,9 +316,9 @@ rs232_printf(uint8_t port, const char *fmt, ...)
 void
 rs232_send(uint8_t port, unsigned char c)
 {
-  rs232_ports[port].txwait = 1;
+  while (!(*(rs232_ports[port].ucsra) & (1 << UDRE1))) {
+		}
   *(rs232_ports[port].udr) = c;
-  while(rs232_ports[port].txwait);
 }
 /*---------------------------------------------------------------------------*/
 void
