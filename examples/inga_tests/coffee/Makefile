@@ -1,4 +1,4 @@
-CONTIKI_PROJECT = coffee
+CONTIKI_PROJECT = coffee-test
 all: $(CONTIKI_PROJECT)
 
 COFFEE_FILES=5
