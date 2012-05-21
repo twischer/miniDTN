@@ -34,6 +34,7 @@
 #define FILE_SIZE 100
 
 #include "contiki.h"
+#include "test.h"
 
 #include <stdio.h> /* For printf() */
 #include "cfs/cfs-coffee.h"
@@ -44,7 +45,7 @@ AUTOSTART_PROCESSES(&coffee_test_process);
 struct etimer et;
 int cnt = 0;
 void fail() {
-	printf("FAIL\n");
+	TEST_FAIL("");
 	watchdog_stop();
 	while(1) ;
 }
@@ -53,6 +54,9 @@ PROCESS_THREAD(coffee_test_process, ev, data)
 {
 	int fd_write, n, i;
 	uint8_t buffer[FILE_SIZE];
+	clock_time_t now;
+	unsigned short now_fine;
+	static uint32_t time_start, time_stop;
 	PROCESS_BEGIN();
 
 	printf("process running\n");
@@ -60,7 +64,14 @@ PROCESS_THREAD(coffee_test_process, ev, data)
 	etimer_set(&et, CLOCK_SECOND * 5);
 	PROCESS_YIELD_UNTIL(etimer_expired(&et));
 
+	cfs_coffee_format();
 	printf("test starting\n");
+
+	do {
+		now_fine = clock_time();
+		now = clock_seconds();
+	} while (now_fine != clock_time());
+	time_start = ((unsigned long)now)*CLOCK_SECOND + now_fine%CLOCK_SECOND;
 
 	while(1) {
 		// Shortest possible pause
@@ -142,11 +153,19 @@ PROCESS_THREAD(coffee_test_process, ev, data)
 
 		cnt ++;
 
-    if( cnt >= 2 * COFFEE_PAGES ) {
-      printf("PASS\n");
-      watchdog_stop();
-      while(1);
-    }
+		//if( cnt >= 2 * COFFEE_PAGES ) {
+		if( cnt >= 10 ) {
+			do {
+				now_fine = clock_time();
+				now = clock_seconds();
+			} while (now_fine != clock_time());
+			time_stop = ((unsigned long)now)*CLOCK_SECOND + now_fine%CLOCK_SECOND;
+
+			TEST_REPORT("data written", FILE_SIZE*cnt*CLOCK_SECOND, time_stop-time_start, "bytes/s");
+			TEST_PASS();
+			watchdog_stop();
+			while(1);
+		}
 	}
 
 	PROCESS_END();
