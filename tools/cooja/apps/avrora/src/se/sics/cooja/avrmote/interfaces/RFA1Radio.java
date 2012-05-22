@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, Swedish Institute of Computer Science.
+ * Copyright (c) 2012, Swedish Institute of Computer Science.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -43,7 +43,7 @@ import se.sics.cooja.avrmote.RFA1Mote;
 import se.sics.cooja.emulatedmote.Radio802154;
 
 /**
- * ATMega128RFA1 radio to COOJA wrapper.
+ * Avrora ATMega128RFA1 radio to COOJA wrapper.
  *
  * @author Joakim Eriksson
  * @author David Kopf
@@ -77,18 +77,12 @@ public class RFA1Radio extends Radio802154 {
         public void fireBeforeTransition(int arg0, int arg1) {
         }
         public void fireAfterTransition(int arg0, int arg1) {
-            System.out.println("RFA1 FSM: " + arg0 + " " + arg1);
+   //         System.out.println("RFA1 FSM: " + arg0 + " " + arg1);
             RadioEvent re = null;
             if (arg1 >= 3) {
                 re = RadioEvent.HW_ON;
             } else {
                 re = RadioEvent.HW_OFF;
-                 /*
-                if (arg0 > 3 && arg1 == 2) {
-                   // likely that radio dips into 2 before going back to 3
-                    re = RadioEvent.HW_OFF;
-                }
-                */
             }
             if (re != null) {
                 lastEvent = re;
@@ -103,12 +97,10 @@ public class RFA1Radio extends Radio802154 {
   }
 
   public int getChannel() {
-//System.out.println("RFA1 getchannel " + rf231.getChannel());
     return rf231.getChannel();
   }
 
   public int getFrequency() {
-                System.out.println("RFA1 getfreq " +  rf231.getFrequency());
       return (int) rf231.getFrequency();
   }
 
@@ -121,45 +113,37 @@ public class RFA1Radio extends Radio802154 {
   }
 
   public void signalReceptionStart() {
-                System.out.println("RFA1 receptionstart");
 //    rf231.setCCA(true);
 //    hasFailedReception = mode == rf231.MODE_TXRX_OFF;
       super.signalReceptionStart();
   }
 
   public double getCurrentOutputPower() {
-                      System.out.println("RFA1 getoutputpower " + rf231.getPower());
     return rf231.getPower();
   }
 
   public int getCurrentOutputPowerIndicator() {
- //                       System.out.println("RFA1 getOutputPowerIndicator" );
     return 31; //rf231.getOutputPowerIndicator();
   }
 
   public int getOutputPowerIndicatorMax() {
-  //                    System.out.println("RFA1 getOutputPowerIndicatorMax" );
     return 31;
   }
 
   public double getCurrentSignalStrength() {
- //                   System.out.println("RFA1 getsignalstrength " + recv.getRSSI());
     return recv.getRSSI();
   }
 
   public void setCurrentSignalStrength(double signalStrength) {
-  //                System.out.println("RFA1 setsignalstrength " + signalStrength);
     recv.setRSSI(signalStrength);
   }
 
   protected void handleEndOfReception() {
-                        System.out.println("RFA1 handleEndOfReception" );
       /* tell the receiver that the packet is ended */
       recv.nextByte(false, (byte)0);
   }
 
   protected void handleReceive(byte b) {
-                       System.out.println("RFA1 handleReceive" );
       recv.nextByte(true, (byte)b);
   }
 }
