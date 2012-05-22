@@ -34,39 +34,40 @@ import org.apache.log4j.Logger;
 
 import avrora.sim.FiniteStateMachine;
 import avrora.sim.FiniteStateMachine.Probe;
-import avrora.sim.platform.MicaZ;
-import avrora.sim.radio.CC2420Radio;
+import avrora.sim.platform.RFA1;
+import avrora.sim.radio.ATmega128RFA1Radio;
 import avrora.sim.radio.Medium;
 
 import se.sics.cooja.*;
-import se.sics.cooja.avrmote.MicaZMote;
+import se.sics.cooja.avrmote.RFA1Mote;
 import se.sics.cooja.emulatedmote.Radio802154;
 
 /**
- * CC2420 to COOJA wrapper.
+ * ATMega128RFA1 radio to COOJA wrapper.
  *
  * @author Joakim Eriksson
+ * @author David Kopf
  */
-@ClassDescription("CC2420")
-public class MicaZRadio extends Radio802154 {
-  private static Logger logger = Logger.getLogger(MicaZRadio.class);
+@ClassDescription("RFA1")
+public class RFA1Radio extends Radio802154 {
+  private static Logger logger = Logger.getLogger(RFA1Radio.class);
 
-  private MicaZ micaz;
-  private CC2420Radio cc2420;
+  private RFA1 rfa1;
+  private ATmega128RFA1Radio rf231;
 
 //  private int mode;
   Medium.Transmitter trans;
-  CC2420Radio.Receiver recv;
+  ATmega128RFA1Radio.Receiver recv;
   FiniteStateMachine fsm;
   
-  public MicaZRadio(Mote mote) {
+  public RFA1Radio(Mote mote) {
     super(mote);
-    micaz = ((MicaZMote)mote).getMicaZ();
-    cc2420 = (CC2420Radio) micaz.getDevice("radio");
+    rfa1 = ((RFA1Mote)mote).getRFA1();
+    rf231 = (ATmega128RFA1Radio) rfa1.getDevice("radio");
    
-    trans = cc2420.getTransmitter();
-    fsm = cc2420.getFiniteStateMachine();
-    recv = (CC2420Radio.Receiver) cc2420.getReceiver();
+    trans = rf231.getTransmitter();
+    fsm = rf231.getFiniteStateMachine();
+    recv = (ATmega128RFA1Radio.Receiver) rf231.getReceiver();
     trans.insertProbe(new Medium.Probe.Empty() {
         public void fireBeforeTransmit(Medium.Transmitter t, byte val) {
             handleTransmit(val);
@@ -76,20 +77,22 @@ public class MicaZRadio extends Radio802154 {
         public void fireBeforeTransition(int arg0, int arg1) {
         }
         public void fireAfterTransition(int arg0, int arg1) {
-            //System.out.println("CC2420 - MicaZ FSM: " + arg0 + " " + arg1);
+            System.out.println("RFA1 FSM: " + arg0 + " " + arg1);
             RadioEvent re = null;
             if (arg1 >= 3) {
                 re = RadioEvent.HW_ON;
             } else {
+                re = RadioEvent.HW_OFF;
+                 /*
                 if (arg0 > 3 && arg1 == 2) {
-                    /* likely that radio dips into 2 before going back to 3 */
-                } else {
+                   // likely that radio dips into 2 before going back to 3
                     re = RadioEvent.HW_OFF;
                 }
+                */
             }
             if (re != null) {
                 lastEvent = re;
-                lastEventTime = MicaZRadio.this.mote.getSimulation().getSimulationTime();
+                lastEventTime = RFA1Radio.this.mote.getSimulation().getSimulationTime();
                 setChanged();
                 notifyObservers();
             }
@@ -100,56 +103,63 @@ public class MicaZRadio extends Radio802154 {
   }
 
   public int getChannel() {
-//    cc2420.updateActiveFrequency();
-//    return cc2420.getActiveChannel();
-      return (int) ((cc2420.getFrequency() - 2405.0)/5) + 11;
+//System.out.println("RFA1 getchannel " + rf231.getChannel());
+    return rf231.getChannel();
   }
 
   public int getFrequency() {
-//    cc2420.updateActiveFrequency();
-      return (int) cc2420.getFrequency();
+                System.out.println("RFA1 getfreq " +  rf231.getFrequency());
+      return (int) rf231.getFrequency();
   }
 
   public boolean isReceiverOn() {
-      FiniteStateMachine fsm = cc2420.getFiniteStateMachine();
-      /* based on reading the source code it seems that the fsm state = 3 means on */
-      //System.out.println("COOJA: cc2420 FSM: " + fsm.getCurrentState());
-      return fsm.getCurrentState() >= 3;
+      FiniteStateMachine fsm = rf231.getFiniteStateMachine();
+      //Receiver is on in state 3, transmitter for > 3
+  //            System.out.println("RFA1 isreceiveron " + fsm.getCurrentState());
+   //   return fsm.getCurrentState() == 3;
+            return true;
   }
 
   public void signalReceptionStart() {
-//    cc2420.setCCA(true);
-//    hasFailedReception = mode == CC2420.MODE_TXRX_OFF;
+                System.out.println("RFA1 receptionstart");
+//    rf231.setCCA(true);
+//    hasFailedReception = mode == rf231.MODE_TXRX_OFF;
       super.signalReceptionStart();
   }
 
   public double getCurrentOutputPower() {
-    return 1.1;//cc2420.getOutputPower();
+                      System.out.println("RFA1 getoutputpower " + rf231.getPower());
+    return rf231.getPower();
   }
 
   public int getCurrentOutputPowerIndicator() {
-    return 31; //cc2420.getOutputPowerIndicator();
+ //                       System.out.println("RFA1 getOutputPowerIndicator" );
+    return 31; //rf231.getOutputPowerIndicator();
   }
 
   public int getOutputPowerIndicatorMax() {
+  //                    System.out.println("RFA1 getOutputPowerIndicatorMax" );
     return 31;
   }
 
   public double getCurrentSignalStrength() {
-    return 1;//cc2420.getRSSI();
+ //                   System.out.println("RFA1 getsignalstrength " + recv.getRSSI());
+    return recv.getRSSI();
   }
 
   public void setCurrentSignalStrength(double signalStrength) {
-    //cc2420.setRSSI((int) signalStrength);
+  //                System.out.println("RFA1 setsignalstrength " + signalStrength);
+    recv.setRSSI(signalStrength);
   }
 
   protected void handleEndOfReception() {
+                        System.out.println("RFA1 handleEndOfReception" );
       /* tell the receiver that the packet is ended */
       recv.nextByte(false, (byte)0);
   }
 
   protected void handleReceive(byte b) {
-      //System.out.println("MicaZ: Received: " + (b &0xff));
+                       System.out.println("RFA1 handleReceive" );
       recv.nextByte(true, (byte)b);
   }
 }

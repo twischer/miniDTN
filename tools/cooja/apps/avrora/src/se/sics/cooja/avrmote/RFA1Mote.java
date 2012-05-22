@@ -34,36 +34,36 @@ import se.sics.cooja.MoteType;
 import se.sics.cooja.Simulation;
 import se.sics.cooja.avrmote.AvroraMote;
 
-import avrora.sim.platform.MicaZ;
+import avrora.sim.platform.RFA1;
 import avrora.sim.platform.PlatformFactory;
 
 /**
- * AVR-based MicaZ mote emulated in Avrora.
+ * Bare AVR atmega128rfa1 mote emulated in Avrora.
  *
- * @author Joakim Eriksson, Fredrik Osterlind, David Kopf
+ * @author David Kopf
  */
-public class MicaZMote extends AvroraMote {
-  // 7372800 Hz according to contiki-conf.h
-  public static int F_CPU = 7372800;
+public class RFA1Mote extends AvroraMote {
+  // 8MHz in the default Contiki build
+  public static int F_CPU = 8000000;
 
   // Delegate the mote production to the AvroraMote class
-  public MicaZMote(Simulation simulation, MicaZMoteType type) {
+  public RFA1Mote(Simulation simulation, RFA1MoteType type) {
     this.getAMote(simulation, (MoteType) type);
   }
 
-  // Returns AvroraMote.PLATFORM when only a MicaZ will do
-  public MicaZ getMicaZ() {
-    return (MicaZ) PLATFORM;
+  // Returns AvroraMote.PLATFORM when only a RFA1 will do
+  public RFA1 getRFA1() {
+    return (RFA1) PLATFORM;
   }
 
-  // Set AvroraMote.FACTORY for MicaZ production
+  // Set AvroraMote.FACTORY for RFA1 production
   public void getFactory() throws Exception {
-    FACTORY = new MicaZ.Factory();
+    FACTORY = new RFA1.Factory();
   }
 
   // Return unique Mote name
   public String toString() {
-    return "MicaZ " + getID();
+    return "RFA1 " + getID();
   }
 
   // Return CPU frequency TODO:get current frequency

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, Swedish Institute of Computer Science.
+ * Copyright (c) 2012, Swedish Institute of Computer Science.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,60 +30,58 @@
 
 package se.sics.cooja.avrmote;
 
-import org.apache.log4j.Logger;
-import org.jdom.Element;
-
 import se.sics.cooja.AbstractionLevelDescription;
 import se.sics.cooja.ClassDescription;
 import se.sics.cooja.Mote;
 import se.sics.cooja.MoteInterface;
 import se.sics.cooja.Simulation;
 import se.sics.cooja.avrmote.AvroraMoteType;
+
 import se.sics.cooja.avrmote.interfaces.AvrDebugger;
 import se.sics.cooja.avrmote.interfaces.AvroraClock;
-import se.sics.cooja.avrmote.interfaces.AvroraSerial0;
-import se.sics.cooja.avrmote.interfaces.MicaZID;
 import se.sics.cooja.avrmote.interfaces.AvroraLED;
 import se.sics.cooja.avrmote.interfaces.AvroraADC;
-import se.sics.cooja.avrmote.interfaces.MicaZRadio;
+import se.sics.cooja.avrmote.interfaces.RFA1Serial;
+import se.sics.cooja.avrmote.interfaces.RFA1Radio;
+import se.sics.cooja.avrmote.interfaces.RFA1ID;
 import se.sics.cooja.interfaces.Mote2MoteRelations;
 import se.sics.cooja.interfaces.MoteAttributes;
 import se.sics.cooja.interfaces.Position;
 
 /**
- * AVR-based MicaZ mote types emulated in Avrora.
+ * Bare AVR atmega128rfa1 mote types emulated in Avrora.
  * 
- * @author Joakim Eriksson, Fredrik Osterlind
+ * @author Joakim Eriksson, Fredrik Osterlind, David Kopf
  */
-@ClassDescription("MicaZ Mote Type")
+@ClassDescription("RFA1 Mote Type")
 @AbstractionLevelDescription("Emulated level")
-public class MicaZMoteType extends AvroraMoteType {
+public class RFA1MoteType extends AvroraMoteType {
 
   // The returned string is used for mote type name and icon jpg file
   public final String getMoteName() {
-    return ("MicaZ");
+    return ("RFA1");
   }
   // The returned string is used for firmware file extension
   public final String getMoteContikiTarget() {
-    return ("micaz");
+    return ("avr-atmega128rfa1");
   }
 
   public final Mote generateMote(Simulation simulation) {
-    MicaZMote mote = new MicaZMote(simulation, this);
+    RFA1Mote mote = new RFA1Mote(simulation, this);
     mote.initMote();
     return mote;
   }
 
-  @SuppressWarnings("unchecked")
-  public Class<? extends MoteInterface>[] getAllMoteInterfaceClasses() {
+ @SuppressWarnings("unchecked")
+ public Class<? extends MoteInterface>[] getAllMoteInterfaceClasses() {
     return new Class[] {
         Position.class,
-        MicaZID.class,
+        RFA1ID.class,
         AvroraLED.class,
         AvroraADC.class,
-        MicaZRadio.class,
+        RFA1Radio.class,
         AvroraClock.class,
-        AvroraSerial0.class,
+        RFA1Serial.class,
         AvrDebugger.class,
         Mote2MoteRelations.class,
         MoteAttributes.class

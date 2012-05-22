@@ -24,7 +24,6 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $Id: AvrMoteMemory.java,v 1.4 2009/11/17 14:30:26 joxe Exp $
  */
 
 package se.sics.cooja.avrmote;
@@ -45,6 +44,7 @@ import avrora.sim.Simulator.Watch;
  * @author Joakim Eriksson
  */
 public class AvrMoteMemory implements MoteMemory, AddressMemory {
+    private static final boolean DEBUG = false;
     private static Logger logger = Logger.getLogger(AvrMoteMemory.class);
 
     private SourceMapping memoryMap;
@@ -80,39 +80,44 @@ public class AvrMoteMemory implements MoteMemory, AddressMemory {
 
     public byte[] getByteArray(String varName, int length)
             throws UnknownVariableException {
-        return null;
+            byte[] array = new byte[length];
+            for (int i=0; i<length; i++) {
+              array[i] = (byte) getValueOf(varName, 1, i);
+            }
+            return array;
     }
 
     public byte getByteValueOf(String varName) throws UnknownVariableException {
-        return (byte) getValueOf(varName, 1);
+        return (byte) getValueOf(varName, 1, 0);
     }
     
-    private int getValueOf(String varName, int len) throws UnknownVariableException {
+    private int getValueOf(String varName, int len, int offset) throws UnknownVariableException {
         Location mem = memoryMap.getLocation(varName);
         if (mem == null) throw new UnknownVariableException("Variable does not exist: " + varName);
 
-        System.out.println("Variable:" + varName + " in section: " + mem.section);
-        System.out.println("LMA: " + Integer.toHexString(mem.lma_addr));
-        System.out.println("VMA: " + Integer.toHexString(mem.vma_addr));
+        if (DEBUG) System.out.println("Variable:" + varName + " in section: " + mem.section);
+        if (DEBUG) System.out.println("LMA: " + Integer.toHexString(mem.lma_addr));
+        if (DEBUG) System.out.println("VMA: " + Integer.toHexString(mem.vma_addr));
 
-        System.out.println("Data: " + interpreter.getDataByte(mem.lma_addr & 0xfffff));
-        System.out.println("Flash: " + interpreter.getFlashByte(mem.lma_addr & 0xfffff));
+        if (DEBUG) System.out.println("Data: " + interpreter.getDataByte(mem.lma_addr & 0xfffff));
+        if (DEBUG) System.out.println("Flash: " + interpreter.getFlashByte(mem.lma_addr & 0xfffff));
         int data = 0;
+        offset--;
         if (mem.vma_addr > 0xfffff) {
             for (int i = 0; i < len; i++) {
-                data = (data << 8) + (interpreter.getDataByte((mem.vma_addr & 0xfffff) + len - i - 1) & 0xff);
-                System.out.println("Read byte: " + interpreter.getDataByte((mem.vma_addr & 0xfffff) + i) +
+                data = (data << 8) + (interpreter.getDataByte((mem.vma_addr & 0xfffff) + len - i + offset) & 0xff);
+                if (DEBUG) System.out.println("Read byte: " + interpreter.getDataByte((mem.vma_addr & 0xfffff) + i) +
                         " => " + data);
             }
         } else {
             for (int i = 0; i < len; i++) {
-                data = (data << 8) + interpreter.getFlashByte(mem.vma_addr + len - i - 1) & 0xff;
+                data = (data << 8) + interpreter.getFlashByte(mem.vma_addr + len - i + offset) & 0xff;
             }
         }
         return data;
     }
 
-    private void setValue(String varName, int val, int len) throws UnknownVariableException {
+    private void setValue(String varName, int val, int len, int offset) throws UnknownVariableException {
         Location mem = memoryMap.getLocation(varName);
         if (mem == null) throw new UnknownVariableException("Variable does not exist: " + varName);
 
@@ -120,20 +125,20 @@ public class AvrMoteMemory implements MoteMemory, AddressMemory {
         if (mem.vma_addr > 0xfffff) {       
             // write LSB first.
             for (int i = 0; i < len; i++) {
-                interpreter.writeDataByte((mem.vma_addr & 0xfffff) + i, (byte) (data & 0xff));
-                System.out.println("Wrote byte: " + (data & 0xff));
+                interpreter.writeDataByte((mem.vma_addr & 0xfffff) + i + offset, (byte) (data & 0xff));
+                if (DEBUG) System.out.println("Wrote byte: " + (data & 0xff));
                 data = data >> 8;
             }
         } else {
             for (int i = 0; i < len; i++) {
-                interpreter.writeFlashByte(mem.vma_addr + i, (byte) (data & 0xff));
+                interpreter.writeFlashByte(mem.vma_addr + i + offset, (byte) (data & 0xff));
                 data = data >> 8;
             }
         }
     }
     
     public int getIntValueOf(String varName) throws UnknownVariableException {
-        return getValueOf(varName, 2);
+        return getValueOf(varName, 2, 0);
     }
 
     public int getIntegerLength() {
@@ -155,16 +160,17 @@ public class AvrMoteMemory implements MoteMemory, AddressMemory {
 
     public void setByteArray(String varName, byte[] data)
             throws UnknownVariableException {
+        for (int i=0;i<data.length;i++) setValue(varName, data[i], 1, i);
     }
 
     public void setByteValueOf(String varName, byte newVal)
             throws UnknownVariableException {
-        setValue(varName, newVal, 1);
+        setValue(varName, newVal, 1, 0);
     }
 
     public void setIntValueOf(String varName, int newVal)
             throws UnknownVariableException {
-        setValue(varName, newVal, 2);
+        setValue(varName, newVal, 2, 0);
     }
 
     public boolean variableExists(String varName) {

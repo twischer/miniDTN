@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, Swedish Institute of Computer Science.
+ * Copyright (c) 2012, Swedish Institute of Computer Science.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,46 +30,44 @@
 
 package se.sics.cooja.avrmote;
 
-import org.apache.log4j.Logger;
-import org.jdom.Element;
-
 import se.sics.cooja.AbstractionLevelDescription;
 import se.sics.cooja.ClassDescription;
 import se.sics.cooja.Mote;
 import se.sics.cooja.MoteInterface;
 import se.sics.cooja.Simulation;
 import se.sics.cooja.avrmote.AvroraMoteType;
+
 import se.sics.cooja.avrmote.interfaces.AvrDebugger;
 import se.sics.cooja.avrmote.interfaces.AvroraClock;
-import se.sics.cooja.avrmote.interfaces.AvroraSerial0;
-import se.sics.cooja.avrmote.interfaces.MicaZID;
 import se.sics.cooja.avrmote.interfaces.AvroraLED;
 import se.sics.cooja.avrmote.interfaces.AvroraADC;
-import se.sics.cooja.avrmote.interfaces.MicaZRadio;
+import se.sics.cooja.avrmote.interfaces.RavenSerial;
+import se.sics.cooja.avrmote.interfaces.RavenRadio;
+import se.sics.cooja.avrmote.interfaces.RavenID;
 import se.sics.cooja.interfaces.Mote2MoteRelations;
 import se.sics.cooja.interfaces.MoteAttributes;
 import se.sics.cooja.interfaces.Position;
 
 /**
- * AVR-based MicaZ mote types emulated in Avrora.
+ * AVR-based Raven mote types emulated in Avrora.
  * 
- * @author Joakim Eriksson, Fredrik Osterlind
+ * @author Joakim Eriksson, Fredrik Osterlind, David Kopf
  */
-@ClassDescription("MicaZ Mote Type")
+@ClassDescription("Raven Mote Type")
 @AbstractionLevelDescription("Emulated level")
-public class MicaZMoteType extends AvroraMoteType {
+public class RavenMoteType extends AvroraMoteType {
 
   // The returned string is used for mote type name and icon jpg file
   public final String getMoteName() {
-    return ("MicaZ");
+    return ("Raven");
   }
   // The returned string is used for firmware file extension
   public final String getMoteContikiTarget() {
-    return ("micaz");
+    return ("avr-raven");
   }
 
   public final Mote generateMote(Simulation simulation) {
-    MicaZMote mote = new MicaZMote(simulation, this);
+    RavenMote mote = new RavenMote(simulation, this);
     mote.initMote();
     return mote;
   }
@@ -78,12 +76,12 @@ public class MicaZMoteType extends AvroraMoteType {
   public Class<? extends MoteInterface>[] getAllMoteInterfaceClasses() {
     return new Class[] {
         Position.class,
-        MicaZID.class,
+        RavenID.class,
         AvroraLED.class,
         AvroraADC.class,
-        MicaZRadio.class,
+        RavenRadio.class,
         AvroraClock.class,
-        AvroraSerial0.class,
+        RavenSerial.class,
         AvrDebugger.class,
         Mote2MoteRelations.class,
         MoteAttributes.class

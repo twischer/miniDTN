@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Swedish Institute of Computer Science.
+ * Copyright (c) 2009, Swedish Institute of Computer Science.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,46 +28,66 @@
  *
  */
 
-package se.sics.cooja.avrmote;
+package se.sics.cooja.avrmote.interfaces;
 
-import se.sics.cooja.MoteType;
+import java.util.Collection;
+
+import javax.swing.JPanel;
+
+import org.apache.log4j.Logger;
+import org.jdom.Element;
+
+import se.sics.cooja.ClassDescription;
+import se.sics.cooja.Mote;
 import se.sics.cooja.Simulation;
-import se.sics.cooja.avrmote.AvroraMote;
-
-import avrora.sim.platform.MicaZ;
-import avrora.sim.platform.PlatformFactory;
+import se.sics.cooja.avrmote.RFA1Mote;
+import se.sics.cooja.interfaces.Clock;
 
 /**
- * AVR-based MicaZ mote emulated in Avrora.
- *
- * @author Joakim Eriksson, Fredrik Osterlind, David Kopf
+ * @author Fredrik Osterlind, Joakim Eriksson
  */
-public class MicaZMote extends AvroraMote {
-  // 7372800 Hz according to contiki-conf.h
-  public static int F_CPU = 7372800;
+@ClassDescription("Cycle clock")
+public class RFA1Clock extends Clock {
+  private static Logger logger = Logger.getLogger(RFA1Clock.class);
 
-  // Delegate the mote production to the AvroraMote class
-  public MicaZMote(Simulation simulation, MicaZMoteType type) {
-    this.getAMote(simulation, (MoteType) type);
+  private Simulation simulation;
+  private RFA1Mote myMote;
+
+  private long timeDrift; /* Microseconds */
+  
+  public RFA1Clock(Mote mote) {
+    simulation = mote.getSimulation();
+    myMote = (RFA1Mote) mote;
   }
 
-  // Returns AvroraMote.PLATFORM when only a MicaZ will do
-  public MicaZ getMicaZ() {
-    return (MicaZ) PLATFORM;
+  public void setTime(long newTime) {
+    logger.fatal("Can't change emulated CPU time");
   }
 
-  // Set AvroraMote.FACTORY for MicaZ production
-  public void getFactory() throws Exception {
-    FACTORY = new MicaZ.Factory();
+  public long getTime() {
+    return simulation.getSimulationTime() + timeDrift;
   }
 
-  // Return unique Mote name
-  public String toString() {
-    return "MicaZ " + getID();
+  public void setDrift(long drift) {
+    timeDrift = drift;
   }
 
-  // Return CPU frequency TODO:get current frequency
-  public int getCPUFrequency() {
-    return (int) F_CPU;
+  public long getDrift() {
+    return timeDrift;
   }
+
+  public JPanel getInterfaceVisualizer() {
+    return null;
+  }
+
+  public void releaseInterfaceVisualizer(JPanel panel) {
+  }
+
+  public Collection<Element> getConfigXML() {
+    return null;
+  }
+
+  public void setConfigXML(Collection<Element> configXML, boolean visAvailable) {
+  }
+
 }

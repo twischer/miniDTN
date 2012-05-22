@@ -30,46 +30,39 @@
 
 package se.sics.cooja.avrmote;
 
-import org.apache.log4j.Logger;
-import org.jdom.Element;
-
 import se.sics.cooja.AbstractionLevelDescription;
 import se.sics.cooja.ClassDescription;
 import se.sics.cooja.Mote;
 import se.sics.cooja.MoteInterface;
 import se.sics.cooja.Simulation;
-import se.sics.cooja.avrmote.AvroraMoteType;
+import se.sics.cooja.avrmote.interfaces.ATTiny85ID;
 import se.sics.cooja.avrmote.interfaces.AvrDebugger;
-import se.sics.cooja.avrmote.interfaces.AvroraClock;
-import se.sics.cooja.avrmote.interfaces.AvroraSerial0;
-import se.sics.cooja.avrmote.interfaces.MicaZID;
-import se.sics.cooja.avrmote.interfaces.AvroraLED;
 import se.sics.cooja.avrmote.interfaces.AvroraADC;
-import se.sics.cooja.avrmote.interfaces.MicaZRadio;
-import se.sics.cooja.interfaces.Mote2MoteRelations;
+import se.sics.cooja.avrmote.interfaces.AvroraClock;
+import se.sics.cooja.avrmote.interfaces.AvroraLED;
 import se.sics.cooja.interfaces.MoteAttributes;
 import se.sics.cooja.interfaces.Position;
 
 /**
  * AVR-based MicaZ mote types emulated in Avrora.
- * 
+ *
  * @author Joakim Eriksson, Fredrik Osterlind
  */
-@ClassDescription("MicaZ Mote Type")
+@ClassDescription("ATTiny85 Mote Type")
 @AbstractionLevelDescription("Emulated level")
-public class MicaZMoteType extends AvroraMoteType {
+public class ATTiny85MoteType extends AvroraMoteType {
 
   // The returned string is used for mote type name and icon jpg file
   public final String getMoteName() {
-    return ("MicaZ");
+    return ("Tiny85");
   }
   // The returned string is used for firmware file extension
   public final String getMoteContikiTarget() {
-    return ("micaz");
+    return ("tiny85");
   }
 
   public final Mote generateMote(Simulation simulation) {
-    MicaZMote mote = new MicaZMote(simulation, this);
+    ATTiny85Mote mote = new ATTiny85Mote(simulation, this);
     mote.initMote();
     return mote;
   }
@@ -78,14 +71,13 @@ public class MicaZMoteType extends AvroraMoteType {
   public Class<? extends MoteInterface>[] getAllMoteInterfaceClasses() {
     return new Class[] {
         Position.class,
-        MicaZID.class,
+        ATTiny85ID.class,
         AvroraLED.class,
         AvroraADC.class,
-        MicaZRadio.class,
         AvroraClock.class,
-        AvroraSerial0.class,
+   //     AvroraSerial0.class,
         AvrDebugger.class,
-        Mote2MoteRelations.class,
+       // Mote2MoteRelations.class,
         MoteAttributes.class
     };
   }

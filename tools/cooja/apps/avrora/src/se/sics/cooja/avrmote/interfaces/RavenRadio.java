@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, Swedish Institute of Computer Science.
+ * Copyright (c) 2012, Swedish Institute of Computer Science.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -34,39 +34,39 @@ import org.apache.log4j.Logger;
 
 import avrora.sim.FiniteStateMachine;
 import avrora.sim.FiniteStateMachine.Probe;
-import avrora.sim.platform.MicaZ;
-import avrora.sim.radio.CC2420Radio;
+import avrora.sim.platform.Raven;
+import avrora.sim.radio.AT86RF231Radio;
 import avrora.sim.radio.Medium;
 
 import se.sics.cooja.*;
-import se.sics.cooja.avrmote.MicaZMote;
+import se.sics.cooja.avrmote.RavenMote;
 import se.sics.cooja.emulatedmote.Radio802154;
 
 /**
- * CC2420 to COOJA wrapper.
+ * Atmel AT86RF230 radio to COOJA wrapper, using the AT86RF231 emulator.
  *
- * @author Joakim Eriksson
+ * @author David Kopf
  */
-@ClassDescription("CC2420")
-public class MicaZRadio extends Radio802154 {
-  private static Logger logger = Logger.getLogger(MicaZRadio.class);
+@ClassDescription("AT86RF230 Radio")
+public class RavenRadio extends Radio802154 {
+  private static Logger logger = Logger.getLogger(RavenRadio.class);
+  private final static boolean DEBUG = false;
+  private final static boolean DEBUGV = false;
 
-  private MicaZ micaz;
-  private CC2420Radio cc2420;
-
-//  private int mode;
+  private Raven raven;
   Medium.Transmitter trans;
-  CC2420Radio.Receiver recv;
+  AT86RF231Radio.Receiver recv;
   FiniteStateMachine fsm;
+  private AT86RF231Radio rf230;
   
-  public MicaZRadio(Mote mote) {
+  public RavenRadio(Mote mote) {
     super(mote);
-    micaz = ((MicaZMote)mote).getMicaZ();
-    cc2420 = (CC2420Radio) micaz.getDevice("radio");
+    raven = ((RavenMote)mote).getRaven();
+    rf230 = (AT86RF231Radio) raven.getDevice("radio");
    
-    trans = cc2420.getTransmitter();
-    fsm = cc2420.getFiniteStateMachine();
-    recv = (CC2420Radio.Receiver) cc2420.getReceiver();
+    trans = rf230.getTransmitter();
+    fsm = rf230.getFiniteStateMachine();
+    recv = (AT86RF231Radio.Receiver) rf230.getReceiver();
     trans.insertProbe(new Medium.Probe.Empty() {
         public void fireBeforeTransmit(Medium.Transmitter t, byte val) {
             handleTransmit(val);
@@ -76,80 +76,85 @@ public class MicaZRadio extends Radio802154 {
         public void fireBeforeTransition(int arg0, int arg1) {
         }
         public void fireAfterTransition(int arg0, int arg1) {
-            //System.out.println("CC2420 - MicaZ FSM: " + arg0 + " " + arg1);
+            if (DEBUG) System.out.println("Raven FSM: " + arg0 + " " + arg1);
             RadioEvent re = null;
-            if (arg1 >= 3) {
+            if (arg1 >= 1) {
                 re = RadioEvent.HW_ON;
             } else {
-                if (arg0 > 3 && arg1 == 2) {
-                    /* likely that radio dips into 2 before going back to 3 */
-                } else {
-                    re = RadioEvent.HW_OFF;
-                }
+                re = RadioEvent.HW_OFF;
             }
             if (re != null) {
                 lastEvent = re;
-                lastEventTime = MicaZRadio.this.mote.getSimulation().getSimulationTime();
+                lastEventTime = RavenRadio.this.mote.getSimulation().getSimulationTime();
                 setChanged();
                 notifyObservers();
             }
         }
-    });
-    
-    
+    });   
   }
 
   public int getChannel() {
-//    cc2420.updateActiveFrequency();
-//    return cc2420.getActiveChannel();
-      return (int) ((cc2420.getFrequency() - 2405.0)/5) + 11;
+    if (DEBUG) System.out.println("Raven getChannel " + rf230.getChannel());
+    return rf230.getChannel();
   }
 
   public int getFrequency() {
-//    cc2420.updateActiveFrequency();
-      return (int) cc2420.getFrequency();
+    if (DEBUG) System.out.println("Raven getFrequency " +  rf230.getFrequency());
+    return (int) rf230.getFrequency();
   }
 
   public boolean isReceiverOn() {
-      FiniteStateMachine fsm = cc2420.getFiniteStateMachine();
-      /* based on reading the source code it seems that the fsm state = 3 means on */
-      //System.out.println("COOJA: cc2420 FSM: " + fsm.getCurrentState());
-      return fsm.getCurrentState() >= 3;
+    FiniteStateMachine fsm = rf230.getFiniteStateMachine();
+    //Receiver is on in state 3-5, and a transmitter for > 5
+    if (DEBUG) System.out.println("Raven isReceiverOn " + fsm.getCurrentState());
+    switch (fsm.getCurrentState()) {
+        case 3:
+        case 4:
+        case 5:
+            return true;
+    }
+    return false;
   }
 
   public void signalReceptionStart() {
-//    cc2420.setCCA(true);
-//    hasFailedReception = mode == CC2420.MODE_TXRX_OFF;
+      if (DEBUG) System.out.println("Raven signalReceptionStart");
+//    hasFailedReception = mode == rf230.MODE_TXRX_OFF;
       super.signalReceptionStart();
   }
 
   public double getCurrentOutputPower() {
-    return 1.1;//cc2420.getOutputPower();
+    if (DEBUG) System.out.println("Raven getCurrentOutputPower " + rf230.getPower());
+    return rf230.getPower();
   }
 
   public int getCurrentOutputPowerIndicator() {
-    return 31; //cc2420.getOutputPowerIndicator();
+    if (DEBUG) System.out.println("Raven getOutputPowerIndicator" );
+    return 31; //rf230.getOutputPowerIndicator();
   }
 
   public int getOutputPowerIndicatorMax() {
+    if (DEBUG) System.out.println("Raven getOutputPowerIndicatorMax" );
     return 31;
   }
 
   public double getCurrentSignalStrength() {
-    return 1;//cc2420.getRSSI();
+    if (DEBUG) System.out.println("Raven getCurrentSignalStrength " + recv.getRSSI());
+    return recv.getRSSI();
   }
 
   public void setCurrentSignalStrength(double signalStrength) {
-    //cc2420.setRSSI((int) signalStrength);
+    if (DEBUG) System.out.println("Raven setCurrentSignalStrength " + signalStrength);
+    recv.setRSSI(signalStrength);
   }
 
   protected void handleEndOfReception() {
+    if (DEBUG) System.out.println("Raven handleEndOfReception" );
       /* tell the receiver that the packet is ended */
       recv.nextByte(false, (byte)0);
   }
 
   protected void handleReceive(byte b) {
-      //System.out.println("MicaZ: Received: " + (b &0xff));
-      recv.nextByte(true, (byte)b);
+    if (DEBUGV) System.out.println("Raven handleReceive" );
+    recv.nextByte(true, (byte)b);
   }
 }

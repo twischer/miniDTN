@@ -29,13 +29,11 @@
  */
 
 package se.sics.cooja.avrmote.interfaces;
-import java.util.Observable;
-import java.util.Observer;
 
 import java.util.Collection;
 import java.util.Vector;
+//dakimport cck.util.Util;
 
-import javax.swing.JLabel;
 import javax.swing.JPanel;
 
 import org.apache.log4j.Logger;
@@ -49,23 +47,22 @@ import se.sics.cooja.MoteTimeEvent;
 import se.sics.cooja.Simulation;
 import se.sics.cooja.TimeEvent;
 import se.sics.cooja.avrmote.AvrMoteMemory;
-import se.sics.cooja.avrmote.MicaZMote;
+import se.sics.cooja.avrmote.RFA1Mote;
 import se.sics.cooja.interfaces.MoteID;
 
-public class MicaZID extends MoteID {
+public class RFA1ID extends MoteID {
 
-    private static final boolean DEBUG = false;
-    private static final boolean PERSISTENT_SET_ID = true;
+   private static final boolean PERSISTENT_SET_ID = true;
 
-    private static Logger logger = Logger.getLogger(MicaZID.class);
+    private static Logger logger = Logger.getLogger(RFA1ID.class);
 
-    private int moteID = -1;
+    private int moteID = -1; /* TODO Implement */
 
     private AvrMoteMemory moteMem;
     boolean tosID = false;
     boolean contikiID = false;
-    private MicaZMote mote;
-    private int persistentSetIDCounter = 100;//was 1000
+    private RFA1Mote mote;
+    private int persistentSetIDCounter = 1000;
 
     TimeEvent persistentSetIDEvent = new MoteTimeEvent(mote, 0) {
         public void execute(long t) {
@@ -82,24 +79,24 @@ public class MicaZID extends MoteID {
     };
 
 
-    public MicaZID(Mote mote) {
-        this.mote = (MicaZMote) mote;
+    public RFA1ID(Mote mote) {
+        this.mote = (RFA1Mote) mote;
         this.moteMem = (AvrMoteMemory) mote.getMemory();
-
         if (moteMem.variableExists("node_id")) {
+
             contikiID = true;
 
             int addr = moteMem.getVariableAddress("node_id");
             moteMem.insertWatch(new Watch() {
                 public void fireAfterRead(State arg0, int arg1, byte arg2) {
-                    if (DEBUG) System.out.println("Read from node_id: " + arg2);
+       //             System.out.println("Read from node_id: " + arg2);
                 }
                 public void fireAfterWrite(State arg0, int arg1, byte arg2) {
                 }
                 public void fireBeforeRead(State arg0, int arg1) {
                 }
                 public void fireBeforeWrite(State arg0, int arg1, byte arg2) {
-                    if (DEBUG) System.out.println("Writing to node_id: " + arg2);
+       //             System.out.println("Writing to node_id: " + arg2);
                 }}, addr);
         }
 
@@ -111,7 +108,7 @@ public class MicaZID extends MoteID {
         if (PERSISTENT_SET_ID) {
             mote.getSimulation().invokeSimulationThread(new Runnable() {
                 public void run() {
-                    persistentSetIDEvent.execute(MicaZID.this.mote.getSimulation().getSimulationTime());
+                    persistentSetIDEvent.execute(RFA1ID.this.mote.getSimulation().getSimulationTime());
                 };
             });
         }
@@ -119,6 +116,7 @@ public class MicaZID extends MoteID {
 
     public int getMoteID() {
         if (contikiID) {
+        //dak         Util.warning(" getmoteid ");
             return moteMem.getIntValueOf("node_id");
         }
 
@@ -129,17 +127,13 @@ public class MicaZID extends MoteID {
     }
 
     public void setMoteID(int newID) {
-    	if (moteID != newID) {
-			mote.idUpdated(newID);
-			setChanged();
-		}
         moteID = newID;
         if (contikiID) {
             mote.setEEPROM(0, 0xad);
             mote.setEEPROM(1, 0xde);
             mote.setEEPROM(2, newID);
             mote.setEEPROM(3, newID >> 8);
-            if (DEBUG) System.out.println("Setting node id: " + newID);
+  //          System.out.println("Setting node id: " + newID);
             moteMem.setIntValueOf("node_id", newID);
         }
         if (tosID) {
@@ -153,35 +147,11 @@ public class MicaZID extends MoteID {
 
 
     public JPanel getInterfaceVisualizer() {
-		JPanel panel = new JPanel();
-		final JLabel idLabel = new JLabel();
-		idLabel.setText("Mote ID: " + getMoteID());
+        return null;
+    }
 
-		panel.add(idLabel);
-
-		Observer observer;
-		this.addObserver(observer = new Observer() {
-			public void update(Observable obs, Object obj) {
-				idLabel.setText("Mote ID: " + getMoteID());
-			}
-		});
-
-		panel.putClientProperty("intf_obs", observer);
-
-		return panel;
-	}
-
-
-	public void releaseInterfaceVisualizer(JPanel panel) {
-		Observer observer = (Observer) panel.getClientProperty("intf_obs");
-		if (observer == null) {
-			logger.fatal("Error when releasing panel, observer is null");
-			return;
-		}
-
-		this.deleteObserver(observer);
-	}
-
+    public void releaseInterfaceVisualizer(JPanel panel) {
+    }
 
     public Collection<Element> getConfigXML() {
         Vector<Element> config = new Vector<Element>();

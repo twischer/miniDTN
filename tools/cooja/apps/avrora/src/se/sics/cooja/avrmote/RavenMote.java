@@ -34,36 +34,36 @@ import se.sics.cooja.MoteType;
 import se.sics.cooja.Simulation;
 import se.sics.cooja.avrmote.AvroraMote;
 
-import avrora.sim.platform.MicaZ;
+import avrora.sim.platform.Raven;
 import avrora.sim.platform.PlatformFactory;
 
 /**
- * AVR-based MicaZ mote emulated in Avrora.
+ * AVR-based Raven mote emulated in Avrora.
  *
- * @author Joakim Eriksson, Fredrik Osterlind, David Kopf
+ * @author David Kopf
  */
-public class MicaZMote extends AvroraMote {
-  // 7372800 Hz according to contiki-conf.h
-  public static int F_CPU = 7372800;
+public class RavenMote extends AvroraMote {
+  // 8MHz in the default Contiki build
+  public static int F_CPU = 8000000;
 
   // Delegate the mote production to the AvroraMote class
-  public MicaZMote(Simulation simulation, MicaZMoteType type) {
+  public RavenMote(Simulation simulation, RavenMoteType type) {
     this.getAMote(simulation, (MoteType) type);
   }
 
-  // Returns AvroraMote.PLATFORM when only a MicaZ will do
-  public MicaZ getMicaZ() {
-    return (MicaZ) PLATFORM;
+  // Returns AvroraMote.PLATFORM when only a Raven will do
+  public Raven getRaven() {
+    return (Raven) PLATFORM;
   }
 
-  // Set AvroraMote.FACTORY for MicaZ production
+  // Set AvroraMote.FACTORY for Raven production
   public void getFactory() throws Exception {
-    FACTORY = new MicaZ.Factory();
+    FACTORY = new Raven.Factory();
   }
 
   // Return unique Mote name
   public String toString() {
-    return "MicaZ " + getID();
+    return "Raven " + getID();
   }
 
   // Return CPU frequency TODO:get current frequency

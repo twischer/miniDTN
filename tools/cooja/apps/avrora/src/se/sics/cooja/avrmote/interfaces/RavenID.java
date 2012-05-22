@@ -49,23 +49,22 @@ import se.sics.cooja.MoteTimeEvent;
 import se.sics.cooja.Simulation;
 import se.sics.cooja.TimeEvent;
 import se.sics.cooja.avrmote.AvrMoteMemory;
-import se.sics.cooja.avrmote.MicaZMote;
+import se.sics.cooja.avrmote.RavenMote;
 import se.sics.cooja.interfaces.MoteID;
 
-public class MicaZID extends MoteID {
+public class RavenID extends MoteID {
 
-    private static final boolean DEBUG = false;
-    private static final boolean PERSISTENT_SET_ID = true;
+   private static final boolean PERSISTENT_SET_ID = true;
 
-    private static Logger logger = Logger.getLogger(MicaZID.class);
+    private static Logger logger = Logger.getLogger(RavenID.class);
 
     private int moteID = -1;
 
     private AvrMoteMemory moteMem;
     boolean tosID = false;
     boolean contikiID = false;
-    private MicaZMote mote;
-    private int persistentSetIDCounter = 100;//was 1000
+    private RavenMote mote;
+    private int persistentSetIDCounter = 100;
 
     TimeEvent persistentSetIDEvent = new MoteTimeEvent(mote, 0) {
         public void execute(long t) {
@@ -82,24 +81,24 @@ public class MicaZID extends MoteID {
     };
 
 
-    public MicaZID(Mote mote) {
-        this.mote = (MicaZMote) mote;
+    public RavenID(Mote mote) {
+        this.mote = (RavenMote) mote;
         this.moteMem = (AvrMoteMemory) mote.getMemory();
-
         if (moteMem.variableExists("node_id")) {
+
             contikiID = true;
 
             int addr = moteMem.getVariableAddress("node_id");
             moteMem.insertWatch(new Watch() {
                 public void fireAfterRead(State arg0, int arg1, byte arg2) {
-                    if (DEBUG) System.out.println("Read from node_id: " + arg2);
+       //             System.out.println("Read from node_id: " + arg2);
                 }
                 public void fireAfterWrite(State arg0, int arg1, byte arg2) {
                 }
                 public void fireBeforeRead(State arg0, int arg1) {
                 }
                 public void fireBeforeWrite(State arg0, int arg1, byte arg2) {
-                    if (DEBUG) System.out.println("Writing to node_id: " + arg2);
+       //             System.out.println("Writing to node_id: " + arg2);
                 }}, addr);
         }
 
@@ -111,7 +110,7 @@ public class MicaZID extends MoteID {
         if (PERSISTENT_SET_ID) {
             mote.getSimulation().invokeSimulationThread(new Runnable() {
                 public void run() {
-                    persistentSetIDEvent.execute(MicaZID.this.mote.getSimulation().getSimulationTime());
+                    persistentSetIDEvent.execute(RavenID.this.mote.getSimulation().getSimulationTime());
                 };
             });
         }
@@ -129,17 +128,13 @@ public class MicaZID extends MoteID {
     }
 
     public void setMoteID(int newID) {
-    	if (moteID != newID) {
-			mote.idUpdated(newID);
-			setChanged();
-		}
         moteID = newID;
         if (contikiID) {
-            mote.setEEPROM(0, 0xad);
-            mote.setEEPROM(1, 0xde);
-            mote.setEEPROM(2, newID);
-            mote.setEEPROM(3, newID >> 8);
-            if (DEBUG) System.out.println("Setting node id: " + newID);
+    //        mote.setEEPROM(0, 0xad);
+    //        mote.setEEPROM(1, 0xde);
+    //        mote.setEEPROM(2, newID);
+     //       mote.setEEPROM(3, newID >> 8);
+  //          System.out.println("Setting node id: " + newID);
             moteMem.setIntValueOf("node_id", newID);
         }
         if (tosID) {

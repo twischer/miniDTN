@@ -49,22 +49,22 @@ import se.sics.cooja.MoteTimeEvent;
 import se.sics.cooja.Simulation;
 import se.sics.cooja.TimeEvent;
 import se.sics.cooja.avrmote.AvrMoteMemory;
-import se.sics.cooja.avrmote.MicaZMote;
+import se.sics.cooja.avrmote.ATTiny85Mote;
 import se.sics.cooja.interfaces.MoteID;
 
-public class MicaZID extends MoteID {
+public class ATTiny85ID extends MoteID {
 
     private static final boolean DEBUG = false;
     private static final boolean PERSISTENT_SET_ID = true;
 
-    private static Logger logger = Logger.getLogger(MicaZID.class);
+    private static Logger logger = Logger.getLogger(ATTiny85ID.class);
 
     private int moteID = -1;
 
     private AvrMoteMemory moteMem;
     boolean tosID = false;
     boolean contikiID = false;
-    private MicaZMote mote;
+    private ATTiny85Mote mote;
     private int persistentSetIDCounter = 100;//was 1000
 
     TimeEvent persistentSetIDEvent = new MoteTimeEvent(mote, 0) {
@@ -82,8 +82,8 @@ public class MicaZID extends MoteID {
     };
 
 
-    public MicaZID(Mote mote) {
-        this.mote = (MicaZMote) mote;
+    public ATTiny85ID(Mote mote) {
+        this.mote = (ATTiny85Mote) mote;
         this.moteMem = (AvrMoteMemory) mote.getMemory();
 
         if (moteMem.variableExists("node_id")) {
@@ -111,7 +111,7 @@ public class MicaZID extends MoteID {
         if (PERSISTENT_SET_ID) {
             mote.getSimulation().invokeSimulationThread(new Runnable() {
                 public void run() {
-                    persistentSetIDEvent.execute(MicaZID.this.mote.getSimulation().getSimulationTime());
+                    persistentSetIDEvent.execute(ATTiny85ID.this.mote.getSimulation().getSimulationTime());
                 };
             });
         }
