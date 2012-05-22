@@ -1239,7 +1239,7 @@ public class CC2420Radio implements Radio {
                             boolean satisfied = matchAddress(b, counter);
                             if (!satisfied) {
                                 //reject frame
-                                myprinter.println("Dropped, no match");
+                              //  myprinter.println("Dropped, no match");
                                 dropFrame();
                                 // wait for end of packet
                                 SFD_value.setValue(!SFD_active);
@@ -1414,8 +1414,8 @@ public class CC2420Radio implements Radio {
                         LongAdr = rxFIFO.peekField(6, 14);//dak
                         IEEEAdr = ByteFIFO.copyOfRange(RAMSecurityRegisters, 96, 104);
                         if (!Arrays.equals(LongAdr, IEEEAdr) && !Arrays.equals(LongAdr, LONG_BROADCAST_ADDR)) {
-                            myprinter.println(" longadr " + LongAdr[0]+LongAdr[1]+LongAdr[2]+LongAdr[3]+LongAdr[4]+LongAdr[5]+LongAdr[6]+LongAdr[7]);
-                            myprinter.println(" IEEEAdr " + IEEEAdr[0]+IEEEAdr[1]+IEEEAdr[2]+IEEEAdr[3]+IEEEAdr[4]+IEEEAdr[5]+IEEEAdr[6]+IEEEAdr[7]);
+                       //     myprinter.println(" longadr " + LongAdr[0]+LongAdr[1]+LongAdr[2]+LongAdr[3]+LongAdr[4]+LongAdr[5]+LongAdr[6]+LongAdr[7]);
+                        //    myprinter.println(" IEEEAdr " + IEEEAdr[0]+IEEEAdr[1]+IEEEAdr[2]+IEEEAdr[3]+IEEEAdr[4]+IEEEAdr[5]+IEEEAdr[6]+IEEEAdr[7]);
                             return false;
                         }
                     }
@@ -1705,4 +1705,3 @@ public class CC2420Radio implements Radio {
     }
 
 }
-
