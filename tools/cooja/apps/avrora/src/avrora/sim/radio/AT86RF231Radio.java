@@ -1,34 +1,30 @@
-/**
- * Copyright (c) 2007, Regents of the University of California
+/*
+ * Copyright (c) 2012, Swedish Institute of Computer Science.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. Neither the name of the Institute nor the names of its contributors
+ *    may be used to endorse or promote products derived from this software
+ *    without specific prior written permission.
  *
- * Redistributions of source code must retain the above copyright notice,
- * this list of conditions and the following disclaimer.
- *
- * Redistributions in binary form must reproduce the above copyright
- * notice, this list of conditions and the following disclaimer in the
- * documentation and/or other materials provided with the distribution.
- *
- * Neither the name of the University of California, Los Angeles nor the
- * names of its contributors may be used to endorse or promote products
- * derived from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
- * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
+ * THIS SOFTWARE IS PROVIDED BY THE INSTITUTE AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE INSTITUTE OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
  */
 package avrora.sim.radio;
 
@@ -1173,12 +1169,13 @@ public class AT86RF231Radio implements Radio {
                 case RECV_CRC_2:
                     state = RECV_END_STATE; 
                     trxFIFO.add(b);                
-                    char crcResult = (char) Arithmetic.word(crcLow, b);
+                    crcLow = (byte)reverse_bits[((int) crcLow) & 0xff]; 
+                    b = (byte)reverse_bits[((int) b) & 0xff];
+                    short crcResult = (short) Arithmetic.word(b, crcLow);
 
                     //LQI is written in this position
                     b = (byte) ((byte)getCorrelation() & 0x7f);
-                 //   if (crcResult == crc) {
-                                        if (true) {
+                    if (crcResult == crc) { //TODO:LQI increases when CRC valid?
                         b |= 0x80;
                         lastCRCok = true;
                         if (DEBUG && printer!=null) printer.println("RF231: CRC passed");
@@ -1298,10 +1295,10 @@ public class AT86RF231Radio implements Radio {
                         IEEEAdr[6] = registers[IEEE_ADDR_6];
                         IEEEAdr[7] = registers[IEEE_ADDR_7];
                         if (!Arrays.equals(LongAdr, IEEEAdr) && !Arrays.equals(LongAdr, LONG_BROADCAST_ADDR)) {
-                            if (printer != null) {
-                              printer.println(" longadr " + LongAdr[0]+LongAdr[1]+LongAdr[2]+LongAdr[3]+LongAdr[4]+LongAdr[5]+LongAdr[6]+LongAdr[7]);
-                              printer.println(" IEEEAdr " + IEEEAdr[0]+IEEEAdr[1]+IEEEAdr[2]+IEEEAdr[3]+IEEEAdr[4]+IEEEAdr[5]+IEEEAdr[6]+IEEEAdr[7]);
-                            }
+                          //  if (printer != null) {
+                          //    printer.println(" longadr " + LongAdr[0]+LongAdr[1]+LongAdr[2]+LongAdr[3]+LongAdr[4]+LongAdr[5]+LongAdr[6]+LongAdr[7]);
+                          //    printer.println(" IEEEAdr " + IEEEAdr[0]+IEEEAdr[1]+IEEEAdr[2]+IEEEAdr[3]+IEEEAdr[4]+IEEEAdr[5]+IEEEAdr[6]+IEEEAdr[7]);
+                          //  }
                             return false;
                         }
                     }
@@ -1521,44 +1518,4 @@ public class AT86RF231Radio implements Radio {
                 return StringUtil.to0xHex(reg, 2) + "    ";
         }
     }
-/*
-    public static String strobeName(int strobe) {
-        switch (strobe) {
-            case SNOP:
-                return "SNOP    ";
-            case SXOSCON:
-                return "SXOSCON ";
-            case STXCAL:
-                return "STXCAL  ";
-            case SRXON:
-                return "SRXON   ";
-            case STXON:
-                return "STXON   ";
-            case STXONCCA:
-                return "STXONCCA";
-            case SRFOFF:
-                return "SRFOFF  ";
-            case SXOSCOFF:
-                return "SXOSCOFF";
-            case SFLUSHRX:
-                return "SFLUSHRX";
-            case SFLUSHTX:
-                return "SFLUSHTX";
-            case SACK:
-                return "SACK    ";
-            case SACKPEND:
-                return "SACKPEND";
-            case SRXDEC:
-                return "SRXDEC  ";
-            case STXENC:
-                return "STXENC  ";
-            case SAES:
-                return "SAES    ";
-            default:
-                return StringUtil.to0xHex(strobe, 2) + "    ";
-        }
-    }
-*/
 }
-
-
