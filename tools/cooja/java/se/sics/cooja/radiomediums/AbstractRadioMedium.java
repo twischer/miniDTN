@@ -62,6 +62,7 @@ import se.sics.cooja.interfaces.Radio;
  * @author Fredrik Osterlind
  */
 public abstract class AbstractRadioMedium extends RadioMedium {
+  private final static boolean DEBUG = false;
   private static Logger logger = Logger.getLogger(AbstractRadioMedium.class);
 
   /* Signal strengths in dBm.
@@ -146,11 +147,14 @@ public abstract class AbstractRadioMedium extends RadioMedium {
       if (conn.getSource().getCurrentSignalStrength() < SS_STRONG) {
         conn.getSource().setCurrentSignalStrength(SS_STRONG);
       }
+      if (DEBUG) logger.debug("Source channel " + conn.getSource().getChannel());
       for (Radio dstRadio : conn.getDestinations()) {
+        if (DEBUG) logger.debug("Dest channel " + conn.getSource().getChannel());
         if (conn.getSource().getChannel() >= 0 &&
             dstRadio.getChannel() >= 0 &&
             conn.getSource().getChannel() != dstRadio.getChannel()) {
-          continue;
+            if (DEBUG) logger.debug("Different channels");
+            continue;
         }
         if (dstRadio.getCurrentSignalStrength() < SS_STRONG) {
           dstRadio.setCurrentSignalStrength(SS_STRONG);
@@ -170,7 +174,7 @@ public abstract class AbstractRadioMedium extends RadioMedium {
           continue;
         }
         if (!intfRadio.isInterfered()) {
-          /*logger.warn("Radio was not interfered");*/
+          logger.warn("Radio was not interfered");
           intfRadio.interfereAnyReception();
         }
       }
@@ -233,12 +237,12 @@ public abstract class AbstractRadioMedium extends RadioMedium {
       }
 
       if (event == Radio.RadioEvent.HW_ON) {
-
+        if (DEBUG) logger.debug("HW_ON");
         /* Update signal strengths */
         updateSignalStrengths();
 
       } else if (event == Radio.RadioEvent.HW_OFF) {
-
+        if (DEBUG) logger.debug("HW_OFF");
         /* Remove any radio connections from this radio */
         removeFromActiveConnections(radio);
 
@@ -247,8 +251,11 @@ public abstract class AbstractRadioMedium extends RadioMedium {
 
       } else if (event == Radio.RadioEvent.TRANSMISSION_STARTED) {
         /* Create new radio connection */
-
+        if (DEBUG) logger.debug("TRANSMISSION_STARTED");
         if (radio.isReceiving()) {
+
+          if (DEBUG) logger.debug("Already receiving");
+
           /* Radio starts transmitting when it should be receiving!
            * Ok, but it won't receive the packet */
           for (RadioConnection conn : activeConnections) {
@@ -258,15 +265,16 @@ public abstract class AbstractRadioMedium extends RadioMedium {
           }
           radio.interfereAnyReception();
         }
-        
+
         RadioConnection newConnection = createConnections(radio);
         activeConnections.add(newConnection);
         for (Radio r: newConnection.getAllDestinations()) {
           if (newConnection.getDestinationDelay(r) == 0) {
+            if (DEBUG) logger.debug("signalReceptionStart");
             r.signalReceptionStart();
           } else {
-
             /* EXPERIMENTAL: Simulating propagation delay */
+            if (DEBUG) logger.debug("delayedRadio.signalReceptionStart");
             final Radio delayedRadio = r;
             TimeEvent delayedEvent = new TimeEvent(0) {
               public void execute(long t) {
@@ -330,7 +338,6 @@ public abstract class AbstractRadioMedium extends RadioMedium {
         radioMediumObservable.setRadioMediumChangedAndNotify();
 
       } else if (event == Radio.RadioEvent.CUSTOM_DATA_TRANSMITTED) {
-
         /* Connection */
         RadioConnection connection = getActiveConnectionFrom(radio);
         if (connection == null) {
@@ -344,19 +351,18 @@ public abstract class AbstractRadioMedium extends RadioMedium {
           logger.fatal("No custom data object to forward");
           return;
         }
-
         for (Radio dstRadio : connection.getAllDestinations()) {
-
-          if (!radio.getClass().equals(dstRadio.getClass()) ||
-              !(radio instanceof CustomDataRadio)) {
-            /* Radios communicate via radio packets */
-            continue;
+          if (!CustomDataRadio.SERIALIZE_ALL_RADIO_PACKETS) {
+            if (!radio.getClass().equals(dstRadio.getClass()) ||
+                !(radio instanceof CustomDataRadio)) {
+               /* Radios communicate via radio packets */
+                continue;
+            }
           }
 
           if (connection.getDestinationDelay(dstRadio) == 0) {
             ((CustomDataRadio) dstRadio).receiveCustomData(data);
           } else {
-
             /* EXPERIMENTAL: Simulating propagation delay */
             final CustomDataRadio delayedRadio = (CustomDataRadio) dstRadio;
             final Object delayedData = data;
@@ -397,24 +403,26 @@ public abstract class AbstractRadioMedium extends RadioMedium {
           }
 
           /* Forward radio packet */
-          if (connection.getDestinationDelay(dstRadio) == 0) {
-            dstRadio.setReceivedPacket(packet);
-          } else {
+          if (!CustomDataRadio.SERIALIZE_ALL_RADIO_PACKETS) {
+            if (connection.getDestinationDelay(dstRadio) == 0) {
+               dstRadio.setReceivedPacket(packet);
+            } else {
 
-            /* EXPERIMENTAL: Simulating propagation delay */
-            final Radio delayedRadio = dstRadio;
-            final RadioPacket delayedPacket = packet;
-            TimeEvent delayedEvent = new TimeEvent(0) {
-              public void execute(long t) {
-                delayedRadio.setReceivedPacket(delayedPacket);
-              }
-            };
-            simulation.scheduleEvent(
+              /* EXPERIMENTAL: Simulating propagation delay */
+              final Radio delayedRadio = dstRadio;
+              final RadioPacket delayedPacket = packet;
+              TimeEvent delayedEvent = new TimeEvent(0) {
+                public void execute(long t) {
+                  delayedRadio.setReceivedPacket(delayedPacket);
+                }
+              };
+              simulation.scheduleEvent(
                 delayedEvent,
                 simulation.getSimulationTime() + connection.getDestinationDelay(dstRadio));
-          }
+              }
 
-        }
+            }
+          }
 
       } else {
         logger.fatal("Unsupported radio event: " + event);

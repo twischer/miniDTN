@@ -26,20 +26,16 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: Radio802154.java,v 1.2 2010/02/05 09:07:58 fros4943 Exp $
  */
 package se.sics.cooja.emulatedmote;
 
-import java.awt.BorderLayout;
-import java.awt.GridLayout;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.util.*;
-import javax.swing.*;
+import java.util.Collection;
+
 import org.apache.log4j.Logger;
 import org.jdom.Element;
 
-import se.sics.cooja.*;
+import se.sics.cooja.Mote;
+import se.sics.cooja.RadioPacket;
 import se.sics.cooja.interfaces.CustomDataRadio;
 import se.sics.cooja.interfaces.Position;
 import se.sics.cooja.interfaces.Radio;
@@ -47,13 +43,13 @@ import se.sics.cooja.interfaces.Radio;
 /**
  * 802.15.4 radio class for COOJA.
  *
- * @author Joakim Eriksson
+ * @author Joakim Eriksson, David Kopf
  */
 
 public abstract class Radio802154 extends Radio implements CustomDataRadio {
 
     private final static boolean DEBUG = false;
-    
+
     private static Logger logger = Logger.getLogger(Radio802154.class);
 
     protected long lastEventTime = 0;
@@ -69,17 +65,18 @@ public abstract class Radio802154 extends Radio implements CustomDataRadio {
 
     private boolean radioOn = true;
 
-    private RadioByte lastOutgoingByte = null;
-
-    private RadioByte lastIncomingByte = null;
-
+    private RadioByte lastOutgoingRadioByte = null;
+    private RadioByte lastIncomingRadioByte = null;
     private RadioPacket lastOutgoingPacket = null;
-
     private RadioPacket lastIncomingPacket = null;
+
+    private byte lastOutgoingByte;
+    private byte lastIncomingByte;
+
 
     //    private int mode;
     protected Mote mote;
-     
+
     public Radio802154(Mote mote) {
         this.mote = mote;
     }
@@ -91,12 +88,14 @@ public abstract class Radio802154 extends Radio implements CustomDataRadio {
         if (len == 0) {
             lastEventTime = mote.getSimulation().getSimulationTime();
             lastEvent = RadioEvent.TRANSMISSION_STARTED;
+            isTransmitting = true;
             if (DEBUG) logger.debug("----- 802.15.4 TRANSMISSION STARTED -----");
             setChanged();
             notifyObservers();
         }
         /* send this byte to all nodes */
-        lastOutgoingByte = new RadioByte(val);
+        if (SERIALIZE_ALL_RADIO_PACKETS) lastOutgoingByte = val;
+        else lastOutgoingRadioByte = new RadioByte(val);
         lastEventTime = mote.getSimulation().getSimulationTime();
         lastEvent = RadioEvent.CUSTOM_DATA_TRANSMITTED;
         setChanged();
@@ -104,10 +103,7 @@ public abstract class Radio802154 extends Radio implements CustomDataRadio {
 
         buffer[len++] = val;
 
-        //System.out.println("## 802.15.4: " + (val&0xff) + " transmitted...");
-
         if (len == 6) {
-            //System.out.println("## CC2420 Packet of length: " + val + " expected...");
             expLen = val + 6;
         }
 
@@ -121,10 +117,8 @@ public abstract class Radio802154 extends Radio implements CustomDataRadio {
             setChanged();
             notifyObservers();
 
-            //          System.out.println("## CC2420 Transmission finished...");
-
             lastEventTime = mote.getSimulation().getSimulationTime();
-            /*logger.debug("----- SKY TRANSMISSION FINISHED -----");*/
+            isTransmitting = false;
             lastEvent = RadioEvent.TRANSMISSION_FINISHED;
             setChanged();
             notifyObservers();
@@ -146,17 +140,24 @@ public abstract class Radio802154 extends Radio implements CustomDataRadio {
 
     /* Custom data radio support */
     public Object getLastCustomDataTransmitted() {
-        return lastOutgoingByte;
+        if (SERIALIZE_ALL_RADIO_PACKETS) return lastOutgoingByte;
+        else return lastOutgoingRadioByte;
     }
 
     public Object getLastCustomDataReceived() {
-        return lastIncomingByte;
+        if (SERIALIZE_ALL_RADIO_PACKETS) return lastIncomingByte;
+        else return lastIncomingRadioByte;
     }
 
     public void receiveCustomData(Object data) {
-        if (data instanceof RadioByte) {
-            lastIncomingByte = (RadioByte) data;
-            handleReceive(lastIncomingByte.getPacketData()[0]);
+        if (SERIALIZE_ALL_RADIO_PACKETS) {
+            lastIncomingByte = (Byte) data;
+            handleReceive(lastIncomingByte);
+        } else {
+            if (data instanceof RadioByte) {
+                lastIncomingRadioByte = (RadioByte) data;
+                handleReceive(lastIncomingRadioByte.getPacketData()[0]);
+            }
         }
     }
 
@@ -184,7 +185,7 @@ public abstract class Radio802154 extends Radio implements CustomDataRadio {
     public abstract boolean isReceiverOn();
 
     public abstract double getCurrentOutputPower();
-    
+
     public abstract int getCurrentOutputPowerIndicator();
 
     public abstract int getOutputPowerIndicatorMax();
@@ -232,6 +233,7 @@ public abstract class Radio802154 extends Radio implements CustomDataRadio {
     }
 
     public void interfereAnyReception() {
+        if (DEBUG) logger.debug("-----  RECEPTION INTERFERED -----");
         isInterfered = true;
         isReceiving = false;
         //      hasFailedReception = false;
@@ -245,7 +247,6 @@ public abstract class Radio802154 extends Radio implements CustomDataRadio {
 
         lastEventTime = mote.getSimulation().getSimulationTime();
         lastEvent = RadioEvent.RECEPTION_INTERFERED;
-        /*logger.debug("----- SKY RECEPTION INTERFERED -----");*/
         setChanged();
         notifyObservers();
     }

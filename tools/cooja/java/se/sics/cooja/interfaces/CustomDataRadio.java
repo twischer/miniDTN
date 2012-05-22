@@ -39,7 +39,14 @@ package se.sics.cooja.interfaces;
  * @author Fredrik Osterlind
  */
 public interface CustomDataRadio {
-
+ /* The default behaviour of AbstractRadioMedium and Radio802154 is to transfer data
+  * byte-by-byte between instances of the same radio class and packet-by-packet
+  * between instances of different radio classes.
+  * If all radios emulate compatible modem-level behaviour (preamble, SFD, checksum),
+  * SERIALIZE_ALL_RADIO_PACKETS can be set for byte-by-byte transfers among all radios.
+  */
+  public final static boolean SERIALIZE_ALL_RADIO_PACKETS = true;
+  
   public void receiveCustomData(Object data);
 
   public Object getLastCustomDataTransmitted();
