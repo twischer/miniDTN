@@ -96,13 +96,12 @@ PROCESS_THREAD(hello_world_process, ev, data)
 		for(i=0; i<FILE_SIZE; i++) {
 			buffer[i] = (cnt + i) % 0xFF;
 		}
-
 		// Open was successful, write has to be successful too since the size has been reserved
 		n = cfs_write(fd, buffer, FILE_SIZE);
 		cfs_close(fd);
 
 		if( n != FILE_SIZE ) {
-			printf("############# STORAGE: Only wrote %d bytes, wanted 100\n", n);
+			printf("############# STORAGE: Only wrote %d bytes, wanted %d\n", n, FILE_SIZE);
 			fail();
 		}
 

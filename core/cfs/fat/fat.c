@@ -46,7 +46,7 @@
  
 #include "fat.h"
 
-#define DEBUG 1
+#define DEBUG 0
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)
@@ -202,7 +202,6 @@ static uint16_t _get_free_cluster_32() {
 
     for( i = 0; i < 512; i += 4 ) {
         entry = (((uint32_t) sector_buffer[i+3]) << 24) + (((uint32_t) sector_buffer[i+2]) << 16) + (((uint32_t) sector_buffer[i+1]) << 8) + ((uint32_t) sector_buffer[i]);
-        ////printf("\n_get_free_cluster_32() : entry = %lu", entry & 0x0FFFFFFF);
         if( (entry & 0x0FFFFFFF) == 0 ) {
             return i;
         }
@@ -467,7 +466,9 @@ void fat_flush() {
             }
         #endif
 
+		PRINTF("\nfat.c: fat_flush(): Flushing sector %lu", sector_buffer_addr);
         if( diskio_write_block( mounted.dev, sector_buffer_addr, sector_buffer ) != DISKIO_SUCCESS ) {
+			PRINTF("\nfat.c: fat_flush(): DiskIO-Error occured");
         }
 
         sector_buffer_dirty = 0;
@@ -791,6 +792,7 @@ int cfs_write(int fd, const void *buf, unsigned int len) {
     uint8_t *buffer = (uint8_t *) buf;
 
     while( load_next_sector_of_file( fd, clusters, clus_offset, 1 ) == 0 ) {
+		PRINTF("\nfat.c: cfs_write(): Writing in sector %lu", sector_buffer_addr);
         for( i = offset; i < mounted.info.BPB_BytesPerSec && j < len; i++,j++,fat_fd_pool[fd].offset++ ) {
             #ifndef FAT_COOPERATIVE
                 sector_buffer[i] = buffer[j];
@@ -1045,17 +1047,6 @@ static void update_dir_entry( int fd ) {
 	sector_buffer_dirty = 1;
 }
 
-void _add_cluster_to_empty_file( int fd, uint32_t free_cluster ) {
-	//printf("\n_add_cluster_to_empty_file( %d, %lu )", fd, free_cluster);
-	write_fat_entry( free_cluster, EOC );
-	fat_file_pool[fd].dir_entry.DIR_FstClusHI = (uint16_t) (free_cluster >> 16);
-	fat_file_pool[fd].dir_entry.DIR_FstClusLO = (uint16_t) (free_cluster);
-	update_dir_entry( fd );
-	fat_file_pool[fd].cluster = free_cluster;
-	fat_file_pool[fd].n = 0;
-	fat_file_pool[fd].nth_cluster = free_cluster;
-}
-
 static void remove_dir_entry( uint32_t dir_entry_sector, uint16_t dir_entry_offset ) {
 	PRINTF("\nfat.c: remove_dir_entry( dir_entry_sector = %lu, dir_entry_offset = %u ) = void ", dir_entry_sector, dir_entry_offset);
 	if( fat_read_block( dir_entry_sector ) != 0 ) {
@@ -1099,7 +1090,7 @@ static uint8_t load_next_sector_of_file( int fd, uint32_t clusters, uint8_t clus
 			PRINTF("\nfat.c: load_next_sector_of_file(): write flag enabled! adding cluster to file!");
             add_cluster_to_file( fd );
             // Remember that after the add_cluster_to_file-Function the nth_cluster and n is set to the added cluster
-            cluster = CLUSTER_TO_SECTOR( fat_file_pool[fd].nth_cluster );
+            cluster = fat_file_pool[fd].nth_cluster;
         } else {
             return 1;
         }
