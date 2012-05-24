@@ -1173,12 +1173,13 @@ public class AT86RF231Radio implements Radio {
                 case RECV_CRC_2:
                     state = RECV_END_STATE; 
                     trxFIFO.add(b);                
-                    char crcResult = (char) Arithmetic.word(crcLow, b);
+                    crcLow = (byte)reverse_bits[((int) crcLow) & 0xff]; 
+                    b = (byte)reverse_bits[((int) b) & 0xff];
+                    short crcResult = (short) Arithmetic.word(b, crcLow);
 
                     //LQI is written in this position
                     b = (byte) ((byte)getCorrelation() & 0x7f);
-                 //   if (crcResult == crc) {
-                                        if (true) {
+                    if (crcResult == crc) { //TODO:LQI increases when CRC valid?
                         b |= 0x80;
                         lastCRCok = true;
                         if (DEBUG && printer!=null) printer.println("RF231: CRC passed");
