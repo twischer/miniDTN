@@ -30,59 +30,50 @@
 
 package se.sics.cooja.avrmote.plugins;
 
+import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
-import java.awt.BorderLayout;
+import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Observable;
 import java.util.Observer;
-import java.util.Collection;
-import java.util.Vector;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
 
-import java.io.File;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.io.IOException;
-
-import javax.swing.SwingConstants;
 import javax.swing.AbstractAction;
-import javax.swing.JFileChooser;
-import javax.swing.JComponent;
-import javax.swing.filechooser.FileFilter;
 import javax.swing.Box;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
-import javax.swing.JToggleButton;
+import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JList;
-import javax.swing.JFrame;
 import javax.swing.JPanel;
+import javax.swing.JScrollBar;
+import javax.swing.JScrollPane;
 import javax.swing.JSlider;
 import javax.swing.JSplitPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTable;
-import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
-import javax.swing.JScrollBar;
+import javax.swing.JToggleButton;
+import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
-import javax.swing.text.DefaultCaret;
-import javax.swing.text.Highlighter;
-import javax.swing.text.DefaultHighlighter;
-import javax.swing.SwingUtilities;
 import javax.swing.plaf.basic.BasicComboBoxRenderer;
-
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.awt.Dimension;
+import javax.swing.text.DefaultCaret;
+import javax.swing.text.DefaultHighlighter;
+import javax.swing.text.Highlighter;
 
 import org.apache.log4j.Logger;
 import org.jdom.Element;
@@ -93,26 +84,25 @@ import se.sics.cooja.Mote;
 import se.sics.cooja.MotePlugin;
 import se.sics.cooja.PluginType;
 import se.sics.cooja.Simulation;
+import se.sics.cooja.SupportedArguments;
 import se.sics.cooja.VisPlugin;
-import se.sics.cooja.avrmote.*;
-import se.sics.cooja.interfaces.Clock;
-import se.sics.cooja.plugins.MoteInterfaceViewer;
-//import se.sics.cooja.Watchpoint;
-//import se.sics.cooja.WatchpointMote;
-//import se.sics.cooja.WatchpointMote.WatchpointListener;
+import se.sics.cooja.avrmote.AvroraMote;
+import se.sics.cooja.avrmote.MicaZMoteType;
+import se.sics.cooja.avrmote.RFA1MoteType;
+import se.sics.cooja.avrmote.RavenMoteType;
 import se.sics.cooja.dialogs.MessageList;
-
 import avrora.sim.AtmelInterpreter;
-import avrora.sim.mcu.DefaultMCU;
 import avrora.sim.FiniteStateMachine;
 import avrora.sim.Simulator;
 import avrora.sim.State;
+import avrora.sim.mcu.DefaultMCU;
 
 /**
  * @author David Kopf
  */
 @ClassDescription("Avr Code Watcher test")
 @PluginType(PluginType.MOTE_PLUGIN)
+@SupportedArguments(motes = {AvroraMote.class})
 public class AvrCodeWatcher extends VisPlugin implements MotePlugin {
   private static Logger logger = Logger.getLogger(AvrCodeWatcher.class);
   private static final int SOURCECODE = 0;
@@ -300,11 +290,11 @@ public class AvrCodeWatcher extends VisPlugin implements MotePlugin {
     sourceFiles = getSourceFiles(myMote, rules);
     fileComboBox.removeAllItems();
     fileComboBox.addItem("[view sourcefile]");
-    
+
   //  for (File f: sourceFiles) {
   //    fileComboBox.addItem(f.getName());
   //  }
-    
+
     fileComboBox.setSelectedIndex(0);
   //  getInterfaceVisualizer();
   }
@@ -396,7 +386,7 @@ public class AvrCodeWatcher extends VisPlugin implements MotePlugin {
     return sorted;
     */
     return new File[1];
-    
+
   }
 
   public void displaySourceFile(final File file, final int line, final boolean markCurrent) {
@@ -432,7 +422,7 @@ public class AvrCodeWatcher extends VisPlugin implements MotePlugin {
   public long getDrift() {
     return timeDrift;
   }
-  
+
   private JLabel timeLabel, cyclesLabel, stateLabel, watchLabel, sourceLabel, assemLabel;
   private JTextArea srcText=null, asmText=null;
   private JScrollPane stackPane, tracePane, srcPane, asmPane;
@@ -456,7 +446,7 @@ public class AvrCodeWatcher extends VisPlugin implements MotePlugin {
   private boolean stepOverPress = false, stepIntoPress = false, halted = false, disableBreaks = false, liveUpdate = false;
   private boolean outofroutine = false;
   private boolean interruptOccurred = false;
-  
+
   // insert or remove avrora pc probe as needed for breakpoints or stepping
   void setProbeState() {
     if (liveUpdate || halted || (!disableBreaks && (asmActive && (asmNumBreaks > 0)) || (!asmActive && (srcNumBreaks > 0))) ) {
@@ -504,7 +494,7 @@ public class AvrCodeWatcher extends VisPlugin implements MotePlugin {
                     }
                     return;
                 }
-                
+
                 // check for asm step over
                 if (stepOverPC != 0) {
                     if (stepOverPC != pc) return;
@@ -532,22 +522,22 @@ public class AvrCodeWatcher extends VisPlugin implements MotePlugin {
                             return;
                         } else {
                             srcLastLine = 0;
-                            srcRoutineStart = 0;    
+                            srcRoutineStart = 0;
                       //      logger.debug("Stop at " + Integer.toHexString(pc) + " in routine " +srcStartPC[pc/2]+ " at line " + srcPC[pc/2]);
                         }
                     } else if (outofroutine) {
                         //we returned to the same line in this routine
-                        //stop only if start of line                       
+                        //stop only if start of line
                         if (atlinestart) {
                  //           logger.debug("Stop at same line " + Integer.toHexString(pc) + " in routine " +srcStartPC[pc/2]+ " at line " + srcPC[pc/2]);
-                        } else {  
+                        } else {
                   //          logger.debug("not start " + Integer.toHexString(pc) + " " +srcPC[pc/2 - 1] + " "+  srcPC[pc/2]);
                             return;
                         }
                         //wait till line number changes
-                        srcRoutineStart = 0;                        
+                        srcRoutineStart = 0;
                     } else {
-                    //logger.debug("asm skip " + Integer.toHexString(pc) + " in routine " +srcStartPC[pc/2]+ " at line " + srcPC[pc/2]); 
+                    //logger.debug("asm skip " + Integer.toHexString(pc) + " in routine " +srcStartPC[pc/2]+ " at line " + srcPC[pc/2]);
                     return;
                     }
                 // check for src step into
@@ -555,7 +545,7 @@ public class AvrCodeWatcher extends VisPlugin implements MotePlugin {
              //   logger.debug("stepping over line "+srcLastLine);
                     //if stepping into wait for line number change
                     if (srcPC[pc/2] != srcLastLine) {
-                    //    logger.debug("src line change " + Integer.toHexString(pc) + " in routine " +srcStartPC[pc/2]+ " at line " + srcPC[pc/2]); 
+                    //    logger.debug("src line change " + Integer.toHexString(pc) + " in routine " +srcStartPC[pc/2]+ " at line " + srcPC[pc/2]);
                         //unless it is off the end of the source
                         if (srcStartPC[pc/2] < lastLineOfSource) {
                             srcLastLine = 0;
@@ -581,7 +571,7 @@ public class AvrCodeWatcher extends VisPlugin implements MotePlugin {
                             srcRoutineStart = 0;
                             srcLastLine = srcPC[pc/2];
                             break;
-                            
+
                         }
                     }
                     if (stepOverPress) try {
@@ -599,7 +589,7 @@ public class AvrCodeWatcher extends VisPlugin implements MotePlugin {
                                 return;
                             }
                             break;
-                        } else {                                              
+                        } else {
                             // convert to step if last line of routine or explicit return
                             int i = pc/2;
                             srcRoutineStart = 0;
@@ -624,8 +614,8 @@ public class AvrCodeWatcher extends VisPlugin implements MotePlugin {
                                 outofroutine = false;
                              //   logger.debug("srcroutine start 0x" + Integer.toHexString(pc) + " in " + srcRoutineStart + " at line " + srcLastLine + " " + str);
                             }
-                            
-                            break; 
+
+                            break;
                        }
                     }catch (Exception e){System.err.println("stepOverPress error: " + e.getMessage());}
                 }
@@ -656,7 +646,7 @@ private void srcScrollVis(int startIndex) {try{
         if (topline < 0) topline = 0;
         scrollbar.setValue(topline*rowheight);
     } else if ((linenumber+2) > (topline+32)) {
-        topline = linenumber-8; 
+        topline = linenumber-8;
         scrollbar.setValue(topline*rowheight);
     }
 }catch(Exception e) {System.err.println("srcScrollVis: " + e.getMessage());}}
@@ -672,7 +662,7 @@ private void asmScrollVis(int startIndex) {try{
         if (topline < 0) topline = 0;
         scrollbar.setValue(topline*rowheight);
     } else if ((linenumber+2) > (topline+32)) {
-        topline = linenumber-8; 
+        topline = linenumber-8;
         scrollbar.setValue(topline*rowheight);
     }
 }catch(Exception e) {System.err.println("asmScrollVis: " + e.getMessage());}}
@@ -729,7 +719,7 @@ private boolean asmBPIndicatorToggle(int lineNumber) {try{
     timeLabel.setText("Run Time  : " + ((double)(simulation.getSimulationTime()-startTime)/1000000) + "   Drift: " + (double)timeDrift/1000000);
     watchLabel.setText("Stopwatch : " + ((double)(simulation.getSimulationTime()-lastTime)/1000000));
     long cycleCount = interpreter.getState().getCycles();
-    cyclesLabel.setText("Cycles        : " + (cycleCount - lastCycles));   
+    cyclesLabel.setText("Cycles        : " + (cycleCount - lastCycles));
     stateLabel.setText("PC: 0x" +  Integer.toHexString(pc) + "      SP: 0x" +  Integer.toHexString(interpreter.getSP())
     + "     State: " + myFSM.getStateName(myFSM.getCurrentState()));
     // not started yet
@@ -747,9 +737,9 @@ private boolean asmBPIndicatorToggle(int lineNumber) {try{
             if (linenumber < lastLineOfSource) {
             if (linenumber != srcMarkedLine) {
                 updated = true;
-                srcMarkedLine = linenumber;           
+                srcMarkedLine = linenumber;
                 if (lastSrcLineStart >= 0) srcText.replaceRange(srcLastTag,lastSrcLineStart,lastSrcLineStart+1);
-                int linestart = srcText.getLineStartOffset(linenumber); 
+                int linestart = srcText.getLineStartOffset(linenumber);
                 srcLastTag = srcText.getText().substring(linestart,linestart+1);
                 srcText.replaceRange(srcLastTag.equals("@") ? "#" : "=",linestart,linestart+1);
                 lastSrcLineStart=linestart;
@@ -762,7 +752,7 @@ private boolean asmBPIndicatorToggle(int lineNumber) {try{
             int linenumber = asmPC[pc];
             if (linenumber != asmMarkedLine) {
                 if (asmActive) updated = true;
-                asmMarkedLine = linenumber;   
+                asmMarkedLine = linenumber;
                 if (lastAsmLineStart >= 0)  asmText.replaceRange(asmLastTag,lastAsmLineStart,lastAsmLineStart+1);
                 int linestart = asmText.getLineStartOffset(linenumber);
                 asmLastTag = asmText.getText().substring(linestart,linestart+1);
@@ -771,17 +761,17 @@ private boolean asmBPIndicatorToggle(int lineNumber) {try{
                 asmScrollVis(linestart);
             }
         }
-        
+
     } catch (Exception e){System.err.println("updatePanel: " + e.getMessage());};
     return updated;
-  } 
+  }
 
 //Issue shell avr-objdump and read stdout to generate source and assembly panes and pc indexing tables
 private Process objdumpProcess;
 
  private void indexObjdumpFile() {
     String[] command, environment;
-    
+
     if (myMote.getType() instanceof MicaZMoteType) {
         objdumpFile = ((MicaZMoteType)myMote.getType()).getContikiFirmwareFile();
     } else if (myMote.getType() instanceof RavenMoteType) {
@@ -816,7 +806,7 @@ private Process objdumpProcess;
         objdumpProcess = Runtime.getRuntime().exec(command, environment, directory);
     } catch (IOException e) {
         logger.warn("Error creating avr-objdump process");
-    }          
+    }
     if (objdumpProcess == null) return;
     final BufferedReader processNormal = new BufferedReader(
         new InputStreamReader(objdumpProcess.getInputStream()));
@@ -857,7 +847,7 @@ private Process objdumpProcess;
                        asmStartPC[pc] = asmline;
                        asmStartLine = asmline;
                        */
-                        srcStartLine = srcline;                    
+                        srcStartLine = srcline;
                     } else if (strLine.charAt(8)==':') {
                         if (strLine.charAt(4) != ' ') {  //parseInt does not like leading spaces in xxxx
                             strPC = strLine.substring(4,8);
@@ -885,7 +875,7 @@ private Process objdumpProcess;
                             srcPC[lastSrcPc] = temp;
                             srcStartPC[lastSrcPc++] = srcStartLine;
                         }
-                    }    
+                    }
                     asmline++;
                     asmText.append(" " + strLine + "\n");
                     if (!isasm) {
@@ -1024,7 +1014,7 @@ private Process objdumpProcess;
     final Box boxn4 = Box.createHorizontalBox();
     final Box boxs = Box.createVerticalBox();
     final Box boxd = Box.createHorizontalBox();
-    
+
     timeLabel = new JLabel();
     watchLabel = new JLabel();
     cyclesLabel = new JLabel();
@@ -1044,7 +1034,7 @@ private Process objdumpProcess;
     searchText = new JTextField(12);
     prevButton = new JButton("Prev");
     nextButton = new JButton("Next");
-    
+
     boxn1.add(timeLabel);boxn1.add(Box.createHorizontalGlue());boxn1.add(updateButton);
     boxn2.add(watchLabel);boxn2.add(Box.createHorizontalGlue());boxn2.add(resetButton);
     boxn3.add(cyclesLabel);boxn3.add(Box.createHorizontalGlue());boxn3.add(liveButton);
@@ -1076,7 +1066,7 @@ private Process objdumpProcess;
     boxd.add(stepIntoButton);
     boxd.add(stepOverButton);
     boxd.add(runButton);
-    
+
     updatePanel(0);
     // increase initial width to prevent scrollbar with longer strings
     stateLabel.setText(stateLabel.getText() + "              ");
@@ -1137,14 +1127,14 @@ private Process objdumpProcess;
             }
         } catch(Exception ex){System.err.println("prevButton: " + ex.getMessage());}}
     });
-    
+
     // one time update
     updateButton.addActionListener(new ActionListener() {
         public void actionPerformed(ActionEvent e) {
             updatePanel(0);
         }
     });
-    
+
     // reset stopwatch and cycle counter
     resetButton.addActionListener(new ActionListener() {
         public void actionPerformed(ActionEvent e) {
@@ -1153,7 +1143,7 @@ private Process objdumpProcess;
             updatePanel(0);
         }
     });
- 
+
     // insert avrora probe when live update or breakpoints enabled.
     // Avrora calls fireBefore and fireAfter when program counter changes
     liveButton.addActionListener(new ActionListener() {
@@ -1167,7 +1157,7 @@ private Process objdumpProcess;
     // show source code
     srcButton.addActionListener(new ActionListener() {
         public void actionPerformed(ActionEvent e) {
-            if (srcButton.isSelected()) {            
+            if (srcButton.isSelected()) {
                 if (srcText == null) {
                     asmText = new JTextArea(33, 24);
                     asmText.setEditable(false);
@@ -1188,7 +1178,7 @@ private Process objdumpProcess;
                         // a faster search could be done here...
                         while (srcPC[pc] < linenumber) pc++;
                         while (asmPC[pc] == 0) pc++;
-                        linenumber = srcPC[pc]; //set bp at actual instruction                          
+                        linenumber = srcPC[pc]; //set bp at actual instruction
                         pc = pc * 2;
                         if (srcBPIndicatorToggle(linenumber)) {
                             logger.debug("Add src breakpoint at 0x" + Integer.toHexString(pc));
@@ -1259,7 +1249,7 @@ private Process objdumpProcess;
 
                     splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, asmPane, srcPane);
                     splitPane.setOneTouchExpandable(true);
-                    // splitPane.setDividerLocation(0);                   
+                    // splitPane.setDividerLocation(0);
                     if (objdumpFile == null) indexObjdumpFile();
                 }
                 if (objdumpFile != null) {
@@ -1310,7 +1300,7 @@ private Process objdumpProcess;
             if (lastSrcLineStart >=0) {
                 String tag = srcText.getText().substring(lastSrcLineStart,lastSrcLineStart+1);
                 if (asmActive) {
-                    if (tag.equals("#")) srcText.replaceRange("@",lastSrcLineStart,lastSrcLineStart+1);   
+                    if (tag.equals("#")) srcText.replaceRange("@",lastSrcLineStart,lastSrcLineStart+1);
                 } else {
                     if (tag.equals("@")) {
                         srcText.replaceRange("#",lastSrcLineStart,lastSrcLineStart+1);
@@ -1355,7 +1345,7 @@ private Process objdumpProcess;
             setProbeState();
         }
     });
- 
+
  // step to next source line
     stepIntoButton.addActionListener(new ActionListener() {
         public void actionPerformed(ActionEvent e) {
@@ -1364,7 +1354,7 @@ private Process objdumpProcess;
             setProbeState();
         }
     });
-    
+
     // step over subroutine call
     stepOverButton.addActionListener(new ActionListener() {
         public void actionPerformed(ActionEvent e) {
@@ -1373,7 +1363,7 @@ private Process objdumpProcess;
             setProbeState();
         }
     });
-    
+
     // run
     runButton.addActionListener(new ActionListener() {
         public void actionPerformed(ActionEvent e) {
@@ -1396,13 +1386,13 @@ private Process objdumpProcess;
             srcLastLine = 0;
         }
     });
-    
+
     // delay during run
     delaySlider.addChangeListener(new ChangeListener() {
         public void stateChanged(ChangeEvent e) {
             JSlider source = (JSlider)e.getSource();
           //  if (!source.getValueIsAdjusting()) {
-                displayDelay = (int)source.getValue();
+                displayDelay = source.getValue();
                 displayDelay = displayDelay * displayDelay;
           //  }
         }

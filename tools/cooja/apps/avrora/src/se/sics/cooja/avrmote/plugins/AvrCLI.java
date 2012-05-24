@@ -29,13 +29,13 @@
  */
 
 package se.sics.cooja.avrmote.plugins;
+
 import java.awt.BorderLayout;
 import java.awt.Container;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
-import java.io.PrintStream;
 import java.util.List;
 
 import javax.swing.JMenuItem;
@@ -45,20 +45,22 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 
+import org.apache.log4j.Logger;
+
 import se.sics.cooja.ClassDescription;
 import se.sics.cooja.GUI;
 import se.sics.cooja.Mote;
 import se.sics.cooja.MotePlugin;
 import se.sics.cooja.PluginType;
 import se.sics.cooja.Simulation;
+import se.sics.cooja.SupportedArguments;
 import se.sics.cooja.VisPlugin;
-import se.sics.cooja.dialogs.UpdateAggregator;
 import se.sics.cooja.avrmote.AvroraMote;
-import org.apache.log4j.Logger;
-
+import se.sics.cooja.dialogs.UpdateAggregator;
 
 @ClassDescription("Avr CLI")
 @PluginType(PluginType.MOTE_PLUGIN)
+@SupportedArguments(motes = {AvroraMote.class})
 public class AvrCLI extends VisPlugin implements MotePlugin {
   private static Logger logger = Logger.getLogger(AvrCLI.class);
   private static final long serialVersionUID = 2833218439838209672L;
@@ -78,7 +80,7 @@ public class AvrCLI extends VisPlugin implements MotePlugin {
   public AvrCLI(Mote mote, Simulation simulationToVisualize, GUI gui) {
     super("Avr CLI (" + mote.getID() + ')', gui);
     this.myMote = mote;
- 
+
  avrora.sim.mcu.AtmelMicrocontroller mcu = (avrora.sim.mcu.AtmelMicrocontroller) ((AvroraMote)mote).CPU.getSimulator().getMicrocontroller();
     usart = (avrora.sim.mcu.USART) mcu.getDevice("usart0");
     if (usart == null) usart = (avrora.sim.mcu.USART) mcu.getDevice("usart1");
@@ -98,9 +100,9 @@ public class AvrCLI extends VisPlugin implements MotePlugin {
         }
       });
     } else {
-     System.out.println("*** Warning Avrora could not find usart1 or usart0 interface..."); 
+     System.out.println("*** Warning Avrora could not find usart1 or usart0 interface...");
     }
-  
+
     final Container panel = getContentPane();
 
     logArea = new JTextArea(4, 20);
