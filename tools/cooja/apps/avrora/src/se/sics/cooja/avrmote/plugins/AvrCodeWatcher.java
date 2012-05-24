@@ -111,7 +111,7 @@ import avrora.sim.State;
 /**
  * @author David Kopf
  */
-@ClassDescription("Avr Code Watcher nonfunctional test")
+@ClassDescription("Avr Code Watcher test")
 @PluginType(PluginType.MOTE_PLUGIN)
 public class AvrCodeWatcher extends VisPlugin implements MotePlugin {
   private static Logger logger = Logger.getLogger(AvrCodeWatcher.class);
@@ -201,7 +201,7 @@ public class AvrCodeWatcher extends VisPlugin implements MotePlugin {
   //  loadDefaultRules();
 
     getContentPane().setLayout(new BorderLayout());
-
+  //  getInterfaceVisualizer();
     /* Create source file list */
     fileComboBox = new JComboBox();
     fileComboBox.addActionListener(new ActionListener() {
@@ -248,9 +248,10 @@ public class AvrCodeWatcher extends VisPlugin implements MotePlugin {
     mainPane = new JTabbedPane();
 
   //  sourceCodeUI = new CodeUI(watchpointMote);
-    JPanel sourceCodePanel = new JPanel(new BorderLayout());
+  //    JPanel sourceCodePanel = new JPanel(new BorderLayout());
+    JPanel sourceCodePanel = getInterfaceVisualizer();
  //   sourceCodePanel.add(BorderLayout.CENTER, sourceCodeUI);
-    sourceCodePanel.add(BorderLayout.SOUTH, sourceCodeControl);
+  //  sourceCodePanel.add(BorderLayout.SOUTH, sourceCodeControl);
     mainPane.addTab("Source code", null, sourceCodePanel, null); /* SOURCECODE */
 /*
     assCodeUI = new DebugUI(this.mspMote.getCPU(), true);
@@ -259,7 +260,7 @@ public class AvrCodeWatcher extends VisPlugin implements MotePlugin {
     }
     mainPane.addTab("Instructions", null, assCodeUI, null);
 */
-  //  breakpointsUI = new BreakpointsUI(mspMote, this);
+   // breakpointsUI = new BreakpointsUI(mspMote, this);
 //mainPane.addTab("Breakpoints", null, breakpointsUI, "Right-click source code to add"); /* BREAKPOINTS */
 
     add(BorderLayout.CENTER, mainPane);
@@ -286,7 +287,7 @@ public class AvrCodeWatcher extends VisPlugin implements MotePlugin {
     });
     */
 
-    setSize(750, 500);
+    setSize(750, 800);
  //   showCurrentPC();
   }
 
@@ -295,16 +296,17 @@ public class AvrCodeWatcher extends VisPlugin implements MotePlugin {
     updateFileComboBox();
   }
     private void updateFileComboBox() {
-    logger.debug("updatefilecombobox");
+  // logger.debug("updatefilecombobox");
     sourceFiles = getSourceFiles(myMote, rules);
     fileComboBox.removeAllItems();
     fileComboBox.addItem("[view sourcefile]");
-    /*
-    for (File f: sourceFiles) {
-      fileComboBox.addItem(f.getName());
-    }
-    */
+    
+  //  for (File f: sourceFiles) {
+  //    fileComboBox.addItem(f.getName());
+  //  }
+    
     fileComboBox.setSelectedIndex(0);
+  //  getInterfaceVisualizer();
   }
   public void closePlugin() {
  //   watchpointMote.removeWatchpointListener(watchpointListener);
@@ -374,7 +376,7 @@ public class AvrCodeWatcher extends VisPlugin implements MotePlugin {
     }
 
     /* Verify that files exist */
-    logger.debug("verifyfilesexist");
+  //  logger.debug("verifyfilesexist");
     /*
     ArrayList<File> existing = new ArrayList<File>();
     for (String sourceFile: debugSourceFiles) {
@@ -1275,7 +1277,7 @@ private Process objdumpProcess;
             }
             // add whitespace during resize so panel will not get scrollbar on text increase
             stateLabel.setText(stateLabel.getText() + "              ");
-            ((MoteInterfaceViewer)jPanel.getRootPane().getParent()).pack();
+          //  ((MoteInterfaceViewer)jPanel.getRootPane().getParent()).pack();
         }
     });
 
