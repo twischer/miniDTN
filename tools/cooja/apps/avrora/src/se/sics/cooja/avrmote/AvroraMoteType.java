@@ -29,24 +29,22 @@
  */
 
 package se.sics.cooja.avrmote;
+import java.awt.BorderLayout;
 import java.awt.Container;
+import java.awt.Dimension;
 import java.awt.Image;
 import java.awt.MediaTracker;
 import java.awt.Toolkit;
-import java.net.URL;
-import javax.swing.Icon;
-import javax.swing.ImageIcon;
-
-import java.awt.BorderLayout;
-import java.awt.Dimension;
 import java.io.File;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Vector;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
+import javax.swing.Icon;
+import javax.swing.ImageIcon;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextArea;
@@ -65,18 +63,15 @@ import se.sics.cooja.Simulation;
 import se.sics.cooja.dialogs.CompileContiki;
 import se.sics.cooja.dialogs.MessageList;
 import se.sics.cooja.dialogs.MessageList.MessageContainer;
-import se.sics.cooja.interfaces.Mote2MoteRelations;
-import se.sics.cooja.interfaces.MoteAttributes;
-import se.sics.cooja.interfaces.Position;
 
 /**
  * AVR-based mote types emulated in Avrora.
- * 
+ *
  * @author Joakim Eriksson, Fredrik Osterlind, David Kopf
  */
 @ClassDescription("Avrora Mote Type")
 @AbstractionLevelDescription("Emulated level")
-public class AvroraMoteType implements MoteType {
+public abstract class AvroraMoteType implements MoteType {
   public static Logger logger = Logger.getLogger(AvroraMoteType.class);
 
   private String identifier = null;
@@ -227,8 +222,8 @@ public class AvroraMoteType implements MoteType {
     return null;
   }
 
-  public Collection<Element> getConfigXML() {
-    Vector<Element> config = new Vector<Element>();
+  public Collection<Element> getConfigXML(Simulation sim) {
+    ArrayList<Element> config = new ArrayList<Element>();
 
     Element element;
 
@@ -260,7 +255,7 @@ public class AvroraMoteType implements MoteType {
     config.add(element);
 
     // Mote interfaces
-    for (Class moteInterface : getMoteInterfaceClasses()) {
+    for (Class<? extends MoteInterface> moteInterface : getMoteInterfaceClasses()) {
       element = new Element("moteinterface");
       element.setText(moteInterface.getName());
       config.add(element);
@@ -415,7 +410,7 @@ public class AvroraMoteType implements MoteType {
   }
 
   public Icon getMoteTypeIcon() {
-    Toolkit toolkit = Toolkit.getDefaultToolkit(); 
+    Toolkit toolkit = Toolkit.getDefaultToolkit();
     URL imageURL = this.getClass().getClassLoader().getResource("images/"+this.getMoteName()+".jpg");
     if (imageURL == null) return null;
     Image image = toolkit.getImage(imageURL);
@@ -432,14 +427,12 @@ public class AvroraMoteType implements MoteType {
     return null;
   }
 
-  public Class<? extends MoteInterface>[] getAllMoteInterfaceClasses() {
-    return null;
-  }
-
   public File getExpectedFirmwareFile(File source) {
     File parentDir = source.getParentFile();
     String sourceNoExtension = source.getName().substring(0, source.getName().length()-2);
     return new File(parentDir, sourceNoExtension + ".elf");
   }
 
+
+  public abstract Class<? extends MoteInterface>[] getAllMoteInterfaceClasses();
 }
