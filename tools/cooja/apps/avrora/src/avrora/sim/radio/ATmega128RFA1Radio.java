@@ -60,7 +60,6 @@ import java.util.*;
  */
 public class ATmega128RFA1Radio implements Radio {
 //public class ATmega128RFA1Radio extends Radio {
-    boolean DEBUG = false;
     public  byte rf231State = 0;
     //-- Radio states ---------------------------------------------------------
     public static final byte STATE_BUSY_RX      = 0x01;
@@ -97,7 +96,6 @@ public class ATmega128RFA1Radio implements Radio {
     public static final int PAN_ID_1     = 0x163;
     public static final int PHY_CC_CCA   = 0x148;
     public static final int PHY_TX_PWR   = 0x145;
-    public static final int TST_RX_LENGTH= 0x17B;
 
    //         rl.addIOReg("PHY_CC_CCA", 0x128);
    //     rl.addIOReg("PHY_ED_LEVEL", 0x127);
@@ -244,6 +242,51 @@ public class ATmega128RFA1Radio implements Radio {
     protected Transmitter transmitter;
     protected Receiver receiver;
 
+    //-- Strobes and status ----------------------------------------------
+    // note that there is no actual "status register" on the CC2420.
+    // The register here is used in the simulation implementation to
+    // simplify the handling of radio states and state transitions.
+    /*
+    protected final Register statusRegister = new Register(8);
+    protected boolean startingOscillator = false;
+    
+    //-- Views of bits in the status "register" ---------------------------
+    protected final BooleanView oscStable = RegisterUtil.booleanView(statusRegister, 6);
+    protected final BooleanView txUnderflow = RegisterUtil.booleanView(statusRegister, 5);
+    protected final BooleanView txActive = RegisterUtil.booleanView(statusRegister, 3);
+    protected final BooleanView signalLock = RegisterUtil.booleanView(statusRegister, 2);
+ //   protected final BooleanView rssiValid = RegisterUtil.booleanView(statusRegister, 1);
+    //-- Views of bits in the status "register" ---------------------------
+    protected final RegisterView MDMCTRL0_reg = new RegisterUtil.CharArrayView(registers, MDMCTRL0);
+    protected final BooleanView autoACK = RegisterUtil.booleanView(MDMCTRL0_reg, 4);
+    protected final BooleanView autoCRC = RegisterUtil.booleanView(MDMCTRL0_reg, 5);
+    protected final BooleanView ADR_DECODE = RegisterUtil.booleanView(MDMCTRL0_reg, 11);
+    protected final BooleanView PAN_COORDINATOR = RegisterUtil.booleanView(MDMCTRL0_reg, 12);
+    protected final BooleanView RESERVED_FRAME_MODE = RegisterUtil.booleanView(MDMCTRL0_reg, 13);
+
+    protected final RegisterView IOCFG0_reg = new RegisterUtil.CharArrayView(registers, IOCFG0);
+    protected final BooleanView BCN_ACCEPT = RegisterUtil.booleanView(IOCFG0_reg, 11);
+
+    protected final BooleanView CCA_assessor = new ClearChannelAssessor();
+   // protected BooleanView SFD_value = new BooleanRegister();
+
+    //-- Pins ------------------------------------------------------------
+    public final CC2420Pin SCLK_pin = new CC2420Pin("SCLK");
+    public final CC2420Pin MISO_pin = new CC2420Pin("MISO");
+    public final CC2420Pin MOSI_pin = new CC2420Pin("MOSI");
+    public final CC2420Pin CS_pin = new CC2420Pin("CS");
+    public final CC2420Pin VREN_pin = new CC2420Pin("VREN");
+    public final CC2420Pin RSTN_pin = new CC2420Pin("RSTN");
+    public final CC2420Output FIFO_pin = new CC2420Output("FIFO", new BooleanRegister());
+    public final CC2420Output FIFOP_pin = new CC2420Output("FIFOP", new BooleanRegister());
+    public final CC2420Output CCA_pin = new CC2420Output("CCA", CCA_assessor);
+    public final CC2420Output SFD_pin = new CC2420Output("SFD", SFD_value);
+
+    public final SPIInterface spiInterface = new SPIInterface();
+    public final ADCInterface adcInterface = new ADCInterface();
+*/
+ //   public int FIFOP_interrupt = -1;
+
     protected final SimPrinter printer;
 
     // the CC2420 allows reversing the polarity of these outputs.
@@ -326,7 +369,7 @@ public class ATmega128RFA1Radio implements Radio {
         reset();
 
         // get debugging channel.
-        printer = DEBUG? sim.getPrinter("radio.rfa1") : null;
+        printer = sim.getPrinter("radio.rfa1");
     }
 
     /**
@@ -342,8 +385,9 @@ public class ATmega128RFA1Radio implements Radio {
     }
 
     public void reset() {
-        if (printer != null) printer.println("RF231: RESET");
+                                if (printer != null) printer.println("RF231: RESET");
 
+  //    printer.println("RF231: A "+interpreter.getDataByte(PHY_CC_CCA));
   //      for (int cntr = 0; cntr < NUM_REGISTERS; cntr++) {
   //          resetRegister(cntr);
   //      }
@@ -366,7 +410,6 @@ public class ATmega128RFA1Radio implements Radio {
      * @param byte the command
      */
     public void newCommand(byte val) {
-        //TODO:check for invalid state transitions
         switch (val) {
             case CMD_NOP:
                 if (printer != null) printer.println("RF231: NOP");
@@ -408,6 +451,7 @@ public class ATmega128RFA1Radio implements Radio {
                 break;
             case CMD_RX_AACK_ON:
                 if (printer != null) printer.println("RF231: RX_AACK_ON");
+           //     if (rf231State == etc.
                 rf231State = STATE_RX_AACK_ON;
                 interpreter.writeDataByte(TRX_STATE, (byte) (CMD_RX_AACK_ON | 0xE0));
                 if (txactive) transmitter.shutdown();
@@ -416,8 +460,7 @@ public class ATmega128RFA1Radio implements Radio {
             case CMD_TX_ARET_ON:
                 if (printer != null) printer.println("RF231: TX_ARET_ON");
                 rf231State = STATE_BUSY_TX_ARET;
-                //set status to invalid. This will give a recursive call to the state register handler,
-                //which it will detect and ignore.
+                //set status to invalid. This will give a recursive call to the state register handler!
                 interpreter.writeDataByte(TRX_STATE, (byte) (CMD_TX_ARET_ON | 0xE0));
                 if (rxactive) receiver.shutdown();
                 if (!txactive) transmitter.startup();
@@ -429,6 +472,20 @@ public class ATmega128RFA1Radio implements Radio {
         interpreter.writeDataByte(TRX_STATUS, (byte) (rf231State));
     }
     /**
+     * The <code>pinChangeRST()</code> method indicates a change in the RST pin,
+     * or for the ATmega128rfa1, the RST bit in the TRXPR register.
+     *
+     * @param val the new pin status ( 0 = low)
+     */
+  /*
+    public void pinChangeRST(byte val) {
+        if (val != 0) {
+   //         sleep();
+        } else {
+        }
+    }
+*/
+    /**
      * The <code>pinChangeSLP()</code> method indicates a change in the multifunction SLPTR pin,
      * or for the ATmega128rfa1, the SLPTR bit in the TRXPR register.
      *
@@ -436,10 +493,10 @@ public class ATmega128RFA1Radio implements Radio {
      * @return the new radio state
      */
     public void pinChangeSLP(byte val) {
-        if (printer != null) printer.println("rfa1: SLP pin change, state "+ rf231State);     
+                    //          printer.println("rfa1: SLP pin change, state "+ rf231State);     
         if (val != 0) {  //pin was raised
             switch (rf231State) {
-                //Sleep if off, initiate transmission if tx on
+                //off -> sleep
                 case STATE_TRX_OFF:
                     stateMachine.transition(0);//change to off state
                     rf231State = STATE_SLEEP;
@@ -456,7 +513,7 @@ public class ATmega128RFA1Radio implements Radio {
             }
         } else {    //pin was lowered
             switch (rf231State) {
-                //Go to idle if sleeping
+                //sleep -> trx_off
                 case STATE_SLEEP:
                     stateMachine.transition(1);//change to idle state
                     rf231State = STATE_TRX_OFF;
@@ -467,7 +524,130 @@ public class ATmega128RFA1Radio implements Radio {
             }
         }
         interpreter.writeDataByte(TRX_STATUS, (byte) (rf231State));
+     //   return rf231State;
     }
+/*
+    void strobe(int addr) {
+        if (printer != null) printer.println("rfa1 Strobe");
+        if (!oscStable.getValue()) {
+            if (addr == SXOSCON) {
+                startOscillator();
+            }
+        }
+        else {
+            switch (addr) {
+                case SNOP:
+                    break;
+                case SXOSCON:
+                    // was handled above
+                    break;
+                case STXCAL:
+                    break;
+                case SRXON:
+                    if (!txActive.getValue()){
+                        // should not interrupt transmissions according to state machine
+                        // after a transmission RX mode is turned on automatically
+                        transmitter.shutdown();
+                        receiver.startup();
+                    }
+                    break;
+                case STXONCCA:
+                    if (CCA_assessor.getValue()) {
+                        receiver.shutdown();
+                        transmitter.startup();
+                    }
+                    break;
+                case STXON:
+                    receiver.shutdown();
+                    transmitter.startup();
+                    break;
+                case SRFOFF:
+                    //change to idle state
+                    receiver.shutdown();
+                    transmitter.shutdown();
+                    stateMachine.transition(2);  // idle state
+                    break;
+                case SXOSCOFF:
+                    // stop the tickers in receiver and transmitter
+                    receiver.shutdown();
+                    transmitter.shutdown();
+                    // it is not clear from the data sheet if we have to do more here, e.g. resetting the FIFO pins
+                    oscStable.setValue(false);
+                    stateMachine.transition(1);//change to power down state
+                    break;
+                case SFLUSHRX:
+                    rxFIFO.clear();
+                    receiver.resetOverflow();
+  //                  FIFO_pin.level.setValue(!FIFO_active);
+  //                  FIFOP_pin.level.setValue(!FIFOP_active);
+  //                  SFD_value.setValue(!SFD_active);  // needed in case of an overflow
+                    break;
+                case SFLUSHTX:
+                    txFIFO.clear();
+                    txUnderflow.setValue(false);
+                    break;
+                case SACK:
+                    AutoAckPend = false;  // AutoAck sends pending flag until SACK is issued
+                    if (!receiver.inPacket()) {
+                        // if reception is over ACK is only sent when the CRC was ok
+                        if (lastCRCok) {
+                            SendAck = SENDACK_NORMAL;
+                            receiver.shutdown();
+                            transmitter.startup();
+                        }
+                    }
+                    else {
+                        // otherwise it might be sent when packet is complete
+                        SendAck = SENDACK_NORMAL;
+                    }
+                    break;
+                case SACKPEND:
+                    AutoAckPend = true;  // AutoAck sends pending flag until SACK is issued
+                    if (!receiver.inPacket()) {  // see SACK
+                        if (lastCRCok) {
+                            SendAck = SENDACK_PEND;
+                            receiver.shutdown();
+                            transmitter.startup();
+                        }
+                    }
+                    else {
+                        SendAck = SENDACK_PEND;
+                    }
+                    break;
+                case SRXDEC:
+                    // start RXFIFO in-line decryption/authentication as set by SPI_SEC_MODE
+                    throw Util.unimplemented();
+                case STXENC:
+                    // start TXFIFO in-line encryption/authentication as set by SPI_SEC_MODE
+                    throw Util.unimplemented();
+                case SAES:
+                    // SPI_SEC_MODE is not required to be 0, but the encrypt. module must be idle; else strobe is ignored
+                    throw Util.unimplemented();
+            }
+        }
+    }
+
+    private void startOscillator() {
+                                        if (printer != null) printer.println("RF231 startOscillator");
+        if (!oscStable.getValue() && !startingOscillator) {
+                                        if (printer != null) printer.println("RF231 startingOscillator");
+            startingOscillator = true;
+            sim.insertEvent(new Simulator.Event() {
+                public void fire() {
+                                                        if (printer != null) printer.println("RF231 fire");
+                    if (startingOscillator) {  // just in case the voltage regulator has been switched off in the meantime
+                        oscStable.setValue(true);
+                        startingOscillator = false;
+                        stateMachine.transition(2);//change to idle state
+                        if (printer != null) {
+                            printer.println("RF231: Oscillator established");
+                        }
+                    }
+                }
+            }, toCycles(XOSC_START_TIME));
+        }
+    }
+*/
     /**
      * The <code>resetRegister()</code> method resets the specified register's value
      * to its default.
@@ -629,8 +809,7 @@ public class ATmega128RFA1Radio implements Radio {
                     break;
                 case TX_SFD:
                     // TODO:read SFD_VALUE
-                  //  val = (byte) 0xA7;
-                    val = (byte) 0x7A;  //sky compatibility
+                    val = (byte) 0xA7;
                     state = TX_LENGTH;
                     break;
                 case TX_LENGTH:
@@ -699,8 +878,9 @@ public class ATmega128RFA1Radio implements Radio {
                     state = TX_END;
                     break;
             }
-            if (printer != null) printer.println("RF231 " + StringUtil.to0xHex(val, 2) + " --------> ");
-
+            if (printer != null) {
+    //            printer.println("RF231 " + StringUtil.to0xHex(val, 2) + " --------> ");
+            }
             // common handling of end of transmission
             if (state == TX_END) {
                 rf231State = STATE_PLL_ON;
@@ -805,7 +985,7 @@ public class ATmega128RFA1Radio implements Radio {
         }
         
         private boolean getRssiValid (){
-            if (printer != null) printer.println("RF231: getRssivalid");
+                     if (printer != null) printer.println("RF231: getRssivalid");
             //RF230 RSSI is always valid in non-extended mode
             return true;
         }
@@ -827,7 +1007,7 @@ public class ATmega128RFA1Radio implements Radio {
             int rssi_val = (((int) Math.rint(Prec) + 90) / 3) +1;
             if (rssi_val < 0) rssi_val = 0;
             if (rssi_val > 28) rssi_val = 28;
-            if (printer!=null) printer.println("RF231: setrssi " + rssi_val);
+ //           if (printer!=null) printer.println("RF231: setrssi " + rssi_val);
             interpreter.writeDataByte(PHY_RSSI, (byte) (rssi_val | interpreter.getDataByte(PHY_RSSI) & 0xE0));
         }
 
@@ -837,7 +1017,7 @@ public class ATmega128RFA1Radio implements Radio {
         }
 
         public void setBER (double BER){
-            if (printer != null) printer.println("RF231: setber");
+                     if (printer != null) printer.println("RF231: setber");
             BERcount++;
             if (BERcount > 5) {
                 BERtotal += BER;
@@ -864,6 +1044,7 @@ public class ATmega128RFA1Radio implements Radio {
 
         public byte nextByte(boolean lock, byte b) {
             if (state == RECV_END_STATE) {
+                printer.println("RF231 recvendstate");
                 state = RECV_SFD_SCAN; // to prevent loops when calling shutdown/endReceive
                 // packet ended before
                 if (SendAck != SENDACK_NONE && lastCRCok) {//Send Ack?
@@ -873,7 +1054,7 @@ public class ATmega128RFA1Radio implements Radio {
                 } else {
                     if (lock) {
                         // the medium is still locked, so there could be more packets!
-                        if (printer != null) printer.println("RF231: still locked");
+                                            printer.println("RF231: still locked");
                         // fire the probes manually
                         if (probeList != null) probeList.fireAfterReceiveEnd(Receiver.this);
                     }
@@ -883,7 +1064,7 @@ public class ATmega128RFA1Radio implements Radio {
 
               
             if (!lock) {
-                if (printer != null) printer.println("RF231 notlocked, state= "+state);
+                        printer.println("RF231 notlock, state= "+state);
                 // the transmission lock has been lost
                 switch (state) {
                     case RECV_SFD_MATCHED_2:
@@ -897,9 +1078,10 @@ public class ATmega128RFA1Radio implements Radio {
                         // fall through
                     
                     case RECV_SFD_MATCHED_1: // packet has just started
-                        if (printer != null) printer.println("RF231 packet started");
+                                            printer.println("RF231 packet started");
                         state = RECV_SFD_SCAN;
-                        interpreter.setPosted(60, true);
+                        //rxstart interrupt
+                //        SFD_value.setValue(!SFD_active);
                         break;
                 }
                 return b;
@@ -908,8 +1090,7 @@ public class ATmega128RFA1Radio implements Radio {
             if (printer != null) printer.println("RF231 <======== " + StringUtil.to0xHex(b, 2));
             switch (state) {
                 case RECV_SFD_MATCHED_1:
-      //              if (b == (byte) 0xA7) {
-                    if (b == (byte) 0x7A) {  //for sky emulation compatibility
+                    if (b == (byte) 0xA7) {
                     // check against the second byte of the SYNCWORD register.
                         state = RECV_SFD_MATCHED_2;
                         if (printer != null) printer.println("RF231: RX_START interrupt");
@@ -935,10 +1116,10 @@ public class ATmega128RFA1Radio implements Radio {
                         state = RECV_SFD_SCAN;
                         break;
                     }
-                    // Store length in TXT_RX_LENGTH register
-                    interpreter.writeDataByte(TST_RX_LENGTH, (byte) length);
+                    
                     // Start transferring bytes to RAM buffer
                     RXFBptr = 0x180;
+                    interpreter.writeDataByte(RXFBptr++, (byte) length);
                     counter = 0;
                     state = RECV_IN_PACKET;
                     crc = 0;
@@ -962,7 +1143,7 @@ public class ATmega128RFA1Radio implements Radio {
                     } else {
         */
                         // sequence number - save it outside of address recognition since it is needed for SACK/SACKPEND commands as well
-                        if (counter == 3 && (interpreter.getDataByte(0x180) & 0x07) != 0 && (interpreter.getDataByte(0x180) & 0x04) != 4) {
+                        if (counter == 3 && (interpreter.getDataByte(0x181) & 0x07) != 0 && (interpreter.getDataByte(0x181) & 0x04) != 4) {
                             DSN = b;
                             lastCRCok = false;  // we have a new DSN now. Therefore, we cannot send an ACK for the last frame any more.
                         }
@@ -971,7 +1152,9 @@ public class ATmega128RFA1Radio implements Radio {
                     // no overflow occurred and address ok
                  //   if (autoCRC.getValue()) {
                     if (true) {
+                    //    crc = crcAccumulate(crc, b);
                         crc = crcAccumulate(crc, (byte) reverse_bits[((int) b) & 0xff]);
+
                         if (counter == length - 2) {
                             // transition to receiving the CRC.
                             state = RECV_CRC_1;
@@ -993,17 +1176,20 @@ public class ATmega128RFA1Radio implements Radio {
                 case RECV_CRC_2:
                     state = RECV_END_STATE; 
                     interpreter.writeDataByte(RXFBptr++, b);                    
-                    crcLow = (byte)reverse_bits[((int) crcLow) & 0xff]; 
-                    b = (byte)reverse_bits[((int) b) & 0xff];
-                    short crcResult = (short) Arithmetic.word(b, crcLow);
+                    char crcResult = (char) Arithmetic.word(crcLow, b);
+
                     //LQI is written in this position
                     b = (byte) ((byte)getCorrelation() & 0x7f);
-                    if (crcResult == crc) {
-                        b |= 0x80;  //TODO: should this really increase the LQI
+                 //   if (crcResult == crc) {
+                                        if (true) {
+                        b |= 0x80;
                         lastCRCok = true;
-                //       if (printer != null) printer.println("RF231 CRC passed");
-                    } else {
-                        // TODO: reject frame if not promiscuous mode
+                        if (printer != null) {
+                            printer.println("RF231 CRC passed");
+                        }
+                    }
+                    else {
+                        // According to the CC2420 data sheet the frame is not rejected if the CRC is invalid!!!
                         // reset ACK flags set by the SACK/SACKPEND commands since ACK is only sent when CRC is valid
                         lastCRCok = false;
                         SendAck = SENDACK_NONE;
@@ -1011,6 +1197,7 @@ public class ATmega128RFA1Radio implements Radio {
                     }
             
                     interpreter.writeDataByte(RXFBptr++, b);
+
                     if (printer !=null) printer.println("RF231: RX_END interrupt");
                     //interpreter.setPosted(mcu.getProperties().getInterrupt("TRX24 RX_END"), true);
                     interpreter.setPosted(61, true);
