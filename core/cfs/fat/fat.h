@@ -109,13 +109,13 @@ struct file {
 	uint32_t dir_entry_sector;
 	uint16_t dir_entry_offset;
 	struct dir_entry dir_entry;
-	uint32_t size;
 	uint32_t nth_cluster;
 	uint32_t n;
 };
 
 struct file_desc {
-	cfs_offset_t offset;
+	//cfs_offset_t offset;
+	uint32_t offset;
 	struct file *file;
 	uint8_t flags;
 };
@@ -154,4 +154,6 @@ void fat_sync_fats();
 void fat_flush();
 uint32_t fat_file_size(int fd);
 
+void print_cluster_chain( int fd );
+void print_file_info( int fd );
 #endif

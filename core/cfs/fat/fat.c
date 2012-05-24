@@ -239,6 +239,7 @@ static void add_cluster_to_file( int fd ) {
     uint32_t free_cluster = get_free_cluster( 0 );
     uint32_t cluster = fat_file_pool[fd].nth_cluster;
     uint32_t n = cluster;
+	PRINTF("\nfat.c: add_cluster_to_file( fd = %d ) = void", fd);
 
     if( fat_file_pool[fd].cluster == 0 ) {
         write_fat_entry( free_cluster, EOC );
@@ -251,7 +252,6 @@ static void add_cluster_to_file( int fd ) {
         fat_file_pool[fd].n = 0;
         fat_file_pool[fd].nth_cluster = free_cluster;
 
-		PRINTF("\nfat.c: add_cluster_to_file( fd = %d ) = void", fd);
 		PRINTF("\n\tfat.c: File was empty, now has first cluster %lu added to Chain", free_cluster);
         return;
     }
@@ -265,7 +265,6 @@ static void add_cluster_to_file( int fd ) {
     write_fat_entry( cluster, free_cluster );
     write_fat_entry( free_cluster, EOC );
     fat_file_pool[fd].nth_cluster = free_cluster;
-	PRINTF("\nfat.c: add_cluster_to_file( fd = %d ) = void", fd);
 	PRINTF("\n\tfat.c: File was NOT empty, now has cluster %lu as %lu. cluster to Chain", free_cluster, fat_file_pool[fd].n);
 }
 
@@ -282,6 +281,40 @@ void print_current_sector() {
             printf("\n");
         }
     }
+}
+
+void print_cluster_chain( int fd ) {
+	uint32_t cluster = fat_file_pool[fd].cluster;
+	printf("\nClusterchain for fd = %d\n", fd);
+	do{
+		printf("%lu ->", cluster);
+	}while(!is_EOC(cluster = read_fat_entry(cluster)));
+	printf("%lu\n", cluster);
+}
+
+void print_file_info( int fd ) {
+	printf("\nFile Info for fd = %d", fd);
+	printf("\n\toffset = %lu", fat_fd_pool[fd].offset);
+	printf("\n\tflags = %x", fat_fd_pool[fd].flags);
+	printf("\n\tfile = %p", fat_fd_pool[fd].file);
+	printf("\n\t\tcluster = %lu", fat_file_pool[fd].cluster);
+	printf("\n\t\tdir_entry_sector = %lu", fat_file_pool[fd].dir_entry_sector);
+	printf("\n\t\tdir_entry_offset = %u", fat_file_pool[fd].dir_entry_offset);
+	printf("\n\t\tnth_cluster = %lu", fat_file_pool[fd].nth_cluster);
+	printf("\n\t\tn = %lu", fat_file_pool[fd].n);
+	printf("\n\t\tdir_entry");
+    printf("\n\t\t\tDIR_Name = %c%c%c%c%c%c%c%c%c%c%c", fat_file_pool[fd].dir_entry.DIR_Name[0], fat_file_pool[fd].dir_entry.DIR_Name[1],fat_file_pool[fd].dir_entry.DIR_Name[2],fat_file_pool[fd].dir_entry.DIR_Name[3],fat_file_pool[fd].dir_entry.DIR_Name[4],fat_file_pool[fd].dir_entry.DIR_Name[5],fat_file_pool[fd].dir_entry.DIR_Name[6],fat_file_pool[fd].dir_entry.DIR_Name[7],fat_file_pool[fd].dir_entry.DIR_Name[8],fat_file_pool[fd].dir_entry.DIR_Name[9],fat_file_pool[fd].dir_entry.DIR_Name[10]);
+    printf("\n\t\t\tDIR_Attr = %x", fat_file_pool[fd].dir_entry.DIR_Attr);
+    printf("\n\t\t\tDIR_NTRes = %x", fat_file_pool[fd].dir_entry.DIR_NTRes);
+    printf("\n\t\t\tCrtTimeTenth = %x", fat_file_pool[fd].dir_entry.CrtTimeTenth);
+    printf("\n\t\t\tDIR_CrtTime = %x", fat_file_pool[fd].dir_entry.DIR_CrtTime);
+    printf("\n\t\t\tDIR_CrtDate = %x", fat_file_pool[fd].dir_entry.DIR_CrtDate);
+    printf("\n\t\t\tDIR_LstAccessDate = %x", fat_file_pool[fd].dir_entry.DIR_LstAccessDate);
+    printf("\n\t\t\tDIR_FstClusHI = %x", fat_file_pool[fd].dir_entry.DIR_FstClusHI);
+    printf("\n\t\t\tDIR_WrtTime = %x", fat_file_pool[fd].dir_entry.DIR_WrtTime);
+    printf("\n\t\t\tDIR_WrtDate = %x", fat_file_pool[fd].dir_entry.DIR_WrtDate);
+    printf("\n\t\t\tDIR_FstClusLO = %x", fat_file_pool[fd].dir_entry.DIR_FstClusLO);
+    printf("\n\t\t\tDIR_FileSize = %lu Bytes", fat_file_pool[fd].dir_entry.DIR_FileSize);
 }
 
 void print_dir_entry( struct dir_entry *dir_entry ) {
@@ -801,7 +834,9 @@ int cfs_write(int fd, const void *buf, unsigned int len) {
             #endif
             if( fat_fd_pool[fd].offset == fat_file_pool[fd].dir_entry.DIR_FileSize ) {
                 fat_file_pool[fd].dir_entry.DIR_FileSize++;
-            }
+            } else if( fat_fd_pool[fd].offset > fat_file_pool[fd].dir_entry.DIR_FileSize ) {
+				fat_file_pool[fd].dir_entry.DIR_FileSize = fat_fd_pool[fd].offset;
+			}
         }
 
         sector_buffer_dirty = 1;
@@ -1072,14 +1107,10 @@ static uint8_t load_next_sector_of_file( int fd, uint32_t clusters, uint8_t clus
     } else if( clusters == fat_file_pool[fd].n + 1) {
 		PRINTF("\nfat.c: load_next_sector_of_file(): we need the cluster n and are at n-1");
         cluster = read_fat_entry( fat_file_pool[fd].nth_cluster );
-        fat_file_pool[fd].nth_cluster = cluster;
-        fat_file_pool[fd].n++;
     //Somehow our cluster-information is out of sync. We have to calculate the cluster the hard way.
     } else {
 		PRINTF("\nfat.c: load_next_sector_of_file(): We are somewhere else, need to iterate the chain until nth cluster");
         cluster = find_nth_cluster( fat_file_pool[fd].cluster, clusters );
-        fat_file_pool[fd].nth_cluster = cluster;
-        fat_file_pool[fd].n = clusters;
     }
 	PRINTF("\nfat.c: load_next_sector_of_file(): fat_file_pool[%d].nth_cluster = %lu, fat_file_pool[%d].n = %lu", fd, fat_file_pool[fd].nth_cluster, fd, fat_file_pool[fd].n);
 
@@ -1094,7 +1125,10 @@ static uint8_t load_next_sector_of_file( int fd, uint32_t clusters, uint8_t clus
         } else {
             return 1;
         }
-    }
+    } else {
+        fat_file_pool[fd].nth_cluster = cluster;
+        fat_file_pool[fd].n = clusters;
+	}
 
     return fat_read_block( CLUSTER_TO_SECTOR(cluster) + clus_offset );
 }
@@ -1109,7 +1143,7 @@ uint32_t fat_file_size(int fd) {
         return 0;
     }
 
-    return fat_file_pool[fd].size;
+    return fat_file_pool[fd].dir_entry.DIR_FileSize;
 }
 
 /**
