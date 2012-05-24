@@ -30,21 +30,17 @@
 
 package se.sics.cooja.avrmote;
 
-import org.apache.log4j.Logger;
-import org.jdom.Element;
-
 import se.sics.cooja.AbstractionLevelDescription;
 import se.sics.cooja.ClassDescription;
 import se.sics.cooja.Mote;
 import se.sics.cooja.MoteInterface;
 import se.sics.cooja.Simulation;
-import se.sics.cooja.avrmote.AvroraMoteType;
 import se.sics.cooja.avrmote.interfaces.AvrDebugger;
+import se.sics.cooja.avrmote.interfaces.AvroraADC;
 import se.sics.cooja.avrmote.interfaces.AvroraClock;
+import se.sics.cooja.avrmote.interfaces.AvroraLED;
 import se.sics.cooja.avrmote.interfaces.AvroraSerial0;
 import se.sics.cooja.avrmote.interfaces.MicaZID;
-import se.sics.cooja.avrmote.interfaces.AvroraLED;
-import se.sics.cooja.avrmote.interfaces.AvroraADC;
 import se.sics.cooja.avrmote.interfaces.MicaZRadio;
 import se.sics.cooja.interfaces.Mote2MoteRelations;
 import se.sics.cooja.interfaces.MoteAttributes;
@@ -52,7 +48,7 @@ import se.sics.cooja.interfaces.Position;
 
 /**
  * AVR-based MicaZ mote types emulated in Avrora.
- * 
+ *
  * @author Joakim Eriksson, Fredrik Osterlind
  */
 @ClassDescription("MicaZ Mote Type")
