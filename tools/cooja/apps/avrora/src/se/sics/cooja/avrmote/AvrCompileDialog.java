@@ -41,8 +41,6 @@ import se.sics.cooja.MoteType;
 import se.sics.cooja.Simulation;
 import se.sics.cooja.dialogs.AbstractCompileDialog;
 
-import se.sics.cooja.avrmote.AvroraMoteType;
-
 public class AvrCompileDialog extends AbstractCompileDialog {
   private static Logger logger = Logger.getLogger(AvrCompileDialog.class);
 
@@ -62,15 +60,6 @@ public class AvrCompileDialog extends AbstractCompileDialog {
 
   private AvrCompileDialog(Container parent, Simulation simulation, MoteType moteType) {
     super(parent, simulation, moteType);
-
-    boolean selected = true;
-    if (moteIntfBox.getComponentCount() > 0) {
-      selected = false;
-    }
-    for (Class<? extends MoteInterface> intfClass: ((AvroraMoteType)moteType).getAllMoteInterfaceClasses()) {
-      addMoteInterface(intfClass, selected);
-    }
-
   }
 
   public boolean canLoadFirmware(File file) {
@@ -100,6 +89,10 @@ public class AvrCompileDialog extends AbstractCompileDialog {
 
   protected String getTargetName() {
   	return ((AvroraMoteType)moteType).getMoteContikiTarget();
+  }
+
+  public Class<? extends MoteInterface>[] getDefaultMoteInterfaces() {
+    return ((AvroraMoteType)moteType).getAllMoteInterfaceClasses();
   }
 
 }
