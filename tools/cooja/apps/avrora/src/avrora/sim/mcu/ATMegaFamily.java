@@ -283,6 +283,7 @@ public abstract class ATMegaFamily extends AtmelMicrocontroller {
 
 
     }
+
     // CS values 6 and 7 select external clock source and are not supported. Results in an ArrayOutOfBound exception
     protected static final int[] periods0A ={0, 1, 8, 64, 256, 1024};
     /**
@@ -292,30 +293,7 @@ public abstract class ATMegaFamily extends AtmelMicrocontroller {
 
         protected Timer0A() {
             super(ATMegaFamily.this, 1, 0, 1, 0, 1, 0, periods0A);
-            installIOReg("ASSR", new ASSRRegister());
         }
-
-        // See pg. 104 of the ATmega128 doc
-        protected class ASSRRegister extends RWRegister {
-            static final int AS0 = 3;
-            static final int TCN0UB = 2;
-            static final int OCR0UB = 1;
-            static final int TCR0UB = 0;
-
-            public void write(byte val) {
-                super.write((byte) (0xf & val));
-                decode(val);
-            }
-
-            protected void decode(byte val) {
-                // TODO: if there is a change, remove ticker and requeue?
-                timerClock = Arithmetic.getBit(val, AS0) ? externalClock : mainClock;
-            }
-
-
-        }
-
-
     }
 
     // CS values 6 and 7 select external clock source and are not supported. Results in an ArrayOutOfBound exception
@@ -330,14 +308,40 @@ public abstract class ATMegaFamily extends AtmelMicrocontroller {
             super(ATMegaFamily.this, 0, 2, 7, 6, 7, 6, periods2);
         }
     }
+ 
     protected static final int[] periods2A = {0, 1, 8, 32, 64, 128, 256, 1024};
     /**
-     * <code>Timer2</code> is an additional 8-bit timer on the ATMega128. It is not available in
-     * ATMega103 compatibility mode.
+     * <code>Timer2A</code> is the Timer2 implementation on the ATMega1284/ATMega128rfa1.
+     * Bit 5 (AS2) of ASSR controls counting from an external crystal.
+     * Bit 6 (EXCLK) allows an external clock on TOSC1
+     * The same externalClock is used for either case.
      */
     protected class Timer2A extends Timer8Bit {
         protected Timer2A() {
-            super(ATMegaFamily.this, 1, 2, 7, 6, 7, 6, periods2A);
+            super(ATMegaFamily.this, 1, 2, 1, 0, 1, 0, periods2A);//TODO:OCF2B on pin 2
+            installIOReg("ASSR", new ASSRRegister());
+        }
+
+        protected class ASSRRegister extends RWRegister {
+            static final int TCR2BUB = 0;
+            static final int TCR2AUB = 1;
+            static final int OCR2BUB = 2;
+            static final int OCR2AUB = 3;
+            static final int TCN2B   = 4;
+            static final int AS2     = 5;
+            static final int EXCLK   = 6;           
+
+            public void write(byte val) {
+                super.write((byte) (0x60 & val));
+                decode(val);
+            }
+
+            protected void decode(byte val) {
+                // TODO: if there is a change, remove ticker and requeue?
+                if (Arithmetic.getBit(val, EXCLK)) timerClock = externalClock; else 
+                timerClock = Arithmetic.getBit(val, AS2) ? externalClock : mainClock;
+            }
+
         }
     }
 
