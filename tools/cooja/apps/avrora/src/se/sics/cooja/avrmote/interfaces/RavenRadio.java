@@ -32,15 +32,15 @@ package se.sics.cooja.avrmote.interfaces;
 
 import org.apache.log4j.Logger;
 
+import se.sics.cooja.ClassDescription;
+import se.sics.cooja.Mote;
+import se.sics.cooja.avrmote.RavenMote;
+import se.sics.cooja.emulatedmote.Radio802154;
 import avrora.sim.FiniteStateMachine;
 import avrora.sim.FiniteStateMachine.Probe;
 import avrora.sim.platform.Raven;
 import avrora.sim.radio.AT86RF231Radio;
 import avrora.sim.radio.Medium;
-
-import se.sics.cooja.*;
-import se.sics.cooja.avrmote.RavenMote;
-import se.sics.cooja.emulatedmote.Radio802154;
 
 /**
  * Atmel AT86RF230 radio to COOJA wrapper, using the AT86RF231 emulator.
@@ -58,12 +58,12 @@ public class RavenRadio extends Radio802154 {
   AT86RF231Radio.Receiver recv;
   FiniteStateMachine fsm;
   private AT86RF231Radio rf230;
-  
+
   public RavenRadio(Mote mote) {
     super(mote);
     raven = ((RavenMote)mote).getRaven();
     rf230 = (AT86RF231Radio) raven.getDevice("radio");
-   
+
     trans = rf230.getTransmitter();
     fsm = rf230.getFiniteStateMachine();
     recv = (AT86RF231Radio.Receiver) rf230.getReceiver();
@@ -90,7 +90,7 @@ public class RavenRadio extends Radio802154 {
                 notifyObservers();
             }
         }
-    });   
+    });
   }
 
   public int getChannel() {
@@ -103,7 +103,7 @@ public class RavenRadio extends Radio802154 {
     return (int) rf230.getFrequency();
   }
 
-  public boolean isReceiverOn() {
+  public boolean isRadioOn() {
     FiniteStateMachine fsm = rf230.getFiniteStateMachine();
     //Receiver is on in state 3-5, and a transmitter for > 5
     if (DEBUG) System.out.println("Raven isReceiverOn " + fsm.getCurrentState());
@@ -155,6 +155,6 @@ public class RavenRadio extends Radio802154 {
 
   protected void handleReceive(byte b) {
     if (DEBUGV) System.out.println("Raven handleReceive" );
-    recv.nextByte(true, (byte)b);
+    recv.nextByte(true, b);
   }
 }

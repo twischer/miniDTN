@@ -32,15 +32,15 @@ package se.sics.cooja.avrmote.interfaces;
 
 import org.apache.log4j.Logger;
 
+import se.sics.cooja.ClassDescription;
+import se.sics.cooja.Mote;
+import se.sics.cooja.avrmote.RFA1Mote;
+import se.sics.cooja.emulatedmote.Radio802154;
 import avrora.sim.FiniteStateMachine;
 import avrora.sim.FiniteStateMachine.Probe;
 import avrora.sim.platform.RFA1;
 import avrora.sim.radio.ATmega128RFA1Radio;
 import avrora.sim.radio.Medium;
-
-import se.sics.cooja.*;
-import se.sics.cooja.avrmote.RFA1Mote;
-import se.sics.cooja.emulatedmote.Radio802154;
 
 /**
  * Avrora ATMega128RFA1 radio to COOJA wrapper.
@@ -59,12 +59,12 @@ public class RFA1Radio extends Radio802154 {
   Medium.Transmitter trans;
   ATmega128RFA1Radio.Receiver recv;
   FiniteStateMachine fsm;
-  
+
   public RFA1Radio(Mote mote) {
     super(mote);
     rfa1 = ((RFA1Mote)mote).getRFA1();
     rf231 = (ATmega128RFA1Radio) rfa1.getDevice("radio");
-   
+
     trans = rf231.getTransmitter();
     fsm = rf231.getFiniteStateMachine();
     recv = (ATmega128RFA1Radio.Receiver) rf231.getReceiver();
@@ -92,8 +92,8 @@ public class RFA1Radio extends Radio802154 {
             }
         }
     });
-    
-    
+
+
   }
 
   public int getChannel() {
@@ -104,7 +104,7 @@ public class RFA1Radio extends Radio802154 {
       return (int) rf231.getFrequency();
   }
 
-  public boolean isReceiverOn() {
+  public boolean isRadioOn() {
     FiniteStateMachine fsm = rf231.getFiniteStateMachine();
     //Receiver is on in state 3-5, and a transmitter for > 5
     switch (fsm.getCurrentState()) {
@@ -147,6 +147,6 @@ public class RFA1Radio extends Radio802154 {
   }
 
   protected void handleReceive(byte b) {
-      recv.nextByte(true, (byte)b);
+      recv.nextByte(true, b);
   }
 }
