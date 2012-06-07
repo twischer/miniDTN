@@ -183,6 +183,7 @@ uint8_t rf230_calibrated; //for debugging, prints from main loop when calibratio
 #endif
 
 /* Track flow through mac, rdc and radio drivers, see contiki-raven-main.c for example of use */
+#define DEBUGFLOWSIZE 32
 #if DEBUGFLOWSIZE
 extern uint8_t debugflowsize,debugflow[DEBUGFLOWSIZE];
 #define DEBUGFLOW(c) if (debugflowsize<(DEBUGFLOWSIZE-1)) debugflow[debugflowsize++]=c
@@ -340,7 +341,7 @@ static bool radio_is_sleeping(void)
 static void
 radio_reset_state_machine(void)
 {
-    if (hal_get_slptr()) DEBUGFLOW('"');
+//    if (hal_get_slptr()) DEBUGFLOW('"');
     hal_set_slptr_low();
     delay_us(TIME_NOCLK_TO_WAKE);
     hal_subregister_write(SR_TRX_CMD, CMD_FORCE_TRX_OFF);
@@ -403,6 +404,8 @@ static radio_status_t
 radio_set_trx_state(uint8_t new_state)
 {
     uint8_t original_state;
+  //  DEBUGFLOW('0'+(new_state>>4));
+  //  DEBUGFLOW('0'+(new_state&0x0f));
 
     /*Check function paramter and current state of the radio transceiver.*/
     if (!((new_state == TRX_OFF)    ||
@@ -528,7 +531,16 @@ on(void)
     rf230_interruptwait=1;
     sei();
     hal_set_slptr_low();
-    while (rf230_interruptwait) {}
+    //Cooja emulator does not always give the interrupt
+  //  while (rf230_interruptwait) {}
+{
+int i;
+  for (i=0;i<10000;i++) {
+    if (rf230_interruptwait==0) break;
+  }
+  if (i>=10000) {DEBUGFLOW('Z');DEBUGFLOW('Z');}
+}
+
 #else
 /* SPI based radios. The wake time depends on board capacitance.
  * Make sure the delay is long enough, as using SPI too soon will reset the MCU!
@@ -870,7 +882,7 @@ rf230_transmit(unsigned short payload_len)
     }
 #else
     hal_set_slptr_low();
-    DEBUGFLOW('j');
+ //   DEBUGFLOW('j');
     delay_us(2*TIME_SLEEP_TO_TRX_OFF); //extra delay depends on board capacitance
 //	delay_us(TIME_SLEEP_TO_TRX_OFF+TIME_SLEEP_TO_TRX_OFF/2);
 #endif
@@ -897,7 +909,7 @@ rf230_transmit(unsigned short payload_len)
   /* Prepare to transmit */
 #if RF230_CONF_AUTORETRIES
   radio_set_trx_state(TX_ARET_ON);
-  DEBUGFLOW('t');
+ // DEBUGFLOW('t');
 #else
   radio_set_trx_state(PLL_ON);
   DEBUGFLOW('T');
@@ -1020,7 +1032,7 @@ rf230_transmit(unsigned short payload_len)
     PRINTF("rf230_transmit: Transmission never started\n");
     tx_result = RADIO_TX_COLLISION;
   } else if (tx_result==5) {        //Expected ACK, none received
-    DEBUGFLOW('n');
+ //   DEBUGFLOW('n');
     tx_result = RADIO_TX_NOACK;
     PRINTF("rf230_transmit: ACK not received\n");
     RIMESTATS_ADD(badackrx);		//ack was requested but not received
@@ -1048,7 +1060,7 @@ rf230_prepare(const void *payload, unsigned short payload_len)
   ack_seqnum=*(((uint8_t *)payload)+2);
 #endif
 
-  DEBUGFLOW('p');
+ // DEBUGFLOW('p');
 
 //  PRINTF("rf230: sending %d bytes\n", payload_len);
 //  PRINTSHORT("s%d ",payload_len);
@@ -1669,10 +1681,10 @@ rf230_cca(void)
   }
 // if (cca & 0x40) {/*DEBUGFLOW('3')*/;} else {rf230_pending=1;DEBUGFLOW('4');}  
    if (cca & 0x40) {
-//   DEBUGFLOW('5');
+  // DEBUGFLOW('5');
 	 return 1;
    } else {
-//  DEBUGFLOW('6');
+ // DEBUGFLOW('6');
  busyexit:
 	 return 0;
    }
@@ -1683,7 +1695,7 @@ rf230_receiving_packet(void)
 {
   uint8_t radio_state;
   if (hal_get_slptr()) {
-    DEBUGFLOW('=');
+  //  DEBUGFLOW('=');
   } else {  
     radio_state = hal_subregister_read(SR_TRX_STATUS);
     if ((radio_state==BUSY_RX) || (radio_state==BUSY_RX_AACK)) {

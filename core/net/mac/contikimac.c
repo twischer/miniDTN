@@ -617,10 +617,10 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr, struct rdc_buf_
     /* Pad with zeroes */
     uint8_t *ptr;
     ptr = packetbuf_dataptr();
-    memset(ptr + packetbuf_datalen(), 0, SHORTEST_PACKET_SIZE - packetbuf_totlen());
+  //  memset(ptr + packetbuf_datalen(), 0, SHORTEST_PACKET_SIZE - packetbuf_totlen());
 
-    PRINTF("contikimac: shorter than shortest (%d)\n", packetbuf_totlen());
-    transmit_len = SHORTEST_PACKET_SIZE;
+    printf("contikimac: shorter than shortest (%d)\n", packetbuf_totlen());
+  //  transmit_len = SHORTEST_PACKET_SIZE;
   }
 
 
