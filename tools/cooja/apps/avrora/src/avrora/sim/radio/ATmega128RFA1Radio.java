@@ -62,7 +62,6 @@ public class ATmega128RFA1Radio implements Radio {
     
     //-- Radio states, confusingly contained in the TRX_STATUS register --------
     public  byte rf231Status = 0;
-    private int wakeinserted = 0;
     private static final byte STATE_BUSY_RX      = 0x01;
     private static final byte STATE_BUSY_TX      = 0x02;
     private static final byte STATE_RX_ON        = 0x06; 
@@ -172,7 +171,7 @@ public class ATmega128RFA1Radio implements Radio {
 
     protected final SimPrinter printer;
 
-    //Radio energy
+    //Radio energy, obviously TODO:
     protected static final String[] allModeNames = CC2420Energy.allModeNames();
     protected static final int[][] ttm = FiniteStateMachine.buildSparseTTM(allModeNames.length, 0);
     protected final FiniteStateMachine stateMachine;
@@ -223,6 +222,7 @@ public class ATmega128RFA1Radio implements Radio {
         interpreter.writeDataByte(PART_NUM,    (byte) 0x83); //ATmega128RFA1
         interpreter.writeDataByte(VERSION_NUM, (byte) 0x02); //revision AB
         interpreter.writeDataByte(CSMA_BE,     (byte) 0x53);
+        //TODO:initialize all registers to reset values
         lastCRCok = false;
         rf231Status = STATE_TRX_OFF;
         txactive = rxactive = true;
@@ -260,7 +260,7 @@ public class ATmega128RFA1Radio implements Radio {
                             minBE = minBE & 0x0F;
                             if (minBE > 0) minBE = 1 << minBE;
                             maxBE = 1 << maxBE;
-                            backoff = (int) ((maxBE - minBE) * random.nextDouble());
+                            backoff = minBE + (int) ((maxBE - minBE) * random.nextDouble());
                             if (DEBUGC && printer!=null) printer.println("RFA1: minBE, maxBE, backoff " + minBE + " " + maxBE + " " + backoff);
                         }
                         //TODO: slotted transmissions start the wait at the next slot time
@@ -283,7 +283,6 @@ public class ATmega128RFA1Radio implements Radio {
                         interpreter.setPosted(64, true);
                     }
                 } else {
-                 //   if (rxactive) printer.println("rx active during cca");
                     if (!rxactive) printer.println("rx not active during cca");
                     if (rxactive) receiver.shutdown(); //should receiver get shutdown regardless?
                     if (DEBUGC && printer!=null) printer.println("RFA1: Starting tx after csma");
@@ -291,6 +290,7 @@ public class ATmega128RFA1Radio implements Radio {
                 }
                 return;
             }
+            //TODO:is this line needed for some reason????
             interpreter.writeDataByte(TRX_STATUS, (byte) (interpreter.getDataByte(TRX_STATUS) & 0x3f));
             if (ccaBusy) {
                 interpreter.writeDataByte(TRX_STATUS, (byte) (0x80 | (interpreter.getDataByte(TRX_STATUS) & 0x3f)));
@@ -429,8 +429,6 @@ public class ATmega128RFA1Radio implements Radio {
     protected class wakeupDelay implements Simulator.Event {      
         public void fire() {
             rf231Status = STATE_TRX_OFF;
-            if (wakeinserted !=1) System.out.println("wake > 1 when fired");
-            wakeinserted--;
             interpreter.writeDataByte(TRX_STATUS, (byte) (rf231Status));
             if (DEBUG && printer !=null) printer.println("RFA1: TRX24_AWAKE interrupt");
             //interpreter.setPosted(mcu.getProperties().getInterrupt("TRX24 AWAKE", true);
@@ -481,12 +479,10 @@ public class ATmega128RFA1Radio implements Radio {
                     //TODO:idle state before or after wake?
                     stateMachine.transition(3);//change to on state
                     //wait 384 usec (24 symbol periods, 12 bytes). Datasheet says 240 typical.
-                    if (wakeinserted != 0) System.out.println("wake already inserted");
-                    wakeinserted++;
                     transmitter.clock.insertEvent(wakeupDelayEvent, 12*transmitter.cyclesPerByte);
                     break;
                 default:
-                    if (DEBUGQ && printer!=null) printer.println("RFA: SLP pin lowered but not sleeping, state = " + rf231Status);
+                    if (DEBUGQ && printer!=null) printer.println("RFA1: SLP pin lowered but not sleeping, state = " + rf231Status);
                     //dont know what to do here
                     break;
             }
@@ -631,7 +627,7 @@ public class ATmega128RFA1Radio implements Radio {
                             rf231Status = STATE_TX_ARET_ON;
                             interpreter.writeDataByte(TRX_STATUS, rf231Status);
                             state = TX_WAIT;//???
-                                                  //      if (txactive) printer.println("tx active after ack timeout");
+
                             if (!rxactive)  printer.println("rx1 not active before shutdown, status is " + rf231Status);
                             receiver.shutdown();
                             if (DEBUGA & printer !=null) printer.println("RFA1: TRX24 TX_END interrupt, no ack");
@@ -665,7 +661,6 @@ private boolean endofack;
                     break;
                 case TX_LENGTH:
                     if (sendingAck) {
-                 //   printer.println("sendingack");
                         length = 5;
                     } else {//data frame
                         // length is the first byte in the RAM buffer
@@ -692,7 +687,6 @@ private boolean endofack;
                                 val = DSN;
                                 endofack = true;
                                 waitForAck = false;
-                             //   printer.println("sendackend");
                                 state = TX_END;
                                 break;
                         }
@@ -707,6 +701,7 @@ private boolean endofack;
                         }
                     }
                     //Calculate CRC and switch state if necessary
+                    //TODO:should be possible to enable TRX_CTRL_! test, works on rf231
                    // if ((interpreter.getDataByte(TRX_CTRL_1) & 0x20) !=0) {  //Test TX_AUTO_CRC_ON bit
                     if (true) {
                         // accumulate CRC if enabled.
