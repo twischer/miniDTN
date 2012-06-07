@@ -182,7 +182,7 @@ public abstract class Radio802154 extends Radio implements CustomDataRadio {
 
     public abstract int getFrequency();
 
-    public abstract boolean isReceiverOn();
+    public abstract boolean isRadioOn();
 
     public abstract double getCurrentOutputPower();
 

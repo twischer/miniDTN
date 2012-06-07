@@ -91,7 +91,7 @@
 #include "net/rime.h"
 
 /* Track interrupt flow through mac, rdc and radio driver */
-#define DEBUGFLOWSIZE 32
+//#define DEBUGFLOWSIZE 32
 #if DEBUGFLOWSIZE
 uint8_t debugflowsize,debugflow[DEBUGFLOWSIZE];
 #define DEBUGFLOW(c) if (debugflowsize<(DEBUGFLOWSIZE-1)) debugflow[debugflowsize++]=c

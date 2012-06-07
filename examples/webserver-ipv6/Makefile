@@ -40,7 +40,7 @@ DEFINES=WITH_UIP6
 # Make no RPL the default for minimal-net builds
 ifeq ($(TARGET),minimal-net)
 ifndef UIP_CONF_RPL
-UIP_CONF_RPL = 0
+UIP_CONF_RPL=0
 endif
 endif
 

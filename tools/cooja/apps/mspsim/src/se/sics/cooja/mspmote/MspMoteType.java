@@ -29,17 +29,19 @@
 
 package se.sics.cooja.mspmote;
 
-import java.awt.BorderLayout;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Hashtable;
+
 import javax.swing.Icon;
+import javax.swing.JComponent;
 import javax.swing.JLabel;
-import javax.swing.JPanel;
+
 import org.apache.log4j.Logger;
 import org.jdom.Element;
+
 import se.sics.cooja.ClassDescription;
 import se.sics.cooja.GUI;
 import se.sics.cooja.Mote;
@@ -48,6 +50,7 @@ import se.sics.cooja.MoteType;
 import se.sics.cooja.ProjectConfig;
 import se.sics.cooja.Simulation;
 import se.sics.cooja.interfaces.IPAddress;
+import se.sics.cooja.mspmote.interfaces.Msp802154Radio;
 import se.sics.cooja.mspmote.interfaces.MspSerial;
 import se.sics.mspsim.util.DebugInfo;
 import se.sics.mspsim.util.ELF;
@@ -131,7 +134,7 @@ public abstract class MspMoteType implements MoteType {
   protected abstract MspMote createMote(Simulation simulation);
 
   @Override
-  public JPanel getTypeVisualizer() {
+  public JComponent getTypeVisualizer() {
     StringBuilder sb = new StringBuilder();
     // Identifier
     sb.append("<html><table><tr><td>Identifier</td><td>")
@@ -171,10 +174,7 @@ public abstract class MspMoteType implements MoteType {
         label.setIcon(moteTypeIcon);
       }
     }
-
-    JPanel panel = new JPanel(new BorderLayout());
-    panel.add(BorderLayout.CENTER, label);
-    return panel;
+    return label;
   }
 
   public abstract Icon getMoteTypeIcon();
@@ -272,6 +272,10 @@ public abstract class MspMoteType implements MoteType {
         if (intfClass.equals("se.sics.cooja.mspmote.interfaces.ESBLog")) {
           logger.warn("Old simulation config detected: ESBLog was replaced by MspSerial");
           intfClass = MspSerial.class.getName();
+        }
+        if (intfClass.equals("se.sics.cooja.mspmote.interfaces.SkyByteRadio")) {
+          logger.warn("Old simulation config detected: SkyByteRadio was replaced by Msp802154Radio");
+          intfClass = Msp802154Radio.class.getName();
         }
         if (intfClass.equals("se.sics.cooja.mspmote.interfaces.SkySerial")) {
           logger.warn("Old simulation config detected: SkySerial was replaced by MspSerial");
