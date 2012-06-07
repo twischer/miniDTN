@@ -311,8 +311,8 @@ public abstract class AvroraMoteType implements MoteType {
 
     setMoteInterfaceClasses(intfClasses);
 
-    if (fileFirmware == null || fileSource == null) {
-      throw new MoteTypeCreationException("Either source or firmware not specified");
+    if (fileFirmware == null && fileSource == null) {
+      throw new MoteTypeCreationException("Neither source or firmware specified");
     }
 
     return configureAndInit(GUI.getTopParentContainer(), simulation, visAvailable);
