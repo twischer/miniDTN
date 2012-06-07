@@ -640,7 +640,7 @@ public class ATMega128RFA1 extends ATMegaFamily {
 
         TIFR3_reg = buildInterruptRange(false, "TIMSK3", "TIFR3", 36, 5);
         TIMSK3_reg = (MaskRegister)getIOReg("TIMSK3");
-        int[] TIFR3_mapping = {36, 13, 34, 25, -1, 32, -1, -1};
+        int[] TIFR3_mapping = {36, 33, 34, 35, -1, 32, -1, -1};
         MTIFR3_reg = new FlagRegister(interpreter, TIFR3_mapping);
         MTIMSK3_reg = new MaskRegister(interpreter, TIFR3_mapping);
         installIOReg("TIMSK3", MTIMSK3_reg);

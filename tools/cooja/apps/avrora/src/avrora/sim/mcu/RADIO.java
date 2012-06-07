@@ -47,6 +47,7 @@ public class RADIO extends AtmelInternalDevice implements RADIODevice, Interrupt
 
     private TRX_STATE_Reg TRX_STATE_reg;
     private TRXPR_Reg TRXPR_reg;
+    private PHY_ED_LEVEL_Reg PHY_ED_LEVEL_reg;
 
     private ATmega128RFA1Radio connectedRadio;
     private RADIODevice connectedDevice;
@@ -54,7 +55,7 @@ public class RADIO extends AtmelInternalDevice implements RADIODevice, Interrupt
  /* Radio states are contained in the TRX_STATUS register.
   * Since that register has no trigger actions it can be read
   * directly from RAM. The connected ATmega128RFA1Radio has a public
-  * rf231State which should mirror the RAM value.
+  * rf231Status which should mirror the RAM value.
   */
 //  private static final int  TRX_STATUS         = 0x141;
     private static final byte STATE_BUSY_RX      = 0x01;
@@ -77,9 +78,11 @@ public class RADIO extends AtmelInternalDevice implements RADIODevice, Interrupt
     public RADIO(AtmelMicrocontroller m) {
         super("radio", m);
         TRX_STATE_reg = new TRX_STATE_Reg();
-        TRXPR_reg = new TRXPR_Reg();    
+        TRXPR_reg = new TRXPR_Reg();
+        PHY_ED_LEVEL_reg = new PHY_ED_LEVEL_Reg();
         installIOReg("TRX_STATE", TRX_STATE_reg);
-        installIOReg("TRXPR", TRXPR_reg);      
+        installIOReg("TRXPR", TRXPR_reg);
+        installIOReg("PHY_ED_LEVEL", PHY_ED_LEVEL_reg);              
     }
 
     /**
@@ -95,8 +98,8 @@ public class RADIO extends AtmelInternalDevice implements RADIODevice, Interrupt
          // byte rf231status = interpreter.getDataByte(0x141);
          // byte rf231status = interpreter.getDataByte(connectedRadio.TRX_STATUS);
          // byte rf231status = interpreter.getDataByte(TRX_STATUS);
-         // if (rf231status != connectedRadio.rf231State) devicePrinter.println("RADIO:status conflict "+ rf231status + " " + connectedRadio.rf231State);
-            byte rf231status = connectedRadio.rf231State;
+         // if (rf231status != connectedRadio.rf231State) devicePrinter.println("RADIO:status conflict "+ rf231status + " " + connectedRadio.rf231Status);
+            byte rf231status = connectedRadio.rf231Status;
             /* TODO: Figure out what the datasheed means by this!
                "After initiating a state change
                 by a rising edge at Bit SLPTR in radio transceiver states TRX_OFF, RX_ON or
@@ -148,21 +151,68 @@ public class RADIO extends AtmelInternalDevice implements RADIODevice, Interrupt
      * The TRAC_STATUS bits may be set in response to a command, which would cause a recursive call
      * to this routine if done in the connected radio. To avoid this, newCommand() returns those bits
      * so they can be written here.
+     * Other writes from the radio to the TRAC_STATUS field are detected by the upper bits set,
+     * or a value of zero. This means the NOP command won't work!
+     * TODO:fix this
      */
     protected class TRX_STATE_Reg extends RWRegister {
         public void write(byte val) {
+        //if the command is FORCE_TRX_OFF clear the TRAC_STATUS bits. The rf230 driver does a subregister
+        //write which or's the TRAC_STATUS bits with the command to write. We thus have no way of telling
+        //whether the write was from the driver or the internal ATmega128RFA1 radio
+        if ((val & 0x1F) == 0x03) {
+       // System.out.println("removing trac status from force trx off command");
+            val = (byte) (val & 0x1F);
+        }
+
+        if ((val == 0) || ((val & 0xE0) != 0)) {         
+        //    System.out.println("trac status write " + StringUtil.to0xHex(val, 2));
+            val = (byte) (val & 0xE0);
+            byte cmd = (byte) super.read();
+         //   System.out.println("super returns " + StringUtil.to0xHex(cmd, 2));
+            cmd = (byte) (cmd & 0x1F);
+                     //   cmd = (byte) (super.read() & 0x1F);
+         //                           System.out.println("or results in " + StringUtil.to0xHex((byte) (val | cmd), 2));
+            super.write((byte) (val | cmd));
+            return;
+        } else {
+              //  System.out.println("write "+ StringUtil.to0xHex(val, 2));
             //Send the command field to the radio.
             //The return value adds the readonly TRAC_STATUS bits for the actual register write
-            super.write(connectedRadio.newCommand((byte) (val & 0x1F)));
+
+            val = connectedRadio.newCommand((byte) (val & 0x1F));
+        //    System.out.println("newCommand returns " + StringUtil.to0xHex(val, 2));
+            super.write(val);
+          //  super.write(connectedRadio.newCommand((byte) (val & 0x1F)));
+        }
         }
         /*
+        public void writeTRACBits(byte val) {
+            byte cmd = super.read();
+            super.write((byte)(cmd | val));
+        }
+        */
+        /*
         public byte read() {
-            byte rf231state = super.read();
-            if (devicePrinter !=null) devicePrinter.println("RADIO: reading TRXSTATE " + rf231state);
-            return rf231state;
+            byte rf231status = super.read();
+            if (devicePrinter !=null) devicePrinter.println("RADIO: reading TRXSTATE " + rf231status);
+            return rf231status;
         }
         */
     }
+    /**
+     * PHY_ED_LEVEL register.
+     * In extended operation a write to this register initiates a CCA
+     */
+    protected class PHY_ED_LEVEL_Reg extends RWRegister {
+        public void write(byte val) {
+            //Send the CCA command field to the radio.
+            //newCommand returns the value to write to the PHY_ED_LEVEL register
+            //This is obviously a hack.  0x42 is an arbitrary number.
+            super.write(connectedRadio.newCommand((byte) 0x42));
+        }
+    }
+
 
     public void force(int inum) {
         if (devicePrinter != null) devicePrinter.println("RADIO: force " + inum);
