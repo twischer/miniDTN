@@ -16,10 +16,17 @@
 #define CONTIKI_CONF_SETTINGS_MANAGER 0  //adds 1696 bytes
 
 #if CONTIKI_CONF_SETTINGS_MANAGER
-//#define PARAMETER_STORAGE 2
+#if MCU_CONF_LOW_WEAR
 #define PARAMETER_STORAGE 2
 #else
+#define PARAMETER_STORAGE 3
+#endif
+#else
+#if MCU_CONF_LOW_WEAR
+#define PARAMETER_STORAGE 0
+#else
 #define PARAMETER_STORAGE 1
+#endif
 #endif
 
 /* Include settings.h, then dummy out the write routines */
@@ -78,10 +85,10 @@ extern uint8_t eemem_domain_name[30];
 /* This form of of EUI64 mac allows full 6LoWPAN header compression from mac address */
 #if UIP_CONF_LL_802154
 //#define PARAMS_EUI64ADDR {0x02, 0xNN, 0xNN, 0xNN, 0xNN, 0xNN, 0xNN, 0xNN}
-#define PARAMS_EUI64ADDR {0x02, 0x00, 0x00, 0xff, 0xfe, 0x00, 0x00, 0x01}
+#define PARAMS_EUI64ADDR {0x02, 0x11, 0x22, 0xff, 0xfe, 0x33, 0x44, 0x55}
 #else
 //#define PARAMS_EUI64ADDR {0x02, 0xNN, 0xNN, 0xff, 0xfe, 0xNN, 0xNN, 0xNN}
-#define PARAMS_EUI64ADDR {0x00, 0x00, 0x00, 0xff, 0xfe, 0x00, 0x00, 0x01}
+#define PARAMS_EUI64ADDR {0x02, 0x12, 0x34, 0xff, 0xfe, 0x56, 0x79, 0x9A}
 #endif
 /* This form of of EUI64 mac allows 16 bit 6LoWPAN header compression on multihops */
 //#define PARAMS_EUI64ADDR {0x02, 0x00, 0x00, 0xff, 0xfe, 0x00, 0xNN, 0xNN}
