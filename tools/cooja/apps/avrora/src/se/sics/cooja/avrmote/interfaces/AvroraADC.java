@@ -84,8 +84,14 @@ public class AvroraADC extends Clock {
   private FiniteStateMachine myFSM;
   private ADC adcDevice;
 
-  private long startTime,lastTime,lastCycles,displayDelay;
+  private long startTime,lastTime,lastCycles;
   private JPanel jPanel;
+
+  /* Because this is an extension of Clock, if loaded before the clock visualizer
+   * it will get the setDrift call to set the random startup time.
+   * The clock visualizer will then not know the drift. TODO:fix this
+   */
+  private long timeDrift; /* Microseconds */
 
   final int NUMCHAN = 5;//One extra for Vcc
   final JTextField[] chanMV={null, null, null, null, null, null, null, null};
@@ -110,12 +116,7 @@ public class AvroraADC extends Clock {
     myFSM = ((DefaultMCU)((AvroraMote)myMote).CPU.getSimulator().getMicrocontroller()).getFSM();
     adcDevice = (ADC)((AvroraMote)myMote).CPU.getDevice("adc");
     logger.debug("CPU freq is " + ((AvroraMote)myMote).getCPUFrequency());
-    if (interpreter == null) {
-        logger.debug("Mote interpreter is null");
-    }
-    if (myFSM == null) {
-        logger.debug("microcontroller FSM is null");
-    }
+    timeDrift = 0;
   }
 
   public void setTime(long newTime) {
@@ -123,17 +124,15 @@ public class AvroraADC extends Clock {
   }
 
   public long getTime() {
- //   logger.debug("getTime called");
-    return simulation.getSimulationTime();
+    return simulation.getSimulationTime() + timeDrift;
   }
 
   public void setDrift(long drift) {
- // logger.debug("setdrift called");
+    timeDrift = drift;
   }
 
   public long getDrift() {
- //   logger.debug("getdrift called");
-    return 0;
+    return timeDrift;
   }
   
   private JLabel timeLabel, cyclesLabel, stateLabel, watchLabel;

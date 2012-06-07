@@ -72,17 +72,21 @@ public class RFA1MoteType extends AvroraMoteType {
     return mote;
   }
 
+  /* Note the ADC and Debugger interfaces are also an extension of Clock and
+   * will get the setDrift/getDrift calls for random startup if included before
+   * the Clock interface. The clock would then show zero drift.
+   */
  @SuppressWarnings("unchecked")
  public Class<? extends MoteInterface>[] getAllMoteInterfaceClasses() {
     return new Class[] {
         Position.class,
         RFA1ID.class,
         AvroraLED.class,
-        AvroraADC.class,
         RFA1Radio.class,
         AvroraClock.class,
         RFA1Serial.class,
         AvrDebugger.class,
+        AvroraADC.class,
         Mote2MoteRelations.class,
         MoteAttributes.class
     };
