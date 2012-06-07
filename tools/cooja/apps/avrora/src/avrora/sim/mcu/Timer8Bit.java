@@ -245,7 +245,7 @@ public abstract class Timer8Bit extends AtmelInternalDevice {
                 if (period != 0) {
                     timerClock.insertEvent(ticker, period);
                 }
-                if (devicePrinter != null) {
+                if (false && devicePrinter != null) {
                   if (period != 0)
                     devicePrinter.println("Timer" + n + " enabled: period = " + period + " mode = " + mode);
                   else
@@ -338,7 +338,7 @@ public abstract class Timer8Bit extends AtmelInternalDevice {
                 if (period != 0) {
                     timerClock.insertEvent(ticker, period);
                 }
-                if (devicePrinter != null) {
+                if (false && devicePrinter != null) {
                   if (period != 0)
                     devicePrinter.println("Timer" + n + " enabled: period = " + period + " mode = " + mode);
                   else

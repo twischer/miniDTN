@@ -83,6 +83,12 @@ public abstract class AtmelInterpreter extends Interpreter implements LegacyInst
 
     public final int RAMPZ; // location of the RAMPZ IO register
     public final int SREG; // location of the SREG IO register
+    
+    /* These added for cooja avrora debugger */
+    public int registerWritten;  //The last register written
+    public int registerWritten2; //If a word write occurred
+    public int registerRead;     //The last register read
+    public int registerRead2;    //If a word read occurred
 
     protected final RegisterSet registers;
     protected final StateImpl state;
@@ -130,7 +136,9 @@ public abstract class AtmelInterpreter extends Interpreter implements LegacyInst
          * @return the current value of the register
          */
         public byte getRegisterByte(LegacyRegister reg) {
-            return sram[reg.getNumber()];
+     //       System.out.println("7");
+            registerRead = reg.getNumber();
+            return sram[registerRead];
         }
 
         /**
@@ -140,7 +148,9 @@ public abstract class AtmelInterpreter extends Interpreter implements LegacyInst
          * @return the current unsigned value of the register
          */
         public int getRegisterUnsigned(LegacyRegister reg) {
-            return sram[reg.getNumber()] & 0xff;
+         //            System.out.println("8");
+            registerRead = reg.getNumber();
+            return sram[registerRead] & 0xff;
         }
 
         /**
@@ -153,7 +163,10 @@ public abstract class AtmelInterpreter extends Interpreter implements LegacyInst
          * @return the current unsigned word value of the register pair
          */
         public int getRegisterWord(LegacyRegister reg)  {
+        //    System.out.println("9");
             int number = reg.getNumber();
+            registerRead = number;
+            registerRead2 = number+1;
             return Arithmetic.uword(sram[number], sram[number+1]);
         }
 
@@ -558,10 +571,12 @@ public abstract class AtmelInterpreter extends Interpreter implements LegacyInst
      * @return the current value of the register
      */
     public byte getRegisterByte(LegacyRegister reg) {
-        return sram[reg.getNumber()];
+        registerRead = reg.getNumber();
+        return sram[registerRead];
     }
 
     public byte getRegisterByte(int reg) {
+        registerRead = reg;
         return sram[reg];
     }
 
@@ -572,7 +587,8 @@ public abstract class AtmelInterpreter extends Interpreter implements LegacyInst
      * @return the current unsigned value of the register
      */
     public int getRegisterUnsigned(LegacyRegister reg) {
-        return sram[reg.getNumber()] & 0xff;
+        registerRead = reg.getNumber();
+        return sram[registerRead] & 0xff;
     }
 
     /**
@@ -581,6 +597,7 @@ public abstract class AtmelInterpreter extends Interpreter implements LegacyInst
      * @return the value of the register as an unsigned integer
      */
     public int getRegisterUnsigned(int reg) {
+  //      System.out.println("4");
         return sram[reg] & 0xff;
     }
 
@@ -596,6 +613,7 @@ public abstract class AtmelInterpreter extends Interpreter implements LegacyInst
     public int getRegisterWord(LegacyRegister reg) {
         byte low = getRegisterByte(reg);
         byte high = getRegisterByte(reg.nextRegister());
+        registerRead2 = reg.nextRegister().getNumber();
         return Arithmetic.uword(low, high);
     }
 
@@ -609,6 +627,7 @@ public abstract class AtmelInterpreter extends Interpreter implements LegacyInst
      * @return the current unsigned word value of the register pair
      */
     public int getRegisterWord(int reg) {
+     //   System.out.println("6");
         byte low = getRegisterByte(reg);
         byte high = getRegisterByte(reg + 1);
         return Arithmetic.uword(low, high);
@@ -839,7 +858,9 @@ public abstract class AtmelInterpreter extends Interpreter implements LegacyInst
      * @param val the value to write to the register
      */
     protected void writeRegisterByte(LegacyRegister reg, byte val) {
-        sram[reg.getNumber()] = val;
+        //Update the public variable registerWritten. Debuggers can use this for hiliting when the contents do not change
+        registerWritten = reg.getNumber();
+        sram[registerWritten] = val;
     }
 
     /**
@@ -856,6 +877,7 @@ public abstract class AtmelInterpreter extends Interpreter implements LegacyInst
         byte low = Arithmetic.low(val);
         byte high = Arithmetic.high(val);
         writeRegisterByte(reg, low);
+        registerWritten2 = registerWritten;
         writeRegisterByte(reg.nextRegister(), high);
     }
 

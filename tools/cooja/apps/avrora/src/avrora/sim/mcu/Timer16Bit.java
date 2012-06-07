@@ -310,7 +310,6 @@ public abstract class Timer16Bit extends AtmelInternalDevice {
         ICRnL_reg.write(TCNTnL_reg.value);
         ICRnH_reg.write(TCNTnH_reg.value);
         xTIFR_reg.flagBit(ICFn);
-        System.out.println("postinputcaptureinterrupt");
         interpreter.getInterruptTable().post(inputCaptureInterrupt);
     }
 
@@ -325,9 +324,9 @@ public abstract class Timer16Bit extends AtmelInternalDevice {
      * Flags the overflow interrupt for this timer.
      */
     protected void overflow() {
-        if (devicePrinter != null) {
+        if (false && devicePrinter != null) {
             boolean enabled = xTIMSK_reg.readBit(TOIEn);
-        //    devicePrinter.println("Timer" + n + ".overFlow (enabled: " + enabled + ')' + "  ");
+            devicePrinter.println("Timer" + n + ".overFlow (enabled: " + enabled + ')' + "  ");
         }
         // set the overflow flag for this timer
         xTIFR_reg.flagBit(TOVn);
@@ -414,12 +413,11 @@ public abstract class Timer16Bit extends AtmelInternalDevice {
     private void resetPeriod(int nPeriod) {
         if (nPeriod == 0) {
             // disable the timer.
-            if (devicePrinter != null) devicePrinter.println("Timer" + n + " disabled");
+            if (false && devicePrinter != null) devicePrinter.println("Timer" + n + " disabled");
             if (ticker != null) timerClock.removeEvent(ticker);
         } else {
             // enable the timer.
-            if (devicePrinter != null)
-                devicePrinter.println("Timer" + n + " enabled: period = " + nPeriod + " mode = " + WGMn.value);
+            if (false && devicePrinter != null) devicePrinter.println("Timer" + n + " enabled: period = " + nPeriod + " mode = " + WGMn.value);
             if (ticker != null) timerClock.removeEvent(ticker);
             ticker = tickers[WGMn.value];
             period = nPeriod;

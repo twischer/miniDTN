@@ -105,15 +105,9 @@ public class RFA1Radio extends Radio802154 {
   }
 
   public boolean isRadioOn() {
-    FiniteStateMachine fsm = rf231.getFiniteStateMachine();
+    //This apparently means is radio on
     //Receiver is on in state 3-5, and a transmitter for > 5
-    switch (fsm.getCurrentState()) {
-        case 3:
-        case 4:
-        case 5:
-            return true;
-    }
-    return false;
+    return (rf231.getFiniteStateMachine().getCurrentState() > 2);
   }
   public void signalReceptionStart() {
 //    rf231.setCCA(true);

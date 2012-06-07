@@ -61,6 +61,7 @@ import javax.swing.JSplitPane;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
+import javax.swing.JCheckBox;
 import javax.swing.JScrollBar;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
@@ -89,6 +90,8 @@ import avrora.sim.mcu.DefaultMCU;
 import avrora.sim.FiniteStateMachine;
 import avrora.sim.Simulator;
 import avrora.sim.State;
+import cck.text.StringUtil;
+import avrora.arch.legacy.LegacyRegister;
 
 /**
  * @author David Kopf
@@ -101,41 +104,19 @@ public class AvrDebugger extends Clock {
   private AtmelInterpreter interpreter;
   private Mote myMote;
   private FiniteStateMachine myFSM;
-  private File objdumpFile = null;
-  private long timeDrift; /* Microseconds */
   private long startTime,lastTime,lastCycles,displayDelay;
-  private boolean sourceActive=false,asmActive=false;
-  private JPanel jPanel;
-  private JSplitPane splitPane;
-  private Dimension originalViewerDimension;
+  
+  /* Because this is extension of Clock it will get the setdrift/getdrift calls if loaded
+   * before the cycle clock visualizer.
+   */
+  private long timeDrift = 0;
 
   public AvrDebugger(Mote mote) {
     myMote = mote;
     simulation = mote.getSimulation();
-  //  interpreter = null;
     interpreter = (AtmelInterpreter)((AvroraMote)myMote).CPU.getSimulator().getInterpreter();
     myFSM = ((DefaultMCU)((AvroraMote)myMote).CPU.getSimulator().getMicrocontroller()).getFSM();
-    /*
-    if (myMote.getType() instanceof MicaZMoteType) {
-       interpreter = (AtmelInterpreter)((MicaZMote)myMote).myCpu.getSimulator().getInterpreter();
-       myFSM = ((DefaultMCU)((MicaZMote)myMote).myCpu.getSimulator().getMicrocontroller()).getFSM();
-    } else if (myMote.getType() instanceof RavenMoteType) {
-       interpreter = (AtmelInterpreter)((RavenMote)myMote).myCpu.getSimulator().getInterpreter();
-       myFSM = ((DefaultMCU)((RavenMote)myMote).myCpu.getSimulator().getMicrocontroller()).getFSM();
-    } else if (myMote.getType() instanceof RFA1MoteType) {
-       interpreter = (AtmelInterpreter)((RFA1Mote)myMote).myCpu.getSimulator().getInterpreter();
-       myFSM = ((DefaultMCU)((RFA1Mote)myMote).myCpu.getSimulator().getMicrocontroller()).getFSM();
-    } else {
-        logger.debug(myMote.getType() + " not known");
-        return;
-    }
-    */
-    if (interpreter == null) {
-        logger.debug("Mote interpreter is null");
-    }
-    if (myFSM == null) {
-        logger.debug("microcontroller FSM is null");
-    }
+
     startTime = simulation.getSimulationTime();
     lastTime = startTime;
     lastCycles = 0;
@@ -147,26 +128,35 @@ public class AvrDebugger extends Clock {
   }
 
   public long getTime() {
-    logger.debug("getTime called");
     return simulation.getSimulationTime() + timeDrift;
   }
 
   public void setDrift(long drift) {
-  logger.debug("setdrift called");
     timeDrift = drift;
   }
 
   public long getDrift() {
-    logger.debug("getdrift called");
     return timeDrift;
   }
-  
+
+  private File objdumpFile = null;
+  private boolean sourceActive=false,asmActive=false,regActive=false,regLive=false;
+  private JPanel jPanel;
+  private JSplitPane splitPane;
   private JLabel timeLabel, cyclesLabel, stateLabel, watchLabel, sourceLabel, assemLabel;
   private JTextArea srcText=null, asmText=null;
   private JScrollPane stackPane, tracePane, srcPane, asmPane;
   private JToggleButton runButton;
 
   private JTextField searchText;
+  private JLabel[] regLabels, regValues;
+  private JLabel statusHi, statusLo;
+  private byte lastStatus;
+  private JCheckBox boxRegLive = null;
+  private byte[] regLastValue;
+  private Color[] regLastColor;
+  private int regLabelHilitedRB,regLabelHilitedRW,regLabelHilitedWB,regLabelHilitedWW;
+
   private JButton prevButton,nextButton;
   private String searchString;
   private int currIndex, prevIndex, nextIndex;
@@ -175,26 +165,24 @@ public class AvrDebugger extends Clock {
 
   private int[] srcPC, asmPC, srcStartPC, asmStartPC, asmBreakPC, srcBreakPC;
   private int srcNumBreaks = 0, asmNumBreaks = 0;
-  private int lastAsmLineStart=-1, lastSrcLineStart=-1,  srcRoutineStart = 0, srcLastLine = 0, lastLineOfSource = 0;
+  private int lastAsmLineStart = -1, lastSrcLineStart = -1,  srcRoutineStart = 0, srcLastLine = 0, lastLineOfSource = 0;
   private int srcMarkedLine = -1, asmMarkedLine = -1, stepOverPC = 0;
   private String srcLastTag, asmLastTag;
 
   private Simulator.Probe liveProbe = null;
-  private boolean probeInserted = false;
+  private Simulator.Watch r0Watch=null;
+  private boolean probeInserted = false, outofroutine = false, interruptOccurred = false;
   private boolean stepOverPress = false, stepIntoPress = false, halted = false, disableBreaks = false, liveUpdate = false;
-  private boolean outofroutine = false;
-  private boolean interruptOccurred = false;
   
   // insert or remove avrora pc probe as needed for breakpoints or stepping
   void setProbeState() {
     if (liveUpdate || halted || (!disableBreaks && (asmActive && (asmNumBreaks > 0)) || (!asmActive && (srcNumBreaks > 0))) ) {
     // create the probe the first time
     if (liveProbe == null) liveProbe = new Simulator.Probe() {
-            public void fireBefore(State state, int pc) {
-            //fireBefore may be before the instruction is executed?
+            public void fireAfter(State state, int pc) {
             }
 
-            public void fireAfter(State state, int pc) {
+            public void fireBefore(State state, int pc) {
 
                 // check for breakpoints
                 if (!disableBreaks) {
@@ -499,6 +487,79 @@ private boolean asmBPIndicatorToggle(int lineNumber) {try{
                 asmScrollVis(linestart);
             }
         }
+        if (regActive && (halted || regLive)) {
+       //   byte status = ((AtmelInterpreter.StateImpl)interpreter.getState()).getSREG();
+            byte status=interpreter.getDataByte(0x5f);
+            if (status != lastStatus) {
+                String str;
+                if ((status & 0x80) != 0) str="I";else str="-";
+                if ((status & 0x40) != 0) str+="T"; else str+="-";
+                if ((status & 0x20) != 0) str+="H"; else str+="-";
+                statusHi.setText(str);
+                if ((status & 0x10) != 0) str="S";else str="-";
+                if ((status & 0x08) != 0) str+="V"; else str+="-";
+                if ((status & 0x04) != 0) str+="N"; else str+="-";
+                if ((status & 0x02) != 0) str+="Z"; else str+="-";
+                if ((status & 0x01) != 0) str+="C"; else str+="-";
+                statusLo.setText(str);
+                lastStatus = status;
+            }
+            if (regLabelHilitedWB >= 0) {
+                regLabels[regLabelHilitedWB].setForeground(Color.black);
+                regLabelHilitedWB = -1;
+            }
+            if (interpreter.registerWritten >= 0) {
+                regLabelHilitedWB = interpreter.registerWritten;
+                regLabels[regLabelHilitedWB].setForeground(Color.red);
+                interpreter.registerWritten = -1;
+            }
+            if (regLabelHilitedWW >= 0) {
+                regLabels[regLabelHilitedWW].setForeground(Color.black);
+                regLabelHilitedWW = -1;
+            }
+            if (interpreter.registerWritten2 >= 0) {
+                regLabelHilitedWW = interpreter.registerWritten2;
+                regLabels[regLabelHilitedWW].setForeground(Color.red);
+                interpreter.registerWritten2 = -1;
+            }
+             if (regLabelHilitedRB >= 0) {
+                regLabels[regLabelHilitedRB].setForeground(Color.black);
+                regLabelHilitedRB = -1;
+            }
+            if (interpreter.registerRead >= 0) {
+                regLabelHilitedRB = interpreter.registerRead;
+                regLabels[regLabelHilitedRB].setForeground(Color.green);
+                interpreter.registerRead = -1;
+            }
+             if (regLabelHilitedRW >= 0) {
+                regLabels[regLabelHilitedRW].setForeground(Color.black);
+                regLabelHilitedRW = -1;
+            }
+            if (interpreter.registerRead2 >= 0) {
+                regLabelHilitedRW = interpreter.registerRead2;
+                regLabels[regLabelHilitedRW].setForeground(Color.green);
+                interpreter.registerRead2 = -1;
+            }
+            
+            for (int j=0;j<32;j++) {
+              //  byte reg = interpreter.getRegisterByte(LegacyRegister.getRegisterByNumber(j));
+                byte reg = interpreter.getRegisterByte(j);
+              //  byte reg = interpreter.getRegisterByte(LegacyRegister.getRegisterByName("r"+j));//actually faster
+              //  System.out.println(j + " returns " + LegacyRegister.getRegisterByNumber(j));                
+                if (reg == regLastValue[j]) {
+                    if (regLastColor[j] != null) {
+                        //For initial red of 255 jdk7 returns 127,124,86 and null as the next darker
+                        regLastColor[j] = regLastColor[j].darker();
+                        if (regLastColor[j] != null) regValues[j].setForeground(regLastColor[j]);
+                    }
+                } else {
+                    regLastValue[j] = reg;
+                    regValues[j].setText(StringUtil.to0xHex(reg,2));
+                    regValues[j].setForeground(Color.red);
+                    regLastColor[j] = Color.red; //sets red component to 255
+                }
+            }
+        }
         
     } catch (Exception e){System.err.println("updatePanel: " + e.getMessage());};
     return updated;
@@ -773,13 +834,28 @@ private Process objdumpProcess;
 
   public JPanel getInterfaceVisualizer() {
     jPanel = new JPanel(new BorderLayout());
-    final Box boxn = Box.createVerticalBox();
-    final Box boxn1 = Box.createHorizontalBox();
-    final Box boxn2 = Box.createHorizontalBox();
-    final Box boxn3 = Box.createHorizontalBox();
-    final Box boxn4 = Box.createHorizontalBox();
-    final Box boxs = Box.createVerticalBox();
+    final Box boxtop= Box.createVerticalBox();
+    final Box boxn  = Box.createHorizontalBox();
+    final Box boxnw = Box.createVerticalBox();
+    final Box boxnc = Box.createHorizontalBox();
+    final Box boxnc1= Box.createVerticalBox();
+    final Box boxnc2= Box.createVerticalBox();
+    final Box boxnc3= Box.createVerticalBox();
+    final Box boxnc4= Box.createVerticalBox();
+    final Box boxnc5= Box.createVerticalBox();
+    final Box boxnc6= Box.createVerticalBox();
+    final Box boxnc7= Box.createVerticalBox();
+    final Box boxnc8= Box.createVerticalBox();
+    final Box boxne = Box.createVerticalBox();
+  //  final Box boxn1 = Box.createHorizontalBox();
+   // final Box boxn2 = Box.createHorizontalBox();
+  //  final Box boxn3 = Box.createHorizontalBox();
+  //  final Box boxn4 = Box.createHorizontalBox();
+    final Box boxs = Box.createHorizontalBox();
     final Box boxd = Box.createHorizontalBox();
+    final Box boxreg = Box.createVerticalBox();
+    final Box boxRegLabel = Box.createVerticalBox();
+    final Box boxRegValue = Box.createVerticalBox();
     
     timeLabel = new JLabel();
     watchLabel = new JLabel();
@@ -800,7 +876,38 @@ private Process objdumpProcess;
     searchText = new JTextField(12);
     prevButton = new JButton("Prev");
     nextButton = new JButton("Next");
+
+//    boxnw.setAlignmentX(Component.LEFT_ALIGNMENT);
+ //   boxnw.setAlignmentY(Component.TOP_ALIGNMENT);
+//    boxne.setAlignmentX(Component.LEFT_ALIGNMENT);
+//    boxne.setAlignmentY(Component.BOTTOM_ALIGNMENT);
+    boxnw.add(timeLabel);
+    boxnw.add(watchLabel);
+    boxnw.add(cyclesLabel);
+    boxnw.add(stateLabel);
     
+  //  Dimension dim = timeLabel.getPreferredSize();
+    
+ //   updateButton.setPreferredSize(new Dimension(40,24));
+    updateButton.setAlignmentX(Component.RIGHT_ALIGNMENT);
+    boxne.add(updateButton);
+  //  resetButton.setPreferredSize(new Dimension(40,24));
+    resetButton.setAlignmentX(Component.RIGHT_ALIGNMENT);
+    boxne.add(resetButton);
+  //  liveButton.setPreferredSize(new Dimension(20,24));
+    liveButton.setAlignmentX(Component.RIGHT_ALIGNMENT);
+    boxne.add(liveButton);
+ //   srcButton.setPreferredSize(new Dimension(60,24));
+    srcButton.setAlignmentX(Component.RIGHT_ALIGNMENT);
+    boxne.add(srcButton);
+
+    boxn.add(boxnw);
+    boxn.add(Box.createHorizontalGlue());
+ //   boxn.add(boxnc);
+    boxn.add(boxne);
+    
+    boxtop.add(boxn);
+ /*   
     boxn1.add(timeLabel);boxn1.add(Box.createHorizontalGlue());boxn1.add(updateButton);
     boxn2.add(watchLabel);boxn2.add(Box.createHorizontalGlue());boxn2.add(resetButton);
     boxn3.add(cyclesLabel);boxn3.add(Box.createHorizontalGlue());boxn3.add(liveButton);
@@ -808,8 +915,9 @@ private Process objdumpProcess;
     boxn.add(boxn1);
     boxn.add(boxn2);
     boxn.add(boxn3);
-    boxn.add(boxn4);
-    jPanel.add(BorderLayout.NORTH, boxn);
+    boxn.add(boxn4);*/
+  //  jPanel.add(BorderLayout.WEST, boxreg);
+    jPanel.add(BorderLayout.NORTH, boxtop);
     jPanel.add(BorderLayout.SOUTH, boxs);
 
     clearBPButton.setEnabled(false);
@@ -1024,7 +1132,12 @@ private Process objdumpProcess;
                     if (objdumpFile == null) indexObjdumpFile();
                 }
                 if (objdumpFile != null) {
-                    boxn.add(boxd);
+                    boxtop.add(boxd);
+                    boxRegLabel.setAlignmentY(Component.TOP_ALIGNMENT);
+                    boxRegValue.setAlignmentY(Component.TOP_ALIGNMENT);
+                    boxs.add(boxRegLabel);
+                    boxs.add(boxRegValue);
+                    splitPane.setAlignmentY(Component.TOP_ALIGNMENT);
                     boxs.add(splitPane);
                     sourceActive = true;
                     runButton.setSelected(true);
@@ -1033,8 +1146,10 @@ private Process objdumpProcess;
                 sourceActive = false;
                 halted = false;
                 setProbeState();
-                boxn.remove(boxd);
+                boxtop.remove(boxd);
                 boxs.remove(splitPane);
+                boxs.remove(boxRegLabel);
+                boxs.remove(boxRegValue);
             }
             // add whitespace during resize so panel will not get scrollbar on text increase
             stateLabel.setText(stateLabel.getText() + "              ");
@@ -1046,14 +1161,80 @@ private Process objdumpProcess;
     asmButton.addActionListener(new ActionListener() {
         public void actionPerformed(ActionEvent e) {
             asmActive = !asmActive;
+            //first click turns on
+            if (regLabels == null) {
+                regLabels = new JLabel[32];
+                regValues = new JLabel[32];
+                regLastValue = new byte[32];
+                regLastColor = new Color[32];
+                boxRegLive = new JCheckBox("", false);
+                boxRegLive.addActionListener(new ActionListener() {
+                    public void actionPerformed(ActionEvent e) {
+                        regLive = boxRegLive.isSelected();
+                    }
+                });
+                JLabel live = new JLabel("  Live  ");
+              //  live.setPreferredSize(boxRegLive.getPreferredSize());
+             //   boxRegLive.setPreferredSize(live.getPreferredSize());
+                boxRegValue.add(live);
+                boxRegValue.add(Box.createRigidArea(new Dimension(0,2)));//aligns the columns on win7 jdk7
+                boxRegLabel.add(boxRegLive);
+                statusHi = new JLabel("---");
+                statusLo = new JLabel("-----");
+                boxRegLabel.add(statusHi);
+                boxRegValue.add(statusLo);
+                int i;
+                for (i=0;i<32;i++) {
+                    regLabels[i]=new JLabel("r"+i+" ");
+            //        regLabels[i].setMaximumSize(regLabels[i].getMinimumSize());
+               //     regLabels[i].setPreferredSize(new Dimension(20,30));
+                   // regValues[i] = new JTextField(""+i);
+                    byte reg = interpreter.getRegisterByte(i);
+                    regValues[i] = new JLabel(StringUtil.to0xHex(reg,2));
+                    regLastValue[i] = reg;
+                    boxRegLabel.add(regLabels[i]);
+                    boxRegValue.add(regValues[i]);
+                }
+                jPanel.revalidate();
+            }
+            if (!asmActive) {
+                regActive=false;
+                boxs.remove(boxRegLabel);
+                boxs.remove(boxRegValue);   
+            } else {
+                boxs.remove(splitPane);
+                boxs.add(boxRegLabel);
+                boxs.add(boxRegValue);
+                boxs.add(splitPane);
+                regActive=true;
+ /*               
+    if (r0Watch == null) r0Watch = new Simulator.Watch() {
+        public void fireBeforeRead(State state, int data_addr){
+                System.out.println("will read from " + data_addr);
+        }
+        public void fireBeforeWrite(State state, int data_addr, byte value){
+                System.out.println("will write " +value+ " to " + data_addr);
+        }
+        public void fireAfterRead(State state, int data_addr, byte value){
+                System.out.println("just read " +value+ " from " + data_addr);
+        }
+        public void fireAfterWrite(State state, int data_addr, byte value){
+        System.out.println("wrote " +value+ " to " + data_addr);
+        }
+    };
+    for (int k = 0;k<64;k+=2) interpreter.insertWatch(r0Watch, k);
+   */
+                
+            }
+            jPanel.revalidate();
             // no more asm actions if panel is invisible
             if (splitPane.getDividerLocation() < 10) {
                 asmButton.setSelected(false);
                 if (asmActive) {
-                    asmActive = false;
+                    asmActive = false;            
                     return;
                 }
-            }
+            }       
 
             if (searchText.getText().length() != 0) handleSearch();
             boolean bpactive;
@@ -1191,15 +1372,9 @@ private Process objdumpProcess;
         sourceActive = false;
         liveUpdate = false;
         probeInserted = false;
-                halted = false;
-                //    runButton.setEnabled(true);
-        /*
-    //    MoteInterfaceViewer parent = (MoteInterfaceViewer)panel.getRootPane().getParent();
-        if (panel.getRootPane()!=null) {
-            MoteInterfaceViewer parent = (MoteInterfaceViewer)panel.getRootPane().getParent();
-            if (parent != null) parent.setPreferredSize(originalViewerDimension);
-        }
-        */
+        halted = false;
+  //    runButton.setEnabled(true);
+
 		this.deleteObserver(observer);
 	}
 

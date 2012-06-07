@@ -231,8 +231,7 @@ public class USART extends AtmelInternalDevice {
 
     void updatePeriod() {
         period = read16(UBRRnH_reg, UBRRnL_reg) + 1;
-        if (devicePrinter != null)
-            devicePrinter.println(properties.USART_name+": period set to "+period);
+        if (false && devicePrinter != null) devicePrinter.println(properties.USART_name+": period set to "+period);
         period *= UBRRMultiplier;
     }
 
