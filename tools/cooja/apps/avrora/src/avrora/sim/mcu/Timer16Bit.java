@@ -310,6 +310,7 @@ public abstract class Timer16Bit extends AtmelInternalDevice {
         ICRnL_reg.write(TCNTnL_reg.value);
         ICRnH_reg.write(TCNTnH_reg.value);
         xTIFR_reg.flagBit(ICFn);
+        System.out.println("postinputcaptureinterrupt");
         interpreter.getInterruptTable().post(inputCaptureInterrupt);
     }
 

@@ -56,7 +56,7 @@ public class RFA1ID extends MoteID {
 
     private static Logger logger = Logger.getLogger(RFA1ID.class);
 
-    private int moteID = -1; /* TODO Implement */
+    private int moteID = -1;
 
     private AvrMoteMemory moteMem;
     boolean tosID = false;
@@ -68,6 +68,9 @@ public class RFA1ID extends MoteID {
         public void execute(long t) {
             if (persistentSetIDCounter-- > 0) {
                 setMoteID(moteID);
+                persistentSetIDCounter = 0;
+                mote.setEEPROM(0, moteID);
+                mote.setEEPROM(1, moteID >> 8);
                 if (t + mote.getInterfaces().getClock().getDrift() < 0) {
                     /* Wait until node is booting */
                     mote.getSimulation().scheduleEvent(this, -mote.getInterfaces().getClock().getDrift());
@@ -87,16 +90,15 @@ public class RFA1ID extends MoteID {
             contikiID = true;
 
             int addr = moteMem.getVariableAddress("node_id");
+            System.out.println("addr of node_id is " + addr);
             moteMem.insertWatch(new Watch() {
                 public void fireAfterRead(State arg0, int arg1, byte arg2) {
-       //             System.out.println("Read from node_id: " + arg2);
                 }
                 public void fireAfterWrite(State arg0, int arg1, byte arg2) {
                 }
                 public void fireBeforeRead(State arg0, int arg1) {
                 }
                 public void fireBeforeWrite(State arg0, int arg1, byte arg2) {
-       //             System.out.println("Writing to node_id: " + arg2);
                 }}, addr);
         }
 
@@ -116,7 +118,6 @@ public class RFA1ID extends MoteID {
 
     public int getMoteID() {
         if (contikiID) {
-        //dak         Util.warning(" getmoteid ");
             return moteMem.getIntValueOf("node_id");
         }
 
@@ -129,11 +130,6 @@ public class RFA1ID extends MoteID {
     public void setMoteID(int newID) {
         moteID = newID;
         if (contikiID) {
-            mote.setEEPROM(0, 0xad);
-            mote.setEEPROM(1, 0xde);
-            mote.setEEPROM(2, newID);
-            mote.setEEPROM(3, newID >> 8);
-  //          System.out.println("Setting node id: " + newID);
             moteMem.setIntValueOf("node_id", newID);
         }
         if (tosID) {

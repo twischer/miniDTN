@@ -105,13 +105,16 @@ public class RFA1Radio extends Radio802154 {
   }
 
   public boolean isReceiverOn() {
-      FiniteStateMachine fsm = rf231.getFiniteStateMachine();
-      //Receiver is on in state 3, transmitter for > 3
-  //            System.out.println("RFA1 isreceiveron " + fsm.getCurrentState());
-   //   return fsm.getCurrentState() == 3;
+    FiniteStateMachine fsm = rf231.getFiniteStateMachine();
+    //Receiver is on in state 3-5, and a transmitter for > 5
+    switch (fsm.getCurrentState()) {
+        case 3:
+        case 4:
+        case 5:
             return true;
+    }
+    return false;
   }
-
   public void signalReceptionStart() {
 //    rf231.setCCA(true);
 //    hasFailedReception = mode == rf231.MODE_TXRX_OFF;
