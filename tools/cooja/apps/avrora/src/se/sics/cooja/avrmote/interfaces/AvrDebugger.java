@@ -102,22 +102,34 @@ public class AvrDebugger extends Clock {
   private Mote myMote;
   private FiniteStateMachine myFSM;
   private File objdumpFile = null;
+  private long timeDrift; /* Microseconds */
   private long startTime,lastTime,lastCycles,displayDelay;
   private boolean sourceActive=false,asmActive=false;
   private JPanel jPanel;
   private JSplitPane splitPane;
   private Dimension originalViewerDimension;
-  /* Because this is extension of Clock it will get the setdrift/getdrift calls if loaded
-   * before the cycle clock visualizer.
-   */
-  private long timeDrift = 0;
 
   public AvrDebugger(Mote mote) {
     myMote = mote;
     simulation = mote.getSimulation();
+  //  interpreter = null;
     interpreter = (AtmelInterpreter)((AvroraMote)myMote).CPU.getSimulator().getInterpreter();
     myFSM = ((DefaultMCU)((AvroraMote)myMote).CPU.getSimulator().getMicrocontroller()).getFSM();
-
+    /*
+    if (myMote.getType() instanceof MicaZMoteType) {
+       interpreter = (AtmelInterpreter)((MicaZMote)myMote).myCpu.getSimulator().getInterpreter();
+       myFSM = ((DefaultMCU)((MicaZMote)myMote).myCpu.getSimulator().getMicrocontroller()).getFSM();
+    } else if (myMote.getType() instanceof RavenMoteType) {
+       interpreter = (AtmelInterpreter)((RavenMote)myMote).myCpu.getSimulator().getInterpreter();
+       myFSM = ((DefaultMCU)((RavenMote)myMote).myCpu.getSimulator().getMicrocontroller()).getFSM();
+    } else if (myMote.getType() instanceof RFA1MoteType) {
+       interpreter = (AtmelInterpreter)((RFA1Mote)myMote).myCpu.getSimulator().getInterpreter();
+       myFSM = ((DefaultMCU)((RFA1Mote)myMote).myCpu.getSimulator().getMicrocontroller()).getFSM();
+    } else {
+        logger.debug(myMote.getType() + " not known");
+        return;
+    }
+    */
     if (interpreter == null) {
         logger.debug("Mote interpreter is null");
     }
@@ -135,14 +147,17 @@ public class AvrDebugger extends Clock {
   }
 
   public long getTime() {
+    logger.debug("getTime called");
     return simulation.getSimulationTime() + timeDrift;
   }
 
   public void setDrift(long drift) {
+  logger.debug("setdrift called");
     timeDrift = drift;
   }
 
   public long getDrift() {
+    logger.debug("getdrift called");
     return timeDrift;
   }
   
