@@ -52,9 +52,12 @@ import java.util.*;
  */
 public class AT86RF231Radio implements Radio {
     private final static boolean DEBUG = false;   //state changes, interrupts
-    private final static boolean DEBUGV = false; //spi transfers, pin changes
+    private final static boolean DEBUGV = false;  //spi transfers, pin changes
+    private final static boolean DEBUGRX = false; //receiver
+    private final static boolean DEBUGTX = false; //transmitter
+    private final static boolean DEBUGA = true;   //"should not happen" debugs
     
-    public  byte rf231State = 0;
+    public  byte rf231Status = 0;
     //-- Radio states ---------------------------------------------------------
     public static final byte STATE_BUSY_RX      = 0x01;
     public static final byte STATE_BUSY_TX      = 0x02;
@@ -137,8 +140,11 @@ public class AT86RF231Radio implements Radio {
     protected final ByteFIFO trxFIFO = new ByteFIFO(FIFO_SIZE);
     protected double BERtotal = 0.0D;
     protected int BERcount = 0;
-    protected boolean txactive,rxactive;
-    protected boolean startingOscillator = false;
+    protected boolean txactive = false,rxactive = false;
+    protected boolean sendingAck, waitingAck, handledAck;
+    protected byte frameRetries, csmaRetries;
+    protected boolean lastCRCok;
+    protected byte DSN;
 
     protected Medium medium;
     protected Transmitter transmitter;
@@ -159,45 +165,10 @@ public class AT86RF231Radio implements Radio {
 
     protected final SimPrinter printer;
 
-    //Acks variables
-    public static final int SENDACK_NONE = 0;
-    public static final int SENDACK_NORMAL = 1;
-    public static final int SENDACK_PEND = 2;
-    protected int SendAck;
-    protected boolean AutoAckPend;
-    protected boolean lastCRCok;
-    protected byte DSN;
-
-    //Address recognition variables
-    protected byte[] PANId;
-    protected byte[] macPANId = new byte[2];
-    protected byte[] ShortAddr;
-    protected byte[] macShortAddr = new byte[2];
-    protected static final byte[] SHORT_BROADCAST_ADDR = {-1, -1};
-    protected byte[] LongAdr;
-    protected byte[] IEEEAdr = new byte[8];
-    protected static final byte[] LONG_BROADCAST_ADDR = {-1, -1, -1, -1, -1, -1, -1, -1};
-
-    //LUT for max and min correlation values depending on PER
-    protected static final int [] Corr_MAX = {110,109,109,109,107,107,107,107,107,
-    107,107,107,103,102,102,102,101,101,101,101,99,94,92,94,101,97,98,97,97,97,97,97,
-    94,94,94,94,94,94,94,94,94,94,94,94,92,89,89,89,89,89,88,88,88,88,88,86,86,86,
-    86,86,86,86,86,86,85,85,85,85,85,85,83,83,83,83,83,83,83,83,79,78,78,78,78,78,
-    76,76,76,74,74,74,74,74,74,74,74,74,74,66,65,65,65};
-    protected static final int [] Corr_MIN = {95,95,94,91,90,90,89,89,89,88,88,88,82,
-    82,82,82,76,76,76,76,76,76,74,74,74,74,74,74,72,72,72,72,72,72,72,72,69,69,69,69,
-    69,69,69,69,69,69,69,69,69,69,69,69,69,69,69,69,67,67,67,67,67,67,65,65,65,65,65,
-    65,65,64,64,63,63,63,63,63,63,63,63,63,61,61,61,60,60,60,58,58,56,56,56,55,55,55,
-    50,50,50,50,50,50,50};
-    protected double Correlation;
-
     //RF231 energy
     protected static final String[] allModeNames = AT86RF231Energy.allModeNames();
     protected static final int[][] ttm = FiniteStateMachine.buildSparseTTM(allModeNames.length, 0);
     protected final FiniteStateMachine stateMachine;
-
-    //Clear TxFIFO flag boolean value
-    protected boolean ClearFlag;
 
     /**
      * The constructor for the AT86RF231Radio class creates a new instance of an
@@ -223,7 +194,7 @@ public class AT86RF231Radio implements Radio {
         stateMachine = new FiniteStateMachine(sim.getClock(), AT86RF231Energy.startMode, allModeNames, ttm);
         new Energy("Radio", AT86RF231Energy.modeAmpere, stateMachine, sim.getEnergyControl());
 
-        // set all registers to reset values, and clean FIFO
+        // set all registers to reset values, and clear FIFO
         reset();
         trxFIFO.clear();
 
@@ -248,13 +219,8 @@ public class AT86RF231Radio implements Radio {
         for (int cntr = 0; cntr < NUM_REGISTERS; cntr++) {
            resetRegister(cntr);
         }
-
-        SendAck = SENDACK_NONE;  // reset these internal variables
-        AutoAckPend = false;
         lastCRCok = false;
-        ClearFlag = false;
-        rf231State = STATE_TRX_OFF;
-
+        rf231Status = STATE_TRX_OFF;
         txactive = rxactive = true;
         transmitter.shutdown();
         receiver.shutdown();
@@ -275,7 +241,11 @@ public class AT86RF231Radio implements Radio {
                 //reading IEQ_STATUS clears all interrupts
                 registers[addr] = 0;
                 break;
+            case PHY_RSSI:
+                //TODO: Add random bits 5 and 6
+                break;
             }
+
         return val;
     }
 
@@ -290,10 +260,38 @@ public class AT86RF231Radio implements Radio {
     void writeRegister(int addr, byte val) {
         if (DEBUGV && printer!=null) printer.println("RF231 " + regName(addr) + " <= " + StringUtil.to0xHex(val, 2));
         registers[addr] = val;
-
         switch (addr) {
             case TRX_STATE:
                 newCommand((byte) (val & 0x1F));
+                break;               
+            case PHY_CC_CCA:
+                //upper bit is cca request, is cleared automatically
+                if ((val & 0x80) != 0) {
+                    registers[addr] = (byte) (val & 0x7f);
+                    byte mode = (byte) ((val & 0x60) >> 5);
+                    if ((registers[PHY_RSSI] & 0x1f) != 0) {
+                        if (DEBUG & printer!=null) printer.println("RF231: CCA_REQUEST, mode = " + mode + " PHYRSSI = " +registers[PHY_RSSI] + " CCATHRESH " + (registers[CCA_THRESH] & 0x0f));
+                    }
+                     boolean tbusy = (registers[PHY_RSSI] & 0x1f) >= ((registers[CCA_THRESH] & 0x0f) << 1);
+                    //TODO: Carrier sense
+                    switch (mode) {
+                        case 0: //Carrier sense OR energy above threshold
+                        case 1: //Energy above threshold
+                        case 2: //Carrier sense only
+                        case 3: //Carrier sense AND energy above threshold
+                        break;
+                    }
+                    //clear status and done bit
+                    registers[TRX_STATUS] &= 0x3f;
+                    //See data sheet for the various possibilities. In extended mode rx done is set immediately with no CCA.
+                    //In BUSY_RX carrier sense only the result is available immediately.
+                    //Otherwise TODO:delay 140 usec
+                    
+                    //update cca done and cca_status
+                    registers[TRX_STATUS] |= 0x80;
+                    if (!tbusy) registers[TRX_STATUS] |= 0x40;
+                    postInterrupt(INT_CCA_ED_DONE);
+                }
                 break;
         }
     }
@@ -304,7 +302,9 @@ public class AT86RF231Radio implements Radio {
      *
      * @param byte the command
      */
-    public void newCommand(byte val) {
+     void newCommand(byte val) {
+    //A state change does not affect the frame buffer contents.
+    //TODO:The driver should be checking for valid transitions, but diagnostics could be added here.
         switch (val) {
             case CMD_NOP:
                 if (DEBUG && printer!=null) printer.println("RF231: NOP");
@@ -313,49 +313,59 @@ public class AT86RF231Radio implements Radio {
                 if (DEBUG && printer!=null) printer.println("RF231: TX_START");
                 // set TRAC_STATUS bits to INVALID?
                 // registers[TRX_STATE] = (byte) (CMD_TX_START | 0xE0);
-                rf231State = STATE_BUSY_TX;
+                rf231Status = STATE_BUSY_TX;
+                sendingAck = false;
                 if (rxactive) receiver.shutdown();
                 if (!txactive) transmitter.startup();
                 break;
             case CMD_FORCE_TRX_OFF:
                 if (DEBUG && printer!=null) printer.println("RF231: FORCE_TRX_OFF");
-                rf231State = STATE_TRX_OFF;
                 if (txactive) transmitter.shutdown();
                 if (rxactive) receiver.shutdown();
+                rf231Status = STATE_TRX_OFF;
                 break;
             case CMD_FORCE_PLL_ON:
                 if (DEBUG && printer!=null) printer.println("RF231: FORCE_PLL_ON");
-                rf231State = STATE_PLL_ON;     
+                rf231Status = STATE_PLL_ON;     
                 break;
             case CMD_RX_ON:
                 if (DEBUG && printer!=null) printer.println("RF231: RX_ON");
-                rf231State = STATE_RX_ON;
+                rf231Status = STATE_RX_ON;
                 if (txactive) transmitter.shutdown();
                 if (!rxactive) receiver.startup();
                 break;
             case CMD_TRX_OFF:
                 if (DEBUG && printer!=null) printer.println("RF231: TRX_OFF");
-                rf231State = STATE_TRX_OFF;
                 if (txactive) transmitter.shutdown();
                 if (rxactive) receiver.shutdown();
+                rf231Status = STATE_TRX_OFF;
                 break;
             case CMD_TX_ON:
                 if (DEBUG && printer!=null) printer.println("RF231: PLL_ON");
-                rf231State = STATE_PLL_ON;
+                rf231Status = STATE_PLL_ON;
                 break;
             case CMD_RX_AACK_ON:
                 if (DEBUG && printer!=null) printer.println("RF231: RX_AACK_ON");
-           //     if (rf231State == etc.
-                rf231State = STATE_RX_AACK_ON;
+           //     if (rf231Status == etc.
+                rf231Status = STATE_RX_AACK_ON;
                 // set TRAC_STATUS bits to INVALID
                 registers[TRX_STATE] = (byte) (CMD_TX_START | 0xE0);
+                // reset autoack flag
+                if (waitingAck) System.out.println("spi sets waitingAck false");
+                waitingAck = false;
                 if (txactive) transmitter.shutdown();
                 if (!rxactive) receiver.startup();
                 break;
             case CMD_TX_ARET_ON:
                 if (DEBUG && printer!=null) printer.println("RF231: TX_ARET_ON");
-                rf231State = STATE_BUSY_TX_ARET;
+                rf231Status = STATE_BUSY_TX_ARET;
+                sendingAck = false;
                 // set TRAC_STATUS bits to INVALID
+                // reset frame retry and csma retry count
+                frameRetries = (byte) ((registers[XAH_CTRL_0] & 0xF0) >> 4);
+                csmaRetries  = (byte) ((registers[XAH_CTRL_0] & 0x0E) >> 1);
+                if (DEBUGTX && printer!=null) printer.println("RF231: Frame, csma retries = " + frameRetries + " " + csmaRetries);
+                //slottedOperation = (registers[XAH_CTRL_0] & 0x01) != 0; //TODO: slotted operation
                 registers[TRX_STATE] = (byte) (CMD_TX_START | 0xE0);
                 if (rxactive) receiver.shutdown();
                 if (!txactive) transmitter.startup();
@@ -365,59 +375,7 @@ public class AT86RF231Radio implements Radio {
                 break;
         }
 
-        registers[TRX_STATUS] = (byte) (rf231State);
-    }
-    /**
-     * The <code>pinChangeRST()</code> method indicates a change in the RST pin,
-     *
-     * @param val the new pin status ( 0 = low)
-     */
-  /*
-    public void pinChangeRST(byte val) {
-        if (val != 0) {
-   //         sleep();
-        } else {
-        }
-    }
-*/
-    /**
-     * The <code>pinChangeSLP()</code> method indicates a change in the multifunction SLPTR pin,
-     *
-     * @param val the new pin status ( 0 = low)
-     * @return the new radio state
-     */
-    public void pinChangeSLP(byte val) {
-        if (DEBUG && printer!=null) printer.println("RF231: SLP pin change, state "+ rf231State);     
-        if (val != 0) {  //pin was raised
-            switch (rf231State) {
-                //off -> sleep
-                case STATE_TRX_OFF:
-                    stateMachine.transition(0);//change to off state
-                    rf231State = STATE_SLEEP;
-                    break;
-                case STATE_PLL_ON:
-                    rf231State = STATE_BUSY_TX;
-                    break;
-                case STATE_TX_ARET_ON:
-                    rf231State = STATE_BUSY_TX_ARET;
-                    break;
-                default:
-                    //dont know what to do here
-                    break;
-            }
-        } else {    //pin was lowered
-            switch (rf231State) {
-                //sleep -> trx_off
-                case STATE_SLEEP:
-                    stateMachine.transition(1);//change to idle state
-                    rf231State = STATE_TRX_OFF;
-                    break;
-                default:
-                    //dont know what to do here
-                    break;
-            }
-        }
-        registers[TRX_STATUS] = (byte) (rf231State);
+        registers[TRX_STATUS] = (byte) (rf231Status);
     }
     /**
      * The <code>resetRegister()</code> method resets the specified register's value
@@ -426,6 +384,7 @@ public class AT86RF231Radio implements Radio {
      * @param addr the address of the register to reset
      */
     void resetRegister(int addr) {
+        if (DEBUG && printer!=null) printer.println("RF231: Reset registers");
         byte val = 0x00;
         switch (addr) {
             case TRX_CTRL_0:
@@ -515,7 +474,35 @@ public class AT86RF231Radio implements Radio {
         }
         registers[addr] = val;
     }
+    /**
+     * The <code>postInterrupt()</code> method posts the single RF231 interrupt if the cause
+     * is enabled in the IRQ_MASK, or if interrupt polling is enabled.
+     *
+     * @theBit A byte with bit set corresponding to the cause
+     */
+     //The same bit numbering is used in the IRQ_MASK and IRQ_STATUS registers
+    protected static final byte INT_PLL_LOCK    = 0x01;
+    protected static final byte INT_PLL_UNLOCK  = 0x02;
+    protected static final byte INT_RX_START    = 0x04;
+    protected static final byte INT_TRX_END     = 0x08;
+    protected static final byte INT_CCA_ED_DONE = 0x10;
+    protected static final byte INT_AMI         = 0x20;
+    protected static final byte INT_TRX_UR      = 0x40;
+    protected static final byte INT_BAT_LOW     = (byte) 0x80;
 
+    void postInterrupt(byte theBit) {
+      if ((registers[IRQ_MASK] & theBit) !=0) {
+        //interrupt is enabled
+        registers[IRQ_STATUS] |= theBit;
+        if (RF231_interrupt > 0) interpreter.setPosted(RF231_interrupt, true);
+        if (DEBUGV && printer!=null) printer.println("RF231: interrupt posted");
+      } else if ((registers[TRX_CTRL_1] & 0x02) == 1) {
+        //polling is enabled
+        registers[IRQ_STATUS] |= 0x08;
+      }
+    }
+ 
+    /* ------------------------------------------SPI Transfers --------------------------------*/
     protected static final int CMD_R_REG = 0;
     protected static final int CMD_W_REG = 1;
     protected static final int CMD_R_BUF = 2;
@@ -562,8 +549,16 @@ public class AT86RF231Radio implements Radio {
                     writeRegister(configRegAddr, val);
                     return 0;
                 case CMD_R_BUF:
+                    //TODO:diagnostics if FIFO is empty
+                    if (DEBUGRX && printer!=null) {
+                        byte length = readFIFO(trxFIFO);
+                        printer.println("RF231: Sending rx length of " + length);
+                        return length;
+                    }
                     return readFIFO(trxFIFO);
                 case CMD_W_BUF:
+                    //The first write clears the FIFO
+                    trxFIFO.clear();
                     return writeFIFO(trxFIFO, val, true);
                 case CMD_R_RAM:
                 case CMD_W_RAM:
@@ -692,17 +687,21 @@ public class AT86RF231Radio implements Radio {
     private void pinChange_SLPTR(boolean level) {
         if (level) {  //pin was raised
             if (DEBUG && printer!=null) printer.println("RF231 SLPTR pin raised");
-            switch (rf231State) {
+            switch (rf231Status) {
                 //off -> sleep
                 case STATE_TRX_OFF:
+                    if (rxactive) receiver.shutdown();
+                    if (txactive) transmitter.shutdown();
+                    //Frame buffer contents is lost on sleep
+                    trxFIFO.clear();
                     stateMachine.transition(0);//change to off state
-                    rf231State = STATE_SLEEP;
+                    rf231Status = STATE_SLEEP;
                     break;
                 case STATE_PLL_ON:
-                    rf231State = STATE_BUSY_TX;
+                    rf231Status = STATE_BUSY_TX;
                     break;
                 case STATE_TX_ARET_ON:
-                    rf231State = STATE_BUSY_TX_ARET;
+                    rf231Status = STATE_BUSY_TX_ARET;
                     break;
                 default:
                     //dont know what to do here
@@ -710,18 +709,20 @@ public class AT86RF231Radio implements Radio {
             }
         } else {    //pin was lowered
             if (DEBUG && printer!=null) printer.println("RF231 SLPTR pin lowered");
-            switch (rf231State) {
+            switch (rf231Status) {
                 //sleep -> trx_off
                 case STATE_SLEEP:
+                    if (rxactive) receiver.shutdown();
+                    if (txactive) transmitter.shutdown();
                     stateMachine.transition(1);//change to idle state
-                    rf231State = STATE_TRX_OFF;
+                    rf231Status = STATE_TRX_OFF;
                     break;
                 default:
                     //dont know what to do here
                     break;
             }
         }
-        registers[TRX_STATUS] = (byte) (rf231State);
+        registers[TRX_STATUS] = (byte) (rf231Status);
     }
 
     private void pinChange_RSTN(boolean level) {
@@ -729,19 +730,10 @@ public class AT86RF231Radio implements Radio {
             // high->low indicates reset
             reset();
             stateMachine.transition(1);//change to power down state
-            if (DEBUG && printer!=null) printer.println("RF231 reset by RSTN pin");
+            if (DEBUGA && printer!=null) printer.println("RF231 reset by RSTN pin");
         }
     }
-
-    private static final int TX_IN_PREAMBLE = 0;
-    private static final int TX_SFD = 1;
-    private static final int TX_LENGTH = 3;
-    private static final int TX_IN_PACKET = 4;
-    private static final int TX_CRC_1 = 5;
-    private static final int TX_CRC_2 = 6;
-    private static final int TX_END = 7;
-    private static final int TX_WAIT = 8;
-
+    /* ------------------------------------------CRC Computation --------------------------------*/
     protected static final int[] reverse_bits = {
     0x00, 0x80, 0x40, 0xc0, 0x20, 0xa0, 0x60, 0xe0, 0x10, 0x90, 0x50, 0xd0, 0x30, 0xb0, 0x70, 0xf0,
     0x08, 0x88, 0x48, 0xc8, 0x28, 0xa8, 0x68, 0xe8, 0x18, 0x98, 0x58, 0xd8, 0x38, 0xb8, 0x78, 0xf8,
@@ -759,23 +751,81 @@ public class AT86RF231Radio implements Radio {
     0x0b, 0x8b, 0x4b, 0xcb, 0x2b, 0xab, 0x6b, 0xeb, 0x1b, 0x9b, 0x5b, 0xdb, 0x3b, 0xbb, 0x7b, 0xfb,
     0x07, 0x87, 0x47, 0xc7, 0x27, 0xa7, 0x67, 0xe7, 0x17, 0x97, 0x57, 0xd7, 0x37, 0xb7, 0x77, 0xf7,
     0x0f, 0x8f, 0x4f, 0xcf, 0x2f, 0xaf, 0x6f, 0xef, 0x1f, 0x9f, 0x5f, 0xdf, 0x3f, 0xbf, 0x7f, 0xff};
+    //TODO: which is faster
+/*
+    int crcAccumulatet(int crc, byte val) {
+	    crc = ((crc >> 8) & 0xff) | (crc << 8) & 0xffff;
+	    crc ^= (val & 0xff);
+	    crc ^= (crc & 0xff) >> 4;
+	    crc ^= (crc << 12) & 0xffff;
+	    crc ^= (crc & 0xff) << 5;
+	    crc = crc & 0xffff;
+        return crc;
+    } 
+*/
+    short crcAccumulate(short crc, byte val) {
+        int i = 8;
+        crc = (short) (crc ^ val << 8);
+        do {
+            if ((crc & 0x8000) != 0) crc = (short) (crc << 1 ^ 0x1021);
+            else crc = (short) (crc << 1);
+        } while (--i > 0);
+        return crc;
+    }
 
-
+    /* ------------------------------------------Transmitter-------------------------------------*/
     public class Transmitter extends Medium.Transmitter {
+        private static final int TX_IN_PREAMBLE = 0;
+        private static final int TX_SFD = 1;
+        private static final int TX_LENGTH = 3;
+        private static final int TX_IN_PACKET = 4;
+        private static final int TX_CRC_1 = 5;
+        private static final int TX_CRC_2 = 6;
+        private static final int TX_END = 7;
+        private static final int TX_WAIT = 8;
 
-        protected int state;
-        protected int counter;
-        protected int length;
+        protected int state, counter, length;
         protected short crc;
-        protected int crct;
-        protected short contikicrc;
-        protected boolean wasAck;
+        protected boolean waitForAck;
+
+        //ackTimeOut fires 54 symbol periods (864 usec) after tx transition to rx to receive an ack
+        protected class ackTimeOut implements Simulator.Event {      
+            public void fire() {
+            //  if (activated) {
+                    waitingAck = false;
+                    if (!handledAck) {
+                        //Ack not received, abort or retry
+                        handledAck = true;
+                        if (false && frameRetries != 0) {
+                            //Autoretry
+                            System.out.println("tx_aret #" + frameRetries);
+                            frameRetries--;
+                             if (rxactive) receiver.shutdown();
+                             if (!txactive) transmitter.startup();
+                        } else {
+                           //Set TRAC_STATUS to no ack and return to TX_ARET_ON
+                            registers[TRX_STATE] = (byte) (0xA0 | (registers[TRX_STATE] & 0x1F));
+                            rf231Status = STATE_TX_ARET_ON;
+                            registers[TRX_STATUS] = (byte) (rf231Status);
+                            state = TX_WAIT;//???
+                            
+                            if (!rxactive) printer.println("rx1 not active before shutdown");
+                            receiver.shutdown();
+                            postInterrupt(INT_TRX_END);
+                        }
+                    }
+            //  }
+            }
+        }
+        protected ackTimeOut ackTimeOutEvent = new ackTimeOut();
 
         public Transmitter(Medium m) {
             super(m, sim.getClock());
         }
 
         public byte nextByte() {
+            if (rxactive) printer.println("ractive while transmitting");
+            if (!txactive) printer.println("tx not active while transmitting");
             byte val = 0;
             switch (state) {
                 case TX_IN_PREAMBLE:
@@ -789,45 +839,43 @@ public class AT86RF231Radio implements Radio {
                     state = TX_LENGTH;
                     break;
                 case TX_LENGTH:
-                    if (SendAck != SENDACK_NONE) {//ack frame
-                        wasAck = true;
+                    if (sendingAck) {
                         length = 5;
                     } else {//data frame
-                        wasAck = false;
                         // length is the first byte in the FIFO buffer
                         length = trxFIFO.remove();
-                        if (DEBUGV && printer!=null) printer.println("RF231: Tx frame length " + length);
                     }
+                    if (length > 100) printer.println("txframe length is " + length);
+                    if (DEBUGTX && printer!=null) printer.println("RF231: Tx frame length " + length);
                     state = TX_IN_PACKET;
                     counter = 0;
                     crc = 0;
-                    crct=0;
-                    contikicrc=0;
                     val = (byte) length;
                     break;
                 case TX_IN_PACKET:
-                    if (SendAck == SENDACK_NONE) {//data frame
-                        val = trxFIFO.remove();
-                        counter++;
-                    } else {//ack frame
+                    if (sendingAck) {
                         switch (counter) {
                             case 0://FCF_low
-                                if (SendAck == SENDACK_NORMAL) {
-                                    val = 2;
-                                    break;
-                                } else if (SendAck == SENDACK_PEND) {
-                                    val = 0x12;  //  type ACK + frame pending flag
-                                    break;
-                                }
+                                val = 2;
+                             // val = 0x12;  //TODO:handle pending flag
+                                 break;
                             case 1://FCF_hi
                                 val = 0;
                                 break;
                             case 2://Sequence number
                                 val = DSN;
-                                SendAck = SENDACK_NONE;
+                                waitForAck = false;
+                                state = TX_END;
                                 break;
                         }
                         counter++;
+                    } else {
+                        val = trxFIFO.remove();
+                        counter++;
+                        if (counter == 1) {
+                            //check the ack request bit in the FCF
+                            waitForAck = (val & 0x20) != 0;
+                        }
                     }
                     //Calculate CRC and switch state if necessary
                     if ((registers[TRX_CTRL_1] & 0x20) !=0) {  //Test TX_AUTO_CRC_ON bit
@@ -852,30 +900,33 @@ public class AT86RF231Radio implements Radio {
                     state = TX_END;
                     break;
             }
-            if (DEBUGV && printer!=null) printer.println("RF231 " + StringUtil.to0xHex(val, 2) + " --------> ");
+            if (DEBUGTX && printer!=null) printer.println("RF231 " + StringUtil.to0xHex(val, 2) + " --------> ");
             // common handling of end of transmission
             if (state == TX_END) {
-                rf231State = STATE_PLL_ON;
-                registers[TRX_STATUS] = (byte) (rf231State);
-                //Set the TRAC status bits in the TRAC_STATUS register
+                //Set the TRAC status bits in the TRX_STATE register
                 //0 success 1 pending 2 waitforack 3 accessfail 5 noack 7 invalid
-                //TODO:wait for autoack success
-                registers[TRX_STATE] = (byte) (registers[TRX_STATE] & 0x1F);
-                
-                // set the interrupt bit in the status register if interrupts or polling is enabled
-                if ((registers[IRQ_MASK] & 0x08) !=0) { //interrupt is enabled
-                    registers[IRQ_STATUS] |= 0x08;
-                    if (RF231_interrupt > 0) interpreter.setPosted(RF231_interrupt, true);
-                    if (DEBUG && printer!=null) printer.println("RF231: TRX_END interrupt");
-                } else if ((registers[TRX_CTRL_1] & 0x02) == 1) { //polling enabled
-                    registers[IRQ_STATUS] |= 0x08;
+                if (waitForAck && (rf231Status == STATE_BUSY_TX_ARET)) {
+                    //Show waiting for ack, and switch to rx mode
+                    waitingAck = true;
+                    handledAck = false;
+                    registers[TRX_STATE] = (byte) (0x40 | (registers[TRX_STATE] & 0x1F));
+                    //wait 54 symbol periods (864 usec, 27 bytes) to receive the ack  
+                    clock.insertEvent(ackTimeOutEvent, 27*cyclesPerByte);
+                    if (!txactive) printer.println("tx not active at txend");
+                    transmitter.shutdown();
+                    if (rxactive) printer.println("rx active at txend");
+                    receiver.startup();
+                    state = TX_WAIT;
+                    return val;
+                } else {
+                    rf231Status = STATE_PLL_ON;
+                    registers[TRX_STATUS] = (byte) (rf231Status);
+                    registers[TRX_STATE] = (byte) (registers[TRX_STATE] & 0x1F);
+                    transmitter.shutdown();
                 }
-
-                shutdown();
-         //       receiver.startup();// auto transition back to receive mode.
-                
+                postInterrupt(INT_TRX_END);
                 // transmitter stays in this state until it is really switched off
-       //         state = TX_WAIT;
+                state = TX_WAIT;
             }
             return val;
         }
@@ -884,13 +935,12 @@ public class AT86RF231Radio implements Radio {
             if (!txactive) {
                 txactive = true;
                 // the PLL lock time is implemented as the leadCycles in Medium
-                trxFIFO.clear();
                 stateMachine.transition(6 + 15 - (registers[PHY_TX_PWR]&0x0f));//change to Tx(power) state
                 state = TX_IN_PREAMBLE;
                 counter = 0;
                 beginTransmit(getPower(),getFrequency());
-                if (DEBUG && printer!=null) printer.println("RF231: TX Startup");
-            }
+                if (DEBUGTX && printer!=null) printer.println("RF231: TX Startup");
+            } else printer.println("tx startup while active");
         }
 
         void shutdown() {
@@ -898,33 +948,14 @@ public class AT86RF231Radio implements Radio {
             if (txactive) {
                 txactive = false;
                 endTransmit();
-                if (DEBUG && printer!=null) printer.println("RF231: TX shutdown");
-            }
+                     //           trxFIFO.clear();
+                if (DEBUGTX && printer!=null) printer.println("RF231: TX shutdown");
+                stateMachine.transition(3);//change to RX TODO:FIX this
+            }else printer.println("tx shutdown while not active");
         }
     }
 
-
-    int crcAccumulatet(int crc, byte val) {
-	    crc = ((crc >> 8) & 0xff) | (crc << 8) & 0xffff;
-	    crc ^= (val & 0xff);
-	    crc ^= (crc & 0xff) >> 4;
-	    crc ^= (crc << 12) & 0xffff;
-	    crc ^= (crc & 0xff) << 5;
-	    crc = crc & 0xffff;
-        return crc;
-    } 
-
-    short crcAccumulate(short crc, byte val) {
-        int i = 8;
-        crc = (short) (crc ^ val << 8);
-        do {
-            if ((crc & 0x8000) != 0) crc = (short) (crc << 1 ^ 0x1021);
-            else crc = (short) (crc << 1);
-        } while (--i > 0);
-        return crc;
-    }
-
-
+    /* ------------------------------------------Receiver------------------------------------*/
     private static final int RECV_SFD_SCAN = 0;
     private static final int RECV_SFD_MATCHED_1 = 1;
     private static final int RECV_SFD_MATCHED_2 = 2;
@@ -934,6 +965,16 @@ public class AT86RF231Radio implements Radio {
     private static final int RECV_END_STATE = 6;
     private static final int RECV_OVERFLOW = 7;
     private static final int RECV_WAIT = 8;
+ 
+    //Address recognition variables
+    protected byte[] PANId;
+    protected byte[] macPANId = new byte[2];
+    protected byte[] ShortAddr;
+    protected byte[] macShortAddr = new byte[2];
+    protected static final byte[] SHORT_BROADCAST_ADDR = {-1, -1};
+    protected byte[] LongAdr;
+    protected byte[] IEEEAdr = new byte[8];
+    protected static final byte[] LONG_BROADCAST_ADDR = {-1, -1, -1, -1, -1, -1, -1, -1};
 
     public class Receiver extends Medium.Receiver {
         protected int state;
@@ -946,87 +987,28 @@ public class AT86RF231Radio implements Radio {
             super(m, sim.getClock());
         }
 
-        private void setRssiValid (boolean v){
-            //0 <-90dBm, 28 >=-10 dBm
-            //Don't change upper three bits
-            //TODO:implement random values for bits 5 and 6
-            int rssi_val = v ? 20 : 0;
-            if (DEBUG && printer!=null) printer.println("RF231: setrssivalid "+ rssi_val);
-            registers[PHY_RSSI] = (byte) (rssi_val | (registers[PHY_RSSI] & 0xE0));
-        }
-        
-        private boolean getRssiValid (){
-            if (DEBUGV && printer!=null) printer.println("RF231: getRssivalid");
-            //RF231 RSSI is always valid in non-extended mode
-            return true;
-        }
-        
-        public double getCorrelation (){
-            int PERindex = (int)(getPER()*100);
-            Random random = new Random();
-            //get the range, casting to long to avoid overflow problems
-            long range = (long)Corr_MAX[PERindex] - (long)Corr_MIN[PERindex] + 1;
-            // compute a fraction of the range, 0 <= frac < range
-            long fraction = (long)(range * random.nextDouble());
-            double corr = fraction + Corr_MIN[PERindex];
-            if (DEBUG && printer!=null) printer.println("RF231: returncorr " + corr);
-            return corr;
-        }
-
-        public void setRSSI (double Prec){
-            //RSSI register in units of 3dBm, 0 <-90dBm, 28 >=-10 dBm
-            int rssi_val = (((int) Math.rint(Prec) + 90) / 3) +1;
-            if (rssi_val < 0) rssi_val = 0;
-            if (rssi_val > 28) rssi_val = 28;
-            if (DEBUG && printer!=null) printer.println("RF231: setrssi " + rssi_val);
-            registers[PHY_RSSI] = (byte) (rssi_val | (registers[PHY_RSSI] & 0xE0));
-        }
-
-        public double getRSSI (){
-            int rssi_val = registers[PHY_RSSI] & 0x1F;
-            return -90 + 3*(rssi_val-1);
-        }
-
-        public void setBER (double BER){
-            if (DEBUG && printer!=null) printer.println("RF231: setBER");
-            BERcount++;
-            if (BERcount > 5) {
-                BERtotal += BER;
-            }
-        }
-        
-        public double getPER (){
-            double PER = 0.0D;
-            if (BERcount > 5) {
-                //compute average BER after SHR
-                PER = BERtotal/(BERcount-5);
-                //considering i.i.s errors i compute PER
-                PER = 1D-Math.pow((1D-PER),(BERcount-5)*8);
-            }
-            clearBER();
-            if (DEBUG && printer!=null) printer.println("RF231: getPER " + PER);
-            return PER;
-        }
-        
-        public void clearBER() {
-            BERcount = 0;
-            BERtotal = 0.0D;
-        }
-
         public byte nextByte(boolean lock, byte b) {
+           //The receiver will continue to get some byte runon after the force TRX_OFF command
+           // if (!rxactive) printer.println("rx not active while receiving");
+            if (!rxactive) return 0;
+            if (txactive) printer.println("txactive while receiving");
+            
             if (state == RECV_END_STATE) {
                 state = RECV_SFD_SCAN; // to prevent loops when calling shutdown/endReceive
                 // packet ended before
-                if (SendAck != SENDACK_NONE && lastCRCok) {//Send Ack?
-                    if (DEBUG && printer!=null) printer.println("RF231: sendack");
-                    shutdown();
+                if (sendingAck && lastCRCok) { //send ack?
+                    if (DEBUGRX && printer!=null) printer.println("RF231: sendack");
+                    receiver.shutdown();
                     transmitter.startup();
                 } else {
                     if (lock) {
                         // the medium is still locked, so there could be more packets!
-                        if (DEBUG && printer!=null) printer.println("RF231: still locked");
+                        if (DEBUGA && printer!=null) printer.println("RF231: still locked");
                         // fire the probes manually
-                        if (probeList != null) probeList.fireAfterReceiveEnd(Receiver.this);
+                        if (probeList != null) {
+                            System.out.println("probeList is not null!");
+                            probeList.fireAfterReceiveEnd(Receiver.this);
+                        }
                     }
                 }
                 return b;
@@ -1034,55 +1016,69 @@ public class AT86RF231Radio implements Radio {
 
               
             if (!lock) {
-                if (DEBUG && printer!=null) printer.println("RF231 notlock, state= "+state);
+                if (DEBUGRX && printer!=null) printer.println("RF231 notlock, state= "+state);
                 // the transmission lock has been lost
                 switch (state) {
                     case RECV_SFD_MATCHED_2:
                     case RECV_IN_PACKET:
                     case RECV_CRC_1:
                     case RECV_CRC_2:
-                        // set the interrupt bit in the status register if interrupts or polling is enabled
-                        if ((registers[IRQ_MASK] & 0x02) !=0) { //interrupt is enabled
-                            registers[IRQ_STATUS] |= 0x02;
-                            if (RF231_interrupt > 0) interpreter.setPosted(RF231_interrupt, true);
-                            if (DEBUG && printer!=null) printer.println("RF231: PLL_UNLOCK interrupt");
-                        } else if ((registers[TRX_CTRL_1] & 0x02) == 1) { //polling enabled
-                            registers[IRQ_STATUS] |= 0x02;
-                        }
-
+                        postInterrupt(INT_PLL_UNLOCK);
                         //packet lost in middle -> drop frame
                         // fall through                
                     case RECV_SFD_MATCHED_1: // packet has just started
-                        if (DEBUG && printer!=null) printer.println("RF231 packet started");
+                        if (DEBUGRX && printer!=null) printer.println("RF231 packet started");
                         state = RECV_SFD_SCAN;
-                        // set the interrupt bit in the status register if interrupts or polling is enabled
-                        if ((registers[IRQ_MASK] & 0x04) !=0) { //interrupt is enabled
-                            registers[IRQ_STATUS] |= 0x04;
-                            if (RF231_interrupt > 0) interpreter.setPosted(RF231_interrupt, true);
-                            if (DEBUG && printer!=null) printer.println("RF231: RX_START interrupt");
-                        } else if ((registers[TRX_CTRL_1] & 0x02) == 1) { //polling enabled
-                            registers[IRQ_STATUS] |= 0x04;
+                        //rx start invalidates CRC and ED register
+                        registers[PHY_RSSI] &= 0x7f; //Clear RX_CRC_VALID
+                        registers[PHY_ED_LEVEL] = (byte) 0xff;
+                        //switch to busy state unless waiting for ack in BUSY_TX_ARET
+                        if (rf231Status == STATE_RX_AACK_ON) {
+                            rf231Status = STATE_BUSY_RX_AACK;
+                        } else if (rf231Status == STATE_RX_ON) {
+                        printer.println("setting busyrx state her!");
+                            rf231Status = STATE_BUSY_RX;
                         }
+                        registers[TRX_STATUS] = (byte) (rf231Status | (registers[TRX_STATUS] & 0xE0));
+                        postInterrupt(INT_RX_START);
                         break;
                 }
                 return b;
             }
-            
-            if (DEBUGV && printer!=null) printer.println("RF231 <======== " + StringUtil.to0xHex(b, 2));
+            if (txactive)  {
+                printer.println("txactive while receiving5 " + state);
+                transmitter.shutdown();
+            }
+            if (DEBUGRX && printer!=null) printer.println("RF231 <======== " + StringUtil.to0xHex(b, 2));
+
             switch (state) {
                 case RECV_SFD_MATCHED_1:
                    // if (b == (byte) 0xA7) {
                     if (b == (byte) 0x7A) {  //sky compatibility
                     // check against the second byte of the SYNCWORD register.
                         state = RECV_SFD_MATCHED_2;
-                        // set the interrupt bit in the status register if interrupts or polling is enabled
-                        if ((registers[IRQ_MASK] & 0x04) !=0) { //interrupt is enabled
-                            registers[IRQ_STATUS] |= 0x04;
-                            if (RF231_interrupt > 0) interpreter.setPosted(RF231_interrupt, true);
-                            if (DEBUG && printer!=null) printer.println("RF231: RX_START interrupt");
-                        } else if ((registers[TRX_CTRL_1] & 0x02) == 1) { //polling enabled
-                            registers[IRQ_STATUS] |= 0x04;
+                        //If waiting on ack in BUSY_TX_ARET don't make any status changes
+                        if (waitingAck) break;
+                        if (rf231Status == STATE_BUSY_TX_ARET) printer.println("busy txaret but not waiting for ack");
+                        if (rf231Status== STATE_TX_ARET_ON) printer.println("txaret but not waiting for ack");
+                        //rx start invalidates CRC and ED register
+                        registers[PHY_RSSI] &= 0x7f; //Clear RX_CRC_VALID
+                         registers[PHY_ED_LEVEL] = (byte) 0xff;
+                        if (rf231Status == STATE_RX_AACK_ON) {
+                            rf231Status = STATE_BUSY_RX_AACK;
+                        } else if (rf231Status == STATE_RX_ON) {
+                            rf231Status = STATE_BUSY_RX;
+                        } else if (rf231Status == STATE_BUSY_RX_AACK) {
+                            printer.println("already in BUSY_RX_AACK on, probably a missed ack");
+                        } else if (rf231Status == STATE_BUSY_RX) {
+                            printer.println("already in BUSY_RX, should not be");
+                        } else {
+                            printer.println("not in a receive state! " + rf231Status + " " + registers[TRX_STATUS]);
+                            //hmmm whats going on
+                            printer.println("rxactive = " + rxactive + "   txactive = " + txactive);
                         }
+                        registers[TRX_STATUS] = (byte) (rf231Status | (registers[TRX_STATUS] & 0xE0));
+                        postInterrupt(INT_RX_START);
                         break;
                     }
                     // fallthrough if we failed to match the second byte
@@ -1103,41 +1099,80 @@ public class AT86RF231Radio implements Radio {
                         state = RECV_SFD_SCAN;
                         break;
                     }
-                    
-                    // Start transferring bytes to FIFO
-                    trxFIFO.add((byte) length);
                     counter = 0;
                     state = RECV_IN_PACKET;
-                    crc = 0;
+                    if (waitingAck) {
+                        if (length != 5) {
+                         //not an ack, show failure and abort rx
+                          //  waitingAck = false;
+                            if (DEBUGTX && printer!=null) printer.println("RF231: Expecting ack, got something else");
+                            handledAck = true;
+                            //Status goes from BUSY_TX_ARET to TX_ARET_ON
+                            rf231Status = STATE_TX_ARET_ON;
+                            //TODO:should upper bits change?
+                            registers[TRX_STATUS] = (byte) (rf231Status | (registers[TRX_STATUS] & 0xE0));
+                            //Set TRAC_STATUS bits to failure
+                            registers[TRX_STATE] = (byte) (0xA0 | (registers[TRX_STATE] & 0x1F));
+                            state = RECV_SFD_SCAN;
+                            //Post the TRX_END interrupt
+                            postInterrupt(INT_TRX_END);
+                            if (!rxactive) printer.println("rx2 not active before shutdown");
+                            receiver.shutdown();
+                        }
+                    } else {
+                        // Start transferring bytes to FIFO
+                        trxFIFO.clear();
+                        trxFIFO.add((byte) length);
+                        crc = 0;                   
+                        //Update the energy detect register
+                        //This should have been an average rssi over the previous 8 symbols
+                        //but basically is 3 times PHY_RSSI
+                        registers[PHY_ED_LEVEL] = (byte)((registers[PHY_RSSI] & 0x1f) * 3);
+                    }
                     break;
 
                 case RECV_IN_PACKET:
                     // we are in the body of the packet.
                     counter++;
+                    if (waitingAck) {
+                        if (handledAck) {
+                            printer.println("waiting but handled during reception");
+                        }
+                        //show success after complete ack reception
+                        //TODO: verify checksum
+                        if (counter == 5) {
+                            if (DEBUGTX && printer!=null) printer.println("RF231: Got ack");
+                            handledAck = true;
+                            rf231Status = STATE_TX_ARET_ON;
+                            registers[TRX_STATUS] = (byte) (rf231Status | (registers[TRX_STATUS] & 0xE0));
+                            registers[TRX_STATE] = (byte) (registers[TRX_STATE] & 0x1F);
+                            if (!rxactive) printer.println("rx3 not active before shutdown");
+                            if (txactive) printer.println("tx active before startup");
+                            receiver.shutdown();
+                          //  transmitter.startup();
+                            postInterrupt(INT_TRX_END);
+                            return(b);
+                        } else if (counter > 5) {
+                            if (DEBUGA && printer!=null) printer.println("RF231: can an not get here");
+                        }
+                        break;
+                    }
                     trxFIFO.add(b);
-
                     //Address Recognition and sequence number
                     if (counter <= 13) {
                         boolean satisfied = matchAddress(b, counter);
                         // address match enabled only in RA_AACK mode TODO: should be BUSY_RX_AACK
-                        if (rf231State == STATE_RX_AACK_ON) {
+                        if (rf231Status == STATE_RX_AACK_ON) {
                             // is AACK_I_AM_COORD set?
                             if ((registers[CSMA_SEED_1] & 0x04) == 0) {
                                 if (!satisfied) {
                                     //reject frame
-                                    if (DEBUG && (printer!=null)) printer.println("Dropped, no address match");   
+                                    if (DEBUGRX && (printer!=null)) printer.println("Dropped, no address match with counter "+ counter);   
                                     // wait for end of packet
                                     state = RECV_WAIT;
                                     break;
                                 } else if (counter == 13) { //TODO: use the correct number based on short/long address
-                                    // set the interrupt bit in the status register if interrupts or polling is enabled
-                                    if ((registers[IRQ_MASK] & 0x20) !=0) { //interrupt is enabled
-                                        registers[IRQ_STATUS] |= 0x20;
-                                        if (RF231_interrupt > 0) interpreter.setPosted(RF231_interrupt, true);
-                                        if (DEBUG && printer!=null) printer.println("RF231: MASK_AMI interrupt");
-                                    } else if ((registers[TRX_CTRL_1] & 0x02) == 1) { //polling enabled
-                                        registers[IRQ_STATUS] |= 0x20;
-                                    }
+                                    postInterrupt(INT_AMI);
                                 }
                             }
                         }
@@ -1178,38 +1213,44 @@ public class AT86RF231Radio implements Radio {
                     if (crcResult == crc) { //TODO:LQI increases when CRC valid?
                         b |= 0x80;
                         lastCRCok = true;
-                        if (DEBUG && printer!=null) printer.println("RF231: CRC passed");
+                        if (DEBUGRX && printer!=null) printer.println("RF231: CRC passed");
+                        registers[PHY_RSSI] |= 0x80; //Set RX_CRC_VALID
+                      //  registers[PHY_ED_LEVEL] = update?
                     }
                     else {
                         // Frame is not rejected if CRC is invalid
                         // reset ACK flags set by the SACK/SACKPEND commands since ACK is only sent when CRC is valid
                         lastCRCok = false;
-                        SendAck = SENDACK_NONE;
-                        if (DEBUG && printer!=null) printer.println("RF231: CRC failed");
+                //        SendAck = SENDACK_NONE;
+                        if (DEBUGA && printer!=null) printer.println("RF231: CRC received " + StringUtil.to0xHex(crcResult, 4) + " calculated " + StringUtil.to0xHex(crc, 4));
                     }
             
                     trxFIFO.add(b);
+                    postInterrupt(INT_TRX_END);
 
-                    // set the interrupt bit in the status register if interrupts or polling is enabled
-                    if ((registers[IRQ_MASK] & 0x08) !=0) { //interrupt is enabled
-                        registers[IRQ_STATUS] |= 0x08;
-                        if (RF231_interrupt > 0) interpreter.setPosted(RF231_interrupt, true);
-                        if (DEBUG && printer!=null) printer.println("RF231: TRX_END interrupt");
-                    } else if ((registers[TRX_CTRL_1] & 0x02) == 1) { //polling enabled
-                         registers[IRQ_STATUS] |= 0x08;
+                    if (rf231Status == STATE_BUSY_TX_ARET) {
+                            printer.println(" STATE_BUSY_TX_ARET here! " + rf231Status + " " + registers[TRX_STATUS]);
+                    } else if (rf231Status == STATE_TX_ARET_ON) {
+                            System.out.println("TX_ARET state in receiver here");
                     }
-
-                    if (lastCRCok && (rf231State == STATE_RX_AACK_ON) && (trxFIFO.peek(1) & 0x20) == 0x20) {//TODO:should be BUSY_RX_AACK
+                    if (lastCRCok && (rf231Status == STATE_BUSY_RX_AACK) && (trxFIFO.peek(1) & 0x20) == 0x20) {
                         //send ack if we are not receiving ack frame
-                        // but not if AACK_DIS_ACK is set
-                        //TODO: handle AACK_FVN_MODE and AACK_SET_PC
                         if ((registers[CSMA_SEED_1] & 0x10) == 0) {
                             if ((trxFIFO.peek(1) & 0x07) != 2) {
-                                // the type of the ACK only depends on a previous received SACK or SACKPEND
-                                SendAck = AutoAckPend ? SENDACK_PEND : SENDACK_NORMAL;
+                                sendingAck = true;
+                                handledAck = false;
                             }
                         }
-                    }              
+                    } else {
+                        if (!lastCRCok) printer.println("lastcrcnotok");
+                        if (rf231Status != STATE_BUSY_RX_AACK) printer.println("status not rxaack: "+ rf231Status);
+                         if (rf231Status == STATE_BUSY_RX_AACK) {
+                            rf231Status = STATE_RX_AACK_ON;
+                         } else {
+                            rf231Status = STATE_RX_ON;
+                         }
+                         registers[TRX_STATUS] = (byte) (rf231Status | (registers[TRX_STATUS] & 0xE0));
+                    }
                     break;
                 case RECV_OVERFLOW:
                     // do nothing. we have encountered an overflow.
@@ -1219,22 +1260,23 @@ public class AT86RF231Radio implements Radio {
                     if (++counter == length) {
                         clearBER();  // will otherwise be done by getCorrelation()
                         state = RECV_SFD_SCAN;
-                        SendAck = SENDACK_NONE;  // just in case we received SACK(PEND) in the meantime
+                     //   SendAck = SENDACK_NONE;  // just in case we received SACK(PEND) in the meantime
                     }
+                    break;
+                default:
+                    if (DEBUGRX && printer!=null) printer.println("RF231: Unknown state in receiver");
                     break;
             }
             return b;
         }
         
         private boolean matchAddress(byte b, int counter) {
-            //if (counter > 1 && (trxFIFO.peek(1) & 0x04) == 4 && RESERVED_FRAME_MODE.getValue()) {
             if (counter > 1 && (trxFIFO.peek(1) & 0x04) == 4) {
                 // no further address decoding is done for reserved frames
                 return true;
             }
             switch (counter) {
                 case 1://frame type subfield contents an illegal frame type?
-                   // if ((trxFIFO.peek(1) & 0x04) == 4 && !(RESERVED_FRAME_MODE.getValue()))
                     if ((trxFIFO.peek(1) & 0x04) == 4)
                         return false;
                     break;
@@ -1248,9 +1290,13 @@ public class AT86RF231Radio implements Radio {
                     PANId = trxFIFO.peekField(4, 6);
                     macPANId[0] = registers[PAN_ID_0];
                     macPANId[1] = registers[PAN_ID_1];
+                  //  printer.println("PANId " + PANId[0] + " " +PANId[1]);
+                  //  printer.println("macPANId " + macPANId[0]+" "+macPANId[1]);
                     if (((trxFIFO.peek(2) >> 2) & 0x02) != 0) {//DestPANId present?
-                        if (!Arrays.equals(PANId, macPANId) && !Arrays.equals(PANId, SHORT_BROADCAST_ADDR))
+                        if (!Arrays.equals(PANId, macPANId) && !Arrays.equals(PANId, SHORT_BROADCAST_ADDR)) {
+                            if (DEBUGRX && printer!=null) printer.println("RF231: Not broadcast and PANid does not match");
                             return false;
+                        }
                     } else
                     if (((trxFIFO.peek(2) >> 2) & 0x03) == 0) {//DestPANId and dest addresses are not present
                         if (((trxFIFO.peek(2) >> 6) & 0x02) != 0) {//SrcPANId present
@@ -1260,7 +1306,7 @@ public class AT86RF231Radio implements Radio {
                                     return false;
                             } else
                             if (((trxFIFO.peek(1) & 0x07) == 1) || ((trxFIFO.peek(1) & 0x07) == 3)) {//data or mac command
-                                if (rf231State == STATE_RX_AACK_ON) { //TODO: should be BUSY_AACK
+                                if (rf231Status == STATE_BUSY_RX_AACK) {
                                     // is AACK_I_AM_COORD set?
                                     if ((registers[CSMA_SEED_1] & 0x04) == 0) return false;
                                 }
@@ -1274,8 +1320,8 @@ public class AT86RF231Radio implements Radio {
                         ShortAddr = trxFIFO.peekField(6, 8);
                         macShortAddr[0] = registers[SHORT_ADDR_0];
                         macShortAddr[1] = registers[SHORT_ADDR_1];
-                       // printer.println("shortadr " + ShortAddr[0]+ShortAddr[1]);
-                      //  printer.println("macshortaddr " + macShortAddr[0]+" "+macShortAddr[1]);
+                     //   printer.println("shortadr " + ShortAddr[0]+ShortAddr[1]);
+                    //    printer.println("macshortaddr " + macShortAddr[0]+" "+macShortAddr[1]);
                         if (!Arrays.equals(ShortAddr, macShortAddr) && !Arrays.equals(ShortAddr, SHORT_BROADCAST_ADDR))
                             return false;
                     }
@@ -1295,10 +1341,10 @@ public class AT86RF231Radio implements Radio {
                         IEEEAdr[6] = registers[IEEE_ADDR_6];
                         IEEEAdr[7] = registers[IEEE_ADDR_7];
                         if (!Arrays.equals(LongAdr, IEEEAdr) && !Arrays.equals(LongAdr, LONG_BROADCAST_ADDR)) {
-                          //  if (printer != null) {
-                          //    printer.println(" longadr " + LongAdr[0]+LongAdr[1]+LongAdr[2]+LongAdr[3]+LongAdr[4]+LongAdr[5]+LongAdr[6]+LongAdr[7]);
-                          //    printer.println(" IEEEAdr " + IEEEAdr[0]+IEEEAdr[1]+IEEEAdr[2]+IEEEAdr[3]+IEEEAdr[4]+IEEEAdr[5]+IEEEAdr[6]+IEEEAdr[7]);
-                          //  }
+                            if (DEBUGRX && printer != null) {
+                              printer.println(" longadr " + LongAdr[0]+LongAdr[1]+LongAdr[2]+LongAdr[3]+LongAdr[4]+LongAdr[5]+LongAdr[6]+LongAdr[7]);
+                              printer.println(" IEEEAdr " + IEEEAdr[0]+IEEEAdr[1]+IEEEAdr[2]+IEEEAdr[3]+IEEEAdr[4]+IEEEAdr[5]+IEEEAdr[6]+IEEEAdr[7]);
+                            }
                             return false;
                         }
                     }
@@ -1307,15 +1353,85 @@ public class AT86RF231Radio implements Radio {
             return true;
         }
 
-        protected boolean inPacket() {
-            return state == RECV_SFD_MATCHED_1
-                || state == RECV_SFD_MATCHED_2
-                || state == RECV_IN_PACKET
-                || state == RECV_CRC_1
-                || state == RECV_CRC_2;
+    /* -----------------------------------RSSI, LQI, PER------------------------------------*/
+        //LUT for max and min correlation values depending on PER
+        private final int [] Corr_MAX = {110,109,109,109,107,107,107,107,107,
+        107,107,107,103,102,102,102,101,101,101,101,99,94,92,94,101,97,98,97,97,97,97,97,
+        94,94,94,94,94,94,94,94,94,94,94,94,92,89,89,89,89,89,88,88,88,88,88,86,86,86,
+        86,86,86,86,86,86,85,85,85,85,85,85,83,83,83,83,83,83,83,83,79,78,78,78,78,78,
+        76,76,76,74,74,74,74,74,74,74,74,74,74,66,65,65,65};
+        private final int [] Corr_MIN = {95,95,94,91,90,90,89,89,89,88,88,88,82,
+        82,82,82,76,76,76,76,76,76,74,74,74,74,74,74,72,72,72,72,72,72,72,72,69,69,69,69,
+        69,69,69,69,69,69,69,69,69,69,69,69,69,69,69,69,67,67,67,67,67,67,65,65,65,65,65,
+        65,65,64,64,63,63,63,63,63,63,63,63,63,61,61,61,60,60,60,58,58,56,56,56,55,55,55,
+        50,50,50,50,50,50,50};
+        protected double Correlation;
+/*
+        private void setRssiValid (boolean v){
+            if (DEBUGA && printer!=null) printer.println("RF231: setrssivalid "+ rssi_val);
+            registers[PHY_RSSI] |= 0x80; //Set RX_CRC_VALID
+        }
+        
+        private boolean getRssiValid (){
+            if (DEBUGA && printer!=null) printer.println("RF231: getRssivalid");
+            //RF231 RSSI is always valid in non-extended mode
+            return true;
+        }
+ */       
+        public double getCorrelation (){
+            int PERindex = (int)(getPER()*100);
+            Random random = new Random();
+            //get the range, casting to long to avoid overflow problems
+            long range = (long)Corr_MAX[PERindex] - (long)Corr_MIN[PERindex] + 1;
+            // compute a fraction of the range, 0 <= frac < range
+            long fraction = (long)(range * random.nextDouble());
+            double corr = fraction + Corr_MIN[PERindex];
+            if (DEBUGRX && printer!=null) printer.println("RF231: returncorr " + corr);
+            return corr;
         }
 
-        /**
+        public void setRSSI (double Prec){
+            //RSSI register in units of 3dBm, 0 <-90dBm, 28 >=-10 dBm
+            int rssi_val = (((int) Math.rint(Prec) + 90) / 3) +1;
+            if (rssi_val < 0) rssi_val = 0;
+            if (rssi_val > 28) rssi_val = 28;
+    //      if (DEBUGRX && printer!=null) if (rssi_val > 0) printer.println("RF231: setrssi " + rssi_val);
+            registers[PHY_RSSI] = (byte) (rssi_val | (registers[PHY_RSSI] & 0xE0));
+        }
+
+        public double getRSSI (){
+            int rssi_val = registers[PHY_RSSI] & 0x1F;
+            return -90 + 3*(rssi_val-1);
+        }
+
+        public void setBER (double BER){
+        //  if (DEBUGRX && printer!=null) printer.println("RF231: setBER");
+            BERcount++;
+            if (BERcount > 5) {
+                BERtotal += BER;
+            }
+        }
+        
+        public double getPER (){
+            double PER = 0.0D;
+            if (BERcount > 5) {
+                //compute average BER after SHR
+                PER = BERtotal/(BERcount-5);
+                //considering i.i.s errors i compute PER
+                PER = 1D-Math.pow((1D-PER),(BERcount-5)*8);
+            }
+            clearBER();
+         // if (DEBUGRX && printer!=null) printer.println("RF231: getPER " + PER);
+            return PER;
+        }
+        
+        public void clearBER() {
+            BERcount = 0;
+            BERtotal = 0.0D;
+        }
+
+ 
+ /**
          * The <code>RssiValid</code> class implements a Simulator Event
          * that is fired when the RSSI becomes valid after 8 symbols
          */
@@ -1323,7 +1439,7 @@ public class AT86RF231Radio implements Radio {
         
             public void fire() {
                 if (activated) {
-                    setRssiValid(true);
+              //      setRssiValid(true);
                 }
             }
         }
@@ -1332,36 +1448,34 @@ public class AT86RF231Radio implements Radio {
         void startup() {
             if (!rxactive) {
                 rxactive = true;
-                trxFIFO.clear();
                 stateMachine.transition(3);//change to receive state TODO:low sensitivity state
                 state = RECV_SFD_SCAN;
                 clearBER();
                 beginReceive(getFrequency());
-                clock.insertEvent(rssiValidEvent, 4*cyclesPerByte);  // 8 symbols = 4 bytes
-                if (DEBUGV && printer!=null) printer.println("RF231: RX startup");
-            }
+             //   clock.insertEvent(rssiValidEvent, 4*cyclesPerByte);  // 8 symbols = 4 bytes
+                if (DEBUGRX && printer!=null) printer.println("RF231: RX startup");
+            } else printer.println("receiver startup while active");
         }
 
         void shutdown() {
-            // note that stateMachine.transition() is not called here any more
             if (rxactive) {
                 rxactive = false;
                 endReceive();
-                setRssiValid(false);
-                if (DEBUGV && printer!=null) printer.println("RF231: RX shutdown");
-            }
+                state = RECV_SFD_SCAN;
+                stateMachine.transition(1);//change to idle state
+             //   setRssiValid(false);
+                if (DEBUGRX && printer!=null) printer.println("RF231: RX shutdown");
+            } else printer.println("receiver shutdown while not active");
         }
 
-        void resetOverflow() {
-            state = RECV_SFD_SCAN;
-        }
     }
 
     private long toCycles(long us) {
         return us * sim.getClock().getHZ() / 1000000;
     }
 
-    public static Medium createMedium(Synchronizer synch, Medium.Arbitrator arbitrator) {
+   // public static Medium createMedium(Synchronizer synch, Medium.Arbitrator arbitrator) {
+    public Medium createMedium(Synchronizer synch, Medium.Arbitrator arbitrator) {
         return new Medium(synch, arbitrator, 250000, 48, 8, 8 * 128);
     }
 
@@ -1423,7 +1537,7 @@ public class AT86RF231Radio implements Radio {
 
         public boolean read() {
             boolean val = level.getValue();
-            if (DEBUG && printer!=null) printer.println("RF231 Read (output) pin " + name + " -> " + val);
+            if (DEBUGV && printer!=null) printer.println("RF231 Read (output) pin " + name + " -> " + val);
             return val;
         }
     }
