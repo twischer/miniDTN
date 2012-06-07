@@ -329,6 +329,11 @@ uint8_t i;
   process_start(&raven_lcd_process, NULL);
 #endif
 
+#if !RAVEN_LCD_INTERFACE
+  rs232_set_input(RS232_PORT_1, serial_line_input_byte);
+  serial_line_init();
+#endif
+
   /* Autostart other processes */
   autostart_start(autostart_processes);
 
