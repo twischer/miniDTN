@@ -39,7 +39,7 @@ import se.sics.cooja.avrmote.interfaces.AvrDebugger;
 import se.sics.cooja.avrmote.interfaces.AvroraADC;
 import se.sics.cooja.avrmote.interfaces.AvroraClock;
 import se.sics.cooja.avrmote.interfaces.AvroraLED;
-import se.sics.cooja.avrmote.interfaces.AvroraSerial0;
+import se.sics.cooja.avrmote.interfaces.AvroraUsart0;
 import se.sics.cooja.avrmote.interfaces.MicaZID;
 import se.sics.cooja.avrmote.interfaces.MicaZRadio;
 import se.sics.cooja.interfaces.Mote2MoteRelations;
@@ -79,7 +79,7 @@ public class MicaZMoteType extends AvroraMoteType {
         AvroraADC.class,
         MicaZRadio.class,
         AvroraClock.class,
-        AvroraSerial0.class,
+        AvroraUsart0.class,
         AvrDebugger.class,
         Mote2MoteRelations.class,
         MoteAttributes.class
