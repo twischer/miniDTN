@@ -68,9 +68,9 @@ public class RFA1ID extends MoteID {
         public void execute(long t) {
             if (persistentSetIDCounter-- > 0) {
                 setMoteID(moteID);
-                persistentSetIDCounter = 0;
-                mote.setEEPROM(0, moteID);
-                mote.setEEPROM(1, moteID >> 8);
+              //  persistentSetIDCounter = 0;  //Can be set to zero if EEPROM is used
+               // mote.setEEPROM(0, moteID);
+              //  mote.setEEPROM(1, moteID >> 8);
                 if (t + mote.getInterfaces().getClock().getDrift() < 0) {
                     /* Wait until node is booting */
                     mote.getSimulation().scheduleEvent(this, -mote.getInterfaces().getClock().getDrift());
