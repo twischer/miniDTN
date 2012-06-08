@@ -60,6 +60,9 @@ public class ATmega128RFA1Radio implements Radio {
     private final static boolean DEBUGC  = false;  //CCA, CSMA
     private final static boolean DEBUGQ  = true;   //"should not happen" debugs
     
+    //Flag to tell RADIO.java to ignore our write to the PHY_ED_LEVEL register
+    public boolean isWritingEDLevel = false;
+    
     //-- Radio states, confusingly contained in the TRX_STATUS register --------
     public  byte rf231Status = 0;
     private static final byte STATE_BUSY_RX      = 0x01;
@@ -75,7 +78,7 @@ public class ATmega128RFA1Radio implements Radio {
     private static final byte STATE_TRANSITION   = 0x1F;
 
     //-- Radio commands, confusingly written to the TRX_STATE register ---------
-    //-- More confusion arises from the presence of the upper TRAC_STATUS bits -
+    //-- More confusion arises from the naming of the upper TRAC_STATUS bits ---
     private static final byte CMD_NOP            = 0x00;
     private static final byte CMD_TX_START       = 0x02;
     private static final byte CMD_FORCE_TRX_OFF  = 0x03; 
@@ -158,7 +161,7 @@ public class ATmega128RFA1Radio implements Radio {
     protected final int xfreq;
     protected double BERtotal = 0.0D;
     protected int BERcount = 0;
-    protected boolean txactive = false,rxactive = false;
+    protected boolean txactive = false,rxactive = false, rxBlocked = false;
     protected boolean sendingAck, waitingAck, handledAck;
     protected byte frameRetries, csmaRetries;
     protected boolean lastCRCok;
@@ -222,7 +225,11 @@ public class ATmega128RFA1Radio implements Radio {
         interpreter.writeDataByte(PART_NUM,    (byte) 0x83); //ATmega128RFA1
         interpreter.writeDataByte(VERSION_NUM, (byte) 0x02); //revision AB
         interpreter.writeDataByte(CSMA_BE,     (byte) 0x53);
-        //TODO:initialize all registers to reset values
+        interpreter.writeDataByte(PHY_CC_CCA,  (byte) 0x2B); //CCA mode 1, channel 11
+    //    isWritingEDLevel = true;
+   //     interpreter.writeDataByte(PHY_ED_LEVEL,(byte) 0xFF); //bombs on startup, register not installed?
+   //     isWritingEDLevel = false;
+        //TODO:initialize other registers to reset values
         lastCRCok = false;
         rf231Status = STATE_TRX_OFF;
         txactive = rxactive = true;
@@ -230,29 +237,42 @@ public class ATmega128RFA1Radio implements Radio {
         receiver.shutdown();
     }
 
+    //determine cca result based on mode and ED register
+    protected boolean getCcaResult() {
+        //update the ED register with the current signal strength in dBm
+        //TODO:only if 0xff?
+        byte currentRSSI = (byte) ( 3 * interpreter.getDataByte(PHY_RSSI) & 0x1f);
+        isWritingEDLevel = true;
+        interpreter.writeDataByte(PHY_ED_LEVEL, currentRSSI);
+        isWritingEDLevel = false;
+        boolean aboveThres = currentRSSI  > ((interpreter.getDataByte(CCA_THRES) & 0x0f) << 1);
+        boolean carrierSense = (rf231Status == STATE_BUSY_RX) || (rf231Status == STATE_BUSY_RX_AACK);
+        byte mode = (byte) ((interpreter.getDataByte(PHY_CC_CCA) & 0x60) >> 5);
+     //   printer.println("cca mode " + mode + " above thres = " + aboveThres + " carrierSense = " + carrierSense);
+        switch (mode) {
+            case 0: //Carrier sense OR energy above threshold
+                return carrierSense || aboveThres;
+            case 1: //Energy above threshold
+                return aboveThres;
+            case 2: //Carrier sense only
+                return carrierSense;
+        }
+        //  case 3: //Carrier sense AND energy above threshold
+        return carrierSense && aboveThres;
+    }
+
     //ccaDelay fires after the cca or energy detect delay.
     protected class ccaDelay implements Simulator.Event {      
         public void fire() {
-            //a write to PHY_ED_LEVEL will endless recursion
-            //interpreter.writeDataByte(PHY_ED_LEVEL, (byte)((interpreter.getDataByte(PHY_RSSI) & 0x1f) * 3));                    
+            boolean ccaBusy = getCcaResult();                  
             //update cca done and cca_status
-            boolean ccaBusy = (interpreter.getDataByte(PHY_RSSI) & 0x1f) > ((interpreter.getDataByte(CCA_THRES) & 0x0f) << 1);
- /*
-            //TODO: Carrier sense
-            switch (mode) {
-                case 0: //Carrier sense OR energy above threshold
-                case 1: //Energy above threshold
-                case 2: //Carrier sense only
-                case 3: //Carrier sense AND energy above threshold
-                break;
-            }
-*/
             if (rf231Status == STATE_BUSY_TX_ARET) {
+                //Waiting on csma result
                 if (ccaBusy) {
                     if (csmaRetries > 0) {
                         if (DEBUGC && printer!=null) printer.println("RFA1: csma busy, retry count " + csmaRetries);
                         csmaRetries--;
-                        //Wait for a random number of 20 symbol periods, between 0 and 2**backoff-1
+                        //Wait for a random number of 20 symbol periods, between 2**minBE and 2**maxBE
                         int backoff = 1;
                         int minBE = (int)(interpreter.getDataByte(CSMA_BE) & 0xFF);
                         int maxBE = minBE >> 4;
@@ -269,44 +289,31 @@ public class ATmega128RFA1Radio implements Radio {
                         //Set TRAC_STATUS to no CHANNEL_ACCESS_FAILURE and return to TX_ARET_ON
                         //interpreter.writeDataByte(TRX_STATE, (byte) (0x20 | (interpreter.getDataByte(TRX_STATE) & 0x1F)));
                         interpreter.writeDataByte(TRX_STATE, (byte)0x20);
-                        //rf231Status = STATE_TX_ARET_ON;
-                        rf231Status = STATE_PLL_ON;//??
+                        rf231Status = STATE_TX_ARET_ON;
                         interpreter.writeDataByte(TRX_STATUS, rf231Status);
-                        if (rxactive) printer.println("rxactive after csma failure");
-                        //receiver.shutdown();//??
-                        //possibly sending an autoack?
-                        if (txactive) printer.println("txactive after csma failure");
-                        transmitter.endTransmit(); //this seems to be necessary...
-                      //  if (txactive) transmitter.shutdown();
                         if (DEBUGC & printer !=null) printer.println("RFA1: TRX24 TX_END interrupt, csma failure");
                         //interpreter.setPosted(mcu.getProperties().getInterrupt("TRX24 TX_END"), true);
                         interpreter.setPosted(64, true);
                     }
                 } else {
-                    if (!rxactive) printer.println("rx not active during cca");
-                    if (rxactive) receiver.shutdown(); //should receiver get shutdown regardless?
                     if (DEBUGC && printer!=null) printer.println("RFA1: Starting tx after csma");
+                    receiver.shutdown();
+                    rxBlocked = false;
                     transmitter.startup();
                 }
                 return;
             }
-            //TODO:is this line needed for some reason????
-            interpreter.writeDataByte(TRX_STATUS, (byte) (interpreter.getDataByte(TRX_STATUS) & 0x3f));
-            if (ccaBusy) {
-                interpreter.writeDataByte(TRX_STATUS, (byte) (0x80 | (interpreter.getDataByte(TRX_STATUS) & 0x3f)));
-            } else {
-                interpreter.writeDataByte(TRX_STATUS, (byte) (0xC0 | (interpreter.getDataByte(TRX_STATUS) & 0x3f)));
-            }
-       //     if (ccaBusy) if (DEBUGC && printer !=null) printer.println("RFA1: TRX24_CCA_ED_DONE interrupt, ED " + interpreter.getDataByte(PHY_ED_LEVEL)+" busy ="+ccaBusy);
-          //  printer.println("after cca status is " + rf231Status);
             if (rf231Status == STATE_BUSY_RX_AACK) {
-            //receiving a packet during the cca. How to handle this?
-               if (DEBUGC && printer !=null)printer.println("RFA1: BUSY_RX_AACK after CCA");
-              //  rf231Status = STATE_RX_AACK_ON;
+              if (DEBUGQ && printer !=null)printer.println("RFA1: BUSY_RX_AACK after CCA");
             }
+            if (ccaBusy) {
+          //  printer.println("showingbusy");
+                interpreter.writeDataByte(TRX_STATUS, (byte) (0x80 | rf231Status));
+            } else {
+                interpreter.writeDataByte(TRX_STATUS, (byte) (0xC0 | rf231Status));
+            }
+            if (ccaBusy) if (DEBUGC && printer !=null) printer.println("RFA1: TRX24_CCA_ED_DONE interrupt, ED " + interpreter.getDataByte(PHY_ED_LEVEL)+" busy ="+ccaBusy);
             //interpreter.setPosted(mcu.getProperties().getInterrupt("TRX24 CCA_ED_DONE", true);
-        //    if (rxactive) printer.println("rxactive after cca");
-            //receiver.shutdown();
             interpreter.setPosted(62, true);
         }
     }
@@ -328,19 +335,32 @@ public class ATmega128RFA1Radio implements Radio {
         //TODO:check for invalid state transitions
         //TODO:proper transition times through STATE_TRANSITION_IN_PROGRESS
         switch (val) {
+            //This "command" is passed when a CCA is triggered by a write to the ED register in extended mode,
+            //or by setting CCA_REQUEST bit if the radio is in any RX state in basic mode.
             case (byte) 0x42:
-              //  if (DEBUGC && printer!=null) printer.println("RFA1: CCA, PHYRSSI = " +interpreter.getDataByte(PHY_RSSI) + " CCATHRES " + (interpreter.getDataByte(CCA_THRES) & 0x0f));
                 //clear status and done bit
-                interpreter.writeDataByte(TRX_STATUS, (byte) (interpreter.getDataByte(TRX_STATUS) & 0x3f));
-                //See data sheet for the various possibilities. In extended mode rx done is set immediately with no CCA.
-                //In BUSY_RX carrier sense only the result is available immediately.
+                interpreter.writeDataByte(TRX_STATUS, rf231Status);
+                //See data sheet Table 9-11 for the various possibilities.
+                if (rf231Status == STATE_BUSY_RX) {
+                printer.println("busyrx");
+                    //In BUSY_RX carrier sense only is available immediately, ED  8 symbol periods after SHR
+                    byte mode = (byte) ((interpreter.getDataByte(PHY_CC_CCA) & 0x60) >> 5);
+                    if ((mode == 2) || (interpreter.getDataByte(PHY_ED_LEVEL) != (byte) 0xff)) {
+                        getCcaResult();
+                    } else {
+                        //Just started receiving the frame, need to wait up to 140 usec for ED to be set by the read routine
+                        printer.println("waiting on rxedresult");
+                    }
+                } else if (rf231Status == STATE_BUSY_RX_AACK) {
+                    //Not recommended
+                    printer.println("ccainbusyrxaack");
+                }
+           //     printer.println("rf231status at cca is " + rf231Status);
+                if (!rxactive) {
+                printer.println("cca command when rx not active");
+                }
                 //wait 140 usec (8.75 symbol periods)
                 receiver.clock.insertEvent(ccaDelayEvent, 875*receiver.cyclesPerByte/200);
-                
-                //Put the result into the PHY_ED_LEVEL register
-                //return in val for now to avoid recursion
-                val = (byte)((interpreter.getDataByte(PHY_RSSI) & 0x1f) * 3);
-                //return the ED result for the super to write to the register
                 return(val);
 
             case CMD_NOP:
@@ -349,6 +369,7 @@ public class ATmega128RFA1Radio implements Radio {
             case CMD_TX_START:
                 if (DEBUG && printer != null) printer.println("RFA1: TX_START");
                 rf231Status = STATE_BUSY_TX;
+                if (sendingAck) printer.println("cancelsendingACK1");
                 sendingAck = false;
                 if (rxactive) receiver.shutdown();
                 if (!txactive) transmitter.startup();
@@ -361,11 +382,12 @@ public class ATmega128RFA1Radio implements Radio {
                 break;
             case CMD_FORCE_PLL_ON:
                 if (DEBUG && printer != null) printer.println("RFA1: FORCE_PLL_ON");
-                rf231Status = STATE_PLL_ON;     
+                rf231Status = STATE_PLL_ON;
                 break;
             case CMD_RX_ON:
                 if (DEBUG && printer != null) printer.println("RFA1: RX_ON");
                 rf231Status = STATE_RX_ON;
+                rxBlocked = false;
                 if (txactive) transmitter.shutdown();
                 if (!rxactive) receiver.startup();
                 break;
@@ -382,6 +404,7 @@ public class ATmega128RFA1Radio implements Radio {
             case CMD_RX_AACK_ON:
                 if (DEBUG && printer != null) printer.println("RFA1: RX_AACK_ON");
                 rf231Status = STATE_RX_AACK_ON;
+                rxBlocked = false;
                 //TODO: Set TRAC_STATUS to INVALID for potential SUCCESS_WAIT_FOR_ACK return in slotted mode
              // val|=0xE0;
                 if (waitingAck) printer.println("rx on command resets waitingack");
@@ -391,30 +414,17 @@ public class ATmega128RFA1Radio implements Radio {
                 break;
             case CMD_TX_ARET_ON:
                 if (DEBUG && printer != null) printer.println("RFA1: TX_ARET_ON");
-                rf231Status = STATE_BUSY_TX_ARET;
+                //We need to keep the receiver active to get updated RSSI from Cooja,
+                //so prevent it from actually processing any bytes
+                rxBlocked = true;
+            //    if (!rxactive) printer.println("rx not active when txaret started");
+                if (!rxactive) receiver.startup();
+                rf231Status = STATE_TX_ARET_ON;
+                  if (sendingAck) printer.println("cancelsendingACK2");
                 sendingAck = false;
-                frameRetries = (byte) ((interpreter.getDataByte(XAH_CTRL_0) & 0xF0) >> 4);
-                csmaRetries  = (byte) ((interpreter.getDataByte(XAH_CTRL_0) & 0x0E) >> 1);
-             //   if (DEBUGC && printer!=null) printer.println("RFA1: Frame, csma retries = " + frameRetries + " " + csmaRetries);
-                //slottedOperation = (registers[XAH_CTRL_0] & 0x01) != 0; //TODO: slotted operation
                 //Set TRAC_STATUS to INVALID
                 val|=0xE0;
-                if (csmaRetries == 7) {
-                    csmaRetries = 0;
-                    //A value of 7 initiates an immediate transmission with no CSMA
-                    if (rxactive) receiver.shutdown();
-                    // Transmission starts on the rising edge of SLPTR
-                    if (!txactive) transmitter.startup();  
-                } else if (csmaRetries == 6) {
-                    csmaRetries = 0;
-                    //6 is reserved
-                    if (DEBUGQ && printer!=null) printer.println("RFA1: csma retry of 6 is reserved");
-                } else {
-                    //TODO:should csma should wait for rising edge of slptr?
-                    if (!rxactive) receiver.startup();
-                    //wait 140 usec (8.75 symbol periods)
-                    receiver.clock.insertEvent(ccaDelayEvent, 875*receiver.cyclesPerByte/200);
-                }
+                //Transmission is initiated by SLP transition
                 break;
             default:
                 if (printer != null) printer.println("RFA1: Invalid TRX_CMD, treat as NOP" + val);
@@ -431,6 +441,7 @@ public class ATmega128RFA1Radio implements Radio {
             rf231Status = STATE_TRX_OFF;
             interpreter.writeDataByte(TRX_STATUS, (byte) (rf231Status));
             if (DEBUG && printer !=null) printer.println("RFA1: TRX24_AWAKE interrupt");
+            //Invalidate the energy detect register??
             //interpreter.setPosted(mcu.getProperties().getInterrupt("TRX24 AWAKE", true);
             interpreter.setPosted(65, true);
         }
@@ -452,13 +463,39 @@ public class ATmega128RFA1Radio implements Radio {
                 case STATE_TRX_OFF:
                     if (rxactive) receiver.shutdown();
                     if (txactive) transmitter.shutdown();
-                    stateMachine.transition(0);//change to off state
+                    //change to off state
+                    stateMachine.transition(0);
                     rf231Status = STATE_SLEEP;
+                //    printer.println("sleep");
+                    //invalidate PHY_ED_LEVEL register
+                    isWritingEDLevel = true;
+                    interpreter.writeDataByte(PHY_ED_LEVEL,(byte) 0xFF);
+                    isWritingEDLevel = false;
                     break;
                 case STATE_PLL_ON:
                     rf231Status = STATE_BUSY_TX;
                     break;
+                case STATE_TX_ARET_ON:
+                    rf231Status = STATE_BUSY_TX_ARET;
+                    frameRetries = (byte) ((interpreter.getDataByte(XAH_CTRL_0) & 0xF0) >> 4);
+                    csmaRetries  = (byte) ((interpreter.getDataByte(XAH_CTRL_0) & 0x0E) >> 1);
+                    //if (DEBUGC && printer!=null) printer.println("RFA1: Frame, csma retries = " + frameRetries + " " + csmaRetries);
+                    //slottedOperation = (registers[XAH_CTRL_0] & 0x01) != 0; //TODO: slotted operation
+                    if (csmaRetries == 7) {
+                        csmaRetries = 0;
+                        //A value of 7 initiates an immediate transmission with no CSMA
+                        if (!txactive) transmitter.startup();  
+                    } else if (csmaRetries == 6) {
+                        csmaRetries = 0;
+                        //6 is reserved
+                        if (DEBUGQ && printer!=null) printer.println("RFA1: csma retry of 6 is reserved");
+                    } else {
+                        //wait 140 usec (8.75 symbol periods for a csma)
+                        receiver.clock.insertEvent(ccaDelayEvent, 875*receiver.cyclesPerByte/200);
+                    }
+                    break;
                 case STATE_BUSY_TX_ARET:
+                printer.println("slp pin raised during busy_TX_ARET");
                 //probably state shoud not go busy until csma is successful?
            //     case STATE_TX_ARET_ON:
             //        rf231Status = STATE_BUSY_TX_ARET;
@@ -477,6 +514,7 @@ public class ATmega128RFA1Radio implements Radio {
                     if (rxactive) receiver.shutdown();
                     if (txactive) transmitter.shutdown();
                     //TODO:idle state before or after wake?
+                 //   printer.println("wake request");
                     stateMachine.transition(3);//change to on state
                     //wait 384 usec (24 symbol periods, 12 bytes). Datasheet says 240 typical.
                     transmitter.clock.insertEvent(wakeupDelayEvent, 12*transmitter.cyclesPerByte);
@@ -620,19 +658,26 @@ public class ATmega128RFA1Radio implements Radio {
                             frameRetries--;
                              if (rxactive) receiver.shutdown();
                              if (!txactive) transmitter.startup();
-                        } else {
-                           //Set TRAC_STATUS to no ack and return to TX_ARET_ON
-                        //    interpreter.writeDataByte(TRX_STATE, (byte) (0xA0 | (interpreter.getDataByte(TRX_STATE) & 0x1F)));
+                        } else if (rf231Status == STATE_BUSY_TX_ARET) {
+                            //Set TRAC_STATUS to no ack and return to TX_ARET_ON
                             interpreter.writeDataByte(TRX_STATE, (byte)0xA0);
                             rf231Status = STATE_TX_ARET_ON;
                             interpreter.writeDataByte(TRX_STATUS, rf231Status);
-                            state = TX_WAIT;//???
-
-                            if (!rxactive)  printer.println("rx1 not active before shutdown, status is " + rf231Status);
-                            receiver.shutdown();
+                            if (txactive) {
+                                printer.println("tx becameactive during  wait for ack");
+                                transmitter.state = TX_WAIT;//???
+                            }
+                            if (!rxactive)  printer.println("rx1 not active at acktimeout");
+                            if (!rxactive) receiver.shutdown();
                             if (DEBUGA & printer !=null) printer.println("RFA1: TRX24 TX_END interrupt, no ack");
                             //interpreter.setPosted(mcu.getProperties().getInterrupt("TRX24 TX_END"), true);
                             interpreter.setPosted(64, true);
+                        } else {
+                            if (DEBUGQ && printer != null) {
+                                printer.println("unknown state at acktimeout, rf231status is " + rf231Status);
+                                if (txactive) printer.println("txisactive");
+                                if (rxactive) printer.println("rxisactive");
+                            }
                         }
                     }
             //  }
@@ -643,7 +688,7 @@ public class ATmega128RFA1Radio implements Radio {
         public Transmitter(Medium m) {
             super(m, sim.getClock());
         }
-private boolean endofack;
+
         public byte nextByte() {
             if (rxactive) printer.println("ractive while transmitting");
             if (!txactive) printer.println("tx not active while transmitting");
@@ -685,7 +730,6 @@ private boolean endofack;
                                 break;
                             case 2://Sequence number
                                 val = DSN;
-                                endofack = true;
                                 waitForAck = false;
                                 state = TX_END;
                                 break;
@@ -731,8 +775,18 @@ private boolean endofack;
             if (state == TX_END) {
                 //Set the TRAC status bits in the TRX_STATE register
                 //0 success 1 pending 2 waitforack 3 accessfail 5 noack 7 invalid
+                if (sendingAck){
+               //     printer.println("senttheack " + rf231Status);
+                    if (!txactive) printer.println("txwasnotactive");
+                    transmitter.shutdown();
+                                        if (rxactive) printer.println("rxbeforerestart");
+                    receiver.startup();
+                                                rf231Status = STATE_RX_AACK_ON; //cancel the busy state
+                    sendingAck = false;
+                    state = TX_WAIT;
+                    return val;
+                }
                 if (waitForAck && (rf231Status == STATE_BUSY_TX_ARET)) {
-    if (endofack) printer.println("endofack turnaround");
                     //Show waiting for ack, and switch to rx mode
                     waitingAck = true;
                     handledAck = false;
@@ -747,9 +801,11 @@ private boolean endofack;
                     state = TX_WAIT;
                     return val;
                 } else {
-              //  if(endofack) printer.println("endofack ok");
-                endofack = false;
-                    rf231Status = STATE_PLL_ON;
+                    if (rf231Status == STATE_BUSY_TX_ARET) {
+                        rf231Status = STATE_TX_ARET_ON;
+                    } else if (rf231Status == STATE_BUSY_TX) {
+                        rf231Status = STATE_PLL_ON;
+                    }
                     interpreter.writeDataByte(TRX_STATUS, (byte) (rf231Status));
                     interpreter.writeDataByte(TRX_STATE, (byte) 0);
                     transmitter.shutdown();
@@ -819,8 +875,36 @@ private boolean endofack;
         }
 
         public byte nextByte(boolean lock, byte b) {
-            //If we got switched off while receiving just return
-            if (!rxactive) return(0);
+            //If we got switched off just return
+            if (!rxactive) {
+                switch (rf231Status) {
+                    //RDC might intentionally turn off once a strobe is received, to save power
+                    case STATE_SLEEP:
+                    case STATE_RX_ON:
+                    //Internal turnoff occurs after autoack reception
+                    case STATE_TX_ARET_ON:
+                    case STATE_BUSY_TX_ARET:
+                    case STATE_TRX_OFF:
+                        break;
+                    case STATE_BUSY_RX_AACK:
+                        //Might have turned off while transmitting the ACK?
+                        printer.println("rf231Status busy after rx turned off");
+                        //go back to non-busy?
+                        rf231Status = STATE_RX_AACK_ON;
+                        interpreter.writeDataByte(TRX_STATUS, rf231Status); 
+                        break;
+                    case STATE_PLL_ON:
+                        //??dunno how it gets in this state
+                    default:
+                         printer.println("rf231Status after rx turned off is " + rf231Status);
+                        break;
+                }
+                return(0);
+            }
+            if (rxBlocked) {
+                //receiver is on to get rssi updates from cooja during csma
+                return(0);
+            }
             
             if (state == RECV_END_STATE) {
                 state = RECV_SFD_SCAN; // to prevent loops when calling shutdown/endReceive
@@ -848,63 +932,70 @@ private boolean endofack;
             if (!lock) {
                 if (DEBUGRX && printer != null) printer.println("RF231 locklost, state= "+state);
                 // the reception lock has been lost
+
                 switch (state) {
- 
                     case RECV_SFD_MATCHED_2:
                     case RECV_IN_PACKET:
+                    case RECV_WAIT:
                     case RECV_CRC_1:
                     case RECV_CRC_2:
-                         if (DEBUGQ && printer != null) printer.println("RFA1: PLL_UNLOCK Interrupt");
+                         //if (DEBUGQ && printer != null) printer.println("RFA1: PLL_UNLOCK Interrupt");
                          //interpreter.setPosted(mcu.getProperties().getInterrupt("TRX24 PLL_UNLOCK"), true);
-                         interpreter.setPosted(58, true);
+                    //     interpreter.setPosted(58, true);
                         //packet lost in middle -> drop frame
                         // fall through
                     case RECV_SFD_SCAN:                   
                     case RECV_SFD_MATCHED_1: // packet has just started
                         if (DEBUGRX && printer != null) printer.println("RFA1: lock lost");
                         state = RECV_SFD_SCAN;
-                        if (rf231Status == STATE_BUSY_RX_AACK) {
-                            rf231Status = STATE_RX_AACK_ON;
-                        } else if (rf231Status == STATE_BUSY_RX) {
-                            rf231Status = STATE_RX_ON;
-                        } else if (rf231Status == STATE_BUSY_TX_ARET) {
-                            //that's one ack were not going to get
-                        } else if (rf231Status == STATE_RX_AACK_ON) {
-                            //we are getting jammed
-                        } else if (rf231Status == STATE_RX_ON) {
-                            //we are getting jammed
-                        } else if (rf231Status == STATE_PLL_ON) {
-                            //whats up with that
-                        } else {
-                            if (DEBUGQ && printer!=null) printer.println("RFA1: Bad state when lock lost " + rf231Status);
-                        }
-                        interpreter.writeDataByte(TRX_STATUS, (byte) (rf231Status | (interpreter.getDataByte(TRX_STATUS) & 0xE0)));
-                        
-                        /*
-                        //rx start invalidates CRC and ED register
-                        interpreter.writeDataByte(PHY_RSSI, (byte) (interpreter.getDataByte(PHY_RSSI) & 0x7f)); //Clear RX_CRC_VALID
-                        interpreter.writeDataByte(PHY_ED_LEVEL, (byte) 0xff);
-                        //switch to busy state unless waiting for ack in BUSY_TX_ARET
-                        if (rf231Status == STATE_RX_AACK_ON) {
-                            rf231Status = STATE_BUSY_RX_AACK;
-                        } else if (rf231Status == STATE_RX_ON) {
-                        printer.println("setting busyrx state here!");
-                            rf231Status = STATE_BUSY_RX;
-                        }
-                        interpreter.writeDataByte(TRX_STATUS, (byte) (rf231Status | (interpreter.getDataByte(TRX_STATUS) & 0xE0)));
-                        //interpreter.setPosted(mcu.getProperties().getInterrupt("TRX24 RX_START"), true);
-                        if (DEBUGRX & printer !=null) printer.println("RFA1: TRX24 RX_START interrupt");
-                        interpreter.setPosted(60, true);
-                        */
                         break;
                     default:
                         if (DEBUGQ && printer!=null) printer.println("RFA1: RX badstate " + state);
-                                                state = RECV_SFD_SCAN;
+                        state = RECV_SFD_SCAN;
                         break;
                 }
+
+                switch (rf231Status) {
+                    //Never got past the SFD
+                    case STATE_RX_ON:
+                    case STATE_RX_AACK_ON:
+                        break;
+                    //We were receiving packet, go back to non-busy
+                    //TODO:interrupt here?
+                    case STATE_BUSY_RX:
+                        rf231Status = STATE_RX_ON;
+                        break;
+                    case STATE_BUSY_RX_AACK:
+                        rf231Status = STATE_RX_AACK_ON;
+                        break;
+                    //We were receiving an ACK after extended mode transmit                    
+                    case STATE_BUSY_TX_ARET:
+                        waitingAck = false;
+                        handledAck = true;
+                        //Status goes from BUSY_TX_ARET to TX_ARET_ON
+                        rf231Status = STATE_TX_ARET_ON;
+                        //Set TRAC_STATUS bits to failure
+                        interpreter.writeDataByte(TRX_STATE, (byte) 0xA0); 
+                        state = RECV_SFD_SCAN;
+                        //Post the TRX_END interrupt
+                        //interpreter.setPosted(mcu.getProperties().getInterrupt("TRX24 TX_END"), true);
+                        if (DEBUGA & printer !=null) printer.println("RFA1: TRX24 TX_END interrupta, lost lock on ack");
+                        interpreter.setPosted(64, true);
+                        if (!rxactive)  printer.println("rx1 not active before shutdown, status is " + rf231Status);
+                        if (rxactive) receiver.shutdown();
+                        if (txactive) printer.println("tx1 active when ack locklost");
+                        if (txactive) transmitter.shutdown();
+                        break;
+                    default:
+                         printer.println("lock lost, rf231Status = " + rf231Status);
+                        break;
+                }
+                //TODO:Should upper bits change?
+                interpreter.writeDataByte(TRX_STATUS, rf231Status);
                 return b;
             }
-              if (txactive)  {
+
+            if (txactive)  {
                 printer.println("txactive while receiving5 " + state);
                 transmitter.shutdown();
             }          
@@ -926,7 +1017,9 @@ private boolean endofack;
                         }
                         //rx start invalidates CRC and ED register
                         interpreter.writeDataByte(PHY_RSSI,(byte)(interpreter.getDataByte(PHY_RSSI) & 0x7f)); //Clear RX_CRC_VALID
+                        isWritingEDLevel = true;
                         interpreter.writeDataByte(PHY_ED_LEVEL, (byte)0xff);
+                        isWritingEDLevel = false;
                         if (rf231Status == STATE_RX_AACK_ON) {
                             rf231Status = STATE_BUSY_RX_AACK;
                         } else if (rf231Status == STATE_RX_ON) {
@@ -935,6 +1028,9 @@ private boolean endofack;
                             printer.println("already in BUSY_RX_AACK on, probably a missed ack");
                         } else if (rf231Status == STATE_BUSY_RX) {
                             printer.println("already in BUSY_RX, should not be");
+                        } else  if (rf231Status == STATE_TX_ARET_ON) {
+                        // timeout on ack reception?
+                            return 0;
                         } else {
                             printer.println("not in a receive state! " + rf231Status + " " + interpreter.getDataByte(TRX_STATUS));
                             if (rf231Status == STATE_SLEEP) {
@@ -970,10 +1066,8 @@ private boolean endofack;
                         state = RECV_SFD_SCAN;
                         break;
                     }
-                    // Store length in TXT_RX_LENGTH register - TODO:for acks?
-                    interpreter.writeDataByte(TST_RX_LENGTH, (byte) length);
-                    // Start transferring bytes to RAM buffer
-          //          RXFBptr = 0x180;
+                    // Store length in TXT_RX_LENGTH register - TODO:for acks too?
+                  //  interpreter.writeDataByte(TST_RX_LENGTH, (byte) length);
                     counter = 0;
                     state = RECV_IN_PACKET;
                     if (waitingAck) {
@@ -999,19 +1093,18 @@ private boolean endofack;
                             receiver.shutdown();
                         }
                     } else {
+                        // Store length in TXT_RX_LENGTH register
+                        interpreter.writeDataByte(TST_RX_LENGTH, (byte) length);
                         // Start transferring bytes to RAM buffer
                         RXFBptr = 0x180;
-                        crc = 0;                   
-                        //Update the energy detect register
-                        //This should have been an average rssi over the previous 8 symbols
-                        //but basically is 3 times PHY_RSSI
-                        interpreter.writeDataByte(PHY_ED_LEVEL, (byte)((interpreter.getDataByte(PHY_RSSI) & 0x1f) * 3));
+                        crc = 0;
                     }
                     break;
 
                 case RECV_IN_PACKET:
                     // we are in the body of the packet.
                     counter++;
+                //    printer.println("counter " + counter);
                     if (waitingAck) {
                         if (handledAck) {
                             printer.println("waiting for ack but handled during reception");
@@ -1043,6 +1136,14 @@ private boolean endofack;
                     //Address Recognition and sequence number
                     //TODO:handle promiscuous mode
                     if (counter <= 13) {
+                        if (counter == 9) {
+                            // ED in dB becomes valid 8.75 symbol periods after SFD
+                            //This should be been an average rssi over the previous 8 symbols; we will use 3 times PHY_RSSI
+                            //The MCU writing to the ED register triggers a CCA, so we flag RADIO.java not to do that.
+                            isWritingEDLevel = true;
+                            interpreter.writeDataByte(PHY_ED_LEVEL, (byte)((interpreter.getDataByte(PHY_RSSI) & 0x1f) * 3));
+                            isWritingEDLevel = false;
+                        }
                         // address match enabled only in RA_AACK mode TODO: should be BUSY_RX_AACK
                         boolean satisfied = matchAddress(b, counter);
                         if (!satisfied) {
@@ -1104,7 +1205,8 @@ private boolean endofack;
                    if (rf231Status == STATE_BUSY_TX_ARET) {
                             printer.println(" STATE_BUSY_TX_ARET here! " + rf231Status + " " + interpreter.getDataByte(TRX_STATUS));
                     } else if (rf231Status == STATE_TX_ARET_ON) {
-                            System.out.println("TX_ARET state in receiver here");
+                        //this could have been a timeout on the ack reception
+                            System.out.println("TX_ARET state at RX end");
                     }
                     if (lastCRCok && (rf231Status == STATE_BUSY_RX_AACK) && (interpreter.getDataByte(0x180) & 0x20) == 0x20) {
                         //send ack if we are not receiving ack frame
@@ -1125,9 +1227,13 @@ private boolean endofack;
                             rf231Status = STATE_RX_AACK_ON;
                         } else if (rf231Status == STATE_BUSY_RX) {
                               //received frame during cca?
-                               rf231Status = STATE_RX_ON;                      
+                               rf231Status = STATE_RX_ON;
+                        } else if (rf231Status == STATE_RX_ON) {                      
+                            //hmmm probably cca mishandling
+                        } else if (rf231Status == STATE_RX_AACK_ON) {
+                            //ditto
                         } else {
-                            if (DEBUGQ && printer!=null) printer.println("RFA1: not busy at end of reception");
+                            if (DEBUGQ && printer!=null) printer.println("RFA1: not busy at end of reception " + rf231Status);
                             rf231Status = STATE_RX_AACK_ON;
                         }
                         interpreter.writeDataByte(TRX_STATUS, (byte) (rf231Status | (interpreter.getDataByte(TRX_STATUS) & 0xE0)));
@@ -1142,7 +1248,6 @@ private boolean endofack;
                     if (++counter == length) {
                         clearBER();  // will otherwise be done by getCorrelation()
                         state = RECV_SFD_SCAN;
-                     //   SendAck = SENDACK_NONE;  // just in case we received SACK(PEND) in the meantime
                     }
                     break;
                 default:
@@ -1244,7 +1349,6 @@ private boolean endofack;
                 state = RECV_SFD_SCAN;
                 clearBER();
                 beginReceive(getFrequency());
-      //          clock.insertEvent(rssiValidEvent, 4*cyclesPerByte);  // 8 symbols = 4 bytes
                 if (DEBUGRX && printer!=null) printer.println("RFA1: RX startup");
             } else printer.println("receiver startup while active");
         }
@@ -1255,7 +1359,6 @@ private boolean endofack;
                 endReceive();
                 state = RECV_SFD_SCAN;
                 stateMachine.transition(1);//change to idle state
-             //   setRssiValid(false);
                 if (DEBUGRX && printer!=null) printer.println("RFA1: RX shutdown");
             } else printer.println("receiver shutdown while not active");
         }
@@ -1275,19 +1378,7 @@ private boolean endofack;
         69,69,69,69,69,69,69,69,69,69,69,69,69,69,69,69,67,67,67,67,67,67,65,65,65,65,65,
         65,65,64,64,63,63,63,63,63,63,63,63,63,61,61,61,60,60,60,58,58,56,56,56,55,55,55,
         50,50,50,50,50,50,50};
-        protected double Correlation;
-/*
-        private void setRssiValid (boolean v){
-            if (DEBUG && printer!=null) printer.println("RF231: setrssivalid "+ rssi_val);
-            registers[PHY_RSSI] |= 0x80; //Set RX_CRC_VALID
-        }
-        
-        private boolean getRssiValid (){
-            if (DEBUG && printer!=null) printer.println("RF231: getRssivalid");
-            //RF231 RSSI is always valid in non-extended mode
-            return true;
-        }
- */       
+        protected double Correlation;      
 
         public double getCorrelation (){
             int PERindex = (int)(getPER()*100);
@@ -1306,7 +1397,7 @@ private boolean endofack;
             int rssi_val = (((int) Math.rint(Prec) + 90) / 3) +1;
             if (rssi_val < 0) rssi_val = 0;
             if (rssi_val > 28) rssi_val = 28;
-            if (DEBUGRX && printer!=null) printer.println("RFA1: setrssi " + rssi_val + " " + this);
+          //if (DEBUGRX && printer!=null) printer.println("RFA1: setrssi " + rssi_val + " " + this);
             interpreter.writeDataByte(PHY_RSSI, (byte) (rssi_val | interpreter.getDataByte(PHY_RSSI) & 0xE0));
         }
 
@@ -1340,22 +1431,6 @@ private boolean endofack;
             BERcount = 0;
             BERtotal = 0.0D;
         }
-
-        /**
-         * The <code>RssiValid</code> class implements a Simulator Event
-         * that is fired when the RSSI becomes valid after 8 symbols
-         */
-         /*
-        protected class RssiValid implements Simulator.Event {
-        
-            public void fire() {
-                if (activated) {
-                    setRssiValid(true);
-                }
-            }
-        }
-        protected RssiValid rssiValidEvent = new RssiValid();
-        */
 
     }
 

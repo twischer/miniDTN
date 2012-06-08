@@ -77,8 +77,8 @@ public class RADIO extends AtmelInternalDevice implements RADIODevice, Interrupt
     
     public RADIO(AtmelMicrocontroller m) {
         super("radio", m);
-        TRX_STATE_reg = new TRX_STATE_Reg();
-        TRXPR_reg = new TRXPR_Reg();
+        TRX_STATE_reg    = new TRX_STATE_Reg();
+        TRXPR_reg        = new TRXPR_Reg();
         PHY_ED_LEVEL_reg = new PHY_ED_LEVEL_Reg();
         installIOReg("TRX_STATE", TRX_STATE_reg);
         installIOReg("TRXPR", TRXPR_reg);
@@ -90,6 +90,13 @@ public class RADIO extends AtmelInternalDevice implements RADIODevice, Interrupt
      */
     protected class TRXPR_Reg extends RWRegister {
         protected byte lastSLP = 0;
+        /*
+        public byte read() {
+          //  byte cursSLP = super.read();
+         //   if (lastSLP !=cursSLP) if (devicePrinter !=null) devicePrinter.println("RADIO: lastSLP " + lastSLP + " but curSLP is " + curSLP);
+            return 0;
+        }
+*/
         public void write(byte val) {
  //         if (devicePrinter != null) devicePrinter.println("RADIO: wrote " + StringUtil.toMultirepString(val, 8) + " to TRXPR");
             super.write(val);
@@ -117,10 +124,13 @@ public class RADIO extends AtmelInternalDevice implements RADIODevice, Interrupt
                             break;
                         //if PLL_ON or TX_ARET_ON -> BUSY_TX
                         //TRX_STATUS will have been set to the corresponding busy state
-                     //  case STATE_PLL_ON:
-                     //  case STATE_TX_ARET_ON:
+                       case STATE_PLL_ON:
+                       case STATE_TX_ARET_ON:
+                            connectedRadio.pinChangeSLP(val);
+                            break;
                         case STATE_BUSY_TX:
                         case STATE_BUSY_TX_ARET:
+                        devicePrinter.println("slp pin changed in busy state");
                             connectedRadio.pinChangeSLP(val);
                             break;
                      }
@@ -203,13 +213,18 @@ public class RADIO extends AtmelInternalDevice implements RADIODevice, Interrupt
     /**
      * PHY_ED_LEVEL register.
      * In extended operation a write to this register initiates a CCA
+     * Since both MCU and radio write to it, isWritingtoED is used as a flag
+     * to avoid infinite recursion.
      */
     protected class PHY_ED_LEVEL_Reg extends RWRegister {
         public void write(byte val) {
-            //Send the CCA command field to the radio.
-            //newCommand returns the value to write to the PHY_ED_LEVEL register
-            //This is obviously a hack.  0x42 is an arbitrary number.
-            super.write(connectedRadio.newCommand((byte) 0x42));
+            if (connectedRadio.isWritingEDLevel) {
+                super.write(val);
+            } else {
+                //Send the CCA command field to the radio.
+                //This is obviously a hack.  0x42 is an arbitrary number.
+                connectedRadio.newCommand((byte) 0x42);
+            }
         }
     }
 
