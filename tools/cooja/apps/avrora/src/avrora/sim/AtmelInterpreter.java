@@ -136,7 +136,6 @@ public abstract class AtmelInterpreter extends Interpreter implements LegacyInst
          * @return the current value of the register
          */
         public byte getRegisterByte(LegacyRegister reg) {
-     //       System.out.println("7");
             registerRead = reg.getNumber();
             return sram[registerRead];
         }
@@ -148,7 +147,6 @@ public abstract class AtmelInterpreter extends Interpreter implements LegacyInst
          * @return the current unsigned value of the register
          */
         public int getRegisterUnsigned(LegacyRegister reg) {
-         //            System.out.println("8");
             registerRead = reg.getNumber();
             return sram[registerRead] & 0xff;
         }
@@ -163,7 +161,6 @@ public abstract class AtmelInterpreter extends Interpreter implements LegacyInst
          * @return the current unsigned word value of the register pair
          */
         public int getRegisterWord(LegacyRegister reg)  {
-        //    System.out.println("9");
             int number = reg.getNumber();
             registerRead = number;
             registerRead2 = number+1;
@@ -597,7 +594,7 @@ public abstract class AtmelInterpreter extends Interpreter implements LegacyInst
      * @return the value of the register as an unsigned integer
      */
     public int getRegisterUnsigned(int reg) {
-  //      System.out.println("4");
+        registerRead = reg;
         return sram[reg] & 0xff;
     }
 
@@ -611,9 +608,14 @@ public abstract class AtmelInterpreter extends Interpreter implements LegacyInst
      * @return the current unsigned word value of the register pair
      */
     public int getRegisterWord(LegacyRegister reg) {
+    /* This was the code when registerRead not used to flag reads to debugger
         byte low = getRegisterByte(reg);
         byte high = getRegisterByte(reg.nextRegister());
-        registerRead2 = reg.nextRegister().getNumber();
+    */
+    /* This is a little faster, note registerRead2 is returning the low byte in this case */
+        byte low = getRegisterByte(reg);
+        registerRead2 = registerRead;
+        byte high = getRegisterByte(registerRead+1);
         return Arithmetic.uword(low, high);
     }
 
@@ -627,8 +629,8 @@ public abstract class AtmelInterpreter extends Interpreter implements LegacyInst
      * @return the current unsigned word value of the register pair
      */
     public int getRegisterWord(int reg) {
-     //   System.out.println("6");
         byte low = getRegisterByte(reg);
+        registerRead2 = registerRead;
         byte high = getRegisterByte(reg + 1);
         return Arithmetic.uword(low, high);
     }

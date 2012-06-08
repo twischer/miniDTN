@@ -141,7 +141,7 @@ public class AvrDebugger extends Clock {
 
   private File objdumpFile = null;
   private boolean sourceActive=false,asmActive=false,regActive=false,regLive=false;
-  private JPanel jPanel;
+  private JPanel jPanel = null;
   private JSplitPane splitPane;
   private JLabel timeLabel, cyclesLabel, stateLabel, watchLabel, sourceLabel, assemLabel;
   private JTextArea srcText=null, asmText=null;
@@ -149,6 +149,7 @@ public class AvrDebugger extends Clock {
   private JToggleButton runButton;
 
   private JTextField searchText;
+  private Box boxRegLabel, boxRegValue;
   private JLabel[] regLabels, regValues;
   private JLabel statusHi, statusLo;
   private byte lastStatus;
@@ -542,10 +543,7 @@ private boolean asmBPIndicatorToggle(int lineNumber) {try{
             }
             
             for (int j=0;j<32;j++) {
-              //  byte reg = interpreter.getRegisterByte(LegacyRegister.getRegisterByNumber(j));
-                byte reg = interpreter.getRegisterByte(j);
-              //  byte reg = interpreter.getRegisterByte(LegacyRegister.getRegisterByName("r"+j));//actually faster
-              //  System.out.println(j + " returns " + LegacyRegister.getRegisterByNumber(j));                
+                byte reg = interpreter.getRegisterByte(j);      
                 if (reg == regLastValue[j]) {
                     if (regLastColor[j] != null) {
                         //For initial red of 255 jdk7 returns 127,124,86 and null as the next darker
@@ -837,26 +835,11 @@ private Process objdumpProcess;
     final Box boxtop= Box.createVerticalBox();
     final Box boxn  = Box.createHorizontalBox();
     final Box boxnw = Box.createVerticalBox();
-    final Box boxnc = Box.createHorizontalBox();
-    final Box boxnc1= Box.createVerticalBox();
-    final Box boxnc2= Box.createVerticalBox();
-    final Box boxnc3= Box.createVerticalBox();
-    final Box boxnc4= Box.createVerticalBox();
-    final Box boxnc5= Box.createVerticalBox();
-    final Box boxnc6= Box.createVerticalBox();
-    final Box boxnc7= Box.createVerticalBox();
-    final Box boxnc8= Box.createVerticalBox();
     final Box boxne = Box.createVerticalBox();
-  //  final Box boxn1 = Box.createHorizontalBox();
-   // final Box boxn2 = Box.createHorizontalBox();
-  //  final Box boxn3 = Box.createHorizontalBox();
-  //  final Box boxn4 = Box.createHorizontalBox();
     final Box boxs = Box.createHorizontalBox();
     final Box boxd = Box.createHorizontalBox();
     final Box boxreg = Box.createVerticalBox();
-    final Box boxRegLabel = Box.createVerticalBox();
-    final Box boxRegValue = Box.createVerticalBox();
-    
+ 
     timeLabel = new JLabel();
     watchLabel = new JLabel();
     cyclesLabel = new JLabel();
@@ -877,46 +860,25 @@ private Process objdumpProcess;
     prevButton = new JButton("Prev");
     nextButton = new JButton("Next");
 
-//    boxnw.setAlignmentX(Component.LEFT_ALIGNMENT);
- //   boxnw.setAlignmentY(Component.TOP_ALIGNMENT);
-//    boxne.setAlignmentX(Component.LEFT_ALIGNMENT);
-//    boxne.setAlignmentY(Component.BOTTOM_ALIGNMENT);
     boxnw.add(timeLabel);
     boxnw.add(watchLabel);
     boxnw.add(cyclesLabel);
     boxnw.add(stateLabel);
-    
-  //  Dimension dim = timeLabel.getPreferredSize();
-    
- //   updateButton.setPreferredSize(new Dimension(40,24));
+
     updateButton.setAlignmentX(Component.RIGHT_ALIGNMENT);
     boxne.add(updateButton);
-  //  resetButton.setPreferredSize(new Dimension(40,24));
     resetButton.setAlignmentX(Component.RIGHT_ALIGNMENT);
     boxne.add(resetButton);
-  //  liveButton.setPreferredSize(new Dimension(20,24));
     liveButton.setAlignmentX(Component.RIGHT_ALIGNMENT);
     boxne.add(liveButton);
- //   srcButton.setPreferredSize(new Dimension(60,24));
     srcButton.setAlignmentX(Component.RIGHT_ALIGNMENT);
     boxne.add(srcButton);
 
     boxn.add(boxnw);
     boxn.add(Box.createHorizontalGlue());
- //   boxn.add(boxnc);
     boxn.add(boxne);
     
     boxtop.add(boxn);
- /*   
-    boxn1.add(timeLabel);boxn1.add(Box.createHorizontalGlue());boxn1.add(updateButton);
-    boxn2.add(watchLabel);boxn2.add(Box.createHorizontalGlue());boxn2.add(resetButton);
-    boxn3.add(cyclesLabel);boxn3.add(Box.createHorizontalGlue());boxn3.add(liveButton);
-    boxn4.add(stateLabel);boxn4.add(Box.createHorizontalGlue());boxn4.add(srcButton);
-    boxn.add(boxn1);
-    boxn.add(boxn2);
-    boxn.add(boxn3);
-    boxn.add(boxn4);*/
-  //  jPanel.add(BorderLayout.WEST, boxreg);
     jPanel.add(BorderLayout.NORTH, boxtop);
     jPanel.add(BorderLayout.SOUTH, boxs);
 
@@ -1133,10 +1095,10 @@ private Process objdumpProcess;
                 }
                 if (objdumpFile != null) {
                     boxtop.add(boxd);
-                    boxRegLabel.setAlignmentY(Component.TOP_ALIGNMENT);
-                    boxRegValue.setAlignmentY(Component.TOP_ALIGNMENT);
-                    boxs.add(boxRegLabel);
-                    boxs.add(boxRegValue);
+                    if (asmActive) {
+                        boxs.add(boxRegLabel);
+                        boxs.add(boxRegValue);
+                    }
                     splitPane.setAlignmentY(Component.TOP_ALIGNMENT);
                     boxs.add(splitPane);
                     sourceActive = true;
@@ -1160,9 +1122,13 @@ private Process objdumpProcess;
     // activate assembly pane for search and stepping
     asmButton.addActionListener(new ActionListener() {
         public void actionPerformed(ActionEvent e) {
-            asmActive = !asmActive;
+            asmActive = asmButton.isSelected();
             //first click turns on
             if (regLabels == null) {
+                boxRegLabel = Box.createVerticalBox();
+                boxRegValue = Box.createVerticalBox();
+                boxRegLabel.setAlignmentY(Component.TOP_ALIGNMENT);
+                boxRegValue.setAlignmentY(Component.TOP_ALIGNMENT);
                 regLabels = new JLabel[32];
                 regValues = new JLabel[32];
                 regLastValue = new byte[32];
@@ -1173,22 +1139,17 @@ private Process objdumpProcess;
                         regLive = boxRegLive.isSelected();
                     }
                 });
-                JLabel live = new JLabel("  Live  ");
-              //  live.setPreferredSize(boxRegLive.getPreferredSize());
-             //   boxRegLive.setPreferredSize(live.getPreferredSize());
+                JLabel live = new JLabel(" Live   ");
                 boxRegValue.add(live);
                 boxRegValue.add(Box.createRigidArea(new Dimension(0,2)));//aligns the columns on win7 jdk7
                 boxRegLabel.add(boxRegLive);
-                statusHi = new JLabel("---");
-                statusLo = new JLabel("-----");
+                statusHi = new JLabel("ITH");
+                statusLo = new JLabel("SVNZC");
                 boxRegLabel.add(statusHi);
                 boxRegValue.add(statusLo);
                 int i;
                 for (i=0;i<32;i++) {
                     regLabels[i]=new JLabel("r"+i+" ");
-            //        regLabels[i].setMaximumSize(regLabels[i].getMinimumSize());
-               //     regLabels[i].setPreferredSize(new Dimension(20,30));
-                   // regValues[i] = new JTextField(""+i);
                     byte reg = interpreter.getRegisterByte(i);
                     regValues[i] = new JLabel(StringUtil.to0xHex(reg,2));
                     regLastValue[i] = reg;
@@ -1202,29 +1163,12 @@ private Process objdumpProcess;
                 boxs.remove(boxRegLabel);
                 boxs.remove(boxRegValue);   
             } else {
+                regActive=true;   
                 boxs.remove(splitPane);
                 boxs.add(boxRegLabel);
                 boxs.add(boxRegValue);
                 boxs.add(splitPane);
-                regActive=true;
- /*               
-    if (r0Watch == null) r0Watch = new Simulator.Watch() {
-        public void fireBeforeRead(State state, int data_addr){
-                System.out.println("will read from " + data_addr);
-        }
-        public void fireBeforeWrite(State state, int data_addr, byte value){
-                System.out.println("will write " +value+ " to " + data_addr);
-        }
-        public void fireAfterRead(State state, int data_addr, byte value){
-                System.out.println("just read " +value+ " from " + data_addr);
-        }
-        public void fireAfterWrite(State state, int data_addr, byte value){
-        System.out.println("wrote " +value+ " to " + data_addr);
-        }
-    };
-    for (int k = 0;k<64;k+=2) interpreter.insertWatch(r0Watch, k);
-   */
-                
+
             }
             jPanel.revalidate();
             // no more asm actions if panel is invisible
@@ -1370,6 +1314,7 @@ private Process objdumpProcess;
 		}
         if (liveProbe != null) interpreter.removeProbe(liveProbe);
         sourceActive = false;
+        asmActive = false;
         liveUpdate = false;
         probeInserted = false;
         halted = false;
