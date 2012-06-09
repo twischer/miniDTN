@@ -373,12 +373,12 @@ rf230_isidle(void)
 static void
 rf230_waitidle(void)
 {
-int i;
-  for (i=0;i<10000;i++) {  //to avoid potential hangs
- // while (1) {
+//int i;
+  //for (i=0;i<10000;i++) {  //to avoid potential hangs
+  while (1) {
     if (rf230_isidle()) break;
   }
-  if (i>=10000) {DEBUGFLOW('H');DEBUGFLOW('R');}
+ // if (i>=10000) {DEBUGFLOW('H');DEBUGFLOW('R');DEBUGFLOW('A'+hal_subregister_read(SR_TRX_STATUS));}
 }
 
 /*----------------------------------------------------------------------------*/
@@ -532,13 +532,13 @@ on(void)
     sei();
     hal_set_slptr_low();
     //Cooja emulator does not always give the interrupt
-  //  while (rf230_interruptwait) {}
+ //   while (rf230_interruptwait) {}
 {
 int i;
   for (i=0;i<10000;i++) {
     if (rf230_interruptwait==0) break;
   }
-  if (i>=10000) {DEBUGFLOW('Z');DEBUGFLOW('Z');}
+  if (i>=10000) {DEBUGFLOW('Z');DEBUGFLOW('Z');DEBUGFLOW('A'+hal_subregister_read(SR_TRX_STATUS));}
 }
 
 #else
@@ -553,7 +553,10 @@ int i;
 //  SREG=sreg;
 #endif
   }
-
+  //Cooja can give rx interrupts after radio is turned off.
+  //Don't know if the hardware has this problem.
+  //So clear pending status
+  rf230_pending = 0;
 #if RF230_CONF_AUTOACK
  // radio_set_trx_state(is_promiscuous?RX_ON:RX_AACK_ON);
   radio_set_trx_state(RX_AACK_ON);
@@ -602,7 +605,7 @@ set_txpower(uint8_t power)
     DEBUGFLOW('f');
     PRINTF("rf230_set_txpower:Sleeping");  //happens with cxmac
   } else {
-    DEBUGFLOW('g');
+  //  DEBUGFLOW('g');
     hal_subregister_write(SR_TX_PWR, power);
   }
 }
@@ -722,7 +725,7 @@ int
 rf230_init(void)
 {
   uint8_t i;
-  DEBUGFLOW('i');
+//  DEBUGFLOW('i');
   /* Wait in case VCC just applied */
   delay_us(TIME_TO_ENTER_P_ON);
   /* Initialize Hardware Abstraction Layer */
@@ -1387,12 +1390,12 @@ rf230_read(void *buf, unsigned short bufsize)
 #endif
     return 0;
   }
-
+/* RDC may turn radio off after packet reception. Don't need it on here!
 #if RADIOALWAYSON
 if (RF230_receive_on) {
 #else
 if (hal_get_slptr()) {
-  DEBUGFLOW('!');
+ // DEBUGFLOW('!'); radio sent to sleep but receiver shows on
   return 0;
 }
 if (!RF230_receive_on) {
@@ -1400,6 +1403,7 @@ if (!RF230_receive_on) {
   return 0;
 }
 #endif
+*/
 
 #if RF230_CONF_TIMESTAMPS
   if(interrupt_time_set) {
@@ -1604,14 +1608,17 @@ rf230_cca(void)
   uint8_t cca=0;
   uint8_t radio_was_off = 0;
 
-  /* Turn radio on if necessary. If radio is currently busy return busy channel */
-  /* This may happen when testing radio duty cycling with RADIOALWAYSON */
+  /* Turn radio on if necessary. If radio is currently busy return channel busy.
+   * This may happen when testing radio duty cycling with RADIOALWAYSON,
+   * or because a packet just started
+   */
   if(RF230_receive_on) {
     if (hal_get_slptr()) {  //should not be sleeping!
 	  DEBUGFLOW('<');
 	  goto busyexit;
 	} else {
-      if (!rf230_isidle()) {DEBUGFLOW('2');goto busyexit;}
+  //    if (!rf230_isidle()) {DEBUGFLOW('2');goto busyexit;}
+      if (!rf230_isidle()) goto busyexit;
 	}
   } else {
     radio_was_off = 1;

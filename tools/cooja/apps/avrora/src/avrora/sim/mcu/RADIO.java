@@ -90,11 +90,24 @@ public class RADIO extends AtmelInternalDevice implements RADIODevice, Interrupt
      */
     protected class TRXPR_Reg extends RWRegister {
         protected byte lastSLP = 0;
-        /*
+/*  
+        //The read override is only needed for debugging, the super should be returning the correct value
         public byte read() {
-          //  byte cursSLP = super.read();
-         //   if (lastSLP !=cursSLP) if (devicePrinter !=null) devicePrinter.println("RADIO: lastSLP " + lastSLP + " but curSLP is " + curSLP);
-            return 0;
+            byte curSLP = super.read();
+            if (devicePrinter != null) {
+                byte rf231Status = connectedRadio.rf231Status;
+                if (curSLP != 0) {
+                    if (rf231Status == 18) {
+                        //busy txaret
+                    } else if (rf231Status == 8) {
+                        devicePrinter.println("RADIO : SLP bit set when radio in TRX_OFF state");   
+                    } else if (rf231Status != 0x0F ) {
+                        devicePrinter.println("SLP bit reads high but status is not sleep " + rf231Status);
+                    }
+                }
+                if (lastSLP !=curSLP) if (devicePrinter !=null) devicePrinter.println("RADIO: lastSLP " + lastSLP + " but curSLP is " + curSLP);
+            }
+            return curSLP;
         }
 */
         public void write(byte val) {
@@ -133,6 +146,9 @@ public class RADIO extends AtmelInternalDevice implements RADIODevice, Interrupt
                         devicePrinter.println("slp pin changed in busy state");
                             connectedRadio.pinChangeSLP(val);
                             break;
+                        default:
+                            devicePrinter.println("slp pin changed in unknown state " + rf231status);
+                            break;
                      }
                 } else {
       //            devicePrinter.println("RADIO: SLP pin lowered, state = " + TRX_STATE_reg.read() + " status = " + rf231status);
@@ -167,48 +183,31 @@ public class RADIO extends AtmelInternalDevice implements RADIODevice, Interrupt
      */
     protected class TRX_STATE_Reg extends RWRegister {
         public void write(byte val) {
-        //if the command is FORCE_TRX_OFF clear the TRAC_STATUS bits. The rf230 driver does a subregister
-        //write which or's the TRAC_STATUS bits with the command to write. We thus have no way of telling
-        //whether the write was from the driver or the internal ATmega128RFA1 radio
-        if ((val & 0x1F) == 0x03) {
-       // System.out.println("removing trac status from force trx off command");
-            val = (byte) (val & 0x1F);
-        }
+            //if the command is FORCE_TRX_OFF clear the TRAC_STATUS bits. These are readonly bits from the MCU side.
+            //However the rf230 driver does a subregister write which or's the TRAC_STATUS bits with the command before writing.
+            //We thus have no way of telling whether the write was from the driver or the internal ATmega128RFA1 radio.
+            //A workaround is to clear those bits only on the FORCE_TRX_OFF command.
+            //TODO:use the same method as isWritingEDLevel which flags radio writes to the readonly ED register
+            if ((val & 0x1F) == 0x03) {
+           // System.out.println("removing trac status from force trx off command");
+                val = (byte) (val & 0x1F);
+            }
 
-        if ((val == 0) || ((val & 0xE0) != 0)) {         
-        //    System.out.println("trac status write " + StringUtil.to0xHex(val, 2));
-            val = (byte) (val & 0xE0);
-            byte cmd = (byte) super.read();
-         //   System.out.println("super returns " + StringUtil.to0xHex(cmd, 2));
-            cmd = (byte) (cmd & 0x1F);
-                     //   cmd = (byte) (super.read() & 0x1F);
-         //                           System.out.println("or results in " + StringUtil.to0xHex((byte) (val | cmd), 2));
-            super.write((byte) (val | cmd));
-            return;
-        } else {
-              //  System.out.println("write "+ StringUtil.to0xHex(val, 2));
-            //Send the command field to the radio.
-            //The return value adds the readonly TRAC_STATUS bits for the actual register write
-
-            val = connectedRadio.newCommand((byte) (val & 0x1F));
-        //    System.out.println("newCommand returns " + StringUtil.to0xHex(val, 2));
-            super.write(val);
-          //  super.write(connectedRadio.newCommand((byte) (val & 0x1F)));
+            if ((val == 0) || ((val & 0xE0) != 0)) {         
+                val = (byte) (val & 0xE0);
+                byte cmd = (byte) super.read();
+                cmd = (byte) (cmd & 0x1F);
+                super.write((byte) (val | cmd));
+                return;
+            } else {
+                //Send the command field to the radio.
+                //The return value adds the readonly TRAC_STATUS bits for the actual register write
+                val = connectedRadio.newCommand((byte) (val & 0x1F));
+            //    System.out.println("newCommand returns " + StringUtil.to0xHex(val, 2));
+                super.write(val);
+              //  super.write(connectedRadio.newCommand((byte) (val & 0x1F)));
+            }
         }
-        }
-        /*
-        public void writeTRACBits(byte val) {
-            byte cmd = super.read();
-            super.write((byte)(cmd | val));
-        }
-        */
-        /*
-        public byte read() {
-            byte rf231status = super.read();
-            if (devicePrinter !=null) devicePrinter.println("RADIO: reading TRXSTATE " + rf231status);
-            return rf231status;
-        }
-        */
     }
     /**
      * PHY_ED_LEVEL register.
