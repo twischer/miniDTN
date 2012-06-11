@@ -38,7 +38,9 @@
 #define PRINTA(...)
 #endif
 
+#ifndef DEBUG
 #define DEBUG 0
+#endif
 #if DEBUG
 #define PRINTD(FORMAT,args...) printf_P(PSTR(FORMAT),##args)
 #else
@@ -124,7 +126,8 @@ void rtimercycle(void) {rtimerflag=1;}
  */
 #define NODE_ID 1
 #if NODE_ID
-EEMEM uint16_t eemem_node_id;
+//EEMEM uint16_t eemem_node_id;
+uint16_t node_id;
 #endif
 uint16_t ledtimer;
 
@@ -179,8 +182,8 @@ rng_get_uint8(void) {
 /*------Done in a subroutine to keep main routine stack usage small--------*/
 void initialize(void)
 {
- // watchdog_init();
-//  watchdog_start();
+  watchdog_init();
+  watchdog_start();
 
 /* The Raven implements a serial command and data interface via uart0 to a 3290p,
  * which could be duplicated using another host computer.
@@ -281,9 +284,9 @@ uint8_t i;
  
 #if UIP_CONF_IPV6
 #if NODE_ID
-   {uint16_t node_id = eeprom_read_word(&eemem_node_id);
+ //  {uint16_t node_id=eeprom_read_word(&eemem_node_id);
   PRINTA("Initial node_id %u\n",node_id);
- // if (node_id) {
+  if (node_id) {
     addr.u8[0]=0;
     addr.u8[1]=0;
     addr.u8[2]=0;
