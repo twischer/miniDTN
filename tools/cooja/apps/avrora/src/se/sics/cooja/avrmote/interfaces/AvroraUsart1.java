@@ -7,36 +7,34 @@ import org.apache.log4j.Logger;
 import se.sics.cooja.Mote;
 import se.sics.cooja.MoteTimeEvent;
 import se.sics.cooja.Simulation;
-import se.sics.cooja.avrmote.RavenMote;
+import se.sics.cooja.avrmote.AvroraMote;
 import se.sics.cooja.dialogs.SerialUI;
 import avrora.sim.mcu.AtmelMicrocontroller;
-import avrora.sim.platform.Raven;
 
 public class AvroraUsart1 extends SerialUI {
-  private static Logger logger = Logger.getLogger(RavenSerial.class);
+  private static Logger logger = Logger.getLogger(AvroraUsart1.class);
 
-  private RavenMote mote;
+  private Mote myMote;
   private avrora.sim.mcu.USART usart;
   private MoteTimeEvent receiveNextByte;
 
   private ArrayDeque<Byte> rxData = new ArrayDeque<Byte>();
 
-  public AvroraUsart1(Mote ravenMote) {
-    mote = (RavenMote) ravenMote;
+  public AvroraUsart1(Mote mote) {
+    myMote = mote;
     receiveNextByte = new MoteTimeEvent(mote, 0) {
       public void execute(long t) {
         if (usart.receiving) {
           /* XXX TODO Postpone how long? */
-          mote.getSimulation().scheduleEvent(this, t+Simulation.MILLISECOND);;
+          myMote.getSimulation().scheduleEvent(this, t+Simulation.MILLISECOND);
           return;
         }
         usart.startReceive();
       }
     };
 
-    Raven raven = mote.getRaven();
     /* this should go into some other piece of code for serial data */
-    AtmelMicrocontroller mcu = (AtmelMicrocontroller) raven.getMicrocontroller();
+    AtmelMicrocontroller mcu = (AtmelMicrocontroller) ((AvroraMote)myMote).CPU.getSimulator().getMicrocontroller();
     usart = (avrora.sim.mcu.USART) mcu.getDevice(getUsart());
     if (usart != null) {
       usart.connect(new avrora.sim.mcu.USART.USARTDevice() {
@@ -48,7 +46,7 @@ public class AvroraUsart1 extends SerialUI {
 
           Byte data = rxData.pollFirst();
           if (!receiveNextByte.isScheduled() && rxData.size() > 0) {
-            mote.getSimulation().scheduleEvent(receiveNextByte, mote.getSimulation().getSimulationTime());
+            myMote.getSimulation().scheduleEvent(receiveNextByte, myMote.getSimulation().getSimulationTime());
           }
 
           return new avrora.sim.mcu.USART.Frame(data, false, 8);
@@ -58,7 +56,7 @@ public class AvroraUsart1 extends SerialUI {
         }
       });
     } else {
-      System.out.println("*** Warning Raven could not find usart1 interface...");
+      System.out.println("*** Warning Avrora could not find usart1 interface...");
     }
   }
 
@@ -67,7 +65,7 @@ public class AvroraUsart1 extends SerialUI {
   }
 
   public Mote getMote() {
-    return mote;
+    return myMote;
   }
 
   public void writeArray(byte[] s) {
@@ -83,7 +81,7 @@ public class AvroraUsart1 extends SerialUI {
 
     rxData.addLast(b);
     if (!receiveNextByte.isScheduled()) {
-      mote.getSimulation().scheduleEvent(receiveNextByte, mote.getSimulation().getSimulationTime());
+      myMote.getSimulation().scheduleEvent(receiveNextByte, myMote.getSimulation().getSimulationTime());
     }
   }
 
