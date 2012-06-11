@@ -637,6 +637,7 @@ public class TimeLine extends VisPlugin implements HasQuickHelp {
       zoomSlider.setPaintTicks(true);
       zoomSlider.setPaintLabels(false);
 
+      if (popupLocation == null) popupLocation = new Point(100,0);
       final long centerTime = (long) (popupLocation.x*currentPixelDivisor);
 
       zoomSlider.addChangeListener(new ChangeListener() {
