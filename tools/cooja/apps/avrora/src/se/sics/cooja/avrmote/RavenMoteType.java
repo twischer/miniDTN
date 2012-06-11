@@ -43,7 +43,7 @@ import se.sics.cooja.avrmote.interfaces.AvroraLED;
 import se.sics.cooja.avrmote.interfaces.AvroraADC;
 import se.sics.cooja.avrmote.interfaces.RavenSerial;
 import se.sics.cooja.avrmote.interfaces.RavenRadio;
-import se.sics.cooja.avrmote.interfaces.RavenID;
+import se.sics.cooja.avrmote.interfaces.AvroraMoteID;
 import se.sics.cooja.interfaces.Mote2MoteRelations;
 import se.sics.cooja.interfaces.MoteAttributes;
 import se.sics.cooja.interfaces.Position;
@@ -76,7 +76,7 @@ public class RavenMoteType extends AvroraMoteType {
   public Class<? extends MoteInterface>[] getAllMoteInterfaceClasses() {
     return new Class[] {
         Position.class,
-        RavenID.class,
+        AvroraMoteID.class,
         AvroraLED.class,
         AvroraADC.class,
         RavenRadio.class,

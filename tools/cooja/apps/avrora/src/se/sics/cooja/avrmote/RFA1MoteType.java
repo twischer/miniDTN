@@ -35,22 +35,20 @@ import se.sics.cooja.ClassDescription;
 import se.sics.cooja.Mote;
 import se.sics.cooja.MoteInterface;
 import se.sics.cooja.Simulation;
-import se.sics.cooja.avrmote.AvroraMoteType;
-
 import se.sics.cooja.avrmote.interfaces.AvrDebugger;
+import se.sics.cooja.avrmote.interfaces.AvroraMoteID;
+import se.sics.cooja.avrmote.interfaces.AvroraADC;
 import se.sics.cooja.avrmote.interfaces.AvroraClock;
 import se.sics.cooja.avrmote.interfaces.AvroraLED;
-import se.sics.cooja.avrmote.interfaces.AvroraADC;
-import se.sics.cooja.avrmote.interfaces.RFA1Serial;
 import se.sics.cooja.avrmote.interfaces.RFA1Radio;
-import se.sics.cooja.avrmote.interfaces.RFA1ID;
+import se.sics.cooja.avrmote.interfaces.RFA1Serial;
 import se.sics.cooja.interfaces.Mote2MoteRelations;
 import se.sics.cooja.interfaces.MoteAttributes;
 import se.sics.cooja.interfaces.Position;
 
 /**
  * Bare AVR atmega128rfa1 mote types emulated in Avrora.
- * 
+ *
  * @author Joakim Eriksson, Fredrik Osterlind, David Kopf
  */
 @ClassDescription("RFA1 Mote Type")
@@ -76,7 +74,7 @@ public class RFA1MoteType extends AvroraMoteType {
  public Class<? extends MoteInterface>[] getAllMoteInterfaceClasses() {
     return new Class[] {
         Position.class,
-        RFA1ID.class,
+        AvroraMoteID.class,
         AvroraLED.class,
         AvroraADC.class,
         RFA1Radio.class,
