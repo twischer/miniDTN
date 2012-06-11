@@ -96,16 +96,19 @@ public class AvrDebugger extends MoteInterface {
   private AtmelInterpreter interpreter;
   private Mote myMote;
   private FiniteStateMachine myFSM;
-  private long startTime,lastTime,lastCycles,displayDelay;
+  private long cpuFreq,lastCycles,displayDelay;
+  private double startTime,lastTime;
 
   public AvrDebugger(Mote mote) {
     myMote = mote;
     simulation = mote.getSimulation();
     interpreter = (AtmelInterpreter)((AvroraMote)myMote).CPU.getSimulator().getInterpreter();
     myFSM = ((DefaultMCU)((AvroraMote)myMote).CPU.getSimulator().getMicrocontroller()).getFSM();
-
-    startTime = simulation.getSimulationTime();
-    lastTime = startTime;
+    cpuFreq = ((AvroraMote)myMote).getCPUFrequency();
+    //TODO:get add startup delay from clock visualizer
+  //  AvroraClock.getDrift();
+    startTime = (double)simulation.getSimulationTime()/1000000;
+    lastTime = 0;
     lastCycles = 0;
   }
 
@@ -113,7 +116,7 @@ public class AvrDebugger extends MoteInterface {
   private boolean sourceActive=false,asmActive=false,regActive=false,regLive=false;
   private JPanel jPanel = null;
   private JSplitPane splitPane;
-  private JLabel timeLabel, cyclesLabel, stateLabel, watchLabel, sourceLabel, assemLabel;
+  private JLabel startLabel, timeLabel, cyclesLabel, stateLabel, watchLabel, sourceLabel, assemLabel;
   private JTextArea srcText=null, asmText=null;
   private JScrollPane stackPane, tracePane, srcPane, asmPane;
   private JToggleButton runButton;
@@ -412,11 +415,11 @@ private boolean asmBPIndicatorToggle(int lineNumber) {try{
   private boolean updatePanel(int pc) {
     boolean updated = false;
     if (pc == 0 ) pc = interpreter.getState().getPC();
-    timeLabel.setText("Run Time  : " + ((double)(simulation.getSimulationTime()-startTime)/1000000));
-//    timeLabel.setText("Run Time  : " + ((double)(simulation.getSimulationTime()-startTime)/1000000) + "   Drift: " + (double)timeDrift/1000000);
-    watchLabel.setText("Stopwatch : " + ((double)(simulation.getSimulationTime()-lastTime)/1000000));
     long cycleCount = interpreter.getState().getCycles();
-    cyclesLabel.setText("Cycles        : " + (cycleCount - lastCycles));
+    double time = ((double)cycleCount)/cpuFreq;
+    timeLabel.setText( String.format("Run Time  %16.6f",time));
+    watchLabel.setText(String.format("Stopwatch %16.6f",time-lastTime));
+    cyclesLabel.setText("Cycles        " + (cycleCount - lastCycles));
     stateLabel.setText("PC: 0x" +  Integer.toHexString(pc) + "      SP: 0x" +  Integer.toHexString(interpreter.getSP())
     + "     State: " + myFSM.getStateName(myFSM.getCurrentState()));
     // not started yet
@@ -810,6 +813,8 @@ private Process objdumpProcess;
     final Box boxd = Box.createHorizontalBox();
     final Box boxreg = Box.createVerticalBox();
 
+    startLabel = new JLabel();
+    startLabel.setText(String.format("Start Time %16.6f",startTime));
     timeLabel = new JLabel();
     watchLabel = new JLabel();
     cyclesLabel = new JLabel();
@@ -829,10 +834,13 @@ private Process objdumpProcess;
     searchText = new JTextField(12);
     prevButton = new JButton("Prev");
     nextButton = new JButton("Next");
-
+ 
+    boxnw.add(startLabel);
     boxnw.add(timeLabel);
     boxnw.add(watchLabel);
+    boxnw.add(Box.createRigidArea(new Dimension(0,8)));
     boxnw.add(cyclesLabel);
+    boxnw.add(Box.createVerticalGlue());
     boxnw.add(stateLabel);
 
     updateButton.setAlignmentX(Component.RIGHT_ALIGNMENT);
@@ -944,8 +952,8 @@ private Process objdumpProcess;
     // reset stopwatch and cycle counter
     resetButton.addActionListener(new ActionListener() {
         public void actionPerformed(ActionEvent e) {
-            lastTime = simulation.getSimulationTime();
             lastCycles = interpreter.getState().getCycles();
+            lastTime = ((double)lastCycles)/cpuFreq;
             updatePanel(0);
         }
     });
@@ -1080,8 +1088,10 @@ private Process objdumpProcess;
                 setProbeState();
                 boxtop.remove(boxd);
                 boxs.remove(splitPane);
-                boxs.remove(boxRegLabel);
-                boxs.remove(boxRegValue);
+                if (boxRegLabel != null) {
+                    boxs.remove(boxRegLabel);
+                    boxs.remove(boxRegValue);
+                }
             }
             // add whitespace during resize so panel will not get scrollbar on text increase
             stateLabel.setText(stateLabel.getText() + "              ");
