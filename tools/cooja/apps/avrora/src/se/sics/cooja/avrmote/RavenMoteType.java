@@ -35,22 +35,20 @@ import se.sics.cooja.ClassDescription;
 import se.sics.cooja.Mote;
 import se.sics.cooja.MoteInterface;
 import se.sics.cooja.Simulation;
-import se.sics.cooja.avrmote.AvroraMoteType;
-
 import se.sics.cooja.avrmote.interfaces.AvrDebugger;
+import se.sics.cooja.avrmote.interfaces.AvroraADC;
 import se.sics.cooja.avrmote.interfaces.AvroraClock;
 import se.sics.cooja.avrmote.interfaces.AvroraLED;
-import se.sics.cooja.avrmote.interfaces.AvroraADC;
-import se.sics.cooja.avrmote.interfaces.RavenSerial;
-import se.sics.cooja.avrmote.interfaces.RavenRadio;
 import se.sics.cooja.avrmote.interfaces.AvroraMoteID;
+import se.sics.cooja.avrmote.interfaces.AvroraUsart1;
+import se.sics.cooja.avrmote.interfaces.RavenRadio;
 import se.sics.cooja.interfaces.Mote2MoteRelations;
 import se.sics.cooja.interfaces.MoteAttributes;
 import se.sics.cooja.interfaces.Position;
 
 /**
  * AVR-based Raven mote types emulated in Avrora.
- * 
+ *
  * @author Joakim Eriksson, Fredrik Osterlind, David Kopf
  */
 @ClassDescription("Raven Mote Type")
@@ -72,17 +70,21 @@ public class RavenMoteType extends AvroraMoteType {
     return mote;
   }
 
+  /* Note the ADC and Debugger interfaces are also an extension of Clock and
+   * will get the setDrift/getDrift calls for random startup if included before
+   * the Clock interface. The clock would then show zero drift.
+   */
   @SuppressWarnings("unchecked")
   public Class<? extends MoteInterface>[] getAllMoteInterfaceClasses() {
     return new Class[] {
         Position.class,
         AvroraMoteID.class,
         AvroraLED.class,
-        AvroraADC.class,
         RavenRadio.class,
         AvroraClock.class,
-        RavenSerial.class,
+        AvroraUsart1.class,
         AvrDebugger.class,
+        AvroraADC.class,
         Mote2MoteRelations.class,
         MoteAttributes.class
     };

@@ -76,11 +76,11 @@ public class MicaZMoteType extends AvroraMoteType {
         Position.class,
         MicaZID.class,
         AvroraLED.class,
-        AvroraADC.class,
         MicaZRadio.class,
         AvroraClock.class,
         AvroraUsart0.class,
         AvrDebugger.class,
+        AvroraADC.class,
         Mote2MoteRelations.class,
         MoteAttributes.class
     };

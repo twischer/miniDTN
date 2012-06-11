@@ -36,12 +36,12 @@ import se.sics.cooja.Mote;
 import se.sics.cooja.MoteInterface;
 import se.sics.cooja.Simulation;
 import se.sics.cooja.avrmote.interfaces.AvrDebugger;
-import se.sics.cooja.avrmote.interfaces.AvroraMoteID;
 import se.sics.cooja.avrmote.interfaces.AvroraADC;
 import se.sics.cooja.avrmote.interfaces.AvroraClock;
 import se.sics.cooja.avrmote.interfaces.AvroraLED;
+import se.sics.cooja.avrmote.interfaces.AvroraMoteID;
+import se.sics.cooja.avrmote.interfaces.AvroraUsart0;
 import se.sics.cooja.avrmote.interfaces.RFA1Radio;
-import se.sics.cooja.avrmote.interfaces.RFA1Serial;
 import se.sics.cooja.interfaces.Mote2MoteRelations;
 import se.sics.cooja.interfaces.MoteAttributes;
 import se.sics.cooja.interfaces.Position;
@@ -70,20 +70,25 @@ public class RFA1MoteType extends AvroraMoteType {
     return mote;
   }
 
+  /* Note the ADC and Debugger interfaces are also an extension of Clock and
+   * will get the setDrift/getDrift calls for random startup if included before
+   * the Clock interface. The clock would then show zero drift.
+   */
  @SuppressWarnings("unchecked")
  public Class<? extends MoteInterface>[] getAllMoteInterfaceClasses() {
     return new Class[] {
         Position.class,
         AvroraMoteID.class,
         AvroraLED.class,
-        AvroraADC.class,
         RFA1Radio.class,
         AvroraClock.class,
-        RFA1Serial.class,
+        AvroraUsart0.class,
         AvrDebugger.class,
+        AvroraADC.class,
         Mote2MoteRelations.class,
         MoteAttributes.class
     };
+
   }
 
 }
