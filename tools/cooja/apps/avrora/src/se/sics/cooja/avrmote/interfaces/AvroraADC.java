@@ -31,26 +31,22 @@
 package se.sics.cooja.avrmote.interfaces;
 
 //import java.awt.Color;
-import java.awt.Component;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-
+import java.util.Collection;
 import java.util.Observable;
 import java.util.Observer;
-import java.util.Collection;
-//import java.util.Vector;
 import java.util.Random;
 
 import javax.swing.Box;
 import javax.swing.JButton;
-import javax.swing.JToggleButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JSlider;
-import javax.swing.JTextArea;
 import javax.swing.JTextField;
+import javax.swing.JToggleButton;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
@@ -59,23 +55,21 @@ import org.jdom.Element;
 
 import se.sics.cooja.ClassDescription;
 import se.sics.cooja.Mote;
+import se.sics.cooja.MoteInterface;
 import se.sics.cooja.Simulation;
 import se.sics.cooja.avrmote.AvroraMote;
-import se.sics.cooja.interfaces.Clock;
-import se.sics.cooja.plugins.MoteInterfaceViewer;
-
 import avrora.sim.AtmelInterpreter;
-import avrora.sim.mcu.DefaultMCU;
-import avrora.sim.mcu.ADC;
 import avrora.sim.FiniteStateMachine;
 import avrora.sim.Simulator;
 import avrora.sim.State;
+import avrora.sim.mcu.ADC;
+import avrora.sim.mcu.DefaultMCU;
 
 /**
  * @author David Kopf
  */
 @ClassDescription("ADCs")
-public class AvroraADC extends Clock {
+public class AvroraADC extends MoteInterface {
   private static Logger logger = Logger.getLogger(AvroraADC.class);
 
   private Simulation simulation;
@@ -101,7 +95,7 @@ public class AvroraADC extends Clock {
   private int[] fn={0,0,0,0,0,0,0,0};
   private ADC.ADCInput[] chanAI={null, null, null, null, null, null, null, null};
   private Random random = new Random();
-  
+
 
    public AvroraADC(Mote mote) {
     myMote = mote;
@@ -118,30 +112,12 @@ public class AvroraADC extends Clock {
     }
   }
 
-  public void setTime(long newTime) {
-    logger.fatal("Can't change emulated CPU time");
-  }
-
-  public long getTime() {
- //   logger.debug("getTime called");
-    return simulation.getSimulationTime();
-  }
-
-  public void setDrift(long drift) {
- // logger.debug("setdrift called");
-  }
-
-  public long getDrift() {
- //   logger.debug("getdrift called");
-    return 0;
-  }
-  
   private JLabel timeLabel, cyclesLabel, stateLabel, watchLabel;
 
   private Simulator.Probe liveProbe = null;
   private boolean probeInserted = false;
   private boolean liveUpdate = false;
-  
+
   // insert or remove avrora pc probe when needed for live updates
   void setProbeState() {
     if (liveUpdate ) {
@@ -165,7 +141,7 @@ public class AvroraADC extends Clock {
         }
     }
   }
- 
+
  // calculate the voltage on the given channel
   private void getVoltage(int i) {
     int mvolts = dc[i];
@@ -178,12 +154,12 @@ public class AvroraADC extends Clock {
         } else {
             int cycle = (hz[i] >0) ? (int) (factor/hz[i]) : 1;
             if (cycle == 0) cycle=1;
-            int phase = advance%cycle;  
-            switch (fn[i]) { 
+            int phase = advance%cycle;
+            switch (fn[i]) {
             case 2:         //square
                 if ((phase) < (cycle/2)) mvolts+=ac[i]; else mvolts-=ac[i];
                 break;
-            case 3:         //triangle           
+            case 3:         //triangle
                 if (phase < (cycle/2)) {
                     mvolts+=4*phase*ac[i]/cycle-ac[i];
                 } else {
@@ -207,7 +183,7 @@ public class AvroraADC extends Clock {
     timeLabel.setText("Run Time  : " + ((double)(now-startTime)/1000000));
     watchLabel.setText("Stopwatch : " + ((double)(now-lastTime)/1000000));
     cycleCount = interpreter.getState().getCycles();
-    cyclesLabel.setText("    Cycles : " + (cycleCount - lastCycles));   
+    cyclesLabel.setText("    Cycles : " + (cycleCount - lastCycles));
     stateLabel.setText("PC: 0x" +  Integer.toHexString(pc) + "      SP: 0x" +  Integer.toHexString(interpreter.getSP())
     + "     State: " + myFSM.getStateName(myFSM.getCurrentState()));
 
@@ -226,7 +202,7 @@ public class AvroraADC extends Clock {
         chanSlider[i].setValue(mv[i]);
     //    if (i == NUMCHAN) adcDevice.VCC_LEVEL = (float)(mvolts)/1000;
     }
-  } 
+  }
 
   public JPanel getInterfaceVisualizer() {
 
@@ -262,7 +238,7 @@ public class AvroraADC extends Clock {
     text.setPreferredSize(new Dimension(40,20));
     box.add(text);text.setEnabled(false);
     boxn.add(box);
-  
+
     for (int i=0; i<=NUMCHAN; i++) {
         ADC.ADCInput adcin = new ADC.ADCInput() {
             public float getVoltage() {
@@ -288,11 +264,11 @@ public class AvroraADC extends Clock {
                 JSlider source = (JSlider)e.getSource();
                 for (int i=0; i<=NUMCHAN; i++) {
                     if (source == chanSlider[i]) {
-                        mv[i] = (int)source.getValue();
+                        mv[i] = source.getValue();
                         chanMV[i].setText(""+mv[i]);
                       //  if (i == NUMCHAN) adcDevice.VCC_LEVEL = ((float)mv[i])/1000.0f;
                         break;
-                    }  
+                    }
                 }
             }
         });
@@ -307,7 +283,7 @@ public class AvroraADC extends Clock {
                         try {tmp = Integer.parseInt(source.getText());} catch (Exception x) {};
                         if (tmp >=0 && tmp <=5000) {
                             mv[i] = tmp;
-                            chanSlider[i].setValue(tmp);                          
+                            chanSlider[i].setValue(tmp);
                         } else {
                            tmp = mv[i];
                         }
@@ -328,7 +304,7 @@ public class AvroraADC extends Clock {
                         int tmp = -1;
                         try {tmp = Integer.parseInt(source.getText());} catch (Exception x) {};
                         if (tmp >=0 && tmp <=5000) {
-                            ns[i] = tmp;                     
+                            ns[i] = tmp;
                         } else {
                            tmp = ns[i];
                         }
@@ -349,7 +325,7 @@ public class AvroraADC extends Clock {
                         int tmp = -1;
                         try {tmp = Integer.parseInt(source.getText());} catch (Exception x) {};
                         if (tmp >=0 && tmp <=5000) {
-                            dc[i] = tmp;                     
+                            dc[i] = tmp;
                         } else {
                            tmp = dc[i];
                         }
@@ -370,7 +346,7 @@ public class AvroraADC extends Clock {
                         int tmp = -1;
                         try {tmp = Integer.parseInt(source.getText());} catch (Exception x) {logger.debug(x);};
                         if (tmp >=0 && tmp <=50000) {
-                            ac[i] = tmp;                       
+                            ac[i] = tmp;
                         } else {
                            tmp = ac[i];
                         }
@@ -391,7 +367,7 @@ public class AvroraADC extends Clock {
                         float tmp = -1;
                         try {tmp = Float.parseFloat(source.getText());} catch (Exception x) {};
                         if (tmp >=0) {
-                            hz[i] = tmp;                      
+                            hz[i] = tmp;
                         } else {
                            tmp = hz[i];
                         }
@@ -419,7 +395,7 @@ public class AvroraADC extends Clock {
                     }
                 }
                 chanST[c] = interpreter.getState().getCycles();
-                
+
                 String text = source.getText();
                 if (text.equals("None")) {
                     source.setText("Sine");
@@ -463,7 +439,7 @@ public class AvroraADC extends Clock {
     final JToggleButton liveButton = new JToggleButton("Live",false);
 
     boxn1.add(timeLabel);boxn1.add(Box.createHorizontalGlue());
-    boxn2.add(watchLabel);boxn2.add(cyclesLabel);boxn2.add(Box.createHorizontalGlue());boxn2.add(resetButton);boxn2.add(updateButton);boxn2.add(liveButton);   
+    boxn2.add(watchLabel);boxn2.add(cyclesLabel);boxn2.add(Box.createHorizontalGlue());boxn2.add(resetButton);boxn2.add(updateButton);boxn2.add(liveButton);
     boxn3.add(stateLabel);boxn3.add(Box.createHorizontalGlue());
     boxs.add(boxn1);
     boxs.add(boxn2);
@@ -472,14 +448,14 @@ public class AvroraADC extends Clock {
     jPanel.add(BorderLayout.SOUTH, boxs);
 
     updatePanel(0, 0);
-    
+
     // one time update
     updateButton.addActionListener(new ActionListener() {
         public void actionPerformed(ActionEvent e) {
             updatePanel(0, 0);
         }
     });
- 
+
     // reset stopwatch
     resetButton.addActionListener(new ActionListener() {
         public void actionPerformed(ActionEvent e) {
@@ -488,7 +464,7 @@ public class AvroraADC extends Clock {
             updatePanel(0, 0);
         }
     });
-     
+
     // insert avrora probe when live update or breakpoints enabled.
     // Avrora calls fireBefore and fireAfter when program counter changes
     liveButton.addActionListener(new ActionListener() {

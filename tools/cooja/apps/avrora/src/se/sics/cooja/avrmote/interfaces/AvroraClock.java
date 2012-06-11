@@ -33,17 +33,15 @@ package se.sics.cooja.avrmote.interfaces;
 import java.awt.BorderLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.Collection;
 import java.util.Observable;
 import java.util.Observer;
 
-import java.util.Collection;
-import java.util.Vector;
-
 import javax.swing.Box;
 import javax.swing.JButton;
-import javax.swing.JToggleButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JToggleButton;
 
 import org.apache.log4j.Logger;
 import org.jdom.Element;
@@ -53,12 +51,11 @@ import se.sics.cooja.Mote;
 import se.sics.cooja.Simulation;
 import se.sics.cooja.avrmote.AvroraMote;
 import se.sics.cooja.interfaces.Clock;
-
-import avrora.sim.FiniteStateMachine;
 import avrora.sim.AtmelInterpreter;
-import avrora.sim.mcu.DefaultMCU;
+import avrora.sim.FiniteStateMachine;
 import avrora.sim.Simulator;
 import avrora.sim.State;
+import avrora.sim.mcu.DefaultMCU;
 
 /**
  * @author Fredrik Osterlind, Joakim Eriksson, David Kopf
@@ -73,7 +70,7 @@ public class AvroraClock extends Clock {
 
   private long timeDrift; /* Microseconds */
   private long startTime,lastTime,lastCycles;
-  
+
   public AvroraClock(Mote mote) {
     mySimulation = mote.getSimulation();
     myInterpreter = (AtmelInterpreter)((AvroraMote)mote).CPU.getSimulator().getInterpreter();
@@ -102,12 +99,12 @@ public class AvroraClock extends Clock {
 
   JLabel timeLabel, cyclesLabel, stateLabel, watchLabel;
   Simulator.Probe liveProbe = null;
-  
+
   private void updatePanel() {
     timeLabel.setText("Run Time  : " + ((double)(mySimulation.getSimulationTime()-startTime)/1000000) + "   Drift: " + (double)timeDrift/1000000);
     watchLabel.setText("Stopwatch : " + ((double)(mySimulation.getSimulationTime()-lastTime)/1000000));
     long cycleCount = myInterpreter.getState().getCycles();
-    cyclesLabel.setText("Cycles        : " + (cycleCount - lastCycles));   
+    cyclesLabel.setText("Cycles        : " + (cycleCount - lastCycles));
     stateLabel.setText("PC: 0x" +  Integer.toHexString(myInterpreter.getState().getPC()) + "      SP: 0x" +  Integer.toHexString(myInterpreter.getSP())
      + "     State: " + myFSM.getStateName(myFSM.getCurrentState()));
   }
@@ -136,11 +133,11 @@ public class AvroraClock extends Clock {
     boxe.add(updateButton);
     boxe.add(resetButton);
     boxe.add(liveButton);
-    
+
     updatePanel();
     // increase initial width to prevent later scrollbar
     stateLabel.setText(stateLabel.getText() + "              ");
- 
+
     updateButton.addActionListener(new ActionListener() {
         public void actionPerformed(ActionEvent e) {
             updatePanel();
