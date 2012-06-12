@@ -346,18 +346,12 @@ public abstract class AbstractRadioMedium extends RadioMedium {
         }
 
         /* Custom data object */
-        Object data = ((CustomDataRadio) radio).getLastCustomDataTransmitted();
-        if (data == null) {
-          logger.fatal("No custom data object to forward");
-          return;
-        }
+        byte data = ((CustomDataRadio) radio).getLastCustomDataTransmitted();
         for (Radio dstRadio : connection.getAllDestinations()) {
-          if (!CustomDataRadio.SERIALIZE_ALL_RADIO_PACKETS) {
-            if (!radio.getClass().equals(dstRadio.getClass()) ||
-                !(radio instanceof CustomDataRadio)) {
-               /* Radios communicate via radio packets */
-                continue;
-            }
+          if (!radio.getClass().equals(dstRadio.getClass()) ||
+              !(radio instanceof CustomDataRadio)) {
+            /* Radios communicate via radio packets */
+            continue;
           }
 
           if (connection.getDestinationDelay(dstRadio) == 0) {
@@ -365,7 +359,7 @@ public abstract class AbstractRadioMedium extends RadioMedium {
           } else {
             /* EXPERIMENTAL: Simulating propagation delay */
             final CustomDataRadio delayedRadio = (CustomDataRadio) dstRadio;
-            final Object delayedData = data;
+            final byte delayedData = data;
             TimeEvent delayedEvent = new TimeEvent(0) {
               public void execute(long t) {
                 delayedRadio.receiveCustomData(delayedData);
@@ -403,7 +397,6 @@ public abstract class AbstractRadioMedium extends RadioMedium {
           }
 
           /* Forward radio packet */
-          if (!CustomDataRadio.SERIALIZE_ALL_RADIO_PACKETS) {
             if (connection.getDestinationDelay(dstRadio) == 0) {
                dstRadio.setReceivedPacket(packet);
             } else {
@@ -422,7 +415,6 @@ public abstract class AbstractRadioMedium extends RadioMedium {
               }
 
             }
-          }
 
       } else {
         logger.fatal("Unsupported radio event: " + event);

@@ -57,7 +57,7 @@ import se.sics.mspsim.core.USARTSource;
 /**
  * TR1001 radio interface on ESB platform.
  * Assumes Contiki driver specifics such as preambles, synchbytes, GCR coding, CRC16.
- * 
+ *
  * @author Fredrik Osterlind
  */
 @ClassDescription("TR1001 Radio")
@@ -72,7 +72,7 @@ public class TR1001Radio extends Radio implements USARTListener, CustomDataRadio
   public static final long DELAY_BETWEEN_BYTES = 416;
 
   /* The data used when transmission is interfered */
-  private static final Byte CORRUPTED_DATA = (byte) 0xff;
+  private static final byte CORRUPTED_DATA = (byte) 0xff;
 
   private MspMote mote;
 
@@ -81,7 +81,6 @@ public class TR1001Radio extends Radio implements USARTListener, CustomDataRadio
   private boolean isInterfered = false;
 
   private RadioEvent lastEvent = RadioEvent.UNKNOWN;
-  private long lastEventTime = 0;
 
   private USART radioUSART = null;
 
@@ -94,11 +93,11 @@ public class TR1001Radio extends Radio implements USARTListener, CustomDataRadio
 
   private boolean radioOn = true; /* TODO MSPSim: Not implemented */
   private double signalStrength = 0;  /* TODO MSPSim: Not implemented */
-  
-  
+
+
   /**
    * Creates an interface to the TR1001 radio at mote.
-   * 
+   *
    * @param mote Mote
    */
   public TR1001Radio(Mote mote) {
@@ -137,7 +136,7 @@ public class TR1001Radio extends Radio implements USARTListener, CustomDataRadio
     TimeEvent receiveCrosslevelDataEvent = new MspMoteTimeEvent(mote, 0) {
       public void execute(long t) {
         super.execute(t);
-        
+
         /* Stop receiving data when buffer is empty */
         if (data.isEmpty()) {
           return;
@@ -158,20 +157,15 @@ public class TR1001Radio extends Radio implements USARTListener, CustomDataRadio
   }
 
   /* Custom data radio support */
-  public Object getLastCustomDataTransmitted() {
+  public byte getLastCustomDataTransmitted() {
     return sentByte;
   }
 
-  public Object getLastCustomDataReceived() {
+  public byte getLastCustomDataReceived() {
     return receivedByte;
   }
 
-  public void receiveCustomData(Object data) {
-    if (!(data instanceof Byte)) {
-      logger.fatal("Received bad custom data: " + data);
-      return;
-    }
-
+  public void receiveCustomData(byte data) {
     receivedByte = isInterfered ? CORRUPTED_DATA : (Byte) data;
 
     final byte finalByte = receivedByte;
@@ -196,9 +190,8 @@ public class TR1001Radio extends Radio implements USARTListener, CustomDataRadio
       /* New transmission discovered */
       /*logger.info("----- NEW TR1001 TRANSMISSION DETECTED -----");*/
       tr1001PacketConverter = new TR1001RadioPacketConverter();
-      
+
       lastEvent = RadioEvent.TRANSMISSION_STARTED;
-      lastEventTime = mote.getSimulation().getSimulationTime();
       isTransmitting = true;
       this.setChanged();
       this.notifyObservers();
@@ -224,7 +217,7 @@ public class TR1001Radio extends Radio implements USARTListener, CustomDataRadio
     boolean finished = tr1001PacketConverter.fromTR1001ToCoojaAccumulated(sentByte);
     if (finished) {
       timeoutTransmission.remove();
-      
+
       /* Transmission finished - deliver packet immediately */
       if (tr1001PacketConverter.accumulatedConversionIsOk()) {
         /* Deliver packet */
@@ -287,7 +280,6 @@ public class TR1001Radio extends Radio implements USARTListener, CustomDataRadio
       isInterfered = true;
       receivedPacket = null;
 
-      lastEventTime = mote.getSimulation().getSimulationTime();
       lastEvent = RadioEvent.RECEPTION_INTERFERED;
       /*logger.info("----- TR1001 RECEPTION INTERFERED -----");*/
       this.setChanged();
@@ -327,15 +319,15 @@ public class TR1001Radio extends Radio implements USARTListener, CustomDataRadio
         /* Nothing to do */
         return;
       }
-      
+
       logger.warn("TR1001 transmission timed out, delivering empty packet");
-      
+
       /* XXX Timeout: We may need to deliver an empty radio packet here */
       sentPacket = new COOJARadioPacket(new byte[0]);
       lastEvent = RadioEvent.PACKET_TRANSMITTED;
       TR1001Radio.this.setChanged();
       TR1001Radio.this.notifyObservers();
-      
+
       isTransmitting = false;
       lastEvent = RadioEvent.TRANSMISSION_FINISHED;
       TR1001Radio.this.setChanged();

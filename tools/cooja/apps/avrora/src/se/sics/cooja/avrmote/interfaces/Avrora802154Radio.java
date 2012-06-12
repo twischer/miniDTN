@@ -105,7 +105,7 @@ public abstract class Avrora802154Radio extends Radio802154 {
     receiver.nextByte(true, b);
   }
 
-  protected void handleStartofReception() {
+  protected void handleStartOfReception() {
   }
 
   protected void handleEndOfReception() {
