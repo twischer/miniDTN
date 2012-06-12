@@ -33,18 +33,27 @@
  */
 package avrora.sim.radio;
 
+import java.util.Arrays;
+import java.util.Random;
+
+import avrora.sim.FiniteStateMachine;
 import avrora.sim.Simulator;
 import avrora.sim.clock.Synchronizer;
-import avrora.sim.mcu.*;
+import avrora.sim.energy.Energy;
+import avrora.sim.mcu.ADC;
+import avrora.sim.mcu.Microcontroller;
+import avrora.sim.mcu.SPI;
+import avrora.sim.mcu.SPIDevice;
 import avrora.sim.output.SimPrinter;
-import avrora.sim.state.*;
+import avrora.sim.state.BooleanRegister;
+import avrora.sim.state.BooleanView;
+import avrora.sim.state.ByteFIFO;
+import avrora.sim.state.Register;
+import avrora.sim.state.RegisterUtil;
+import avrora.sim.state.RegisterView;
 import cck.text.StringUtil;
 import cck.util.Arithmetic;
 import cck.util.Util;
-import avrora.sim.FiniteStateMachine;
-import avrora.sim.energy.Energy;
-
-import java.util.*;
 
 /**
  * The <code>CC2420Radio</code> implements a simulation of the CC2420 radio
@@ -139,7 +148,7 @@ public class CC2420Radio implements Radio {
     // simplify the handling of radio states and state transitions.
     protected final Register statusRegister = new Register(8);
     protected boolean startingOscillator = false;
-    
+
     //-- Views of bits in the status "register" ---------------------------
     protected final BooleanView oscStable = RegisterUtil.booleanView(statusRegister, 6);
     protected final BooleanView txUnderflow = RegisterUtil.booleanView(statusRegister, 5);
@@ -301,7 +310,7 @@ public class CC2420Radio implements Radio {
         // reset pins.
         FIFO_pin.level.setValue(!FIFO_active);
         FIFOP_pin.level.setValue(!FIFOP_active);
-        
+
         transmitter.shutdown();
         receiver.shutdown();
     }
@@ -320,8 +329,8 @@ public class CC2420Radio implements Radio {
      * @param addr the address of the register
      * @return an integer value representing the result of reading the register
      */
-    int readRegister(int addr) {
-        int val = (int) registers[addr];
+    public int readRegister(int addr) {
+        int val = registers[addr];
         if (printer != null) {
             printer.println("CC2420 " + regName(addr) + " => " + StringUtil.toMultirepString(val, 16));
         }
@@ -616,7 +625,7 @@ public class CC2420Radio implements Radio {
                     return writeFIFO(rxFIFO, val, false);
                 case CMD_R_RAM:
                     configRAMBank = (val >> 6) & 0x3;
-                    if (!Arithmetic.getBit(val, 5)) 
+                    if (!Arithmetic.getBit(val, 5))
                         configCommand = CMD_W_RAM;
                     return 0;
             }
@@ -645,11 +654,11 @@ public class CC2420Radio implements Radio {
                     return writeFIFO(rxFIFO, val, false);
                 case CMD_R_RAM:
                     byte retval;
-                    if (configRAMBank == 0x00) 
+                    if (configRAMBank == 0x00)
                         retval = txFIFO.peek(configRAMAddr);
                     else if (configRAMBank == 0x01)
                         retval = rxFIFO.peek(configRAMAddr);
-                    else if (configRAMBank == 0x02) 
+                    else if (configRAMBank == 0x02)
                         retval = ReadSecurityBank(configRAMAddr);
                     else
                         retval = 0;
@@ -659,9 +668,9 @@ public class CC2420Radio implements Radio {
                     if (configRAMBank == 0x00) {
                         retval = txFIFO.poke(configRAMAddr, val);
                     }
-                    else if (configRAMBank == 0x01) 
+                    else if (configRAMBank == 0x01)
                         retval = rxFIFO.poke(configRAMAddr, val);
-                    else if (configRAMBank == 0x02)  
+                    else if (configRAMBank == 0x02)
                         retval = WriteSecurityBank(configRAMAddr, val);
                     else
                         retval = 0;
@@ -681,7 +690,7 @@ public class CC2420Radio implements Radio {
     }
 
     protected byte ReadSecurityBank(int address) {
-        int value = (int) RAMSecurityRegisters[address];
+        int value = RAMSecurityRegisters[address];
         if (printer != null) {
             printer.println("CC2420 " + SecurityRAMName(address) + "(addr " + StringUtil.to0xHex(address, 2) + ") -> " + StringUtil.toMultirepString(value, 8));
         }
@@ -743,7 +752,7 @@ public class CC2420Radio implements Radio {
 
     private int getFIFOThreshold() {
         // get the FIFOP_THR value from the configuration register
-        return (int) registers[IOCFG0] & 0x7f;
+        return registers[IOCFG0] & 0x7f;
     }
 
     public Simulator getSimulator() {
@@ -756,8 +765,8 @@ public class CC2420Radio implements Radio {
     }
 
     public double getFrequency() {
-        //return frequency in Mhz                
-        return (double) (2048 + (readRegister(FSCTRL) & 0x03ff));
+        //return frequency in Mhz
+        return (2048 + (readRegister(FSCTRL) & 0x03ff));
     }
 
     public class ClearChannelAssessor implements BooleanView {
@@ -811,7 +820,7 @@ public class CC2420Radio implements Radio {
                 if (printer != null) {
                     printer.println("CC2420 VREN current state = "+stateMachine.getCurrentState());
                 }
-          
+
             if (stateMachine.getCurrentState() == 0) {
                 // actually, there is a startup time for the voltage regulator
                 // but we assume here that it starts immediately
@@ -853,7 +862,7 @@ public class CC2420Radio implements Radio {
     // look for a 0 symbol, then for the syncword, but also ignoring 0xF. Therefore,
     // for the default syncword 00 7A should be searched. Since for the default
     // syncword this might result only in a minor difference I decided not to change it now.
-    
+
     private static final int TX_IN_PREAMBLE = 0;
     private static final int TX_SFD_1 = 1;
     private static final int TX_SFD_2 = 2;
@@ -968,7 +977,7 @@ public class CC2420Radio implements Radio {
                     if (autoCRC.getValue()) {
                         // accumulate CRC if enabled.
                     //    crc = crcAccumulate(crc, val);
-                        crc = crcAccumulate(crc, (byte) reverse_bits[((int) val) & 0xff]);
+                        crc = crcAccumulate(crc, (byte) reverse_bits[(val) & 0xff]);
                         if (counter >= length - 2) {
                             // switch to CRC state if when 2 bytes remain.
                             state = TX_CRC_1;
@@ -981,11 +990,11 @@ public class CC2420Radio implements Radio {
                 case TX_CRC_1:
                     state = TX_CRC_2;
                     val = Arithmetic.high(crc);
-                    val = (byte) reverse_bits[((int) val) & 0xff];
+                    val = (byte) reverse_bits[(val) & 0xff];
                     break;
                 case TX_CRC_2:
                     val = Arithmetic.low(crc);
-                    val = (byte) reverse_bits[((int) val) & 0xff];
+                    val = (byte) reverse_bits[(val) & 0xff];
                     state = TX_END;
                     break;
             }
@@ -996,18 +1005,18 @@ public class CC2420Radio implements Radio {
             if (state == TX_END) {
                 // actually, this should be set low AFTER the crc, but we are not called at that time...
                 SFD_value.setValue(!SFD_active);
-            
+
                 if (!wasAck && !txUnderflow.getValue()) {  //data frame only and only when no underflow
                     //After complete tx of data frame the txFIFO is automatically refilled
                     txFIFO.refill();
                     //writing txFIFO after frame transmitted will cause it to be flushed
                     setClearFlag();
                 }
-                
+
                 // auto transition back to receive mode.
                 shutdown();
                 receiver.startup();// auto transition back to receive mode.
-                
+
                 // transmitter stays in this state until it is really switched off
                 state = TX_WAIT;
             }
@@ -1051,7 +1060,7 @@ public class CC2420Radio implements Radio {
 	    crc ^= (crc & 0xff) << 5;
 	    crc = crc & 0xffff;
         return crc;
-    } 
+    }
 
     short crcAccumulate(short crc, byte val) {
         int i = 8;
@@ -1093,11 +1102,11 @@ public class CC2420Radio implements Radio {
             rssi_val = cca_thr | (rssi_val & 0x00ff);
             writeRegister(RSSI,rssi_val);
         }
-        
+
         private boolean getRssiValid (){
             return rssiValid.getValue();
         }
-        
+
         public double getCorrelation (){
             int PERindex = (int)(getPER()*100);
             Random random = new Random();
@@ -1126,7 +1135,7 @@ public class CC2420Radio implements Radio {
                 BERtotal += BER;
             }
         }
-        
+
         public double getPER (){
             double PER = 0.0D;
             if (BERcount > 5) {
@@ -1138,7 +1147,7 @@ public class CC2420Radio implements Radio {
             clearBER();
             return PER;
         }
-        
+
         public void clearBER() {
             BERcount = 0;
             BERtotal = 0.0D;
@@ -1160,7 +1169,7 @@ public class CC2420Radio implements Radio {
                 }
                 return b;
             }
-                
+
             if (!lock) {
                 // the transmission lock has been lost
                 switch (state) {
@@ -1171,7 +1180,7 @@ public class CC2420Radio implements Radio {
                         //packet lost in middle -> drop frame
                         dropFrame();
                         // fall through
-                    
+
                     case RECV_SFD_MATCHED_1: // packet has just started
                         state = RECV_SFD_SCAN;
                         SFD_value.setValue(!SFD_active);
@@ -1179,7 +1188,7 @@ public class CC2420Radio implements Radio {
                 }
                 return b;
             }
-            
+
             if (printer != null) {
                 printer.println("CC2420 <======== " + StringUtil.to0xHex(b, 2));
             }
@@ -1215,7 +1224,7 @@ public class CC2420Radio implements Radio {
                         state = RECV_SFD_SCAN;
                         break;
                     }
-                    
+
                     // save current position in rxFIFO as start of frame
                     rxFIFO.saveState();
                     if (fifoAdd(b)) {
@@ -1224,7 +1233,7 @@ public class CC2420Radio implements Radio {
                         crc = 0;
                     }
                     break;
-                
+
                 case RECV_IN_PACKET:
                     // we are in the body of the packet.
                     counter++;
@@ -1255,11 +1264,11 @@ public class CC2420Radio implements Radio {
                             lastCRCok = false;  // we have a new DSN now. Therefore, we cannot send an ACK for the last frame any more.
                         }
                     }
-                    
+
                     // no overflow occurred and address ok
                     if (autoCRC.getValue()) {
                      //   crc = crcAccumulate(crc, b);
-                        crc = crcAccumulate(crc, (byte) reverse_bits[((int) b) & 0xff]);
+                        crc = crcAccumulate(crc, (byte) reverse_bits[(b) & 0xff]);
                         if (counter == length - 2) {
                             // transition to receiving the CRC.
                          //   myprinter.println("CC2420 crc1");
@@ -1283,12 +1292,12 @@ public class CC2420Radio implements Radio {
                     b = (byte)(readRegister(RSSI)&0x00ff);
                     fifoAdd(b);
                     break;
-                
+
                 case RECV_CRC_2:
                     state = RECV_END_STATE;
-                    crcLow = (byte)reverse_bits[((int) crcLow) & 0xff]; 
-                    b = (byte)reverse_bits[((int) b) & 0xff];
-                    short crcResult = (short) Arithmetic.word(b, crcLow);
+                    crcLow = (byte)reverse_bits[(crcLow) & 0xff];
+                    b = (byte)reverse_bits[(b) & 0xff];
+                    short crcResult = Arithmetic.word(b, crcLow);
                     //Corr value and CRCok are written in this position of the rxFIFO
                     b = (byte) ((byte)getCorrelation() & 0x7f);
               //      myprinter.println(" crcResult " + crcResult + " crc " + crc);
@@ -1308,7 +1317,7 @@ public class CC2420Radio implements Radio {
                             printer.println("CC2420 CRC failed");
                         }
                     }
-            
+
                     if (fifoAdd(b)) {
                         // signal FIFOP and unsignal SFD
                         signalFIFOP();
@@ -1321,7 +1330,7 @@ public class CC2420Radio implements Radio {
                             }
                         }
                     }
-                    
+
                     break;
                 case RECV_OVERFLOW:
                     // do nothing. we have encountered an overflow.
@@ -1363,7 +1372,7 @@ public class CC2420Radio implements Radio {
             }
             return true;
         }
-        
+
         private boolean matchAddress(byte b, int counter) {
             if (counter > 1 && (rxFIFO.peek(1) & 0x04) == 4 && RESERVED_FRAME_MODE.getValue()) {
                 // no further address decoding is done for reserved frames
@@ -1409,7 +1418,7 @@ public class CC2420Radio implements Radio {
              // case 12://If 64-bit Destination Address exits check if match
                 //dak bumped this up a byte, works with sky. The SFD change caused this?
                 case 13://If 64-bit Destination Address exits check if match
-                    if (((rxFIFO.peek(2) >> 2) & 0x03) == 3) {                   
+                    if (((rxFIFO.peek(2) >> 2) & 0x03) == 3) {
                      // LongAdr = rxFIFO.peekField(8, 16);
                         LongAdr = rxFIFO.peekField(6, 14);//dak
                         IEEEAdr = ByteFIFO.copyOfRange(RAMSecurityRegisters, 96, 104);
@@ -1435,7 +1444,7 @@ public class CC2420Radio implements Radio {
                 FIFOP_pin.level.setValue(!FIFOP_active);
             }
         }
-            
+
         private void signalFIFOP() {
             FIFOP_pin.level.setValue(FIFOP_active);
             if (FIFOP_interrupt > 0) {
@@ -1470,7 +1479,7 @@ public class CC2420Radio implements Radio {
             }
         }
         protected RssiValid rssiValidEvent = new RssiValid();
-        
+
         void startup() {
             stateMachine.transition(3);//change to receive state
             state = RECV_SFD_SCAN;
