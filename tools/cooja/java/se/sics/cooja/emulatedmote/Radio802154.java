@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, Swedish Institute of Computer Science.
+ * Copyright (c) 2012, Swedish Institute of Computer Science.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,6 +27,7 @@
  * SUCH DAMAGE.
  *
  */
+
 package se.sics.cooja.emulatedmote;
 
 import java.util.Collection;
@@ -35,7 +36,9 @@ import org.apache.log4j.Logger;
 import org.jdom.Element;
 
 import se.sics.cooja.Mote;
+import se.sics.cooja.MoteTimeEvent;
 import se.sics.cooja.RadioPacket;
+import se.sics.cooja.Simulation;
 import se.sics.cooja.interfaces.CustomDataRadio;
 import se.sics.cooja.interfaces.Position;
 import se.sics.cooja.interfaces.Radio;
@@ -43,226 +46,239 @@ import se.sics.cooja.interfaces.Radio;
 /**
  * 802.15.4 radio class for COOJA.
  *
- * @author Joakim Eriksson, David Kopf
+ * @author Joakim Eriksson, David Kopf, Fredrik Osterlind
  */
 
 public abstract class Radio802154 extends Radio implements CustomDataRadio {
+  private static Logger logger = Logger.getLogger(Radio802154.class);
+  private final static boolean DEBUG = false;
 
-    private final static boolean DEBUG = false;
+  /**
+   * Cross-level:
+   * Inter-byte delay for delivering cross-level packet bytes.
+   */
+  public static final long DELAY_BETWEEN_BYTES =
+    (long) (1000.0*Simulation.MILLISECOND/(250000.0/8.0)); /* us. Corresponds to 250kbit/s */
 
-    private static Logger logger = Logger.getLogger(Radio802154.class);
+  protected RadioEvent lastEvent = RadioEvent.UNKNOWN;
 
-    protected long lastEventTime = 0;
+  private boolean isTransmitting = false;
+  protected boolean isReceiving = false;
+  protected boolean isInterfered = false;
 
-    protected RadioEvent lastEvent = RadioEvent.UNKNOWN;
+  private byte lastOutgoingByte;
+  private byte lastIncomingByte;
+  private RadioPacket lastOutgoingPacket = null;
+  private RadioPacket lastIncomingPacket = null;
 
-    protected boolean isInterfered = false;
+  private Mote mote;
 
-    private boolean isTransmitting = false;
+  public Radio802154(Mote mote) {
+    this.mote = mote;
+  }
 
-    protected boolean isReceiving = false;
-    //    private boolean hasFailedReception = false;
-
-    private boolean radioOn = true;
-
-    private RadioByte lastOutgoingRadioByte = null;
-    private RadioByte lastIncomingRadioByte = null;
-    private RadioPacket lastOutgoingPacket = null;
-    private RadioPacket lastIncomingPacket = null;
-
-    private byte lastOutgoingByte;
-    private byte lastIncomingByte;
-
-
-    //    private int mode;
-    protected Mote mote;
-
-    public Radio802154(Mote mote) {
-        this.mote = mote;
+  private int txLen = 0;
+  private int txExpLen = 0; /* transmitted bytes before overflow */
+  private byte[] txBuffer = new byte[127/*data*/ + 15/*preamble*/];
+  protected void handleTransmit(byte val) {
+    if (!isTransmitting()) {
+      lastEvent = RadioEvent.TRANSMISSION_STARTED;
+      isTransmitting = true;
+      if (DEBUG) logger.debug(mote.getID() + ": ----- 802.15.4 TRANSMISSION STARTED -----");
+      setChanged();
+      notifyObservers();
     }
 
-    int len = 0;
-    int expLen = 0;
-    byte[] buffer = new byte[127 + 15];
-    protected void handleTransmit(byte val) {
-        if (len == 0) {
-            lastEventTime = mote.getSimulation().getSimulationTime();
-            lastEvent = RadioEvent.TRANSMISSION_STARTED;
-            isTransmitting = true;
-            if (DEBUG) logger.debug("----- 802.15.4 TRANSMISSION STARTED -----");
-            setChanged();
-            notifyObservers();
+    if (txLen >= txBuffer.length) {
+      /* Bad size packet, too large */
+      logger.warn("Error: bad size: " + txLen + ", dropping outgoing byte: " + val);
+      return;
+    }
+
+    /* Send byte to radio medium */
+    lastOutgoingByte = val;
+    lastEvent = RadioEvent.CUSTOM_DATA_TRANSMITTED;
+    if (DEBUG) logger.debug(mote.getID() + ":----- 802.15.4 CUSTOM DATA TRANSMITTED -----");
+    setChanged();
+    notifyObservers();
+
+    txBuffer[txLen++] = val;
+
+    /* TODO We assume that the 6th byte transmitted is the length.
+     *  4xPREAMBLE, 1xSFD, 1xLEN, 127xDATA.
+     *  Instead, we should search for the SFD. */
+    if (txLen == 6) {
+      txExpLen = val + 6;
+    }
+
+    if (txLen == txExpLen) {
+      /* Send packet to radio medium */
+      lastOutgoingPacket = Radio802154PacketConverter.fromCC2420ToCooja(txBuffer);
+      lastEvent = RadioEvent.PACKET_TRANSMITTED;
+      if (DEBUG) logger.debug(mote.getID() + ":----- 802.15.4 PACKET TRANSMITTED -----");
+      setChanged();
+      notifyObservers();
+
+      isTransmitting = false;
+      lastEvent = RadioEvent.TRANSMISSION_FINISHED;
+      setChanged();
+      notifyObservers();
+      txLen = 0;
+    }
+  }
+
+  public RadioPacket getLastPacketTransmitted() {
+    return lastOutgoingPacket;
+  }
+
+  public RadioPacket getLastPacketReceived() {
+    return lastIncomingPacket;
+  }
+
+  public void setReceivedPacket(RadioPacket packet) {
+    /* Note:
+     * Only nodes at other abstraction levels deliver full packets.
+     * MSPSim motes with 802.15.4 radios would instead directly deliver bytes. */
+
+    lastIncomingPacket = packet;
+
+    /* Delivering packet bytes with delays */
+    byte[] packetData = Radio802154PacketConverter.fromCoojaToCC2420(packet);
+    long deliveryTime = getMote().getSimulation().getSimulationTime();
+    for (byte b: packetData) {
+      if (isInterfered()) {
+        b = (byte) 0xFF;
+      }
+
+      final byte byteToDeliver = b;
+      getMote().getSimulation().scheduleEvent(new MoteTimeEvent(mote, 0) {
+        public void execute(long t) {
+          handleReceive(byteToDeliver);
         }
-        /* send this byte to all nodes */
-        if (SERIALIZE_ALL_RADIO_PACKETS) lastOutgoingByte = val;
-        else lastOutgoingRadioByte = new RadioByte(val);
-        lastEventTime = mote.getSimulation().getSimulationTime();
-        lastEvent = RadioEvent.CUSTOM_DATA_TRANSMITTED;
-        setChanged();
-        notifyObservers();
+      }, deliveryTime);
+      deliveryTime += DELAY_BETWEEN_BYTES;
+    }
+  }
 
-        buffer[len++] = val;
+  /* Custom data radio support */
+  public byte getLastCustomDataTransmitted() {
+    return lastOutgoingByte;
+  }
 
-        if (len == 6) {
-            expLen = val + 6;
+  public byte getLastCustomDataReceived() {
+    return lastIncomingByte;
+  }
+
+  public final void receiveCustomData(byte data) {
+    lastIncomingByte = data;
+    handleReceive(data);
+  }
+
+  protected void radioOn() {
+    lastEvent = RadioEvent.HW_ON;
+    setChanged();
+    notifyObservers();
+  }
+
+  protected void radioOff() {
+    /* Radio was turned off during transmission.
+     * May for example happen if watchdog triggers */
+    if (isTransmitting()) {
+      logger.warn("Turning off radio while transmitting, ending packet prematurely");
+
+      /* Simulate end of packet */
+      lastOutgoingPacket = new RadioPacket() {
+        public byte[] getPacketData() {
+          return new byte[0];
         }
+      };
 
-        if (len == expLen) {
-            if (DEBUG) logger.debug("----- 802.15.4 CUSTOM DATA TRANSMITTED -----");
+      lastEvent = RadioEvent.PACKET_TRANSMITTED;
+      if (DEBUG) logger.debug(mote.getID() + ":----- 802.15.4 PACKET TRANSMITTED (Radio turned off) -----");
+      setChanged();
+      notifyObservers();
 
-            lastOutgoingPacket = Radio802154PacketConverter.fromCC2420ToCooja(buffer);
-            lastEventTime = mote.getSimulation().getSimulationTime();
-            lastEvent = RadioEvent.PACKET_TRANSMITTED;
-            if (DEBUG) logger.debug("----- 802.15.4 PACKET TRANSMITTED -----");
-            setChanged();
-            notifyObservers();
-
-            lastEventTime = mote.getSimulation().getSimulationTime();
-            isTransmitting = false;
-            lastEvent = RadioEvent.TRANSMISSION_FINISHED;
-            setChanged();
-            notifyObservers();
-            len = 0;
-        }
+      /* Register that transmission ended in radio medium */
+      if (DEBUG) logger.debug(mote.getID() + ":----- 802.15.4 TRANSMISSION FINISHED -----");
+      isTransmitting = false;
+      lastEvent = RadioEvent.TRANSMISSION_FINISHED;
+      setChanged();
+      notifyObservers();
     }
 
-    /* Packet radio support */
-    public RadioPacket getLastPacketTransmitted() {
-        return lastOutgoingPacket;
-    }
+    lastEvent = RadioEvent.HW_OFF;
+    setChanged();
+    notifyObservers();
+  }
 
-    public RadioPacket getLastPacketReceived() {
-        return lastIncomingPacket;
-    }
+  protected abstract void handleStartOfReception();
+  protected abstract void handleEndOfReception();
+  protected abstract void handleReceive(byte b);
 
-    public void setReceivedPacket(RadioPacket packet) {
-    }
+  public boolean isTransmitting() {
+    return isTransmitting;
+  }
 
-    /* Custom data radio support */
-    public Object getLastCustomDataTransmitted() {
-        if (SERIALIZE_ALL_RADIO_PACKETS) return lastOutgoingByte;
-        else return lastOutgoingRadioByte;
-    }
+  public boolean isReceiving() {
+    return isReceiving;
+  }
 
-    public Object getLastCustomDataReceived() {
-        if (SERIALIZE_ALL_RADIO_PACKETS) return lastIncomingByte;
-        else return lastIncomingRadioByte;
-    }
+  public boolean isInterfered() {
+    return isInterfered;
+  }
 
-    public void receiveCustomData(Object data) {
-        if (SERIALIZE_ALL_RADIO_PACKETS) {
-            lastIncomingByte = (Byte) data;
-            handleReceive(lastIncomingByte);
-        } else {
-            if (data instanceof RadioByte) {
-                lastIncomingRadioByte = (RadioByte) data;
-                handleReceive(lastIncomingRadioByte.getPacketData()[0]);
-            }
-        }
-    }
+  public void signalReceptionStart() {
+    isReceiving = true;
 
-    /* General radio support */
-    public boolean isTransmitting() {
-        return isTransmitting;
-    }
+    handleStartOfReception();
 
-    public boolean isReceiving() {
-        return isReceiving;
-    }
+    if (DEBUG) logger.debug(mote.getID() + ":----- 802.15.4 RECEPTION STARTED -----");
+    lastEvent = RadioEvent.RECEPTION_STARTED;
+    setChanged();
+    notifyObservers();
 
-    public boolean isInterfered() {
-        return isInterfered;
-    }
+  }
 
-    protected abstract void handleReceive(byte b);
+  public RadioEvent getLastEvent() {
+    return lastEvent;
+  }
 
-    protected abstract void handleEndOfReception();
+  public final void signalReceptionEnd() {
+    /* Deliver packet data */
+    isReceiving = false;
+    isInterfered = false;
 
-    public abstract int getChannel();
+    handleEndOfReception();
 
-    public abstract int getFrequency();
+    if (DEBUG) logger.debug(mote.getID() + ":----- 802.15.4 RECEPTION FINISHED -----");
+    lastEvent = RadioEvent.RECEPTION_FINISHED;
+    setChanged();
+    notifyObservers();
+  }
 
-    public abstract boolean isRadioOn();
+  public void interfereAnyReception() {
+    isInterfered = true;
+    isReceiving = false;
+    lastIncomingPacket = null;
 
-    public abstract double getCurrentOutputPower();
+    if (DEBUG) logger.debug(mote.getID() + ":-----  RECEPTION INTERFERED -----");
+    lastEvent = RadioEvent.RECEPTION_INTERFERED;
+    setChanged();
+    notifyObservers();
+  }
 
-    public abstract int getCurrentOutputPowerIndicator();
+  public Mote getMote() {
+    return mote;
+  }
 
-    public abstract int getOutputPowerIndicatorMax();
+  public Position getPosition() {
+    return mote.getInterfaces().getPosition();
+  }
 
-    public abstract double getCurrentSignalStrength();
+  public Collection<Element> getConfigXML() {
+    return null;
+  }
 
-    public abstract void setCurrentSignalStrength(double signalStrength);
-
-    /* need to add a few more methods later??? */
-    public void signalReceptionStart() {
-        isReceiving = true;
-
-        //      cc2420.setCCA(true);
-        //      hasFailedReception = mode == CC2420.MODE_TXRX_OFF;
-        /* TODO cc2420.setSFD(true); */
-
-        lastEventTime = mote.getSimulation().getSimulationTime();
-        lastEvent = RadioEvent.RECEPTION_STARTED;
-        if (DEBUG) logger.debug("----- 802.15.4 RECEPTION STARTED -----");
-        setChanged();
-        notifyObservers();
-    }
-
-    public void signalReceptionEnd() {
-        /* Deliver packet data */
-        isReceiving = false;
-        //      hasFailedReception = false;
-        isInterfered = false;
-        //      cc2420.setCCA(false);
-
-        /* tell the receiver that the packet is ended */
-        handleEndOfReception();
-
-        lastEventTime = mote.getSimulation().getSimulationTime();
-        lastEvent = RadioEvent.RECEPTION_FINISHED;
-        if (DEBUG) logger.debug("----- 802.15.4 RECEPTION FINISHED -----");
-       // Exception e = new IllegalStateException("Why finished?");
-       // e.printStackTrace();
-        setChanged();
-        notifyObservers();
-    }
-
-    public RadioEvent getLastEvent() {
-        return lastEvent;
-    }
-
-    public void interfereAnyReception() {
-        if (DEBUG) logger.debug("-----  RECEPTION INTERFERED -----");
-        isInterfered = true;
-        isReceiving = false;
-        //      hasFailedReception = false;
-        lastIncomingPacket = null;
-
-        //cc2420.setCCA(true);
-
-        /* is this ok ?? */
-        handleEndOfReception();
-        //recv.nextByte(false, (byte)0);
-
-        lastEventTime = mote.getSimulation().getSimulationTime();
-        lastEvent = RadioEvent.RECEPTION_INTERFERED;
-        setChanged();
-        notifyObservers();
-    }
-
-    public Mote getMote() {
-        return mote;
-    }
-
-    public Position getPosition() {
-        return mote.getInterfaces().getPosition();
-    }
-
-    public Collection<Element> getConfigXML() {
-        return null;
-    }
-
-    public void setConfigXML(Collection<Element> configXML, boolean visAvailable) {
-    }
+  public void setConfigXML(Collection<Element> configXML, boolean visAvailable) {
+  }
 }
