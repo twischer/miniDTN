@@ -111,13 +111,9 @@ public class AvrMoteMemory implements MoteMemory, AddressMemory {
 
   public int getVariableAddress(String varName)
   throws UnknownVariableException {
-    /* XXX Warning: From reading Avrora code examples, it appears as if the
-     * symbol address is the 24 lsb of the SourceMapping's vma_addr. This is,
-     * however, merely a guess based on the code in
-     * avrora.monitors.PrintMonitor. */
-
+    /* RAM addresses start at 0x800000 in Avrora */
     int vma = memoryMap.getLocation(varName).vma_addr;
-    int ret = vma & 0xfff;
+    int ret = vma & 0x7fffff;
     /*logger.info("Symbol '" + memoryMap.getLocation(varName).name +
         "': vma_addr: " + String.format("0x%04x", vma) +
         ", returned address: " + String.format("0x%04x", ret));*/
