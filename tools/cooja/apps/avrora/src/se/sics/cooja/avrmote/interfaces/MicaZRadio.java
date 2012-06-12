@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, Swedish Institute of Computer Science.
+ * Copyright (c) 2012, Swedish Institute of Computer Science.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -32,124 +32,75 @@ package se.sics.cooja.avrmote.interfaces;
 
 import org.apache.log4j.Logger;
 
-import avrora.sim.FiniteStateMachine;
-import avrora.sim.FiniteStateMachine.Probe;
-import avrora.sim.platform.MicaZ;
-import avrora.sim.radio.CC2420Radio;
-import avrora.sim.radio.Medium;
-
-import se.sics.cooja.*;
+import se.sics.cooja.ClassDescription;
+import se.sics.cooja.Mote;
 import se.sics.cooja.avrmote.MicaZMote;
-import se.sics.cooja.emulatedmote.Radio802154;
+import se.sics.cooja.avrmote.MicaZMoteType;
+import avrora.sim.radio.CC2420Radio;
+import avrora.sim.radio.Radio;
 
 /**
- * CC2420 to COOJA wrapper.
+ * Cooja support for Avrora's CC2420Radio.
  *
- * @author Joakim Eriksson
+ * @see MicaZMoteType
+ * @author Joakim Eriksson, Fredrik Osterlind
  */
 @ClassDescription("CC2420")
-public class MicaZRadio extends Radio802154 {
+public class MicaZRadio extends Avrora802154Radio {
   private static Logger logger = Logger.getLogger(MicaZRadio.class);
 
-  private MicaZ micaz;
+  /* Avrora's FSM for CC2420Radio:
+   * 0: Power Off:
+   * 1: Power Down:
+   * 2: Idle:
+   * 3: Receive (Rx):
+   * 4: Transmit (Tx):        0:
+   * ...
+   * 259: Transmit (Tx):        255:
+   * 260: null
+   * 261: null
+   */
+  private final static int STATE_POWEROFF = 0;
+  private final static int STATE_POWERDOWN = 1;
+  private final static int STATE_IDLE = 2;
+
   private CC2420Radio cc2420;
 
-//  private int mode;
-  Medium.Transmitter trans;
-  CC2420Radio.Receiver recv;
-  FiniteStateMachine fsm;
-  
   public MicaZRadio(Mote mote) {
-    super(mote);
-    micaz = ((MicaZMote)mote).getMicaZ();
-    cc2420 = (CC2420Radio) micaz.getDevice("radio");
-   
-    trans = cc2420.getTransmitter();
-    fsm = cc2420.getFiniteStateMachine();
-    recv = (CC2420Radio.Receiver) cc2420.getReceiver();
-    trans.insertProbe(new Medium.Probe.Empty() {
-        public void fireBeforeTransmit(Medium.Transmitter t, byte val) {
-            handleTransmit(val);
-        }
-    });
-    fsm.insertProbe(new Probe() {
-        public void fireBeforeTransition(int arg0, int arg1) {
-        }
-        public void fireAfterTransition(int arg0, int arg1) {
-            //System.out.println("CC2420 - MicaZ FSM: " + arg0 + " " + arg1);
-            RadioEvent re = null;
-            if (arg1 >= 3) {
-                re = RadioEvent.HW_ON;
-            } else {
-                if (arg0 > 3 && arg1 == 2) {
-                    /* likely that radio dips into 2 before going back to 3 */
-                } else {
-                    re = RadioEvent.HW_OFF;
-                }
-            }
-            if (re != null) {
-                lastEvent = re;
-                lastEventTime = MicaZRadio.this.mote.getSimulation().getSimulationTime();
-                setChanged();
-                notifyObservers();
-            }
-        }
-    });
-    
-    
+    super(mote,
+        ((Radio) ((MicaZMote)mote).getMicaZ().getDevice("radio")),
+        ((CC2420Radio) ((MicaZMote)mote).getMicaZ().getDevice("radio")).getFiniteStateMachine());
+    cc2420 = (CC2420Radio) ((MicaZMote)mote).getMicaZ().getDevice("radio");
   }
 
-  public int getChannel() {
-//    cc2420.updateActiveFrequency();
-//    return cc2420.getActiveChannel();
-      return (int) ((cc2420.getFrequency() - 2405.0)/5) + 11;
+  protected boolean isRadioOn(int state) {
+    if (state == STATE_POWEROFF) {
+      return false;
+    }
+    if (state == STATE_POWERDOWN) {
+      return false;
+    }
+    if (state == STATE_IDLE) {
+      return false;
+    }
+
+    /* XXX What if state is above 260 ("null")? On or off? */
+    return true;
   }
 
-  public int getFrequency() {
-//    cc2420.updateActiveFrequency();
-      return (int) cc2420.getFrequency();
-  }
-
-  public boolean isRadioOn() {
-      FiniteStateMachine fsm = cc2420.getFiniteStateMachine();
-      /* based on reading the source code it seems that the fsm state = 3 means on */
-      //System.out.println("COOJA: cc2420 FSM: " + fsm.getCurrentState());
-      return fsm.getCurrentState() >= 3;
-  }
-
-  public void signalReceptionStart() {
-//    cc2420.setCCA(true);
-//    hasFailedReception = mode == CC2420.MODE_TXRX_OFF;
-      super.signalReceptionStart();
+  public double getFrequency() {
+    return cc2420.getFrequency();
   }
 
   public double getCurrentOutputPower() {
-    return 1.1;//cc2420.getOutputPower();
+    return cc2420.getPower();
   }
 
   public int getCurrentOutputPowerIndicator() {
-    return 31; //cc2420.getOutputPowerIndicator();
+    return cc2420.readRegister(CC2420Radio.TXCTRL) & 0x1f;
   }
 
   public int getOutputPowerIndicatorMax() {
-    return 31;
-  }
-
-  public double getCurrentSignalStrength() {
-    return 1;//cc2420.getRSSI();
-  }
-
-  public void setCurrentSignalStrength(double signalStrength) {
-    //cc2420.setRSSI((int) signalStrength);
-  }
-
-  protected void handleEndOfReception() {
-      /* tell the receiver that the packet is ended */
-      recv.nextByte(false, (byte)0);
-  }
-
-  protected void handleReceive(byte b) {
-      //System.out.println("MicaZ: Received: " + (b &0xff));
-      recv.nextByte(true, (byte)b);
+    return 0x1f;
   }
 }

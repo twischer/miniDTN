@@ -35,112 +35,59 @@ import org.apache.log4j.Logger;
 import se.sics.cooja.ClassDescription;
 import se.sics.cooja.Mote;
 import se.sics.cooja.avrmote.RFA1Mote;
-import se.sics.cooja.emulatedmote.Radio802154;
-import avrora.sim.FiniteStateMachine;
-import avrora.sim.FiniteStateMachine.Probe;
-import avrora.sim.platform.RFA1;
 import avrora.sim.radio.ATmega128RFA1Radio;
-import avrora.sim.radio.Medium;
+import avrora.sim.radio.Radio;
 
 /**
- * Avrora ATMega128RFA1 radio to COOJA wrapper.
+ * Cooja support for Avrora's ATMega128RFA1.
  *
- * @author Joakim Eriksson
- * @author David Kopf
+ * @author Joakim Eriksson, David Kopf, Fredrik Osterlind
  */
-@ClassDescription("RFA1")
-public class RFA1Radio extends Radio802154 {
+@ClassDescription("RFA1 Radio")
+public class RFA1Radio extends Avrora802154Radio {
   private static Logger logger = Logger.getLogger(RFA1Radio.class);
 
-  private RFA1 rfa1;
-  private ATmega128RFA1Radio rf231;
+  /* TODO XXX Verify states */
+  private final static int STATE_POWEROFF = 0;
+  private final static int STATE_POWERDOWN = 1;
+  private final static int STATE_IDLE = 2;
 
-//  private int mode;
-  Medium.Transmitter trans;
-  ATmega128RFA1Radio.Receiver recv;
-  FiniteStateMachine fsm;
+  private ATmega128RFA1Radio rfa1radio;
 
   public RFA1Radio(Mote mote) {
-    super(mote);
-    rfa1 = ((RFA1Mote)mote).getRFA1();
-    rf231 = (ATmega128RFA1Radio) rfa1.getDevice("radio");
-
-    trans = rf231.getTransmitter();
-    fsm = rf231.getFiniteStateMachine();
-    recv = (ATmega128RFA1Radio.Receiver) rf231.getReceiver();
-    trans.insertProbe(new Medium.Probe.Empty() {
-        public void fireBeforeTransmit(Medium.Transmitter t, byte val) {
-            handleTransmit(val);
-        }
-    });
-    fsm.insertProbe(new Probe() {
-        public void fireBeforeTransition(int arg0, int arg1) {
-        }
-        public void fireAfterTransition(int arg0, int arg1) {
-   //         System.out.println("RFA1 FSM: " + arg0 + " " + arg1);
-            RadioEvent re = null;
-            if (arg1 >= 3) {
-                re = RadioEvent.HW_ON;
-            } else {
-                re = RadioEvent.HW_OFF;
-            }
-            if (re != null) {
-                lastEvent = re;
-                lastEventTime = RFA1Radio.this.mote.getSimulation().getSimulationTime();
-                setChanged();
-                notifyObservers();
-            }
-        }
-    });
-
-
+    super(mote,
+        ((Radio) ((RFA1Mote)mote).getRFA1().getDevice("radio")),
+        ((ATmega128RFA1Radio) ((RFA1Mote)mote).getRFA1().getDevice("radio")).getFiniteStateMachine());
+    rfa1radio = (ATmega128RFA1Radio) ((RFA1Mote)mote).getRFA1().getDevice("radio");
   }
 
-  public int getChannel() {
-    return rf231.getChannel();
+  public double getFrequency() {
+      return rfa1radio.getFrequency();
   }
 
-  public int getFrequency() {
-      return (int) rf231.getFrequency();
-  }
+  protected boolean isRadioOn(int state) {
+    if (state == STATE_POWEROFF) {
+      return false;
+    }
+    if (state == STATE_POWERDOWN) {
+      return false;
+    }
+    if (state == STATE_IDLE) {
+      return false;
+    }
 
-  public boolean isRadioOn() {
-    //This apparently means is radio on
-    //Receiver is on in state 3-5, and a transmitter for > 5
-    return (rf231.getFiniteStateMachine().getCurrentState() > 2);
-  }
-  public void signalReceptionStart() {
-//    rf231.setCCA(true);
-//    hasFailedReception = mode == rf231.MODE_TXRX_OFF;
-      super.signalReceptionStart();
+    return true;
   }
 
   public double getCurrentOutputPower() {
-    return rf231.getPower();
+    return rfa1radio.getPower();
   }
 
   public int getCurrentOutputPowerIndicator() {
-    return 31; //rf231.getOutputPowerIndicator();
+    return 0x0f - rfa1radio.getPowerIndicator(); /* 0: max power */
   }
 
   public int getOutputPowerIndicatorMax() {
-    return 31;
-  }
-
-  public double getCurrentSignalStrength() {
-    return recv.getRSSI();
-  }
-
-  public void setCurrentSignalStrength(double signalStrength) {
-    recv.setRSSI(signalStrength);
-  }
-
-  protected void handleEndOfReception() {
-      /* tell the receiver that the packet is ended */
-      recv.nextByte(false, (byte)0);
-  }
-
-  protected void handleReceive(byte b) {
-      recv.nextByte(true, b);
+    return 0x0f;
   }
 }
