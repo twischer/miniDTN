@@ -47,7 +47,8 @@ import avrora.sim.radio.Radio;
 public class RFA1Radio extends Avrora802154Radio {
   private static Logger logger = Logger.getLogger(RFA1Radio.class);
 
-  /* TODO XXX Verify states */
+  /* Radio is idle in state 2, receiver in state 3-5, and a transmitter for > 5 */
+  /* See ATmega128RFA1Energy.java for the power consumptions */
   private final static int STATE_POWEROFF = 0;
   private final static int STATE_POWERDOWN = 1;
   private final static int STATE_IDLE = 2;
@@ -72,9 +73,11 @@ public class RFA1Radio extends Avrora802154Radio {
     if (state == STATE_POWERDOWN) {
       return false;
     }
+    /* Idle uses about half the power of the rx state. Return on to err on the high side of enery consumption.
     if (state == STATE_IDLE) {
       return false;
     }
+    */
 
     return true;
   }
