@@ -114,8 +114,6 @@ public class AvroraADC extends MoteInterface {
     }
   }
 
-  private JLabel timeLabel, cyclesLabel, stateLabel, watchLabel;
-
   private Simulator.Probe liveProbe = null;
   private boolean probeInserted = false;
   private boolean liveUpdate = false;
@@ -182,12 +180,7 @@ public class AvroraADC extends MoteInterface {
     boolean updated = false;
     if (pc == 0 ) pc = interpreter.getState().getPC();
     long now = simulation.getSimulationTime();
-    timeLabel.setText("Run Time  : " + ((double)(now-startTime)/1000000));
-    watchLabel.setText("Stopwatch : " + ((double)(now-lastTime)/1000000));
     cycleCount = interpreter.getState().getCycles();
-    cyclesLabel.setText("    Cycles : " + (cycleCount - lastCycles));
-    stateLabel.setText("PC: 0x" +  Integer.toHexString(pc) + "      SP: 0x" +  Integer.toHexString(interpreter.getSP())
-    + "     State: " + myFSM.getStateName(myFSM.getCurrentState()));
 
     // updated forced on one channel
     if (adc != 0) {
@@ -431,18 +424,11 @@ public class AvroraADC extends MoteInterface {
         boxn.add(box);
     }
 
-    timeLabel = new JLabel();
-    watchLabel = new JLabel();
-    cyclesLabel = new JLabel();
-    stateLabel = new JLabel();
-
     final JButton updateButton = new JButton("Update");
-    final JButton resetButton = new JButton("Reset");
     final JToggleButton liveButton = new JToggleButton("Live",false);
 
-    boxn1.add(timeLabel);boxn1.add(Box.createHorizontalGlue());
-    boxn2.add(watchLabel);boxn2.add(cyclesLabel);boxn2.add(Box.createHorizontalGlue());boxn2.add(resetButton);boxn2.add(updateButton);boxn2.add(liveButton);
-    boxn3.add(stateLabel);boxn3.add(Box.createHorizontalGlue());
+    boxn1.add(Box.createHorizontalGlue());
+    boxn2.add(Box.createHorizontalGlue());boxn2.add(updateButton);boxn2.add(liveButton);
     boxs.add(boxn1);
     boxs.add(boxn2);
     boxs.add(boxn3);
@@ -454,15 +440,6 @@ public class AvroraADC extends MoteInterface {
     // one time update
     updateButton.addActionListener(new ActionListener() {
         public void actionPerformed(ActionEvent e) {
-            updatePanel(0, 0);
-        }
-    });
-
-    // reset stopwatch
-    resetButton.addActionListener(new ActionListener() {
-        public void actionPerformed(ActionEvent e) {
-            lastTime = simulation.getSimulationTime();
-            lastCycles = interpreter.getState().getCycles();
             updatePanel(0, 0);
         }
     });
