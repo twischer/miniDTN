@@ -46,9 +46,8 @@ public class ATTiny85Mote extends AvroraMote {
     super(simulation, type, new Tiny85.Factory());
   }
 
-  // Returns AvroraMote.PLATFORM when only an Tiny85 will do
   public Tiny85 getTiny85() {
-    return (Tiny85) PLATFORM;
+    return (Tiny85) getPlatform();
   }
 
   // Return unique Mote name

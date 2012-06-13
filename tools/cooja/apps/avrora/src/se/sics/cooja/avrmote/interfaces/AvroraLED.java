@@ -44,11 +44,9 @@ import org.jdom.Element;
 
 import se.sics.cooja.ClassDescription;
 import se.sics.cooja.Mote;
-//import se.sics.cooja.avrmote.MicaZMote;
 import se.sics.cooja.avrmote.AvroraMote;
 import se.sics.cooja.interfaces.LED;
 import avrora.sim.FiniteStateMachine;
-import avrora.sim.platform.MicaZ;
 
 /**
  * @author Joakim Eriksson
@@ -64,12 +62,12 @@ public class AvroraLED extends LED {
   private boolean probesInserted = false;
   private boolean[] ledOn = {false, false, false, false};
   private int[] ledMap = new int[4];
-  
+
   private static final int LED_RED = 0;
   private static final int LED_GREEN = 1;
   private static final int LED_BLUE = 2;
   private static final int LED_YELLOW = 3;
-  
+
   private static final Color DARK_BLUE = new Color(0, 0, 100);
   private static final Color DARK_GREEN = new Color(0, 100, 0);
   private static final Color DARK_RED = new Color(100, 0, 0);
@@ -80,7 +78,7 @@ public class AvroraLED extends LED {
   private static final Color YELLOW = new Color(220, 200, 0);
 
   public AvroraLED(Mote mote) {
-    leds = (avrora.sim.platform.LED.LEDGroup) ((AvroraMote)mote).PLATFORM.getDevice("leds");
+    leds = (avrora.sim.platform.LED.LEDGroup) ((AvroraMote)mote).getPlatform().getDevice("leds");
 
     int index = 0;
     for ( avrora.sim.platform.LED led : leds.leds) {
@@ -133,7 +131,7 @@ public class AvroraLED extends LED {
           }
           public void fireBeforeTransition(int arg0, int arg1) {
           }
-        };    
+        };
     }
     if (index-- >=0) {
         ledProbes[3] = new FiniteStateMachine.Probe() {
@@ -152,7 +150,7 @@ public class AvroraLED extends LED {
         leds.leds[i].getFSM().insertProbe(ledProbes[i]);
     }
     probesInserted = true;
-  
+
   }
   public boolean isAnyOn() {
     for (int i=0; i<4; i++) if (ledOn[i]) return true;
@@ -192,7 +190,7 @@ public class AvroraLED extends LED {
         int x = 20;
         int y = 4;
         int d = 25;
-        for (int i=0; i<leds.leds.length; i++) {       
+        for (int i=0; i<leds.leds.length; i++) {
             if (ledOn[ledMap[i]]) {
                 switch (ledMap[i]) {
                     case LED_BLUE:g.setColor(BLUE);break;
@@ -202,7 +200,7 @@ public class AvroraLED extends LED {
                 }
                 g.fillOval(x, y, d, d);
                 g.setColor(Color.BLACK);
-                g.drawOval(x, y, d, d);    
+                g.drawOval(x, y, d, d);
             } else {
                 switch (ledMap[i]) {
                     case LED_BLUE:g.setColor(DARK_BLUE);break;

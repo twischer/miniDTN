@@ -14,14 +14,14 @@ import avrora.sim.mcu.AtmelMicrocontroller;
 public class AvroraUsart1 extends SerialUI {
   private static Logger logger = Logger.getLogger(AvroraUsart1.class);
 
-  private Mote myMote;
+  private AvroraMote myMote;
   private avrora.sim.mcu.USART usart;
   private MoteTimeEvent receiveNextByte;
 
   private ArrayDeque<Byte> rxData = new ArrayDeque<Byte>();
 
   public AvroraUsart1(Mote mote) {
-    myMote = mote;
+    myMote = (AvroraMote) mote;
     receiveNextByte = new MoteTimeEvent(mote, 0) {
       public void execute(long t) {
         if (usart.receiving) {
@@ -34,7 +34,7 @@ public class AvroraUsart1 extends SerialUI {
     };
 
     /* this should go into some other piece of code for serial data */
-    AtmelMicrocontroller mcu = (AtmelMicrocontroller) ((AvroraMote)myMote).CPU.getSimulator().getMicrocontroller();
+    AtmelMicrocontroller mcu = (AtmelMicrocontroller) myMote.getPlatform().getMicrocontroller().getSimulator().getMicrocontroller();
     usart = (avrora.sim.mcu.USART) mcu.getDevice(getUsart());
     if (usart != null) {
       usart.connect(new avrora.sim.mcu.USART.USARTDevice() {

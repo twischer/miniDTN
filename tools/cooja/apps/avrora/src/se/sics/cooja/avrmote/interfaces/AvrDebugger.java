@@ -82,6 +82,7 @@ import avrora.sim.AtmelInterpreter;
 import avrora.sim.FiniteStateMachine;
 import avrora.sim.Simulator;
 import avrora.sim.State;
+import avrora.sim.mcu.AtmelMicrocontroller;
 import avrora.sim.mcu.DefaultMCU;
 import cck.text.StringUtil;
 
@@ -89,22 +90,24 @@ import cck.text.StringUtil;
  * @author David Kopf
  */
 @ClassDescription("AVR Debugger")
+// should not be a mote interface! todo xxx fros
 public class AvrDebugger extends MoteInterface {
   private static Logger logger = Logger.getLogger(AvrDebugger.class);
 
   private Simulation simulation;
   private AtmelInterpreter interpreter;
-  private Mote myMote;
+  private AvroraMote myMote;
   private FiniteStateMachine myFSM;
   private long cpuFreq,lastCycles,displayDelay;
   private double startTime,lastTime;
 
   public AvrDebugger(Mote mote) {
-    myMote = mote;
+    myMote = (AvroraMote) mote;
     simulation = mote.getSimulation();
-    interpreter = (AtmelInterpreter)((AvroraMote)myMote).CPU.getSimulator().getInterpreter();
-    myFSM = ((DefaultMCU)((AvroraMote)myMote).CPU.getSimulator().getMicrocontroller()).getFSM();
-    cpuFreq = ((AvroraMote)myMote).getCPUFrequency();
+    AtmelMicrocontroller cpu = (AtmelMicrocontroller) myMote.getPlatform().getMicrocontroller();
+    interpreter = (AtmelInterpreter)cpu.getSimulator().getInterpreter();
+    myFSM = ((DefaultMCU)cpu.getSimulator().getMicrocontroller()).getFSM();
+    cpuFreq = myMote.getCPUFrequency();
     //TODO:get add startup delay from clock visualizer
   //  AvroraClock.getDrift();
     startTime = (double)simulation.getSimulationTime()/1000000;
@@ -834,7 +837,7 @@ private Process objdumpProcess;
     searchText = new JTextField(12);
     prevButton = new JButton("Prev");
     nextButton = new JButton("Next");
- 
+
     boxnw.add(startLabel);
     boxnw.add(timeLabel);
     boxnw.add(watchLabel);

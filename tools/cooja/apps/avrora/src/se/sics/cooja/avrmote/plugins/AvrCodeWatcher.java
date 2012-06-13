@@ -109,7 +109,7 @@ public class AvrCodeWatcher extends VisPlugin implements MotePlugin {
   private static final int BREAKPOINTS = 2;
   private Simulation simulation;
   private AtmelInterpreter interpreter;
-  private Mote myMote;
+  private AvroraMote myMote;
   private FiniteStateMachine myFSM;
   private File objdumpFile = null;
   private long timeDrift; /* Microseconds */
@@ -135,13 +135,13 @@ public class AvrCodeWatcher extends VisPlugin implements MotePlugin {
 
   public AvrCodeWatcher(Mote mote, Simulation simulationToVisualize, GUI gui) {
     super("Avr Code Watcher - " + mote, gui);
-    myMote = mote;
+    myMote = (AvroraMote)mote;
  //       this.watchpointMote = (WatchpointMote) mote;
     simulation = mote.getSimulation();
  //   simulation = simulationToVisualize
   //  interpreter = null;
-    interpreter = (AtmelInterpreter)((AvroraMote)myMote).CPU.getSimulator().getInterpreter();
-    myFSM = ((DefaultMCU)((AvroraMote)myMote).CPU.getSimulator().getMicrocontroller()).getFSM();
+    interpreter = (AtmelInterpreter) myMote.getPlatform().getMicrocontroller().getSimulator().getInterpreter();
+    myFSM = ((DefaultMCU) myMote.getPlatform().getMicrocontroller().getSimulator().getMicrocontroller()).getFSM();
 
     if (interpreter == null) {
         logger.debug("Mote interpreter is null");

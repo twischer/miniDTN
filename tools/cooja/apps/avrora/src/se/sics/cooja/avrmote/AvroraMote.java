@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, Swedish Institute of Computer Science.
+ * Copyright (c) 2012, Swedish Institute of Computer Science.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -59,17 +59,17 @@ import avrora.sim.platform.PlatformFactory;
 public abstract class AvroraMote extends AbstractEmulatedMote implements Mote {
   public static Logger logger = Logger.getLogger(AvroraMote.class);
 
-  private MoteInterfaceHandler myMoteInterfaceHandler;
-  public AtmelMicrocontroller CPU = null;
-  public PlatformFactory FACTORY = null;
-  public Platform PLATFORM = null;
-  public String TARGET = "none";
-  private LoadableProgram program = null;
-  public AtmelInterpreter INTERPRETER = null;
-  public AvrMoteMemory MEMORY = null;
-  private AVRProperties avrProperties = null;
-  public MoteType MOTETYPE = null;
+  private MoteInterfaceHandler moteInterfaceHandler;
+  private MoteType moteType;
 
+  public PlatformFactory FACTORY = null;
+  private Platform platform = null;
+  public String TARGET = "none";
+
+  private LoadableProgram program = null;
+  private AtmelInterpreter interpreter = null;
+  private AvrMoteMemory memory = null;
+  private AVRProperties avrProperties = null;
   public EEPROM EEPROM = null;
 
   /* Stack monitoring variables */
@@ -77,7 +77,7 @@ public abstract class AvroraMote extends AbstractEmulatedMote implements Mote {
 
   public AvroraMote(Simulation simulation, MoteType type, PlatformFactory factory) {
     setSimulation(simulation);
-    MOTETYPE = type;
+    moteType = type;
     FACTORY = factory;
 
     /* Schedule us immediately */
@@ -86,22 +86,24 @@ public abstract class AvroraMote extends AbstractEmulatedMote implements Mote {
 
   protected boolean initEmulator(File fileELF) {
     try {
-    program = new LoadableProgram(fileELF);
-    program.load();
-    // get the factory type from the super
-    PLATFORM = FACTORY.newPlatform(1, program.getProgram());
-    CPU = (AtmelMicrocontroller) PLATFORM.getMicrocontroller();
-    EEPROM = (EEPROM) CPU.getDevice("eeprom");
-
-    avrProperties = (AVRProperties) CPU.getProperties();
-    Simulator sim = CPU.getSimulator();
-    INTERPRETER = (AtmelInterpreter) sim.getInterpreter();
-    MEMORY = new AvrMoteMemory(program.getProgram().getSourceMapping(), avrProperties, INTERPRETER);
+      program = new LoadableProgram(fileELF);
+      program.load();
+      platform = FACTORY.newPlatform(1, program.getProgram());
+      AtmelMicrocontroller cpu = (AtmelMicrocontroller) platform.getMicrocontroller();
+      EEPROM = (EEPROM) cpu.getDevice("eeprom");
+      avrProperties = (AVRProperties) cpu.getProperties();
+      Simulator sim = cpu.getSimulator();
+      interpreter = (AtmelInterpreter) sim.getInterpreter();
+      memory = new AvrMoteMemory(program.getProgram().getSourceMapping(), avrProperties, interpreter);
     } catch (Exception e) {
       logger.fatal("Error creating avrora "+ TARGET +" mote: ", e);
       return false;
     }
     return true;
+  }
+
+  public Platform getPlatform() {
+    return platform;
   }
 
   /**
@@ -117,41 +119,35 @@ public abstract class AvroraMote extends AbstractEmulatedMote implements Mote {
   }
 
   protected void initMote() {
-    if (MOTETYPE != null) {
-      initEmulator(MOTETYPE.getContikiFirmwareFile());
-      myMoteInterfaceHandler = createMoteInterfaceHandler();
-    } else logger.debug("MOTETYPE null");
+    initEmulator(moteType.getContikiFirmwareFile());
+    moteInterfaceHandler = createMoteInterfaceHandler();
   }
 
   public void setEEPROM(int address, int i) {
-      byte[] eedata = EEPROM.getContent();
-      eedata[address] = (byte) i;
+    byte[] eedata = EEPROM.getContent();
+    eedata[address] = (byte) i;
   }
 
   public int getID() {
-    if (getInterfaces() == null) {
-        logger.debug("AvroraMote getInterfaces null");
-        return 0;
-    }
     return getInterfaces().getMoteID().getMoteID();
   }
 
   public MoteType getType() {
-    return MOTETYPE;
+    return moteType;
   }
   public MoteMemory getMemory() {
-    return MEMORY;
+    return memory;
   }
   public MoteInterfaceHandler getInterfaces() {
-    return myMoteInterfaceHandler;
+    return moteInterfaceHandler;
   }
 
   private long cyclesExecuted = 0;
   private long cyclesUntil = 0;
   public void execute(long t) {
     /* Wait until mote boots */
-    if (myMoteInterfaceHandler.getClock().getTime() < 0) {
-      scheduleNextWakeup(t - myMoteInterfaceHandler.getClock().getTime());
+    if (moteInterfaceHandler.getClock().getTime() < 0) {
+      scheduleNextWakeup(t - moteInterfaceHandler.getClock().getTime());
       return;
     }
 
@@ -163,7 +159,7 @@ public abstract class AvroraMote extends AbstractEmulatedMote implements Mote {
     /* Execute one millisecond */
     cyclesUntil += this.getCPUFrequency()/1000;
     while (cyclesExecuted < cyclesUntil) {
-      int nsteps = INTERPRETER.step();
+      int nsteps = interpreter.step();
       if (nsteps > 0) {
         cyclesExecuted += nsteps;
       } else {
@@ -180,8 +176,8 @@ public abstract class AvroraMote extends AbstractEmulatedMote implements Mote {
   @SuppressWarnings("unchecked")
   public boolean setConfigXML(Simulation simulation, Collection<Element> configXML, boolean visAvailable) {
     setSimulation(simulation);
-    initEmulator(MOTETYPE.getContikiFirmwareFile());
-    myMoteInterfaceHandler = createMoteInterfaceHandler();
+    initEmulator(moteType.getContikiFirmwareFile());
+    moteInterfaceHandler = createMoteInterfaceHandler();
 
     for (Element element: configXML) {
       String name = element.getName();
@@ -190,7 +186,7 @@ public abstract class AvroraMote extends AbstractEmulatedMote implements Mote {
         /* Ignored: handled by simulation */
       } else if (name.equals("interface_config")) {
         Class<? extends MoteInterface> moteInterfaceClass = simulation.getGUI().tryLoadClass(
-              this, MoteInterface.class, element.getText().trim());
+            this, MoteInterface.class, element.getText().trim());
 
         if (moteInterfaceClass == null) {
           logger.fatal("Could not load mote interface class: " + element.getText().trim());

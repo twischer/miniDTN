@@ -55,6 +55,7 @@ import avrora.sim.AtmelInterpreter;
 import avrora.sim.FiniteStateMachine;
 import avrora.sim.Simulator;
 import avrora.sim.State;
+import avrora.sim.mcu.AtmelMicrocontroller;
 import avrora.sim.mcu.DefaultMCU;
 
 /**
@@ -72,9 +73,10 @@ public class AvroraClock extends Clock {
   private long startTime,lastTime,lastCycles;
 
   public AvroraClock(Mote mote) {
+    AtmelMicrocontroller cpu = (AtmelMicrocontroller) ((AvroraMote)mote).getPlatform().getMicrocontroller();
     mySimulation = mote.getSimulation();
-    myInterpreter = (AtmelInterpreter)((AvroraMote)mote).CPU.getSimulator().getInterpreter();
-    myFSM = ((DefaultMCU)((AvroraMote)mote).CPU.getSimulator().getMicrocontroller()).getFSM();
+    myInterpreter = (AtmelInterpreter)cpu.getSimulator().getInterpreter();
+    myFSM = ((DefaultMCU)cpu).getFSM();
     startTime = mySimulation.getSimulationTime();
     lastTime = startTime;
     lastCycles = 0;

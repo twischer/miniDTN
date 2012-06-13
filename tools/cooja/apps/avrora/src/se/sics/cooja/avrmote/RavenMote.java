@@ -47,9 +47,8 @@ public class RavenMote extends AvroraMote {
     super(simulation, type, new Raven.Factory());
   }
 
-  // Returns AvroraMote.PLATFORM when only a Raven will do
   public Raven getRaven() {
-    return (Raven) PLATFORM;
+    return (Raven) getPlatform();
   }
 
   // Return unique Mote name

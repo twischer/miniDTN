@@ -63,6 +63,7 @@ import avrora.sim.FiniteStateMachine;
 import avrora.sim.Simulator;
 import avrora.sim.State;
 import avrora.sim.mcu.ADC;
+import avrora.sim.mcu.AtmelMicrocontroller;
 import avrora.sim.mcu.DefaultMCU;
 
 /**
@@ -74,7 +75,7 @@ public class AvroraADC extends MoteInterface {
 
   private Simulation simulation;
   private AtmelInterpreter interpreter;
-  private Mote myMote;
+  private AvroraMote myMote;
   private FiniteStateMachine myFSM;
   private ADC adcDevice;
 
@@ -98,12 +99,13 @@ public class AvroraADC extends MoteInterface {
 
 
    public AvroraADC(Mote mote) {
-    myMote = mote;
+    myMote = (AvroraMote) mote;
     simulation = mote.getSimulation();
-    interpreter = (AtmelInterpreter)((AvroraMote)myMote).CPU.getSimulator().getInterpreter();
-    myFSM = ((DefaultMCU)((AvroraMote)myMote).CPU.getSimulator().getMicrocontroller()).getFSM();
-    adcDevice = (ADC)((AvroraMote)myMote).CPU.getDevice("adc");
-    logger.debug("CPU freq is " + ((AvroraMote)myMote).getCPUFrequency());
+    AtmelMicrocontroller cpu = (AtmelMicrocontroller) myMote.getPlatform().getMicrocontroller();
+    interpreter = (AtmelInterpreter)cpu.getSimulator().getInterpreter();
+    myFSM = ((DefaultMCU)cpu.getSimulator().getMicrocontroller()).getFSM();
+    adcDevice = (ADC)cpu.getDevice("adc");
+    logger.debug("CPU freq is " + myMote.getCPUFrequency());
     if (interpreter == null) {
         logger.debug("Mote interpreter is null");
     }
@@ -147,7 +149,7 @@ public class AvroraADC extends MoteInterface {
     int mvolts = dc[i];
     if (ns[i] !=0) mvolts += random.nextInt(ns[i]) - ns[i]/2;
     if (fn[i] > 0) {
-        float factor = ((AvroraMote)myMote).getCPUFrequency();
+        float factor = (myMote).getCPUFrequency();
         int advance = (int)(cycleCount-chanST[i]);
         if (fn[i] == 1) {    //sine
             mvolts += (int)(ac[i]*Math.sin(2*3.14159265*hz[i]*advance/factor));

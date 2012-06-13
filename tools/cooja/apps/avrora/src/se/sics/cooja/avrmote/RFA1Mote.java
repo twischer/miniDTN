@@ -47,9 +47,8 @@ public class RFA1Mote extends AvroraMote {
     super(simulation, type, new RFA1.Factory());
   }
 
-  // Returns AvroraMote.PLATFORM when only a RFA1 will do
   public RFA1 getRFA1() {
-    return (RFA1) PLATFORM;
+    return (RFA1) getPlatform();
   }
 
   // Return unique Mote name
