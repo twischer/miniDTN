@@ -51,7 +51,7 @@ import se.sics.cooja.interfaces.Position;
  *
  * @author Joakim Eriksson, Fredrik Osterlind
  */
-@ClassDescription("MicaZ mote...")
+@ClassDescription("MicaZ mote")
 @AbstractionLevelDescription("Emulated level")
 public class MicaZMoteType extends AvroraMoteType {
 

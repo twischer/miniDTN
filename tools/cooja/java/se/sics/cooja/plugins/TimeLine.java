@@ -105,7 +105,7 @@ import se.sics.cooja.motes.AbstractEmulatedMote;
  *
  * @author Fredrik Osterlind
  */
-@ClassDescription("Timeline...")
+@ClassDescription("Timeline")
 @PluginType(PluginType.SIM_STANDARD_PLUGIN)
 public class TimeLine extends VisPlugin implements HasQuickHelp {
   private static final long serialVersionUID = -883154261246961973L;
