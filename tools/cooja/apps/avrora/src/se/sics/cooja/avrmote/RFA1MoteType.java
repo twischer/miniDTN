@@ -42,9 +42,11 @@ import se.sics.cooja.avrmote.interfaces.AvroraLED;
 import se.sics.cooja.avrmote.interfaces.AvroraMoteID;
 import se.sics.cooja.avrmote.interfaces.AvroraUsart0;
 import se.sics.cooja.avrmote.interfaces.RFA1Radio;
+import se.sics.cooja.interfaces.IPAddress;
 import se.sics.cooja.interfaces.Mote2MoteRelations;
 import se.sics.cooja.interfaces.MoteAttributes;
 import se.sics.cooja.interfaces.Position;
+import se.sics.cooja.interfaces.RimeAddress;
 
 /**
  * Bare AVR atmega128rfa1 mote types emulated in Avrora.
@@ -86,7 +88,9 @@ public class RFA1MoteType extends AvroraMoteType {
         AvrDebugger.class,
         AvroraADC.class,
         Mote2MoteRelations.class,
-        MoteAttributes.class
+        MoteAttributes.class,
+        RimeAddress.class,
+        IPAddress.class
     };
 
   }

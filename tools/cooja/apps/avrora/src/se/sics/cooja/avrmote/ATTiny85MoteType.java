@@ -40,8 +40,11 @@ import se.sics.cooja.avrmote.interfaces.AvrDebugger;
 import se.sics.cooja.avrmote.interfaces.AvroraADC;
 import se.sics.cooja.avrmote.interfaces.AvroraClock;
 import se.sics.cooja.avrmote.interfaces.AvroraLED;
+import se.sics.cooja.interfaces.IPAddress;
+import se.sics.cooja.interfaces.Mote2MoteRelations;
 import se.sics.cooja.interfaces.MoteAttributes;
 import se.sics.cooja.interfaces.Position;
+import se.sics.cooja.interfaces.RimeAddress;
 
 /**
  * AVR-based MicaZ mote types emulated in Avrora.
@@ -75,10 +78,11 @@ public class ATTiny85MoteType extends AvroraMoteType {
         AvroraLED.class,
         AvroraADC.class,
         AvroraClock.class,
-   //     AvroraSerial0.class,
         AvrDebugger.class,
-       // Mote2MoteRelations.class,
-        MoteAttributes.class
+        MoteAttributes.class,
+        Mote2MoteRelations.class,
+        RimeAddress.class,
+        IPAddress.class
     };
   }
 

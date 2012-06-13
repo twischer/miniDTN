@@ -42,9 +42,11 @@ import se.sics.cooja.avrmote.interfaces.AvroraLED;
 import se.sics.cooja.avrmote.interfaces.AvroraUsart0;
 import se.sics.cooja.avrmote.interfaces.MicaZID;
 import se.sics.cooja.avrmote.interfaces.MicaZRadio;
+import se.sics.cooja.interfaces.IPAddress;
 import se.sics.cooja.interfaces.Mote2MoteRelations;
 import se.sics.cooja.interfaces.MoteAttributes;
 import se.sics.cooja.interfaces.Position;
+import se.sics.cooja.interfaces.RimeAddress;
 
 /**
  * AVR-based MicaZ mote types emulated in Avrora.
@@ -81,8 +83,10 @@ public class MicaZMoteType extends AvroraMoteType {
         AvroraUsart0.class,
         AvrDebugger.class,
         AvroraADC.class,
+        MoteAttributes.class,
         Mote2MoteRelations.class,
-        MoteAttributes.class
+        RimeAddress.class,
+        IPAddress.class
     };
   }
 
