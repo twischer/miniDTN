@@ -114,7 +114,7 @@ public class AvroraClock extends Clock {
     long cycleCount = myInterpreter.getState().getCycles();
     cyclesLabel.setText("Cycles        : " + (cycleCount - lastCycles));
     stateLabel.setText("PC: 0x" +  Integer.toHexString(myInterpreter.getState().getPC()) + "      SP: 0x" +  Integer.toHexString(myInterpreter.getSP())
-     + "     State: " + myFSM.getStateName(myFSM.getCurrentState()));
+        + "     State: " + myFSM.getStateName(myFSM.getCurrentState()));
   }
 
   public JPanel getInterfaceVisualizer() {
@@ -146,35 +146,35 @@ public class AvroraClock extends Clock {
     stateLabel.setText(stateLabel.getText() + "              ");
 
     updateButton.addActionListener(new ActionListener() {
-        public void actionPerformed(ActionEvent e) {
-            updatePanel();
-        }
+      public void actionPerformed(ActionEvent e) {
+        updatePanel();
+      }
     });
     resetButton.addActionListener(new ActionListener() {
-        public void actionPerformed(ActionEvent e) {
-            lastTime = mySimulation.getSimulationTime();
-            lastCycles = myInterpreter.getState().getCycles();
-            updatePanel();
-        }
+      public void actionPerformed(ActionEvent e) {
+        lastTime = mySimulation.getSimulationTime();
+        lastCycles = myInterpreter.getState().getCycles();
+        updatePanel();
+      }
     });
     liveButton.addActionListener(new ActionListener() {
-        public void actionPerformed(ActionEvent e) {
-            if (liveButton.isSelected()) {
-                repaintTimer.start();
-            } else {
-                repaintTimer.stop();
-            }
+      public void actionPerformed(ActionEvent e) {
+        if (liveButton.isSelected()) {
+          repaintTimer.start();
+        } else {
+          repaintTimer.stop();
         }
+      }
     });
 
     panel.add(BorderLayout.WEST, boxw);
     panel.add(BorderLayout.EAST, boxe);
-	return panel;
-	}
+    return panel;
+  }
 
-	public void releaseInterfaceVisualizer(JPanel panel) {
-        repaintTimer.stop();
-	}
+  public void releaseInterfaceVisualizer(JPanel panel) {
+    repaintTimer.stop();
+  }
 
   public Collection<Element> getConfigXML() {
     return null;
