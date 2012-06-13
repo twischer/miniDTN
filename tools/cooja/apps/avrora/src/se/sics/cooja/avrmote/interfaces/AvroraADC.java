@@ -30,7 +30,6 @@
 
 package se.sics.cooja.avrmote.interfaces;
 
-//import java.awt.Color;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
@@ -79,7 +78,6 @@ public class AvroraADC extends MoteInterface {
   private FiniteStateMachine myFSM;
   private ADC adcDevice;
 
-  private long startTime,lastTime,lastCycles,displayDelay;
   private JPanel jPanel;
 
   final int NUMCHAN = 5;//One extra for Vcc
@@ -98,7 +96,7 @@ public class AvroraADC extends MoteInterface {
   private Random random = new Random();
 
 
-   public AvroraADC(Mote mote) {
+  public AvroraADC(Mote mote) {
     myMote = (AvroraMote) mote;
     simulation = mote.getSimulation();
     AtmelMicrocontroller cpu = (AtmelMicrocontroller) myMote.getPlatform().getMicrocontroller();
@@ -107,10 +105,10 @@ public class AvroraADC extends MoteInterface {
     adcDevice = (ADC)cpu.getDevice("adc");
     logger.debug("CPU freq is " + myMote.getCPUFrequency());
     if (interpreter == null) {
-        logger.debug("Mote interpreter is null");
+      logger.debug("Mote interpreter is null");
     }
     if (myFSM == null) {
-        logger.debug("microcontroller FSM is null");
+      logger.debug("microcontroller FSM is null");
     }
   }
 
@@ -121,56 +119,56 @@ public class AvroraADC extends MoteInterface {
   // insert or remove avrora pc probe when needed for live updates
   void setProbeState() {
     if (liveUpdate ) {
-    // create the probe the first time
-    if (liveProbe == null) liveProbe = new Simulator.Probe() {
-            public void fireBefore(State state, int pc) {
-            }
+      // create the probe the first time
+      if (liveProbe == null) liveProbe = new Simulator.Probe() {
+        public void fireBefore(State state, int pc) {
+        }
 
-            public void fireAfter(State state, int pc) {
-                updatePanel(pc, 0);
-            }
-        };
-        if (!probeInserted) {
-            interpreter.insertProbe(liveProbe);
-            probeInserted = true;
+        public void fireAfter(State state, int pc) {
+          updatePanel(pc, 0);
         }
+      };
+      if (!probeInserted) {
+        interpreter.insertProbe(liveProbe);
+        probeInserted = true;
+      }
     } else {
-        if (probeInserted) {
-            interpreter.removeProbe(liveProbe);
-            probeInserted = false;
-        }
+      if (probeInserted) {
+        interpreter.removeProbe(liveProbe);
+        probeInserted = false;
+      }
     }
   }
 
- // calculate the voltage on the given channel
+  // calculate the voltage on the given channel
   private void getVoltage(int i) {
     int mvolts = dc[i];
     if (ns[i] !=0) mvolts += random.nextInt(ns[i]) - ns[i]/2;
     if (fn[i] > 0) {
-        float factor = (myMote).getCPUFrequency();
-        int advance = (int)(cycleCount-chanST[i]);
-        if (fn[i] == 1) {    //sine
-            mvolts += (int)(ac[i]*Math.sin(2*3.14159265*hz[i]*advance/factor));
-        } else {
-            int cycle = (hz[i] >0) ? (int) (factor/hz[i]) : 1;
-            if (cycle == 0) cycle=1;
-            int phase = advance%cycle;
-            switch (fn[i]) {
-            case 2:         //square
-                if ((phase) < (cycle/2)) mvolts+=ac[i]; else mvolts-=ac[i];
-                break;
-            case 3:         //triangle
-                if (phase < (cycle/2)) {
-                    mvolts+=4*phase*ac[i]/cycle-ac[i];
-                } else {
-                    mvolts+=4*(cycle-phase)*ac[i]/cycle-ac[i];
-                }
-                break;
-            case 4:         //ramp
-                mvolts+=2*phase*ac[i]/cycle-ac[i];
-                break;
-            }
+      float factor = (myMote).getCPUFrequency();
+      int advance = (int)(cycleCount-chanST[i]);
+      if (fn[i] == 1) {    //sine
+        mvolts += (int)(ac[i]*Math.sin(2*3.14159265*hz[i]*advance/factor));
+      } else {
+        int cycle = (hz[i] >0) ? (int) (factor/hz[i]) : 1;
+        if (cycle == 0) cycle=1;
+        int phase = advance%cycle;
+        switch (fn[i]) {
+        case 2:         //square
+          if ((phase) < (cycle/2)) mvolts+=ac[i]; else mvolts-=ac[i];
+          break;
+        case 3:         //triangle
+          if (phase < (cycle/2)) {
+            mvolts+=4*phase*ac[i]/cycle-ac[i];
+          } else {
+            mvolts+=4*(cycle-phase)*ac[i]/cycle-ac[i];
+          }
+          break;
+        case 4:         //ramp
+          mvolts+=2*phase*ac[i]/cycle-ac[i];
+          break;
         }
+      }
     }
     if (mvolts < 0 ) mvolts = 0; else if (mvolts > 5000) mvolts = 5000;
     mv[i] = mvolts;
@@ -184,18 +182,18 @@ public class AvroraADC extends MoteInterface {
 
     // updated forced on one channel
     if (adc != 0) {
-        getVoltage(adc);
-        chanMV[adc].setText(""+mv[adc]);
-        chanSlider[adc].setValue(mv[adc]);
-        return;
+      getVoltage(adc);
+      chanMV[adc].setText(""+mv[adc]);
+      chanSlider[adc].setValue(mv[adc]);
+      return;
     }
 
     // animate any live functions
     for (int i=0; i<=NUMCHAN; i++) if (fn[i] > 0) {
-        getVoltage(i);
-        chanMV[i].setText(""+mv[i]);
-        chanSlider[i].setValue(mv[i]);
-    //    if (i == NUMCHAN) adcDevice.VCC_LEVEL = (float)(mvolts)/1000;
+      getVoltage(i);
+      chanMV[i].setText(""+mv[i]);
+      chanSlider[i].setValue(mv[i]);
+      //    if (i == NUMCHAN) adcDevice.VCC_LEVEL = (float)(mvolts)/1000;
     }
   }
 
@@ -235,193 +233,193 @@ public class AvroraADC extends MoteInterface {
     boxn.add(box);
 
     for (int i=0; i<=NUMCHAN; i++) {
-        ADC.ADCInput adcin = new ADC.ADCInput() {
-            public float getVoltage() {
-                for (int i=0;i<=NUMCHAN;i++) {
-                    if (this == chanAI[i]) {
-                  //      if (i == NUMCHAN) logger.debug("Sample Vcc"); else logger.debug("sample ADC"+i);
-                        updatePanel(0, i);
-                        return((float)(mv[i]/1000.0));
-                    }
-                }
-                return 0;
+      ADC.ADCInput adcin = new ADC.ADCInput() {
+        public float getVoltage() {
+          for (int i=0;i<=NUMCHAN;i++) {
+            if (this == chanAI[i]) {
+              //      if (i == NUMCHAN) logger.debug("Sample Vcc"); else logger.debug("sample ADC"+i);
+              updatePanel(0, i);
+              return((float)(mv[i]/1000.0));
             }
-        };
-        adcDevice.connectADCInput(adcin, i);
-        chanAI[i] = adcin; //NB: chanAI[NUMCHAN] overwrites default Avrora Vcc input
-        box = Box.createVerticalBox();
-        if (i==NUMCHAN) box.add(new JLabel("Vcc")); else box.add(new JLabel("ADC" + i));
-        chanSlider[i] = new JSlider(0,5000,2500);
-        chanSlider[i].setPreferredSize(new Dimension(50,14));
-        box.add(chanSlider[i]);
-        chanSlider[i].addChangeListener(new ChangeListener() {
-            public void stateChanged(ChangeEvent e) {
-                JSlider source = (JSlider)e.getSource();
-                for (int i=0; i<=NUMCHAN; i++) {
-                    if (source == chanSlider[i]) {
-                        mv[i] = source.getValue();
-                        chanMV[i].setText(""+mv[i]);
-                      //  if (i == NUMCHAN) adcDevice.VCC_LEVEL = ((float)mv[i])/1000.0f;
-                        break;
-                    }
-                }
+          }
+          return 0;
+        }
+      };
+      adcDevice.connectADCInput(adcin, i);
+      chanAI[i] = adcin; //NB: chanAI[NUMCHAN] overwrites default Avrora Vcc input
+      box = Box.createVerticalBox();
+      if (i==NUMCHAN) box.add(new JLabel("Vcc")); else box.add(new JLabel("ADC" + i));
+      chanSlider[i] = new JSlider(0,5000,2500);
+      chanSlider[i].setPreferredSize(new Dimension(50,14));
+      box.add(chanSlider[i]);
+      chanSlider[i].addChangeListener(new ChangeListener() {
+        public void stateChanged(ChangeEvent e) {
+          JSlider source = (JSlider)e.getSource();
+          for (int i=0; i<=NUMCHAN; i++) {
+            if (source == chanSlider[i]) {
+              mv[i] = source.getValue();
+              chanMV[i].setText(""+mv[i]);
+              //  if (i == NUMCHAN) adcDevice.VCC_LEVEL = ((float)mv[i])/1000.0f;
+              break;
             }
-        });
+          }
+        }
+      });
 
-        chanMV[i] = new JTextField("2500");
-        chanMV[i].addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                JTextField source = (JTextField)e.getSource();
-                for (int i=0; i<=NUMCHAN; i++ ) {
-                    if (source == chanMV[i]) {
-                        int tmp = -1;
-                        try {tmp = Integer.parseInt(source.getText());} catch (Exception x) {};
-                        if (tmp >=0 && tmp <=5000) {
-                            mv[i] = tmp;
-                            chanSlider[i].setValue(tmp);
-                        } else {
-                           tmp = mv[i];
-                        }
-                        chanMV[i].setText(""+ tmp);
-                        break;
-                    }
-               }
+      chanMV[i] = new JTextField("2500");
+      chanMV[i].addActionListener(new ActionListener() {
+        public void actionPerformed(ActionEvent e) {
+          JTextField source = (JTextField)e.getSource();
+          for (int i=0; i<=NUMCHAN; i++ ) {
+            if (source == chanMV[i]) {
+              int tmp = -1;
+              try {tmp = Integer.parseInt(source.getText());} catch (Exception x) {};
+              if (tmp >=0 && tmp <=5000) {
+                mv[i] = tmp;
+                chanSlider[i].setValue(tmp);
+              } else {
+                tmp = mv[i];
+              }
+              chanMV[i].setText(""+ tmp);
+              break;
             }
-        });
-        box.add(chanMV[i]);
+          }
+        }
+      });
+      box.add(chanMV[i]);
 
-        chanNS[i] = new JTextField("10");
-        chanNS[i].addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                JTextField source = (JTextField)e.getSource();
-                for (int i=0; i<=NUMCHAN; i++ ) {
-                    if (source == chanNS[i]) {
-                        int tmp = -1;
-                        try {tmp = Integer.parseInt(source.getText());} catch (Exception x) {};
-                        if (tmp >=0 && tmp <=5000) {
-                            ns[i] = tmp;
-                        } else {
-                           tmp = ns[i];
-                        }
-                        chanNS[i].setText(""+ tmp);
-                        break;
-                    }
-               }
+      chanNS[i] = new JTextField("10");
+      chanNS[i].addActionListener(new ActionListener() {
+        public void actionPerformed(ActionEvent e) {
+          JTextField source = (JTextField)e.getSource();
+          for (int i=0; i<=NUMCHAN; i++ ) {
+            if (source == chanNS[i]) {
+              int tmp = -1;
+              try {tmp = Integer.parseInt(source.getText());} catch (Exception x) {};
+              if (tmp >=0 && tmp <=5000) {
+                ns[i] = tmp;
+              } else {
+                tmp = ns[i];
+              }
+              chanNS[i].setText(""+ tmp);
+              break;
             }
-        });;
-        box.add(chanNS[i]);
+          }
+        }
+      });;
+      box.add(chanNS[i]);
 
-        chanDC[i] = new JTextField("2500");
-        chanDC[i].addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                JTextField source = (JTextField)e.getSource();
-                for (int i=0; i<=NUMCHAN; i++ ) {
-                    if (source == chanDC[i]) {
-                        int tmp = -1;
-                        try {tmp = Integer.parseInt(source.getText());} catch (Exception x) {};
-                        if (tmp >=0 && tmp <=5000) {
-                            dc[i] = tmp;
-                        } else {
-                           tmp = dc[i];
-                        }
-                        chanDC[i].setText(""+ tmp);
-                        break;
-                    }
-               }
+      chanDC[i] = new JTextField("2500");
+      chanDC[i].addActionListener(new ActionListener() {
+        public void actionPerformed(ActionEvent e) {
+          JTextField source = (JTextField)e.getSource();
+          for (int i=0; i<=NUMCHAN; i++ ) {
+            if (source == chanDC[i]) {
+              int tmp = -1;
+              try {tmp = Integer.parseInt(source.getText());} catch (Exception x) {};
+              if (tmp >=0 && tmp <=5000) {
+                dc[i] = tmp;
+              } else {
+                tmp = dc[i];
+              }
+              chanDC[i].setText(""+ tmp);
+              break;
             }
-        });;
-        box.add(chanDC[i]);
+          }
+        }
+      });;
+      box.add(chanDC[i]);
 
-        chanAC[i] = new JTextField("1000");
-        chanAC[i].addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                JTextField source = (JTextField)e.getSource();
-                for (int i=0; i<=NUMCHAN; i++ ) {
-                    if (source == chanAC[i]) {
-                        int tmp = -1;
-                        try {tmp = Integer.parseInt(source.getText());} catch (Exception x) {logger.debug(x);};
-                        if (tmp >=0 && tmp <=50000) {
-                            ac[i] = tmp;
-                        } else {
-                           tmp = ac[i];
-                        }
-                        chanAC[i].setText(""+ tmp);
-                        break;
-                    }
-               }
+      chanAC[i] = new JTextField("1000");
+      chanAC[i].addActionListener(new ActionListener() {
+        public void actionPerformed(ActionEvent e) {
+          JTextField source = (JTextField)e.getSource();
+          for (int i=0; i<=NUMCHAN; i++ ) {
+            if (source == chanAC[i]) {
+              int tmp = -1;
+              try {tmp = Integer.parseInt(source.getText());} catch (Exception x) {logger.debug(x);};
+              if (tmp >=0 && tmp <=50000) {
+                ac[i] = tmp;
+              } else {
+                tmp = ac[i];
+              }
+              chanAC[i].setText(""+ tmp);
+              break;
             }
-        });
-        box.add(chanAC[i]);
+          }
+        }
+      });
+      box.add(chanAC[i]);
 
-        chanHz[i] = new JTextField("1000.0");
-        chanHz[i].addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                JTextField source = (JTextField)e.getSource();
-                for (int i=0; i<=NUMCHAN; i++ ) {
-                    if (source == chanHz[i]) {
-                        float tmp = -1;
-                        try {tmp = Float.parseFloat(source.getText());} catch (Exception x) {};
-                        if (tmp >=0) {
-                            hz[i] = tmp;
-                        } else {
-                           tmp = hz[i];
-                        }
-                        chanHz[i].setText(""+ tmp);
-                        break;
-                    }
-               }
+      chanHz[i] = new JTextField("1000.0");
+      chanHz[i].addActionListener(new ActionListener() {
+        public void actionPerformed(ActionEvent e) {
+          JTextField source = (JTextField)e.getSource();
+          for (int i=0; i<=NUMCHAN; i++ ) {
+            if (source == chanHz[i]) {
+              float tmp = -1;
+              try {tmp = Float.parseFloat(source.getText());} catch (Exception x) {};
+              if (tmp >=0) {
+                hz[i] = tmp;
+              } else {
+                tmp = hz[i];
+              }
+              chanHz[i].setText(""+ tmp);
+              break;
             }
-        });
-        box.add(chanHz[i]);
+          }
+        }
+      });
+      box.add(chanHz[i]);
 
-        chanNS[i].setEnabled(false);
-        chanDC[i].setEnabled(false);
-        chanAC[i].setEnabled(false);
-        chanHz[i].setEnabled(false);
-        chanFn[i] = new JButton("None");
-        chanFn[i].setPreferredSize(new Dimension(60,20));
-        chanFn[i].addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                JButton source = (JButton)e.getSource();
-                int c;
-                for (c=0; c<=NUMCHAN; c++) {
-                    if (source == chanFn[c]) {
-                        break;
-                    }
-                }
-                chanST[c] = interpreter.getState().getCycles();
-
-                String text = source.getText();
-                if (text.equals("None")) {
-                    source.setText("Sine");
-                    fn[c] = 1;
-                    chanNS[c].setEnabled(true);
-                    chanDC[c].setEnabled(true);
-                    chanAC[c].setEnabled(true);
-                    chanHz[c].setEnabled(true);
-                } else if (text.equals("Sine")) {
-                    source.setText("Square");
-                    fn[c] = 2;
-                } else if (text.equals("Square")) {
-                    source.setText("Triangle");
-                    fn[c] = 3;
-                } else if (text.equals("Triangle")) {
-                    source.setText("Ramp");
-                    fn[c] = 4;
-                } else {
-                    source.setText("None");
-                    fn[c] = 0;
-                    chanNS[c].setEnabled(false);
-                    chanDC[c].setEnabled(false);
-                    chanAC[c].setEnabled(false);
-                    chanHz[c].setEnabled(false);
-                }
-
+      chanNS[i].setEnabled(false);
+      chanDC[i].setEnabled(false);
+      chanAC[i].setEnabled(false);
+      chanHz[i].setEnabled(false);
+      chanFn[i] = new JButton("None");
+      chanFn[i].setPreferredSize(new Dimension(60,20));
+      chanFn[i].addActionListener(new ActionListener() {
+        public void actionPerformed(ActionEvent e) {
+          JButton source = (JButton)e.getSource();
+          int c;
+          for (c=0; c<=NUMCHAN; c++) {
+            if (source == chanFn[c]) {
+              break;
             }
-        });
-        box.add(chanFn[i]);
+          }
+          chanST[c] = interpreter.getState().getCycles();
 
-        boxn.add(box);
+          String text = source.getText();
+          if (text.equals("None")) {
+            source.setText("Sine");
+            fn[c] = 1;
+            chanNS[c].setEnabled(true);
+            chanDC[c].setEnabled(true);
+            chanAC[c].setEnabled(true);
+            chanHz[c].setEnabled(true);
+          } else if (text.equals("Sine")) {
+            source.setText("Square");
+            fn[c] = 2;
+          } else if (text.equals("Square")) {
+            source.setText("Triangle");
+            fn[c] = 3;
+          } else if (text.equals("Triangle")) {
+            source.setText("Ramp");
+            fn[c] = 4;
+          } else {
+            source.setText("None");
+            fn[c] = 0;
+            chanNS[c].setEnabled(false);
+            chanDC[c].setEnabled(false);
+            chanAC[c].setEnabled(false);
+            chanHz[c].setEnabled(false);
+          }
+
+        }
+      });
+      box.add(chanFn[i]);
+
+      boxn.add(box);
     }
 
     final JButton updateButton = new JButton("Update");
@@ -439,41 +437,41 @@ public class AvroraADC extends MoteInterface {
 
     // one time update
     updateButton.addActionListener(new ActionListener() {
-        public void actionPerformed(ActionEvent e) {
-            updatePanel(0, 0);
-        }
+      public void actionPerformed(ActionEvent e) {
+        updatePanel(0, 0);
+      }
     });
 
     // insert avrora probe when live update or breakpoints enabled.
     // Avrora calls fireBefore and fireAfter when program counter changes
     liveButton.addActionListener(new ActionListener() {
-        public void actionPerformed(ActionEvent e) {
-            liveUpdate = liveButton.isSelected();
-            setProbeState();
-        }
+      public void actionPerformed(ActionEvent e) {
+        liveUpdate = liveButton.isSelected();
+        setProbeState();
+      }
     });
 
     Observer observer;
-	this.addObserver(observer = new Observer() {
-		public void update(Observable obs, Object obj) {
-		}
-	});
+    this.addObserver(observer = new Observer() {
+      public void update(Observable obs, Object obj) {
+      }
+    });
     jPanel.putClientProperty("intf_obs", observer);
- //  observer.update(null, null);
+    //  observer.update(null, null);
 
-	return jPanel;
-	}
+    return jPanel;
+  }
 
-	public void releaseInterfaceVisualizer(JPanel panel) {
+  public void releaseInterfaceVisualizer(JPanel panel) {
     logger.debug("release visualizer");
-		Observer observer = (Observer) panel.getClientProperty("intf_obs");
-		if (observer == null) {
-			logger.fatal("Error when releasing panel, observer is null");
-			return;
-		}
-        if (liveProbe != null) interpreter.removeProbe(liveProbe);
-		this.deleteObserver(observer);
-	}
+    Observer observer = (Observer) panel.getClientProperty("intf_obs");
+    if (observer == null) {
+      logger.fatal("Error when releasing panel, observer is null");
+      return;
+    }
+    if (liveProbe != null) interpreter.removeProbe(liveProbe);
+    this.deleteObserver(observer);
+  }
 
   public Collection<Element> getConfigXML() {
     return null;
