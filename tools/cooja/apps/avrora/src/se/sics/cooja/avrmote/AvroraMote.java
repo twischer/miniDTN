@@ -61,16 +61,12 @@ public abstract class AvroraMote extends AbstractEmulatedMote implements Mote {
 
   private MoteInterfaceHandler moteInterfaceHandler;
   private MoteType moteType;
+  private PlatformFactory factory;
 
-  public PlatformFactory FACTORY = null;
   private Platform platform = null;
-  public String TARGET = "none";
-
-  private LoadableProgram program = null;
+  private EEPROM EEPROM = null;
   private AtmelInterpreter interpreter = null;
   private AvrMoteMemory memory = null;
-  private AVRProperties avrProperties = null;
-  public EEPROM EEPROM = null;
 
   /* Stack monitoring variables */
   private boolean stopNextInstruction = false;
@@ -78,7 +74,7 @@ public abstract class AvroraMote extends AbstractEmulatedMote implements Mote {
   public AvroraMote(Simulation simulation, MoteType type, PlatformFactory factory) {
     setSimulation(simulation);
     moteType = type;
-    FACTORY = factory;
+    this.factory = factory;
 
     /* Schedule us immediately */
     requestImmediateWakeup();
@@ -86,17 +82,17 @@ public abstract class AvroraMote extends AbstractEmulatedMote implements Mote {
 
   protected boolean initEmulator(File fileELF) {
     try {
-      program = new LoadableProgram(fileELF);
+      LoadableProgram program = new LoadableProgram(fileELF);
       program.load();
-      platform = FACTORY.newPlatform(1, program.getProgram());
+      platform = factory.newPlatform(1, program.getProgram());
       AtmelMicrocontroller cpu = (AtmelMicrocontroller) platform.getMicrocontroller();
       EEPROM = (EEPROM) cpu.getDevice("eeprom");
-      avrProperties = (AVRProperties) cpu.getProperties();
+      AVRProperties avrProperties = (AVRProperties) cpu.getProperties();
       Simulator sim = cpu.getSimulator();
       interpreter = (AtmelInterpreter) sim.getInterpreter();
       memory = new AvrMoteMemory(program.getProgram().getSourceMapping(), avrProperties, interpreter);
     } catch (Exception e) {
-      logger.fatal("Error creating avrora "+ TARGET +" mote: ", e);
+      logger.fatal("Error when initializing Avora mote: " + e.getMessage(), e);
       return false;
     }
     return true;

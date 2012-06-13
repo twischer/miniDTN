@@ -47,9 +47,8 @@ public class MicaZMote extends AvroraMote {
     super(simulation, type, new MicaZ.Factory());
   }
 
-  // Returns AvroraMote.PLATFORM when only a MicaZ will do
   public MicaZ getMicaZ() {
-    return (MicaZ) PLATFORM;
+    return (MicaZ) getPlatform();
   }
 
   // Return unique Mote name
