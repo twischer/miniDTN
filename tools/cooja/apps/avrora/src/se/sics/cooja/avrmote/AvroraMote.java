@@ -48,7 +48,6 @@ import avrora.arch.avr.AVRProperties;
 import avrora.core.LoadableProgram;
 import avrora.sim.AtmelInterpreter;
 import avrora.sim.Simulator;
-import avrora.sim.State;
 import avrora.sim.mcu.AtmelMicrocontroller;
 import avrora.sim.mcu.EEPROM;
 import avrora.sim.platform.Platform;
@@ -57,7 +56,7 @@ import avrora.sim.platform.PlatformFactory;
 /**
  * @author Joakim Eriksson, Fredrik Osterlind, David Kopf
  */
-public class AvroraMote extends AbstractEmulatedMote implements Mote {
+public abstract class AvroraMote extends AbstractEmulatedMote implements Mote {
   public static Logger logger = Logger.getLogger(AvroraMote.class);
 
   private MoteInterfaceHandler myMoteInterfaceHandler;
@@ -91,8 +90,7 @@ public class AvroraMote extends AbstractEmulatedMote implements Mote {
     requestImmediateWakeup();
   }
 
-  public void getFactory() throws Exception {
-  }
+  public abstract void getFactory() throws Exception;
 
   protected boolean initEmulator(File fileELF) {
     try {
@@ -139,12 +137,7 @@ public class AvroraMote extends AbstractEmulatedMote implements Mote {
       eedata[address] = (byte) i;
   }
 
-  public void setState(State newState) {
-    logger.warn("Avrora motes can't change state");
-  }
-
   public int getID() {
-
     if (getInterfaces() == null) {
         logger.debug("AvroraMote getInterfaces null");
         return 0;
@@ -152,25 +145,14 @@ public class AvroraMote extends AbstractEmulatedMote implements Mote {
     return getInterfaces().getMoteID().getMoteID();
   }
 
-  /* called when moteID is updated */
-  public void idUpdated(int newID) {
-
-  }
-
   public MoteType getType() {
     return MOTETYPE;
   }
-
-  public void setType(MoteType type) {
-    MOTETYPE = type;
+  public MoteMemory getMemory() {
+    return MEMORY;
   }
-
   public MoteInterfaceHandler getInterfaces() {
     return myMoteInterfaceHandler;
-  }
-
-  public void setInterfaces(MoteInterfaceHandler moteInterfaceHandler) {
-    myMoteInterfaceHandler = moteInterfaceHandler;
   }
 
   private long cyclesExecuted = 0;
@@ -187,8 +169,6 @@ public class AvroraMote extends AbstractEmulatedMote implements Mote {
       throw new RuntimeException("Avrora requested simulation stop");
     }
 
-    /* TODO Poll mote interfaces? */
-
     /* Execute one millisecond */
     cyclesUntil += this.getCPUFrequency()/1000;
     while (cyclesExecuted < cyclesUntil) {
@@ -200,8 +180,6 @@ public class AvroraMote extends AbstractEmulatedMote implements Mote {
         try{Thread.sleep(200);}catch (Exception e){System.err.println("avoraMote: " + e.getMessage());}
       }
     }
-
-    /* TODO Poll mote interfaces? */
 
     /* Schedule wakeup every millisecond */
     /* TODO Optimize next wakeup time */
@@ -255,17 +233,5 @@ public class AvroraMote extends AbstractEmulatedMote implements Mote {
     }
 
     return config;
-  }
-
-  public MoteMemory getMemory() {
-    return MEMORY;
-  }
-
-  public void setMemory(MoteMemory memory) {
-    MEMORY = (AvrMoteMemory) memory;
-  }
-
-  public String toString() {
-    return "Avr " + getID();
   }
 }
