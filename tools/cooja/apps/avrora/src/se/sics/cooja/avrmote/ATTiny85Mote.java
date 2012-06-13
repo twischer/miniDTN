@@ -30,12 +30,8 @@
 
 package se.sics.cooja.avrmote;
 
-import se.sics.cooja.MoteType;
 import se.sics.cooja.Simulation;
-import se.sics.cooja.avrmote.AvroraMote;
-
 import avrora.sim.platform.Tiny85;
-import avrora.sim.platform.PlatformFactory;
 
 /**
  * AVR-based ATTiny85 chip emulated in Avrora.
@@ -47,7 +43,7 @@ public class ATTiny85Mote extends AvroraMote {
 
   // Delegate the mote production to the AvroraMote class
   public ATTiny85Mote(Simulation simulation, ATTiny85MoteType type) {
-    this.getAMote(simulation, (MoteType) type);
+    super(simulation, type);
   }
 
   // Returns AvroraMote.PLATFORM when only an Tiny85 will do
@@ -67,6 +63,6 @@ public class ATTiny85Mote extends AvroraMote {
 
   // Return CPU frequency TODO:get current frequency
   public int getCPUFrequency() {
-    return (int) F_CPU;
+    return F_CPU;
   }
 }

@@ -30,12 +30,8 @@
 
 package se.sics.cooja.avrmote;
 
-import se.sics.cooja.MoteType;
 import se.sics.cooja.Simulation;
-import se.sics.cooja.avrmote.AvroraMote;
-
 import avrora.sim.platform.MicaZ;
-import avrora.sim.platform.PlatformFactory;
 
 /**
  * AVR-based MicaZ mote emulated in Avrora.
@@ -48,7 +44,7 @@ public class MicaZMote extends AvroraMote {
 
   // Delegate the mote production to the AvroraMote class
   public MicaZMote(Simulation simulation, MicaZMoteType type) {
-    this.getAMote(simulation, (MoteType) type);
+    super(simulation, type);
   }
 
   // Returns AvroraMote.PLATFORM when only a MicaZ will do
@@ -68,6 +64,6 @@ public class MicaZMote extends AvroraMote {
 
   // Return CPU frequency TODO:get current frequency
   public int getCPUFrequency() {
-    return (int) F_CPU;
+    return F_CPU;
   }
 }

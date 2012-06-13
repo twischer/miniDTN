@@ -51,7 +51,6 @@ import avrora.sim.Simulator;
 import avrora.sim.State;
 import avrora.sim.mcu.AtmelMicrocontroller;
 import avrora.sim.mcu.EEPROM;
-import avrora.sim.platform.MicaZ;
 import avrora.sim.platform.Platform;
 import avrora.sim.platform.PlatformFactory;
 
@@ -73,7 +72,7 @@ public class AvroraMote extends AbstractEmulatedMote implements Mote {
   public MoteType MOTETYPE = null;
 
   public EEPROM EEPROM = null;
-  
+
   /* Stack monitoring variables */
   private boolean stopNextInstruction = false;
 
@@ -85,19 +84,15 @@ public class AvroraMote extends AbstractEmulatedMote implements Mote {
   }
 
   public AvroraMote(Simulation simulation, MoteType type) {
-  }
-
-  public void getFactory() throws Exception {
-  }
-  
-  protected void getAMote(Simulation simulation, MoteType type) {
     setSimulation(simulation);
     MOTETYPE = type;
 
     /* Schedule us immediately */
     requestImmediateWakeup();
   }
-  
+
+  public void getFactory() throws Exception {
+  }
 
   protected boolean initEmulator(File fileELF) {
     try {
@@ -108,7 +103,7 @@ public class AvroraMote extends AbstractEmulatedMote implements Mote {
     PLATFORM = FACTORY.newPlatform(1, program.getProgram());
     CPU = (AtmelMicrocontroller) PLATFORM.getMicrocontroller();
     EEPROM = (EEPROM) CPU.getDevice("eeprom");
-    
+
     avrProperties = (AVRProperties) CPU.getProperties();
     Simulator sim = CPU.getSimulator();
     INTERPRETER = (AtmelInterpreter) sim.getInterpreter();
@@ -143,7 +138,7 @@ public class AvroraMote extends AbstractEmulatedMote implements Mote {
       byte[] eedata = EEPROM.getContent();
       eedata[address] = (byte) i;
   }
-  
+
   public void setState(State newState) {
     logger.warn("Avrora motes can't change state");
   }
@@ -159,7 +154,7 @@ public class AvroraMote extends AbstractEmulatedMote implements Mote {
 
   /* called when moteID is updated */
   public void idUpdated(int newID) {
-      
+
   }
 
   public MoteType getType() {
@@ -190,7 +185,7 @@ public class AvroraMote extends AbstractEmulatedMote implements Mote {
     if (stopNextInstruction) {
       stopNextInstruction = false;
       throw new RuntimeException("Avrora requested simulation stop");
-    } 
+    }
 
     /* TODO Poll mote interfaces? */
 
