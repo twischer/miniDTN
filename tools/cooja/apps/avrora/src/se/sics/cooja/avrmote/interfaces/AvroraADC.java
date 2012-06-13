@@ -35,8 +35,6 @@ import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.Collection;
-import java.util.Observable;
-import java.util.Observer;
 import java.util.Random;
 
 import javax.swing.Box;
@@ -46,6 +44,7 @@ import javax.swing.JPanel;
 import javax.swing.JSlider;
 import javax.swing.JTextField;
 import javax.swing.JToggleButton;
+import javax.swing.Timer;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
@@ -55,15 +54,12 @@ import org.jdom.Element;
 import se.sics.cooja.ClassDescription;
 import se.sics.cooja.Mote;
 import se.sics.cooja.MoteInterface;
+import se.sics.cooja.MoteTimeEvent;
 import se.sics.cooja.Simulation;
 import se.sics.cooja.avrmote.AvroraMote;
 import avrora.sim.AtmelInterpreter;
-import avrora.sim.FiniteStateMachine;
-import avrora.sim.Simulator;
-import avrora.sim.State;
 import avrora.sim.mcu.ADC;
 import avrora.sim.mcu.AtmelMicrocontroller;
-import avrora.sim.mcu.DefaultMCU;
 
 /**
  * @author David Kopf
@@ -72,10 +68,9 @@ import avrora.sim.mcu.DefaultMCU;
 public class AvroraADC extends MoteInterface {
   private static Logger logger = Logger.getLogger(AvroraADC.class);
 
+  private AvroraMote myMote;
   private Simulation simulation;
   private AtmelInterpreter interpreter;
-  private AvroraMote myMote;
-  private FiniteStateMachine myFSM;
   private ADC adcDevice;
 
   private JPanel jPanel;
@@ -84,7 +79,6 @@ public class AvroraADC extends MoteInterface {
   final JTextField[] chanMV={null, null, null, null, null, null, null, null};
   final JSlider[] chanSlider={null, null, null, null, null, null, null, null};
 
-  private long cycleCount;
   private long[] chanST={0,0,0,0,0,0,0,0};
   private int[] mv={2500,2500,2500,2500,2500,2500,2500,2500};
   private int[] ns={10,10,10,10,10,10,10,10};
@@ -93,55 +87,59 @@ public class AvroraADC extends MoteInterface {
   private float[] hz={1000,1000,1000,1000,1000,1000,1000,1000};
   private int[] fn={0,0,0,0,0,0,0,0};
   private ADC.ADCInput[] chanAI={null, null, null, null, null, null, null, null};
-  private Random random = new Random();
 
+  private boolean hasActiveFunctions = false;
+  private MoteTimeEvent executeFunctionsTimeEvent;
+
+  private Timer repaintTimer = new Timer(150, new ActionListener() {
+    public void actionPerformed(ActionEvent e) {
+      updatePanel();
+    }
+  });
 
   public AvroraADC(Mote mote) {
     myMote = (AvroraMote) mote;
     simulation = mote.getSimulation();
     AtmelMicrocontroller cpu = (AtmelMicrocontroller) myMote.getPlatform().getMicrocontroller();
     interpreter = (AtmelInterpreter)cpu.getSimulator().getInterpreter();
-    myFSM = ((DefaultMCU)cpu.getSimulator().getMicrocontroller()).getFSM();
     adcDevice = (ADC)cpu.getDevice("adc");
-    logger.debug("CPU freq is " + myMote.getCPUFrequency());
-    if (interpreter == null) {
-      logger.debug("Mote interpreter is null");
-    }
-    if (myFSM == null) {
-      logger.debug("microcontroller FSM is null");
-    }
+
+    executeFunctionsTimeEvent = new MoteTimeEvent(mote, 0) {
+      public void execute(long t) {
+        if (!hasActiveFunctions) {
+          return;
+        }
+        executeFunctions(-1);
+        simulation.scheduleEvent(this, t + Simulation.MILLISECOND); /* periodic interval */
+      }
+    };
   }
 
-  private Simulator.Probe liveProbe = null;
-  private boolean probeInserted = false;
-  private boolean liveUpdate = false;
-
-  // insert or remove avrora pc probe when needed for live updates
-  void setProbeState() {
-    if (liveUpdate ) {
-      // create the probe the first time
-      if (liveProbe == null) liveProbe = new Simulator.Probe() {
-        public void fireBefore(State state, int pc) {
-        }
-
-        public void fireAfter(State state, int pc) {
-          updatePanel(pc, 0);
-        }
-      };
-      if (!probeInserted) {
-        interpreter.insertProbe(liveProbe);
-        probeInserted = true;
+  private void checkFunctions() {
+    boolean hasActivated = false;
+    for (int function: fn) {
+      if (function != 0) {
+        hasActivated = true;
+        break;
       }
-    } else {
-      if (probeInserted) {
-        interpreter.removeProbe(liveProbe);
-        probeInserted = false;
-      }
+    }
+    if (!hasActivated) {
+      hasActiveFunctions = false;
+      return;
+    }
+
+    /* Make sure time event is scheduled */
+    hasActiveFunctions = true;
+    if (!executeFunctionsTimeEvent.isScheduled()) {
+      simulation.scheduleEvent(executeFunctionsTimeEvent, simulation.getSimulationTime());
     }
   }
 
   // calculate the voltage on the given channel
+  private Random random = new Random();
   private void getVoltage(int i) {
+    //long cycleCount = interpreter.getState().getCycles();
+    long cycleCount = simulation.getSimulationTimeMillis();
     int mvolts = dc[i];
     if (ns[i] !=0) mvolts += random.nextInt(ns[i]) - ns[i]/2;
     if (fn[i] > 0) {
@@ -155,7 +153,11 @@ public class AvroraADC extends MoteInterface {
         int phase = advance%cycle;
         switch (fn[i]) {
         case 2:         //square
-          if ((phase) < (cycle/2)) mvolts+=ac[i]; else mvolts-=ac[i];
+          if ((phase) < (cycle/2)) {
+            mvolts+=ac[i];
+          } else {
+            mvolts-=ac[i];
+          }
           break;
         case 3:         //triangle
           if (phase < (cycle/2)) {
@@ -170,35 +172,49 @@ public class AvroraADC extends MoteInterface {
         }
       }
     }
-    if (mvolts < 0 ) mvolts = 0; else if (mvolts > 5000) mvolts = 5000;
+    if (mvolts < 0 ) {
+      mvolts = 0;
+    } else if (mvolts > 5000) {
+      mvolts = 5000;
+    }
     mv[i] = mvolts;
   }
 
-  private void updatePanel(int pc, int adc) {
-    boolean updated = false;
-    if (pc == 0 ) pc = interpreter.getState().getPC();
-    long now = simulation.getSimulationTime();
-    cycleCount = interpreter.getState().getCycles();
-
-    // updated forced on one channel
-    if (adc != 0) {
-      getVoltage(adc);
-      chanMV[adc].setText(""+mv[adc]);
-      chanSlider[adc].setValue(mv[adc]);
+  private void executeFunctions(int adc) {
+    if (!hasActiveFunctions) {
       return;
     }
 
-    // animate any live functions
-    for (int i=0; i<=NUMCHAN; i++) if (fn[i] > 0) {
-      getVoltage(i);
-      chanMV[i].setText(""+mv[i]);
-      chanSlider[i].setValue(mv[i]);
-      //    if (i == NUMCHAN) adcDevice.VCC_LEVEL = (float)(mvolts)/1000;
+    /* Single channel update */
+    if (adc >= 0) {
+      getVoltage(adc);
+    } else {
+      /* Functions */
+      for (int i=0; i<=NUMCHAN; i++) {
+        if (fn[i] > 0) {
+          getVoltage(i);
+        }
+        /*if (i == NUMCHAN) { adcDevice.VCC_LEVEL = (float)(mvolts)/1000; } */
+      }
+    }
+  }
+
+  public void removed() {
+    super.removed();
+    repaintTimer.stop();
+    hasActiveFunctions = false;
+  };
+
+  private void updatePanel() {
+    for (int i=0; i<=NUMCHAN; i++) {
+      if (fn[i] > 0) {
+        chanMV[i].setText(""+mv[i]);
+        chanSlider[i].setValue(mv[i]);
+      }
     }
   }
 
   public JPanel getInterfaceVisualizer() {
-
     jPanel = new JPanel(new BorderLayout());
     final Box boxn = Box.createHorizontalBox();
     final Box boxn1 = Box.createHorizontalBox();
@@ -238,8 +254,8 @@ public class AvroraADC extends MoteInterface {
           for (int i=0;i<=NUMCHAN;i++) {
             if (this == chanAI[i]) {
               //      if (i == NUMCHAN) logger.debug("Sample Vcc"); else logger.debug("sample ADC"+i);
-              updatePanel(0, i);
-              return((float)(mv[i]/1000.0));
+              executeFunctions(i);
+              return ((float)(mv[i]/1000.0));
             }
           }
           return 0;
@@ -337,7 +353,11 @@ public class AvroraADC extends MoteInterface {
           for (int i=0; i<=NUMCHAN; i++ ) {
             if (source == chanAC[i]) {
               int tmp = -1;
-              try {tmp = Integer.parseInt(source.getText());} catch (Exception x) {logger.debug(x);};
+              try {
+                tmp = Integer.parseInt(source.getText());
+              } catch (Exception x) {
+                logger.debug(x);
+              }
               if (tmp >=0 && tmp <=50000) {
                 ac[i] = tmp;
               } else {
@@ -414,63 +434,55 @@ public class AvroraADC extends MoteInterface {
             chanAC[c].setEnabled(false);
             chanHz[c].setEnabled(false);
           }
+          checkFunctions();
 
         }
       });
       box.add(chanFn[i]);
 
       boxn.add(box);
+      updatePanel();
     }
 
     final JButton updateButton = new JButton("Update");
-    final JToggleButton liveButton = new JToggleButton("Live",false);
+    final JToggleButton liveButton = new JToggleButton("Live", false);
 
     boxn1.add(Box.createHorizontalGlue());
-    boxn2.add(Box.createHorizontalGlue());boxn2.add(updateButton);boxn2.add(liveButton);
+    boxn2.add(Box.createHorizontalGlue());
+    boxn2.add(updateButton);
+    boxn2.add(liveButton);
     boxs.add(boxn1);
     boxs.add(boxn2);
     boxs.add(boxn3);
     jPanel.add(BorderLayout.NORTH, boxn);
     jPanel.add(BorderLayout.SOUTH, boxs);
 
-    updatePanel(0, 0);
+    executeFunctions(-1);
+    updatePanel();
 
     // one time update
     updateButton.addActionListener(new ActionListener() {
       public void actionPerformed(ActionEvent e) {
-        updatePanel(0, 0);
+        updatePanel();
       }
     });
 
-    // insert avrora probe when live update or breakpoints enabled.
-    // Avrora calls fireBefore and fireAfter when program counter changes
     liveButton.addActionListener(new ActionListener() {
       public void actionPerformed(ActionEvent e) {
-        liveUpdate = liveButton.isSelected();
-        setProbeState();
+        if (liveButton.isSelected()) {
+          repaintTimer.start();
+        } else {
+          repaintTimer.stop();
+        }
       }
     });
-
-    Observer observer;
-    this.addObserver(observer = new Observer() {
-      public void update(Observable obs, Object obj) {
-      }
-    });
-    jPanel.putClientProperty("intf_obs", observer);
-    //  observer.update(null, null);
 
     return jPanel;
   }
 
   public void releaseInterfaceVisualizer(JPanel panel) {
-    logger.debug("release visualizer");
-    Observer observer = (Observer) panel.getClientProperty("intf_obs");
-    if (observer == null) {
-      logger.fatal("Error when releasing panel, observer is null");
-      return;
-    }
-    if (liveProbe != null) interpreter.removeProbe(liveProbe);
-    this.deleteObserver(observer);
+    repaintTimer.stop();
+    hasActiveFunctions = false;
   }
 
   public Collection<Element> getConfigXML() {
