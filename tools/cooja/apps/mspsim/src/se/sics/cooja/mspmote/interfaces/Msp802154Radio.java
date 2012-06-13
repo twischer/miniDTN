@@ -124,17 +124,16 @@ public class Msp802154Radio extends Radio802154 {
 
     /* XXX We need a separate time event to synchronize Mspsim's internal
      * clocks here */
-    mote.getSimulation().scheduleEvent(new MspMoteTimeEvent(mote, 0) {
+    new MspMoteTimeEvent(mote, 0) {
       public void execute(long t) {
         super.execute(t);
         if (!radio.isReadyToReceive()) {
-          logger.warn(String.format("Radio receiver not ready, dropping byte: %02x", inputByte));
-          return;
+          /*logger.warn(String.format("Radio receiver not ready, dropping byte: %02x", inputByte));*/
         }
         radio.receivedByte(inputByte);
         mote.requestImmediateWakeup();
       }
-    }, mote.getSimulation().getSimulationTime());
+    }.execute(mote.getSimulation().getSimulationTime());
   }
 
   public void handleStartOfReception() {
