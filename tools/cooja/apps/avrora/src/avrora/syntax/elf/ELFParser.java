@@ -98,6 +98,8 @@ public class ELFParser extends ProgramReader {
         // read the symbol tables (if they exist)
         loadSymbolTables(p, fis);
 
+        fis.close();
+
         return p;
     }
 
