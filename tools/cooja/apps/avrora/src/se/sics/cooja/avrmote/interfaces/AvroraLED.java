@@ -152,6 +152,12 @@ public class AvroraLED extends LED {
     probesInserted = true;
 
   }
+
+  public void removed() {
+    super.removed();
+    /* TODO Remove probes */
+  }
+
   public boolean isAnyOn() {
     for (int i=0; i<4; i++) if (ledOn[i]) return true;
     return false;
