@@ -183,9 +183,8 @@ public abstract class AvroraMoteType extends AbstractMoteType implements MoteTyp
   public File getExpectedFirmwareFile(File source) {
     File parentDir = source.getParentFile();
     String sourceNoExtension = source.getName().substring(0, source.getName().length()-2);
-    return new File(parentDir, sourceNoExtension + ".elf");
+    return new File(parentDir, sourceNoExtension + "." + getMoteContikiTarget());
   }
-
 
   public abstract Class<? extends MoteInterface>[] getAllMoteInterfaceClasses();
 }
