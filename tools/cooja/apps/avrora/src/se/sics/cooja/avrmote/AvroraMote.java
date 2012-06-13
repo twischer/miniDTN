@@ -103,10 +103,12 @@ public abstract class AvroraMote extends AbstractEmulatedMote implements Mote {
   }
 
   /**
-   * Abort current tick immediately.
+   * Abort mote execution immediately.
    * May for example be called by a breakpoint handler.
    */
   public void stopNextInstruction() {
+    /* XXX The current implementation will only stop execution when Avrora
+     * returns, up to one millisecond after requested simulation time */
     stopNextInstruction = true;
   }
 
@@ -159,8 +161,8 @@ public abstract class AvroraMote extends AbstractEmulatedMote implements Mote {
       if (nsteps > 0) {
         cyclesExecuted += nsteps;
       } else {
-        logger.debug("halted?");
-        try{Thread.sleep(200);}catch (Exception e){System.err.println("avoraMote: " + e.getMessage());}
+        logger.warn("Avrora did not execute any instruction, aborting executing temporarily");
+        break;
       }
     }
 
