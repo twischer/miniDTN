@@ -100,7 +100,12 @@ public class MicaZLED extends LED {
       }
       public void fireBeforeTransition(int arg0, int arg1) {
       }
-    });    
+    });
+  }
+
+  public void removed() {
+    super.removed();
+    /* TODO Remove probes */
   }
 
   public boolean isAnyOn() {
