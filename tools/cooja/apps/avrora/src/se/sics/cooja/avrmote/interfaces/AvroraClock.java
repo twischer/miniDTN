@@ -101,6 +101,7 @@ public class AvroraClock extends Clock {
 
   public void setDrift(long drift) {
     timeDrift = drift;
+    startTime = mySimulation.getSimulationTime() - timeDrift;
   }
 
   public long getDrift() {
