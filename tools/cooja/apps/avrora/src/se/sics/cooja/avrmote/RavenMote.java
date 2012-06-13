@@ -44,17 +44,12 @@ public class RavenMote extends AvroraMote {
 
   // Delegate the mote production to the AvroraMote class
   public RavenMote(Simulation simulation, RavenMoteType type) {
-    super(simulation, type);
+    super(simulation, type, new Raven.Factory());
   }
 
   // Returns AvroraMote.PLATFORM when only a Raven will do
   public Raven getRaven() {
     return (Raven) PLATFORM;
-  }
-
-  // Set AvroraMote.FACTORY for Raven production
-  public void getFactory() throws Exception {
-    FACTORY = new Raven.Factory();
   }
 
   // Return unique Mote name

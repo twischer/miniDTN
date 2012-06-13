@@ -44,17 +44,12 @@ public class RFA1Mote extends AvroraMote {
 
   // Delegate the mote production to the AvroraMote class
   public RFA1Mote(Simulation simulation, RFA1MoteType type) {
-    super(simulation, type);
+    super(simulation, type, new RFA1.Factory());
   }
 
   // Returns AvroraMote.PLATFORM when only a RFA1 will do
   public RFA1 getRFA1() {
     return (RFA1) PLATFORM;
-  }
-
-  // Set AvroraMote.FACTORY for RFA1 production
-  public void getFactory() throws Exception {
-    FACTORY = new RFA1.Factory();
   }
 
   // Return unique Mote name

@@ -75,29 +75,20 @@ public abstract class AvroraMote extends AbstractEmulatedMote implements Mote {
   /* Stack monitoring variables */
   private boolean stopNextInstruction = false;
 
-  public AvroraMote() {
-    MOTETYPE = null;
-    CPU = null;
-    /* TODO myMemory = null; */
-    myMoteInterfaceHandler = null;
-  }
-
-  public AvroraMote(Simulation simulation, MoteType type) {
+  public AvroraMote(Simulation simulation, MoteType type, PlatformFactory factory) {
     setSimulation(simulation);
     MOTETYPE = type;
+    FACTORY = factory;
 
     /* Schedule us immediately */
     requestImmediateWakeup();
   }
-
-  public abstract void getFactory() throws Exception;
 
   protected boolean initEmulator(File fileELF) {
     try {
     program = new LoadableProgram(fileELF);
     program.load();
     // get the factory type from the super
-    getFactory();
     PLATFORM = FACTORY.newPlatform(1, program.getProgram());
     CPU = (AtmelMicrocontroller) PLATFORM.getMicrocontroller();
     EEPROM = (EEPROM) CPU.getDevice("eeprom");

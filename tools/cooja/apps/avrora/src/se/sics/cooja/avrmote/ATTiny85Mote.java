@@ -43,17 +43,12 @@ public class ATTiny85Mote extends AvroraMote {
 
   // Delegate the mote production to the AvroraMote class
   public ATTiny85Mote(Simulation simulation, ATTiny85MoteType type) {
-    super(simulation, type);
+    super(simulation, type, new Tiny85.Factory());
   }
 
   // Returns AvroraMote.PLATFORM when only an Tiny85 will do
   public Tiny85 getTiny85() {
     return (Tiny85) PLATFORM;
-  }
-
-  // Set AvroraMote.FACTORY for ATTiny85 production
-  public void getFactory() throws Exception {
-    FACTORY = new Tiny85.Factory();
   }
 
   // Return unique Mote name

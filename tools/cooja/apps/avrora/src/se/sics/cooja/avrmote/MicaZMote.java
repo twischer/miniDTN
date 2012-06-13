@@ -44,17 +44,12 @@ public class MicaZMote extends AvroraMote {
 
   // Delegate the mote production to the AvroraMote class
   public MicaZMote(Simulation simulation, MicaZMoteType type) {
-    super(simulation, type);
+    super(simulation, type, new MicaZ.Factory());
   }
 
   // Returns AvroraMote.PLATFORM when only a MicaZ will do
   public MicaZ getMicaZ() {
     return (MicaZ) PLATFORM;
-  }
-
-  // Set AvroraMote.FACTORY for MicaZ production
-  public void getFactory() throws Exception {
-    FACTORY = new MicaZ.Factory();
   }
 
   // Return unique Mote name
