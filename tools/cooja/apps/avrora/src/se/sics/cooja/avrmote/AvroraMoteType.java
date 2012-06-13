@@ -29,28 +29,18 @@
  */
 
 package se.sics.cooja.avrmote;
-import java.awt.BorderLayout;
+
 import java.awt.Container;
-import java.awt.Dimension;
 import java.awt.Image;
 import java.awt.MediaTracker;
 import java.awt.Toolkit;
 import java.io.File;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.Collection;
 
-import javax.swing.BorderFactory;
-import javax.swing.Box;
-import javax.swing.BoxLayout;
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JTextArea;
 
 import org.apache.log4j.Logger;
-import org.jdom.Element;
 
 import se.sics.cooja.AbstractionLevelDescription;
 import se.sics.cooja.ClassDescription;
@@ -58,11 +48,11 @@ import se.sics.cooja.GUI;
 import se.sics.cooja.Mote;
 import se.sics.cooja.MoteInterface;
 import se.sics.cooja.MoteType;
-import se.sics.cooja.ProjectConfig;
 import se.sics.cooja.Simulation;
 import se.sics.cooja.dialogs.CompileContiki;
 import se.sics.cooja.dialogs.MessageList;
 import se.sics.cooja.dialogs.MessageList.MessageContainer;
+import se.sics.cooja.motes.AbstractMoteType;
 
 /**
  * AVR-based mote types emulated in Avrora.
@@ -71,252 +61,15 @@ import se.sics.cooja.dialogs.MessageList.MessageContainer;
  */
 @ClassDescription("Avrora Mote Type")
 @AbstractionLevelDescription("Emulated level")
-public abstract class AvroraMoteType implements MoteType {
+public abstract class AvroraMoteType extends AbstractMoteType implements MoteType {
   public static Logger logger = Logger.getLogger(AvroraMoteType.class);
-
-  private String identifier = null;
-  private String description = null;
 
   protected Simulation simulation;
 
-  /* If source file is defined, the firmware is recompiled when loading simulations */
-  private File fileFirmware = null;
-  private File fileSource = null;
-  private String compileCommands = null;
+  public abstract String getMoteName();
+  public abstract String getMoteContikiTarget();
 
-  private Class<? extends MoteInterface>[] moteInterfaceClasses = null;
-
-  public String getMoteName() {
-    return ("none");
-  }
-    public String getMoteContikiTarget() {
-    return ("none");
-  }
-
-
-  public String getIdentifier() {
-    return identifier;
-  }
-
-  public void setIdentifier(String identifier) {
-    this.identifier = identifier;
-  }
-
-  public String getDescription() {
-    return description;
-  }
-
-  public void setDescription(String description) {
-    this.description = description;
-  }
-
-  public String getCompileCommands() {
-    return compileCommands;
-  }
-
-  public void setCompileCommands(String command) {
-    this.compileCommands = command;
-  }
-
-  public File getContikiSourceFile() {
-    return fileSource;
-  }
-
-  public File getContikiFirmwareFile() {
-    return fileFirmware;
-  }
-
-  public void setContikiSourceFile(File file) {
-    fileSource = file;
-  }
-
-  public void setContikiFirmwareFile(File file) {
-    this.fileFirmware = file;
-  }
-
-  public Class<? extends MoteInterface>[] getMoteInterfaceClasses() {
-    return moteInterfaceClasses;
-  }
-
-  public void setMoteInterfaceClasses(Class<? extends MoteInterface>[] classes) {
-    moteInterfaceClasses = classes;
-  }
-
-  public Mote generateMote(Simulation simulation) {
-    return null;
-  }
-
-  public JPanel getTypeVisualizer() {
-    /* TODO Move to emulated layer */
-    JPanel panel = new JPanel();
-    JLabel label = new JLabel();
-    JPanel smallPane;
-
-    panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-
-    // Identifier
-    smallPane = new JPanel(new BorderLayout());
-    label = new JLabel("Identifier");
-    smallPane.add(BorderLayout.WEST, label);
-    label = new JLabel(getIdentifier());
-    smallPane.add(BorderLayout.EAST, label);
-    panel.add(smallPane);
-
-    // Description
-    smallPane = new JPanel(new BorderLayout());
-    label = new JLabel("Description");
-    smallPane.add(BorderLayout.WEST, label);
-    label = new JLabel(getDescription());
-    smallPane.add(BorderLayout.EAST, label);
-    panel.add(smallPane);
-
-    /* Contiki source */
-    smallPane = new JPanel(new BorderLayout());
-    label = new JLabel("Contiki source");
-    smallPane.add(BorderLayout.WEST, label);
-    if (getContikiSourceFile() != null) {
-      label = new JLabel(getContikiSourceFile().getName());
-      label.setToolTipText(getContikiSourceFile().getPath());
-    } else {
-      label = new JLabel("[not specified]");
-    }
-    smallPane.add(BorderLayout.EAST, label);
-    panel.add(smallPane);
-
-    /* Contiki firmware */
-    smallPane = new JPanel(new BorderLayout());
-    label = new JLabel("Contiki firmware");
-    smallPane.add(BorderLayout.WEST, label);
-    label = new JLabel(getContikiFirmwareFile().getName());
-    label.setToolTipText(getContikiFirmwareFile().getPath());
-    smallPane.add(BorderLayout.EAST, label);
-    panel.add(smallPane);
-
-    /* Compile commands */
-    smallPane = new JPanel(new BorderLayout());
-    label = new JLabel("Compile commands");
-    smallPane.add(BorderLayout.WEST, label);
-    JTextArea textArea = new JTextArea(getCompileCommands());
-    textArea.setEditable(false);
-    textArea.setBorder(BorderFactory.createEmptyBorder());
-    smallPane.add(BorderLayout.EAST, textArea);
-    panel.add(smallPane);
-
-    /* Icon (if available) */
-    if (!GUI.isVisualizedInApplet()) {
-      Icon moteTypeIcon = getMoteTypeIcon();
-      if (moteTypeIcon != null) {
-        smallPane = new JPanel(new BorderLayout());
-        label = new JLabel(moteTypeIcon);
-        smallPane.add(BorderLayout.CENTER, label);
-        panel.add(smallPane);
-      }
-    }
-
-    panel.add(Box.createRigidArea(new Dimension(0, 5)));
-    return panel;
-  }
-
-  public ProjectConfig getConfig() {
-    logger.warn("Avrora mote type project config not implemented");
-    return null;
-  }
-
-  public Collection<Element> getConfigXML(Simulation sim) {
-    ArrayList<Element> config = new ArrayList<Element>();
-
-    Element element;
-
-    // Identifier
-    element = new Element("identifier");
-    element.setText(getIdentifier());
-    config.add(element);
-
-    // Description
-    element = new Element("description");
-    element.setText(getDescription());
-    config.add(element);
-
-    // Source file
-    if (fileSource != null) {
-      element = new Element("source");
-      File file = simulation.getGUI().createPortablePath(fileSource);
-      element.setText(file.getPath().replaceAll("\\\\", "/"));
-      config.add(element);
-      element = new Element("commands");
-      element.setText(compileCommands);
-      config.add(element);
-    }
-
-    // Firmware file
-    element = new Element("firmware");
-    File file = simulation.getGUI().createPortablePath(fileFirmware);
-    element.setText(file.getPath().replaceAll("\\\\", "/"));
-    config.add(element);
-
-    // Mote interfaces
-    for (Class<? extends MoteInterface> moteInterface : getMoteInterfaceClasses()) {
-      element = new Element("moteinterface");
-      element.setText(moteInterface.getName());
-      config.add(element);
-    }
-
-    return config;
-  }
-
-  @SuppressWarnings("unchecked")
-  public boolean setConfigXML(Simulation simulation,
-      Collection<Element> configXML, boolean visAvailable)
-  throws MoteTypeCreationException {
-    this.simulation = simulation;
-
-    ArrayList<Class<? extends MoteInterface>> intfClassList = new ArrayList<Class<? extends MoteInterface>>();
-    for (Element element : configXML) {
-      String name = element.getName();
-
-      if (name.equals("identifier")) {
-        identifier = element.getText();
-      } else if (name.equals("description")) {
-        description = element.getText();
-      } else if (name.equals("source")) {
-        fileSource = new File(element.getText());
-        if (!fileSource.exists()) {
-          fileSource = simulation.getGUI().restorePortablePath(fileSource);
-        }
-      } else if (name.equals("commands")) {
-        compileCommands = element.getText();
-      } else if (name.equals("firmware")) {
-        fileFirmware = new File(element.getText());
-        if (!fileFirmware.exists()) {
-          fileFirmware = simulation.getGUI().restorePortablePath(fileFirmware);
-        }
-      } else if (name.equals("moteinterface")) {
-        String intfClass = element.getText().trim();
-
-        Class<? extends MoteInterface> moteInterfaceClass =
-          simulation.getGUI().tryLoadClass(this, MoteInterface.class, intfClass);
-
-        if (moteInterfaceClass == null) {
-          logger.warn("Can't find mote interface class: " + intfClass);
-        } else {
-          intfClassList.add(moteInterfaceClass);
-        }
-      } else {
-        logger.fatal("Unrecognized entry in loaded configuration: " + name);
-        throw new MoteTypeCreationException(
-            "Unrecognized entry in loaded configuration: " + name);
-      }
-    }
-    Class<? extends MoteInterface>[] intfClasses = intfClassList.toArray(new Class[0]);
-
-    setMoteInterfaceClasses(intfClasses);
-
-    if (fileFirmware == null && fileSource == null) {
-      throw new MoteTypeCreationException("Neither source or firmware specified");
-    }
-
-    return configureAndInit(GUI.getTopParentContainer(), simulation, visAvailable);
-  }
+  public abstract Mote generateMote(Simulation simulation);
 
   public boolean configureAndInit(Container parentContainer, Simulation simulation, boolean visAvailable)
   throws MoteTypeCreationException {
