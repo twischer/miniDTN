@@ -34,14 +34,13 @@ import java.awt.BorderLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.Collection;
-import java.util.Observable;
-import java.util.Observer;
 
 import javax.swing.Box;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JToggleButton;
+import javax.swing.Timer;
 
 import org.apache.log4j.Logger;
 import org.jdom.Element;
@@ -53,13 +52,11 @@ import se.sics.cooja.avrmote.AvroraMote;
 import se.sics.cooja.interfaces.Clock;
 import avrora.sim.AtmelInterpreter;
 import avrora.sim.FiniteStateMachine;
-import avrora.sim.Simulator;
-import avrora.sim.State;
 import avrora.sim.mcu.AtmelMicrocontroller;
 import avrora.sim.mcu.DefaultMCU;
 
 /**
- * @author Fredrik Osterlind, Joakim Eriksson, David Kopf
+ * @author David Kopf, Fredrik Osterlind
  */
 @ClassDescription("Cycle clock")
 public class AvroraClock extends Clock {
@@ -72,6 +69,12 @@ public class AvroraClock extends Clock {
   private long timeDrift; /* Microseconds */
   private long startTime,lastTime,lastCycles;
 
+  private Timer repaintTimer = new Timer(150, new ActionListener() {
+    public void actionPerformed(ActionEvent e) {
+      updatePanel();
+    }
+  });
+
   public AvroraClock(Mote mote) {
     AtmelMicrocontroller cpu = (AtmelMicrocontroller) ((AvroraMote)mote).getPlatform().getMicrocontroller();
     mySimulation = mote.getSimulation();
@@ -81,6 +84,11 @@ public class AvroraClock extends Clock {
     lastTime = startTime;
     lastCycles = 0;
     timeDrift = 0;
+  }
+
+  public void removed() {
+    super.removed();
+    repaintTimer.stop();
   }
 
   public void setTime(long newTime) {
@@ -99,9 +107,7 @@ public class AvroraClock extends Clock {
     return timeDrift;
   }
 
-  JLabel timeLabel, cyclesLabel, stateLabel, watchLabel;
-  Simulator.Probe liveProbe = null;
-
+  private JLabel timeLabel, cyclesLabel, stateLabel, watchLabel;
   private void updatePanel() {
     timeLabel.setText("Run Time  : " + ((double)(mySimulation.getSimulationTime()-startTime)/1000000) + "   Drift: " + (double)timeDrift/1000000);
     watchLabel.setText("Stopwatch : " + ((double)(mySimulation.getSimulationTime()-lastTime)/1000000));
@@ -122,10 +128,9 @@ public class AvroraClock extends Clock {
     cyclesLabel = new JLabel("");
     stateLabel = new JLabel("");
 
-
     final JButton updateButton = new JButton("Update");
     final JButton resetButton = new JButton("Reset");
-    final JToggleButton liveButton = new JToggleButton("Live",false);
+    final JToggleButton liveButton = new JToggleButton("Live", false);
 
     boxw.add(timeLabel);
     boxw.add(watchLabel);
@@ -154,43 +159,21 @@ public class AvroraClock extends Clock {
     });
     liveButton.addActionListener(new ActionListener() {
         public void actionPerformed(ActionEvent e) {
-            if (liveProbe == null) {
-                liveProbe = new Simulator.Probe() {
-                    public void fireBefore(State state, int pc) {
-                    }
-                    public void fireAfter(State state, int pc) {
-                        updatePanel();
-                    }
-                };
-                myInterpreter.insertProbe(liveProbe);
+            if (liveButton.isSelected()) {
+                repaintTimer.start();
             } else {
-                myInterpreter.removeProbe(liveProbe);
-                liveProbe = null;
+                repaintTimer.stop();
             }
         }
     });
 
-    Observer observer;
-	this.addObserver(observer = new Observer() {
-		public void update(Observable obs, Object obj) {
-		}
-	});
- //  observer.update(null, null);
-
-	panel.putClientProperty("intf_obs", observer);
     panel.add(BorderLayout.WEST, boxw);
     panel.add(BorderLayout.EAST, boxe);
 	return panel;
 	}
 
 	public void releaseInterfaceVisualizer(JPanel panel) {
-		Observer observer = (Observer) panel.getClientProperty("intf_obs");
-		if (observer == null) {
-			logger.fatal("Error when releasing panel, observer is null");
-			return;
-		}
-        if (liveProbe != null) myInterpreter.removeProbe(liveProbe);
-		this.deleteObserver(observer);
+        repaintTimer.stop();
 	}
 
   public Collection<Element> getConfigXML() {
