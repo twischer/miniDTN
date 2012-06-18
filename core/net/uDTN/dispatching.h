@@ -16,7 +16,7 @@
 *
 *   \param  bundle bundle to be processed
 */
-void dispatch_bundle(struct bundle_t *bundle);
+void dispatch_bundle(struct mmem *bundlemem);
 
 #endif
 

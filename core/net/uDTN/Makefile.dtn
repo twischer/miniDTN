@@ -3,7 +3,7 @@ BUNDLE=sdnv.c bundle.c
 STORAGE= g_storage.c r_storage.c 
 else
 STORAGE= r_storage.c 
-BUNDLE=sdnv.c bundle.c 
+BUNDLE=sdnv.c bundle.c bundleslot.c
 endif
 #COFFEE_FILES=4
 CFLAGS+=-DWITH_NODE_ID=1

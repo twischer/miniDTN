@@ -48,8 +48,7 @@
 #define PRINTF(...)
 #endif
 
-static struct bundle_t * bundleptr;
-static struct bundle_t bundle;
+static struct mmem * bundleptr;
 
 uint32_t dtn_node_id;
 uint32_t dtn_seq_nr;
@@ -64,32 +63,38 @@ void agent_init(void) {
 void
 agent_send_bundles(struct route_t * route)
 {
-	if(BUNDLE_STORAGE.read_bundle(route->bundle_num, &bundle)<=0){
+	struct mmem *bundlemem;
+	struct bundle_t *bundle;
+
+	bundlemem = BUNDLE_STORAGE.read_bundle(route->bundle_num);
+	if (!bundlemem) {
 		PRINTF("BUNDLEPROTOCOL: agent_send_bundles() cannot find bundle %u\n", route->bundle_num);
 		return;
 	}
 
+	bundle = MMEM_PTR(bundlemem);
+
 	// How long did this bundle rot in our storage?
-	uint32_t elapsed_time = clock_seconds() - bundle.rec_time;
+	uint32_t elapsed_time = clock_seconds() - bundle->rec_time;
 
 	// Do not send bundles that are expired
-	if( bundle.lifetime < elapsed_time ) {
+	if( bundle->lifetime < elapsed_time ) {
 		PRINTF("BUNDLEPROTOCOL: bundle expired\n");
 
 		// Bundle is expired
-		uint16_t tmp = bundle.bundle_num;
-		delete_bundle(&bundle);
+		uint16_t tmp = bundle->bundle_num;
+		bundle_dec(bundle);
 		BUNDLE_STORAGE.del_bundle(tmp, REASON_LIFETIME_EXPIRED);
 
 		return;
 	}
 
 	// Bundle can still be sent
-	uint32_t remaining_time = bundle.lifetime - elapsed_time;
-	set_attr(&bundle, LIFE_TIME, &remaining_time);
-	dtn_network_send(&bundle, route);
+	uint32_t remaining_time = bundle->lifetime - elapsed_time;
+	set_attr(bundlemem, LIFE_TIME, &remaining_time);
+	dtn_network_send(bundlemem, route);
 
-	delete_bundle(&bundle);
+	bundle_dec(bundlemem);
 }
 
 /*  Bundle Protocol Prozess */
@@ -163,10 +168,12 @@ PROCESS_THREAD(agent_process, ev, data)
 		}
 		
 		if(ev == dtn_send_bundle_event) {
+			struct bundle_t *bundle;
 			PRINTF("BUNDLEPROTOCOL: bundle send \n");
-			bundleptr = (struct bundle_t *) data;
-			
-			bundleptr->rec_time=(uint32_t) clock_seconds(); 
+			bundleptr = (struct mmem *) data;
+
+			bundle = MMEM_PTR(bundleptr);
+			bundle->rec_time=(uint32_t) clock_seconds(); 
 			set_attr(bundleptr,TIME_STAMP_SEQ_NR,&dtn_seq_nr);
 			PRINTF("BUNDLEPROTOCOL: seq_num = %lu\n",dtn_seq_nr);
 			dtn_seq_nr++;

@@ -38,21 +38,22 @@
 #endif
 
 
-void deliver_bundle(struct bundle_t *bundle, struct registration *n) {
+void deliver_bundle(struct mmem *bundlemem, struct registration *n) {
+	struct bundle_t *bundle = MMEM_PTR(bundlemem);
 
 	PRINTF("DELIVERY\n");
 	if(n->status == APP_ACTIVE) {
 		PRINTF("DELIVERY: Service is active\n");
 
-		if (!REDUNDANCE.check(bundle)) { //Bundle was not delivered before
-			REDUNDANCE.set(bundle);
+		if (!REDUNDANCE.check(bundlemem)) { //Bundle was not delivered before
+			REDUNDANCE.set(bundlemem);
 			statistics_bundle_delivered(1);
 			process_post(n->application_process, submit_data_to_application_event, bundle);
 			if (bundle->flags & BUNDLE_FLAG_CUST_REQ) {
-				CUSTODY.report(bundle,128);
+				CUSTODY.report(bundlemem,128);
 			}
 		} else {
-			delete_bundle(bundle);
+			delete_bundle(bundlemem);
 		}
 	}
 

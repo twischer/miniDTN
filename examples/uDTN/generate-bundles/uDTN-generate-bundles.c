@@ -105,7 +105,7 @@ PROCESS_THREAD(profiling_process, ev, data)
 PROCESS_THREAD(bundle_verificator_process, ev, data)
 {
 	uint32_t val;
-	static struct bundle_t bundle1, bundle2;
+	struct mmem *bundle1, *bundle2;
 	static uint8_t databuf[DATASIZE];
 	uint8_t buffer1[120], buffer2[120], len1, len2;
 	int i, first;
@@ -118,39 +118,39 @@ PROCESS_THREAD(bundle_verificator_process, ev, data)
 
 	PROCESS_PAUSE();
 
-	create_bundle(&bundle1);
+	bundle1 = create_bundle();
 	/* Set node destination and source address */
 	val=0x0001;
-	set_attr(&bundle1, DEST_NODE, &val);
+	set_attr(bundle1, DEST_NODE, &val);
 	val=23;
-	set_attr(&bundle1, DEST_SERV, &val);
+	set_attr(bundle1, DEST_SERV, &val);
 	val=0x0002;
-	set_attr(&bundle1, SRC_NODE, &val);
-	set_attr(&bundle1, CUST_NODE, &val);
+	set_attr(bundle1, SRC_NODE, &val);
+	set_attr(bundle1, CUST_NODE, &val);
 	val=42;
-	set_attr(&bundle1, SRC_SERV,&val);
-	set_attr(&bundle1, CUST_SERV, &val);
+	set_attr(bundle1, SRC_SERV,&val);
+	set_attr(bundle1, CUST_SERV, &val);
 
 	val=0;
-	set_attr(&bundle1, FLAGS, &val);
+	set_attr(bundle1, FLAGS, &val);
 
 	val=1;
-	set_attr(&bundle1, REP_NODE, &val);
-	set_attr(&bundle1, REP_SERV, &val);
+	set_attr(bundle1, REP_NODE, &val);
+	set_attr(bundle1, REP_SERV, &val);
 
 	val = numbundles;
-	set_attr(&bundle1, TIME_STAMP_SEQ_NR, &val);
+	set_attr(bundle1, TIME_STAMP_SEQ_NR, &val);
 	val=1;
-	set_attr(&bundle1, LIFE_TIME, &val);
+	set_attr(bundle1, LIFE_TIME, &val);
 	val=4;
-	set_attr(&bundle1, TIME_STAMP, &val);
+	set_attr(bundle1, TIME_STAMP, &val);
 
 	/* Add the data block to the bundle */
-	add_block(&bundle1, 1, 2, databuf, DATASIZE);
+	add_block(bundle1, 1, 2, databuf, DATASIZE);
 
-	len1 = encode_bundle(&bundle1, buffer1, 120);
-	recover_bundle(&bundle2, buffer1, len1);
-	len2 = encode_bundle(&bundle2, buffer2, 120);
+	len1 = encode_bundle(bundle1, buffer1, 120);
+	bundle2 = recover_bundle(buffer1, len1);
+	len2 = encode_bundle(bundle2, buffer2, 120);
 
 	first = -1;
 	for (i=0; i<len1; i++) {
@@ -160,8 +160,8 @@ PROCESS_THREAD(bundle_verificator_process, ev, data)
 			printf("Mismatch in byte %i (%u != %u)\n", i, buffer1[i], buffer2[i]);
 		}
 	}
-	delete_bundle(&bundle1);
-	delete_bundle(&bundle2);
+	delete_bundle(bundle1);
+	delete_bundle(bundle2);
 	if (first != -1 || len1 != len2) {
 		printf("len1: %u, len2: %u\n", len1, len2);
 		TEST_FAIL("Buffer mismatch");
@@ -174,7 +174,7 @@ PROCESS_THREAD(bundle_verificator_process, ev, data)
 PROCESS_THREAD(bundle_generator_process, ev, data)
 {
 	uint32_t val;
-	static struct bundle_t bundle;
+	struct mmem *bundlemem;
 	static uint8_t databuf[DATASIZE];
 	int i;
 	for (i=0; i<DATASIZE; i++) {
@@ -186,38 +186,38 @@ PROCESS_THREAD(bundle_generator_process, ev, data)
 	while(1) {
 		PROCESS_PAUSE();
 
-		create_bundle(&bundle);
+		bundlemem = create_bundle();
 		/* Set node destination and source address */
 		val=0x0001;
-		set_attr(&bundle, DEST_NODE, &val);
+		set_attr(bundlemem, DEST_NODE, &val);
 		val=23;
-		set_attr(&bundle, DEST_SERV, &val);
+		set_attr(bundlemem, DEST_SERV, &val);
 		val=0x0002;
-		set_attr(&bundle, SRC_NODE, &val);
-		set_attr(&bundle, CUST_NODE, &val);
+		set_attr(bundlemem, SRC_NODE, &val);
+		set_attr(bundlemem, CUST_NODE, &val);
 		val=42;
-		set_attr(&bundle, SRC_SERV,&val);
-		set_attr(&bundle, CUST_SERV, &val);
+		set_attr(bundlemem, SRC_SERV,&val);
+		set_attr(bundlemem, CUST_SERV, &val);
 
 		val=0;
-		set_attr(&bundle, FLAGS, &val);
+		set_attr(bundlemem, FLAGS, &val);
 
 		val=1;
-		set_attr(&bundle, REP_NODE, &val);
-		set_attr(&bundle, REP_SERV, &val);
+		set_attr(bundlemem, REP_NODE, &val);
+		set_attr(bundlemem, REP_SERV, &val);
 
 		val = numbundles;
-		set_attr(&bundle, TIME_STAMP_SEQ_NR, &val);
+		set_attr(bundlemem, TIME_STAMP_SEQ_NR, &val);
 		val=1;
-		set_attr(&bundle, LIFE_TIME, &val);
+		set_attr(bundlemem, LIFE_TIME, &val);
 		val=4;
-		set_attr(&bundle, TIME_STAMP, &val);
+		set_attr(bundlemem, TIME_STAMP, &val);
 
 		/* Add the data block to the bundle */
-		add_block(&bundle, 1, 2, databuf, DATASIZE);
+		add_block(bundlemem, 1, 2, databuf, DATASIZE);
 
 		numbundles++;
-		delete_bundle(&bundle);
+		delete_bundle(bundlemem);
 	}
 	PROCESS_END();
 }

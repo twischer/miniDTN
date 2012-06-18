@@ -445,19 +445,19 @@ void b_cust_del_from_list(uint16_t bundle_num)
 }
 */
 
-uint8_t b_cust_release(struct bundle_t *bundle)
+uint8_t b_cust_release(struct mmem *bundlemem)
 {
 	return 0;
 }
-uint8_t b_cust_restransmit(struct bundle_t *bundle)
+uint8_t b_cust_restransmit(struct mmem *bundlemem)
 {
 	return 0;
 }
-uint8_t b_cust_report(struct bundle_t *bundle, uint8_t status)
+uint8_t b_cust_report(struct mmem *bundlemem, uint8_t status)
 {
 	return 0;
 }
-int32_t b_cust_decide(struct bundle_t *bundle)
+int32_t b_cust_decide(struct mmem *bundlemem)
 {
 	return 0;
 }

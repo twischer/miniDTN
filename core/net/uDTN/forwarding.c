@@ -25,24 +25,25 @@
 #define PRINTF(...)
 #endif
 
-uint16_t * forwarding_bundle(struct bundle_t *bundle)
+uint16_t * forwarding_bundle(struct mmem *bundlemem)
 {
+	struct bundle_t *bundle = MMEM_PTR(bundlemem);
 	int32_t saved;
 	uint16_t * saved_as_num;
 
-	PRINTF("FORWARDING: bundle->mem.ptr %p\n",bundle->mem.ptr);
+	PRINTF("FORWARDING: bundle->mem.ptr %p\n",bundle);
 
 	if (bundle->flags & 0x08){ // bundle is custody
 		PRINTF("FORWARDING: Handing over to custody\n");
-		saved = CUSTODY.decide(bundle);
+		saved = CUSTODY.decide(bundlemem);
 	} else {
 		PRINTF("FORWARDING: Handing over to storage\n");
-		saved = BUNDLE_STORAGE.save_bundle(bundle);
+		saved = BUNDLE_STORAGE.save_bundle(bundlemem);
 	}
 
 	if( saved < 0 ) {
 		printf("FORWARDING: Bundle could not be saved\n");
-		delete_bundle(bundle);
+		delete_bundle(bundlemem);
 		return NULL;
 	}
 
@@ -51,13 +52,13 @@ uint16_t * forwarding_bundle(struct bundle_t *bundle)
 	saved_as_num = memb_alloc(saved_as_mem);
 	if(saved_as_num == NULL){
 		printf("FORWARDING: out of MEMB space\n");
-		delete_bundle(bundle);
+		delete_bundle(bundlemem);
 		return NULL;
 	}
 
 	*saved_as_num = (uint16_t) saved;
 	PRINTF("FORWARDING: bundle_num %u\n", *saved_as_num);
-	delete_bundle(bundle);
+	delete_bundle(bundlemem);
 
 	return saved_as_num;
 }

@@ -1,4 +1,5 @@
 #include "bundle.h"
+#include "bundleslot.h"
 #include "sdnv.h"
 #include "mmem.h"
 #include <stdlib.h>
@@ -18,33 +19,69 @@
 #define PRINTF(...)
 #endif
 
-uint8_t create_bundle(struct bundle_t *bundle)
+struct mmem *create_bundle()
 {
-	memset(bundle, 0, sizeof(struct bundle_t));
+	int ret;
+	struct bundle_slot_t *bs;
+	struct bundle_t *bundle;
 
-	bundle->rec_time=(uint32_t) clock_seconds();
+	bs = bundleslot_get_free();
 
-	return 1;
-}
-
-uint8_t add_block(struct bundle_t *bundle, uint8_t type, uint8_t flags, uint8_t *data, uint8_t d_len)
-{
-	bundle->block.type = type;
-	bundle->block.flags = BUNDLE_BLOCK_FLAG_LAST;
-	bundle->block.block_size = d_len;
-
-	if (!mmem_alloc(&bundle->block.payload, d_len)) {
-		return 0;
+	ret = mmem_alloc(&bs->bundle, sizeof(struct bundle_t));
+	if (!ret) {
+		bundleslot_free(bs);
+		return NULL;
 	}
 
-	memcpy(MMEM_PTR(&bundle->block.payload), data, d_len);
+	bundle = MMEM_PTR(&bs->bundle);
+	bundle->rec_time=(uint32_t) clock_seconds();
+
+	return &bs->bundle;
+}
+
+uint8_t add_block(struct mmem *bundlemem, uint8_t type, uint8_t flags, uint8_t *data, uint8_t d_len)
+{
+	struct bundle_t *bundle;
+	struct bundle_block_t *block;
+	uint8_t i;
+
+	/* FIXME: Error case */
+	mmem_realloc(bundlemem, sizeof(struct bundle_t)+bundlemem->size+d_len+sizeof(struct bundle_block_t));
+
+	bundle = MMEM_PTR(bundlemem);
+
+	/* FIXME: Make sure we don't traverse outside of our allocated memory */
+
+	/* Go through the blocks until we're behind the last one */
+	block = bundle->block_data;
+	for (i=0;i<bundle->num_blocks;i++) {
+		/* None of these is the last block anymore */
+		block->flags &= ~BUNDLE_BLOCK_FLAG_LAST;
+		block = (struct bundle_block_t *)block->payload[block->block_size];
+	}
+
+	block->type = type;
+	block->flags = BUNDLE_BLOCK_FLAG_LAST | flags;
+	block->block_size = d_len;
+
+	memcpy(block->payload, data, d_len);
 
 	return d_len;
 }
 
-struct bundle_block_t *get_block(struct bundle_t *bundle)
+struct bundle_block_t *get_block(struct mmem *bundlemem, uint8_t i)
 {
-	return &bundle->block;
+	struct bundle_t *bundle = MMEM_PTR(bundlemem);
+	struct bundle_block_t *block = bundle->block_data;
+
+	if (i >= bundle->num_blocks)
+		return NULL;
+
+	for (;i!=0;i--) {
+		block = (struct bundle_block_t *)block->payload[block->block_size];
+	}
+
+	return block;
 }
 
 /**
@@ -63,8 +100,9 @@ void hexdump(char * string, uint8_t * bla, int length) {
 #define hexdump(...)
 #endif
 
-uint8_t set_attr(struct bundle_t *bundle, uint8_t attr, uint32_t *val)
+uint8_t set_attr(struct mmem *bundlemem, uint8_t attr, uint32_t *val)
 {
+	struct bundle_t *bundle = MMEM_PTR(bundlemem);
 	PRINTF("set attr %lx\n",*val);
 	switch (attr) {
 		case FLAGS:
@@ -120,8 +158,9 @@ uint8_t set_attr(struct bundle_t *bundle, uint8_t attr, uint32_t *val)
 	return 1;
 }
 
-uint8_t get_attr(struct bundle_t *bundle, uint8_t attr, uint32_t *val)
+uint8_t get_attr(struct mmem *bundlemem, uint8_t attr, uint32_t *val)
 {
+	struct bundle_t *bundle = MMEM_PTR(bundlemem);
 	PRINTF("get attr %lx\n",*val);
 	switch (attr) {
 		case FLAGS:
@@ -175,18 +214,25 @@ uint8_t get_attr(struct bundle_t *bundle, uint8_t attr, uint32_t *val)
 	return 1;
 }
 
-uint8_t recover_bundle(struct bundle_t *bundle, uint8_t *buffer, int size)
+static uint8_t decode_block(struct mmem *bundlemem, uint8_t *buffer, int max_len);
+struct mmem *recover_bundle(uint8_t *buffer, int size)
 {
 	uint32_t primary_size, value;
 	uint8_t offs = 0;
+	struct mmem *bundlemem;
+	struct bundle_t *bundle;
+	bundlemem = create_bundle();
+	if (!bundlemem)
+		return NULL;
+
+	bundle = MMEM_PTR(bundlemem);
 
 	PRINTF("rec bptr: %p  blptr:%p \n",bundle,buffer);
-	create_bundle(bundle);
 
 	/* Version 0x06 is the one described and supported in RFC5050 */
 	if (buffer[0] != 0x06) {
 		PRINTF("Version 0x%02x not supported\n", buffer[0]);
-		return 0;
+		goto err;
 	}
 	offs++;
 
@@ -227,7 +273,7 @@ uint8_t recover_bundle(struct bundle_t *bundle, uint8_t *buffer, int size)
 	offs += sdnv_decode(&buffer[offs], size-offs, &value);
 	if (value != 0) {
 		PRINTF("Bundle does not use CBHE.\n");
-		return 0;
+		goto err;
 	}
 
 	if (bundle->flags & BUNDLE_FLAG_FRAGMENT) {
@@ -242,43 +288,68 @@ uint8_t recover_bundle(struct bundle_t *bundle, uint8_t *buffer, int size)
 
 	if (offs != primary_size) {
 		PRINTF("Problem decoding the primary bundle block.\n");
-		return 0;
+		goto err;
 	}
 
-	/* Decode the next block
-	 * FIXME: Only support for one block after the primary for now */
+	/* FIXME: Loop around and decode all blocks - does this work? */
+	while (size-offs > 1) {
+		offs += decode_block(bundlemem, &buffer[offs], size-offs);
+	}
 
-	bundle->block.type = buffer[offs];
+	return bundlemem;
+
+err:
+	delete_bundle(bundlemem);
+	return NULL;
+
+}
+
+static uint8_t decode_block(struct mmem *bundlemem, uint8_t *buffer, int max_len)
+{
+	uint8_t type, block_offs, offs = 0;
+	uint32_t flags, size;
+	struct bundle_t *bundle;
+	struct bundle_block_t *block;
+
+	type = buffer[offs];
 	offs++;
 
 	/* Flags */
-	offs += sdnv_decode(&buffer[offs], size-offs, &bundle->block.flags);
+	offs += sdnv_decode(&buffer[offs], max_len-offs, &flags);
 
 	/* Payload Size */
-	offs += sdnv_decode(&buffer[offs], size-offs, &value);
-	if (value > 127) {
+	offs += sdnv_decode(&buffer[offs], max_len-offs, &size);
+	if (size > max_len-offs) {
 		PRINTF("Bundle payload length too big.\n");
 		return 0;
 	}
-	bundle->block.block_size = value;
 
-	if (bundle->block.block_size != size-offs) {
-		printf("Bundle payload length %i doesn't match buffer size (%i, %i).\n", bundle->block.block_size, offs, size);
-		return 0;
-	}
+	block_offs = bundlemem->size;
+	/* FIXME: Catch error path */
+	mmem_realloc(bundlemem, bundlemem->size + sizeof(struct bundle_block_t) + size);
+
+	bundle = MMEM_PTR(bundlemem);
+	bundle->num_blocks++;
+
+	/* Add the block to the end of the bundle */
+	block = (struct bundle_block_t *)&bundle->block_data[block_offs];
+	block->type = type;
+	block->flags = flags;
+	block->block_size = size;
 
 	/* Copy the actual payload over */
-	mmem_alloc(&bundle->block.payload, bundle->block.block_size);
-	memcpy(MMEM_PTR(&bundle->block.payload), &buffer[offs], bundle->block.block_size);
+	memcpy(block->payload, &buffer[offs], block->block_size);
 
-	return 1;
+	return offs + block->block_size;
 }
-
-uint8_t encode_bundle(struct bundle_t *bundle, uint8_t *buffer, int max_len)
+static uint8_t encode_block(struct bundle_block_t *block, uint8_t *buffer, uint8_t max_len);
+uint8_t encode_bundle(struct mmem *bundlemem, uint8_t *buffer, int max_len)
 {
 	uint32_t value;
-	uint8_t offs = 0, blklen_offs;
+	uint8_t offs = 0, blklen_offs, i;
 	int ret, blklen_size;
+	struct bundle_t *bundle = MMEM_PTR(bundlemem);
+	struct bundle_block_t *block;
 
 	/* Hardcode the version to 0x06 */
 	buffer[0] = 0x06;
@@ -390,37 +461,73 @@ uint8_t encode_bundle(struct bundle_t *bundle, uint8_t *buffer, int max_len)
 
 	offs += ret-1;
 
+	block = bundle->block_data;
+	for (i=0;i<bundle->num_blocks;i++) {
+		offs += encode_block(block, &buffer[offs], max_len - offs);
+		/* Reference the next block */
+		block = (struct bundle_block_t *)block->payload[block->block_size];
+	}
+
+	return offs;
+}
+
+static uint8_t encode_block(struct bundle_block_t *block, uint8_t *buffer, uint8_t max_len)
+{
+	uint8_t offs = 0;
+	int ret;
+	uint32_t value;
+
 	/* Encode the next block */
-	buffer[offs] = bundle->block.type;
+	buffer[offs] = block->type;
 	offs++;
 
 	/* Flags */
-	ret = sdnv_encode(bundle->block.flags, &buffer[offs], max_len - offs);
+	ret = sdnv_encode(block->flags, &buffer[offs], max_len - offs);
 	if (ret < 0)
 		return -1;
 	offs += ret;
 
 	/* Blocksize */
-	value = bundle->block.block_size;
+	value = block->block_size;
 	ret = sdnv_encode(value, &buffer[offs], max_len - offs);
 	if (ret < 0)
 		return -1;
 	offs += ret;
 
 	/* Payload */
-	memcpy(&buffer[offs], MMEM_PTR(&bundle->block.payload), bundle->block.block_size);
-	offs += bundle->block.block_size;
+	memcpy(&buffer[offs], block->payload, block->block_size);
+	offs += block->block_size;
 
 	return offs;
 }
 
-uint16_t delete_bundle(struct bundle_t *bundle)
+int bundle_inc(struct mmem *bundlemem)
 {
-	PRINTF("BUNDLE: delete %p %p %p %u\n", bundle, bundle->mem, bundle->mem.ptr,bundle->rec_time);
-	if (bundle->block.block_size){
-		mmem_free(&bundle->block.payload);
-		bundle->block.block_size = 0;
-	}
+	struct bundle_slot_t *bs;
+	struct bundle_t *bundle = MMEM_PTR(bundlemem);
+
+	bs = container_of(bundlemem, struct bundle_slot_t, bundle);
+	return bundleslot_inc(bs);
+}
+
+int bundle_dec(struct mmem *bundlemem)
+{
+	struct bundle_slot_t *bs;
+	struct bundle_t *bundle = MMEM_PTR(bundlemem);
+	PRINTF("BUNDLE: delete %p %u\n", bundle,bundle->rec_time);
+
+	bs = container_of(bundlemem, struct bundle_slot_t, bundle);
+	return bundleslot_dec(bs);
+}
+
+uint16_t delete_bundle(struct mmem *bundlemem)
+{
+	struct bundle_slot_t *bs;
+	struct bundle_t *bundle = MMEM_PTR(bundlemem);
+	PRINTF("BUNDLE: delete %p %u\n", bundle,bundle->rec_time);
+
+	bs = container_of(bundlemem, struct bundle_slot_t, bundle);
+	bundleslot_free(bs);
 	return 1;
 }
 

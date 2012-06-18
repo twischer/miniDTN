@@ -32,7 +32,8 @@
 #endif
 
 
-void dispatch_bundle(struct bundle_t *bundle) {
+void dispatch_bundle(struct mmem *bundlemem) {
+	struct bundle_t *bundle = MMEM_PTR(bundlemem);
 	struct registration *n;
 	uint16_t *saved_as_mem;
 
@@ -73,7 +74,7 @@ void dispatch_bundle(struct bundle_t *bundle) {
 
 				CUSTODY.release(bundle);
 			}*/
-			delete_bundle(bundle);
+			delete_bundle(bundlemem);
 			return;
 		}
 	} else {
@@ -86,17 +87,17 @@ void dispatch_bundle(struct bundle_t *bundle) {
 				PRINTF("DISPATCHING: %lu == %lu\n", n->app_id, bundle->dst_srv);
 				if(n->app_id == bundle->dst_srv) {
 					PRINTF("DISPATCHING: Registration found \n");
-					deliver_bundle(bundle,n);
+					deliver_bundle(bundlemem,n);
 					return;
 				}
 			}
 			PRINTF("DISPATCHING: no service registered for bundle\n");
-			delete_bundle(bundle);
+			delete_bundle(bundlemem);
 			return;
 		}
 	}
 
-	saved_as_mem = forwarding_bundle(bundle);
+	saved_as_mem = forwarding_bundle(bundlemem);
 	if (saved_as_mem) {
 		process_post(&agent_process, dtn_bundle_in_storage_event, saved_as_mem);
 	}
