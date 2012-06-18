@@ -32,7 +32,7 @@ process_event_t dtn_beacon_event;
 * \param route  pointer to route sturct (contains the receivers address)
 * \return 1
 */
-int dtn_network_send(struct bundle_t *bundle, struct route_t *route);
+int dtn_network_send(struct mmem *bundlemem, struct route_t *route);
 int dtn_send_discover(uint8_t *payload,uint8_t len, rimeaddr_t *dst);
 
 

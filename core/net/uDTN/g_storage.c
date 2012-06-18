@@ -52,6 +52,8 @@ static struct ctimer g_store_timer;
 static struct bundle_t bundle_str;
 struct memb *saved_as_mem;
 
+/* XXX FIXME: Not ported yet! */
+
 /**
 * /brief called by agent at startup
 */
@@ -140,7 +142,7 @@ void reinit(void)
 * \param bundle pointer to the bundle
 * \return the bundle number given to the bundle or <0 on errors
 */
-int32_t save_bundle(struct bundle_t *bundle)
+int32_t save_bundle(struct mmem *bundlemem)
 {
 	uint16_t i=0;
 	int32_t free=-1;

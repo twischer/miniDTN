@@ -42,8 +42,6 @@
 
 const struct mac_driver *dtn_network_mac;
 
-static struct bundle_t bundle;	
-
 static void dtn_network_init(void) 
 {
 	packetbuf_clear();
@@ -64,6 +62,8 @@ static void dtn_network_input(void)
 {
 	uint8_t *input_packet;
 	int size = packetbuf_datalen();
+	struct mmem *bundlemem;
+	struct bundle_t *bundle;
 	input_packet = packetbuf_dataptr();
 	rimeaddr_t bsrc = *packetbuf_addr(PACKETBUF_ADDR_SENDER);
 	packetbuf_clear();
@@ -92,32 +92,30 @@ static void dtn_network_input(void)
 	leds_on(LEDS_GREEN);
 
 	// packetbuf_clear();
-	PRINTF("NETWORK: Bundle received %p  %p\n", &bundle, payload_data);
+	PRINTF("NETWORK: Bundle received %p\n", payload_data);
 
-	memset(&bundle, 0, sizeof(struct bundle_t));
-
-	if ( !recover_bundle(&bundle, payload_data, payload_length)){
+	bundlemem = recover_bundle(payload_data, payload_length);
+	if (!bundlemem) {
 		PRINTF("DTN: recover ERROR\n");
 		leds_off(LEDS_GREEN);
 		return;
 	}
+	bundle = (struct bundle_t*)MMEM_PTR(bundlemem);
 
-	rimeaddr_copy(&bundle.msrc, &bsrc);
+	rimeaddr_copy(&bundle->msrc, &bsrc);
 
 #if DEBUG
 	uint8_t i;
 	printf("NETWORK: input ");
-	for (i=0; i<bundle.size; i++){
-		printf("%02X ", *((uint8_t *)bundle.mem.ptr + i) & 0xFF);
-	}
+	/* FIXME: DEBUGGING broken */
 	printf("\n");
 #endif
 
 	// Notify the discovery module, that we have seen a peer
 	DISCOVERY.alive(&bsrc);
-	PRINTF("NETWORK: size of received bundle: %u block pointer %p\n",bundle.size, bundle.mem.ptr);
+	PRINTF("NETWORK: size of received bundle: %u pointer %p\n",bundlemem->size, bundle);
 
-	dispatch_bundle(&bundle);
+	dispatch_bundle(bundlemem);
 
 	leds_off(LEDS_GREEN);
 }
@@ -165,14 +163,14 @@ static void packet_sent(void *ptr, int status, int num_tx)
 	ROUTING.sent(route, status, num_tx);
 }
 
-int dtn_network_send(struct bundle_t *bundle, struct route_t *route) 
+int dtn_network_send(struct mmem *bundlemem, struct route_t *route) 
 {
 	uint8_t *buffer;
 	uint8_t len;
 
 	leds_on(LEDS_YELLOW);
 
-	PRINTF("NETWORK: send %p via %p\n", bundle, route);
+	PRINTF("NETWORK: send %p via %p\n", bundlemem, route);
 
 	/* We're not going to use packetbuf_copyfrom here but instead assemble the packet
 	 * in the buffer ourself */
@@ -183,7 +181,7 @@ int dtn_network_send(struct bundle_t *bundle, struct route_t *route)
 	//Extended buffer byte
 	buffer[0] = 0x30;
 
-	len = encode_bundle(bundle, buffer+1, PACKETBUF_SIZE-1);
+	len = encode_bundle(bundlemem, buffer+1, PACKETBUF_SIZE-1);
 	packetbuf_set_datalen(len+1);
 
 	/*setze Zieladresse und übergebe das Paket an die MAC schicht */

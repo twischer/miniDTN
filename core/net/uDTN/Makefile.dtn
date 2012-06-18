@@ -1,7 +1,7 @@
 ifeq ($(TARGET),sky)
 BUNDLE=sdnv.c bundle.c 
 else
-BUNDLE=sdnv.c bundle.c 
+BUNDLE=sdnv.c bundle.c bundleslot.c
 endif
 #COFFEE_FILES=4
 CFLAGS+=-DWITH_NODE_ID=1

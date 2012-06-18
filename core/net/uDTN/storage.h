@@ -43,13 +43,13 @@ struct storage_driver {
 	void (* init)(void);
 	void (* reinit)(void);
 	/** saves a bundle */
-	int32_t (* save_bundle)(struct bundle_t *bundle);
+	int32_t (* save_bundle)(struct mmem *bundlemem);
 	/** deletes a bundle */
 	uint16_t (* del_bundle)(uint16_t bundle_num,uint8_t reason);
 	/** reads a bundle */
-	uint16_t (* read_bundle)(uint16_t bundle_num,struct bundle_t *bundle);
+	struct mmem *(* read_bundle)(uint16_t bundle_num);
 	/** checks if there is space for a bundle */
-	uint16_t (* free_space)(struct bundle_t *bundle);
+	uint16_t (* free_space)(struct mmem *bundlemem);
 	/** returns the number of saved bundles */
 	uint16_t (* get_bundle_num)(void);
 	/** returns pointer to list of bundles */

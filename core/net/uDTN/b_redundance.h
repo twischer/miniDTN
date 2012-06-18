@@ -16,8 +16,8 @@ struct red_bundle_t {
 };
 
 
-uint8_t check(struct bundle_t *bundle);
+uint8_t check(struct mmem *bundlemem);
 
-uint8_t set(struct bundle_t *bundle);
+uint8_t set(struct mmem *bundlemem);
 
 #endif

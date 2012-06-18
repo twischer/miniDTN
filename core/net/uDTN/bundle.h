@@ -42,7 +42,7 @@
 #define APP_DATA_LEN 16
 
 #define REASON_NO_INFORMATION			0x00
-#define REASON_LIFETIME_EXPIRED 		0x01
+#define REASON_LIFETIME_EXPIRED			0x01
 #define REASON_UNIDIRECTIONAL_LINK		0x02
 #define REASON_TRANSMISSION_CANCELED	0x03
 #define REASON_DEPLETED_STORAGE			0x04
@@ -92,7 +92,7 @@ struct bundle_block_t {
 	 * Size is uint8 despite being an SDNV because
 	 * IEEE-805.15.4 limits the size here. */
 	uint8_t block_size;
-	struct mmem payload;
+	uint8_t payload[];
 };
 
 /**
@@ -125,8 +125,8 @@ struct bundle_t{
 #if DEBUG_H
 	uint16_t debug_time;
 #endif
-
-	struct bundle_block_t block;
+	uint8_t num_blocks;
+	uint8_t block_data[];
 };
 
 /**
@@ -136,7 +136,7 @@ struct bundle_t{
 * \param size size of raw data
 * \return 1 on success or 0 if something fails
 */
-uint8_t recover_bundle(struct bundle_t *bundle, uint8_t *buffer,int size);
+struct mmem *recover_bundle(uint8_t *buffer,int size);
 /**
 * \brief Encodes the bundle to raw data
 * \param bundle_t pointer to the bundle struct
@@ -144,7 +144,7 @@ uint8_t recover_bundle(struct bundle_t *bundle, uint8_t *buffer,int size);
 * \param size Size of the buffer
 * \return The number of bytes that were written to buf
 */
-uint8_t encode_bundle(struct bundle_t *bundle, uint8_t *buffer, int max_len);
+uint8_t encode_bundle(struct mmem *bundlemem, uint8_t *buffer, int max_len);
 /**
 * \brief stets an attribute of a bundle
 * \param bundle_t pointer to bundle
@@ -152,7 +152,7 @@ uint8_t encode_bundle(struct bundle_t *bundle, uint8_t *buffer, int max_len);
 * \param val pointer to the value to be set 
 * \return length of the seted value on success or 0 on error
 */
-uint8_t set_attr(struct bundle_t *bundle, uint8_t attr, uint32_t *val);
+uint8_t set_attr(struct mmem *bundlemem, uint8_t attr, uint32_t *val);
 /**
 * \brief Gets an attribute of a bundle
 * \param bundle_t pointer to bundle
@@ -160,36 +160,37 @@ uint8_t set_attr(struct bundle_t *bundle, uint8_t attr, uint32_t *val);
 * \param val pointer to the variable where the value will be written
 * \return length of the seted value on success or 0 on error
 */
-uint8_t get_attr(struct bundle_t *bundle, uint8_t attr, uint32_t *val);
-/**
-* \brief creates a new bundle and allocates the minimum needed memory
-* \param bundle_t pointer to an empty bundle struct 
-* \return 1 on success or 0 on error
-*/
-uint8_t create_bundle(struct bundle_t *bundle);
-/**
-* \brief delets a bundle struct and frees mmem parts
-* \param bundle_t poiter to bundle
-* \return 1 on success or 0 on error
-*/
-uint16_t delete_bundle(struct bundle_t *bundel);
-/**
-* \brief adds a block to an existing bundle
-* \param bundle_t poiter to bundle
-* \param type type of block
-* \param flags processing flags
-* \param data pointer to block data
-* \param d_len length of data
-* \return 1 on success or 0 on error
-*/
-uint8_t add_block(struct bundle_t *bundle, uint8_t type, uint8_t flags, uint8_t *data, uint8_t d_len);
+uint8_t get_attr(struct mmem *bundlemem, uint8_t attr, uint32_t *val);
+
+/** \brief Get a new bundle structure allocated
+ *  \return MMEM allocation of the bundle, NULL in case of an error
+ */
+struct mmem *create_bundle();
+/** \brief free a given MMEM allocation of a bundle struct
+ *  \param bundlemem the MMEM allocation to free
+ *
+ *  A bit of magic is involved here because we want to also free
+ *  the bundleslot that this bundle belongs to.
+ */
+uint16_t delete_bundle(struct mmem *bundlemem);
+
+/** \brief Add a block to a bundle
+ *  \param bundlemem pointer to the MMEM allocation of the bundle
+ *  \param type type of the block
+ *  \param flags processing flags of the block
+ *  \param data pointer to the block payload
+ *  \param d_len length of the block payload
+ * \return 1 on success or 0 on error
+ */
+uint8_t add_block(struct mmem *bundlemem, uint8_t type, uint8_t flags, uint8_t *data, uint8_t d_len);
 
 /**
 * \brief Returns a pointer a bundle block
-* \param bundle_t pointer to bundle
-* \return the block
+* \param bundlemem MMEM allocation of the bundle
+* \param i index of the block. Starts at 0
+* \return the block or NULL on error
 */
-struct bundle_block_t *get_block(struct bundle_t *bundle);
+struct bundle_block_t *get_block(struct mmem *bundlemem, uint8_t i);
 
 
 /**

@@ -49,7 +49,6 @@ MEMB(bundle_mem, struct file_list_entry_t, BUNDLE_STORAGE_SIZE);
 static uint16_t bundles_in_storage;
 static struct ctimer r_store_timer;
 struct memb *saved_as_mem;
-static struct bundle_t bundle_str;
 static uint16_t bundle_number = 0;
 
 void r_store_prune();
@@ -96,15 +95,18 @@ void rs_init(void)
 */
 void r_store_prune()
 {
+	uint32_t elapsed_time;
 	struct file_list_entry_t * entry;
+	struct bundle_t *bundle;
 
 	// Delete expired bundles from storage
 	for(entry = list_head(bundle_list);
 			entry != NULL;
 			entry = list_item_next(entry)) {
-		uint32_t elapsed_time = clock_seconds() - entry->bundle.rec_time;
+		bundle = MMEM_PTR(entry->bundle);
+		elapsed_time = clock_seconds() - bundle->rec_time;
 
-		if( entry->bundle.lifetime < elapsed_time ) {
+		if( bundle->lifetime < elapsed_time ) {
 			PRINTF("STORAGE: bundle lifetime expired of bundle %u\n", entry->bundle_num);
 			rs_del_bundle(entry->bundle_num, REASON_LIFETIME_EXPIRED);
 		}
@@ -134,18 +136,20 @@ void rs_reinit(void)
  * have at least one slot and the number of required of memory free
  * besides the high watermark for MMEM
  */
-uint8_t rs_make_room(struct bundle_t * bundle)
+uint8_t rs_make_room(struct mmem *bundlemem)
 {
-	if( bundles_in_storage < BUNDLE_STORAGE_SIZE && (avail_memory - bundle->block.block_size) > STORAGE_HIGH_WATERMARK ) {
-		// We have enough memory, no need to do anything
-		return 1;
-	}
+	struct bundle_t *bundle = MMEM_PTR(bundlemem);
+
+//	if( bundles_in_storage < BUNDLE_STORAGE_SIZE && (avail_memory - bundle->block.block_size) > STORAGE_HIGH_WATERMARK ) {
+//		// We have enough memory, no need to do anything
+//		return 1;
+//	}
 
 	// Now delete expired bundles
 	r_store_prune();
 
 	// Keep deleting bundles until we have enough MMEM and slots
-	while( bundles_in_storage >= BUNDLE_STORAGE_SIZE || (avail_memory - bundle->block.block_size) < STORAGE_HIGH_WATERMARK ) {
+	while( bundles_in_storage >= BUNDLE_STORAGE_SIZE) { // || (avail_memory - bundle->size) < STORAGE_HIGH_WATERMARK ) {
 		struct file_list_entry_t * entry = list_head(bundle_list);
 
 		if( entry == NULL ) {
@@ -164,25 +168,27 @@ uint8_t rs_make_room(struct bundle_t * bundle)
 * \param bundle pointer to the bundle
 * \return the bundle number given to the bundle or <0 on errors
 */
-int32_t rs_save_bundle(struct bundle_t * bundle)
+int32_t rs_save_bundle(struct mmem *bundlemem)
 {
+	struct bundle_t *entrybdl, *bundle = MMEM_PTR(bundlemem);
 	struct file_list_entry_t * entry;
 
 	// Look for duplicates in the storage
 	for(entry = list_head(bundle_list);
 		entry != NULL;
 		entry = list_item_next(entry)) {
-		if ( bundle->tstamp_seq == entry->bundle.tstamp_seq &&
-		    bundle->tstamp == entry->bundle.tstamp &&
-		    bundle->src_node == entry->bundle.src_node &&
-		    bundle->frag_offs == entry->bundle.frag_offs) {
+		entrybdl = MMEM_PTR(entry->bundle);
+		if ( bundle->tstamp_seq == entrybdl->tstamp_seq &&
+		    bundle->tstamp == entrybdl->tstamp &&
+		    bundle->src_node == entrybdl->src_node &&
+		    bundle->frag_offs == entrybdl->frag_offs) {
 
 			PRINTF("STORAGE: %u is the same bundle\n", entry->bundle_num);
 			return (int32_t) entry->bundle_num;
 		}
 	}
 
-	if( !rs_make_room(bundle) ) {
+	if( !rs_make_room(bundlemem) ) {
 		printf("STORAGE: Cannot store bundle, no room\n");
 		return -1;
 	}
@@ -196,21 +202,15 @@ int32_t rs_save_bundle(struct bundle_t * bundle)
 	// Clear the memory area
 	memset(entry, 0, sizeof(struct file_list_entry_t));
 
-	// Copy the primary block over
-	memcpy(&entry->bundle, bundle, sizeof(struct bundle_t));
-	// And allocate and copy the block
-	int mem = mmem_alloc(&entry->bundle.block.payload, bundle->block.block_size);
-	if( !mem ) {
-		printf("STORAGE: write of %u bytes failed\n", bundle->block.block_size);
-		memb_free(&bundle_mem, entry);
-		return -1;
-	}
+	entry->bundle = bundlemem;
+
+	bundle_inc(bundlemem);
 
 	bundles_in_storage++;
 
 	// Set all required fields
 	entry->bundle_num = bundle_number ++;
-	entry->file_size = bundle->block.block_size;
+	entry->file_size = bundlemem->size;
 
 	PRINTF("STORAGE: New Bundle %u, Src %lu, Dest %lu, Seq %lu, Size %u\n", entry->bundle_num, bundle->src_node, bundle->dst_node, bundle->tstamp_seq, entry->file_size);
 
@@ -231,6 +231,8 @@ int32_t rs_save_bundle(struct bundle_t * bundle)
 */
 uint16_t rs_del_bundle(uint16_t bundle_num, uint8_t reason)
 {
+	struct mmem *bundlemem;
+	struct bundle_t *bundle;
 	struct file_list_entry_t * entry;
 
 	PRINTF("STORAGE: Deleting Bundle %u with reason %u\n", bundle_num, reason);
@@ -250,21 +252,17 @@ uint16_t rs_del_bundle(uint16_t bundle_num, uint8_t reason)
 	}
 
 	// Figure out the source to send status report
-	if(rs_read_bundle(bundle_num, &bundle_str)){
-		bundle_str.del_reason = reason;
+	if(bundlemem = rs_read_bundle(bundle_num)){
+		bundle = MMEM_PTR(bundlemem);
+		bundle->del_reason = reason;
 
-		if( ((bundle_str.flags & 8 ) || (bundle_str.flags & 0x40000)) && (reason !=0xff )){
-			if (entry->bundle.src_node != dtn_node_id){
-				STATUS_REPORT.send(&bundle_str, 16, bundle_str.del_reason);
+		if( ((bundle->flags & 8 ) || (bundle->flags & 0x40000)) && (reason !=0xff )){
+			if (bundle->src_node != dtn_node_id){
+				STATUS_REPORT.send(bundlemem, 16, bundle->del_reason);
 			}
 		}
 	}
-	delete_bundle(&bundle_str);
-
-	// Free the MMEM block inside the bundle
-	if (MMEM_PTR(&entry->bundle.block.payload) != 0){
-		mmem_free(&entry->bundle.block.payload);
-	}
+	bundle_dec(&bundlemem);
 
 	// Remove the bundle from the list
 	list_remove(bundle_list, entry);
@@ -289,7 +287,7 @@ uint16_t rs_del_bundle(uint16_t bundle_num, uint8_t reason)
 * \param bundle empty bundle struct, bundle will be accessable here
 * \return 1 on succes or 0 on error
 */
-uint16_t rs_read_bundle(uint16_t bundle_num,struct bundle_t *bundle)
+struct mmem *rs_read_bundle(uint16_t bundle_num)
 {
 	struct file_list_entry_t * entry;
 
@@ -312,12 +310,7 @@ uint16_t rs_read_bundle(uint16_t bundle_num,struct bundle_t *bundle)
 		return 0;
 	}
 
-	memcpy(bundle, &entry->bundle, sizeof(struct bundle_t));
-	/* FIXME: Error handling */
-	mmem_alloc(&bundle->block.payload, bundle->block.block_size);
-	memcpy(MMEM_PTR(&bundle->block.payload), MMEM_PTR(&entry->bundle.block.payload), bundle->block.block_size);
-
-	return entry->file_size;
+	return entry->bundle;
 }
 
 
@@ -326,7 +319,7 @@ uint16_t rs_read_bundle(uint16_t bundle_num,struct bundle_t *bundle)
 * \param bundle pointer to a bundel struct (not used here)
 * \return number of free solts
 */
-uint16_t rs_free_space(struct bundle_t *bundle)
+uint16_t rs_free_space(struct mmem *bundlemem)
 {
 	return BUNDLE_STORAGE_SIZE - bundles_in_storage;
 }

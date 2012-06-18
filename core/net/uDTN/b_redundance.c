@@ -50,8 +50,9 @@ static struct ctimer *b_red_timer;
 * \param bundle pointer to bundle
 * \return 1 if bundle was delivered befor or 0 if not
 */
-uint8_t check(struct bundle_t *bundle)
+uint8_t check(struct mmem *bundlemem)
 {
+	struct bundle_t *bundle = MMEM_PTR(bundlemem);
 	PRINTF("REDUNDANCE: check\n");	
 	struct red_bundle_t *n;
 	uint32_t src, seq_nr, frag_offset;
@@ -76,8 +77,9 @@ uint8_t check(struct bundle_t *bundle)
 * \param bundle pointer to bundle
 * \return 1 on succesor 0 on error
 */
-uint8_t set(struct bundle_t *bundle)
+uint8_t set(struct mmem *bundlemem)
 {
+	struct bundle_t *bundle = MMEM_PTR(bundlemem);
 	struct red_bundle_t *n;
 	uint32_t src,seq_nr,frag_offset,lifetime;
 	get_attr(bundle, SRC_NODE, &src);

@@ -28,7 +28,7 @@ struct file_list_entry_t {
 	uint16_t bundle_num;
 	uint16_t file_size;
 
-	struct bundle_t bundle;
+	struct mmem *bundle;
 
 	struct routing_pack_list_t routing;
 };
@@ -38,10 +38,10 @@ void rs_reinit(void);
 /**
 returns bundle_num
 */
-int32_t rs_save_bundle(struct bundle_t *bundle);
+int32_t rs_save_bundle(struct mmem *bundlemem);
 
 uint16_t rs_del_bundle(uint16_t bundle_num,uint8_t reason);
 
-uint16_t rs_read_bundle(uint16_t bundle_num, struct bundle_t *bundle);
-uint16_t rs_free_space(struct bundle_t *bundle);
+struct mmem *rs_read_bundle(uint16_t bundle_num);
+uint16_t rs_free_space(struct mmem *bundlemem);
 #endif

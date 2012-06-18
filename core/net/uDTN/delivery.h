@@ -18,7 +18,7 @@
 *   \param bundle pointer to bundle 
 *   \param registration pointer to registrated service
 */
-void deliver_bundle(struct bundle_t *bundle, struct registration *n);
+void deliver_bundle(struct mmem *bundlemem, struct registration *n);
 
 #endif
 
