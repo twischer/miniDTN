@@ -71,7 +71,6 @@ static struct registration_api reg;
 PROCESS_THREAD(hello_world_process, ev, data)
 {
 	static struct etimer timer;
-	static struct bundle_t bun;
 	static uint16_t bundles_recv = 0;
 	static uint32_t time_start, time_stop;
 	static uint8_t userdata[2];
@@ -79,6 +78,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 	uint32_t seqno;
         clock_time_t now;
         unsigned short now_fine;
+	struct mmem *bundlemem;
 
 	PROCESS_BEGIN();
 	profiling_init();
@@ -125,14 +125,13 @@ PROCESS_THREAD(hello_world_process, ev, data)
 		}
 
 		/* If the etimer didn't expire we're getting a submit_data_to_application_event */
-		struct bundle_t *bundle;
-		bundle = (struct bundle_t *) data;
+		bundlemem = (struct mmem *) data;
 
 		leds_toggle(1);
 
-		get_attr(bundle, TIME_STAMP_SEQ_NR, &seqno);
-		get_attr(bundle, SRC_NODE, &tmp);
-		delete_bundle(bundle);
+		get_attr(bundlemem, TIME_STAMP_SEQ_NR, &seqno);
+		get_attr(bundlemem, SRC_NODE, &tmp);
+		delete_bundle(bundlemem);
 
 		bundles_recv++;
 		/* Start counting time after the first bundle arrived */
@@ -158,39 +157,39 @@ PROCESS_THREAD(hello_world_process, ev, data)
 		        } while (now_fine != clock_time());
 		        time_stop = ((unsigned long)now)*CLOCK_SECOND + now_fine%CLOCK_SECOND;
 
-			create_bundle(&bun);
+			bundlemem = create_bundle();
 
 			/* tmp already holdy the src address of the sender */
-			set_attr(&bun, DEST_NODE, &tmp);
+			set_attr(bundlemem, DEST_NODE, &tmp);
 			tmp=25;
-			set_attr(&bun, DEST_SERV, &tmp);
+			set_attr(bundlemem, DEST_SERV, &tmp);
 			tmp=dtn_node_id;
-			set_attr(&bun, SRC_NODE, &tmp);
-			set_attr(&bun, SRC_SERV,&tmp);
-			set_attr(&bun, CUST_NODE, &tmp);
-			set_attr(&bun, CUST_SERV, &tmp);
+			set_attr(bundlemem, SRC_NODE, &tmp);
+			set_attr(bundlemem, SRC_SERV,&tmp);
+			set_attr(bundlemem, CUST_NODE, &tmp);
+			set_attr(bundlemem, CUST_SERV, &tmp);
 
 			tmp=0;
-			set_attr(&bun, FLAGS, &tmp);
+			set_attr(bundlemem, FLAGS, &tmp);
 			tmp=1;
-			set_attr(&bun, REP_NODE, &tmp);
-			set_attr(&bun, REP_SERV, &tmp);
+			set_attr(bundlemem, REP_NODE, &tmp);
+			set_attr(bundlemem, REP_SERV, &tmp);
 
 			/* Set the sequence number to the number of budles sent */
 			tmp = 1;
-			set_attr(&bun, TIME_STAMP_SEQ_NR, &tmp);
+			set_attr(bundlemem, TIME_STAMP_SEQ_NR, &tmp);
 
 			tmp=2000;
-			set_attr(&bun, LIFE_TIME, &tmp);
+			set_attr(bundlemem, LIFE_TIME, &tmp);
 			tmp=4;
-			set_attr(&bun, TIME_STAMP, &tmp);
+			set_attr(bundlemem, TIME_STAMP, &tmp);
 
 			/* Add the payload */
 			userdata[0] = 'o';
 			userdata[1] = 'k';
-			add_block(&bun, 1, 2, userdata, 2);
+			add_block(bundlemem, 1, 2, userdata, 2);
 
-			process_post(&agent_process, dtn_send_bundle_event, (void *) &bun);
+			process_post(&agent_process, dtn_send_bundle_event, (void *) bundlemem);
 
 			watchdog_stop();
 			profiling_report("recv-1000", 0);

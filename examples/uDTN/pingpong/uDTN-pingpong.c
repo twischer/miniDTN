@@ -104,47 +104,47 @@ static clock_time_t get_time()
 }
 
 /* Convenience function to populate a bundle */
-static uint8_t inline bundle_convenience(struct bundle_t *bundle, uint16_t dest, uint16_t dst_srv, uint16_t src_srv,  uint8_t *data, size_t len)
+static inline struct mmem *bundle_convenience(uint16_t dest, uint16_t dst_srv, uint16_t src_srv,  uint8_t *data, size_t len)
 {
-	uint8_t rc;
 	uint32_t tmp;
+	struct mmem *bundlemem;
 
-	rc = create_bundle(bundle);
-	if (rc == 0) {
+	bundlemem = create_bundle();
+	if (!bundlemem) {
 		printf("create_bundle failed\n");
-		return rc;
+		return NULL;
 	}
 
 	/* Source and destination */
 	tmp=dest;
-	set_attr(bundle, DEST_NODE, &tmp);
+	set_attr(bundlemem, DEST_NODE, &tmp);
 	tmp=dst_srv;
-	set_attr(bundle, DEST_SERV, &tmp);
+	set_attr(bundlemem, DEST_SERV, &tmp);
 	tmp=dtn_node_id;
-	set_attr(bundle, SRC_NODE, &tmp);
-	set_attr(bundle, CUST_NODE, &tmp);
-	set_attr(bundle, CUST_SERV, &tmp);
+	set_attr(bundlemem, SRC_NODE, &tmp);
+	set_attr(bundlemem, CUST_NODE, &tmp);
+	set_attr(bundlemem, CUST_SERV, &tmp);
 
 	tmp=src_srv;
-	set_attr(bundle, SRC_SERV,&tmp);
+	set_attr(bundlemem, SRC_SERV,&tmp);
 
 	tmp=0;
-	set_attr(bundle, FLAGS, &tmp);
+	set_attr(bundlemem, FLAGS, &tmp);
 	tmp=1;
-	set_attr(bundle, REP_NODE, &tmp);
-	set_attr(bundle, REP_SERV, &tmp);
+	set_attr(bundlemem, REP_NODE, &tmp);
+	set_attr(bundlemem, REP_SERV, &tmp);
 
 	tmp = 0;
-	set_attr(bundle, TIME_STAMP_SEQ_NR, &tmp);
+	set_attr(bundlemem, TIME_STAMP_SEQ_NR, &tmp);
 
 	tmp=2000;
-	set_attr(bundle, LIFE_TIME, &tmp);
+	set_attr(bundlemem, LIFE_TIME, &tmp);
 	tmp=4;
-	set_attr(bundle, TIME_STAMP, &tmp);
+	set_attr(bundlemem, TIME_STAMP, &tmp);
 
-	add_block(bundle, 1, 0, data, len);
+	add_block(bundlemem, 1, 0, data, len);
 
-	return rc;
+	return bundlemem;
 }
 
 PROCESS_THREAD(coordinator_process, ev, data)
@@ -187,6 +187,7 @@ PROCESS_THREAD(ping_process, ev, data)
 	static uint32_t diff = 0, latency = 0;
 	static uint8_t synced = 0;
 	static struct etimer timer;
+	struct mmem *bundlemem, *recv;
 	struct bundle_block_t *block;
 	uint8_t i;
 	uint8_t userdata[PAYLOAD_LEN];
@@ -223,19 +224,19 @@ PROCESS_THREAD(ping_process, ev, data)
 			for (i=4;i<PAYLOAD_LEN;i++) {
 				userdata[i] = i;
 			}
-			if (bundle_convenience(&bundle, CONF_DEST_NODE, 7, 5, userdata, PAYLOAD_LEN))
-				process_post(&agent_process, dtn_send_bundle_event, (void *) &bundle);
+			bundlemem = bundle_convenience(CONF_DEST_NODE, 7, 5, userdata, PAYLOAD_LEN);
+			if (bundlemem)
+				process_post(&agent_process, dtn_send_bundle_event, (void *) bundlemem);
 			continue;
 		}
 		/* We received a bundle - handle it */
-		struct bundle_t *recv;
-		recv = (struct bundle_t *) data;
+		recv = (struct mmem *) data;
 
 		diff = get_time();
 
 		/* Check receiver */
-		block = get_block(recv);
-		u32_ptr = (uint32_t *)MMEM_PTR(&block->payload);
+		block = get_block(recv, 0);
+		u32_ptr = (uint32_t *)block->payload;
 
 		if (!synced) {
 			/* We're synced */
@@ -269,8 +270,9 @@ PROCESS_THREAD(ping_process, ev, data)
 		for (i=4;i<PAYLOAD_LEN;i++) {
 			userdata[i] = i;
 		}
-		if (bundle_convenience(&bundle, CONF_DEST_NODE, 7, 5, userdata, PAYLOAD_LEN)) {
-			process_post(&agent_process, dtn_send_bundle_event, (void *) &bundle);
+		bundlemem = bundle_convenience(CONF_DEST_NODE, 7, 5, userdata, PAYLOAD_LEN);
+		if (bundlemem) {
+			process_post(&agent_process, dtn_send_bundle_event, (void *) bundlemem);
 			bundle_sent++;
 		}
 	}
@@ -286,6 +288,7 @@ PROCESS_THREAD(pong_process, ev, data)
 {
 	static struct etimer timer;
 	static uint16_t bundle_sent = 0;
+	struct mmem *bundlemem, *recv;
 	struct bundle_block_t *block;
 	uint32_t *u32_ptr, tmp;
 
@@ -305,8 +308,7 @@ PROCESS_THREAD(pong_process, ev, data)
 		PROCESS_WAIT_EVENT_UNTIL(ev == submit_data_to_application_event);
 
 		/* We received a bundle - bounce it back */
-		struct bundle_t *recv;
-		recv = (struct bundle_t *) data;
+		recv = (struct mmem *) data;
 
 		get_attr(recv, SRC_NODE, &tmp);
 
@@ -317,12 +319,13 @@ PROCESS_THREAD(pong_process, ev, data)
 			continue;
 		}
 
-		block = get_block(recv);
-		u32_ptr = MMEM_PTR(&block->payload);
+		block = get_block(recv, 0);
+		u32_ptr = (uint32_t *)block->payload;
 
 		/* Send PONG */
-		if (bundle_convenience(&bundle, CONF_DEST_NODE, 5, 7, (uint8_t *) u32_ptr, 4))
-			process_post(&agent_process, dtn_send_bundle_event, (void *) &bundle);
+		bundlemem = bundle_convenience(CONF_DEST_NODE, 5, 7, (uint8_t *) u32_ptr, 4);
+		if (bundlemem)
+			process_post(&agent_process, dtn_send_bundle_event, (void *) bundlemem);
 
 		delete_bundle(recv);
 
