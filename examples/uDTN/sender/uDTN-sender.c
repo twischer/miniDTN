@@ -69,7 +69,6 @@
 PROCESS(hello_world_process, "Hello world process");
 AUTOSTART_PROCESSES(&hello_world_process);
 static struct registration_api reg;
-struct bundle_t bundle;
 /*---------------------------------------------------------------------------*/
 PROCESS_THREAD(hello_world_process, ev, data)
 {
@@ -81,6 +80,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 	uint32_t tmp;
         clock_time_t now;
         unsigned short now_fine;
+	struct mmem *bundlemem;
 
 	PROCESS_BEGIN();
 	profiling_init();
@@ -121,10 +121,10 @@ PROCESS_THREAD(hello_world_process, ev, data)
 		/* We received a bundle - check if it is the sink telling us to
 		 * stop sending */
 		if (ev == submit_data_to_application_event) {
-			struct bundle_t *bun;
+			struct mmem *recv;
 
-			bun = (struct bundle_t *) data;
-			delete_bundle(bun);
+			recv = (struct mmem *) data;
+			delete_bundle(recv);
 
 			profiling_stop();
 			watchdog_stop();
@@ -156,40 +156,40 @@ PROCESS_THREAD(hello_world_process, ev, data)
 		        time_stop = ((unsigned long)now)*CLOCK_SECOND + now_fine%CLOCK_SECOND;
 		}
 
-		create_bundle(&bundle);
+		bundlemem = create_bundle();
 
 		/* Source and destination */
 		tmp=CONF_SEND_TO_NODE;
-		set_attr(&bundle, DEST_NODE, &tmp);
+		set_attr(bundlemem, DEST_NODE, &tmp);
 		tmp=25;
-		set_attr(&bundle, DEST_SERV, &tmp);
+		set_attr(bundlemem, DEST_SERV, &tmp);
 		tmp=dtn_node_id;
-		set_attr(&bundle, SRC_NODE, &tmp);
-		set_attr(&bundle, SRC_SERV,&tmp);
-		set_attr(&bundle, CUST_NODE, &tmp);
-		set_attr(&bundle, CUST_SERV, &tmp);
+		set_attr(bundlemem, SRC_NODE, &tmp);
+		set_attr(bundlemem, SRC_SERV,&tmp);
+		set_attr(bundlemem, CUST_NODE, &tmp);
+		set_attr(bundlemem, CUST_SERV, &tmp);
 
 		tmp=0;
-		set_attr(&bundle, FLAGS, &tmp);
+		set_attr(bundlemem, FLAGS, &tmp);
 		tmp=1;
-		set_attr(&bundle, REP_NODE, &tmp);
-		set_attr(&bundle, REP_SERV, &tmp);
+		set_attr(bundlemem, REP_NODE, &tmp);
+		set_attr(bundlemem, REP_SERV, &tmp);
 
 		/* Set the sequence number to the number of budles sent */
 		tmp = bundles_sent;
-		set_attr(&bundle, TIME_STAMP_SEQ_NR, &tmp);
+		set_attr(bundlemem, TIME_STAMP_SEQ_NR, &tmp);
 
 		tmp=2000;
-		set_attr(&bundle, LIFE_TIME, &tmp);
+		set_attr(bundlemem, LIFE_TIME, &tmp);
 		tmp=4;
-		set_attr(&bundle, TIME_STAMP, &tmp);
+		set_attr(bundlemem, TIME_STAMP, &tmp);
 
 		/* Add the payload */
 		for(i=0; i<80; i++)
 			userdata[i] = i;
-		add_block(&bundle, 1, 2, userdata, 80);
+		add_block(bundlemem, 1, 2, userdata, 80);
 
-		process_post(&agent_process, dtn_send_bundle_event, (void *) &bundle);
+		process_post(&agent_process, dtn_send_bundle_event, (void *) bundlemem);
 
 		bundles_sent++;
 		/* Show progress every 50 bundles */
