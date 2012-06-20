@@ -27,50 +27,58 @@
  * SUCH DAMAGE.
  */
 
-package se.sics.cooja.mspmote.plugins;
+package se.sics.cooja.avrmote;
 
 import java.io.File;
 
 import org.apache.log4j.Logger;
 
 import se.sics.cooja.Watchpoint;
-import se.sics.cooja.mspmote.MspMote;
-import se.sics.mspsim.core.Memory;
-import se.sics.mspsim.core.MemoryMonitor;
+import se.sics.cooja.WatchpointMote.WatchpointListener;
+import avrora.sim.Simulator;
+import avrora.sim.Simulator.Probe;
+import avrora.sim.State;
 
 /**
- * Mspsim watchpoint.
+ * Avrora watchpoint.
  *
  * @author Fredrik Osterlind
  */
-public class MspBreakpoint extends Watchpoint<MspMote> {
-  private static Logger logger = Logger.getLogger(MspBreakpoint.class);
+public class AvrBreakpoint extends Watchpoint<AvroraMote> {
+  private static Logger logger = Logger.getLogger(AvrBreakpoint.class);
 
-  private MemoryMonitor memoryMonitor = null;
+  private Probe probe = null;
 
-  public MspBreakpoint(MspMote mote) {
+  public AvrBreakpoint(AvroraMote mote) {
     super(mote);
     /* expects setConfigXML(..) */
   }
 
-  public MspBreakpoint(MspMote mote, Integer address, File codeFile, Integer lineNr) {
+  public AvrBreakpoint(AvroraMote mote, Integer address, File codeFile, Integer lineNr) {
     super(mote, address, codeFile, lineNr);
   }
 
   public void registerBreakpoint() {
-    memoryMonitor = new MemoryMonitor.Adapter() {
-      public void notifyReadBefore(int addr, Memory.AccessMode mode, Memory.AccessType type) {
-        if (type != Memory.AccessType.EXECUTE) {
-          return;
+    probe = new Simulator.Probe.Empty() {
+      public void fireBefore(State s, int pc) {
+        /* Avrora will return immediately */
+
+        /* Request Cooja to stop executing */
+        if (stopsSimulation()) {
+          getMote().stopNextInstruction();
         }
 
-        getMote().signalBreakpointTrigger(MspBreakpoint.this);
+        /* Notify listeners */
+        WatchpointListener[] listeners = getMote().getWatchpointListeners();
+        for (WatchpointListener listener: listeners) {
+          listener.watchpointTriggered(AvrBreakpoint.this);
+        }
       }
     };
-    getMote().getCPU().addWatchPoint(getExecutableAddress(), memoryMonitor);
+    getMote().sim.insertProbe(probe, getExecutableAddress());
   }
 
   public void unregisterBreakpoint() {
-    getMote().getCPU().removeWatchPoint(getExecutableAddress(), memoryMonitor);
+    getMote().sim.removeProbe(probe, getExecutableAddress());
   }
 }
