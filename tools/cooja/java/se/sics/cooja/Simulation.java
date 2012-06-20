@@ -42,6 +42,7 @@ import javax.swing.JOptionPane;
 import org.apache.log4j.Logger;
 import org.jdom.Element;
 
+import se.sics.cooja.WatchpointMote.BreakpointTriggered;
 import se.sics.cooja.dialogs.CreateSimDialog;
 
 /**
@@ -284,9 +285,8 @@ public class Simulation extends Observable implements Runnable {
         }
       }
     } catch (RuntimeException e) {
-    	if ("MSPSim requested simulation stop".equals(e.getMessage())) {
-    		/* XXX Should be*/
-    		logger.info("Simulation stopped due to MSPSim breakpoint");
+    	if (e instanceof BreakpointTriggered) {
+    		logger.info("Simulation stopped due to breakpoint: " + e.getMessage());
     	} else {
 
     		logger.fatal("Simulation stopped due to error: " + e.getMessage(), e);

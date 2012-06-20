@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, Swedish Institute of Computer Science.
+ * Copyright (c) 2012, Swedish Institute of Computer Science.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,8 +25,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $Id: MspMote.java,v 1.48 2010/10/04 12:54:01 joxe Exp $
  */
 
 package se.sics.cooja.mspmote;
@@ -54,8 +52,8 @@ import se.sics.cooja.Watchpoint;
 import se.sics.cooja.WatchpointMote;
 import se.sics.cooja.interfaces.IPAddress;
 import se.sics.cooja.motes.AbstractEmulatedMote;
-import se.sics.cooja.mspmote.interfaces.MspSerial;
 import se.sics.cooja.mspmote.interfaces.Msp802154Radio;
+import se.sics.cooja.mspmote.interfaces.MspSerial;
 import se.sics.cooja.mspmote.plugins.CodeVisualizerSkin;
 import se.sics.cooja.mspmote.plugins.MspBreakpoint;
 import se.sics.cooja.plugins.Visualizer;
@@ -287,7 +285,7 @@ public abstract class MspMote extends AbstractEmulatedMote implements Mote, Watc
     if (stopNextInstruction) {
       stopNextInstruction = false;
       scheduleNextWakeup(t);
-      throw new RuntimeException("MSPSim requested simulation stop");
+      throw new BreakpointTriggered("MSPSim requested simulation stop");
     }
 
     if (lastExecute < 0) {
@@ -320,7 +318,7 @@ public abstract class MspMote extends AbstractEmulatedMote implements Mote, Watc
 
     if (stopNextInstruction) {
       stopNextInstruction = false;
-      throw new RuntimeException("MSPSim requested simulation stop");
+      throw new BreakpointTriggered("MSPSim requested simulation stop");
     }
 
     /* XXX TODO Reimplement stack monitoring using MSPSim internals */
@@ -525,7 +523,7 @@ public abstract class MspMote extends AbstractEmulatedMote implements Mote, Watc
     return watchpointListeners.toArray(new WatchpointListener[0]);
   }
 
-  public Watchpoint addBreakpoint(File codeFile, int lineNr, int address) {
+  public Watchpoint<MspMote> addBreakpoint(File codeFile, int lineNr, int address) {
     MspBreakpoint bp = new MspBreakpoint(this, address, codeFile, new Integer(lineNr));
     watchpoints.add(bp);
 
@@ -534,7 +532,7 @@ public abstract class MspMote extends AbstractEmulatedMote implements Mote, Watc
     }
     return bp;
   }
-  public void removeBreakpoint(Watchpoint watchpoint) {
+  public void removeBreakpoint(Watchpoint<? extends WatchpointMote> watchpoint) {
     ((MspBreakpoint)watchpoint).unregisterBreakpoint();
     watchpoints.remove(watchpoint);
 
@@ -542,15 +540,15 @@ public abstract class MspMote extends AbstractEmulatedMote implements Mote, Watc
       listener.watchpointsChanged();
     }
   }
-  public Watchpoint[] getBreakpoints() {
-    return watchpoints.toArray(new Watchpoint[0]);
+  public MspBreakpoint[] getBreakpoints() {
+    return watchpoints.toArray(new MspBreakpoint[0]);
   }
 
   public boolean breakpointExists(int address) {
     if (address < 0) {
       return false;
     }
-    for (Watchpoint watchpoint: watchpoints) {
+    for (MspBreakpoint watchpoint: watchpoints) {
       if (watchpoint.getExecutableAddress() == address) {
         return true;
       }
@@ -558,7 +556,7 @@ public abstract class MspMote extends AbstractEmulatedMote implements Mote, Watc
     return false;
   }
   public boolean breakpointExists(File file, int lineNr) {
-    for (Watchpoint watchpoint: watchpoints) {
+    for (MspBreakpoint watchpoint: watchpoints) {
       if (watchpoint.getCodeFile() == null) {
         continue;
       }
