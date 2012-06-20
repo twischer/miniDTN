@@ -37,15 +37,21 @@ import java.util.Collection;
 import org.apache.log4j.Logger;
 import org.jdom.Element;
 
-import se.sics.cooja.Mote;
 import se.sics.cooja.MoteInterface;
 import se.sics.cooja.MoteInterfaceHandler;
 import se.sics.cooja.MoteMemory;
 import se.sics.cooja.MoteType;
 import se.sics.cooja.Simulation;
+import se.sics.cooja.Watchpoint;
+import se.sics.cooja.WatchpointMote;
+import se.sics.cooja.dialogs.CompileContiki;
+import se.sics.cooja.dialogs.MessageList;
+import se.sics.cooja.dialogs.MessageList.MessageContainer;
 import se.sics.cooja.motes.AbstractEmulatedMote;
+import se.sics.cooja.plugins.Debugger.SourceLocation;
 import avrora.arch.avr.AVRProperties;
 import avrora.core.LoadableProgram;
+import avrora.core.SourceMapping;
 import avrora.sim.AtmelInterpreter;
 import avrora.sim.Simulator;
 import avrora.sim.mcu.AtmelMicrocontroller;
@@ -56,7 +62,7 @@ import avrora.sim.platform.PlatformFactory;
 /**
  * @author Joakim Eriksson, Fredrik Osterlind, David Kopf
  */
-public abstract class AvroraMote extends AbstractEmulatedMote implements Mote {
+public abstract class AvroraMote extends AbstractEmulatedMote implements WatchpointMote {
   public static Logger logger = Logger.getLogger(AvroraMote.class);
 
   private MoteInterfaceHandler moteInterfaceHandler;
@@ -67,6 +73,9 @@ public abstract class AvroraMote extends AbstractEmulatedMote implements Mote {
   private EEPROM EEPROM = null;
   private AtmelInterpreter interpreter = null;
   private AvrMoteMemory memory = null;
+
+  public Simulator sim;
+  public SourceMapping sourceMapping;
 
   /* Stack monitoring variables */
   private boolean stopNextInstruction = false;
@@ -84,11 +93,12 @@ public abstract class AvroraMote extends AbstractEmulatedMote implements Mote {
     try {
       LoadableProgram program = new LoadableProgram(fileELF);
       program.load();
+      sourceMapping = program.getProgram().getSourceMapping();
       platform = factory.newPlatform(1, program.getProgram());
       AtmelMicrocontroller cpu = (AtmelMicrocontroller) platform.getMicrocontroller();
       EEPROM = (EEPROM) cpu.getDevice("eeprom");
       AVRProperties avrProperties = (AVRProperties) cpu.getProperties();
-      Simulator sim = cpu.getSimulator();
+      sim = cpu.getSimulator();
       interpreter = (AtmelInterpreter) sim.getInterpreter();
       memory = new AvrMoteMemory(program.getProgram().getSourceMapping(), avrProperties, interpreter);
     } catch (Exception e) {
@@ -151,7 +161,8 @@ public abstract class AvroraMote extends AbstractEmulatedMote implements Mote {
 
     if (stopNextInstruction) {
       stopNextInstruction = false;
-      throw new RuntimeException("Avrora requested simulation stop");
+      scheduleNextWakeup(t);
+      throw new BreakpointTriggered("Avrora requested simulation stop");
     }
 
     /* Execute one millisecond */
@@ -161,7 +172,8 @@ public abstract class AvroraMote extends AbstractEmulatedMote implements Mote {
       if (nsteps > 0) {
         cyclesExecuted += nsteps;
       } else {
-        logger.warn("Avrora did not execute any instruction, aborting executing temporarily");
+        /* We end up here when watchpoints (probes) are executed */
+        /*logger.warn("Avrora did not execute any instruction, aborting executing temporarily");*/
         break;
       }
     }
@@ -182,6 +194,8 @@ public abstract class AvroraMote extends AbstractEmulatedMote implements Mote {
 
       if (name.equals("motetype_identifier")) {
         /* Ignored: handled by simulation */
+      } else if ("breakpoints".equals(element.getName())) {
+        setWatchpointConfigXML(element.getChildren(), visAvailable);
       } else if (name.equals("interface_config")) {
         Class<? extends MoteInterface> moteInterfaceClass = simulation.getGUI().tryLoadClass(
             this, MoteInterface.class, element.getText().trim());
@@ -205,6 +219,11 @@ public abstract class AvroraMote extends AbstractEmulatedMote implements Mote {
     ArrayList<Element> config = new ArrayList<Element>();
     Element element;
 
+    /* Breakpoints */
+    element = new Element("breakpoints");
+    element.addContent(getWatchpointConfigXML());
+    config.add(element);
+
     /* Mote interfaces */
     for (MoteInterface moteInterface: getInterfaces().getInterfaces()) {
       element = new Element("interface_config");
@@ -219,4 +238,139 @@ public abstract class AvroraMote extends AbstractEmulatedMote implements Mote {
 
     return config;
   }
+
+  /* WatchpointMote */
+  public Collection<Element> getWatchpointConfigXML() {
+    ArrayList<Element> config = new ArrayList<Element>();
+    Element element;
+
+    for (AvrBreakpoint breakpoint: watchpoints) {
+      element = new Element("breakpoint");
+      element.addContent(breakpoint.getConfigXML());
+      config.add(element);
+    }
+
+    return config;
+  }
+  public boolean setWatchpointConfigXML(Collection<Element> configXML, boolean visAvailable) {
+    for (Element element : configXML) {
+      if (element.getName().equals("breakpoint")) {
+        AvrBreakpoint breakpoint = new AvrBreakpoint(this);
+        if (!breakpoint.setConfigXML(element.getChildren(), visAvailable)) {
+          logger.warn("Could not restore breakpoint: " + breakpoint);
+        } else {
+          watchpoints.add(breakpoint);
+        }
+      }
+    }
+    return true;
+  }
+
+  private ArrayList<WatchpointListener> watchpointListeners = new ArrayList<WatchpointListener>();
+  private ArrayList<AvrBreakpoint> watchpoints = new ArrayList<AvrBreakpoint>();
+
+  public void addWatchpointListener(WatchpointListener listener) {
+    watchpointListeners.add(listener);
+  }
+  public void removeWatchpointListener(WatchpointListener listener) {
+    watchpointListeners.remove(listener);
+  }
+  public WatchpointListener[] getWatchpointListeners() {
+    return watchpointListeners.toArray(new WatchpointListener[0]);
+  }
+  public Watchpoint<AvroraMote> addBreakpoint(File codeFile, int lineNr, int address) {
+    AvrBreakpoint bp = new AvrBreakpoint(this, address, codeFile, new Integer(lineNr));
+    watchpoints.add(bp);
+
+    for (WatchpointListener listener: watchpointListeners) {
+      listener.watchpointsChanged();
+    }
+    return bp;
+  }
+  public void removeBreakpoint(Watchpoint<? extends WatchpointMote> watchpoint) {
+    ((AvrBreakpoint)watchpoint).unregisterBreakpoint();
+    watchpoints.remove(watchpoint);
+
+    for (WatchpointListener listener: watchpointListeners) {
+      listener.watchpointsChanged();
+    }
+  }
+  public AvrBreakpoint[] getBreakpoints() {
+    return watchpoints.toArray(new AvrBreakpoint[0]);
+  }
+  public boolean breakpointExists(int address) {
+    if (address < 0) {
+      return false;
+    }
+    for (AvrBreakpoint watchpoint: watchpoints) {
+      if (watchpoint.getExecutableAddress() == address) {
+        return true;
+      }
+    }
+    return false;
+  }
+  public boolean breakpointExists(File file, int lineNr) {
+    return breakpointExists(getExecutableAddressOf(file, lineNr));
+  }
+
+  /* Parse debugging info:
+   * Uses avr-add2line and avr-objdump to parse firmware debugging information.
+   * This code is inspired by David Kopf's code in now obsolete AvrDebugger.java.
+   *
+   * These methods are mote type-specific, and may be moved to AvroraMoteType.java. */
+  public SourceLocation getSourceLocation(int pc) {
+    /* TODO Cache result? */
+    try {
+      File firmwareFile = ((AvroraMoteType)getType()).getContikiFirmwareFile();
+      MessageList output = new MessageList();
+      CompileContiki.compile(
+          "avr-addr2line -e " + firmwareFile.getName() + " " + Integer.toHexString(pc),
+          null, null, firmwareFile.getParentFile(), null, null, output, true);
+
+      for (MessageContainer mc: output.getMessages()) {
+        String line = mc.message;
+        int last = line.lastIndexOf(':');
+        if (last < 0) {
+          continue;
+        }
+        String file = line.substring(0, last).trim();
+        String lineNr = line.substring(last+1).trim();
+        if (file.equals("??")) {
+          return null;
+        }
+        return new SourceLocation(new File(file), Integer.parseInt(lineNr));
+      }
+    } catch (Exception e) {
+      logger.warn("Error extracting source location: " + e.getMessage(), e);
+    }
+    return null;
+  }
+
+  public int getExecutableAddressOf(File file, int lineNr) {
+    try {
+      File firmwareFile = ((AvroraMoteType)getType()).getContikiFirmwareFile();
+      MessageList output = new MessageList();
+      CompileContiki.compile(
+          "avr-objdump -l -d " + firmwareFile.getName(),
+          null, null, firmwareFile.getParentFile(), null, null, output, true);
+
+      boolean next = false;
+      for (MessageContainer mc: output.getMessages()) {
+        String line = mc.message;
+        if (line.endsWith(file.getName() + ":" + lineNr)) {
+          next = true;
+          continue;
+        }
+        if (next) {
+          String[] arr = line.trim().split("[: \t]");
+          int address = Integer.parseInt(arr[0], 16);
+          return address;
+        }
+      }
+    } catch (Exception e) {
+      logger.warn("Error extracting executable address: " + e.getMessage(), e);
+    }
+    return -1;
+  }
+
 }
