@@ -1214,11 +1214,11 @@ public class TimeLine extends VisPlugin implements HasQuickHelp {
       activeMoteObservers.add(new MoteObservation(mote, moteRadio, observer));
     }
 
-    /* XXX Experimental: Watchpoints */
+    /* Watchpoints */
     if (mote instanceof WatchpointMote) {
       final WatchpointMote watchpointMote = ((WatchpointMote)mote);
       WatchpointListener listener = new WatchpointListener() {
-        public void watchpointTriggered(Watchpoint watchpoint) {
+        public void watchpointTriggered(Watchpoint<? extends WatchpointMote> watchpoint) {
           WatchpointEvent ev = new WatchpointEvent(simulation.getSimulationTime(), watchpoint);
 
           if (executionDetails && mote instanceof AbstractEmulatedMote) {
@@ -2278,8 +2278,8 @@ public class TimeLine extends VisPlugin implements HasQuickHelp {
     }
   }
   class WatchpointEvent extends MoteEvent {
-    Watchpoint watchpoint;
-    public WatchpointEvent(long time, Watchpoint watchpoint) {
+    Watchpoint<? extends WatchpointMote> watchpoint;
+    public WatchpointEvent(long time, Watchpoint<? extends WatchpointMote> watchpoint) {
       super(time);
       this.watchpoint = watchpoint;
     }

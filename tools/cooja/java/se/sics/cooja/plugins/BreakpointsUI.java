@@ -25,11 +25,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $Id: BreakpointsUI.java,v 1.5 2009/06/16 12:15:15 fros4943 Exp $
  */
 
-package se.sics.cooja.mspmote.plugins;
+package se.sics.cooja.plugins;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -59,10 +57,13 @@ import se.sics.cooja.Watchpoint;
 import se.sics.cooja.WatchpointMote;
 
 /**
- * Displays a set of breakpoints.
- * 
+ * Displays a set of breakpoints. Used by Debugger.
+ *
+ * @see Debugger
+ * @see WatchpointMote
  * @author Fredrik Osterlind
  */
+@SuppressWarnings("serial")
 public class BreakpointsUI extends JPanel {
   private static Logger logger = Logger.getLogger(BreakpointsUI.class);
 
@@ -79,12 +80,12 @@ public class BreakpointsUI extends JPanel {
   };
 
   private WatchpointMote mote;
-  private MspCodeWatcher codeWatcher;
+  private Debugger codeWatcher;
   private JTable table = null;
 
-  private Watchpoint selectedWatchpoint = null;
+  private Watchpoint<? extends WatchpointMote> selectedWatchpoint = null;
 
-  public BreakpointsUI(WatchpointMote mote, final MspCodeWatcher codeWatcher) {
+  public BreakpointsUI(WatchpointMote mote, final Debugger codeWatcher) {
     this.mote = mote;
     this.codeWatcher = codeWatcher;
 
@@ -99,11 +100,11 @@ public class BreakpointsUI extends JPanel {
         int realColumnIndex = table.convertColumnIndexToModel(colIndex);
 
         if (realColumnIndex == COLUMN_FILELINE) {
-          Watchpoint[] allBreakpoints = BreakpointsUI.this.mote.getBreakpoints();
+          Watchpoint<? extends WatchpointMote>[] allBreakpoints = BreakpointsUI.this.mote.getBreakpoints();
           if (rowIndex < 0 || rowIndex >= allBreakpoints.length) {
             return null;
           }
-          Watchpoint watchpoint = allBreakpoints[rowIndex];
+          Watchpoint<? extends WatchpointMote> watchpoint = allBreakpoints[rowIndex];
           File file = watchpoint.getCodeFile();
           if (file == null) {
             return String.format("[unknown @ 0x%04x]", watchpoint.getExecutableAddress());
@@ -116,17 +117,17 @@ public class BreakpointsUI extends JPanel {
         }
 
         if (realColumnIndex == COLUMN_INFO) {
-          return "Optional watchpoint info: description and color"; 
+          return "Optional watchpoint info: description and color";
         }
 
         if (realColumnIndex == COLUMN_STOP) {
-          return "Indicates whether the watchpoint will stop the simulation when triggered"; 
+          return "Indicates whether the watchpoint will stop the simulation when triggered";
         }
         return null;
       }
     };
     table.getColumnModel().getColumn(COLUMN_INFO).setCellRenderer(new DefaultTableCellRenderer() {
-      public Component getTableCellRendererComponent(JTable table, Object value, 
+      public Component getTableCellRendererComponent(JTable table, Object value,
           boolean isSelected, boolean hasFocus, int row, int column) {
         Component c = super.getTableCellRendererComponent(
             table, value, isSelected, hasFocus, row, column);
@@ -134,11 +135,11 @@ public class BreakpointsUI extends JPanel {
           return c;
         }
 
-        Watchpoint[] allBreakpoints = BreakpointsUI.this.mote.getBreakpoints();
+        Watchpoint<? extends WatchpointMote>[] allBreakpoints = BreakpointsUI.this.mote.getBreakpoints();
         if (row < 0 || row >= allBreakpoints.length) {
           return c;
         }
-        Watchpoint breakpoint = allBreakpoints[row];
+        Watchpoint<? extends WatchpointMote> breakpoint = allBreakpoints[row];
         if (breakpoint.getColor() == null) {
           return c;
         }
@@ -164,17 +165,17 @@ public class BreakpointsUI extends JPanel {
         int colIndex = table.columnAtPoint(p);
         int realColumnIndex = table.convertColumnIndexToModel(colIndex);
 
-        if (realColumnIndex != COLUMN_ADDRESS 
+        if (realColumnIndex != COLUMN_ADDRESS
             && realColumnIndex != COLUMN_FILELINE
             && realColumnIndex != COLUMN_INFO) {
           return;
         }
 
-        Watchpoint[] allBreakpoints = BreakpointsUI.this.mote.getBreakpoints();
+        Watchpoint<? extends WatchpointMote>[] allBreakpoints = BreakpointsUI.this.mote.getBreakpoints();
         if (rowIndex < 0 || rowIndex >= allBreakpoints.length) {
           return;
         }
-        Watchpoint breakpoint = allBreakpoints[rowIndex];
+        Watchpoint<? extends WatchpointMote> breakpoint = allBreakpoints[rowIndex];
 
         if (e.isPopupTrigger() || SwingUtilities.isRightMouseButton(e)) {
           selectedWatchpoint = breakpoint;
@@ -200,7 +201,7 @@ public class BreakpointsUI extends JPanel {
     add(BorderLayout.CENTER, table);
   }
 
-  private void configureWatchpointInfo(Watchpoint breakpoint) {
+  private void configureWatchpointInfo(Watchpoint<? extends WatchpointMote> breakpoint) {
     String msg = (String) JOptionPane.showInputDialog(
         GUI.getTopParentContainer(),
         "Enter description;",
@@ -212,7 +213,7 @@ public class BreakpointsUI extends JPanel {
     breakpoint.setUserMessage(msg);
     Color newColor = JColorChooser.showDialog(
         GUI.getTopParentContainer(),
-        "Watchpoint color", 
+        "Watchpoint color",
         breakpoint.getColor());
     if (newColor == null) {
       return;
@@ -220,14 +221,14 @@ public class BreakpointsUI extends JPanel {
     breakpoint.setColor(newColor);
   }
 
-  public void selectBreakpoint(final Watchpoint breakpoint) {
+  public void selectBreakpoint(final Watchpoint<? extends WatchpointMote> breakpoint) {
     if (breakpoint == null) {
       return;
     }
     /* Locate breakpoints table index */
     SwingUtilities.invokeLater(new Runnable() {
       public void run() {
-        Watchpoint[] watchpoints = mote.getBreakpoints();
+        Watchpoint<? extends WatchpointMote>[] watchpoints = mote.getBreakpoints();
         for (int i=0; i < watchpoints.length; i++) {
           if (breakpoint == watchpoints[i]) {
             /* Select */
@@ -250,7 +251,7 @@ public class BreakpointsUI extends JPanel {
       return COLUMN_NAMES.length;
     }
     public Object getValueAt(int row, int col) {
-      Watchpoint breakpoint = mote.getBreakpoints()[row];
+      Watchpoint<? extends WatchpointMote> breakpoint = mote.getBreakpoints()[row];
 
       /* Executable address in hexadecimal */
       if (col == COLUMN_ADDRESS) {
@@ -285,7 +286,7 @@ public class BreakpointsUI extends JPanel {
       return getColumnClass(col) == Boolean.class;
     }
     public void setValueAt(Object value, int row, int col) {
-      Watchpoint breakpoint = mote.getBreakpoints()[row];
+      Watchpoint<? extends WatchpointMote> breakpoint = mote.getBreakpoints()[row];
 
       if (col == COLUMN_STOP) {
         /* Toggle stop state */

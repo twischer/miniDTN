@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, Swedish Institute of Computer Science.
+ * Copyright (c) 2012, Swedish Institute of Computer Science.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,11 +25,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $Id: CodeUI.java,v 1.8 2009/09/23 08:16:06 fros4943 Exp $
  */
 
-package se.sics.cooja.mspmote.plugins;
+package se.sics.cooja.plugins;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -68,6 +66,7 @@ import se.sics.cooja.util.StringUtils;
  *
  * @author Fredrik Osterlind
  */
+@SuppressWarnings("serial")
 public class CodeUI extends JPanel {
   private static Logger logger = Logger.getLogger(CodeUI.class);
 
@@ -216,7 +215,7 @@ public class CodeUI extends JPanel {
     }
     breakpointsLineTags.clear();
 
-    for (Watchpoint w: mote.getBreakpoints()) {
+    for (Watchpoint<? extends WatchpointMote> w: mote.getBreakpoints()) {
       if (!w.getCodeFile().equals(displayedFile)) {
         continue;
       }
