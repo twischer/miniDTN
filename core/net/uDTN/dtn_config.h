@@ -14,6 +14,13 @@
 #define STATUS_REPORT b_status
 #define WATCHDOG_CONF_TIMEOUT 4
 #define DISCOVERY ipnd_discovery
+
+#define LOG_NET    0
+#define LOG_BUNDLE 1
+#define LOG_ROUTE  2
+#define LOG_STORE  3
+#define LOG_SDNV   4
+
 /** @} */
 
 
