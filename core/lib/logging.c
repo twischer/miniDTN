@@ -61,15 +61,61 @@ struct log_cfg {
 };
 
 static char *logdomains[LOGD_NUM] = {
-	[LOGD_CORE] = "COR",  /* Contiki core */
-	[LOGD_CPU] = "CPU",   /* CPU */
-	[LOGD_INGA] = "PLA",  /* Platform */
-	[LOGD_APP] = "APP",   /* Application */
-	[LOGD_DTN] = "DTN",   /* uDTN */
+	[LOGD_CORE] = "COR",   /* Contiki core */
+	[LOGD_CPU]  = "CPU",   /* CPU */
+	[LOGD_INGA] = "PLA",   /* Platform */
+	[LOGD_DTN]  = "DTN",   /* uDTN */
+	[LOGD_APP]  = "APP",   /* Application */
+};
+
+static char *loglevels[LOGL_NUM] = {
+	[LOGL_DBG] = "DBG",
+	[LOGL_INF] = "INF",
+	[LOGL_WRN] = "WRN",
+	[LOGL_ERR] = "ERR",
+	[LOGL_CRI] = "CRI",
 };
 
 static struct log_cfg log_d[LOGD_NUM];
 static uint8_t inited = 0;
+
+/*---------------------------------------------------------------------------*/
+/**
+ * \brief      Convert the log domain symbol to a string
+ * \param      logdom the log domain
+ * \return     String of the log domain
+ * \author     Daniel Willmann
+ *
+ *             The function returns a three letter acronym
+ *             used in the log messages to identify the
+ *             different log domains.
+ *
+ */
+const char *logging_dom2str(uint8_t logdom)
+{
+	if (logdom >= LOGD_NUM)
+		return "UNK";
+	return logdomains[logdom];
+}
+
+/*---------------------------------------------------------------------------*/
+/**
+ * \brief      Convert the log level symbol to a string
+ * \param      logl the log level
+ * \return     String of the log level
+ * \author     Daniel Willmann
+ *
+ *             The function returns a three letter acronym
+ *             used in the log messages to identify the
+ *             different log levels.
+ *
+ */
+const char *logging_level2str(uint8_t logl)
+{
+	if (logl >= LOGL_NUM)
+		return "UNK";
+	return loglevels[logl];
+}
 
 /*---------------------------------------------------------------------------*/
 /**
@@ -98,6 +144,7 @@ void logging_init(void)
 /**
  * \brief      Set the verbosity of the logging domain
  * \param      logdom the domain for which to set the verbosity
+ * \param      sdom the subdomain
  * \param      logl the minimal severity of the mesages that are
  *             logged
  * \author     Daniel Willmann
@@ -115,18 +162,19 @@ void logging_init(void)
  *               recover from these
  *
  */
-void logging_domain_level_set(uint8_t logdom, uint8_t logl)
+void logging_domain_level_set(uint8_t logdom, uint8_t sdom, uint8_t logl)
 {
-	if ((logdom >= LOGD_NUM)||(logl >= LOGL_NUM))
+	if ((logdom >= LOGD_NUM)||(logl >= LOGL_NUM)||(sdom >= SUBDOMS))
 		return;
 
-	log_d[logdom].subl[0] = logl;
+	log_d[logdom].subl[sdom] = logl;
 }
 
 /*---------------------------------------------------------------------------*/
 /**
  * \brief      Log a message
  * \param      logdom the logdomain of the message
+ * \param      sdom the subdomain
  * \param      logl the loglevel of the mesage
  * \param      fmt the format string of the message
  * \param      ... any parameters that are needed for the format string
@@ -138,7 +186,7 @@ void logging_domain_level_set(uint8_t logdom, uint8_t logl)
  *             includes source file and line number inside the message.
  *
  */
-void logging_logfn(uint8_t logdom, uint8_t logl, const char *fmt, ...)
+void logging_logfn(uint8_t logdom, uint8_t sdom, uint8_t logl, const char *fmt, ...)
 {
 	va_list ap;
 
@@ -154,31 +202,14 @@ void logging_logfn(uint8_t logdom, uint8_t logl, const char *fmt, ...)
 
 	if (logl >= LOGL_NUM)
 		logl = LOGL_ERR;
-	if (logl >= log_d[logdom].subl[0]) {
+	if (sdom >= SUBDOMS)
+		sdom = 0;
+	if (logl >= log_d[logdom].subl[sdom]) {
 		vprintf(fmt, ap);
 		printf("\r\n");
 	}
 
 	va_end(ap);
-}
-
-/*---------------------------------------------------------------------------*/
-/**
- * \brief      Convert the log domain symbol to a string
- * \param      logdom the log domain
- * \return     String of the log domain
- * \author     Daniel Willmann
- *
- *             The function returns a three letter acronym
- *             used in the log messages to identify the
- *             different log domains.
- *
- */
-const char *logging_dom2str(uint8_t logdom)
-{
-	if (logdom >= LOGD_NUM)
-		return "UNK";
-	return logdomains[logdom];
 }
 
 /*---------------------------------------------------------------------------*/

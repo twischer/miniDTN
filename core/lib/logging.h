@@ -75,6 +75,7 @@
 /**
  * \brief         Log a message
  * \param logdom  log domain of the message
+ * \param sdom    subdomain of the message
  * \param logl	  log level of the message
  * \author     Daniel Willmann
  *
@@ -82,12 +83,16 @@
  *
  * \hideinitializer
  */
-#define LOG(logdom, logl, fmt, ...) logging_logfn(logdom, logl, "%s: %s(%d): " fmt, logging_dom2str(logdom), __func__, __LINE__, ## __VA_ARGS__)
+#define LOG(logdom, sdom, logl, fmt, ...) do { \
+		logging_logfn(logdom, sdom, logl, "[%s:%s](%s:%d): " fmt, logging_level2str(logl), \
+				logging_dom2str(logdom), __func__, __LINE__, ## __VA_ARGS__); \
+	} while (0)
 
 void logging_init(void);
-void logging_domain_level_set(uint8_t logdom, uint8_t logl);
-void logging_logfn(uint8_t logdom, uint8_t logl, const char *fmt, ...);
+void logging_domain_level_set(uint8_t logdom, uint8_t sdom, uint8_t logl);
+void logging_logfn(uint8_t logdom, uint8_t logl, uint8_t sdom, const char *fmt, ...);
 const char *logging_dom2str(uint8_t logdom);
+const char *logging_level2str(uint8_t logl);
 
 #endif /* __LOGGING_H__ */
 
