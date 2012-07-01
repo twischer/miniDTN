@@ -8,16 +8,11 @@
 //	#include "net/dtn/realloc.h"
 #endif
 
+#include "dtn_config.h"
+
 #include <string.h>
 #include "clock.h"
-
-#define DEBUG 0
-#if DEBUG
-#include <stdio.h>
-#define PRINTF(...) printf(__VA_ARGS__)
-#else
-#define PRINTF(...)
-#endif
+#include "logging.h"
 
 struct mmem *create_bundle()
 {
@@ -30,6 +25,7 @@ struct mmem *create_bundle()
 	ret = mmem_alloc(&bs->bundle, sizeof(struct bundle_t));
 	if (!ret) {
 		bundleslot_free(bs);
+		LOG(LOGD_DTN, LOG_BUNDLE, LOGL_ERR, "Could not allocate memory for a bundle");
 		return NULL;
 	}
 
@@ -84,26 +80,10 @@ struct bundle_block_t *get_block(struct mmem *bundlemem, uint8_t i)
 	return block;
 }
 
-/**
-*brief converts an integer value in sdnv and copies this to the right place in bundel
-*/
-#if DEBUG
-void hexdump(char * string, uint8_t * bla, int length) {
-	printf("Hex: (%s) ", string);
-	int i;
-	for(i=0; i<length; i++) {
-		printf("%02X ", *(bla+i));
-	}
-	printf("\n");
-}
-#else
-#define hexdump(...)
-#endif
-
 uint8_t set_attr(struct mmem *bundlemem, uint8_t attr, uint32_t *val)
 {
 	struct bundle_t *bundle = MMEM_PTR(bundlemem);
-	PRINTF("set attr %lx\n",*val);
+	LOG(LOGD_DTN, LOG_BUNDLE, LOGL_DBG, "set attr %lx",*val);
 	switch (attr) {
 		case FLAGS:
 			bundle->flags = *val;
@@ -144,7 +124,7 @@ uint8_t set_attr(struct mmem *bundlemem, uint8_t attr, uint32_t *val)
 			break;
 		case DIRECTORY_LEN:
 			if (*val != 0)
-				PRINTF("Dictionary length needs to be 0 for CBHE\n");
+				LOG(LOGD_DTN, LOG_BUNDLE, LOGL_ERR, "Dictionary length needs to be 0 for CBHE");
 			break;
 		case FRAG_OFFSET:
 			bundle->frag_offs = *val;
@@ -152,7 +132,7 @@ uint8_t set_attr(struct mmem *bundlemem, uint8_t attr, uint32_t *val)
 		case LENGTH:
 			/* FIXME */
 		default:
-			PRINTF("Unknown attribute\n");
+			LOG(LOGD_DTN, LOG_BUNDLE, LOGL_ERR, "Unknown attribute");
 			return 0;
 	}
 	return 1;
@@ -161,7 +141,7 @@ uint8_t set_attr(struct mmem *bundlemem, uint8_t attr, uint32_t *val)
 uint8_t get_attr(struct mmem *bundlemem, uint8_t attr, uint32_t *val)
 {
 	struct bundle_t *bundle = MMEM_PTR(bundlemem);
-	PRINTF("get attr %lx\n",*val);
+	LOG(LOGD_DTN, LOG_BUNDLE, LOGL_DBG, "get attr %lx",*val);
 	switch (attr) {
 		case FLAGS:
 			*val = bundle->flags;
@@ -208,7 +188,7 @@ uint8_t get_attr(struct mmem *bundlemem, uint8_t attr, uint32_t *val)
 		case LENGTH:
 			/* FIXME */
 		default:
-			PRINTF("Unknown attribute\n");
+			LOG(LOGD_DTN, LOG_BUNDLE, LOGL_ERR, "Unknown attribute");
 			return 0;
 	}
 	return 1;
@@ -227,11 +207,11 @@ struct mmem *recover_bundle(uint8_t *buffer, int size)
 
 	bundle = MMEM_PTR(bundlemem);
 
-	PRINTF("rec bptr: %p  blptr:%p \n",bundle,buffer);
+	LOG(LOGD_DTN, LOG_BUNDLE, LOGL_DBG, "rec bptr: %p  blptr:%p",bundle,buffer);
 
 	/* Version 0x06 is the one described and supported in RFC5050 */
 	if (buffer[0] != 0x06) {
-		PRINTF("Version 0x%02x not supported\n", buffer[0]);
+		LOG(LOGD_DTN, LOG_BUNDLE, LOGL_ERR, "Version 0x%02x not supported", buffer[0]);
 		goto err;
 	}
 	offs++;
@@ -272,12 +252,12 @@ struct mmem *recover_bundle(uint8_t *buffer, int size)
 	/* Directory Length */
 	offs += sdnv_decode(&buffer[offs], size-offs, &value);
 	if (value != 0) {
-		PRINTF("Bundle does not use CBHE.\n");
+		LOG(LOGD_DTN, LOG_BUNDLE, LOGL_ERR, "Bundle does not use CBHE.");
 		goto err;
 	}
 
 	if (bundle->flags & BUNDLE_FLAG_FRAGMENT) {
-		PRINTF("Bundle is a fragment\n");
+		LOG(LOGD_DTN, LOG_BUNDLE, LOGL_INF, "Bundle is a fragment");
 
 		/* Fragment Offset */
 		offs += sdnv_decode(&buffer[offs], size-offs, &bundle->frag_offs);
@@ -287,7 +267,7 @@ struct mmem *recover_bundle(uint8_t *buffer, int size)
 	}
 
 	if (offs != primary_size) {
-		PRINTF("Problem decoding the primary bundle block.\n");
+		LOG(LOGD_DTN, LOG_BUNDLE, LOGL_ERR, "Problem decoding the primary bundle block.");
 		goto err;
 	}
 
@@ -320,7 +300,7 @@ static uint8_t decode_block(struct mmem *bundlemem, uint8_t *buffer, int max_len
 	/* Payload Size */
 	offs += sdnv_decode(&buffer[offs], max_len-offs, &size);
 	if (size > max_len-offs) {
-		PRINTF("Bundle payload length too big.\n");
+		LOG(LOGD_DTN, LOG_BUNDLE, LOGL_ERR, "Bundle payload length too big.");
 		return 0;
 	}
 
@@ -435,7 +415,7 @@ uint8_t encode_bundle(struct mmem *bundlemem, uint8_t *buffer, int max_len)
 	offs += ret;
 
 	if (bundle->flags & BUNDLE_FLAG_FRAGMENT) {
-		PRINTF("Bundle is a fragment\n");
+		LOG(LOGD_DTN, LOG_BUNDLE, LOGL_INF, "Bundle is a fragment");
 
 		/* Fragment Offset */
 		ret = sdnv_encode(bundle->frag_offs, &buffer[offs], max_len - offs);
@@ -514,7 +494,7 @@ int bundle_dec(struct mmem *bundlemem)
 {
 	struct bundle_slot_t *bs;
 	struct bundle_t *bundle = MMEM_PTR(bundlemem);
-	PRINTF("BUNDLE: delete %p %u\n", bundle,bundle->rec_time);
+	LOG(LOGD_DTN, LOG_BUNDLE, LOGL_DBG, "delete %p %u", bundle,bundle->rec_time);
 
 	bs = container_of(bundlemem, struct bundle_slot_t, bundle);
 	return bundleslot_dec(bs);
@@ -524,7 +504,7 @@ uint16_t delete_bundle(struct mmem *bundlemem)
 {
 	struct bundle_slot_t *bs;
 	struct bundle_t *bundle = MMEM_PTR(bundlemem);
-	PRINTF("BUNDLE: delete %p %u\n", bundle,bundle->rec_time);
+	LOG(LOGD_DTN, LOG_BUNDLE, LOGL_DBG, "delete %p %u", bundle,bundle->rec_time);
 
 	bs = container_of(bundlemem, struct bundle_slot_t, bundle);
 	bundleslot_free(bs);

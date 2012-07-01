@@ -28,25 +28,26 @@
 #include "discovery.h"
 #include "stimer.h"
 #include "leds.h"
+#include "logging.h"
+
 #if CONTIKI_TARGET_AVR_RAVEN
 	#include <stings.h>
-#endif
-
-#define DEBUG 0
-#if DEBUG
-#include <stdio.h>
-#define PRINTF(...) printf(__VA_ARGS__)
-#else
-#define PRINTF(...)
 #endif
 
 const struct mac_driver *dtn_network_mac;
 
 static void dtn_network_init(void) 
 {
+	/* Set up logging */
+	logging_init();
+	logging_domain_level_set(LOGD_DTN, LOG_NET, LOGL_DBG);
+	logging_domain_level_set(LOGD_DTN, LOG_BUNDLE, LOGL_DBG);
+	logging_domain_level_set(LOGD_DTN, LOG_ROUTE, LOGL_DBG);
+	logging_domain_level_set(LOGD_DTN, LOG_STORE, LOGL_DBG);
+
 	packetbuf_clear();
 	dtn_network_mac = &NETSTACK_MAC;
-	PRINTF("NETWORK: init\n");
+	LOG(LOGD_DTN, LOG_NET, LOGL_DBG, "init");
 }
 
 /**
@@ -68,14 +69,14 @@ static void dtn_network_input(void)
 	rimeaddr_t bsrc = *packetbuf_addr(PACKETBUF_ADDR_SENDER);
 	packetbuf_clear();
 
-	PRINTF("NETWORK: dtn_network_input from %u.%u\n", bsrc.u8[0], bsrc.u8[1]);
+	LOG(LOGD_DTN, LOG_NET, LOGL_DBG, "src %u.%u", bsrc.u8[0], bsrc.u8[1]);
 
 	if((*input_packet==0x08) & (*(input_packet+1)==0x80)) {
 		// Skip the first two bytes
 		uint8_t * discovery_data = input_packet + 2;
 		uint8_t discovery_length = (uint8_t) (size - 2 - SUFFIX_LENGTH);
 
-		PRINTF("NETWORK: Discovery received\n");
+		LOG(LOGD_DTN, LOG_NET, LOGL_DBG, "Discovery received\n");
 
 		leds_on(LEDS_ALL);
 
@@ -92,11 +93,11 @@ static void dtn_network_input(void)
 	leds_on(LEDS_GREEN);
 
 	// packetbuf_clear();
-	PRINTF("NETWORK: Bundle received %p\n", payload_data);
+	LOG(LOGD_DTN, LOG_NET, LOGL_DBG, "Bundle received %p", payload_data);
 
 	bundlemem = recover_bundle(payload_data, payload_length);
 	if (!bundlemem) {
-		PRINTF("DTN: recover ERROR\n");
+		LOG(LOGD_DTN, LOG_NET, LOGL_WRN, "Error recovering bundle");
 		leds_off(LEDS_GREEN);
 		return;
 	}
@@ -113,7 +114,7 @@ static void dtn_network_input(void)
 
 	// Notify the discovery module, that we have seen a peer
 	DISCOVERY.alive(&bsrc);
-	PRINTF("NETWORK: size of received bundle: %u pointer %p\n",bundlemem->size, bundle);
+	LOG(LOGD_DTN, LOG_NET, LOGL_DBG, "size of received bundle: %u pointer %p",bundlemem->size, bundle);
 
 	dispatch_bundle(bundlemem);
 
@@ -125,35 +126,35 @@ static void packet_sent(void *ptr, int status, int num_tx)
 {
 	switch(status) {
 	  case MAC_TX_COLLISION:
-	    PRINTF("DTN: collision after %d tx\n", num_tx);
+	    LOG(LOGD_DTN, LOG_NET, LOGL_WRN, "collision after %d tx", num_tx);
 	    break;
 	  case MAC_TX_NOACK:
-	    PRINTF("DTN: noack after %d tx\n", num_tx);
+	    LOG(LOGD_DTN, LOG_NET, LOGL_WRN, "noack after %d tx", num_tx);
 	    break;
 	  case MAC_TX_OK:
-	    PRINTF("DTN: sent after %d tx\n", num_tx);
+	    LOG(LOGD_DTN, LOG_NET, LOGL_WRN, "sent after %d tx", num_tx);
 	    break;
 	  case MAC_TX_DEFERRED:
-	    PRINTF("DTN: error MAC_TX_DEFERRED after %d tx\n", num_tx);
+	    LOG(LOGD_DTN, LOG_NET, LOGL_WRN, "error MAC_TX_DEFERRED after %d tx", num_tx);
 	    break;
 	  case MAC_TX_ERR:
-	    PRINTF("DTN: error MAC_TX_ERR after %d tx\n", num_tx);
+	    LOG(LOGD_DTN, LOG_NET, LOGL_WRN, "error MAC_TX_ERR after %d tx", num_tx);
 	    break;
 	  case MAC_TX_ERR_FATAL:
-	    PRINTF("DTN: error MAC_TX_ERR_FATAL after %d tx\n", num_tx);
+	    LOG(LOGD_DTN, LOG_NET, LOGL_WRN, "error MAC_TX_ERR_FATAL after %d tx", num_tx);
 	    break;
 	  default:
-	    PRINTF("DTN: error %d after %d tx\n", status, num_tx);
+	    LOG(LOGD_DTN, LOG_NET, LOGL_WRN, "error %d after %d tx", status, num_tx);
 	    break;
 	  }
 
 	if( !ptr ){
-		printf("NETWORK: callback with empty pointer\n");
+		LOG(LOGD_DTN, LOG_NET, LOGL_WRN, "callback with empty pointer");
 		return;
 	}
 
 	struct route_t * route= (struct route_t *) ptr;
-	PRINTF("NETWORK: MAC Callback for bundle_num %u with ptr %p\n",route->bundle_num,ptr);
+	LOG(LOGD_DTN, LOG_NET, LOGL_DBG, "MAC Callback for bundle_num %u with ptr %p",route->bundle_num,ptr);
 
 	if( status == MAC_TX_OK ) {
 		// Notify discovery that peer is still alive
@@ -170,7 +171,7 @@ int dtn_network_send(struct mmem *bundlemem, struct route_t *route)
 
 	leds_on(LEDS_YELLOW);
 
-	PRINTF("NETWORK: send %p via %p\n", bundlemem, route);
+	LOG(LOGD_DTN, LOG_NET, LOGL_DBG, "send %p via %p", bundlemem, route);
 
 	/* We're not going to use packetbuf_copyfrom here but instead assemble the packet
 	 * in the buffer ourself */

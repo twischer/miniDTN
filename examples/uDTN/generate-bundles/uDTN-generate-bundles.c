@@ -58,6 +58,7 @@
 #include "sys/profiling.h"
 #include "sys/test.h"
 #include "watchdog.h"
+#include "logging.h"
 
 #ifndef DATASIZE
 #define DATASIZE 30
@@ -75,10 +76,14 @@ PROCESS_THREAD(profiling_process, ev, data)
 {
 	static struct etimer timer;
 	PROCESS_BEGIN();
+
+	logging_init();
+	logging_domain_level_set(LOGD_APP, 0, LOGL_DBG);
+
 	agent_init();
 	etimer_set(&timer, CLOCK_SECOND*1);
 	PROCESS_WAIT_UNTIL(etimer_expired(&timer));
-	printf("Checking bundle encoding/decoding\n");
+	LOG(LOGD_APP, 0, LOGL_INF, "Checking bundle encoding/decoding");
 	profiling_init();
 	profiling_start();
 	process_start(&bundle_verificator_process, NULL);
@@ -87,7 +92,7 @@ PROCESS_THREAD(profiling_process, ev, data)
 	watchdog_stop();
 	profiling_report("bundle-check", 0);
 	watchdog_start();
-	printf("Starting bundle generation\n");
+	LOG(LOGD_APP, 0, LOGL_INF, "Starting bundle generation");
 	profiling_init();
 	profiling_start();
 	process_start(&bundle_generator_process, NULL);
@@ -157,13 +162,13 @@ PROCESS_THREAD(bundle_verificator_process, ev, data)
 		if (buffer1[i] != buffer2[i]) {
 			if (first == -1)
 				first = i;
-			printf("Mismatch in byte %i (%u != %u)\n", i, buffer1[i], buffer2[i]);
+			LOG(LOGD_APP, 0, LOGL_ERR, "Mismatch in byte %i (%u != %u)\n", i, buffer1[i], buffer2[i]);
 		}
 	}
 	delete_bundle(bundle1);
 	delete_bundle(bundle2);
 	if (first != -1 || len1 != len2) {
-		printf("len1: %u, len2: %u\n", len1, len2);
+		LOG(LOGD_APP, 0, LOGL_ERR, "len1: %u, len2: %u\n", len1, len2);
 		TEST_FAIL("Buffer mismatch");
 		process_exit(&bundle_verificator_process);
 		PROCESS_WAIT_EVENT();

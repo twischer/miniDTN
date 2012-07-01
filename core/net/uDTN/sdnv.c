@@ -8,20 +8,15 @@
  * implementation of sdnv functions
  * \author Georg von Zengen (vonzeng@ibr.cs.tu-bs.de) 
  */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include "dtn_config.h"
+#include "logging.h"
 
 /** maximum sdnv length */
 #define MAX_LENGTH 8 
-
-#define DEBUG 0
-#if DEBUG
-#include <stdio.h>
-#define PRINTF(...) printf(__VA_ARGS__)
-#else
-#define PRINTF(...)
-#endif
 
 int sdnv_encode(uint32_t val, uint8_t* bp, size_t len)
 {
@@ -64,18 +59,18 @@ size_t sdnv_encoding_len(uint32_t val)
 
 int sdnv_decode(const uint8_t* bp, size_t len, uint32_t* val)
 {
-	PRINTF("sdnv_decode\n");
+	LOG(LOGD_DTN, LOG_SDNV, LOGL_DBG, "sdnv_decode");
 	const uint8_t* start = bp;
 	if (!val) {
-		PRINTF("SDNV: NULL pointer\n");
+		LOG(LOGD_DTN, LOG_SDNV, LOGL_ERR, "SDNV: NULL pointer");
 		return -1;
 	}
 	size_t val_len = 0;
 	*val = 0;
 	do {
-		PRINTF("SDNV: len: %u\n", len);
+		LOG(LOGD_DTN, LOG_SDNV, LOGL_ERR, "SDNV: len: %u", len);
 		if (len == 0){
-			PRINTF("SDNV: buffer too short\n");
+			LOG(LOGD_DTN, LOG_SDNV, LOGL_ERR, "SDNV: buffer too short");
 			return -1; // buffer too short
 		}
 		*val = (*val << 7) | (*bp & 0x7f);
@@ -90,11 +85,11 @@ int sdnv_decode(const uint8_t* bp, size_t len, uint32_t* val)
 	} while (1);
 
 	if ((val_len > MAX_LENGTH) || ((val_len == MAX_LENGTH) && (*start != 0x81))){
-		PRINTF("SDNV: val_len >= %u\n",MAX_LENGTH);
+		LOG(LOGD_DTN, LOG_SDNV, LOGL_ERR, "SDNV: val_len >= %u", MAX_LENGTH);
 		return -1;
 	}
 	
-	PRINTF("SDNV: val: %lu\n", *val);
+	LOG(LOGD_DTN, LOG_SDNV, LOGL_DBG, "SDNV: val: %lu", *val);
 	return val_len;
 }
 
