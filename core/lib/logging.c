@@ -129,12 +129,14 @@ const char *logging_level2str(uint8_t logl)
  */
 void logging_init(void)
 {
-	int i;
+	int i, j;
 	if (inited)
 		return;
 
 	for(i=0; i<LOGD_NUM; i++) {
-		log_d[i].subl[0] = LOGL_DEFAULT;
+		for(j=0;j<SUBDOMS;j++) {
+			log_d[i].subl[j] = LOGL_DEFAULT;
+		}
 		log_d[i].subdom_next = 1;
 	}
 	inited = 1;
