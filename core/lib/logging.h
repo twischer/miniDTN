@@ -71,6 +71,8 @@
 #define LOGD_APP  3
 #define LOGD_DTN  4
 #define LOGD_NUM  5 /* Always last! */
+
+#ifdef ENABLE_LOGGING
 /*---------------------------------------------------------------------------*/
 /**
  * \brief         Log a message
@@ -87,6 +89,9 @@
 		logging_logfn(logdom, sdom, logl, "[%s:%s](%s:%d): " fmt, logging_level2str(logl), \
 				logging_dom2str(logdom), __func__, __LINE__, ## __VA_ARGS__); \
 	} while (0)
+#else
+#define LOG(...)
+#endif
 
 void logging_init(void);
 void logging_domain_level_set(uint8_t logdom, uint8_t sdom, uint8_t logl);
