@@ -68,7 +68,7 @@ int sdnv_decode(const uint8_t* bp, size_t len, uint32_t* val)
 	size_t val_len = 0;
 	*val = 0;
 	do {
-		LOG(LOGD_DTN, LOG_SDNV, LOGL_ERR, "SDNV: len: %u", len);
+		LOG(LOGD_DTN, LOG_SDNV, LOGL_DBG, "SDNV: len: %u", len);
 		if (len == 0){
 			LOG(LOGD_DTN, LOG_SDNV, LOGL_ERR, "SDNV: buffer too short");
 			return -1; // buffer too short
