@@ -22,7 +22,7 @@
 #include "delivery.h"
 #include "status-report.h"
 #include "forwarding.h"
-#define ENABLE_LOGGING 1
+//#define ENABLE_LOGGING 1
 #include "logging.h"
 
 #define DEBUG 0

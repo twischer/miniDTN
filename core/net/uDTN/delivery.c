@@ -28,7 +28,7 @@
 #include "redundance.h"
 #include "dev/leds.h"
 #include "statistics.h"
-#define ENABLE_LOGGING
+//#define ENABLE_LOGGING 1
 #include "logging.h"
 
 #define DEBUG 0
