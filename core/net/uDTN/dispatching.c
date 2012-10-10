@@ -22,6 +22,8 @@
 #include "delivery.h"
 #include "status-report.h"
 #include "forwarding.h"
+#define ENABLE_LOGGING 1
+#include "logging.h"
 
 #define DEBUG 0
 #if DEBUG
@@ -78,20 +80,21 @@ void dispatch_bundle(struct mmem *bundlemem) {
 			return;
 		}
 	} else {
-		PRINTF("DISPATCHING: destination eid: %lu:%lu  == %lu, reg_list=%p\n", bundle->dst_node, bundle->dst_srv,dtn_node_id,list_head(reg_list));
+		LOG(LOGD_DTN, LOG_BUNDLE, LOGL_DBG, "DISPATCHING: destination eid: %lu:%lu  == %lu, reg_list=%p", bundle->dst_node, bundle->dst_srv,dtn_node_id,list_head(reg_list));
 		//if (bundle->flags & 0x08){ // bundle is custody
 		//	STATUS_REPORT.send(bundle, 2,0);
 		//}
+
 		if(bundle->dst_node == (uint32_t)dtn_node_id){
 			for(n = list_head(reg_list); n != NULL; n = list_item_next(n)) {
 				PRINTF("DISPATCHING: %lu == %lu\n", n->app_id, bundle->dst_srv);
 				if(n->app_id == bundle->dst_srv) {
-					PRINTF("DISPATCHING: Registration found \n");
+					LOG(LOGD_DTN, LOG_BUNDLE, LOGL_DBG, "DISPATCHING: Registration found");
 					deliver_bundle(bundlemem,n);
 					return;
 				}
 			}
-			PRINTF("DISPATCHING: no service registered for bundle\n");
+			LOG(LOGD_DTN, LOG_BUNDLE, LOGL_DBG, "DISPATCHING: no service registered for bundle");
 			delete_bundle(bundlemem);
 			return;
 		}
