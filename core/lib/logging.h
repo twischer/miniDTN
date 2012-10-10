@@ -98,6 +98,7 @@ void logging_domain_level_set(uint8_t logdom, uint8_t sdom, uint8_t logl);
 void logging_logfn(uint8_t logdom, uint8_t logl, uint8_t sdom, const char *fmt, ...);
 const char *logging_dom2str(uint8_t logdom);
 const char *logging_level2str(uint8_t logl);
+void logging_hexdump(uint8_t *data, unsigned int len);
 
 #endif /* __LOGGING_H__ */
 

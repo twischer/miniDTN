@@ -28,6 +28,8 @@
 #include "discovery.h"
 #include "stimer.h"
 #include "leds.h"
+
+#define ENABLE_LOGGING 1
 #include "logging.h"
 
 #if CONTIKI_TARGET_AVR_RAVEN
@@ -94,6 +96,8 @@ static void dtn_network_input(void)
 
 	// packetbuf_clear();
 	LOG(LOGD_DTN, LOG_NET, LOGL_DBG, "Bundle received %p", payload_data);
+
+	logging_hexdump(payload_data, payload_length);
 
 	bundlemem = recover_bundle(payload_data, payload_length);
 	if (!bundlemem) {
@@ -168,6 +172,7 @@ int dtn_network_send(struct mmem *bundlemem, struct route_t *route)
 {
 	uint8_t *buffer;
 	uint8_t len;
+	struct bundle_t *bundle;
 
 	leds_on(LEDS_YELLOW);
 
@@ -185,9 +190,14 @@ int dtn_network_send(struct mmem *bundlemem, struct route_t *route)
 	len = encode_bundle(bundlemem, buffer+1, PACKETBUF_SIZE-1);
 	packetbuf_set_datalen(len+1);
 
+	logging_hexdump(buffer, len+1);
+
 	/*setze Zieladresse und übergebe das Paket an die MAC schicht */
 	packetbuf_set_addr(PACKETBUF_ADDR_RECEIVER, &route->dest);
 	packetbuf_set_attr(PACKETBUF_ADDRSIZE, 2);
+
+	bundle = MMEM_PTR(bundlemem);
+
 
 	NETSTACK_MAC.send(&packet_sent, route); 
 	
