@@ -31,6 +31,7 @@ struct mmem *create_bundle()
 
 	bundle = MMEM_PTR(&bs->bundle);
 	bundle->rec_time=(uint32_t) clock_seconds();
+	bundle->num_blocks = 0;
 
 	return &bs->bundle;
 }
@@ -314,7 +315,7 @@ static uint8_t decode_block(struct mmem *bundlemem, uint8_t *buffer, int max_len
 	bundle->num_blocks++;
 
 	/* Add the block to the end of the bundle */
-	block = (struct bundle_block_t *)&bundle->block_data[block_offs];
+	block = (struct bundle_block_t *)((uint8_t *)bundle + block_offs);
 	block->type = type;
 	block->flags = flags;
 	block->block_size = size;
