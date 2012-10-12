@@ -222,7 +222,7 @@ void logging_hexdump(uint8_t *data, unsigned int len)
 
 	for (i=0; i < len; i++) {
 		if (i % 16 == 0)
-			printf("\n%02X", i);
+			printf("\n%02X: ", i);
 
 		printf(" %02X", data[i]);
 	}
