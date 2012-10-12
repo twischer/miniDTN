@@ -58,6 +58,7 @@
 #include "sys/profiling.h"
 #include "sys/test.h"
 #include "watchdog.h"
+#define ENABLE_LOGGING 1
 #include "logging.h"
 
 #ifndef DATASIZE
@@ -157,18 +158,25 @@ PROCESS_THREAD(bundle_verificator_process, ev, data)
 	bundle2 = recover_bundle(buffer1, len1);
 	len2 = encode_bundle(bundle2, buffer2, 120);
 
+	if (len1 != len2)
+		LOG(LOGD_APP, 0, LOGL_ERR, "Length mismatch - len1: %u, len2: %u\n", len1, len2);
+
+
 	first = -1;
 	for (i=0; i<len1; i++) {
 		if (buffer1[i] != buffer2[i]) {
 			if (first == -1)
 				first = i;
 			LOG(LOGD_APP, 0, LOGL_ERR, "Mismatch in byte %i (%u != %u)\n", i, buffer1[i], buffer2[i]);
+
+			logging_hexdump(buffer1, len1);
+			logging_hexdump(buffer2, len2);
+			break;
 		}
 	}
 	delete_bundle(bundle1);
 	delete_bundle(bundle2);
 	if (first != -1 || len1 != len2) {
-		LOG(LOGD_APP, 0, LOGL_ERR, "len1: %u, len2: %u\n", len1, len2);
 		TEST_FAIL("Buffer mismatch");
 		process_exit(&bundle_verificator_process);
 		PROCESS_WAIT_EVENT();
