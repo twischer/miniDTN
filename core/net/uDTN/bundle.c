@@ -42,7 +42,7 @@ uint8_t add_block(struct mmem *bundlemem, uint8_t type, uint8_t flags, uint8_t *
 	uint8_t i;
 
 	/* FIXME: Error case */
-	mmem_realloc(bundlemem, sizeof(struct bundle_t)+bundlemem->size+d_len+sizeof(struct bundle_block_t));
+	mmem_realloc(bundlemem, bundlemem->size + d_len + sizeof(struct bundle_block_t));
 
 	bundle = MMEM_PTR(bundlemem);
 
@@ -59,6 +59,8 @@ uint8_t add_block(struct mmem *bundlemem, uint8_t type, uint8_t flags, uint8_t *
 	block->type = type;
 	block->flags = BUNDLE_BLOCK_FLAG_LAST | flags;
 	block->block_size = d_len;
+
+	bundle->num_blocks++;
 
 	memcpy(block->payload, data, d_len);
 
