@@ -156,7 +156,6 @@ PROCESS_THREAD(coordinator_process, ev, data)
 	profiling_start();
 	agent_init();
 
-	etimer_set(&timer, CLOCK_SECOND);
 	printf("Starting tests\n");
 
 #if CONF_MODE == MODE_ACTIVE
@@ -171,6 +170,9 @@ PROCESS_THREAD(coordinator_process, ev, data)
 	/* The pong process doesn't collect anything, so PASS device directly.
 	 * Otherwise wait for ping to finish. */
 	PROCESS_WAIT_UNTIL(!process_is_running(&ping_process));
+
+	etimer_set(&timer, CLOCK_SECOND*10);
+	PROCESS_WAIT_UNTIL(etimer_expired(&timer));
 
 	profiling_stop();
 	watchdog_stop();
