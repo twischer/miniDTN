@@ -94,7 +94,8 @@ PROCESS(coordinator_process, "Coordinator");
 
 AUTOSTART_PROCESSES(&coordinator_process);
 
-static struct registration_api reg;
+static struct registration_api reg_ping;
+static struct registration_api reg_pong;
 struct bundle_t bundle;
 /*---------------------------------------------------------------------------*/
 
@@ -197,10 +198,10 @@ PROCESS_THREAD(ping_process, ev, data)
 
 	PROCESS_BEGIN();
 
-	reg.status=1;
-	reg.application_process=&ping_process;
-	reg.app_id=5;
-	process_post(&agent_process, dtn_application_registration_event,&reg);
+	reg_ping.status=1;
+	reg_ping.application_process=&ping_process;
+	reg_ping.app_id=5;
+	process_post(&agent_process, dtn_application_registration_event, &reg_ping);
 	etimer_set(&timer,  CLOCK_SECOND);
 	PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&timer));
 
@@ -296,10 +297,10 @@ PROCESS_THREAD(pong_process, ev, data)
 
 	PROCESS_BEGIN();
 
-	reg.status=1;
-	reg.application_process=&pong_process;
-	reg.app_id=7;
-	process_post(&agent_process, dtn_application_registration_event,&reg);
+	reg_pong.status=1;
+	reg_pong.application_process=&pong_process;
+	reg_pong.app_id=7;
+	process_post(&agent_process, dtn_application_registration_event, &reg_pong);
 	etimer_set(&timer,  CLOCK_SECOND);
 	PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&timer));
 
@@ -316,7 +317,7 @@ PROCESS_THREAD(pong_process, ev, data)
 
 		/* Check receiver */
 		if (tmp != CONF_DEST_NODE) {
-			printf("Bundle from differnt node.\n");
+			printf("Bundle from different node.\n");
 			delete_bundle(recv);
 			continue;
 		}
