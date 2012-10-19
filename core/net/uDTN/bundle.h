@@ -202,6 +202,9 @@ rimeaddr_t convert_eid_to_rime(uint32_t eid);
  */
 uint32_t convert_rime_to_eid(rimeaddr_t * dest);
 
+int bundle_dec(struct mmem *bundlemem);
+int bundle_inc(struct mmem *bundlemem);
+
 #endif
 /** @} */
 /** @} */

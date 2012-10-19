@@ -39,6 +39,7 @@ unsigned long contacts_timestamp = 0;
  */
 uint8_t statistics_get_pointer()
 {
+#if STATISTICS_PERIOD > 0
 	// Calculate since when we are recording statistics
 	unsigned long elapsed = clock_seconds() - statistics_timestamp;
 
@@ -50,6 +51,9 @@ uint8_t statistics_get_pointer()
 	}
 
 	return ptr;
+#else
+	return 0;
+#endif
 }
 
 /**

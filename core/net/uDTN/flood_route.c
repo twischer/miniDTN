@@ -190,7 +190,7 @@ uint8_t flood_sent_to_known(void)
 		for(pack = (struct file_list_entry_t *) BUNDLE_STORAGE.get_bundles();
 				pack != NULL;
 				pack = list_item_next(pack)) {
-			bundle = MMEM_PTR(pack->bundle);
+			bundle = (struct bundle_t *) MMEM_PTR(pack->bundle);
 
 			// Who is the destination for this bundle?
 			rimeaddr_t dest_node = convert_eid_to_rime(bundle->dst_node);
@@ -229,7 +229,7 @@ uint8_t flood_sent_to_known(void)
 		for(pack = (struct file_list_entry_t *) BUNDLE_STORAGE.get_bundles();
 				pack != NULL;
 				pack = list_item_next(pack)) {
-			bundle = MMEM_PTR(pack->bundle);
+			bundle = (struct bundle_t *) MMEM_PTR(pack->bundle);
 
 			PRINTF("FLOOD: Bundle %u, SRC %lu, DEST %lu, MSRC %u.%u, SEQ %lu\n", pack->bundle_num,  bundle->src_node, bundle->dst_node, bundle->msrc.u8[0], bundle->msrc.u8[1], bundle->tstamp_seq);
 
@@ -339,7 +339,7 @@ void flood_sent(struct route_t *route, int status, int num_tx)
 		return;
 	}
 
-	bundle = MMEM_PTR(pack->bundle);
+	bundle = (struct bundle_t *) MMEM_PTR(pack->bundle);
 
 	switch(status) {
 	case MAC_TX_ERR:

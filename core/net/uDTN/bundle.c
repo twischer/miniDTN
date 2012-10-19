@@ -13,6 +13,13 @@
 #include <string.h>
 #include "clock.h"
 #include "logging.h"
+#include "bundleslot.h"
+
+/**
+ * "Internal" functions
+ */
+static uint8_t decode_block(struct mmem *bundlemem, uint8_t *buffer, int max_len);
+
 
 struct mmem *create_bundle()
 {
@@ -29,7 +36,7 @@ struct mmem *create_bundle()
 		return NULL;
 	}
 
-	bundle = MMEM_PTR(&bs->bundle);
+	bundle = (struct bundle_t *) MMEM_PTR(&bs->bundle);
 	bundle->rec_time=(uint32_t) clock_seconds();
 	bundle->num_blocks = 0;
 
@@ -45,12 +52,12 @@ uint8_t add_block(struct mmem *bundlemem, uint8_t type, uint8_t flags, uint8_t *
 	/* FIXME: Error case */
 	mmem_realloc(bundlemem, bundlemem->size + d_len + sizeof(struct bundle_block_t));
 
-	bundle = MMEM_PTR(bundlemem);
+	bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 
 	/* FIXME: Make sure we don't traverse outside of our allocated memory */
 
 	/* Go through the blocks until we're behind the last one */
-	block = bundle->block_data;
+	block = (struct bundle_block_t *) bundle->block_data;
 	for (i=0;i<bundle->num_blocks;i++) {
 		/* None of these is the last block anymore */
 		block->flags &= ~BUNDLE_BLOCK_FLAG_LAST;
@@ -70,8 +77,8 @@ uint8_t add_block(struct mmem *bundlemem, uint8_t type, uint8_t flags, uint8_t *
 
 struct bundle_block_t *get_block(struct mmem *bundlemem, uint8_t i)
 {
-	struct bundle_t *bundle = MMEM_PTR(bundlemem);
-	struct bundle_block_t *block = bundle->block_data;
+	struct bundle_t *bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
+	struct bundle_block_t *block = (struct bundle_block_t *) bundle->block_data;
 
 	if (i >= bundle->num_blocks)
 		return NULL;
@@ -85,7 +92,7 @@ struct bundle_block_t *get_block(struct mmem *bundlemem, uint8_t i)
 
 uint8_t set_attr(struct mmem *bundlemem, uint8_t attr, uint32_t *val)
 {
-	struct bundle_t *bundle = MMEM_PTR(bundlemem);
+	struct bundle_t *bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 	LOG(LOGD_DTN, LOG_BUNDLE, LOGL_DBG, "set attr %lx",*val);
 	switch (attr) {
 		case FLAGS:
@@ -143,7 +150,7 @@ uint8_t set_attr(struct mmem *bundlemem, uint8_t attr, uint32_t *val)
 
 uint8_t get_attr(struct mmem *bundlemem, uint8_t attr, uint32_t *val)
 {
-	struct bundle_t *bundle = MMEM_PTR(bundlemem);
+	struct bundle_t *bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 	LOG(LOGD_DTN, LOG_BUNDLE, LOGL_DBG, "get attr %lx",*val);
 	switch (attr) {
 		case FLAGS:
@@ -197,7 +204,6 @@ uint8_t get_attr(struct mmem *bundlemem, uint8_t attr, uint32_t *val)
 	return 1;
 }
 
-static uint8_t decode_block(struct mmem *bundlemem, uint8_t *buffer, int max_len);
 struct mmem *recover_bundle(uint8_t *buffer, int size)
 {
 	uint32_t primary_size, value;
@@ -208,7 +214,7 @@ struct mmem *recover_bundle(uint8_t *buffer, int size)
 	if (!bundlemem)
 		return NULL;
 
-	bundle = MMEM_PTR(bundlemem);
+	bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 
 	LOG(LOGD_DTN, LOG_BUNDLE, LOGL_DBG, "rec bptr: %p  blptr:%p",bundle,buffer);
 
@@ -311,7 +317,7 @@ static uint8_t decode_block(struct mmem *bundlemem, uint8_t *buffer, int max_len
 	/* FIXME: Catch error path */
 	mmem_realloc(bundlemem, bundlemem->size + sizeof(struct bundle_block_t) + size);
 
-	bundle = MMEM_PTR(bundlemem);
+	bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 	bundle->num_blocks++;
 
 	/* Add the block to the end of the bundle */
@@ -331,7 +337,7 @@ uint8_t encode_bundle(struct mmem *bundlemem, uint8_t *buffer, int max_len)
 	uint32_t value;
 	uint8_t offs = 0, blklen_offs, i;
 	int ret, blklen_size;
-	struct bundle_t *bundle = MMEM_PTR(bundlemem);
+	struct bundle_t *bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 	struct bundle_block_t *block;
 
 	/* Hardcode the version to 0x06 */
@@ -444,7 +450,7 @@ uint8_t encode_bundle(struct mmem *bundlemem, uint8_t *buffer, int max_len)
 
 	offs += ret-1;
 
-	block = bundle->block_data;
+	block = (struct bundle_block_t *) bundle->block_data;
 	for (i=0;i<bundle->num_blocks;i++) {
 		offs += encode_block(block, &buffer[offs], max_len - offs);
 		/* Reference the next block */
@@ -487,7 +493,7 @@ static uint8_t encode_block(struct bundle_block_t *block, uint8_t *buffer, uint8
 int bundle_inc(struct mmem *bundlemem)
 {
 	struct bundle_slot_t *bs;
-	struct bundle_t *bundle = MMEM_PTR(bundlemem);
+	struct bundle_t *bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 
 	bs = container_of(bundlemem, struct bundle_slot_t, bundle);
 	return bundleslot_inc(bs);
@@ -496,7 +502,7 @@ int bundle_inc(struct mmem *bundlemem)
 int bundle_dec(struct mmem *bundlemem)
 {
 	struct bundle_slot_t *bs;
-	struct bundle_t *bundle = MMEM_PTR(bundlemem);
+	struct bundle_t *bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 	LOG(LOGD_DTN, LOG_BUNDLE, LOGL_DBG, "delete %p %u", bundle,bundle->rec_time);
 
 	bs = container_of(bundlemem, struct bundle_slot_t, bundle);
@@ -506,7 +512,7 @@ int bundle_dec(struct mmem *bundlemem)
 uint16_t delete_bundle(struct mmem *bundlemem)
 {
 	struct bundle_slot_t *bs;
-	struct bundle_t *bundle = MMEM_PTR(bundlemem);
+	struct bundle_t *bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 	LOG(LOGD_DTN, LOG_BUNDLE, LOGL_DBG, "delete %p %u", bundle,bundle->rec_time);
 
 	bs = container_of(bundlemem, struct bundle_slot_t, bundle);

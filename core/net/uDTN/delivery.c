@@ -41,7 +41,7 @@
 
 
 void deliver_bundle(struct mmem *bundlemem, struct registration *n) {
-	struct bundle_t *bundle = MMEM_PTR(bundlemem);
+	struct bundle_t *bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 
 	if(n->status == APP_ACTIVE) {
 		LOG(LOGD_DTN, LOG_BUNDLE, LOGL_DBG, "DELIVERY: Service is active");

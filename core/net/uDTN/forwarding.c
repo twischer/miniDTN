@@ -27,7 +27,7 @@
 
 uint16_t * forwarding_bundle(struct mmem *bundlemem)
 {
-	struct bundle_t *bundle = MMEM_PTR(bundlemem);
+	struct bundle_t *bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 	int32_t saved;
 	uint16_t * saved_as_num;
 
