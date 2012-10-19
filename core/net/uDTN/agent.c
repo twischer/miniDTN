@@ -83,7 +83,7 @@ agent_send_bundles(struct route_t * route)
 
 		// Bundle is expired
 		uint16_t tmp = bundle->bundle_num;
-		bundle_dec(bundle);
+		bundle_dec(bundlemem);
 		BUNDLE_STORAGE.del_bundle(tmp, REASON_LIFETIME_EXPIRED);
 
 		return;

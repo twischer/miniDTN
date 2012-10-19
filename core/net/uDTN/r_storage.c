@@ -258,11 +258,11 @@ uint16_t rs_del_bundle(uint16_t bundle_num, uint8_t reason)
 
 		if( ((bundle->flags & 8 ) || (bundle->flags & 0x40000)) && (reason !=0xff )){
 			if (bundle->src_node != dtn_node_id){
-				STATUS_REPORT.send(bundlemem, 16, bundle->del_reason);
+				STATUS_REPORT.send(bundle, 16, bundle->del_reason);
 			}
 		}
 	}
-	bundle_dec(&bundlemem);
+	bundle_dec(bundlemem);
 
 	// Remove the bundle from the list
 	list_remove(bundle_list, entry);
