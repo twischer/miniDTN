@@ -52,13 +52,13 @@ static struct ctimer *b_red_timer;
 */
 uint8_t check(struct mmem *bundlemem)
 {
-	struct bundle_t *bundle = MMEM_PTR(bundlemem);
+	// struct bundle_t *bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 	PRINTF("REDUNDANCE: check\n");	
 	struct red_bundle_t *n;
 	uint32_t src, seq_nr, frag_offset;
-	get_attr(bundle, SRC_NODE, &src);
-	get_attr(bundle, TIME_STAMP_SEQ_NR, &seq_nr);
-	get_attr(bundle, FRAG_OFFSET, &frag_offset);
+	get_attr(bundlemem, SRC_NODE, &src);
+	get_attr(bundlemem, TIME_STAMP_SEQ_NR, &seq_nr);
+	get_attr(bundlemem, FRAG_OFFSET, &frag_offset);
 
 	for(n = list_head(b_red_list); n != NULL; n = list_item_next(n)) {
 		if( src == n->src &&
@@ -79,13 +79,13 @@ uint8_t check(struct mmem *bundlemem)
 */
 uint8_t set(struct mmem *bundlemem)
 {
-	struct bundle_t *bundle = MMEM_PTR(bundlemem);
+	// struct bundle_t *bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 	struct red_bundle_t *n;
 	uint32_t src,seq_nr,frag_offset,lifetime;
-	get_attr(bundle, SRC_NODE, &src);
-	get_attr(bundle, TIME_STAMP_SEQ_NR, &seq_nr);
-	get_attr(bundle, FRAG_OFFSET, &frag_offset);
-	get_attr(bundle, LIFE_TIME, &lifetime);
+	get_attr(bundlemem, SRC_NODE, &src);
+	get_attr(bundlemem, TIME_STAMP_SEQ_NR, &seq_nr);
+	get_attr(bundlemem, FRAG_OFFSET, &frag_offset);
+	get_attr(bundlemem, LIFE_TIME, &lifetime);
 
 	for(n = list_head(b_red_list); n != NULL; n = list_item_next(n)) {
 		if( src == n->src &&
