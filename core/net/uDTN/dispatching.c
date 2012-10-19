@@ -35,7 +35,7 @@
 
 
 void dispatch_bundle(struct mmem *bundlemem) {
-	struct bundle_t *bundle = MMEM_PTR(bundlemem);
+	struct bundle_t *bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 	struct registration *n;
 	uint16_t *saved_as_mem;
 

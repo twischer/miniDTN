@@ -72,7 +72,7 @@ agent_send_bundles(struct route_t * route)
 		return;
 	}
 
-	bundle = MMEM_PTR(bundlemem);
+	bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 
 	// How long did this bundle rot in our storage?
 	uint32_t elapsed_time = clock_seconds() - bundle->rec_time;
@@ -172,7 +172,7 @@ PROCESS_THREAD(agent_process, ev, data)
 			PRINTF("BUNDLEPROTOCOL: bundle send \n");
 			bundleptr = (struct mmem *) data;
 
-			bundle = MMEM_PTR(bundleptr);
+			bundle = (struct bundle_t *) MMEM_PTR(bundleptr);
 			bundle->rec_time=(uint32_t) clock_seconds(); 
 			set_attr(bundleptr,TIME_STAMP_SEQ_NR,&dtn_seq_nr);
 			PRINTF("BUNDLEPROTOCOL: seq_num = %lu\n",dtn_seq_nr);

@@ -103,7 +103,7 @@ void r_store_prune()
 	for(entry = list_head(bundle_list);
 			entry != NULL;
 			entry = list_item_next(entry)) {
-		bundle = MMEM_PTR(entry->bundle);
+		bundle = (struct bundle_t *) MMEM_PTR(entry->bundle);
 		elapsed_time = clock_seconds() - bundle->rec_time;
 
 		if( bundle->lifetime < elapsed_time ) {
@@ -138,7 +138,7 @@ void rs_reinit(void)
  */
 uint8_t rs_make_room(struct mmem *bundlemem)
 {
-	struct bundle_t *bundle = MMEM_PTR(bundlemem);
+	struct bundle_t *bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 
 //	if( bundles_in_storage < BUNDLE_STORAGE_SIZE && (avail_memory - bundle->block.block_size) > STORAGE_HIGH_WATERMARK ) {
 //		// We have enough memory, no need to do anything
@@ -170,14 +170,14 @@ uint8_t rs_make_room(struct mmem *bundlemem)
 */
 int32_t rs_save_bundle(struct mmem *bundlemem)
 {
-	struct bundle_t *entrybdl, *bundle = MMEM_PTR(bundlemem);
+	struct bundle_t *entrybdl, *bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 	struct file_list_entry_t * entry;
 
 	// Look for duplicates in the storage
 	for(entry = list_head(bundle_list);
 		entry != NULL;
 		entry = list_item_next(entry)) {
-		entrybdl = MMEM_PTR(entry->bundle);
+		entrybdl = (struct bundle_t *) MMEM_PTR(entry->bundle);
 		if ( bundle->tstamp_seq == entrybdl->tstamp_seq &&
 		    bundle->tstamp == entrybdl->tstamp &&
 		    bundle->src_node == entrybdl->src_node &&
@@ -253,7 +253,7 @@ uint16_t rs_del_bundle(uint16_t bundle_num, uint8_t reason)
 
 	// Figure out the source to send status report
 	if(bundlemem = rs_read_bundle(bundle_num)){
-		bundle = MMEM_PTR(bundlemem);
+		bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 		bundle->del_reason = reason;
 
 		if( ((bundle->flags & 8 ) || (bundle->flags & 0x40000)) && (reason !=0xff )){

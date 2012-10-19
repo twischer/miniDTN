@@ -14,22 +14,22 @@ void null_cust_init(void)
 	return;
 }
 
-uint8_t null_cust_release(struct bundle_t *bundle)
+uint8_t null_cust_release(struct mmem *bundle)
 {
 	return 0;
 }
 
-uint8_t null_cust_report(struct bundle_t *bundle, uint8_t status)
+uint8_t null_cust_report(struct mmem *bundle, uint8_t status)
 {
 	return 0;
 }
 
-int32_t null_cust_decide(struct bundle_t *bundle)
+int32_t null_cust_decide(struct mmem *bundle)
 {
 	return 0;
 }
 
-uint8_t null_cust_retransmit(struct bundle_t *bundle)
+uint8_t null_cust_retransmit(struct mmem *bundle)
 {
 	return 0;
 }
