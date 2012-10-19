@@ -61,7 +61,7 @@ uint8_t add_block(struct mmem *bundlemem, uint8_t type, uint8_t flags, uint8_t *
 	for (i=0;i<bundle->num_blocks;i++) {
 		/* None of these is the last block anymore */
 		block->flags &= ~BUNDLE_BLOCK_FLAG_LAST;
-		block = (struct bundle_block_t *)block->payload[block->block_size];
+		block = (struct bundle_block_t *) &block->payload[block->block_size];
 	}
 
 	block->type = type;
@@ -84,7 +84,7 @@ struct bundle_block_t *get_block(struct mmem *bundlemem, uint8_t i)
 		return NULL;
 
 	for (;i!=0;i--) {
-		block = (struct bundle_block_t *)block->payload[block->block_size];
+		block = (struct bundle_block_t *) &block->payload[block->block_size];
 	}
 
 	return block;
@@ -454,7 +454,7 @@ uint8_t encode_bundle(struct mmem *bundlemem, uint8_t *buffer, int max_len)
 	for (i=0;i<bundle->num_blocks;i++) {
 		offs += encode_block(block, &buffer[offs], max_len - offs);
 		/* Reference the next block */
-		block = (struct bundle_block_t *)block->payload[block->block_size];
+		block = (struct bundle_block_t *) &block->payload[block->block_size];
 	}
 
 	return offs;
