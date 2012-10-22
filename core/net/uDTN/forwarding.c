@@ -43,7 +43,8 @@ uint16_t * forwarding_bundle(struct mmem *bundlemem)
 
 	if( saved < 0 ) {
 		printf("FORWARDING: Bundle could not be saved\n");
-		delete_bundle(bundlemem);
+		// delete_bundle(bundlemem);
+		bundle_dec(bundlemem);
 		return NULL;
 	}
 
@@ -52,13 +53,16 @@ uint16_t * forwarding_bundle(struct mmem *bundlemem)
 	saved_as_num = memb_alloc(saved_as_mem);
 	if(saved_as_num == NULL){
 		printf("FORWARDING: out of MEMB space\n");
-		delete_bundle(bundlemem);
+		// delete_bundle(bundlemem);
+		bundle_dec(bundlemem);
 		return NULL;
 	}
 
 	*saved_as_num = (uint16_t) saved;
 	PRINTF("FORWARDING: bundle_num %u\n", *saved_as_num);
-	delete_bundle(bundlemem);
+
+	bundle_dec(bundlemem);
+	// delete_bundle(bundlemem);
 
 	return saved_as_num;
 }
