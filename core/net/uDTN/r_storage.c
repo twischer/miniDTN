@@ -231,7 +231,6 @@ int32_t rs_save_bundle(struct mmem *bundlemem)
 */
 uint16_t rs_del_bundle(uint16_t bundle_num, uint8_t reason)
 {
-	struct mmem *bundlemem;
 	struct bundle_t *bundle;
 	struct file_list_entry_t * entry;
 
@@ -252,17 +251,16 @@ uint16_t rs_del_bundle(uint16_t bundle_num, uint8_t reason)
 	}
 
 	// Figure out the source to send status report
-	if(bundlemem = rs_read_bundle(bundle_num)){
-		bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
-		bundle->del_reason = reason;
+	bundle = (struct bundle_t *) MMEM_PTR(entry->bundle);
+	bundle->del_reason = reason;
 
-		if( ((bundle->flags & 8 ) || (bundle->flags & 0x40000)) && (reason !=0xff )){
-			if (bundle->src_node != dtn_node_id){
-				STATUS_REPORT.send(bundle, 16, bundle->del_reason);
-			}
+	if( ((bundle->flags & 8 ) || (bundle->flags & 0x40000)) && (reason !=0xff )){
+		if (bundle->src_node != dtn_node_id){
+			STATUS_REPORT.send(bundle, 16, bundle->del_reason);
 		}
 	}
-	bundle_dec(bundlemem);
+
+	bundle_dec(entry->bundle);
 
 	// Remove the bundle from the list
 	list_remove(bundle_list, entry);
