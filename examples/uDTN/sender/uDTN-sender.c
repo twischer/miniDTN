@@ -80,7 +80,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 	uint32_t tmp;
         clock_time_t now;
         unsigned short now_fine;
-	struct mmem *bundlemem;
+	static struct mmem * bundle_outgoing;
 
 	PROCESS_BEGIN();
 	profiling_init();
@@ -107,11 +107,11 @@ PROCESS_THREAD(hello_world_process, ev, data)
 	profiling_init();
 	profiling_start();
 
-        do {
-                now_fine = clock_time();
-                now = clock_seconds();
-        } while (now_fine != clock_time());
-        time_start = ((unsigned long)now)*CLOCK_SECOND + now_fine%CLOCK_SECOND;
+	do {
+			now_fine = clock_time();
+			now = clock_seconds();
+	} while (now_fine != clock_time());
+	time_start = ((unsigned long)now)*CLOCK_SECOND + now_fine%CLOCK_SECOND;
 
 	while(1) {
 
@@ -156,40 +156,40 @@ PROCESS_THREAD(hello_world_process, ev, data)
 		        time_stop = ((unsigned long)now)*CLOCK_SECOND + now_fine%CLOCK_SECOND;
 		}
 
-		bundlemem = create_bundle();
+		bundle_outgoing = create_bundle();
 
 		/* Source and destination */
 		tmp=CONF_SEND_TO_NODE;
-		set_attr(bundlemem, DEST_NODE, &tmp);
+		set_attr(bundle_outgoing, DEST_NODE, &tmp);
 		tmp=25;
-		set_attr(bundlemem, DEST_SERV, &tmp);
+		set_attr(bundle_outgoing, DEST_SERV, &tmp);
 		tmp=dtn_node_id;
-		set_attr(bundlemem, SRC_NODE, &tmp);
-		set_attr(bundlemem, SRC_SERV,&tmp);
-		set_attr(bundlemem, CUST_NODE, &tmp);
-		set_attr(bundlemem, CUST_SERV, &tmp);
+		set_attr(bundle_outgoing, SRC_NODE, &tmp);
+		set_attr(bundle_outgoing, SRC_SERV,&tmp);
+		set_attr(bundle_outgoing, CUST_NODE, &tmp);
+		set_attr(bundle_outgoing, CUST_SERV, &tmp);
 
 		tmp=0;
-		set_attr(bundlemem, FLAGS, &tmp);
+		set_attr(bundle_outgoing, FLAGS, &tmp);
 		tmp=1;
-		set_attr(bundlemem, REP_NODE, &tmp);
-		set_attr(bundlemem, REP_SERV, &tmp);
+		set_attr(bundle_outgoing, REP_NODE, &tmp);
+		set_attr(bundle_outgoing, REP_SERV, &tmp);
 
 		/* Set the sequence number to the number of budles sent */
 		tmp = bundles_sent;
-		set_attr(bundlemem, TIME_STAMP_SEQ_NR, &tmp);
+		set_attr(bundle_outgoing, TIME_STAMP_SEQ_NR, &tmp);
 
 		tmp=2000;
-		set_attr(bundlemem, LIFE_TIME, &tmp);
+		set_attr(bundle_outgoing, LIFE_TIME, &tmp);
 		tmp=4;
-		set_attr(bundlemem, TIME_STAMP, &tmp);
+		set_attr(bundle_outgoing, TIME_STAMP, &tmp);
 
 		/* Add the payload */
 		for(i=0; i<80; i++)
 			userdata[i] = i;
-		add_block(bundlemem, 1, 2, userdata, 80);
+		add_block(bundle_outgoing, 1, 2, userdata, 80);
 
-		process_post(&agent_process, dtn_send_bundle_event, (void *) bundlemem);
+		process_post(&agent_process, dtn_send_bundle_event, (void *) bundle_outgoing);
 
 		bundles_sent++;
 		/* Show progress every 50 bundles */
