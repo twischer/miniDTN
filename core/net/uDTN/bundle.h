@@ -41,6 +41,8 @@
 #define FRAG_OFFSET 15
 #define APP_DATA_LEN 16
 
+#define BUNDLE_BLOCK_TYPE_PAYLOAD		0x01
+
 #define REASON_NO_INFORMATION			0x00
 #define REASON_LIFETIME_EXPIRED			0x01
 #define REASON_UNIDIRECTIONAL_LINK		0x02
@@ -80,7 +82,8 @@
 //payload block defines
 #define DATA 17
 
-#define DEBUG_H 1
+// Enable Timing debug output
+#define DEBUG_H 0
 
 struct bundle_block_t {
 	uint8_t type;
@@ -192,6 +195,20 @@ uint8_t add_block(struct mmem *bundlemem, uint8_t type, uint8_t flags, uint8_t *
 */
 struct bundle_block_t *get_block(struct mmem *bundlemem, uint8_t i);
 
+/**
+ * \brief Returns pointer to first bundle block of specific type
+ * \param bundlemem MMEM allocation of the bundle
+ * \param type type of the block (see bundle.h)
+ * \return the block of NULL on error
+ */
+struct bundle_block_t *get_block_by_type(struct mmem *bundlemem, uint8_t type);
+
+/**
+ * \brief Returns pointer to bundle payload block
+ * \param bundlemem MMEM allocation of the bundle
+ * \return the block of NULL on error
+ */
+struct bundle_block_t * get_payload_block(struct mmem * bundlemem);
 
 /**
  * \brief converts IPN EIDs (uint32_t) into the RIME address

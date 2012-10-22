@@ -19,6 +19,7 @@
  * "Internal" functions
  */
 static uint8_t decode_block(struct mmem *bundlemem, uint8_t *buffer, int max_len);
+static uint8_t encode_block(struct bundle_block_t *block, uint8_t *buffer, uint8_t max_len);
 
 
 struct mmem *create_bundle()
@@ -28,6 +29,11 @@ struct mmem *create_bundle()
 	struct bundle_t *bundle;
 
 	bs = bundleslot_get_free();
+
+	if( bs == NULL ) {
+		LOG(LOGD_DTN, LOG_BUNDLE, LOGL_ERR, "Could not allocate slot for a bundle");
+		return NULL;
+	}
 
 	ret = mmem_alloc(&bs->bundle, sizeof(struct bundle_t));
 	if (!ret) {
@@ -88,6 +94,27 @@ struct bundle_block_t *get_block(struct mmem *bundlemem, uint8_t i)
 	}
 
 	return block;
+}
+
+struct bundle_block_t *get_block_by_type(struct mmem *bundlemem, uint8_t type)
+{
+	struct bundle_t *bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
+	struct bundle_block_t *block = (struct bundle_block_t *) bundle->block_data;
+	int i = 0;
+
+	for(i=0; i<bundle->num_blocks; i++) {
+		if( block->type == type ) {
+			return block;
+		}
+
+		block = (struct bundle_block_t *) &block->payload[block->block_size];
+	}
+
+	return NULL;
+}
+
+struct bundle_block_t * get_payload_block(struct mmem * bundlemem) {
+	return get_block_by_type(bundlemem, BUNDLE_BLOCK_TYPE_PAYLOAD);
 }
 
 uint8_t set_attr(struct mmem *bundlemem, uint8_t attr, uint32_t *val)
@@ -331,7 +358,7 @@ static uint8_t decode_block(struct mmem *bundlemem, uint8_t *buffer, int max_len
 
 	return offs + block->block_size;
 }
-static uint8_t encode_block(struct bundle_block_t *block, uint8_t *buffer, uint8_t max_len);
+
 uint8_t encode_bundle(struct mmem *bundlemem, uint8_t *buffer, int max_len)
 {
 	uint32_t value;
