@@ -192,8 +192,7 @@ int dtn_network_send(struct mmem *bundlemem, struct route_t *route)
 	packetbuf_set_addr(PACKETBUF_ADDR_RECEIVER, &route->dest);
 	packetbuf_set_attr(PACKETBUF_ADDRSIZE, 2);
 
-	bundle = MMEM_PTR(bundlemem);
-
+	bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 
 	NETSTACK_MAC.send(&packet_sent, route); 
 	
