@@ -54,14 +54,18 @@ void deliver_bundle(struct mmem *bundlemem, struct registration *n) {
 				CUSTODY.report(bundlemem,128);
 			}
 		} else {
-			delete_bundle(bundlemem);
+			bundle_dec(bundlemem);
 		}
+	} else {
+		// App is not active at the moment, so delete the bundle
+		/* FIXME: inactive Apps want their bundles later */
+		bundle_dec(bundlemem);
 	}
 
-	#if DEBUG_H
+#if DEBUG_H
 	uint16_t time = clock_time();
 	time -= bundle->debug_time;
 	PRINTF("DELIVERY: time needed to process bundle for Delivery: %i \n", time);
-	#endif
+#endif
 }
 /** @} */

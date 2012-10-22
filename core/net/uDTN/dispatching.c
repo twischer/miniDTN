@@ -76,7 +76,7 @@ void dispatch_bundle(struct mmem *bundlemem) {
 
 				CUSTODY.release(bundle);
 			}*/
-			delete_bundle(bundlemem);
+			bundle_dec(bundlemem);
 			return;
 		}
 	} else {
@@ -95,7 +95,7 @@ void dispatch_bundle(struct mmem *bundlemem) {
 				}
 			}
 			LOG(LOGD_DTN, LOG_BUNDLE, LOGL_DBG, "DISPATCHING: no service registered for bundle");
-			delete_bundle(bundlemem);
+			bundle_dec(bundlemem);
 			return;
 		}
 	}
