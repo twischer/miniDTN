@@ -13,12 +13,18 @@
 #define DELIVERY_H
 
 /**
-*   \brief delivers bundle to a registrated service
+ * \brief unblocks a service that was previously delivering a bundle
+ * \param bundle MMEM pointer
+ */
+void unblock_service(struct mmem * bundlemem);
+
+/**
+*   \brief delivers bundle to a registered service
 *
 *   \param bundle pointer to bundle 
-*   \param registration pointer to registrated service
+*   \param registration pointer to registered service
 */
-void deliver_bundle(struct mmem *bundlemem, struct registration *n);
+int deliver_bundle(struct mmem *bundlemem);
 
 #endif
 

@@ -169,7 +169,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 		set_attr(bundle_outgoing, CUST_NODE, &tmp);
 		set_attr(bundle_outgoing, CUST_SERV, &tmp);
 
-		tmp=0;
+		tmp=BUNDLE_FLAG_SINGLETON;
 		set_attr(bundle_outgoing, FLAGS, &tmp);
 		tmp=1;
 		set_attr(bundle_outgoing, REP_NODE, &tmp);

@@ -38,7 +38,10 @@ process_event_t dtn_send_bundle_event;
 *   \brief Event submit received bundles to a registered service
 */
 process_event_t submit_data_to_application_event;
-
+/**
+ * \brief Event tell the agent that the service has finished processing a particular bundle
+ */
+process_event_t dtn_processing_finished;
 
 #endif
 /** @} */

@@ -202,10 +202,9 @@ int32_t rs_save_bundle(struct mmem *bundlemem)
 	// Clear the memory area
 	memset(entry, 0, sizeof(struct file_list_entry_t));
 
+	// we copy the reference to the bundle, therefore we have to increase the reference counter
 	entry->bundle = bundlemem;
-
 	bundle_inc(bundlemem);
-
 	bundles_in_storage++;
 
 	// Set all required fields
@@ -219,6 +218,15 @@ int32_t rs_save_bundle(struct mmem *bundlemem)
 
 	// Add bundle to the list
 	list_add(bundle_list, entry);
+
+	// Now we have to (virtually) free the incoming bundle slot
+	// This should do nothing, as we have incremented the reference counter before
+	bundle_dec(bundlemem);
+
+	// Now we have to send an event to our daemon
+	// We can use the pointer to our internal bundle number, as the
+	// memory is not in MMEM and therefore the address is static
+	process_post(&agent_process, dtn_bundle_in_storage_event, &entry->bundle_num);
 
 	return (int32_t) entry->bundle_num;
 }
@@ -254,9 +262,12 @@ uint16_t rs_del_bundle(uint16_t bundle_num, uint8_t reason)
 	bundle = (struct bundle_t *) MMEM_PTR(entry->bundle);
 	bundle->del_reason = reason;
 
-	if( ((bundle->flags & 8 ) || (bundle->flags & 0x40000)) && (reason !=0xff )){
-		if (bundle->src_node != dtn_node_id){
-			STATUS_REPORT.send(bundle, 16, bundle->del_reason);
+	if( reason != REASON_DELIVERED ) {
+		// REASON_DELIVERED means "bundle delivered"
+		if( (bundle->flags & 8 ) || (bundle->flags & 0x40000) ){
+			if (bundle->src_node != dtn_node_id){
+				STATUS_REPORT.send(bundle, 16, bundle->del_reason);
+			}
 		}
 	}
 
@@ -307,6 +318,9 @@ struct mmem *rs_read_bundle(uint16_t bundle_num)
 		printf("STORAGE: Found bundle %u but file size is %u\n", bundle_num, entry->file_size);
 		return 0;
 	}
+
+	// Someone requested the bundle, he will have to decrease the reference counter again
+	bundle_inc(entry->bundle);
 
 	return entry->bundle;
 }

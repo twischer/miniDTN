@@ -28,10 +28,18 @@
 #define ROUTING_ROUTE_MAX_MEM 	10
 #define ROUTING_NEI_MEM 	 	 2
 
+#define ROUTING_FLAG_IN_DELIVERY	0x01
+#define ROUTING_FLAG_LOCAL			0x02
+#define ROUTING_FLAG_FORWARD		0x04
+#define ROUTING_FLAG_IN_TRANSIT		0x08
+
 /** struct to store the bundels to be routed */
 struct routing_pack_list_t {
 	/** number of nodes this bundle was sent to */
 	uint8_t send_to;
+
+	/** bundle flags */
+	uint8_t flags;
 
 	/** addresses of nodes this bundle was sent to */
 	rimeaddr_t dest[ROUTING_NEI_MEM];
@@ -43,6 +51,7 @@ process_event_t dtn_bundle_resubmission_event;
 struct route_t	{
 	/** address of the next hop node */
 	rimeaddr_t dest;
+
 	/** bundle_num of the bundle */
 	uint16_t bundle_num;
 };
@@ -56,13 +65,15 @@ struct routing_driver {
 	void (* new_neighbor)(rimeaddr_t *dest);
 	/** informs the module about a new bundel */
 	int (* new_bundle)(uint16_t bundle_num);
-	/** delete bundel form routing list */
+	/** delete bundle form routing list */
 	void (* del_bundle)(uint16_t bundle_num);
 	/** callback funktion is called by network interface */
 	void (* sent)(struct route_t *route,int status, int num_tx);
 	void (* delete_list)(void);
 	/** function to resubmit bundles currently in storage */
 	void (* resubmit_bundles)(uint8_t called_by_event);
+	/** notify storage, that bundle has been delivered locally */
+	void (* locally_delivered)(struct mmem * bundlemem);
 };
 extern const struct routing_driver ROUTING;
 
