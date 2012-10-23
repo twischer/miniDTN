@@ -41,8 +41,10 @@
 #define FRAG_OFFSET 15
 #define APP_DATA_LEN 16
 
+/* Bundle Block Types */
 #define BUNDLE_BLOCK_TYPE_PAYLOAD		0x01
 
+/* Bundle deletion reasons */
 #define REASON_NO_INFORMATION			0x00
 #define REASON_LIFETIME_EXPIRED			0x01
 #define REASON_UNIDIRECTIONAL_LINK		0x02
@@ -52,35 +54,37 @@
 #define REASON_NO_ROUTE					0x06
 #define REASON_NO_TIMELY_CONTACT		0x07
 #define REASON_BLOCK_UNINTELLIGBLE		0x08
+#define REASON_DELIVERED				0xFF
 
-/* Flag defines */
-#define BUNDLE_FLAG_FRAGMENT	0x0001
-#define BUNDLE_FLAG_ADM_REC	0x0002
-#define BUNDLE_FLAG_DONT_FRAG	0x0004
-#define BUNDLE_FLAG_CUST_REQ	0x0008
-#define BUNDLE_FLAG_SINGLETON	0x0010
-#define BUNDLE_FLAG_ACK_REQ	0x0020
+/* Bundle Flag defines */
+#define BUNDLE_FLAG_FRAGMENT			0x0001
+#define BUNDLE_FLAG_ADM_REC				0x0002
+#define BUNDLE_FLAG_DONT_FRAG			0x0004
+#define BUNDLE_FLAG_CUST_REQ			0x0008
+#define BUNDLE_FLAG_SINGLETON			0x0010
+#define BUNDLE_FLAG_ACK_REQ				0x0020
 /* Bit 6 reserved */
-#define BUNDLE_FLAG_PRIOL	0x0080
-#define BUNDLE_FLAG_PRIOH	0x0100
+#define BUNDLE_FLAG_PRIOL				0x0080
+#define BUNDLE_FLAG_PRIOH				0x0100
 /* Bit 9 - 13 reserved */
-#define BUNDLE_FLAG_REP_RECV	0x4000
-#define BUNDLE_FLAG_REP_CUST	0x8000
-#define BUNDLE_FLAG_REP_FWD	0x10000
-#define BUNDLE_FLAG_REP_DELIV	0x20000
-#define BUNDLE_FLAG_REP_DELETE	0x40000
+#define BUNDLE_FLAG_REP_RECV			0x4000
+#define BUNDLE_FLAG_REP_CUST			0x8000
+#define BUNDLE_FLAG_REP_FWD				0x10000
+#define BUNDLE_FLAG_REP_DELIV			0x20000
+#define BUNDLE_FLAG_REP_DELETE			0x40000
 /* Bit 19 and 20 reserved */
 
-#define BUNDLE_BLOCK_FLAG_REPL	0x01
-#define BUNDLE_BLOCK_FLAG_STAT	0x02
-#define BUNDLE_BLOCK_FLAG_DEL	0x04
-#define BUNDLE_BLOCK_FLAG_LAST	0x08
-#define BUNDLE_BLOCK_FLAG_DISC	0x10
-#define BUNDLE_BLOCK_FLAG_NOTPR	0x20
-#define BUNDLE_BLOCK_FLAG_EID	0x40
+/* Block Flag defines */
+#define BUNDLE_BLOCK_FLAG_REPL			0x01
+#define BUNDLE_BLOCK_FLAG_STAT			0x02
+#define BUNDLE_BLOCK_FLAG_DEL			0x04
+#define BUNDLE_BLOCK_FLAG_LAST			0x08
+#define BUNDLE_BLOCK_FLAG_DISC			0x10
+#define BUNDLE_BLOCK_FLAG_NOTPR			0x20
+#define BUNDLE_BLOCK_FLAG_EID			0x40
 
 //payload block defines
-#define DATA 17
+#define DATA 							17
 
 // Enable Timing debug output
 #define DEBUG_H 0
@@ -105,7 +109,6 @@ struct bundle_t{
 	uint8_t custody;
 	uint8_t del_reason;
 	uint32_t rec_time;
-	uint16_t bundle_num;
 
 	uint32_t flags;
 	uint32_t dst_node;
