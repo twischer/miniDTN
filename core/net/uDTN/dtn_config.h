@@ -20,6 +20,7 @@
 #define LOG_ROUTE  2
 #define LOG_STORE  3
 #define LOG_SDNV   4
+#define LOG_SLOTS  5
 
 /** @} */
 

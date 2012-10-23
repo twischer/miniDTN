@@ -1,6 +1,10 @@
 #include <stdint.h>
 #include <string.h>
+#include <stdio.h>
 #include "bundleslot.h"
+#include "bundle.h"
+#include "logging.h"
+#include "dtn_config.h"
 
 /* Defines how many bundles can be used (in storage, used) on this node at once */
 #ifdef CONF_BUNDLE_NUM
@@ -28,8 +32,11 @@ struct bundle_slot_t *bundleslot_get_free()
 
 	for (i=0; i<BUNDLE_NUM; i++) {
 		if (bundleslots[i].ref == 0) {
+			memset(&bundleslots[i], 0, sizeof(struct bundle_slot_t));
+
 			bundleslots[i].ref++;
 			bundleslots[i].type = 0;
+
 			return &bundleslots[i];
 		}
 	}
@@ -39,13 +46,29 @@ struct bundle_slot_t *bundleslot_get_free()
 /* Frees the bundle */
 void bundleslot_free(struct bundle_slot_t *bs)
 {
+	if( bs->bundle.ptr == NULL ) {
+		LOG(LOGD_DTN, LOG_SLOTS, LOGL_ERR, "DUPLICATE FREE");
+		return;
+	}
+
 	bs->ref = 0;
+
+	LOG(LOGD_DTN, LOG_SLOTS, LOGL_DBG, "bundleslot_free(%p)", bs);
+
+	// Zeroify all freed memory
+	memset(bs->bundle.ptr, 0, sizeof(struct bundle_t));
+
 	mmem_free(&bs->bundle);
+
+	// And kill the pointer!
+	bs->bundle.ptr = NULL;
 }
 
 /* Increment usage count */
 int bundleslot_inc(struct bundle_slot_t *bs)
 {
+	LOG(LOGD_DTN, LOG_SLOTS, LOGL_DBG, "bundleslot_inc(%p) to %u", bs, bs->ref+1);
+
 	if (!bs->ref)
 		return -1;
 
@@ -56,6 +79,8 @@ int bundleslot_inc(struct bundle_slot_t *bs)
 /* Decrement usage count, free if necessary */
 int bundleslot_dec(struct bundle_slot_t *bs)
 {
+	LOG(LOGD_DTN, LOG_SLOTS, LOGL_DBG, "bundleslot_dec(%p) to %u", bs, bs->ref-1);
+
 	if (!bs->ref)
 		return -1;
 

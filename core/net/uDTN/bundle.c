@@ -178,7 +178,7 @@ uint8_t set_attr(struct mmem *bundlemem, uint8_t attr, uint32_t *val)
 uint8_t get_attr(struct mmem *bundlemem, uint8_t attr, uint32_t *val)
 {
 	struct bundle_t *bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
-	LOG(LOGD_DTN, LOG_BUNDLE, LOGL_DBG, "get attr %lx",*val);
+	LOG(LOGD_DTN, LOG_BUNDLE, LOGL_DBG, "get attr: %d in %lx", attr, *val);
 	switch (attr) {
 		case FLAGS:
 			*val = bundle->flags;
@@ -521,6 +521,7 @@ int bundle_inc(struct mmem *bundlemem)
 {
 	struct bundle_slot_t *bs;
 	struct bundle_t *bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
+	LOG(LOGD_DTN, LOG_BUNDLE, LOGL_DBG, "bundle_inc(%p) %u", bundle, bundle->rec_time);
 
 	bs = container_of(bundlemem, struct bundle_slot_t, bundle);
 	return bundleslot_inc(bs);
@@ -530,7 +531,7 @@ int bundle_dec(struct mmem *bundlemem)
 {
 	struct bundle_slot_t *bs;
 	struct bundle_t *bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
-	LOG(LOGD_DTN, LOG_BUNDLE, LOGL_DBG, "delete %p %u", bundle,bundle->rec_time);
+	LOG(LOGD_DTN, LOG_BUNDLE, LOGL_DBG, "bundle_dec(%p) %u", bundle, bundle->rec_time);
 
 	bs = container_of(bundlemem, struct bundle_slot_t, bundle);
 	return bundleslot_dec(bs);
