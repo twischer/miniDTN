@@ -261,7 +261,8 @@ PROCESS_THREAD(ping_process, ev, data)
 			latency += diff;
 		}
 
-		delete_bundle(recv);
+		// Tell the agent, that have processed the bundle
+		process_post(&agent_process, dtn_processing_finished, recv);
 
 		/* We're done */
 		if (bundle_recvd >= 1000)
@@ -330,7 +331,8 @@ PROCESS_THREAD(pong_process, ev, data)
 		if (bundlemem)
 			process_post(&agent_process, dtn_send_bundle_event, (void *) bundlemem);
 
-		delete_bundle(recv);
+		// Tell the agent, that have processed the bundle
+		process_post(&agent_process, dtn_processing_finished, recv);
 
 		bundle_sent++;
 		if (bundle_sent % 50 == 0)
