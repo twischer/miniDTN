@@ -21,6 +21,7 @@
 #define LOG_STORE  3
 #define LOG_SDNV   4
 #define LOG_SLOTS  5
+#define LOG_AGENT  6
 
 /** @} */
 

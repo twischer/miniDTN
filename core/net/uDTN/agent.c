@@ -40,6 +40,9 @@
 #include "discovery.h"
 #include "statistics.h"
 
+// #define ENABLE_LOGGING 1
+#include "logging.h"
+
 #define DEBUG 0
 #if DEBUG
 #include <stdio.h>
@@ -63,37 +66,32 @@ void agent_init(void) {
 void
 agent_send_bundles(struct route_t * route)
 {
-	struct mmem *bundlemem;
-	struct bundle_t *bundle;
+	struct mmem * bundlemem = NULL;
+	struct bundle_t *bundle = NULL;
 
+	// Here we check, if we have a local bundle
 	bundlemem = BUNDLE_STORAGE.read_bundle(route->bundle_num);
-	if (!bundlemem) {
-		PRINTF("BUNDLEPROTOCOL: agent_send_bundles() cannot find bundle %u\n", route->bundle_num);
+	if( bundlemem == NULL ) {
+		LOG(LOGD_DTN, LOG_AGENT, LOGL_ERR, "unable to read bundle %d", route->bundle_num);
 		return;
 	}
 
+	// Get our bundle struct and check the pointer
 	bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
-
-	// How long did this bundle rot in our storage?
-	uint32_t elapsed_time = clock_seconds() - bundle->rec_time;
-
-	// Do not send bundles that are expired
-	if( bundle->lifetime < elapsed_time ) {
-		PRINTF("BUNDLEPROTOCOL: bundle expired\n");
-
-		// Bundle is expired
-		uint16_t tmp = bundle->bundle_num;
+	if( bundle == NULL ) {
+		LOG(LOGD_DTN, LOG_AGENT, LOGL_ERR, "invalid bundle pointer for bundle %d", route->bundle_num);
 		bundle_dec(bundlemem);
-		BUNDLE_STORAGE.del_bundle(tmp, REASON_LIFETIME_EXPIRED);
-
 		return;
 	}
 
-	// Bundle can still be sent
-	uint32_t remaining_time = bundle->lifetime - elapsed_time;
+	// Update remaining lifetime of bundle
+	uint32_t remaining_time = bundle->lifetime - (clock_seconds() - bundle->rec_time);
 	set_attr(bundlemem, LIFE_TIME, &remaining_time);
+
+	// And send it out
 	dtn_network_send(bundlemem, route);
 
+	// Now deallocate the memory
 	bundle_dec(bundlemem);
 }
 
@@ -123,6 +121,7 @@ PROCESS_THREAD(agent_process, ev, data)
 	dtn_bundle_in_storage_event = process_alloc_event();
 	dtn_send_bundle_to_node_event = process_alloc_event();
 	dtn_bundle_resubmission_event = process_alloc_event();
+	dtn_processing_finished = process_alloc_event();
 	
 	CUSTODY.init();
 	DISCOVERY.init();
@@ -168,30 +167,11 @@ PROCESS_THREAD(agent_process, ev, data)
 		}
 		
 		if(ev == dtn_send_bundle_event) {
-			struct bundle_t *bundle;
-			PRINTF("BUNDLEPROTOCOL: bundle send \n");
 			bundleptr = (struct mmem *) data;
 
-			bundle = (struct bundle_t *) MMEM_PTR(bundleptr);
-			bundle->rec_time=(uint32_t) clock_seconds(); 
-			set_attr(bundleptr,TIME_STAMP_SEQ_NR,&dtn_seq_nr);
-			PRINTF("BUNDLEPROTOCOL: seq_num = %lu\n",dtn_seq_nr);
-			dtn_seq_nr++;
+			LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "dtn_send_bundle_event %p", bundleptr);
 
-			// Notify statistics module
-			statistics_bundle_generated(1);
-				
-			/* Fall through to dtn_bundle_in_storage_event if forwarding_bundle succeeded */
-			data = (void *)forwarding_bundle(bundleptr);
-
-			// make sure, that nobody overwrites our pointer
-			bundleptr = NULL;
-
-			if (data) {
-				ev = dtn_bundle_in_storage_event;
-			} else {
-				continue;
-			}
+			BUNDLE_STORAGE.save_bundle(bundleptr);
 		}
 		
 		if(ev == dtn_send_admin_record_event) {
@@ -202,17 +182,17 @@ PROCESS_THREAD(agent_process, ev, data)
 		if(ev == dtn_beacon_event){
 			rimeaddr_t* src =(rimeaddr_t*) data;
 			ROUTING.new_neighbor(src);
-			PRINTF("BUNDLEPROTOCOL: foooooo\n");
+			LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "dtn_beacon_event for %u.%u", src->u8[0], src->u8[1]);
 			continue;
 		}
 
 		if(ev == dtn_bundle_in_storage_event){
-			uint16_t b_num = *(uint16_t *) data;
-			memb_free(saved_as_mem, data);
+			uint16_t bundle_number = *(uint16_t *) data;
 
-			PRINTF("BUNDLEPROTOCOL: bundle in storage %u %p\n",b_num, data);
-			if(ROUTING.new_bundle(b_num) < 0){
-				PRINTF("BUNDLEPROTOCOL: ERROR\n");
+			LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "bundle %u in storage", bundle_number);
+
+			if(ROUTING.new_bundle(bundle_number) < 0){
+				LOG(LOGD_DTN, LOG_AGENT, LOGL_ERR, "routing reports error when announcing new bundle %u", bundle_number);
 				continue;
 			}
 
@@ -227,6 +207,14 @@ PROCESS_THREAD(agent_process, ev, data)
 
 			continue;
 		}
+
+	    if(ev == dtn_processing_finished) {
+	    	// data should contain the bundlemem ptr
+	    	struct mmem * bundlemem = (struct mmem *) data;
+
+	    	// Notify routing, that service has finished processing a bundle
+	    	ROUTING.locally_delivered(bundlemem);
+	    }
 
 		if( etimer_expired(&resubmission_timer) ) {
 			ROUTING.resubmit_bundles(0);

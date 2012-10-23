@@ -96,7 +96,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 	etimer_set(&timer,  CLOCK_SECOND*5);
 	PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&timer));
 
-	process_post(&agent_process, dtn_application_registration_event,&reg);
+	process_post(&agent_process, dtn_application_registration_event, &reg);
 
 	/* Profile initialization separately */
 	profiling_stop();
@@ -123,12 +123,16 @@ PROCESS_THREAD(hello_world_process, ev, data)
 				TEST_FAIL("Didn't receive enough bundles");
 				PROCESS_EXIT();
 			}
-			/* No timeout - restart while-loop */
-			continue;
+
+			if( ev != submit_data_to_application_event ) {
+				/* No timeout - restart while-loop */
+				continue;
+			}
 		}
 
 		/* If the etimer didn't expire we're getting a submit_data_to_application_event */
 		bundle_incoming = (struct mmem *) data;
+		struct bundle_t * bundle = (struct bundle_t *) MMEM_PTR(bundle_incoming);
 
 		leds_toggle(1);
 
@@ -162,7 +166,9 @@ PROCESS_THREAD(hello_world_process, ev, data)
 
 		get_attr(bundle_incoming, TIME_STAMP_SEQ_NR, &seqno);
 		get_attr(bundle_incoming, SRC_NODE, &tmp);
-		delete_bundle(bundle_incoming);
+
+		// Tell the agent, that have processed the bundle
+		process_post(&agent_process, dtn_processing_finished, bundle_incoming);
 
 		bundles_recv++;
 		/* Start counting time after the first bundle arrived */
@@ -201,7 +207,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 			set_attr(bundle_outgoing, CUST_NODE, &tmp);
 			set_attr(bundle_outgoing, CUST_SERV, &tmp);
 
-			tmp=0;
+			tmp=BUNDLE_FLAG_SINGLETON;
 			set_attr(bundle_outgoing, FLAGS, &tmp);
 			tmp=1;
 			set_attr(bundle_outgoing, REP_NODE, &tmp);

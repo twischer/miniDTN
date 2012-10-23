@@ -34,6 +34,7 @@ struct registration {
 	uint32_t node_id;
 	uint32_t app_id;
 	uint8_t status:1;
+	uint8_t busy:1;
 	struct process *application_process;
 };
 
