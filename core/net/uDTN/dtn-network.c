@@ -71,14 +71,12 @@ static void dtn_network_input(void)
 	rimeaddr_t bsrc = *packetbuf_addr(PACKETBUF_ADDR_SENDER);
 	packetbuf_clear();
 
-	LOG(LOGD_DTN, LOG_NET, LOGL_DBG, "src %u.%u", bsrc.u8[0], bsrc.u8[1]);
-
 	if((*input_packet==0x08) & (*(input_packet+1)==0x80)) {
 		// Skip the first two bytes
 		uint8_t * discovery_data = input_packet + 2;
 		uint8_t discovery_length = (uint8_t) (size - 2 - SUFFIX_LENGTH);
 
-		LOG(LOGD_DTN, LOG_NET, LOGL_DBG, "Discovery received\n");
+		LOG(LOGD_DTN, LOG_NET, LOGL_DBG, "Discovery received from %u.%u", bsrc.u8[0], bsrc.u8[1]);
 
 		leds_on(LEDS_ALL);
 
@@ -95,15 +93,17 @@ static void dtn_network_input(void)
 	leds_on(LEDS_GREEN);
 
 	// packetbuf_clear();
-	LOG(LOGD_DTN, LOG_NET, LOGL_DBG, "Bundle received %p", payload_data);
+	LOG(LOGD_DTN, LOG_NET, LOGL_DBG, "Bundle received %p from %u.%u", payload_data, bsrc.u8[0], bsrc.u8[1]);
 
+	// Allocate memory, parse the bundle and set reference counter to 1
 	bundlemem = recover_bundle(payload_data, payload_length);
 	if (!bundlemem) {
 		LOG(LOGD_DTN, LOG_NET, LOGL_WRN, "Error recovering bundle");
 		leds_off(LEDS_GREEN);
 		return;
 	}
-	bundle = (struct bundle_t*)MMEM_PTR(bundlemem);
+
+	bundle = (struct bundle_t*) MMEM_PTR(bundlemem);
 
 	rimeaddr_copy(&bundle->msrc, &bsrc);
 
@@ -116,7 +116,7 @@ static void dtn_network_input(void)
 
 	// Notify the discovery module, that we have seen a peer
 	DISCOVERY.alive(&bsrc);
-	LOG(LOGD_DTN, LOG_NET, LOGL_DBG, "size of received bundle: %u pointer %p",bundlemem->size, bundle);
+	LOG(LOGD_DTN, LOG_NET, LOGL_DBG, "size of received bundle: %u pointer %p", bundlemem->size, bundle);
 
 	dispatch_bundle(bundlemem);
 
@@ -166,15 +166,14 @@ static void packet_sent(void *ptr, int status, int num_tx)
 	ROUTING.sent(route, status, num_tx);
 }
 
-int dtn_network_send(struct mmem *bundlemem, struct route_t *route) 
+int dtn_network_send(struct mmem * bundlemem, struct route_t * route)
 {
-	uint8_t *buffer;
+	uint8_t * buffer = NULL;
 	uint8_t len;
-	struct bundle_t *bundle;
 
 	leds_on(LEDS_YELLOW);
 
-	LOG(LOGD_DTN, LOG_NET, LOGL_DBG, "send %p via %p", bundlemem, route);
+	LOG(LOGD_DTN, LOG_NET, LOGL_DBG, "send %u (%p) via %d.%d", route->bundle_num, bundlemem, route->dest.u8[0], route->dest.u8[1]);
 
 	/* We're not going to use packetbuf_copyfrom here but instead assemble the packet
 	 * in the buffer ourself */
@@ -188,13 +187,12 @@ int dtn_network_send(struct mmem *bundlemem, struct route_t *route)
 	len = encode_bundle(bundlemem, buffer+1, PACKETBUF_SIZE-1);
 	packetbuf_set_datalen(len+1);
 
-	/*setze Zieladresse und übergebe das Paket an die MAC schicht */
+	/* Set destination address */
 	packetbuf_set_addr(PACKETBUF_ADDR_RECEIVER, &route->dest);
 	packetbuf_set_attr(PACKETBUF_ADDRSIZE, 2);
 
-	bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
-
-	NETSTACK_MAC.send(&packet_sent, route); 
+	/* Send it out via the MAC */
+	NETSTACK_MAC.send(&packet_sent, route);
 	
 	leds_off(LEDS_YELLOW);
 
