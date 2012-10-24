@@ -247,7 +247,7 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 			watchdog_stop();
 			profiling_report("recv-1000", 0);
 			TEST_REPORT("throughput", 1000L*CLOCK_SECOND, time_stop-time_start, "bundles/s");
-			TEST_REPORT("errors", 1, bundles_error, "erronous bundles");
+			TEST_REPORT("errors", bundles_error, 1, "erronous bundles");
 
 			/* Packet loss in percent
 			   We received 1000 bundles, if seqno is 999 bundleloss is 0%
