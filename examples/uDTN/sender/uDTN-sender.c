@@ -115,8 +115,9 @@ PROCESS_THREAD(hello_world_process, ev, data)
 
 	while(1) {
 
-		/* Shortest possible pause */
-		PROCESS_PAUSE();
+		/* Shortest possible pause - see PROCESS_PAUSE for explanation */
+		process_post(&hello_world_process, PROCESS_EVENT_CONTINUE, NULL);
+		PROCESS_WAIT_EVENT();
 
 		/* We received a bundle - check if it is the sink telling us to
 		 * stop sending */
