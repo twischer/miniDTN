@@ -2,6 +2,7 @@
 #include "bundleslot.h"
 #include "sdnv.h"
 #include "mmem.h"
+#include "sys/process.h"
 #include <stdlib.h>
 #include <stdio.h>
 #if CONTIKI_TARGET_SKY
@@ -45,6 +46,7 @@ struct mmem *create_bundle()
 	bundle = (struct bundle_t *) MMEM_PTR(&bs->bundle);
 	bundle->rec_time=(uint32_t) clock_seconds();
 	bundle->num_blocks = 0;
+	bundle->source_process = PROCESS_CURRENT();
 
 	return &bs->bundle;
 }

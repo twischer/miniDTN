@@ -127,6 +127,7 @@ struct bundle_t{
 	uint32_t frag_offs;
 	uint32_t app_len;
 
+	struct process * source_process;
 	rimeaddr_t msrc;
 #if DEBUG_H
 	uint16_t debug_time;
