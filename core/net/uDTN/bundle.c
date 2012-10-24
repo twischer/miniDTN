@@ -208,13 +208,13 @@ uint8_t get_attr(struct mmem *bundlemem, uint8_t attr, uint32_t *val)
 			*val = bundle->cust_srv;
 			break;
 		case TIME_STAMP:
-			*val = bundle->tstamp = *val;
+			*val = bundle->tstamp;
 			break;
 		case TIME_STAMP_SEQ_NR:
-			*val = bundle->tstamp_seq = *val;
+			*val = bundle->tstamp_seq;
 			break;
 		case LIFE_TIME:
-			*val = bundle->lifetime = *val;
+			*val = bundle->lifetime;
 			break;
 		case DIRECTORY_LEN:
 			*val = 0;
