@@ -168,6 +168,11 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 		/* Allocate memory for the outgoing bundle */
 		bundle_outgoing = create_bundle();
 
+		if( bundle_outgoing == NULL ) {
+			printf("create_bundle failed\n");
+			continue;
+		}
+
 		/* Source, destination, custody and report-to nodes and services*/
 		tmp=CONF_SEND_TO_NODE;
 		set_attr(bundle_outgoing, DEST_NODE, &tmp);
