@@ -84,8 +84,22 @@ agent_send_bundles(struct route_t * route)
 		return;
 	}
 
+	// How long did this bundle rot in our storage?
+	uint32_t elapsed_time = clock_seconds() - bundle->rec_time;
+
+	// Check if bundle has expired
+	if( bundle->lifetime < elapsed_time ) {
+		LOG(LOGD_DTN, LOG_AGENT, LOGL_ERR, "bundle %d has expired, not sending it", route->bundle_num);
+
+		// Bundle is expired
+		bundle_dec(bundlemem);
+
+		BUNDLE_STORAGE.del_bundle(route->bundle_num, REASON_LIFETIME_EXPIRED);
+		return;
+	}
+
 	// Update remaining lifetime of bundle
-	uint32_t remaining_time = bundle->lifetime - (clock_seconds() - bundle->rec_time);
+	uint32_t remaining_time = bundle->lifetime - elapsed_time;
 	set_attr(bundlemem, LIFE_TIME, &remaining_time);
 
 	// And send it out
