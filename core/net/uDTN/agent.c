@@ -122,6 +122,7 @@ PROCESS_THREAD(agent_process, ev, data)
 	dtn_send_bundle_to_node_event = process_alloc_event();
 	dtn_bundle_resubmission_event = process_alloc_event();
 	dtn_processing_finished = process_alloc_event();
+	dtn_bundle_stored = process_alloc_event();
 	
 	CUSTODY.init();
 	DISCOVERY.init();
@@ -167,11 +168,23 @@ PROCESS_THREAD(agent_process, ev, data)
 		}
 		
 		if(ev == dtn_send_bundle_event) {
+			int32_t bundle_number = 0;
+			struct process * source_process = NULL;
 			bundleptr = (struct mmem *) data;
+			struct bundle_t * bundle = MMEM_PTR(bundleptr);
+
+			if( bundle != NULL ) {
+				source_process = bundle->source_process;
+			}
 
 			LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "dtn_send_bundle_event %p", bundleptr);
 
 			BUNDLE_STORAGE.save_bundle(bundleptr);
+
+			if( bundle_number >= 0 && source_process != NULL) {
+				// Bundle has been successfully saved, send event to service
+				process_post(source_process, dtn_bundle_stored, bundleptr);
+			}
 		}
 		
 		if(ev == dtn_send_admin_record_event) {

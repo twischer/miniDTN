@@ -163,7 +163,7 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 		if( error ) {
 			bundles_error ++;
 
-			// Tell the agent, that we have processed the bundle
+			/* Tell the agent, that we have processed the bundle */
 			process_post(&agent_process, dtn_processing_finished, bundle_incoming);
 
 			continue;
@@ -172,7 +172,7 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 		get_attr(bundle_incoming, TIME_STAMP_SEQ_NR, &seqno);
 		get_attr(bundle_incoming, SRC_NODE, &tmp);
 
-		// Tell the agent, that we have processed the bundle
+		/* Tell the agent, that we have processed the bundle */
 		process_post(&agent_process, dtn_processing_finished, bundle_incoming);
 
 		bundles_recv++;
@@ -208,7 +208,7 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 				continue;
 			}
 
-			/* tmp already holdy the src address of the sender */
+			/* tmp already holds the src address of the sender */
 			set_attr(bundle_outgoing, DEST_NODE, &tmp);
 			tmp=25;
 			set_attr(bundle_outgoing, DEST_SERV, &tmp);
@@ -238,9 +238,13 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 			userdata[1] = 'k';
 			add_block(bundle_outgoing, 1, 2, userdata, 2);
 
+			/* Send out the bundle */
 			process_post(&agent_process, dtn_send_bundle_event, (void *) bundle_outgoing);
 
-			// Deactivate our registration, so that we do not receive bundles anymore
+			/* Wait for the agent to process our outgoing bundle */
+			PROCESS_WAIT_UNTIL(ev == dtn_bundle_stored);
+
+			/* Deactivate our registration, so that we do not receive bundles anymore */
 			reg.status = 0;
 			process_post(&agent_process, dtn_application_status_event, &reg);
 

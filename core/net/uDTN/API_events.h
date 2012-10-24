@@ -42,6 +42,10 @@ process_event_t submit_data_to_application_event;
  * \brief Event tell the agent that the service has finished processing a particular bundle
  */
 process_event_t dtn_processing_finished;
+/**
+ * \brief Event tell the service, that the outgoing bundle has reached save grounds
+ */
+process_event_t dtn_bundle_stored;
 
 #endif
 /** @} */

@@ -117,9 +117,11 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 	} while (now_fine != clock_time());
 	time_start = ((unsigned long)now)*CLOCK_SECOND + now_fine%CLOCK_SECOND;
 
+	/* Send ourselves the initial event */
+	process_post(&udtn_sender_process, PROCESS_EVENT_CONTINUE, NULL);
+
 	while(1) {
-		/* Shortest possible pause - see PROCESS_PAUSE for explanation */
-		process_post(&udtn_sender_process, PROCESS_EVENT_CONTINUE, NULL);
+		/* Wait for the next incoming event */
 		PROCESS_WAIT_EVENT();
 
 		/* We received a bundle - check if it is the sink telling us to
@@ -128,7 +130,7 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 			struct mmem *recv = NULL;
 			recv = (struct mmem *) data;
 
-			// Tell the agent, that have processed the bundle
+			/* Tell the agent, that we have processed the bundle */
 			process_post(&agent_process, dtn_processing_finished, recv);
 
 			profiling_stop();
@@ -140,6 +142,11 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 			TEST_PASS();
 
 			PROCESS_EXIT();
+		}
+
+		/* Wait for the agent to process our outgoing bundle */
+		if( ev != dtn_bundle_stored && ev != PROCESS_EVENT_CONTINUE ) {
+			continue;
 		}
 
 		/* Check for timeout */
