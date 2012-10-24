@@ -63,13 +63,13 @@
 
 
 /*---------------------------------------------------------------------------*/
-PROCESS(hello_world_process, "Hello world process");
-AUTOSTART_PROCESSES(&hello_world_process);
-static struct registration_api reg;
+PROCESS(udtn_sender_process, "uDTN Sink process");
+AUTOSTART_PROCESSES(&udtn_sender_process);
 /*---------------------------------------------------------------------------*/
 
-PROCESS_THREAD(hello_world_process, ev, data)
+PROCESS_THREAD(udtn_sender_process, ev, data)
 {
+	static struct registration_api reg;
 	static struct etimer timer;
 	static struct etimer delay;
 	static uint16_t bundles_recv = 0;
@@ -78,8 +78,8 @@ PROCESS_THREAD(hello_world_process, ev, data)
 	static uint8_t userdata[2];
 	uint32_t tmp;
 	uint32_t seqno;
-        clock_time_t now;
-        unsigned short now_fine;
+	clock_time_t now;
+	unsigned short now_fine;
 	struct mmem * bundle_incoming;
 	static struct mmem * bundle_outgoing;
 
@@ -87,15 +87,17 @@ PROCESS_THREAD(hello_world_process, ev, data)
 	profiling_init();
 	profiling_start();
 
+	/* Initialize the agent */
 	agent_init();
-	reg.status=1;
-	reg.application_process=&hello_world_process;
-	reg.app_id=25;
-	printf("MAIN: event= %u\n",dtn_application_registration_event);
-	printf("main app_id %lu process %p\n", reg.app_id, &agent_process);
+
+	/* Wait for the agent to be initialized */
 	etimer_set(&timer,  CLOCK_SECOND*5);
 	PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&timer));
 
+	/* Register our endpoint to receive bundles */
+	reg.status=1;
+	reg.application_process=&udtn_sender_process;
+	reg.app_id=25;
 	process_post(&agent_process, dtn_application_registration_event, &reg);
 
 	/* Profile initialization separately */
@@ -171,13 +173,14 @@ PROCESS_THREAD(hello_world_process, ev, data)
 		process_post(&agent_process, dtn_processing_finished, bundle_incoming);
 
 		bundles_recv++;
+
 		/* Start counting time after the first bundle arrived */
 		if (bundles_recv == 1) {
-		        do {
-		                now_fine = clock_time();
-		                now = clock_seconds();
-		        } while (now_fine != clock_time());
-		        time_start = ((unsigned long)now)*CLOCK_SECOND + now_fine%CLOCK_SECOND;
+			do {
+				now_fine = clock_time();
+				now = clock_seconds();
+			} while (now_fine != clock_time());
+			time_start = ((unsigned long)now)*CLOCK_SECOND + now_fine%CLOCK_SECOND;
 		}
 
 		if (bundles_recv%50 == 0)
@@ -190,8 +193,8 @@ PROCESS_THREAD(hello_world_process, ev, data)
 			profiling_stop();
 
 			do {
-					now_fine = clock_time();
-					now = clock_seconds();
+				now_fine = clock_time();
+				now = clock_seconds();
 			} while (now_fine != clock_time());
 			time_stop = ((unsigned long)now)*CLOCK_SECOND + now_fine%CLOCK_SECOND;
 
