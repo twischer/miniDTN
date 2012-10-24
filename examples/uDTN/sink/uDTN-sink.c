@@ -162,14 +162,17 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 
 		if( error ) {
 			bundles_error ++;
-			delete_bundle(bundle_incoming);
+
+			// Tell the agent, that we have processed the bundle
+			process_post(&agent_process, dtn_processing_finished, bundle_incoming);
+
 			continue;
 		}
 
 		get_attr(bundle_incoming, TIME_STAMP_SEQ_NR, &seqno);
 		get_attr(bundle_incoming, SRC_NODE, &tmp);
 
-		// Tell the agent, that have processed the bundle
+		// Tell the agent, that we have processed the bundle
 		process_post(&agent_process, dtn_processing_finished, bundle_incoming);
 
 		bundles_recv++;
