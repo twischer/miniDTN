@@ -203,6 +203,11 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 
 			bundle_outgoing = create_bundle();
 
+			if( bundle_outgoing == NULL ) {
+				printf("create_bundle failed\n");
+				continue;
+			}
+
 			/* tmp already holdy the src address of the sender */
 			set_attr(bundle_outgoing, DEST_NODE, &tmp);
 			tmp=25;
