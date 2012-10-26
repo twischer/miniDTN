@@ -31,7 +31,6 @@
 #include "discovery.h"
 #include "bundle.h"
 #include "storage.h"
-#include "r_storage.h"
 #include "statistics.h"
 #include "clock.h"
 #include "bundleslot.h"

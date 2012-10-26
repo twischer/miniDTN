@@ -22,7 +22,6 @@
 #include "agent.h"
 #include "lib/mmem.h"
 #include "lib/list.h"
-#include "r_storage.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -31,7 +30,7 @@
 #include "profiling.h"
 #include "statistics.h"
 
-#define DEBUG 0
+#define DEBUG 1
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)
@@ -42,14 +41,48 @@
 // defined in mmem.c, no function to access it though
 extern unsigned int avail_memory;
 
-LIST(bundle_list);
-MEMB(bundle_mem, struct file_list_entry_t, BUNDLE_STORAGE_SIZE);
+/**
+ * Internal representation of a bundle
+ *
+ * The layout is quite fixed - the next pointer and the bundle_num have to go first because this struct
+ * has to be compatible with the struct storage_entry_t in storage.h!
+ */
 
+struct bundle_list_entry_t {
+	/** pointer to the next list element */
+	struct bundle_list_entry_t * next;
+
+	/** copy of the bundle number - necessary to have
+	 * a static address that we can pass on as an
+	 * argument to an event
+	 */
+	uint16_t bundle_num;
+
+	/** pointer to the actual bundle stored in MMEM */
+	struct mmem *bundle;
+};
+
+// List and memory blocks for the bundles
+LIST(bundle_list);
+MEMB(bundle_mem, struct bundle_list_entry_t, BUNDLE_STORAGE_SIZE);
+
+// global, internal variables
+/** Counts the number of bundles in storage */
 static uint16_t bundles_in_storage;
+
+/** Is used to perodically traverse all bundles and delete those that are expired */
 static struct ctimer r_store_timer;
+
+/** Counter to assign unique bundle numbers to each bundle */
 static uint16_t bundle_number = 0;
 
+/**
+ * "Internal" functions
+ */
 void r_store_prune();
+void rs_reinit(void);
+uint16_t rs_del_bundle(uint16_t bundle_number, uint8_t reason);
+void rs_update_statistics();
 
 /**
  * \brief internal function to send statistics to statistics module
@@ -90,7 +123,7 @@ void rs_init(void)
 void r_store_prune()
 {
 	uint32_t elapsed_time;
-	struct file_list_entry_t * entry = NULL;
+	struct bundle_list_entry_t * entry = NULL;
 	struct bundle_t *bundle = NULL;
 
 	// Delete expired bundles from storage
@@ -112,7 +145,7 @@ void r_store_prune()
 
 void rs_reinit(void)
 {
-	struct file_list_entry_t * entry = NULL;
+	struct bundle_list_entry_t * entry = NULL;
 	struct bundle_t *bundle = NULL;
 
 	// Start counting the bundle number from zero again
@@ -145,7 +178,7 @@ uint8_t rs_make_room(struct mmem *bundlemem)
 
 	// Keep deleting bundles until we have enough MMEM and slots
 	while( bundles_in_storage >= BUNDLE_STORAGE_SIZE) { // || (avail_memory - bundle->size) < STORAGE_HIGH_WATERMARK ) {
-		struct file_list_entry_t * entry = list_head(bundle_list);
+		struct bundle_list_entry_t * entry = list_head(bundle_list);
 
 		if( entry == NULL ) {
 			// We do not have bundles in storage, stop deleting them
@@ -167,7 +200,7 @@ int32_t rs_save_bundle(struct mmem * bundlemem)
 {
 	struct bundle_t *entrybdl = NULL,
 					*bundle = NULL;
-	struct file_list_entry_t * entry;
+	struct bundle_list_entry_t * entry;
 
 	// Get the pointer to our bundle
 	bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
@@ -202,7 +235,7 @@ int32_t rs_save_bundle(struct mmem * bundlemem)
 	}
 
 	// Clear the memory area
-	memset(entry, 0, sizeof(struct file_list_entry_t));
+	memset(entry, 0, sizeof(struct bundle_list_entry_t));
 
 	// we copy the reference to the bundle, therefore we have to increase the reference counter
 	entry->bundle = bundlemem;
@@ -242,7 +275,7 @@ int32_t rs_save_bundle(struct mmem * bundlemem)
 uint16_t rs_del_bundle(uint16_t bundle_number, uint8_t reason)
 {
 	struct bundle_t * bundle = NULL;
-	struct file_list_entry_t * entry = NULL;
+	struct bundle_list_entry_t * entry = NULL;
 
 	PRINTF("STORAGE: Deleting Bundle %u with reason %u\n", bundle_number, reason);
 
@@ -302,7 +335,7 @@ uint16_t rs_del_bundle(uint16_t bundle_number, uint8_t reason)
 */
 struct mmem *rs_read_bundle(uint16_t bundle_num)
 {
-	struct file_list_entry_t * entry = NULL;
+	struct bundle_list_entry_t * entry = NULL;
 	struct bundle_t * bundle = NULL;
 
 	// Look for the bundle we are talking about

@@ -24,9 +24,23 @@
 #include "bundle.h"
 #include "memb.h"
 
+/**
+ * How many bundles can possibly be stored in the data structures?
+ */
+#ifdef BUNDLE_CONF_STORAGE_SIZE
+#define BUNDLE_STORAGE_SIZE BUNDLE_CONF_STORAGE_SIZE
+#else
+#define BUNDLE_STORAGE_SIZE 	10
+#endif
+
+/**
+ * Representation of a bundle as returned by the "get_bundles" call to the storage module
+ */
 struct storage_entry_t {
+	/** pointer to the next list element */
 	struct storage_entry_t * next;
 
+	/** Internal number of the bundle */
 	uint16_t bundle_num;
 };
 
