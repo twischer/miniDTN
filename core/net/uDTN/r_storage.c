@@ -30,7 +30,7 @@
 #include "profiling.h"
 #include "statistics.h"
 
-#define DEBUG 1
+#define DEBUG 0
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)
@@ -47,7 +47,6 @@ extern unsigned int avail_memory;
  * The layout is quite fixed - the next pointer and the bundle_num have to go first because this struct
  * has to be compatible with the struct storage_entry_t in storage.h!
  */
-
 struct bundle_list_entry_t {
 	/** pointer to the next list element */
 	struct bundle_list_entry_t * next;
@@ -70,7 +69,7 @@ MEMB(bundle_mem, struct bundle_list_entry_t, BUNDLE_STORAGE_SIZE);
 /** Counts the number of bundles in storage */
 static uint16_t bundles_in_storage;
 
-/** Is used to perodically traverse all bundles and delete those that are expired */
+/** Is used to periodically traverse all bundles and delete those that are expired */
 static struct ctimer r_store_timer;
 
 /** Counter to assign unique bundle numbers to each bundle */
@@ -99,10 +98,10 @@ void rs_init(void)
 {
 	PRINTF("STORAGE: init r_storage\n");
 
-	// Initialize the neighbour list
+	// Initialize the bundle list
 	list_init(bundle_list);
 
-	// Initialize the neighbour memory block
+	// Initialize the bundle memory block
 	memb_init(&bundle_mem);
 
 	// Initialize MMEM for the binary bundle storage
@@ -200,10 +199,20 @@ int32_t rs_save_bundle(struct mmem * bundlemem)
 {
 	struct bundle_t *entrybdl = NULL,
 					*bundle = NULL;
-	struct bundle_list_entry_t * entry;
+	struct bundle_list_entry_t * entry = NULL;
+
+	if( bundlemem == NULL ) {
+		printf("STORAGE: rs_save_bundle with invalid pointer %p\n", bundlemem);
+		return -1;
+	}
 
 	// Get the pointer to our bundle
 	bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
+
+	if( bundle == NULL ) {
+		printf("STORAGE: rs_save_bundle with invalid MMEM structure\n");
+		return -1;
+	}
 
 	// Look for duplicates in the storage
 	for(entry = list_head(bundle_list);
@@ -216,7 +225,7 @@ int32_t rs_save_bundle(struct mmem * bundlemem)
 		    bundle->frag_offs == entrybdl->frag_offs) {
 
 			PRINTF("STORAGE: %u is the same bundle\n", entry->bundle_num);
-			return (int32_t) bundle->bundle_num;
+			return (int32_t) entrybdl->bundle_num;
 		}
 	}
 
@@ -291,7 +300,7 @@ uint16_t rs_del_bundle(uint16_t bundle_number, uint8_t reason)
 	}
 
 	if( entry == NULL ) {
-		PRINTF("STORAGE: Could not find bundle %u on rs_del_bundle\n", bundle_number);
+		printf("STORAGE: Could not find bundle %u on rs_del_bundle\n", bundle_number);
 		return 0;
 	}
 
@@ -329,9 +338,8 @@ uint16_t rs_del_bundle(uint16_t bundle_number, uint8_t reason)
 
 /**
 * \brief reads a bundle from storage
-* \param bundle_num bundle nuber to read
-* \param bundle empty bundle struct, bundle will be accessable here
-* \return 1 on succes or 0 on error
+* \param bundle_num bundle number to read
+* \return pointer to the MMEM struct
 */
 struct mmem *rs_read_bundle(uint16_t bundle_num)
 {
@@ -368,8 +376,8 @@ struct mmem *rs_read_bundle(uint16_t bundle_num)
 
 /**
 * \brief checks if there is space for a bundle
-* \param bundle pointer to a bundel struct (not used here)
-* \return number of free solts
+* \param bundle pointer to a bundle struct (not used here)
+* \return number of free slots
 */
 uint16_t rs_free_space(struct mmem *bundlemem)
 {
@@ -391,7 +399,6 @@ struct storage_entry_t * rs_get_bundles(void)
 	return (struct storage_entry_t *) list_head(bundle_list);
 }
 
-
 const struct storage_driver r_storage = {
 	"R_STORAGE",
 	rs_init,
@@ -403,3 +410,6 @@ const struct storage_driver r_storage = {
 	rs_get_g_bundel_num,
 	rs_get_bundles,
 };
+
+/** @} */
+/** @} */
