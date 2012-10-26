@@ -21,7 +21,6 @@
 #include "dtn_config.h"
 #include "delivery.h"
 #include "status-report.h"
-#include "forwarding.h"
 //#define ENABLE_LOGGING 1
 #include "logging.h"
 #include "storage.h"
