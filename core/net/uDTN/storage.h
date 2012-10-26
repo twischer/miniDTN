@@ -24,18 +24,12 @@
 #include "bundle.h"
 #include "memb.h"
 
-struct saved_as_t {
-	uint16_t saved_as_num;
-};
-
 struct storage_entry_t {
 	struct storage_entry_t * next;
 
 	uint16_t bundle_num;
-	uint16_t file_size;
 };
 
-extern struct memb *saved_as_mem;
 /** storage module interface  */
 struct storage_driver {
 	char *name;

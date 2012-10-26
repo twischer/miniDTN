@@ -62,6 +62,9 @@ void agent_init(void) {
 	process_start(&agent_process, NULL);
 }
 
+/** FIXME: We need a return value here to indicate whether we have really told the MAC to do the transmission.
+ * Otherwise the callback will not come and the routing is locked forever!
+ */
 void
 agent_send_bundles(struct route_t * route)
 {

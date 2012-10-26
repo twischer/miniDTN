@@ -23,14 +23,17 @@
 extern const struct storage_driver g_storage_driver;
 
 struct file_list_entry_t {
+	/** pointer to the next list element */
 	struct file_list_entry_t * next;
 
+	/** copy of the bundle number - necessary to have
+	 * a static address that we can pass on as an
+	 * argument to an event
+	 */
 	uint16_t bundle_num;
-	uint16_t file_size;
 
+	/** pointer to the actual bundle stored in MMEM */
 	struct mmem *bundle;
-
-	struct routing_pack_list_t routing;
 };
 
 void rs_init(void);

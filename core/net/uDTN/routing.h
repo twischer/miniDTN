@@ -33,18 +33,6 @@
 #define ROUTING_FLAG_FORWARD		0x04
 #define ROUTING_FLAG_IN_TRANSIT		0x08
 
-/** struct to store the bundels to be routed */
-struct routing_pack_list_t {
-	/** number of nodes this bundle was sent to */
-	uint8_t send_to;
-
-	/** bundle flags */
-	uint8_t flags;
-
-	/** addresses of nodes this bundle was sent to */
-	rimeaddr_t dest[ROUTING_NEI_MEM];
-};
-
 process_event_t dtn_bundle_resubmission_event;
 
 /** the route_t struct is used to inform the network interface which bundle should be transmitted to whicht node*/

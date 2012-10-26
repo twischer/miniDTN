@@ -63,8 +63,42 @@ struct blacklist_entry_t {
 	uint16_t timestamp;
 };
 
+struct routing_list_entry_t {
+	/** pointer to the next entry */
+	struct routing_list_entry_t * next;
+
+	/** pointer to MMEM containing the routing_entry_t */
+	struct mmem entry;
+};
+
+struct routing_entry_t {
+	/** number of the bundle */
+	uint16_t bundle_number;
+
+	/** bundle flags */
+	uint8_t flags;
+
+	/** number of nodes the bundle has been sent to already */
+	uint8_t send_to;
+
+	/** addresses of nodes this bundle was sent to */
+	rimeaddr_t neighbours[ROUTING_NEI_MEM];
+
+	/** bundle destination */
+	uint32_t destination_node;
+
+	/** bundle source */
+	uint32_t source_node;
+
+	/** neighbour from which we have received the bundle */
+	rimeaddr_t received_from_node;
+};
+
 MEMB(blacklist_mem, struct blacklist_entry_t, BLACKLIST_SIZE);
 LIST(blacklist_list);
+
+MEMB(routing_mem, struct routing_list_entry_t, BUNDLE_STORAGE_SIZE);
+LIST(routing_list);
 
 uint8_t flood_sent_to_known(void);
 
@@ -142,6 +176,10 @@ void flood_init(void)
 	memb_init(&blacklist_mem);
 	list_init(blacklist_list);
 
+	// Initialize memory used to store bundles for routing
+	memb_init(&routing_mem);
+	list_init(routing_list);
+
 	flood_transmitting = 0;
 	flood_agent_event_pending = 0;
 }
@@ -171,26 +209,27 @@ void flood_schedule_resubmission(void)
 
 uint8_t flood_send_to_local(void)
 {
-	struct file_list_entry_t * pack = NULL;
+	struct routing_list_entry_t * n = NULL;
+	struct routing_entry_t * entry = NULL;
 	struct mmem * bundlemem = NULL;
 	int delivered = 0;
 
-	// Try to deliver locally
-	for(pack = (struct file_list_entry_t *) BUNDLE_STORAGE.get_bundles();
-			pack != NULL;
-			pack = list_item_next(pack)) {
+	for( n = (struct routing_list_entry_t *) list_head(routing_list);
+		 n != NULL;
+		 n = list_item_next(n) ) {
+		entry = (struct routing_entry_t *) MMEM_PTR(&n->entry);
 
 		// Should this bundle be delivered locally?
-		if( (pack->routing.flags & ROUTING_FLAG_LOCAL) && !(pack->routing.flags & ROUTING_FLAG_IN_DELIVERY) ) {
-			bundlemem = BUNDLE_STORAGE.read_bundle(pack->bundle_num);
+		if( (entry->flags & ROUTING_FLAG_LOCAL) && !(entry->flags & ROUTING_FLAG_IN_DELIVERY) ) {
+			bundlemem = BUNDLE_STORAGE.read_bundle(entry->bundle_number);
 			if( bundlemem == NULL ) {
-				LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "cannot read bundle %d", pack->bundle_num);
+				LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "cannot read bundle %d", entry->bundle_number);
 				bundlemem = NULL;
 				continue;
 			}
 
 			if( deliver_bundle(bundlemem) ) {
-				pack->routing.flags |= ROUTING_FLAG_IN_DELIVERY;
+				entry->flags |= ROUTING_FLAG_IN_DELIVERY;
 				delivered ++;
 			}
 		}
@@ -201,10 +240,9 @@ uint8_t flood_send_to_local(void)
 
 uint8_t flood_sent_to_known(void)
 {
-	struct mmem * bundlemem = NULL;
-	struct discovery_neighbour_list_entry *nei_l;
-	struct file_list_entry_t * pack = NULL;
-	struct bundle_t *bundle = NULL;
+	struct discovery_neighbour_list_entry *nei_l = NULL;
+	struct routing_list_entry_t * n = NULL;
+	struct routing_entry_t * entry = NULL;
 
 	// First: deliver bundles to local services
 	flood_send_to_local();
@@ -222,54 +260,32 @@ uint8_t flood_sent_to_known(void)
 	 */
 	for(nei_l = DISCOVERY.neighbours(); nei_l != NULL; nei_l = list_item_next(nei_l)) {
 		// Now go through all bundles
-		for(pack = (struct file_list_entry_t *) BUNDLE_STORAGE.get_bundles();
-				pack != NULL;
-				pack = list_item_next(pack)) {
+		for( n = (struct routing_list_entry_t *) list_head(routing_list);
+			 n != NULL;
+			 n = list_item_next(n) ) {
+			entry = (struct routing_entry_t *) MMEM_PTR(&n->entry);
 
 			// Skip this bundle, if it is not queued for forwarding
-			if( !(pack->routing.flags & ROUTING_FLAG_FORWARD) ) {
-				continue;
-			}
-
-			bundlemem = BUNDLE_STORAGE.read_bundle(pack->bundle_num);
-			if( bundlemem == NULL ) {
-				LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "cannot read bundle %d", pack->bundle_num);
-				bundlemem = NULL;
-				continue;
-			}
-
-			bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
-			if( bundle == NULL ) {
-				LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "invalid bundle pointer for bundle %d", pack->bundle_num);
-
-				bundle_dec(bundlemem);
-				bundlemem = NULL;
-				bundle = NULL;
-
+			if( !(entry->flags & ROUTING_FLAG_FORWARD) ) {
 				continue;
 			}
 
 			// Who is the destination for this bundle?
-			rimeaddr_t dest_node = convert_eid_to_rime(bundle->dst_node);
+			rimeaddr_t dest_node = convert_eid_to_rime(entry->destination_node);
 
 			if( rimeaddr_cmp(&nei_l->neighbour, &dest_node) ) {
 				// We know the neighbour, send it directly
-				LOG(LOGD_DTN, LOG_ROUTE, LOGL_INF, "send bundle %u with SeqNo %lu to %u:%u directly", pack->bundle_num, bundle->tstamp_seq, nei_l->neighbour.u8[0], nei_l->neighbour.u8[1]);
+				LOG(LOGD_DTN, LOG_ROUTE, LOGL_INF, "send bundle %u to %u:%u directly", entry->bundle_number, nei_l->neighbour.u8[0], nei_l->neighbour.u8[1]);
 
 				// Clear memory to store the route
 				memset(&route, 0, sizeof(struct route_t));
 
 				// Save next hop and bundle number
 				rimeaddr_copy(&route.dest, &nei_l->neighbour);
-				route.bundle_num = pack->bundle_num;
+				route.bundle_num = entry->bundle_number;
 
 				// Lock ourself
 				flood_transmitting = 1;
-
-				// Deallocate memory
-				bundle_dec(bundlemem);
-				bundlemem = NULL;
-				bundle = NULL;
 
 				// And tell the agent to transmit
 				agent_send_bundles(&route);
@@ -277,11 +293,6 @@ uint8_t flood_sent_to_known(void)
 				// Only one bundle at a time
 				return 1;
 			}
-
-			// Deallocate memory
-			bundle_dec(bundlemem);
-			bundlemem = NULL;
-			bundle = NULL;
 		}
 	}
 
@@ -290,73 +301,41 @@ uint8_t flood_sent_to_known(void)
 	 * flood it to everyone
 	 */
 	for(nei_l = DISCOVERY.neighbours(); nei_l != NULL; nei_l = list_item_next(nei_l)) {
-		LOG(LOGD_DTN, LOG_ROUTE, LOGL_DBG, "neighbour", nei_l->neighbour.u8[0], nei_l->neighbour.u8[1]);
+		LOG(LOGD_DTN, LOG_ROUTE, LOGL_DBG, "neighbour %u.%u", nei_l->neighbour.u8[0], nei_l->neighbour.u8[1]);
 
-		for(pack = (struct file_list_entry_t *) BUNDLE_STORAGE.get_bundles();
-				pack != NULL;
-				pack = list_item_next(pack)) {
+		for( n = (struct routing_list_entry_t *) list_head(routing_list);
+			 n != NULL;
+			 n = list_item_next(n) ) {
+			entry = (struct routing_entry_t *) MMEM_PTR(&n->entry);
 
 			// Skip this bundle, if it is not queued for forwarding
-			if( !(pack->routing.flags & ROUTING_FLAG_FORWARD) ) {
+			if( !(entry->flags & ROUTING_FLAG_FORWARD) ) {
 				continue;
 			}
 
-			bundlemem = BUNDLE_STORAGE.read_bundle(pack->bundle_num);
-			if( bundlemem == NULL ) {
-				LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "cannot read bundle %d", pack->bundle_num);
-				bundlemem = NULL;
-				continue;
-			}
-
-			bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
-			if( bundle == NULL ) {
-				LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "invalid bundle pointer for bundle %d", pack->bundle_num);
-
-				bundle_dec(bundlemem);
-				bundlemem = NULL;
-				bundle = NULL;
-
-				continue;
-			}
-
-			LOG(LOGD_DTN, LOG_ROUTE, LOGL_INF, "Bundle %u, SRC %lu, DEST %lu, MSRC %u.%u, SEQ %lu", pack->bundle_num,  bundle->src_node, bundle->dst_node, bundle->msrc.u8[0], bundle->msrc.u8[1], bundle->tstamp_seq);
+			LOG(LOGD_DTN, LOG_ROUTE, LOGL_INF, "Bundle %u, SRC %lu, DEST %lu, MSRC %u.%u", entry->bundle_number,  entry->source_node, entry->destination_node, entry->received_from_node.u8[0], entry->received_from_node.u8[1]);
 
 			uint8_t i, sent = 0;
 
-			rimeaddr_t source_node = convert_eid_to_rime(bundle->src_node);
+			rimeaddr_t source_node = convert_eid_to_rime(entry->source_node);
 			if( rimeaddr_cmp(&nei_l->neighbour, &source_node) ) {
 				LOG(LOGD_DTN, LOG_ROUTE, LOGL_INF, "not sending bundle to originator");
-
-				// Deallocate memory
-				bundle_dec(bundlemem);
-				bundlemem = NULL;
-				bundle = NULL;
 
 				// Go on with the next bundle
 				continue;
 			}
 
-			if( rimeaddr_cmp(&nei_l->neighbour, &bundle->msrc) ) {
+			if( rimeaddr_cmp(&nei_l->neighbour, &entry->received_from_node) ) {
 				LOG(LOGD_DTN, LOG_ROUTE, LOGL_DBG, "not sending back to sender");
-
-				// Deallocate memory
-				bundle_dec(bundlemem);
-				bundlemem = NULL;
-				bundle = NULL;
 
 				// Go on with the next bundle
 				continue;
 			}
 
 			for (i = 0 ; i < ROUTING_NEI_MEM ; i++) {
-				if ( rimeaddr_cmp(&pack->routing.dest[i], &nei_l->neighbour)){
-					LOG(LOGD_DTN, LOG_ROUTE, LOGL_DBG, "bundle %u already sent to node %u:%u!", pack->bundle_num, pack->routing.dest[i].u8[0], pack->routing.dest[i].u8[1]);
+				if ( rimeaddr_cmp(&entry->neighbours[i], &nei_l->neighbour)){
+					LOG(LOGD_DTN, LOG_ROUTE, LOGL_DBG, "bundle %u already sent to node %u:%u!", entry->bundle_number, entry->neighbours[i].u8[0], entry->neighbours[i].u8[1]);
 					sent = 1;
-
-					// Deallocate memory
-					bundle_dec(bundlemem);
-					bundlemem = NULL;
-					bundle = NULL;
 
 					// Break the (narrowest) for
 					break;
@@ -364,22 +343,17 @@ uint8_t flood_sent_to_known(void)
 			}
 
 			if(!sent) {
-				LOG(LOGD_DTN, LOG_ROUTE, LOGL_INF, "send bundle %u with SeqNo %lu to %u:%u", pack->bundle_num, bundle->tstamp_seq, nei_l->neighbour.u8[0], nei_l->neighbour.u8[1]);
+				LOG(LOGD_DTN, LOG_ROUTE, LOGL_INF, "send bundle %u to %u:%u", entry->bundle_number, nei_l->neighbour.u8[0], nei_l->neighbour.u8[1]);
 
 				// Clear memory to store the route
 				memset(&route, 0, sizeof(struct route_t));
 
 				// Save next hop and bundle number
 				rimeaddr_copy(&route.dest, &nei_l->neighbour);
-				route.bundle_num = pack->bundle_num;
+				route.bundle_num = entry->bundle_number;
 
 				// Lock ourself
 				flood_transmitting = 1;
-
-				// Deallocate memory
-				bundle_dec(bundlemem);
-				bundlemem = NULL;
-				bundle = NULL;
 
 				// And tell the agent to transmit
 				agent_send_bundles(&route);
@@ -387,11 +361,6 @@ uint8_t flood_sent_to_known(void)
 				// Only one bundle at a time
 				return 1;
 			}
-
-			// Deallocate memory
-			bundle_dec(bundlemem);
-			bundlemem = NULL;
-			bundle = NULL;
 		}
 	}
 
@@ -414,29 +383,31 @@ void flood_resubmit_bundles(uint8_t called_by_event) {
  * \param bundle_number Number of the bundle
  */
 void flood_check_keep_bundle(uint16_t bundle_number) {
-	struct file_list_entry_t * pack = NULL;
+	struct routing_list_entry_t * n = NULL;
+	struct routing_entry_t * entry = NULL;
 
 	// Now we have to find the appropriate Storage struct
-	for(pack = (struct file_list_entry_t *) BUNDLE_STORAGE.get_bundles();
-			pack != NULL;
-			pack = list_item_next(pack)) {
+	for( n = (struct routing_list_entry_t *) list_head(routing_list);
+		 n != NULL;
+		 n = list_item_next(n) ) {
+		entry = (struct routing_entry_t *) MMEM_PTR(&n->entry);
 
-		if( pack->bundle_num == bundle_number) {
+		if( entry->bundle_number == bundle_number ) {
 			break;
 		}
 	}
 
-	if( pack == NULL ) {
+	if( entry == NULL ) {
 		LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "Bundle not in storage yet");
 		return;
 	}
 
-	if( (pack->routing.flags & ROUTING_FLAG_LOCAL) || (pack->routing.flags & ROUTING_FLAG_FORWARD) ) {
+	if( (entry->flags & ROUTING_FLAG_LOCAL) || (entry->flags & ROUTING_FLAG_FORWARD) ) {
 		return;
 	}
 
-	LOG(LOGD_DTN, LOG_ROUTE, LOGL_INF, "Deleting bundle %u", pack->bundle_num);
-	BUNDLE_STORAGE.del_bundle(pack->bundle_num, REASON_DELIVERED);
+	LOG(LOGD_DTN, LOG_ROUTE, LOGL_INF, "Deleting bundle %u", entry->bundle_number);
+	BUNDLE_STORAGE.del_bundle(entry->bundle_number, REASON_DELIVERED);
 }
 
 /**
@@ -446,17 +417,46 @@ void flood_check_keep_bundle(uint16_t bundle_number) {
 */
 int flood_new_bundle(uint16_t bundle_number)
 {
+	struct routing_list_entry_t * n = NULL;
+	struct routing_entry_t * entry = NULL;
 	struct mmem * bundlemem = NULL;
 	struct bundle_t * bundle = NULL;
-	struct file_list_entry_t * pack = NULL;
+
+	// Let us see, if we know this bundle already
+	for( n = list_head(routing_list);
+		 n != NULL;
+		 n = list_item_next(n) ) {
+		entry = (struct routing_entry_t *) MMEM_PTR(&n->entry);
+
+		if( entry->bundle_number == bundle_number ) {
+			LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "agent announces bundle %d that is already known", bundle_number);
+			return -1;
+		}
+	}
 
 	// Notify statistics
 	statistics_bundle_incoming(1);
 
-	// Here we check, if we have a local bundle
+	// Now allocate new memory for the list entry
+	n = memb_alloc(&routing_mem);
+	if( n == NULL ) {
+		LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "cannot allocate list entry for bundle, please increase BUNDLE_STORAGE_SIZE");
+		return -1;
+	}
+
+	// Now allocate new MMEM memory for the struct in the list
+	if( !mmem_alloc(&(n->entry), sizeof(struct routing_entry_t)) ) {
+		LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "cannot allocate routing struct for bundle, MMEM is full");
+		memb_free(&routing_mem, n);
+		return -1;
+	}
+
+	// Now go and request the bundle from storage
 	bundlemem = BUNDLE_STORAGE.read_bundle(bundle_number);
 	if( bundlemem == NULL ) {
 		LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "unable to read bundle %d", bundle_number);
+		mmem_free(&n->entry);
+		memb_free(&routing_mem, n);
 		return -1;
 	}
 
@@ -464,43 +464,44 @@ int flood_new_bundle(uint16_t bundle_number)
 	bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 	if( bundle == NULL ) {
 		LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "invalid bundle pointer for bundle %d", bundle_number);
+		mmem_free(&n->entry);
+		memb_free(&routing_mem, n);
 		bundle_dec(bundlemem);
 		return -1;
 	}
 
-	// Now we have to find the appropriate Storage struct
-	for(pack = (struct file_list_entry_t *) BUNDLE_STORAGE.get_bundles();
-			pack != NULL;
-			pack = list_item_next(pack)) {
+	// Now we have our entry
+	// We have to get the pointer AFTER getting the bundle from storage, because accessing the
+	// storage may change the MMEM structure and thus the pointers!
+	entry = (struct routing_entry_t *) MMEM_PTR(&n->entry);
+	memset(entry, 0, sizeof(struct routing_entry_t));
 
-		if( pack->bundle_num == bundle_number) {
-			break;
-		}
-	}
-
-	if( pack == NULL ) {
-		LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "Bundle not in storage yet");
-		bundle_dec(bundlemem);
-		return -1;
-	}
+	// Nothing can go wrong anymore, add the (surrounding) struct to the list
+	list_add(routing_list, n);
 
 	// If we have a bundle for our node, mark the bundle
 	if( bundle->dst_node == (uint32_t) dtn_node_id ) {
 		LOG(LOGD_DTN, LOG_ROUTE, LOGL_DBG, "bundle is for local");
-		pack->routing.flags |= ROUTING_FLAG_LOCAL;
+		entry->flags |= ROUTING_FLAG_LOCAL;
 
 		if( bundle->flags & BUNDLE_FLAG_SINGLETON ) {
 			// Apparently the bundle is *only* for us
-			pack->routing.flags &= ~ROUTING_FLAG_FORWARD;
+			entry->flags &= ~ROUTING_FLAG_FORWARD;
 		} else {
 			// Bundle is also for somebody else
-			pack->routing.flags |= ROUTING_FLAG_FORWARD;
+			entry->flags |= ROUTING_FLAG_FORWARD;
 		}
 	} else {
 		LOG(LOGD_DTN, LOG_ROUTE, LOGL_DBG, "bundle is for forward");
 		// Bundle is not for us, only for forwarding
-		pack->routing.flags |= ROUTING_FLAG_FORWARD;
+		entry->flags |= ROUTING_FLAG_FORWARD;
 	}
+
+	// Now copy the necessary attributes from the bundle
+	entry->bundle_number = bundle_number;
+	get_attr(bundlemem, DEST_NODE, &entry->destination_node);
+	get_attr(bundlemem, SRC_NODE, &entry->source_node);
+	rimeaddr_copy(&entry->received_from_node, &bundle->msrc);
 
 	// Now that we have the bundle, we do not need the allocated memory anymore
 	bundle_dec(bundlemem);
@@ -516,9 +517,32 @@ int flood_new_bundle(uint16_t bundle_number)
 * \brief deletes bundle from list
 * \param bundle_num bundle nuber of the bundle
 */
-void flood_del_bundle(uint16_t bundle_num)
+void flood_del_bundle(uint16_t bundle_number)
 {
-	return;
+	struct routing_list_entry_t * n = NULL;
+	struct routing_entry_t * entry = NULL;
+
+	// Find the bundle in our internal storage
+	for( n = list_head(routing_list);
+		 n != NULL;
+		 n = list_item_next(n) ) {
+		entry = (struct routing_entry_t *) MMEM_PTR(&n->entry);
+
+		if( entry->bundle_number == bundle_number ) {
+			break;
+		}
+	}
+
+	if( entry == NULL ) {
+		LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "flood_del_bundle for bundle %d that we do not know", bundle_number);
+		return;
+	}
+
+	// Free up the memory for the struct
+	mmem_free(&n->entry);
+
+	// And also free the memory for the list entry
+	memb_free(&routing_mem, n);
 }
 
 /**
@@ -529,41 +553,25 @@ void flood_del_bundle(uint16_t bundle_num)
 */
 void flood_sent(struct route_t *route, int status, int num_tx)
 {
-	struct mmem * bundlemem;
-	struct bundle_t *bundle;
-	struct file_list_entry_t * pack = NULL;
+	struct routing_list_entry_t * n = NULL;
+	struct routing_entry_t * entry = NULL;
 
 	// Release transmit lock
 	flood_transmitting = 0;
 
-	// Here we check, if we have a local bundle
-	bundlemem = BUNDLE_STORAGE.read_bundle(route->bundle_num);
-	if( bundlemem == NULL ) {
-		LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "unable to read bundle %d", route->bundle_num);
-		return;
-	}
+	// Find the bundle in our internal storage
+	for( n = list_head(routing_list);
+		 n != NULL;
+		 n = list_item_next(n) ) {
+		entry = (struct routing_entry_t *) MMEM_PTR(&n->entry);
 
-	// Get our bundle struct and check the pointer
-	bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
-	if( bundle == NULL ) {
-		LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "invalid bundle pointer for bundle %d", route->bundle_num);
-		bundle_dec(bundlemem);
-		return;
-	}
-
-	// Now we have to find the appropriate Storage struct
-	for(pack = (struct file_list_entry_t *) BUNDLE_STORAGE.get_bundles();
-			pack != NULL;
-			pack = list_item_next(pack)) {
-
-		if( pack->bundle_num == route->bundle_num) {
+		if( entry->bundle_number == route->bundle_num ) {
 			break;
 		}
 	}
 
-	if( pack == NULL ) {
+	if( entry == NULL ) {
 		LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "Bundle not in storage yet");
-		bundle_dec(bundlemem);
 		return;
 	}
 
@@ -603,29 +611,29 @@ void flood_sent(struct route_t *route, int status, int num_tx)
 
 		flood_blacklist_delete(&route->dest);
 
-		rimeaddr_t dest_n = convert_eid_to_rime(bundle->dst_node);
+		rimeaddr_t dest_n = convert_eid_to_rime(entry->destination_node);
 		if (rimeaddr_cmp(&route->dest, &dest_n)) {
 			PRINTF("FLOOD: bundle sent to destination node\n");
 
 			// Unset the forward flag
-			pack->routing.flags &= ~ROUTING_FLAG_FORWARD;
+			entry->flags &= ~ROUTING_FLAG_FORWARD;
 			flood_check_keep_bundle(route->bundle_num);
 
 			break;
 		} else {
-			PRINTF("FLOOD: bundle for %u:%u delivered to %u:%u\n",dest_n.u8[0], dest_n.u8[1], route->dest.u8[0], route->dest.u8[1]);
+			PRINTF("FLOOD: bundle for %u:%u delivered to %u:%u\n", dest_n.u8[0], dest_n.u8[1], route->dest.u8[0], route->dest.u8[1]);
 		}
 
-		if (pack->routing.send_to < ROUTING_NEI_MEM) {
-			rimeaddr_copy(&pack->routing.dest[pack->routing.send_to], &route->dest);
-			pack->routing.send_to++;
-			PRINTF("FLOOD: bundle %u sent to %u nodes\n", route->bundle_num, pack->routing.send_to);
-	    } else if (pack->routing.send_to >= ROUTING_NEI_MEM) {
+		if (entry->send_to < ROUTING_NEI_MEM) {
+			rimeaddr_copy(&entry->neighbours[entry->send_to], &route->dest);
+			entry->send_to++;
+			PRINTF("FLOOD: bundle %u sent to %u nodes\n", route->bundle_num, entry->send_to);
+	    } else if (entry->send_to >= ROUTING_NEI_MEM) {
 	    	// Here we can delete the bundle from storage, because it will not be routed anyway
 			PRINTF("FLOOD: bundle sent to max number of nodes\n");
 
 			// Unset the forward flag
-			pack->routing.flags &= ~ROUTING_FLAG_FORWARD;
+			entry->flags &= ~ROUTING_FLAG_FORWARD;
 			flood_check_keep_bundle(route->bundle_num);
 		}
 
@@ -636,8 +644,6 @@ void flood_sent(struct route_t *route, int status, int num_tx)
 	    break;
 	}
 
-	bundle_dec(bundlemem);
-
 	// Tell the agent to call us again to resubmit bundles
 	flood_schedule_resubmission();
 }
@@ -647,28 +653,36 @@ void flood_sent(struct route_t *route, int status, int num_tx)
  * \param bundle_num Number of the bundle
  */
 void flood_locally_delivered(struct mmem * bundlemem) {
-	struct file_list_entry_t * pack = NULL;
+	struct routing_list_entry_t * n = NULL;
+	struct routing_entry_t * entry = NULL;
+	struct bundle_t * bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 
-	for(pack = (struct file_list_entry_t *) BUNDLE_STORAGE.get_bundles();
-			pack != NULL;
-			pack = list_item_next(pack)) {
+	if( bundle == NULL ) {
+		LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "flood_locally_delivered called with invalid pointer");
+		return;
+	}
 
-		/** FIXME: This is limited to r_storage and should be generalized */
-		if( pack->bundle == bundlemem ) {
+	// Find the bundle in our internal storage
+	for( n = (struct routing_list_entry_t *) list_head(routing_list);
+		 n != NULL;
+		 n = list_item_next(n) ) {
+		entry = (struct routing_entry_t *) MMEM_PTR(&n->entry);
+
+		if( entry->bundle_number == bundle->bundle_num ) {
 			break;
 		}
 	}
 
-	if( pack == NULL ) {
+	if( n == NULL ) {
 		LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "Bundle not in storage yet");
 		return;
 	}
 
 	// Unset the IN_DELIVERY flag
-	pack->routing.flags &= ~ROUTING_FLAG_IN_DELIVERY;
+	entry->flags &= ~ROUTING_FLAG_IN_DELIVERY;
 
 	// Unset the LOCAL flag
-	pack->routing.flags &= ~ROUTING_FLAG_LOCAL;
+	entry->flags &= ~ROUTING_FLAG_LOCAL;
 
 	// Unblock the receiving service
 	unblock_service(bundlemem);
@@ -677,7 +691,7 @@ void flood_locally_delivered(struct mmem * bundlemem) {
 	bundle_dec(bundlemem);
 
 	// Check remaining live of bundle
-	flood_check_keep_bundle(pack->bundle_num);
+	flood_check_keep_bundle(entry->bundle_number);
 }
 
 const struct routing_driver flood_route ={
