@@ -30,7 +30,6 @@
 #include "sdnv.h"
 #include "redundance.h"
 #include "dispatching.h"
-#include "forwarding.h"
 #include "routing.h"
 #include "dtn-network.h"
 #include "node-id.h"

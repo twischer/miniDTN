@@ -28,7 +28,6 @@
 #include <string.h>
 #include "dtn_config.h"
 #include "status-report.h"
-#include "forwarding.h"
 #include "profiling.h"
 #include "statistics.h"
 
