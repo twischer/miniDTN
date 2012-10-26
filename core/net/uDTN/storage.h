@@ -34,6 +34,11 @@
 #endif
 
 /**
+ * How do we call the bundle list representation file (if applicable)
+ */
+#define BUNDLE_STORAGE_FILE_NAME "list_file"
+
+/**
  * Representation of a bundle as returned by the "get_bundles" call to the storage module
  */
 struct storage_entry_t {

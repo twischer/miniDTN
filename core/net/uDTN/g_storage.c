@@ -16,7 +16,6 @@
 #include "contiki.h"
 #include "storage.h"
 #include "cfs/cfs.h"
-#include "g_storage.h"
 #include "bundle.h"
 #include "sdnv.h"
 #include "dtn_config.h"
@@ -37,370 +36,499 @@
 #define PRINTF(...)
 #endif
 
-#define R_DEBUG 0
-#if R_DEBUG
-#include <stdio.h>
-#define R_PRINTF(...) printf(__VA_ARGS__)
-#else
-#define R_PRINTF(...)
-#endif
-struct file_list_entry_t file_list[BUNDLE_STORAGE_SIZE];
-char *filename = BUNDLE_STARAGE_FILE_NAME; 
-int fd_write, fd_read;
-static uint16_t bundles_in_storage;
-static struct ctimer g_store_timer;
-static struct bundle_t bundle_str;
-struct memb *saved_as_mem;
+/**
+ * Internal representation of a bundle
+ *
+ * The layout is quite fixed - the next pointer and the bundle_num have to go first because this struct
+ * has to be compatible with the struct storage_entry_t in storage.h!
+ */
+struct file_list_entry_t {
+	/** pointer to the next list element */
+	struct file_list_entry_t * next;
 
-/* XXX FIXME: Not ported yet! */
+	uint16_t bundle_num;
+
+	uint32_t rec_time;
+	uint32_t lifetime;
+
+	uint32_t frag_offs;
+	uint32_t tstamp;
+	uint32_t tstamp_seq;
+	uint32_t src_node;
+
+	uint16_t file_size;
+};
+
+// List and memory blocks for the bundles
+LIST(bundle_list);
+MEMB(bundle_mem, struct file_list_entry_t, BUNDLE_STORAGE_SIZE);
+
+// global, internal variables
+/** Counts the number of bundles in storage */
+static uint16_t bundles_in_storage;
+
+/** Is used to periodically traverse all bundles and delete those that are expired */
+static struct ctimer g_store_timer;
+
+/** Counter to assign unique bundle numbers to each bundle */
+static uint16_t bundle_number = 0;
+
+/** Flag to indicate whether the bundle list has changed since last writing the list file */
+static uint8_t bundle_list_changed = 0;
+
+/**
+ * "Internal" functions
+ */
+void g_store_prune();
+uint16_t del_bundle(uint16_t bundle_number, uint8_t reason);
+struct mmem * read_bundle(uint16_t bundle_number);
+void g_store_read_list();
 
 /**
 * /brief called by agent at startup
 */
 void init(void)
 {
-	PRINTF("init g_storage\n");
-	fd_read = cfs_open(filename, CFS_READ);
-	bundles_in_storage=0;
-	MEMB(saved_as_memb,uint16_t , 2);
-	saved_as_mem=&saved_as_memb;
-	memb_init(saved_as_mem);
-	if(fd_read!=-1) {
-		PRINTF("file opened\n");
-		cfs_read(fd_read,file_list,29*BUNDLE_STORAGE_SIZE);
-		cfs_close(fd_read);
-		PRINTF("file closed\n");
-		uint16_t i;
-		for (i=0; i<BUNDLE_STORAGE_SIZE; i++){
-			PRINTF("slot %u state is %u\n", i, file_list[i].file_size);
-			if(file_list[i].file_size >0 ){
-				bundles_in_storage++;
-			}
-		}
-	}else{
-		PRINTF("no file found\n");
-		uint16_t i;
-	
-		for(i=0; i < BUNDLE_STORAGE_SIZE; i++){
-			file_list[i].bundle_num=i;
-			file_list[i].file_size=0;
-			file_list[i].lifetime=0;
-			PRINTF("deleting old bundles\n");
-			del_bundle(i,4);	
-		}
-		PRINTF("write new list-file\n");
-		fd_write = cfs_open(filename, CFS_WRITE);
-		PRINTF("file opened\n");
-		cfs_write(fd_write, file_list, sizeof(file_list));
-		PRINTF("write inro new file\n");
-		cfs_close(fd_write);
-		PRINTF("file closed\n");
-	}
-	ctimer_set(&g_store_timer,CLOCK_SECOND*5,g_store_reduce_lifetime,NULL);
-	PRINTF("STORAGE: schedule ctimer\n");
+	// Initialize the bundle list
+	list_init(bundle_list);
+
+	// Initialize the bundle memory block
+	memb_init(&bundle_mem);
+
+	bundles_in_storage = 0;
+	bundle_number = 0;
+
+	// Try to restore our bundle list from the file system
+	g_store_read_list();
+
+	// Set the timer to regularly prune expired bundles
+	ctimer_set(&g_store_timer, CLOCK_SECOND*5, g_store_prune, NULL);
 }
+
 /**
-* \brief reduces the lifetime of all stored bundles
-*/
-void g_store_reduce_lifetime()
+ * \brief Store the current bundle list into a file
+ */
+void g_store_save_list()
 {
-	uint16_t i=0;
-	for(i=0; i < BUNDLE_STORAGE_SIZE;i++) {
-		if (file_list[i].file_size >0){
+	int fd_write;
+	int n;
+	struct file_list_entry_t * entry = NULL;
 
-			if( file_list[i].lifetime < (uint32_t)6){
-				PRINTF("STORAGE: bundle lifetime expired of bundle %u\n",i);
-				del_bundle(i,1);
-			}else{
-				file_list[i].lifetime-=5;
-				PRINTF("STORAGE: remaining lifefime of bundle %u : %lu\n",i,file_list[i].lifetime);
-			}
+	// Reserve memory for our list
+	cfs_coffee_reserve(BUNDLE_STORAGE_FILE_NAME, sizeof(struct file_list_entry_t) * bundles_in_storage);
+
+	// Open the file for writing
+	fd_write = cfs_open(BUNDLE_STORAGE_FILE_NAME, CFS_WRITE);
+	if( fd_write == -1 ) {
+		// Unable to open file, abort here
+		printf("STORAGE: unable to open file %s, cannot save bundle list\n", BUNDLE_STORAGE_FILE_NAME);
+		return;
+	}
+
+	// Delete expired bundles from storage
+	for(entry = list_head(bundle_list);
+			entry != NULL;
+			entry = list_item_next(entry)) {
+		n = cfs_write(fd_write, entry, sizeof(struct file_list_entry_t));
+
+		if( n != sizeof(struct file_list_entry_t) ) {
+			printf("STORAGE: unable to append %u bytes to bundle list file, aborting\n", sizeof(struct file_list_entry_t));
+			cfs_close(fd_write);
+			cfs_remove(BUNDLE_STORAGE_FILE_NAME);
+			return;
 		}
 	}
-	ctimer_restart(&g_store_timer);
-	
+
+	cfs_close(fd_write);
 }
 
+/**
+ * Restore the bundle list from a file
+ */
+void g_store_read_list()
+{
+	int fd_read;
+	int n;
+	struct file_list_entry_t * entry = NULL;
+	int eof = 0;
+
+	// Open the file for reading
+	fd_read = cfs_open(BUNDLE_STORAGE_FILE_NAME, CFS_READ);
+	if( fd_read == -1 ) {
+		// Unable to open file, abort here
+		PRINTF("STORAGE: unable to open file %s, cannot read bundle list\n", BUNDLE_STORAGE_FILE_NAME);
+		return;
+	}
+
+	while( !eof ) {
+		entry = memb_alloc(&bundle_mem);
+		if( entry == NULL ) {
+			printf("STORAGE: unable to allocate struct, cannot restore bundle list\n");
+			cfs_close(fd_read);
+			return;
+		}
+
+		// Read the struct
+		n = cfs_read(fd_read, entry, sizeof(struct file_list_entry_t));
+
+		if( n == 0 ) {
+			// End of file reached
+			memb_free(&bundle_mem, entry);
+			break;
+		}
+
+		if( n != sizeof(struct file_list_entry_t) ) {
+			printf("STORAGE: unable to read %u bytes from bundle list file\n", sizeof(struct file_list_entry_t));
+			cfs_close(fd_read);
+			memb_free(&bundle_mem, entry);
+			return;
+		}
+
+		// Add bundle to the list
+		list_add(bundle_list, entry);
+
+		bundles_in_storage ++;
+	}
+
+	cfs_close(fd_read);
+}
+
+/**
+* \brief deletes expired bundles from storage
+*/
+void g_store_prune()
+{
+	uint32_t elapsed_time;
+	struct file_list_entry_t * entry = NULL;
+
+	// Delete expired bundles from storage
+	for(entry = list_head(bundle_list);
+			entry != NULL;
+			entry = list_item_next(entry)) {
+		elapsed_time = clock_seconds() - entry->rec_time;
+
+		if( entry->lifetime < elapsed_time ) {
+			PRINTF("STORAGE: bundle lifetime expired of bundle %u\n", entry->bundle_num);
+			del_bundle(entry->bundle_num, REASON_LIFETIME_EXPIRED);
+		}
+	}
+
+	// In case the bundle list has changed, write the changes to the bundle list file
+	if( bundle_list_changed ) {
+		// Remove the old list file
+		cfs_remove(BUNDLE_STORAGE_FILE_NAME);
+
+		// And create a new one
+		g_store_save_list();
+
+		bundle_list_changed = 0;
+	}
+
+	// Restart the timer
+	ctimer_restart(&g_store_timer);
+}
+
+/**
+ * \brief Sets the storage to its initial state
+ */
 void reinit(void)
 {
-	uint16_t i;
-	cfs_remove(filename);
-	bundles_in_storage=0;
-	for(i=0; i < BUNDLE_STORAGE_SIZE; i++){
-		file_list[i].bundle_num=i;
-		file_list[i].file_size=0;
-		file_list[i].lifetime=0;
-		del_bundle(i,4);
-		fd_write = cfs_open(filename, CFS_WRITE);
-		cfs_write(fd_write, file_list, sizeof(file_list));
-		cfs_close(fd_write);
-	}
+	// Remove all bundles from storage
+	while(bundles_in_storage > 0) {
+		struct file_list_entry_t * entry = list_head(bundle_list);
 
+		if( entry == NULL ) {
+			// We do not have bundles in storage, stop deleting them
+			break;
+		}
+
+		del_bundle(entry->bundle_num, REASON_DEPLETED_STORAGE);
+	}
+	
+	// Delete the bundle list file
+	cfs_remove(BUNDLE_STORAGE_FILE_NAME);
+
+	// And reset our counters
+	bundles_in_storage = 0;
+	bundle_number = 0;
 }
+
 /**
 * \brief saves a bundle in storage
 * \param bundle pointer to the bundle
 * \return the bundle number given to the bundle or <0 on errors
 */
-int32_t save_bundle(struct mmem *bundlemem)
+int32_t save_bundle(struct mmem * bundlemem)
 {
-	uint16_t i=0;
-	int32_t free=-1;
-	uint8_t *tmp=bundle->mem.ptr;
-	tmp=tmp+bundle->offset_tab[SRC_NODE][OFFSET];
-	uint32_t src;
-	sdnv_decode(tmp ,bundle->offset_tab[SRC_NODE][STATE], &src);
-	tmp=bundle->mem.ptr+bundle->offset_tab[TIME_STAMP][OFFSET];
-	uint32_t time_stamp;
-	sdnv_decode(tmp, bundle->offset_tab[TIME_STAMP][STATE], &time_stamp);
-	tmp=bundle->mem.ptr+bundle->offset_tab[TIME_STAMP_SEQ_NR][OFFSET];
-	uint32_t time_stamp_seq;
-	sdnv_decode(tmp, bundle->offset_tab[TIME_STAMP_SEQ_NR][STATE], &time_stamp_seq);
-	tmp=bundle->mem.ptr+bundle->offset_tab[FRAG_OFFSET][OFFSET];
-	uint32_t fraq_offset;
-	sdnv_decode(tmp, bundle->offset_tab[FRAG_OFFSET][STATE], &fraq_offset);
+	struct bundle_t * bundle = NULL;
+	struct file_list_entry_t * entry = NULL;
+	char bundle_filename[8];
+	int fd_write;
+	int n;
 
-#if DEBUG
-	for (i=0; i<BUNDLE_STORAGE_SIZE; i++){
-		PRINTF("STORAGE: slot %u state is %u\n", i, file_list[i].file_size);
-	}
-	i=0;
-#endif
-	
-	while ( i < BUNDLE_STORAGE_SIZE) {
-		if (free == -1 && file_list[i].file_size == 0){
-			free=(int32_t)i;
-			PRINTF("STORAGE: %u is a free slot\n",i);
-		} else if ( time_stamp_seq == file_list[i].time_stamp_seq && 
-		    time_stamp == file_list[i].time_stamp &&
-		    src == file_list[i].src &&
-		    fraq_offset == file_list[i].fraq_offset) {  // is bundle in storage?
-		    	PRINTF("STORAGE: %u is the same bundle\n",i);
-			return (int32_t)i;
-		}
-		i++;
-	}
-	if(free == -1){
-		uint16_t index=0;
-		uint32_t min_lifetime=-1;
-		int32_t delet=-1;
-
-		while ( index < BUNDLE_STORAGE_SIZE) {
-			if (file_list[index].file_size>0 && file_list[index].lifetime < min_lifetime){
-				delet=(int32_t) index;
-				min_lifetime=file_list[index].lifetime;
-			}
-			index++;
-		}
-		if (delet !=-1){
-			PRINTF("STORAGE: del %ld\n",delet);
-			
-			PRINTF("STORAGE: bundle->mem.ptr %p (%p + %p)\n", bundle->mem.ptr, bundle, &bundle->mem );
-			if(!del_bundle(delet,4)){
-				return -1;
-			}
-			PRINTF("STORAGE: bundle->mem.ptr %p (%p + %p)\n", bundle->mem.ptr, bundle, &bundle->mem);
-			free=delet;
-		}
-	}
-	i=(uint16_t)free;
-	PRINTF(" STORAGE: bundle will be safed in solt %u, size of bundle is %u\n",i,bundle->size);	
-	file_list[i].file_size = bundle->size; 
-		#if DEBUG
-		for (i=0; i<BUNDLE_STORAGE_SIZE; i++){
-			PRINTF("STORAGE: b slot %u state is %u\n", i, file_list[i].file_size);
-		}
-		i=0;
-		#endif
-	i=(uint16_t)free;
-	tmp=bundle->mem.ptr+bundle->offset_tab[LIFE_TIME][OFFSET];
-	file_list[i].lifetime=bundle->lifetime;
-	char b_file[7];
-	sprintf(b_file,"%u.b",file_list[i].bundle_num);
-	PRINTF("STORAGE: write filename: %s\n", b_file);
-	cfs_coffee_reserve(b_file,bundle->size);
-	fd_write = cfs_open(b_file, CFS_WRITE);
-	int n=0;
-	PRINTF("STORAGE: write filename: %s opened\n", b_file);
-#if R_DEBUG
-	R_PRINTF("STORAGE: bundle->mem.ptr:%u  ",i);
-	uint8_t j;
-	for(j=0;j<bundle->size;j++){
-		R_PRINTF("%u:",*((uint8_t*)bundle->mem.ptr+j));
-	}
-	R_PRINTF("\n");
-#endif
-	if(fd_write != -1) {
-		n = cfs_write(fd_write, bundle->mem.ptr, bundle->size);
-		cfs_close(fd_write);
-		bundles_in_storage++;
-	}else{
-		PRINTF("STORAGE: write failed\n");
+	if( bundlemem == NULL ) {
+		printf("STORAGE: save_bundle with invalid pointer %p\n", bundlemem);
 		return -1;
 	}
-	if (n != bundle->size){
-		PRINTF("STORAGE: write failed\n");
+
+	// Get the pointer to our bundle
+	bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
+
+	if( bundle == NULL ) {
+		printf("STORAGE: save_bundle with invalid MMEM structure\n");
 		return -1;
 	}
-	file_list[i].time_stamp_seq = time_stamp_seq;
-	file_list[i].time_stamp = time_stamp;
-	file_list[i].src = src ;
-	file_list[i].fraq_offset = fraq_offset;
-	file_list[i].rec_time= bundle->rec_time;
-	cfs_remove(filename);
-	fd_write = cfs_open(filename, CFS_WRITE);
-	if(fd_write != -1) {
-		cfs_write(fd_write, file_list, sizeof(file_list));
-		cfs_close(fd_write);
-	}else{
-		PRINTF("STORAGE: write failed\n");
-		return -2;
+
+	// Look for duplicates in the storage
+	for(entry = list_head(bundle_list);
+		entry != NULL;
+		entry = list_item_next(entry)) {
+		if ( bundle->tstamp_seq == entry->tstamp_seq &&
+		    bundle->tstamp == entry->tstamp &&
+		    bundle->src_node == entry->src_node &&
+		    bundle->frag_offs == entry->frag_offs) {
+
+			PRINTF("STORAGE: %u is the same bundle\n", entry->bundle_num);
+			return (int32_t) entry->bundle_num;
+		}
 	}
-	R_PRINTF("STORAGE: bundle_num %u\n",file_list[i].bundle_num);
-	memcpy(file_list[i].msrc.u8,bundle->msrc.u8,sizeof(file_list[i].msrc.u8));
-	return (int32_t)file_list[i].bundle_num;
+
+	// Allocate some memory for our bundle
+	entry = memb_alloc(&bundle_mem);
+	if( entry == NULL ) {
+		printf("STORAGE: unable to allocate struct, cannot store bundle\n");
+		return -1;
+	}
+
+	// Clear the memory area
+	memset(entry, 0, sizeof(struct file_list_entry_t));
+
+	// Copy necessary values from the bundle
+	entry->tstamp_seq = bundle->tstamp_seq;
+	entry->tstamp = bundle->tstamp;
+	entry->src_node = bundle->src_node;
+	entry->frag_offs = bundle->frag_offs;
+	entry->rec_time = bundle->rec_time;
+	entry->lifetime = bundle->lifetime;
+	entry->file_size = bundlemem->size;
+
+	// Assign a unique bundle number
+	bundle->bundle_num = bundle_number++;
+	entry->bundle_num = bundle->bundle_num;
+
+	// determine the filename
+	sprintf(bundle_filename, "%u.b", entry->bundle_num);
+
+	// Store the bundle into the file
+	cfs_coffee_reserve(bundle_filename, bundlemem->size);
+
+	// Open the output file
+	fd_write = cfs_open(bundle_filename, CFS_WRITE);
+	if( fd_write == -1 ) {
+		// Unable to open file, abort here
+		printf("STORAGE: unable to open file %s, cannot save bundle\n", bundle_filename);
+		memb_free(&bundle_mem, entry);
+		bundle_dec(bundlemem);
+		return -1;
+	}
+
+	// Write our complete bundle
+	n = cfs_write(fd_write, bundle, bundlemem->size);
+	if( n != bundlemem->size ) {
+		printf("STORAGE: unable to write %u bytes to file %s, aborting\n", bundlemem->size, bundle_filename);
+		cfs_close(fd_write);
+		cfs_remove(bundle_filename);
+		memb_free(&bundle_mem, entry);
+		bundle_dec(bundlemem);
+		return -1;
+	}
+
+	// And close the file
+	cfs_close(fd_write);
+
+	PRINTF("STORAGE: New Bundle %u (%u), Src %lu, Dest %lu, Seq %lu\n", bundle->bundle_num, entry->bundle_num, bundle->src_node, bundle->dst_node, bundle->tstamp_seq);
+
+	// Add bundle to the list
+	list_add(bundle_list, entry);
+
+	// Mark the bundle list as changed
+	bundle_list_changed = 1;
+	bundles_in_storage++;
+
+	// Now we have to free the incoming bundle slot
+	bundle_dec(bundlemem);
+
+	// Now we have to send an event to our daemon
+	process_post(&agent_process, dtn_bundle_in_storage_event, &entry->bundle_num);
+
+	return (int32_t) entry->bundle_num;
 }
 
 /**
-* \brief delets a bundle form storage
+* \brief deletes a bundle form storage
 * \param bundle_num bundle number to be deleted
 * \param reason reason code
-* \return 1 on succes or 0 on error
+* \return 1 on success or 0 on error
 */
-uint16_t del_bundle(uint16_t bundle_num,uint8_t reason)
+uint16_t del_bundle(uint16_t bundle_number, uint8_t reason)
 {
-	R_PRINTF("STORAGE: delete bundle %u\n",bundle_num);
-	if(read_bundle(bundle_num,&bundle_str)){
-#if DEBUG
-		uint8_t i;
-		printf("STORAGE: ");
-		for (i=0;i<bundle_str.mem.size;i++){
-			printf("%x:",*((uint8_t*) bundle_str.mem.ptr+ i));
+	struct bundle_t * bundle = NULL;
+	struct file_list_entry_t * entry = NULL;
+	struct mmem * bundlemem = NULL;
+
+	PRINTF("STORAGE: Deleting Bundle %u with reason %u\n", bundle_number, reason);
+
+	// Look for the bundle we are talking about
+	for(entry = list_head(bundle_list);
+		entry != NULL;
+		entry = list_item_next(entry)) {
+
+		if( entry->bundle_num == bundle_number ) {
+			break;
 		}
-		printf("\n");
-#endif
-		bundle_str.del_reason=reason;
-		if( ((bundle_str.flags & 8 ) || (bundle_str.flags & 0x40000)) &&(reason !=0xff )){
-			uint32_t src;
-			sdnv_decode(bundle_str.mem.ptr+ bundle_str.offset_tab[SRC_NODE][OFFSET],bundle_str.offset_tab[SRC_NODE][STATE],&src);
-			if (src != dtn_node_id){
-				STATUS_REPORT.send(&bundle_str,16,bundle_str.del_reason);
+	}
+
+	if( entry == NULL ) {
+		printf("STORAGE: Could not find bundle %u on del_bundle\n", bundle_number);
+		return 0;
+	}
+
+	// Figure out the source to send status report
+	if( reason != REASON_DELIVERED ) {
+		// REASON_DELIVERED means "bundle delivered" and does not need a report
+		// FIXME: really?
+
+		bundlemem = read_bundle(bundle_number);
+		if( bundlemem == NULL ) {
+			printf("STORAGE: unable to read back bundle %u\n", bundle_number);
+			return 0;
+		}
+
+		bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
+		bundle->del_reason = reason;
+
+		if( (bundle->flags & 8 ) || (bundle->flags & 0x40000) ){
+			if (bundle->src_node != dtn_node_id){
+				STATUS_REPORT.send(bundle, 16, bundle->del_reason);
 			}
 		}
 
+		bundle_dec(bundlemem);
 	}
-	delete_bundle(&bundle_str);
 
-	char b_file[7];
-	sprintf(b_file,"%u.b",bundle_num);
-	cfs_remove(b_file);
-	if (bundles_in_storage >0){
-		bundles_in_storage--;
-	}
-	file_list[bundle_num].file_size=0;
-	file_list[bundle_num].src=0;
-	//save file list	
-	cfs_remove(filename);
-	fd_write = cfs_open(filename, CFS_WRITE);
-	if(fd_write != -1) {
-		cfs_write(fd_write, file_list, sizeof(file_list));
-		cfs_close(fd_write);
-	}else{
-		return 0;
-	}
-	
-	
-	agent_del_bundle(bundle_num);
+	// Remove the bundle from the list
+	list_remove(bundle_list, entry);
+
+	// Mark the bundle list as changed
+	bundle_list_changed = 1;
+	bundles_in_storage--;
+
+	// Notified the agent, that a bundle has been deleted
+	agent_del_bundle(bundle_number);
+
+	// Free the storage struct
+	memb_free(&bundle_mem, entry);
+
 	return 1;
 }
 
 /**
 * \brief reads a bundle from storage
-* \param bundle_num bundle nuber to read
-* \param bundle empty bundle struct, bundle will be accessable here
-* \return 1 on succes or 0 on error
+* \param bundle_num bundle number to read
+* \return 1 on success or 0 on error
 */
-uint16_t read_bundle(uint16_t bundle_num,struct bundle_t *bundle)
+struct mmem * read_bundle(uint16_t bundle_number)
 {
-	R_PRINTF("STORAGE: read %u\n",bundle_num);
-	if( file_list[bundle_num].file_size <=0) {
+	struct bundle_t * bundle = NULL;
+	struct file_list_entry_t * entry = NULL;
+	struct mmem * bundlemem = NULL;
+	char bundle_filename[8];
+	int fd_read;
+	int n;
+
+	PRINTF("STORAGE: Reading Bundle %u\n", bundle_number);
+
+	// Look for the bundle we are talking about
+	for(entry = list_head(bundle_list);
+		entry != NULL;
+		entry = list_item_next(entry)) {
+
+		if( entry->bundle_num == bundle_number ) {
+			break;
+		}
+	}
+
+	if( entry == NULL ) {
+		PRINTF("STORAGE: Could not find bundle %u on read_bundle\n", bundle_number);
 		return 0;
 	}
-	char b_file[7];
-	sprintf(b_file,"%u.b",bundle_num);
-	fd_read = cfs_open(b_file, CFS_READ);
-	if(fd_read != -1) {
-		R_PRINTF("file-size %u\n", file_list[bundle_num].file_size);
-	
-		
-		if(!mmem_alloc(&bundle->mem,file_list[bundle_num].file_size)){
-			 R_PRINTF("STORAGE: ERROR  memory\n");
-			 return 0;
-		}
-		memset(bundle->mem.ptr,0,bundle->mem.size);
-		R_PRINTF("STORAGE: memory\n");
-		if (!cfs_read(fd_read, bundle->mem.ptr, file_list[bundle_num].file_size)){
-			R_PRINTF("STORAGE: nothing \n");
-		}
-		cfs_close(fd_read);
 
-#if R_DEBUG
-		uint8_t i;
-		R_PRINTF(" STORAGE 1: ");
-		for (i=0; i<bundle->mem.size; i++){
-			R_PRINTF("%x:",*((uint8_t *)bundle->mem.ptr+i));
-		}
-		R_PRINTF("\n");
-#endif
-#if DEBUG
-		uint8_t i;
-		PRINTF("STORAGE: bundle->block: ");
-		for (i = 0; i<file_list[bundle_num].file_size; i++){
-			PRINTF("%u:",*(bundle->block+i));
-		}
-		PRINTF("\n");
-#endif
-		if( !recover_bundel(bundle, MMEM_PTR(&bundle->mem),(int) file_list[bundle_num].file_size)){
-			R_PRINTF("\n\n recover Error\n\n");
-			return 0;
-		}
-
-#if DEBUG
-		for (i = 0; i<17; i++){
-			PRINTF("STORAGE: val in [%u]; %u ,%u\n",i,bundle->offset_tab[i][0], bundle->offset_tab[i][1]);
-		}
-#endif
-		bundle->rec_time=file_list[bundle_num].rec_time;
-		bundle->custody = file_list[bundle_num].custody;
-		PRINTF("STORAGE: first byte in bundel %u\n",*((uint8_t*)bundle->mem.ptr));
-		bundle->lifetime=file_list[bundle_num].lifetime;
-		memcpy(bundle->msrc.u8,file_list[bundle_num].msrc.u8,sizeof(bundle->msrc.u8));
-		return file_list[bundle_num].file_size;
-	}else{
-		R_PRINTF("STORAGE: fd_read = -1\n");
+	bundlemem = create_bundle();
+	if( bundlemem == NULL ) {
+		printf("STORAGE: cannot allocate memory for bundle %u\n", bundle_number);
+		return NULL;
 	}
-	return 0;
+
+	/* FIXME: Error case */
+	mmem_realloc(bundlemem, entry->file_size);
+
+	// Assign a unique bundle number
+	bundle->bundle_num = bundle_number++;
+	entry->bundle_num = bundle->bundle_num;
+
+	// determine the filename
+	sprintf(bundle_filename, "%u.b", entry->bundle_num);
+
+	// Store the bundle into the file
+	cfs_coffee_reserve(bundle_filename, bundlemem->size);
+
+	// Open the output file
+	fd_read = cfs_open(bundle_filename, CFS_READ);
+	if( fd_read == -1 ) {
+		// Unable to open file, abort here
+		printf("STORAGE: unable to open file %s, cannot read bundle\n", bundle_filename);
+		bundle_dec(bundlemem);
+		return NULL;
+	}
+
+	// Read our complete bundle
+	n = cfs_read(fd_read, MMEM_PTR(bundlemem), bundlemem->size);
+	if( n != bundlemem->size ) {
+		printf("STORAGE: unable to read %u bytes from file %s, aborting\n", bundlemem->size, bundle_filename);
+		bundle_dec(bundlemem);
+		cfs_close(fd_read);
+		return NULL;
+	}
+
+	// And close the file
+	cfs_close(fd_read);
+	
+	return bundlemem;
 }
+
 /**
 * \brief checks if there is space for a bundle
-* \param bundle pointer to a bundel struct (not used here)
-* \return number of free solts
+* \param bundle pointer to a bundle struct (not used here)
+* \return number of free slots
 */
-uint16_t free_space(struct bundle_t *bundle)
+uint16_t free_space(struct mmem * bundlemem)
 {
-	uint16_t free=0, i;
-	for (i =0; i< BUNDLE_STORAGE_SIZE; i++){
-		if(file_list[i].file_size == 0){
-			free++;
-		}
-	}
-	return free;
+	return BUNDLE_STORAGE_SIZE - bundles_in_storage;
 }
+
 /**
 * \returns the number of saved bundles
 */
 uint16_t get_g_bundel_num(void){
 	return bundles_in_storage;
+}
+
+/**
+ * \returns pointer to first bundle list entry
+ */
+struct storage_entry_t * get_bundles(void)
+{
+	return (struct storage_entry_t *) list_head(bundle_list);
 }
 
 const struct storage_driver g_storage = {
@@ -412,6 +540,7 @@ const struct storage_driver g_storage = {
 	read_bundle,
 	free_space,
 	get_g_bundel_num,
+	get_bundles,
 };
 /** @} */
 /** @} */
