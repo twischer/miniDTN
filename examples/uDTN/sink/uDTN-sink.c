@@ -71,13 +71,12 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 {
 	static struct registration_api reg;
 	static struct etimer timer;
-	static struct etimer delay;
 	static uint16_t bundles_recv = 0;
 	static uint16_t bundles_error = 0;
 	static uint32_t time_start, time_stop;
 	static uint8_t userdata[2];
 	uint32_t tmp;
-	uint32_t seqno;
+	static uint32_t seqno;
 	clock_time_t now;
 	unsigned short now_fine;
 	struct mmem * bundle_incoming;
@@ -134,7 +133,6 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 
 		/* If the etimer didn't expire we're getting a submit_data_to_application_event */
 		bundle_incoming = (struct mmem *) data;
-		struct bundle_t * bundle = (struct bundle_t *) MMEM_PTR(bundle_incoming);
 
 		leds_toggle(1);
 
