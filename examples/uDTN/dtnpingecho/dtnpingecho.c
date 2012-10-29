@@ -56,7 +56,6 @@ static struct registration_api reg;
 PROCESS_THREAD(dtnping_process, ev, data)
 {
 	static struct etimer timer;
-	static struct bundle_t bun;
 	static uint32_t bundles_recv = 0;
 	uint32_t tmp;
 
@@ -65,11 +64,15 @@ PROCESS_THREAD(dtnping_process, ev, data)
 	uint32_t incoming_timestamp;
 	uint32_t incoming_lifetime;
 
+	struct mmem * bundlemem = NULL;
+	struct bundle_t * bundle = NULL;
+	struct bundle_block_t * block = NULL;
+
 	PROCESS_BEGIN();
 
 	agent_init();
 
-	etimer_set(&timer,  CLOCK_SECOND*1);
+	etimer_set(&timer, CLOCK_SECOND*1);
 	PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&timer));
 
 	reg.status = 1;
@@ -81,71 +84,70 @@ PROCESS_THREAD(dtnping_process, ev, data)
 		PROCESS_WAIT_EVENT_UNTIL(ev == submit_data_to_application_event);
 
 		// Reconstruct the bundle struct from the event
-		struct bundle_t * bundle;
-		struct bundle_block_t *block;
-		bundle = (struct bundle_t *) data;
+		bundlemem = (struct mmem *) data;
+		bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 
 		// preserve the payload to send it back
 		uint8_t payload_buffer[64];
 		uint8_t payload_length;
 
-		block = get_block(bundle);
+		block = get_payload_block(bundlemem);
 		payload_length = block->block_size;
 		if (payload_length > 64) {
 			printf("Payload too big, clamping to maximum size.\n");
 		}
-		memcpy(payload_buffer, MMEM_PTR(&block->payload), payload_length);
+		memcpy(payload_buffer, block->payload, payload_length);
 
 		// Extract the source information to send a reply back
-		get_attr(bundle, SRC_NODE, &source_node);
-		get_attr(bundle, SRC_SERV, &source_service);
+		get_attr(bundlemem, SRC_NODE, &source_node);
+		get_attr(bundlemem, SRC_SERV, &source_service);
 
 		// Extract timestamp and lifetime from incoming bundle
-		get_attr(bundle, TIME_STAMP, &incoming_timestamp);
-		get_attr(bundle, LIFE_TIME, &incoming_lifetime);
+		get_attr(bundlemem, TIME_STAMP, &incoming_timestamp);
+		get_attr(bundlemem, LIFE_TIME, &incoming_lifetime);
 
-		// Delete the incoming bundle
-		delete_bundle(bundle);
+		// Tell the agent, that have processed the bundle
+		process_post(&agent_process, dtn_processing_finished, bundlemem);
 
 		bundles_recv++;
 		printf("PING %lu received\n", bundles_recv);
 
 		// Create the reply bundle
-		create_bundle(&bun);
+		bundlemem = create_bundle();
+		if (!bundlemem) {
+			printf("create_bundle failed\n");
+			continue;
+		}
 
 		// Set the reply EID to the incoming bundle information
-		set_attr(&bun, DEST_NODE, &source_node);
-		set_attr(&bun, DEST_SERV, &source_service);
+		set_attr(bundlemem, DEST_NODE, &source_node);
+		set_attr(bundlemem, DEST_SERV, &source_service);
 
 		// Make us the sender, the custodian and the report to
 		tmp = dtn_node_id;
-		set_attr(&bun, SRC_NODE, &tmp);
-		set_attr(&bun, CUST_NODE, &tmp);
-		set_attr(&bun, CUST_SERV, &tmp);
-		set_attr(&bun, REP_NODE, &tmp);
-		set_attr(&bun, REP_SERV, &tmp);
+		set_attr(bundlemem, SRC_NODE, &tmp);
+		set_attr(bundlemem, CUST_NODE, &tmp);
+		set_attr(bundlemem, CUST_SERV, &tmp);
+		set_attr(bundlemem, REP_NODE, &tmp);
+		set_attr(bundlemem, REP_SERV, &tmp);
 
 		// Set our service to 11 [DTN_PING_ENDPOINT] (IBR-DTN expects that)
 		tmp = DTN_PING_ENDPOINT;
-		set_attr(&bun, SRC_SERV, &tmp);
+		set_attr(bundlemem, SRC_SERV, &tmp);
 
 		// Now set the flags
-		tmp = 0x10; // Endpoint is Singleton
-		set_attr(&bun, FLAGS, &tmp);
-
-		// Set the sequence number to the number of bundles sent
-		set_attr(&bun, TIME_STAMP_SEQ_NR, &bundles_recv);
+		tmp = BUNDLE_FLAG_SINGLETON;
+		set_attr(bundlemem, FLAGS, &tmp);
 
 		// Set the same lifetime and timestamp as the incoming bundle
-		set_attr(&bun, LIFE_TIME, &incoming_lifetime);
-		set_attr(&bun, TIME_STAMP, &incoming_timestamp);
+		set_attr(bundlemem, LIFE_TIME, &incoming_lifetime);
+		set_attr(bundlemem, TIME_STAMP, &incoming_timestamp);
 
 		// Copy payload from incoming bundle
-		// Flag 0x08 is last_block Flag, this is handled by add_block
-		add_block(&bun, 1, 0, payload_buffer, payload_length);
+		add_block(bundlemem, 1, 0, payload_buffer, payload_length);
 
 		// And submit the bundle to the agent
-		process_post(&agent_process, dtn_send_bundle_event, (void *) &bun);
+		process_post(&agent_process, dtn_send_bundle_event, (void *) bundlemem);
 	}
 
 	PROCESS_END();
