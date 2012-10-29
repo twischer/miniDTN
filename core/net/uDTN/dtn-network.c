@@ -199,11 +199,29 @@ int dtn_network_send(struct mmem * bundlemem, struct route_t * route)
 	return 1;
 }
 
-int dtn_send_discover(uint8_t *payload,uint8_t len, rimeaddr_t *dst)
+int dtn_send_discover(uint8_t *payload, uint8_t len, rimeaddr_t *dst)
 {
-	packetbuf_ext_copyfrom(payload, len,0x08,0x80);
+	uint8_t * buffer = NULL;
+
+	/* We're not going to use packetbuf_copyfrom here but instead assemble the packet
+	 * in the buffer ourself */
+	packetbuf_clear();
+
+	buffer = packetbuf_dataptr();
+
+	// Discovery Prefix
+	buffer[0] = 0x08;
+	buffer[1] = 0x80;
+
+	// Copy the discovery message and set the length
+	memcpy(&buffer[2], payload, len);
+	packetbuf_set_datalen(len+2);
+
+	/* Set destination address */
 	packetbuf_set_addr(PACKETBUF_ADDR_RECEIVER, dst);
 	packetbuf_set_attr(PACKETBUF_ADDRSIZE, 2);
+
+	/* Send it out via the MAC */
 	NETSTACK_MAC.send(NULL, NULL); 
 
 	return 1;
