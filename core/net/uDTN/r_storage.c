@@ -29,6 +29,7 @@
 #include "status-report.h"
 #include "profiling.h"
 #include "statistics.h"
+#include "hash.h"
 
 #define DEBUG 0
 #if DEBUG
@@ -55,7 +56,7 @@ struct bundle_list_entry_t {
 	 * a static address that we can pass on as an
 	 * argument to an event
 	 */
-	uint16_t bundle_num;
+	uint32_t bundle_num;
 
 	/** pointer to the actual bundle stored in MMEM */
 	struct mmem *bundle;
@@ -72,15 +73,12 @@ static uint16_t bundles_in_storage;
 /** Is used to periodically traverse all bundles and delete those that are expired */
 static struct ctimer r_store_timer;
 
-/** Counter to assign unique bundle numbers to each bundle */
-static uint16_t bundle_number = 0;
-
 /**
  * "Internal" functions
  */
 void r_store_prune();
 void rs_reinit(void);
-uint16_t rs_del_bundle(uint16_t bundle_number, uint8_t reason);
+uint16_t rs_del_bundle(uint32_t bundle_number, uint8_t reason);
 void rs_update_statistics();
 
 /**
@@ -108,7 +106,6 @@ void rs_init(void)
 	mmem_init();
 
 	bundles_in_storage = 0;
-	bundle_number = 0;
 
 	rs_reinit();
 	rs_update_statistics();
@@ -133,7 +130,7 @@ void r_store_prune()
 		elapsed_time = clock_seconds() - bundle->rec_time;
 
 		if( bundle->lifetime < elapsed_time ) {
-			PRINTF("STORAGE: bundle lifetime expired of bundle %u\n", entry->bundle_num);
+			PRINTF("STORAGE: bundle lifetime expired of bundle %lu\n", entry->bundle_num);
 			rs_del_bundle(bundle->bundle_num, REASON_LIFETIME_EXPIRED);
 		}
 	}
@@ -146,9 +143,6 @@ void rs_reinit(void)
 {
 	struct bundle_list_entry_t * entry = NULL;
 	struct bundle_t *bundle = NULL;
-
-	// Start counting the bundle number from zero again
-	bundle_number = 0;
 
 	// Delete all bundles from storage
 	for(entry = list_head(bundle_list);
@@ -192,10 +186,11 @@ uint8_t rs_make_room(struct mmem *bundlemem)
 
 /**
 * \brief saves a bundle in storage
-* \param bundle pointer to the bundle
-* \return the bundle number given to the bundle or <0 on errors
+* \param bundlemem pointer to the bundle
+* \param bundle_number pointer where the bundle number will be stored (on success)
+* \return 0 on error, 1 on success
 */
-int32_t rs_save_bundle(struct mmem * bundlemem)
+uint8_t rs_save_bundle(struct mmem * bundlemem, uint32_t * bundle_number)
 {
 	struct bundle_t *entrybdl = NULL,
 					*bundle = NULL;
@@ -203,7 +198,7 @@ int32_t rs_save_bundle(struct mmem * bundlemem)
 
 	if( bundlemem == NULL ) {
 		printf("STORAGE: rs_save_bundle with invalid pointer %p\n", bundlemem);
-		return -1;
+		return 0;
 	}
 
 	// Get the pointer to our bundle
@@ -211,27 +206,27 @@ int32_t rs_save_bundle(struct mmem * bundlemem)
 
 	if( bundle == NULL ) {
 		printf("STORAGE: rs_save_bundle with invalid MMEM structure\n");
-		return -1;
+		return 0;
 	}
+
+	// Calculate the bundle number
+	*bundle_number = HASH.hash_convenience(bundle->tstamp_seq, bundle->tstamp, bundle->src_node, bundle->frag_offs);
 
 	// Look for duplicates in the storage
 	for(entry = list_head(bundle_list);
 		entry != NULL;
 		entry = list_item_next(entry)) {
 		entrybdl = (struct bundle_t *) MMEM_PTR(entry->bundle);
-		if ( bundle->tstamp_seq == entrybdl->tstamp_seq &&
-		    bundle->tstamp == entrybdl->tstamp &&
-		    bundle->src_node == entrybdl->src_node &&
-		    bundle->frag_offs == entrybdl->frag_offs) {
 
-			PRINTF("STORAGE: %u is the same bundle\n", entry->bundle_num);
-			return (int32_t) entrybdl->bundle_num;
+		if( *bundle_number == entrybdl->bundle_num ) {
+			PRINTF("STORAGE: %lu is the same bundle\n", entry->bundle_num);
+			return 1;
 		}
 	}
 
 	if( !rs_make_room(bundlemem) ) {
 		printf("STORAGE: Cannot store bundle, no room\n");
-		return -1;
+		return 0;
 	}
 
 	// Now we have to update the pointer to our bundle, because MMEM may have been modified (freed) and thus the pointer may have changed
@@ -240,7 +235,7 @@ int32_t rs_save_bundle(struct mmem * bundlemem)
 	entry = memb_alloc(&bundle_mem);
 	if( entry == NULL ) {
 		printf("STORAGE: unable to allocate struct, cannot store bundle\n");
-		return -1;
+		return 0;
 	}
 
 	// Clear the memory area
@@ -252,10 +247,10 @@ int32_t rs_save_bundle(struct mmem * bundlemem)
 	bundles_in_storage++;
 
 	// Set all required fields
-	bundle->bundle_num = bundle_number++;
+	bundle->bundle_num = *bundle_number;
 	entry->bundle_num = bundle->bundle_num;
 
-	PRINTF("STORAGE: New Bundle %u (%u), Src %lu, Dest %lu, Seq %lu\n", bundle->bundle_num, entry->bundle_num, bundle->src_node, bundle->dst_node, bundle->tstamp_seq);
+	PRINTF("STORAGE: New Bundle %lu (%lu), Src %lu, Dest %lu, Seq %lu\n", bundle->bundle_num, entry->bundle_num, bundle->src_node, bundle->dst_node, bundle->tstamp_seq);
 
 	// Notify the statistics module
 	rs_update_statistics();
@@ -272,7 +267,7 @@ int32_t rs_save_bundle(struct mmem * bundlemem)
 	// memory is not in MMEM and therefore the address is static
 	process_post(&agent_process, dtn_bundle_in_storage_event, &entry->bundle_num);
 
-	return (int32_t) bundle->bundle_num;
+	return 1;
 }
 
 /**
@@ -281,12 +276,12 @@ int32_t rs_save_bundle(struct mmem * bundlemem)
 * \param reason reason code
 * \return 1 on success or 0 on error
 */
-uint16_t rs_del_bundle(uint16_t bundle_number, uint8_t reason)
+uint16_t rs_del_bundle(uint32_t bundle_number, uint8_t reason)
 {
 	struct bundle_t * bundle = NULL;
 	struct bundle_list_entry_t * entry = NULL;
 
-	PRINTF("STORAGE: Deleting Bundle %u with reason %u\n", bundle_number, reason);
+	PRINTF("STORAGE: Deleting Bundle %lu with reason %u\n", bundle_number, reason);
 
 	// Look for the bundle we are talking about
 	for(entry = list_head(bundle_list);
@@ -300,7 +295,7 @@ uint16_t rs_del_bundle(uint16_t bundle_number, uint8_t reason)
 	}
 
 	if( entry == NULL ) {
-		printf("STORAGE: Could not find bundle %u on rs_del_bundle\n", bundle_number);
+		printf("STORAGE: Could not find bundle %lu on rs_del_bundle\n", bundle_number);
 		return 0;
 	}
 
@@ -341,7 +336,7 @@ uint16_t rs_del_bundle(uint16_t bundle_number, uint8_t reason)
 * \param bundle_num bundle number to read
 * \return pointer to the MMEM struct
 */
-struct mmem *rs_read_bundle(uint16_t bundle_num)
+struct mmem *rs_read_bundle(uint32_t bundle_num)
 {
 	struct bundle_list_entry_t * entry = NULL;
 	struct bundle_t * bundle = NULL;
@@ -358,12 +353,12 @@ struct mmem *rs_read_bundle(uint16_t bundle_num)
 	}
 
 	if( entry == NULL ) {
-		printf("STORAGE: Could not find bundle %u in rs_read_bundle\n", bundle_num);
+		printf("STORAGE: Could not find bundle %lu in rs_read_bundle\n", bundle_num);
 		return 0;
 	}
 
 	if( entry->bundle->size == 0 ) {
-		printf("STORAGE: Found bundle %u but file size is %u\n", bundle_num, entry->bundle->size);
+		printf("STORAGE: Found bundle %lu but file size is %u\n", bundle_num, entry->bundle->size);
 		return 0;
 	}
 

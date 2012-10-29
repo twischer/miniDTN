@@ -109,7 +109,7 @@ struct bundle_t{
 	uint8_t custody;
 	uint8_t del_reason;
 
-	uint16_t bundle_num;
+	uint32_t bundle_num;
 
 	uint32_t rec_time;
 
