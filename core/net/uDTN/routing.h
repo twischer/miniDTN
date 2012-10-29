@@ -41,7 +41,7 @@ struct route_t	{
 	rimeaddr_t dest;
 
 	/** bundle_num of the bundle */
-	uint16_t bundle_num;
+	uint32_t bundle_num;
 };
 
 /** Interface for routing modules */
@@ -52,9 +52,9 @@ struct routing_driver {
 	/** informs the module about a new neighbor */
 	void (* new_neighbor)(rimeaddr_t *dest);
 	/** informs the module about a new bundel */
-	int (* new_bundle)(uint16_t bundle_num);
+	int (* new_bundle)(uint32_t bundle_num);
 	/** delete bundle form routing list */
-	void (* del_bundle)(uint16_t bundle_num);
+	void (* del_bundle)(uint32_t bundle_num);
 	/** callback funktion is called by network interface */
 	void (* sent)(struct route_t *route,int status, int num_tx);
 	void (* delete_list)(void);

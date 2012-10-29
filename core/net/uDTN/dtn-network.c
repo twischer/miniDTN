@@ -173,7 +173,7 @@ int dtn_network_send(struct mmem * bundlemem, struct route_t * route)
 
 	leds_on(LEDS_YELLOW);
 
-	LOG(LOGD_DTN, LOG_NET, LOGL_DBG, "send %u (%p) via %d.%d", route->bundle_num, bundlemem, route->dest.u8[0], route->dest.u8[1]);
+	LOG(LOGD_DTN, LOG_NET, LOGL_DBG, "send %lu (%p) via %d.%d", route->bundle_num, bundlemem, route->dest.u8[0], route->dest.u8[1]);
 
 	/* We're not going to use packetbuf_copyfrom here but instead assemble the packet
 	 * in the buffer ourself */

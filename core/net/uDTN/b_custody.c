@@ -41,7 +41,7 @@
 
 struct cust_t {
 	struct cust *next;
-	uint16_t bundle_num;
+	uint32_t bundle_num;
 	uint32_t src_node;
 	uint32_t timestamp;
 	uint32_t frag_offset;
@@ -457,11 +457,11 @@ uint8_t b_cust_report(struct mmem *bundlemem, uint8_t status)
 {
 	return 0;
 }
-int32_t b_cust_decide(struct mmem *bundlemem)
+uint8_t b_cust_decide(struct mmem *bundlemem, uint32_t * bundle_number)
 {
 	return 0;
 }
-void b_cust_del_from_list(uint16_t bundle_num)
+void b_cust_del_from_list(uint32_t bundle_num)
 {
 	return;
 }

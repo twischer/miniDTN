@@ -14,6 +14,7 @@
 #define STATUS_REPORT b_status
 #define WATCHDOG_CONF_TIMEOUT 4
 #define DISCOVERY ipnd_discovery
+#define HASH hash_xxfast
 
 #define LOG_NET    0
 #define LOG_BUNDLE 1

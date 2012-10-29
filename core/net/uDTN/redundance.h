@@ -21,14 +21,14 @@
 #include <stdio.h>
 #include "bundle.h"
 
-/** interface for redundance check moduldes*/
+/** interface for redundance check modules */
 struct redundance_check {
 	char *name;
 	/** called by agent at startup*/
 	void (* init)(void);
-	/** checks if bundel was delivered befor*/
+	/** checks if bundle was delivered before */
 	uint8_t (* check)(struct mmem *bundlemem);
-	/** sets that bundle was deliverd */
+	/** sets that bundle was delivered */
 	uint8_t (* set)(struct mmem *bundlemem);
 };
 

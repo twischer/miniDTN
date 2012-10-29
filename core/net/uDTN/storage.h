@@ -46,7 +46,7 @@ struct storage_entry_t {
 	struct storage_entry_t * next;
 
 	/** Internal number of the bundle */
-	uint16_t bundle_num;
+	uint32_t bundle_num;
 };
 
 /** storage module interface  */
@@ -56,11 +56,11 @@ struct storage_driver {
 	void (* init)(void);
 	void (* reinit)(void);
 	/** saves a bundle */
-	int32_t (* save_bundle)(struct mmem *bundlemem);
+	uint8_t (* save_bundle)(struct mmem *bundlemem, uint32_t * bundle_number);
 	/** deletes a bundle */
-	uint16_t (* del_bundle)(uint16_t bundle_num,uint8_t reason);
+	uint16_t (* del_bundle)(uint32_t bundle_num, uint8_t reason);
 	/** reads a bundle */
-	struct mmem *(* read_bundle)(uint16_t bundle_num);
+	struct mmem *(* read_bundle)(uint32_t bundle_num);
 	/** checks if there is space for a bundle */
 	uint16_t (* free_space)(struct mmem *bundlemem);
 	/** returns the number of saved bundles */

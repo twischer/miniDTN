@@ -184,22 +184,35 @@ PROCESS_THREAD(agent_process, ev, data)
 		}
 		
 		if(ev == dtn_send_bundle_event) {
-			int32_t bundle_number = 0;
-			struct process * source_process = NULL;
-			bundleptr = (struct mmem *) data;
-			struct bundle_t * bundle = MMEM_PTR(bundleptr);
+			uint32_t bundle_number = 0;
+			uint8_t n = 0;
+			struct bundle_t * bundle = NULL;
 
-			if( bundle != NULL ) {
-				source_process = bundle->source_process;
+			bundleptr = (struct mmem *) data;
+			if( bundleptr == NULL ) {
+				LOG(LOGD_DTN, LOG_AGENT, LOGL_ERR, "dtn_send_bundle_event with invalid pointer");
+				continue;
 			}
 
-			LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "dtn_send_bundle_event %p", bundleptr);
+			bundle = (struct bundle_t *) MMEM_PTR(bundleptr);
+			if( bundle == NULL ) {
+				LOG(LOGD_DTN, LOG_AGENT, LOGL_ERR, "dtn_send_bundle_event with invalid MMEM structure");
+				continue;
+			}
 
-			BUNDLE_STORAGE.save_bundle(bundleptr);
+			LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "dtn_send_bundle_event(%p) with seqNo %lu", bundleptr, dtn_seq_nr);
 
-			if( bundle_number >= 0 && source_process != NULL) {
+			// Set the outgoing sequence number
+			set_attr(bundleptr, TIME_STAMP_SEQ_NR, &dtn_seq_nr);
+			dtn_seq_nr++;
+
+			// Save the bundle in storage
+			n = BUNDLE_STORAGE.save_bundle(bundleptr, &bundle_number);
+
+			// If a sender process exists, notify it
+			if( n && bundle->source_process != NULL) {
 				// Bundle has been successfully saved, send event to service
-				process_post(source_process, dtn_bundle_stored, bundleptr);
+				process_post(bundle->source_process, dtn_bundle_stored, bundleptr);
 			}
 		}
 		
@@ -216,12 +229,12 @@ PROCESS_THREAD(agent_process, ev, data)
 		}
 
 		if(ev == dtn_bundle_in_storage_event){
-			uint16_t bundle_number = *(uint16_t *) data;
+			uint32_t bundle_number = *(uint32_t *) data;
 
-			LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "bundle %u in storage", bundle_number);
+			LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "bundle %lu in storage", bundle_number);
 
 			if(ROUTING.new_bundle(bundle_number) < 0){
-				LOG(LOGD_DTN, LOG_AGENT, LOGL_ERR, "routing reports error when announcing new bundle %u", bundle_number);
+				LOG(LOGD_DTN, LOG_AGENT, LOGL_ERR, "routing reports error when announcing new bundle %lu", bundle_number);
 				continue;
 			}
 
@@ -257,7 +270,7 @@ PROCESS_THREAD(agent_process, ev, data)
 	PROCESS_END();
 }
 
-void agent_del_bundle(uint16_t bundle_number){
+void agent_del_bundle(uint32_t bundle_number){
 	ROUTING.del_bundle(bundle_number);
 	CUSTODY.del_from_list(bundle_number);
 }

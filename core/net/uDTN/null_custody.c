@@ -24,7 +24,7 @@ uint8_t null_cust_report(struct mmem *bundle, uint8_t status)
 	return 0;
 }
 
-int32_t null_cust_decide(struct mmem *bundle)
+uint8_t null_cust_decide(struct mmem *bundle, uint32_t * bundle_number)
 {
 	return 0;
 }
@@ -34,7 +34,7 @@ uint8_t null_cust_retransmit(struct mmem *bundle)
 	return 0;
 }
 
-void null_cust_del_from_list(uint16_t bundle_num)
+void null_cust_del_from_list(uint32_t bundle_num)
 {
 	return;
 }

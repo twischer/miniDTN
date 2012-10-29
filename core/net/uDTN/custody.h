@@ -34,11 +34,11 @@ struct custody_driver {
 	/** sends a report to the "report to"-node with the state of the bundle */
 	uint8_t (* report)(struct mmem *bundlemem, uint8_t status);
 	/** decides if this node becomes custodian or not */
-	int32_t (* decide)(struct mmem *bundlemem);
+	uint8_t (* decide)(struct mmem *bundlemem, uint32_t * bundle_number);
 	/** retransmits the bundle */
 	uint8_t (* retransmit)(struct mmem *bundlemem);
 	/** deletes the bundle from the interal bundle list */
-	void (* del_from_list)(uint16_t bundle_num);
+	void (* del_from_list)(uint32_t bundle_number);
 };
 
 extern const struct custody_driver CUSTODY;

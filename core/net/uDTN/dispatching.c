@@ -36,6 +36,7 @@
 
 void dispatch_bundle(struct mmem *bundlemem) {
 	struct bundle_t *bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
+	uint32_t bundle_number = 0;
 
 	if ((bundle->flags & BUNDLE_FLAG_ADM_REC) && (bundle->dst_node == dtn_node_id)) {
 		// The bundle is an ADMIN RECORD for our node, process it directly here without going into storage
@@ -84,12 +85,12 @@ void dispatch_bundle(struct mmem *bundlemem) {
 		// bundle is custody
 		PRINTF("FORWARDING: Handing over to custody\n");
 
-		CUSTODY.decide(bundlemem);
+		CUSTODY.decide(bundlemem, &bundle_number);
 		return;
 	}
 
 	// regular bundle, no custody
 	PRINTF("FORWARDING: Handing over to storage\n");
-	BUNDLE_STORAGE.save_bundle(bundlemem);
+	BUNDLE_STORAGE.save_bundle(bundlemem, &bundle_number);
 }
 /** @} */

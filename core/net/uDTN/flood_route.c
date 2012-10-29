@@ -72,7 +72,7 @@ struct routing_list_entry_t {
 
 struct routing_entry_t {
 	/** number of the bundle */
-	uint16_t bundle_number;
+	uint32_t bundle_number;
 
 	/** bundle flags */
 	uint8_t flags;
@@ -381,7 +381,7 @@ void flood_resubmit_bundles(uint8_t called_by_event) {
  * \brief Checks whether a bundle still has to be kept or can be deleted
  * \param bundle_number Number of the bundle
  */
-void flood_check_keep_bundle(uint16_t bundle_number) {
+void flood_check_keep_bundle(uint32_t bundle_number) {
 	struct routing_list_entry_t * n = NULL;
 	struct routing_entry_t * entry = NULL;
 
@@ -414,7 +414,7 @@ void flood_check_keep_bundle(uint16_t bundle_number) {
 * \param bundle_number bundle number of the bundle
 * \return >0 on success, <0 on error
 */
-int flood_new_bundle(uint16_t bundle_number)
+int flood_new_bundle(uint32_t bundle_number)
 {
 	struct routing_list_entry_t * n = NULL;
 	struct routing_entry_t * entry = NULL;
@@ -428,7 +428,7 @@ int flood_new_bundle(uint16_t bundle_number)
 		entry = (struct routing_entry_t *) MMEM_PTR(&n->entry);
 
 		if( entry->bundle_number == bundle_number ) {
-			LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "agent announces bundle %d that is already known", bundle_number);
+			LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "agent announces bundle %lu that is already known", bundle_number);
 			return -1;
 		}
 	}
@@ -453,7 +453,7 @@ int flood_new_bundle(uint16_t bundle_number)
 	// Now go and request the bundle from storage
 	bundlemem = BUNDLE_STORAGE.read_bundle(bundle_number);
 	if( bundlemem == NULL ) {
-		LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "unable to read bundle %d", bundle_number);
+		LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "unable to read bundle %lu", bundle_number);
 		mmem_free(&n->entry);
 		memb_free(&routing_mem, n);
 		return -1;
@@ -462,7 +462,7 @@ int flood_new_bundle(uint16_t bundle_number)
 	// Get our bundle struct and check the pointer
 	bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 	if( bundle == NULL ) {
-		LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "invalid bundle pointer for bundle %d", bundle_number);
+		LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "invalid bundle pointer for bundle %lu", bundle_number);
 		mmem_free(&n->entry);
 		memb_free(&routing_mem, n);
 		bundle_dec(bundlemem);
@@ -516,7 +516,7 @@ int flood_new_bundle(uint16_t bundle_number)
 * \brief deletes bundle from list
 * \param bundle_num bundle nuber of the bundle
 */
-void flood_del_bundle(uint16_t bundle_number)
+void flood_del_bundle(uint32_t bundle_number)
 {
 	struct routing_list_entry_t * n = NULL;
 	struct routing_entry_t * entry = NULL;
@@ -533,7 +533,7 @@ void flood_del_bundle(uint16_t bundle_number)
 	}
 
 	if( entry == NULL ) {
-		LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "flood_del_bundle for bundle %d that we do not know", bundle_number);
+		LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "flood_del_bundle for bundle %lu that we do not know", bundle_number);
 		return;
 	}
 
@@ -626,7 +626,7 @@ void flood_sent(struct route_t *route, int status, int num_tx)
 		if (entry->send_to < ROUTING_NEI_MEM) {
 			rimeaddr_copy(&entry->neighbours[entry->send_to], &route->dest);
 			entry->send_to++;
-			PRINTF("FLOOD: bundle %u sent to %u nodes\n", route->bundle_num, entry->send_to);
+			PRINTF("FLOOD: bundle %lu sent to %u nodes\n", route->bundle_num, entry->send_to);
 	    } else if (entry->send_to >= ROUTING_NEI_MEM) {
 	    	// Here we can delete the bundle from storage, because it will not be routed anyway
 			PRINTF("FLOOD: bundle sent to max number of nodes\n");
