@@ -21,6 +21,8 @@
 #include <stdio.h>
 #include "bundle.h"
 
+#define REDUNDANCE_MAX 10
+
 /** interface for redundance check modules */
 struct redundance_check {
 	char *name;
