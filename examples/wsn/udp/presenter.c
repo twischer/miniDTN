@@ -32,17 +32,19 @@
 
 #include "contiki.h"
 #include "lib/random.h"
+//#include "sys/ctimer.h"
+//#include "sys/etimer.h"
 #include "net/uip.h"
 #include "net/uip-ds6.h"
 
 #include "simple-udp.h"
 
 #include "dev/button-sensor.h"
-#include "acc-sensor.h"
-#include "gyro-sensor.h"
-#include "pressure-sensor.h"
 #include "dev/leds.h"
 #include "node-id.h"
+#include "settings.h"
+#include "node-id.h"
+#include <avr/eeprom.h>
 
 #include <stdio.h>
 #include <string.h>
@@ -67,10 +69,19 @@ receiver(struct simple_udp_connection *c,
          const uint8_t *data,
          uint16_t datalen)
 {
+  static struct ctimer ct;
+	static void (*light_off) = leds_off;
+	static unsigned char two = LEDS_YELLOW;
+	//leds_init();	
+
 	leds_invert(LEDS_YELLOW);
+	//leds_on(LEDS_YELLOW);
   //printf("Data received on port %d from port %d with length %d data:%s\n",
   //       receiver_port, sender_port, datalen,data);
 	printf("%s\n",data);
+
+	//TODO warum geht hier der Timer nicht?
+	//ctimer_set(&ct,  CLOCK_SECOND*2, light_off, &two);
 }
 /*---------------------------------------------------------------------------*/
 PROCESS_THREAD(broadcast_example_process, ev, data)
@@ -78,7 +89,6 @@ PROCESS_THREAD(broadcast_example_process, ev, data)
   static struct etimer et;
   static uint8_t *msg;
   uip_ipaddr_t addr;
-	static uint8_t i;
 
   PROCESS_BEGIN();
 
@@ -96,28 +106,18 @@ PROCESS_THREAD(broadcast_example_process, ev, data)
 	printf("NodeId=%d => text=%s\n",node_id,msg);
 	leds_init();	
 	SENSORS_ACTIVATE(button_sensor);//activate button
-	SENSORS_ACTIVATE(gyro_sensor);
-	SENSORS_ACTIVATE(acc_sensor);
-	SENSORS_ACTIVATE(pressure_sensor);
 
   while(1) {
 		PROCESS_WAIT_EVENT_UNTIL(ev == sensors_event && data == &button_sensor);
 
 		leds_on(LEDS_GREEN);
-		while(button_sensor.value(0)) {
 
-			printf("Sending broadcast sensor values:%d\n",button_sensor.value(0));
-			msg = "                            ";
-			sprintf(msg, "%d %d %d|%d %d %d|%d|", 
-					gyro_sensor.value(X_AS), gyro_sensor.value(Y_AS), gyro_sensor.value(Z_AS),
-					acc_sensor.value(X_ACC), acc_sensor.value(Y_ACC), acc_sensor.value(Z_ACC),
-					pressure_sensor.value(PRESS));
-			uip_create_linklocal_allnodes_mcast(&addr);
-			simple_udp_sendto(&broadcast_connection, msg, strlen(msg), &addr);
-		}
+    printf("Sending broadcast r\n");
+    uip_create_linklocal_allnodes_mcast(&addr);
+    simple_udp_sendto(&broadcast_connection, msg, strlen(msg), &addr);
 
-		//etimer_set(&et,  CLOCK_SECOND/4);
-		//PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
+		etimer_set(&et,  CLOCK_SECOND/4);
+		PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
 
 		leds_off(LEDS_GREEN);
   }

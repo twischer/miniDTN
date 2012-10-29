@@ -171,7 +171,7 @@ int     avr_httpd_fs_strcmp (char *addr,char *ram);
 #ifdef COFFEE_AVR_EXTERNAL
 
 /* Byte page size, starting address on page boundary, and size of the file system */
-#define COFFEE_PAGE_SIZE          528
+#define COFFEE_PAGE_SIZE          528UL
 #ifndef COFFEE_ADDRESS
 #define COFFEE_ADDRESS            0x0
 #endif
@@ -202,13 +202,13 @@ int     avr_httpd_fs_strcmp (char *addr,char *ram);
 #define CFS_CONF_OFFSET_TYPE uint32_t
 
 #define COFFEE_WRITE(buf, size, offset) \
-		external_flash_write(offset, (uint8_t *) buf, size)
+		external_flash_write((CFS_CONF_OFFSET_TYPE) offset, (uint8_t *) buf, (CFS_CONF_OFFSET_TYPE) size)
 
 #define COFFEE_READ(buf, size, offset) \
-		external_flash_read(offset, (uint8_t *) buf, size)
+		external_flash_read((CFS_CONF_OFFSET_TYPE) offset, (uint8_t *) buf, (CFS_CONF_OFFSET_TYPE) size)
 
 #define COFFEE_ERASE(sector) \
-		external_flash_erase(sector)
+		external_flash_erase((coffee_page_t) sector)
 
 void external_flash_write_page(coffee_page_t page, CFS_CONF_OFFSET_TYPE offset, uint8_t * buf, CFS_CONF_OFFSET_TYPE size);
 
