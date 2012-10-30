@@ -251,13 +251,14 @@ void reinit(void)
 * \param bundle pointer to the bundle
 * \return the bundle number given to the bundle or <0 on errors
 */
-uint8_t save_bundle(struct mmem * bundlemem, uint32_t * bundle_number)
+uint8_t save_bundle(struct mmem * bundlemem, uint32_t ** bundle_number_ptr)
 {
 	struct bundle_t * bundle = NULL;
 	struct file_list_entry_t * entry = NULL;
 	char bundle_filename[STORAGE_FILE_NAME_LENGTH];
 	int fd_write;
 	int n;
+	uint32_t bundle_number;
 
 	if( bundlemem == NULL ) {
 		printf("STORAGE: save_bundle with invalid pointer %p\n", bundlemem);
@@ -273,14 +274,14 @@ uint8_t save_bundle(struct mmem * bundlemem, uint32_t * bundle_number)
 	}
 
 	// Calculate the bundle number
-	*bundle_number = HASH.hash_convenience(bundle->tstamp_seq, bundle->tstamp, bundle->src_node, bundle->frag_offs);
+	bundle_number = HASH.hash_convenience(bundle->tstamp_seq, bundle->tstamp, bundle->src_node, bundle->frag_offs);
 
 	// Look for duplicates in the storage
 	for(entry = list_head(bundle_list);
 		entry != NULL;
 		entry = list_item_next(entry)) {
 
-		if( *bundle_number == entry->bundle_num ) {
+		if( bundle_number == entry->bundle_num ) {
 			PRINTF("STORAGE: %lu is the same bundle\n", entry->bundle_num);
 			return entry->bundle_num;
 		}
@@ -302,8 +303,8 @@ uint8_t save_bundle(struct mmem * bundlemem, uint32_t * bundle_number)
 	entry->file_size = bundlemem->size;
 
 	// Assign a unique bundle number
-	bundle->bundle_num = *bundle_number;
-	entry->bundle_num = *bundle_number;
+	bundle->bundle_num = bundle_number;
+	entry->bundle_num = bundle_number;
 
 	// determine the filename
 	n = snprintf(bundle_filename, STORAGE_FILE_NAME_LENGTH, "%lu.b", entry->bundle_num);
@@ -359,8 +360,9 @@ uint8_t save_bundle(struct mmem * bundlemem, uint32_t * bundle_number)
 	// Now we have to free the incoming bundle slot
 	bundle_dec(bundlemem);
 
-	// Now we have to send an event to our daemon
-	process_post(&agent_process, dtn_bundle_in_storage_event, &entry->bundle_num);
+	// Now copy over the STATIC pointer to the bundle number, so that
+	// the caller can stick it into an event
+	*bundle_number_ptr = &entry->bundle_num;
 
 	return 1;
 }

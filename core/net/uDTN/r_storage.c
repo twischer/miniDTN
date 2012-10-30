@@ -190,11 +190,12 @@ uint8_t rs_make_room(struct mmem *bundlemem)
 * \param bundle_number pointer where the bundle number will be stored (on success)
 * \return 0 on error, 1 on success
 */
-uint8_t rs_save_bundle(struct mmem * bundlemem, uint32_t * bundle_number)
+uint8_t rs_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_number_ptr)
 {
 	struct bundle_t *entrybdl = NULL,
 					*bundle = NULL;
 	struct bundle_list_entry_t * entry = NULL;
+	uint32_t bundle_number = 0;
 
 	if( bundlemem == NULL ) {
 		printf("STORAGE: rs_save_bundle with invalid pointer %p\n", bundlemem);
@@ -210,7 +211,7 @@ uint8_t rs_save_bundle(struct mmem * bundlemem, uint32_t * bundle_number)
 	}
 
 	// Calculate the bundle number
-	*bundle_number = HASH.hash_convenience(bundle->tstamp_seq, bundle->tstamp, bundle->src_node, bundle->frag_offs);
+	bundle_number = HASH.hash_convenience(bundle->tstamp_seq, bundle->tstamp, bundle->src_node, bundle->frag_offs);
 
 	// Look for duplicates in the storage
 	for(entry = list_head(bundle_list);
@@ -218,7 +219,7 @@ uint8_t rs_save_bundle(struct mmem * bundlemem, uint32_t * bundle_number)
 		entry = list_item_next(entry)) {
 		entrybdl = (struct bundle_t *) MMEM_PTR(entry->bundle);
 
-		if( *bundle_number == entrybdl->bundle_num ) {
+		if( bundle_number == entrybdl->bundle_num ) {
 			PRINTF("STORAGE: %lu is the same bundle\n", entry->bundle_num);
 			return 1;
 		}
@@ -247,8 +248,8 @@ uint8_t rs_save_bundle(struct mmem * bundlemem, uint32_t * bundle_number)
 	bundles_in_storage++;
 
 	// Set all required fields
-	bundle->bundle_num = *bundle_number;
-	entry->bundle_num = bundle->bundle_num;
+	bundle->bundle_num = bundle_number;
+	entry->bundle_num = bundle_number;
 
 	PRINTF("STORAGE: New Bundle %lu (%lu), Src %lu, Dest %lu, Seq %lu\n", bundle->bundle_num, entry->bundle_num, bundle->src_node, bundle->dst_node, bundle->tstamp_seq);
 
@@ -262,10 +263,9 @@ uint8_t rs_save_bundle(struct mmem * bundlemem, uint32_t * bundle_number)
 	// This should do nothing, as we have incremented the reference counter before
 	bundle_dec(bundlemem);
 
-	// Now we have to send an event to our daemon
-	// We can use the pointer to our internal bundle number, as the
-	// memory is not in MMEM and therefore the address is static
-	process_post(&agent_process, dtn_bundle_in_storage_event, &entry->bundle_num);
+	// Now copy over the STATIC pointer to the bundle number, so that
+	// the caller can stick it into an event
+	*bundle_number_ptr = &entry->bundle_num;
 
 	return 1;
 }

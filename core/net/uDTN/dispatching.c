@@ -36,7 +36,8 @@
 
 void dispatch_bundle(struct mmem *bundlemem) {
 	struct bundle_t *bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
-	uint32_t bundle_number = 0;
+	uint32_t * bundle_number;
+	int n;
 
 	if ((bundle->flags & BUNDLE_FLAG_ADM_REC) && (bundle->dst_node == dtn_node_id)) {
 		// The bundle is an ADMIN RECORD for our node, process it directly here without going into storage
@@ -91,6 +92,11 @@ void dispatch_bundle(struct mmem *bundlemem) {
 
 	// regular bundle, no custody
 	PRINTF("FORWARDING: Handing over to storage\n");
-	BUNDLE_STORAGE.save_bundle(bundlemem, &bundle_number);
+	n = BUNDLE_STORAGE.save_bundle(bundlemem, &bundle_number);
+
+	// Now we have to send an event to our daemon
+	if( n ) {
+		process_post(&agent_process, dtn_bundle_in_storage_event, bundle_number);
+	}
 }
 /** @} */
