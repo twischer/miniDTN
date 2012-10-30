@@ -37,6 +37,8 @@
 #define PRINTF(...)
 #endif
 
+#define STORAGE_FILE_NAME_LENGTH 15
+
 /**
  * Internal representation of a bundle
  *
@@ -253,7 +255,7 @@ uint8_t save_bundle(struct mmem * bundlemem, uint32_t * bundle_number)
 {
 	struct bundle_t * bundle = NULL;
 	struct file_list_entry_t * entry = NULL;
-	char bundle_filename[12];
+	char bundle_filename[STORAGE_FILE_NAME_LENGTH];
 	int fd_write;
 	int n;
 
@@ -301,13 +303,25 @@ uint8_t save_bundle(struct mmem * bundlemem, uint32_t * bundle_number)
 
 	// Assign a unique bundle number
 	bundle->bundle_num = *bundle_number;
-	entry->bundle_num = bundle->bundle_num;
+	entry->bundle_num = *bundle_number;
 
 	// determine the filename
-	sprintf(bundle_filename, "%lu.b", entry->bundle_num);
+	n = snprintf(bundle_filename, STORAGE_FILE_NAME_LENGTH, "%lu.b", entry->bundle_num);
+	if( n == STORAGE_FILE_NAME_LENGTH ) {
+		printf("STORAGE: file name buffer is too short\n");
+		memb_free(&bundle_mem, entry);
+		bundle_dec(bundlemem);
+		return 0;
+	}
 
 	// Store the bundle into the file
-	cfs_coffee_reserve(bundle_filename, bundlemem->size);
+	n = cfs_coffee_reserve(bundle_filename, bundlemem->size);
+	if( n < 0 ) {
+		printf("STORAGE: unable to reserve %u bytes for bundle\n", bundlemem->size);
+		memb_free(&bundle_mem, entry);
+		bundle_dec(bundlemem);
+		return 0;
+	}
 
 	// Open the output file
 	fd_write = cfs_open(bundle_filename, CFS_WRITE);
@@ -333,7 +347,7 @@ uint8_t save_bundle(struct mmem * bundlemem, uint32_t * bundle_number)
 	// And close the file
 	cfs_close(fd_write);
 
-	PRINTF("STORAGE: New Bundle %lu (%lu), Src %lu, Dest %lu, Seq %lu\n", bundle->bundle_num, entry->bundle_num, bundle->src_node, bundle->dst_node, bundle->tstamp_seq);
+	PRINTF("STORAGE: New Bundle %lu (%lu), Src %lu.%lu, Dest %lu.%lu, Seq %lu\n", bundle->bundle_num, entry->bundle_num, bundle->src_node, bundle->src_srv, bundle->dst_node, bundle->dst_srv, bundle->tstamp_seq);
 
 	// Add bundle to the list
 	list_add(bundle_list, entry);
@@ -362,7 +376,8 @@ uint16_t del_bundle(uint32_t bundle_number, uint8_t reason)
 	struct bundle_t * bundle = NULL;
 	struct file_list_entry_t * entry = NULL;
 	struct mmem * bundlemem = NULL;
-	char bundle_filename[12];
+	char bundle_filename[STORAGE_FILE_NAME_LENGTH];
+	int n;
 
 	PRINTF("STORAGE: Deleting Bundle %lu with reason %u\n", bundle_number, reason);
 
@@ -408,7 +423,12 @@ uint16_t del_bundle(uint32_t bundle_number, uint8_t reason)
 	list_remove(bundle_list, entry);
 
 	// determine the filename and remove the file
-	sprintf(bundle_filename, "%lu.b", entry->bundle_num);
+	n = snprintf(bundle_filename, STORAGE_FILE_NAME_LENGTH, "%lu.b", entry->bundle_num);
+	if( n == STORAGE_FILE_NAME_LENGTH ) {
+		printf("STORAGE: file name buffer is too short\n");
+		return 0;
+	}
+
 	cfs_remove(bundle_filename);
 
 	// Mark the bundle list as changed
@@ -434,7 +454,7 @@ struct mmem * read_bundle(uint32_t bundle_number)
 	struct bundle_t * bundle = NULL;
 	struct file_list_entry_t * entry = NULL;
 	struct mmem * bundlemem = NULL;
-	char bundle_filename[12];
+	char bundle_filename[STORAGE_FILE_NAME_LENGTH];
 	int fd_read;
 	int n;
 
@@ -469,10 +489,12 @@ struct mmem * read_bundle(uint32_t bundle_number)
 	entry->bundle_num = bundle->bundle_num;
 
 	// determine the filename
-	sprintf(bundle_filename, "%lu.b", entry->bundle_num);
-
-	// Store the bundle into the file
-	cfs_coffee_reserve(bundle_filename, bundlemem->size);
+	n = snprintf(bundle_filename, STORAGE_FILE_NAME_LENGTH, "%lu.b", entry->bundle_num);
+	if( n == STORAGE_FILE_NAME_LENGTH ) {
+		printf("STORAGE: file name buffer is too short\n");
+		bundle_dec(bundlemem);
+		return NULL;
+	}
 
 	// Open the output file
 	fd_read = cfs_open(bundle_filename, CFS_READ);
