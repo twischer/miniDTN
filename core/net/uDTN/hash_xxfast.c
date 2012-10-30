@@ -58,10 +58,10 @@
 #define PRIME4    668265263U
 #define PRIME5   0x165667b1
 
-void init() {
+void hash_xxfast_init() {
 }
 
-uint32_t hash_buffer(uint8_t * buffer, uint16_t length)
+uint32_t hash_xxfast_buffer(uint8_t * buffer, uint16_t length)
 {
 	uint8_t * p = buffer;
 	uint8_t * bEnd = p + length;
@@ -95,7 +95,7 @@ uint32_t hash_buffer(uint8_t * buffer, uint16_t length)
 	return crc;
 }
 
-uint32_t hash_convenience(uint32_t one, uint32_t two, uint32_t three, uint32_t four)
+uint32_t hash_xxfast_convenience(uint32_t one, uint32_t two, uint32_t three, uint32_t four)
 {
 	uint8_t buffer[16];
 
@@ -104,10 +104,10 @@ uint32_t hash_convenience(uint32_t one, uint32_t two, uint32_t three, uint32_t f
 	memcpy(buffer + 8, &three, sizeof(uint32_t));
 	memcpy(buffer + 12, &four, sizeof(uint32_t));
 
-	return hash_buffer(buffer, 16);
+	return hash_xxfast_buffer(buffer, 16);
 }
 
-uint32_t hash_convenience_ptr(uint32_t * one, uint32_t * two, uint32_t * three, uint32_t * four)
+uint32_t hash_xxfast_convenience_ptr(uint32_t * one, uint32_t * two, uint32_t * three, uint32_t * four)
 {
 	uint8_t buffer[16];
 
@@ -116,15 +116,15 @@ uint32_t hash_convenience_ptr(uint32_t * one, uint32_t * two, uint32_t * three, 
 	memcpy(buffer + 8, three, sizeof(uint32_t));
 	memcpy(buffer + 12, four, sizeof(uint32_t));
 
-	return hash_buffer(buffer, 16);
+	return hash_xxfast_buffer(buffer, 16);
 }
 
 const struct hash_driver hash_xxfast = {
 	"xxFAST",
-	init,
-	hash_convenience,
-	hash_convenience_ptr,
-	hash_buffer,
+	hash_xxfast_init,
+	hash_xxfast_convenience,
+	hash_xxfast_convenience_ptr,
+	hash_xxfast_buffer,
 };
 
 /** @} */
