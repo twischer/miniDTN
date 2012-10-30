@@ -184,7 +184,7 @@ PROCESS_THREAD(agent_process, ev, data)
 		}
 		
 		if(ev == dtn_send_bundle_event) {
-			uint32_t bundle_number = 0;
+			uint32_t * bundle_number;
 			uint8_t n = 0;
 			struct bundle_t * bundle = NULL;
 
@@ -213,6 +213,13 @@ PROCESS_THREAD(agent_process, ev, data)
 			if( n && bundle->source_process != NULL) {
 				// Bundle has been successfully saved, send event to service
 				process_post(bundle->source_process, dtn_bundle_stored, bundleptr);
+			}
+
+			// Now emulate the event to our agent
+			if( n ) {
+				data = bundle_number;
+				ev = dtn_bundle_in_storage_event;
+				// process_post(&agent_process, dtn_bundle_in_storage_event, bundle_number);
 			}
 		}
 		
