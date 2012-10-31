@@ -18,7 +18,6 @@
 #include "cfs/cfs.h"
 #include "bundle.h"
 #include "sdnv.h"
-#include "dtn_config.h"
 #include "status-report.h"
 #include "agent.h"
 #include "mmem.h"

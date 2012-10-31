@@ -23,6 +23,15 @@
 #include "bundle.h"
 
 /**
+ * Which custody driver are we going to use?
+ */
+#ifdef CONF_CUSTODY
+#define CUSTODY CONF_CUSTODY
+#else
+#define CUSTODY b_custody
+#endif
+
+/**
  * The structure of a custody modul.
 */
 struct custody_driver {

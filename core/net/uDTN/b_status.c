@@ -6,7 +6,6 @@
 */
 #include "bundle.h"
 #include "status-report.h"
-#include "dtn_config.h"
 #include "agent.h"
 #include "mmem.h"
 #include "storage.h"

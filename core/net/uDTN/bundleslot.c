@@ -4,7 +4,6 @@
 #include "bundleslot.h"
 #include "bundle.h"
 #include "logging.h"
-#include "dtn_config.h"
 
 /* Defines how many bundles can be used (in storage, used) on this node at once */
 #ifdef CONF_BUNDLE_NUM

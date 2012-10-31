@@ -47,7 +47,6 @@
 #include "sys/profiling.h"
 #include "watchdog.h"
 
-#include "dtn_config.h"
 #include "agent.h"
 #include "hash.h"
 

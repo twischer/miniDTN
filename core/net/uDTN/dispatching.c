@@ -18,7 +18,6 @@
 #include "sdnv.h"
 #include "administrative_record.h"
 #include "custody.h"
-#include "dtn_config.h"
 #include "delivery.h"
 #include "status-report.h"
 //#define ENABLE_LOGGING 1

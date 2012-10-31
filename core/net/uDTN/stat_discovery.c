@@ -1,5 +1,4 @@
 #include "custody-signal.h"
-#include "dtn_config.h"
 #include "dtn-network.h"
 #include "clock.h"
 #include "net/netstack.h"

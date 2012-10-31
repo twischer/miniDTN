@@ -25,7 +25,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "dtn_config.h"
 #include "status-report.h"
 #include "profiling.h"
 #include "statistics.h"

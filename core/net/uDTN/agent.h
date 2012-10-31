@@ -41,15 +41,26 @@ process_event_t dtn_send_admin_record_event;
 /* Event to transmit a bundle to a specific node */
 process_event_t dtn_send_bundle_to_node_event;
 /** @} */
+
 /**
 *   \brief Bundle Protocols initialisation
 *
 *    called by contikis main function
-*&agent_process
 */
 void agent_init(void);
 void agent_send_bundles(struct route_t *route);
 void agent_del_bundle(uint32_t bundle_number);
+
+/**
+ * \brief uDTN log domains
+ */
+#define LOG_NET    0
+#define LOG_BUNDLE 1
+#define LOG_ROUTE  2
+#define LOG_STORE  3
+#define LOG_SDNV   4
+#define LOG_SLOTS  5
+#define LOG_AGENT  6
 
 #endif
 

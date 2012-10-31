@@ -52,7 +52,6 @@
 #include "net/uDTN/API_events.h"
 #include "net/uDTN/API_registration.h"
 
-#include "net/uDTN/dtn_config.h"
 #include "net/uDTN/storage.h"
 #include "mmem.h"
 #include "sys/profiling.h"
