@@ -35,31 +35,34 @@
 	#include <stings.h>
 #endif
 
-const struct mac_driver *dtn_network_mac;
-
+/**
+ * Init function called by the Contiki netstack
+ */
 static void dtn_network_init(void) 
 {
-	/* Set up logging */
+	/* Set up log domains */
 	logging_init();
 	logging_domain_level_set(LOGD_DTN, LOG_NET, LOGL_DBG);
 	logging_domain_level_set(LOGD_DTN, LOG_BUNDLE, LOGL_DBG);
 	logging_domain_level_set(LOGD_DTN, LOG_ROUTE, LOGL_DBG);
 	logging_domain_level_set(LOGD_DTN, LOG_STORE, LOGL_DBG);
+	logging_domain_level_set(LOGD_DTN, LOG_SDNV, LOGL_DBG);
+	logging_domain_level_set(LOGD_DTN, LOG_SLOTS, LOGL_DBG);
+	logging_domain_level_set(LOGD_DTN, LOG_AGENT, LOGL_DBG);
 
+	/* Clear the packet buffer */
 	packetbuf_clear();
-	dtn_network_mac = &NETSTACK_MAC;
+
+	/* Initialize logging */
 	LOG(LOGD_DTN, LOG_NET, LOGL_DBG, "init");
+
+	/* Start the agent */
+	agent_init();
 }
 
 /**
-*called for incoming packages
-*/
-#if IBR_COMP
-#define SUFFIX_LENGTH	2
-#else
-#define SUFFIX_LENGTH	0
-#endif
-
+ * Input callback called by the lower layers to indicate incoming data
+ */
 static void dtn_network_input(void) 
 {
 	uint8_t *input_packet;
@@ -73,7 +76,7 @@ static void dtn_network_input(void)
 	if((*input_packet==0x08) & (*(input_packet+1)==0x80)) {
 		// Skip the first two bytes
 		uint8_t * discovery_data = input_packet + 2;
-		uint8_t discovery_length = (uint8_t) (size - 2 - SUFFIX_LENGTH);
+		uint8_t discovery_length = (uint8_t) (size - 2);
 
 		LOG(LOGD_DTN, LOG_NET, LOGL_DBG, "Discovery received from %u.%u", bsrc.u8[0], bsrc.u8[1]);
 
@@ -87,7 +90,7 @@ static void dtn_network_input(void)
 
 	// Skip the first byte
 	uint8_t * payload_data = input_packet + 1;
-	uint8_t payload_length = (uint8_t) (size - 1 - SUFFIX_LENGTH);
+	uint8_t payload_length = (uint8_t) (size - 1);
 
 	leds_on(LEDS_GREEN);
 
@@ -122,7 +125,9 @@ static void dtn_network_input(void)
 	leds_off(LEDS_GREEN);
 }
 
-
+/**
+ * Callback function called by the lower layers after a transmission attempt on the radio
+ */
 static void packet_sent(void *ptr, int status, int num_tx) 
 {
 	switch(status) {
@@ -165,6 +170,9 @@ static void packet_sent(void *ptr, int status, int num_tx)
 	ROUTING.sent(route, status, num_tx);
 }
 
+/**
+ * Internal function called by the agent to transmit bundles
+ */
 int dtn_network_send(struct mmem * bundlemem, struct route_t * route)
 {
 	uint8_t * buffer = NULL;
@@ -198,6 +206,9 @@ int dtn_network_send(struct mmem * bundlemem, struct route_t * route)
 	return 1;
 }
 
+/**
+ * Internal function called by the discovery module to transmit outgoing discovery beacons
+ */
 int dtn_send_discover(uint8_t *payload, uint8_t len, rimeaddr_t *dst)
 {
 	uint8_t * buffer = NULL;
@@ -226,10 +237,14 @@ int dtn_send_discover(uint8_t *payload, uint8_t len, rimeaddr_t *dst)
 	return 1;
 }
 
-
+/**
+ * Contiki's network driver interface
+ */
 const struct network_driver dtn_network_driver = 
 {
   "DTN",
   dtn_network_init,
   dtn_network_input
 };
+
+/** @} */
