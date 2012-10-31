@@ -17,6 +17,15 @@
 #ifndef HASH_H
 #define HASH_H
 
+/**
+ * Which hash driver are we going to use?
+ */
+#ifdef CONF_HASH
+#define HASH CONF_HASH
+#else
+#define HASH hash_xxfast
+#endif
+
 /** storage module interface  */
 struct hash_driver {
 	char *name;

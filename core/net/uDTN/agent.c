@@ -24,7 +24,6 @@
 #include "registration.h"
 #include "API_events.h"
 #include "bundle.h"
-#include "dtn_config.h"
 #include "agent.h"
 #include "storage.h"
 #include "sdnv.h"

@@ -14,7 +14,6 @@
 #include <string.h>
 
 #include "clock.h"
-#include "dtn_config.h"
 #include "dtn-network.h"
 #include "net/netstack.h"
 #include "net/packetbuf.h"

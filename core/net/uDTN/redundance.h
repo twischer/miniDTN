@@ -21,6 +21,18 @@
 #include <stdio.h>
 #include "bundle.h"
 
+/**
+ * Which redundance driver are we going to use?
+ */
+#ifdef CONF_REDUNDANCE
+#define REDUNDANCE CONF_REDUNDANCE
+#else
+#define REDUNDANCE b_redundance
+#endif
+
+/**
+ * How many recent bundles should be stored in the redundance module?
+ */
 #define REDUNDANCE_MAX 10
 
 /** interface for redundance check modules */

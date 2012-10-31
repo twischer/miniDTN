@@ -4,7 +4,6 @@
 #include <stdint.h>
 
 #include "bundle.h"
-#include "dtn_config.h"
 
 #define CUSTODY_TRANSFER_SUCCEEDED		(0x80)
 #define CUSTODY_TRANSFER_FAILED			(0x00)

@@ -17,6 +17,15 @@
 #include "mmem.h"
 
 
+/**
+ * Which status-report driver are we going to use?
+ */
+#ifdef CONF_STATUS_REPORT
+#define STATUS_REPORT CONF_STATUS_REPORT
+#else
+#define STATUS_REPORT b_status
+#endif
+
 /*========================================== STATUS FLAGS ==========================================*/
 
 /**

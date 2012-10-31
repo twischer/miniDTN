@@ -25,6 +25,16 @@
 #include "memb.h"
 
 /**
+ * Which storage driver are we going to use?
+ * Default is RAM
+ */
+#ifdef CONF_BUNDLE_STORAGE
+#define BUNDLE_STORAGE CONF_BUNDLE_STORAGE
+#else
+#define BUNDLE_STORAGE r_storage
+#endif
+
+/**
  * How many bundles can possibly be stored in the data structures?
  */
 #ifdef BUNDLE_CONF_STORAGE_SIZE

@@ -12,7 +12,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include "dtn_config.h"
 #include "logging.h"
 
 /** maximum sdnv length */

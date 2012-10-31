@@ -17,7 +17,6 @@
 #include "net/netstack.h"
 
 
-#include "dtn_config.h"
 #include "bundle.h"
 #include "net/rime/rimeaddr.h"
 #include "storage.h"
@@ -36,7 +35,6 @@
 #include "bundleslot.h"
 #include "delivery.h"
 #include "logging.h"
-#include "dtn_config.h"
 
 #define DEBUG 0
 #if DEBUG 

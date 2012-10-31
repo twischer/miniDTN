@@ -13,7 +13,6 @@
 */
 
 #include "custody-signal.h"
-#include "dtn_config.h"
 #include "custody.h"
 #include "bundle.h"
 #include "storage.h"

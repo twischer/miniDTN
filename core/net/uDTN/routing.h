@@ -25,9 +25,24 @@
 #include "lib/memb.h"
 #include "list.h"
 
-#define ROUTING_ROUTE_MAX_MEM 	10
+/**
+ * Which routing driver are we going to use?
+ */
+#ifdef CONF_ROUTING
+#define ROUTING CONF_ROUTING
+#else
+#define ROUTING flood_route
+#endif
+
+/**
+ * For each bundle, how many neighbours to which
+ * the bundle has been sent before should be stored?
+ */
 #define ROUTING_NEI_MEM 	 	 2
 
+/**
+ * Routing bundle Flags
+ */
 #define ROUTING_FLAG_IN_DELIVERY	0x01
 #define ROUTING_FLAG_LOCAL			0x02
 #define ROUTING_FLAG_FORWARD		0x04

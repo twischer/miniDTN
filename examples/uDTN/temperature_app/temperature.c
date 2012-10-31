@@ -42,7 +42,6 @@
 #include "net/uDTN/API_events.h"
 #include "net/uDTN/API_registration.h"
 
-#include "net/uDTN/dtn_config.h"
 #include "net/uDTN/storage.h"
 #include "mmem.h"
 #include "sys/test.h"
@@ -57,8 +56,6 @@
 #include "net/uDTN/sdnv.h"
 #include "statistics.h"
 #include "leds.h"
-
-#include "r_storage.h"
 
 #define CONF_SEND_TO_NODE	2
 #define CONF_SEND_TO_APP	25

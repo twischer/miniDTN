@@ -12,7 +12,6 @@
 #include <string.h> // for memcpy
 
 #include "statistics.h"
-#include "dtn_config.h"
 #include "agent.h"
 #include "contiki.h"
 #include "bundle.h"

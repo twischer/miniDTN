@@ -9,8 +9,6 @@
 //	#include "net/dtn/realloc.h"
 #endif
 
-#include "dtn_config.h"
-
 #include <string.h>
 #include "clock.h"
 #include "logging.h"

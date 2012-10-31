@@ -19,7 +19,6 @@
 #include "bundle.h"
 #include "API_events.h"
 #include "registration.h"
-#include "dtn_config.h"
 #include "status-report.h"
 #include "sdnv.h"
 #include "process.h"

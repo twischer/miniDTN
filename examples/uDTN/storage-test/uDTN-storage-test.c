@@ -49,7 +49,6 @@
 #include "list.h"
 #include "cfs-coffee.h"
 
-#include "dtn_config.h"
 #include "agent.h"
 #include "bundle.h"
 #include "storage.h"

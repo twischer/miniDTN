@@ -21,6 +21,15 @@
 #include "bundle.h"
 #include "mmem.h"
 
+/**
+ * Which discovery driver are we going to use?
+ */
+#ifdef CONF_DISCOVERY
+#define DISCOVERY CONF_DISCOVERY
+#else
+#define DISCOVERY ipnd_discovery
+#endif
+
 PROCESS_NAME(discovery_process);
 
 struct discovery_neighbour_list_entry {
