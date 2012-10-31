@@ -181,6 +181,18 @@ void g_store_read_list()
 		list_add(bundle_list, entry);
 
 		bundles_in_storage ++;
+
+		// Now that we have the index entry, we have to try to read the bundle
+		struct mmem * testbundle = NULL;
+		testbundle = read_bundle(entry->bundle_num);
+		if( testbundle == NULL ) {
+			printf("STORAGE: unable to restore bundle %lu\n", entry->bundle_num);
+			list_remove(bundle_list, entry);
+			memb_free(&bundle_mem, entry);
+			continue;
+		}
+
+		bundle_dec(testbundle);
 	}
 
 	cfs_close(fd_read);
