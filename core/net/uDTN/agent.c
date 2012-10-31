@@ -58,6 +58,12 @@ AUTOSTART_PROCESSES(&agent_process);
 struct etimer resubmission_timer;
 
 void agent_init(void) {
+	// if the agent process is already running, to nothing
+	if( process_is_running(&agent_process) ) {
+		return;
+	}
+
+	// Otherwise start the agent process
 	process_start(&agent_process, NULL);
 }
 
