@@ -87,6 +87,14 @@
 #define PAYLOAD_LEN 80
 #endif
 
+#define DEBUG 0
+#if DEBUG
+#include <stdio.h>
+#define PRINTF(...) printf(__VA_ARGS__)
+#else
+#define PRINTF(...)
+#endif
+
 /*---------------------------------------------------------------------------*/
 PROCESS(ping_process, "Ping");
 PROCESS(pong_process, "Pong");
@@ -214,7 +222,7 @@ PROCESS_THREAD(ping_process, ev, data)
 		PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&timer) ||
 				ev == submit_data_to_application_event);
 
-		if (ev != submit_data_to_application_event) {
+		if (etimer_expired(&timer)) {
 			u32_ptr = (uint32_t *)&userdata[0];
 
 			/* Sync pattern */
@@ -233,68 +241,75 @@ PROCESS_THREAD(ping_process, ev, data)
 				userdata[i] = i;
 			}
 
+			PRINTF("PING: send sync\n");
 			bundlemem = bundle_convenience(CONF_DEST_NODE, 7, 5, userdata, PAYLOAD_LEN);
 			if (bundlemem)
 				process_post(&agent_process, dtn_send_bundle_event, (void *) bundlemem);
 
-			continue;
 		}
-		/* We received a bundle - handle it */
-		recv = (struct mmem *) data;
 
-		diff = get_time();
+		if( ev == submit_data_to_application_event ) {
+			/* We received a bundle - handle it */
+			recv = (struct mmem *) data;
 
-		/* Check receiver */
-		block = get_payload_block(recv);
+			PRINTF("PING: recv\n");
 
-		if( block == NULL ) {
-			printf("PING: No Payload\n");
-		} else {
-			u32_ptr = (uint32_t *)block->payload;
+			diff = get_time();
 
-			if (!synced) {
-				/* We're synced */
-				if (*u32_ptr == 0xfdfdfdfd) {
-					synced = 1;
-				} else {
-					printf("PING: received initial bundle but with broken payload\n");
+			/* Check receiver */
+			block = get_payload_block(recv);
 
-					// Tell the agent, that we have processed the bundle
-					process_post(&agent_process, dtn_processing_finished, recv);
-
-					continue;
-				}
+			if( block == NULL ) {
+				printf("PING: No Payload\n");
 			} else {
-				/* Calculate RTT */
-				bundle_recvd++;
-				diff -= *u32_ptr;
-				// printf("Latency: %lu\n", diff);
+				u32_ptr = (uint32_t *)block->payload;
 
-				if (bundle_recvd % 50 == 0)
-					printf("PING: %u\n", bundle_recvd);
+				if (!synced) {
+					/* We're synced */
+					if (*u32_ptr == 0xfdfdfdfd) {
+						synced = 1;
+						printf("PING: synced\n");
+					} else {
+						printf("PING: received initial bundle but with broken payload\n");
 
-				latency += diff;
+						// Tell the agent, that we have processed the bundle
+						process_post(&agent_process, dtn_processing_finished, recv);
+
+						continue;
+					}
+				} else {
+					/* Calculate RTT */
+					bundle_recvd++;
+					diff -= *u32_ptr;
+					// printf("Latency: %lu\n", diff);
+
+					if (bundle_recvd % 50 == 0)
+						printf("PING: %u\n", bundle_recvd);
+
+					latency += diff;
+				}
 			}
-		}
 
-		// Tell the agent, that we have processed the bundle
-		process_post(&agent_process, dtn_processing_finished, recv);
+			// Tell the agent, that we have processed the bundle
+			process_post(&agent_process, dtn_processing_finished, recv);
 
-		/* We're done */
-		if (bundle_recvd >= 1000)
-			break;
+			/* We're done */
+			if (bundle_recvd >= 1000)
+				break;
 
-		/* Send PING */
-		u32_ptr = (uint32_t *)&userdata[0];
-		*u32_ptr = get_time();
-		for (i=4;i<PAYLOAD_LEN;i++) {
-			userdata[i] = i;
-		}
+			/* Send PING */
+			u32_ptr = (uint32_t *)&userdata[0];
+			*u32_ptr = get_time();
+			for (i=4;i<PAYLOAD_LEN;i++) {
+				userdata[i] = i;
+			}
 
-		bundlemem = bundle_convenience(CONF_DEST_NODE, 7, 5, userdata, PAYLOAD_LEN);
-		if (bundlemem) {
-			process_post(&agent_process, dtn_send_bundle_event, (void *) bundlemem);
-			bundle_sent++;
+			PRINTF("PING: send ping\n");
+			bundlemem = bundle_convenience(CONF_DEST_NODE, 7, 5, userdata, PAYLOAD_LEN);
+			if (bundlemem) {
+				process_post(&agent_process, dtn_send_bundle_event, (void *) bundlemem);
+				bundle_sent++;
+			}
 		}
 	}
 
@@ -348,6 +363,8 @@ PROCESS_THREAD(pong_process, ev, data)
 			continue;
 		}
 
+		PRINTF("PONG: recv\n");
+
 		/* Verify the content of the bundle */
 		block = get_payload_block(recv);
 		int i;
@@ -368,13 +385,14 @@ PROCESS_THREAD(pong_process, ev, data)
 
 		u32_ptr = (uint32_t *) block->payload;
 
+		/* Tell the agent, that have processed the bundle */
+		process_post(&agent_process, dtn_processing_finished, recv);
+
 		/* Send PONG */
+		PRINTF("PONG: send\n");
 		bundlemem = bundle_convenience(CONF_DEST_NODE, 5, 7, (uint8_t *) u32_ptr, 4);
 		if (bundlemem)
 			process_post(&agent_process, dtn_send_bundle_event, (void *) bundlemem);
-
-		/* Tell the agent, that have processed the bundle */
-		process_post(&agent_process, dtn_processing_finished, recv);
 
 		bundle_sent++;
 		if (bundle_sent % 50 == 0)
