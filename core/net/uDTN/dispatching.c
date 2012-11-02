@@ -23,6 +23,7 @@
 //#define ENABLE_LOGGING 1
 #include "logging.h"
 #include "storage.h"
+#include "dispatching.h"
 
 #define DEBUG 0
 #if DEBUG
@@ -33,7 +34,7 @@
 #endif
 
 
-void dispatch_bundle(struct mmem *bundlemem) {
+int dispatch_bundle(struct mmem *bundlemem) {
 	struct bundle_t *bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 	uint32_t * bundle_number;
 	int n;
@@ -77,7 +78,7 @@ void dispatch_bundle(struct mmem *bundlemem) {
 		bundle_dec(bundlemem);
 
 		// Exit function, nothing else to do here
-		return;
+		return 1;
 	}
 
 	// Now pass on the bundle to storage
@@ -85,8 +86,8 @@ void dispatch_bundle(struct mmem *bundlemem) {
 		// bundle is custody
 		PRINTF("FORWARDING: Handing over to custody\n");
 
-		CUSTODY.decide(bundlemem, &bundle_number);
-		return;
+		CUSTODY.decide(bundlemem, bundle_number);
+		return 1;
 	}
 
 	// regular bundle, no custody
@@ -96,6 +97,9 @@ void dispatch_bundle(struct mmem *bundlemem) {
 	// Now we have to send an event to our daemon
 	if( n ) {
 		process_post(&agent_process, dtn_bundle_in_storage_event, bundle_number);
+		return 1;
 	}
+
+	return 0;
 }
 /** @} */
