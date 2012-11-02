@@ -19,11 +19,14 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include "bundle.h"
+
 #include "contiki.h"
 #include "net/rime/rimeaddr.h"
 #include "lib/memb.h"
 #include "list.h"
+
+#include "bundle.h"
+#include "convergence_layer.h"
 
 /**
  * Which routing driver are we going to use?
@@ -48,6 +51,13 @@
 #define ROUTING_FLAG_FORWARD		0x04
 #define ROUTING_FLAG_IN_TRANSIT		0x08
 
+/**
+ * Routing sent status reports
+ */
+#define ROUTING_STATUS_OK			0x01
+#define ROUTING_STATUS_FAIL			0x02
+#define ROUTING_STATUS_NACK			0x04
+
 process_event_t dtn_bundle_resubmission_event;
 
 /** the route_t struct is used to inform the network interface which bundle should be transmitted to whicht node*/
@@ -70,9 +80,8 @@ struct routing_driver {
 	int (* new_bundle)(uint32_t bundle_num);
 	/** delete bundle form routing list */
 	void (* del_bundle)(uint32_t bundle_num);
-	/** callback funktion is called by network interface */
-	void (* sent)(struct route_t *route,int status, int num_tx);
-	void (* delete_list)(void);
+	/** callback function is called by convergence layer */
+	void (* sent)(struct transmit_ticket_t * ticket, uint8_t status);
 	/** function to resubmit bundles currently in storage */
 	void (* resubmit_bundles)(uint8_t called_by_event);
 	/** notify storage, that bundle has been delivered locally */

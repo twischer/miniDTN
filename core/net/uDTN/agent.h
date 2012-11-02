@@ -48,7 +48,6 @@ process_event_t dtn_send_bundle_to_node_event;
 *    called by contikis main function
 */
 void agent_init(void);
-void agent_send_bundles(struct route_t *route);
 void agent_del_bundle(uint32_t bundle_number);
 
 /**
@@ -61,6 +60,7 @@ void agent_del_bundle(uint32_t bundle_number);
 #define LOG_SDNV   4
 #define LOG_SLOTS  5
 #define LOG_AGENT  6
+#define LOG_CL	   7
 
 #endif
 

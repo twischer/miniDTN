@@ -27,14 +27,24 @@ extern const struct mac_driver *dtn_network_mac;
 process_event_t dtn_beacon_event;
 
 /**
-*   \brief sends a bundle  
-* \param bundle pointer to bundel
-* \param route  pointer to route sturct (contains the receivers address)
-* \return 1
-*/
-int dtn_network_send(struct mmem *bundlemem, struct route_t *route);
-int dtn_send_discover(uint8_t *payload,uint8_t len, rimeaddr_t *dst);
+ * \brief Send out the content that was put in the buffer.
+ * \param destination Pointer to the destination address
+ * \param length Length of the outgoing frame
+ * \param reference Reference that will be passed on into the callback
+ */
+void dtn_network_send(rimeaddr_t * destination, uint8_t length, void * reference);
 
+/**
+ * \brief Returns the pointer to a buffer that can be used to contruct packets
+ * \returns Pointer to the buffer
+ */
+uint8_t * dtn_network_get_buffer();
+
+/**
+ * \brief Returns the maximum buffer length
+ * \returns Maximum buffer length
+ */
+uint8_t dtn_network_get_buffer_length();
 
 #endif
 /** @} */

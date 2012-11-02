@@ -2,7 +2,7 @@
 CFLAGS+=-DWITH_NODE_ID=1
 
 BUNDLE=sdnv.c bundle.c bundleslot.c
-DTN_NETWORK=dtn-network.c
+DTN_NETWORK=dtn-network.c convergence_layer.c
 STORAGE= g_storage.c r_storage.c 
 AGENT= hash_xxfast.c hash_xor.c agent.c registration.c delivery.c dispatching.c null_custody.c flood_route.c b_custody.c b_status.c b_discover.c stat_discovery.c ipnd_discover.c statistics.c
 REDUNDANCE_CHECK= b_redundance.c

@@ -37,6 +37,7 @@
 #include "lib/memb.h"
 #include "discovery.h"
 #include "statistics.h"
+#include "convergence_layer.h"
 
 // #define ENABLE_LOGGING 1
 #include "logging.h"
@@ -67,70 +68,22 @@ void agent_init(void) {
 	process_start(&agent_process, NULL);
 }
 
-/** FIXME: We need a return value here to indicate whether we have really told the MAC to do the transmission.
- * Otherwise the callback will not come and the routing is locked forever!
- */
-void
-agent_send_bundles(struct route_t * route)
-{
-	struct mmem * bundlemem = NULL;
-	struct bundle_t *bundle = NULL;
-
-	// Here we check, if we have a local bundle
-	bundlemem = BUNDLE_STORAGE.read_bundle(route->bundle_num);
-	if( bundlemem == NULL ) {
-		LOG(LOGD_DTN, LOG_AGENT, LOGL_ERR, "unable to read bundle %d", route->bundle_num);
-		return;
-	}
-
-	// Get our bundle struct and check the pointer
-	bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
-	if( bundle == NULL ) {
-		LOG(LOGD_DTN, LOG_AGENT, LOGL_ERR, "invalid bundle pointer for bundle %d", route->bundle_num);
-		bundle_dec(bundlemem);
-		return;
-	}
-
-	// How long did this bundle rot in our storage?
-	uint32_t elapsed_time = clock_seconds() - bundle->rec_time;
-
-	// Check if bundle has expired
-	if( bundle->lifetime < elapsed_time ) {
-		LOG(LOGD_DTN, LOG_AGENT, LOGL_ERR, "bundle %d has expired, not sending it", route->bundle_num);
-
-		// Bundle is expired
-		bundle_dec(bundlemem);
-
-		BUNDLE_STORAGE.del_bundle(route->bundle_num, REASON_LIFETIME_EXPIRED);
-		return;
-	}
-
-	// Update remaining lifetime of bundle
-	uint32_t remaining_time = bundle->lifetime - elapsed_time;
-	set_attr(bundlemem, LIFE_TIME, &remaining_time);
-
-	// And send it out
-	dtn_network_send(bundlemem, route);
-
-	// Now deallocate the memory
-	bundle_dec(bundlemem);
-}
-
 /*  Bundle Protocol Prozess */
 PROCESS_THREAD(agent_process, ev, data)
 {
 	PROCESS_BEGIN();
 	
+	dtn_node_id=node_id;
+	dtn_seq_nr=0;
 	
 	mmem_init();
 	BUNDLE_STORAGE.init();
 	BUNDLE_STORAGE.reinit();
 	ROUTING.init();
 	REDUNDANCE.init();
-	dtn_node_id=node_id; 
-	dtn_seq_nr=0;
 	registration_init();
-	
+	convergence_layer_init();
+
 	dtn_application_remove_event  = process_alloc_event();
 	dtn_application_registration_event = process_alloc_event();
 	dtn_application_status_event = process_alloc_event();
@@ -215,7 +168,7 @@ PROCESS_THREAD(agent_process, ev, data)
 			n = BUNDLE_STORAGE.save_bundle(bundleptr, &bundle_number);
 
 			// If a sender process exists, notify it
-			if( n && bundle->source_process != NULL) {
+			if( bundle->source_process != NULL) {
 				// Bundle has been successfully saved, send event to service
 				process_post(bundle->source_process, dtn_bundle_stored, bundleptr);
 			}
@@ -283,6 +236,7 @@ PROCESS_THREAD(agent_process, ev, data)
 }
 
 void agent_del_bundle(uint32_t bundle_number){
+	convergence_layer_delete_bundle(bundle_number);
 	ROUTING.del_bundle(bundle_number);
 	CUSTODY.del_from_list(bundle_number);
 }
