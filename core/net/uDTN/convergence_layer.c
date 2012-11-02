@@ -18,7 +18,6 @@
 #include "process.h"
 
 #include "agent.h"
-#define ENABLE_LOGGING 1
 #include "logging.h"
 #include "storage.h"
 #include "discovery.h"
@@ -366,6 +365,8 @@ int convergence_layer_parse_dataframe(rimeaddr_t * source, uint8_t * payload, ui
 
 	/* Hand over the bundle to dispatching */
 	n = dispatch_bundle(bundlemem);
+
+	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Bundle %lu received %p from %u.%u", bundle->bundle_num, payload, source->u8[0], source->u8[1]);
 
 	if( n ) {
 		/* Send out the ACK */
