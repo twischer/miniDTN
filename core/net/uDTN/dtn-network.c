@@ -39,7 +39,7 @@ static void dtn_network_init(void)
 	logging_domain_level_set(LOGD_DTN, LOG_SDNV, LOGL_DBG);
 	logging_domain_level_set(LOGD_DTN, LOG_SLOTS, LOGL_DBG);
 	logging_domain_level_set(LOGD_DTN, LOG_AGENT, LOGL_DBG);
-	logging_domain_level_set(LOGD_DTN, LOG_CL, LOGL_INF);
+	logging_domain_level_set(LOGD_DTN, LOG_CL, LOGL_DBG);
 
 	/* Clear the packet buffer */
 	packetbuf_clear();
