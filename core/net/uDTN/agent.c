@@ -56,7 +56,6 @@ uint32_t dtn_node_id;
 uint32_t dtn_seq_nr;
 PROCESS(agent_process, "AGENT process");
 AUTOSTART_PROCESSES(&agent_process);
-struct etimer resubmission_timer;
 
 void agent_init(void) {
 	// if the agent process is already running, to nothing
@@ -94,7 +93,6 @@ PROCESS_THREAD(agent_process, ev, data)
 	dtn_send_admin_record_event = process_alloc_event();
 	dtn_bundle_in_storage_event = process_alloc_event();
 	dtn_send_bundle_to_node_event = process_alloc_event();
-	dtn_bundle_resubmission_event = process_alloc_event();
 	dtn_processing_finished = process_alloc_event();
 	dtn_bundle_stored = process_alloc_event();
 	
@@ -102,9 +100,6 @@ PROCESS_THREAD(agent_process, ev, data)
 	DISCOVERY.init();
 	PRINTF("starting DTN Bundle Protocol \n");
 		
-
-	etimer_set(&resubmission_timer, 5 * CLOCK_SECOND);
-
 	struct registration_api *reg;
 	
 	while(1) {
@@ -203,18 +198,9 @@ PROCESS_THREAD(agent_process, ev, data)
 				continue;
 			}
 
-			ROUTING.resubmit_bundles(0);
 			continue;
 		}
 		
-		if(ev == dtn_bundle_resubmission_event) {
-			ROUTING.resubmit_bundles(1);
-
-			etimer_restart(&resubmission_timer);
-
-			continue;
-		}
-
 	    if(ev == dtn_processing_finished) {
 	    	// data should contain the bundlemem ptr
 	    	struct mmem * bundlemem = (struct mmem *) data;
@@ -222,15 +208,6 @@ PROCESS_THREAD(agent_process, ev, data)
 	    	// Notify routing, that service has finished processing a bundle
 	    	ROUTING.locally_delivered(bundlemem);
 	    }
-
-		if( etimer_expired(&resubmission_timer) ) {
-			ROUTING.resubmit_bundles(0);
-
-			// Even if there is nothing to do, call resubmit every second just to be absolutely sure
-			etimer_reset(&resubmission_timer);
-
-			continue;
-		}
 	}
 	PROCESS_END();
 }

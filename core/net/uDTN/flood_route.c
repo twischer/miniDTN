@@ -48,8 +48,6 @@
 #define BLACKLIST_THRESHOLD	3
 #define BLACKLIST_SIZE		3
 
-uint8_t flood_agent_event_pending = 0;
-
 struct blacklist_entry_t {
 	struct blacklist_entry_t * next;
 
@@ -88,6 +86,11 @@ struct routing_entry_t {
 	/** neighbour from which we have received the bundle */
 	rimeaddr_t received_from_node;
 };
+
+/**
+ * Routing process
+ */
+PROCESS(routing_process, "FLOOD ROUTE process");
 
 MEMB(blacklist_mem, struct blacklist_entry_t, BLACKLIST_SIZE);
 LIST(blacklist_list);
@@ -166,17 +169,8 @@ void flood_blacklist_delete(rimeaddr_t * neighbour)
 */
 void flood_init(void)
 {
-	LOG(LOGD_DTN, LOG_ROUTE, LOGL_INF, "init flood_route");
-
-	// Initialize memory used to store blacklisted neighbours
-	memb_init(&blacklist_mem);
-	list_init(blacklist_list);
-
-	// Initialize memory used to store bundles for routing
-	memb_init(&routing_mem);
-	list_init(routing_list);
-
-	flood_agent_event_pending = 0;
+	// Start CL process
+	process_start(&routing_process, NULL);
 }
 
 /**
@@ -191,11 +185,7 @@ void flood_new_neigh(rimeaddr_t *dest)
 
 void flood_schedule_resubmission(void)
 {
-	if( !flood_agent_event_pending ) {
-		flood_agent_event_pending = 1;
-		// Tell the agent to call us again to resubmit bundles
-		process_post(&agent_process, dtn_bundle_resubmission_event, NULL);
-	}
+	process_poll(&routing_process);
 }
 
 uint8_t flood_send_to_local(void)
@@ -363,11 +353,7 @@ uint8_t flood_sent_to_known(void)
 /**
  * Wrapper function for agent calls to resubmit bundles for already known neighbours
  */
-void flood_resubmit_bundles(uint8_t called_by_event) {
-	if( called_by_event == 1 ) {
-		flood_agent_event_pending = 0;
-	}
-
+void flood_resubmit_bundles() {
 	flood_sent_to_known();
 }
 
@@ -502,8 +488,7 @@ int flood_new_bundle(uint32_t bundle_number)
 	bundle_dec(bundlemem);
 
 	// Schedule to deliver and forward the bundle
-	// flood_schedule_resubmission();
-	flood_sent_to_known();
+	flood_schedule_resubmission();
 
 	// We do not have a failure here, so it must be a success
 	return 1;
@@ -684,6 +669,29 @@ void flood_locally_delivered(struct mmem * bundlemem) {
 
 	// Tell the agent to call us again to resubmit bundles
 	flood_schedule_resubmission();
+}
+
+PROCESS_THREAD(routing_process, ev, data)
+{
+	PROCESS_BEGIN();
+
+	LOG(LOGD_DTN, LOG_ROUTE, LOGL_INF, "FLOOD ROUTE process in running");
+
+	// Initialize memory used to store blacklisted neighbours
+	memb_init(&blacklist_mem);
+	list_init(blacklist_list);
+
+	// Initialize memory used to store bundles for routing
+	memb_init(&routing_mem);
+	list_init(routing_list);
+
+	while(1) {
+		PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL);
+
+		flood_sent_to_known();
+	}
+
+	PROCESS_END();
 }
 
 const struct routing_driver flood_route ={
