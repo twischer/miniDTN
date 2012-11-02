@@ -165,6 +165,11 @@ void flood_init(void)
 	process_start(&routing_process, NULL);
 }
 
+void flood_schedule_resubmission(void)
+{
+	process_poll(&routing_process);
+}
+
 /**
 * \brief checks if there are bundle to send to dest
 * \param dest pointer to the address of the new neighbor
@@ -172,12 +177,6 @@ void flood_init(void)
 void flood_new_neigh(rimeaddr_t *dest)
 {
 	flood_schedule_resubmission();
-}
-
-
-void flood_schedule_resubmission(void)
-{
-	process_poll(&routing_process);
 }
 
 uint8_t flood_send_to_local(void)
