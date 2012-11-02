@@ -15,8 +15,6 @@
 #include "rimeaddr.h"
 #include "process.h"
 
-#define POINTER_TROUBLE 1
-
 /**
  * How many outgoing bundles can we queue?
  */
@@ -31,6 +29,11 @@
  * How often shall we retransmit bundles before we notify routing
  */
 #define CONVERGENCE_LAYER_RETRIES			3
+
+/**
+ * How long shall we wait for an app-layer ACK or NACK? [in seconds]
+ */
+#define CONVERGENCE_LAYER_TIMEOUT			5
 
 /**
  * Bundle queue flags
@@ -103,10 +106,6 @@ struct transmit_ticket_t {
 	uint8_t sequence_number;
 
 	struct mmem * bundle;
-
-#ifdef POINTER_TROUBLE
-	uint32_t valid;
-#endif
 };
 
 int convergence_layer_init(void);
