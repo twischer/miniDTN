@@ -116,7 +116,8 @@ void b_dis_send(rimeaddr_t * destination)
 
 	rimeaddr_t dest={{0,0}};
 	PRINTF("dtn_send_discover\n");
-	dtn_send_discover((uint8_t *) "DTN_DISCOVERY", 13, &dest);
+
+	convergence_layer_send_discovery((uint8_t *) "DTN_DISCOVERY", 13, &dest);
 }
 
 /**
@@ -156,7 +157,7 @@ uint8_t b_dis_is_discover(uint8_t * msg, rimeaddr_t * dest)
 	}
 
 	PRINTF("DTN DISCOVERY\n");
-	dtn_send_discover((uint8_t *) "DTN_HERE", 8, dest);
+	convergence_layer_send_discovery((uint8_t *) "DTN_HERE", 8, dest);
 
 	return 1;
 }

@@ -14,27 +14,27 @@
  * implementation of flooding
  * \author Georg von Zengen (vonzeng@ibr.cs.tu-bs.de)
  */
-#include "net/netstack.h"
+#include <string.h>
 
+#include "net/netstack.h"
+#include "net/rime/rimeaddr.h"
+#include "lib/list.h"
+#include "lib/memb.h"
+#include "contiki.h"
+#include "clock.h"
 
 #include "bundle.h"
-#include "net/rime/rimeaddr.h"
 #include "storage.h"
 #include "sdnv.h"
 #include "routing.h"
 #include "agent.h"
-#include "lib/list.h"
-#include "lib/memb.h"
-#include "contiki.h"
-#include <string.h>
 #include "discovery.h"
-#include "bundle.h"
-#include "storage.h"
 #include "statistics.h"
-#include "clock.h"
 #include "bundleslot.h"
 #include "delivery.h"
+// #define ENABLE_LOGGING 1
 #include "logging.h"
+#include "convergence_layer.h"
 
 #define DEBUG 0
 #if DEBUG 
@@ -48,9 +48,7 @@
 #define BLACKLIST_THRESHOLD	3
 #define BLACKLIST_SIZE		3
 
-uint8_t flood_transmitting;
 uint8_t flood_agent_event_pending = 0;
-struct route_t route;
 
 struct blacklist_entry_t {
 	struct blacklist_entry_t * next;
@@ -156,6 +154,7 @@ void flood_blacklist_delete(rimeaddr_t * neighbour)
 		entry = list_item_next(entry)) {
 		if( rimeaddr_cmp(neighbour, &entry->node) ) {
 			list_remove(blacklist_list, entry);
+			memset(entry, 0, sizeof(struct blacklist_entry_t));
 			memb_free(&blacklist_mem, entry);
 			return;
 		}
@@ -177,7 +176,6 @@ void flood_init(void)
 	memb_init(&routing_mem);
 	list_init(routing_list);
 
-	flood_transmitting = 0;
 	flood_agent_event_pending = 0;
 }
 
@@ -190,10 +188,6 @@ void flood_new_neigh(rimeaddr_t *dest)
 	flood_sent_to_known();
 }
 
-
-void flood_delete_list(void)
-{
-}
 
 void flood_schedule_resubmission(void)
 {
@@ -220,8 +214,7 @@ uint8_t flood_send_to_local(void)
 		if( (entry->flags & ROUTING_FLAG_LOCAL) && !(entry->flags & ROUTING_FLAG_IN_DELIVERY) ) {
 			bundlemem = BUNDLE_STORAGE.read_bundle(entry->bundle_number);
 			if( bundlemem == NULL ) {
-				LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "cannot read bundle %d", entry->bundle_number);
-				bundlemem = NULL;
+				LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "cannot read bundle %lu", entry->bundle_number);
 				continue;
 			}
 
@@ -235,19 +228,36 @@ uint8_t flood_send_to_local(void)
 	return delivered;
 }
 
+int flood_send_bundle(uint32_t bundle_number, rimeaddr_t neighbour)
+{
+	struct transmit_ticket_t * ticket = NULL;
+
+	/* Allocate a transmission ticket */
+	ticket = convergence_layer_get_transmit_ticket();
+	if( ticket == NULL ) {
+		printf("FLOOD: unable to allocate ticket\n");
+		return -1;
+	}
+
+	/* Specify which bundle */
+	rimeaddr_copy(&ticket->neighbour, &neighbour);
+	ticket->bundle_number = bundle_number;
+
+	/* Put the bundle in the queue */
+	convergence_layer_enqueue_bundle(ticket);
+
+	return 1;
+}
+
 uint8_t flood_sent_to_known(void)
 {
 	struct discovery_neighbour_list_entry *nei_l = NULL;
 	struct routing_list_entry_t * n = NULL;
 	struct routing_entry_t * entry = NULL;
+	int h = 0;
 
 	// First: deliver bundles to local services
 	flood_send_to_local();
-
-	if( flood_transmitting ) {
-		flood_schedule_resubmission();
-		return 0;
-	}
 
 	LOG(LOGD_DTN, LOG_ROUTE, LOGL_DBG, "send to known neighbours");
 
@@ -263,7 +273,7 @@ uint8_t flood_sent_to_known(void)
 			entry = (struct routing_entry_t *) MMEM_PTR(&n->entry);
 
 			// Skip this bundle, if it is not queued for forwarding
-			if( !(entry->flags & ROUTING_FLAG_FORWARD) ) {
+			if( !(entry->flags & ROUTING_FLAG_FORWARD) || (entry->flags & ROUTING_FLAG_IN_TRANSIT) ) {
 				continue;
 			}
 
@@ -274,21 +284,14 @@ uint8_t flood_sent_to_known(void)
 				// We know the neighbour, send it directly
 				LOG(LOGD_DTN, LOG_ROUTE, LOGL_INF, "send bundle %u to %u:%u directly", entry->bundle_number, nei_l->neighbour.u8[0], nei_l->neighbour.u8[1]);
 
-				// Clear memory to store the route
-				memset(&route, 0, sizeof(struct route_t));
+				/* Mark bundle as busy */
+				entry->flags |= ROUTING_FLAG_IN_TRANSIT;
 
-				// Save next hop and bundle number
-				rimeaddr_copy(&route.dest, &nei_l->neighbour);
-				route.bundle_num = entry->bundle_number;
-
-				// Lock ourself
-				flood_transmitting = 1;
-
-				// And tell the agent to transmit
-				agent_send_bundles(&route);
-
-				// Only one bundle at a time
-				return 1;
+				/* And queue it for sending */
+				h = flood_send_bundle(entry->bundle_number, nei_l->neighbour);
+				if( h < 0 ) {
+					return 1;
+				}
 			}
 		}
 	}
@@ -306,7 +309,7 @@ uint8_t flood_sent_to_known(void)
 			entry = (struct routing_entry_t *) MMEM_PTR(&n->entry);
 
 			// Skip this bundle, if it is not queued for forwarding
-			if( !(entry->flags & ROUTING_FLAG_FORWARD) ) {
+			if( !(entry->flags & ROUTING_FLAG_FORWARD) || (entry->flags & ROUTING_FLAG_IN_TRANSIT) ) {
 				continue;
 			}
 
@@ -342,21 +345,14 @@ uint8_t flood_sent_to_known(void)
 			if(!sent) {
 				LOG(LOGD_DTN, LOG_ROUTE, LOGL_INF, "send bundle %u to %u:%u", entry->bundle_number, nei_l->neighbour.u8[0], nei_l->neighbour.u8[1]);
 
-				// Clear memory to store the route
-				memset(&route, 0, sizeof(struct route_t));
+				/* Mark bundle as busy */
+				entry->flags |= ROUTING_FLAG_IN_TRANSIT;
 
-				// Save next hop and bundle number
-				rimeaddr_copy(&route.dest, &nei_l->neighbour);
-				route.bundle_num = entry->bundle_number;
-
-				// Lock ourself
-				flood_transmitting = 1;
-
-				// And tell the agent to transmit
-				agent_send_bundles(&route);
-
-				// Only one bundle at a time
-				return 1;
+				/* And queue it for sending */
+				h = flood_send_bundle(entry->bundle_number, nei_l->neighbour);
+				if( h < 0 ) {
+					return 1;
+				}
 			}
 		}
 	}
@@ -441,8 +437,10 @@ int flood_new_bundle(uint32_t bundle_number)
 		return -1;
 	}
 
+	memset(n, 0, sizeof(struct routing_list_entry_t));
+
 	// Now allocate new MMEM memory for the struct in the list
-	if( !mmem_alloc(&(n->entry), sizeof(struct routing_entry_t)) ) {
+	if( !mmem_alloc(&n->entry, sizeof(struct routing_entry_t)) ) {
 		LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "cannot allocate routing struct for bundle, MMEM is full");
 		memb_free(&routing_mem, n);
 		return -1;
@@ -504,7 +502,8 @@ int flood_new_bundle(uint32_t bundle_number)
 	bundle_dec(bundlemem);
 
 	// Schedule to deliver and forward the bundle
-	flood_schedule_resubmission();
+	// flood_schedule_resubmission();
+	flood_sent_to_known();
 
 	// We do not have a failure here, so it must be a success
 	return 1;
@@ -535,8 +534,14 @@ void flood_del_bundle(uint32_t bundle_number)
 		return;
 	}
 
+	memset(MMEM_PTR(&n->entry), 0, sizeof(struct routing_entry_t));
+
 	// Free up the memory for the struct
 	mmem_free(&n->entry);
+
+	list_remove(routing_list, n);
+
+	memset(n, 0, sizeof(struct routing_list_entry_t));
 
 	// And also free the memory for the list entry
 	memb_free(&routing_mem, n);
@@ -548,13 +553,10 @@ void flood_del_bundle(uint32_t bundle_number)
 * \param status status code
 * \num_tx number of retransmissions 
 */
-void flood_sent(struct route_t *route, int status, int num_tx)
+void flood_sent(struct transmit_ticket_t * ticket, uint8_t status)
 {
 	struct routing_list_entry_t * n = NULL;
 	struct routing_entry_t * entry = NULL;
-
-	// Release transmit lock
-	flood_transmitting = 0;
 
 	// Find the bundle in our internal storage
 	for( n = list_head(routing_list);
@@ -562,7 +564,7 @@ void flood_sent(struct route_t *route, int status, int num_tx)
 		 n = list_item_next(n) ) {
 		entry = (struct routing_entry_t *) MMEM_PTR(&n->entry);
 
-		if( entry->bundle_number == route->bundle_num ) {
+		if( entry->bundle_number == ticket->bundle_number ) {
 			break;
 		}
 	}
@@ -572,77 +574,67 @@ void flood_sent(struct route_t *route, int status, int num_tx)
 		return;
 	}
 
-	switch(status) {
-	case MAC_TX_ERR:
-		// This is the default state value of nullrdc, if the return value of NETSTACK_RADIO.transmit is none of RADIO_TX_OK and RADIO_TX_COLLISION applies.
-		// Unfortunately, we cannot distinguish the original errors here
-	case MAC_TX_COLLISION:
-		// This status can either mean, that the packet could not be transmitted because another packet is pending
-		// Or it means that the packet was transmitted, but an ack for another packet was received
-		// It seems to even mean, that CSMA will try a retransmit, but we cannot distinguish that
-		// In any case, retransmitting the packet seems to be the more sensible choice
-	case MAC_TX_NOACK:
-		// This status should never come back for CSMA, NULLRDC and RF230BB
-
-		// dtn-network tried to send bundle but failed, has to be retried
-		if( status == MAC_TX_ERR ) {
-			PRINTF("FLOOD: MAC_TX_ERR\n");
-		} else if( status == MAC_TX_COLLISION ) {
-			PRINTF("FLOOD: collision after %d tx\n", num_tx);
-		} else if( status == MAC_TX_NOACK ) {
-			PRINTF("FLOOD: noack after %d tx\n", num_tx);
-		}
-
-		// Transmission failed, note down address in blacklist
-		if( flood_blacklist_add(&route->dest) ) {
-			// Node is now past threshold and blacklisted, notify discovery
-			DISCOVERY.dead(&route->dest);
-			flood_blacklist_delete(&route->dest);
-		}
-
-		break;
-
-	case MAC_TX_OK:
-		PRINTF("FLOOD: sent after %d tx\n", num_tx);
-		statistics_bundle_outgoing(1);
-
-		flood_blacklist_delete(&route->dest);
-
-		rimeaddr_t dest_n = convert_eid_to_rime(entry->destination_node);
-		if (rimeaddr_cmp(&route->dest, &dest_n)) {
-			PRINTF("FLOOD: bundle sent to destination node\n");
-
-			// Unset the forward flag
-			entry->flags &= ~ROUTING_FLAG_FORWARD;
-			flood_check_keep_bundle(route->bundle_num);
-
-			break;
-		} else {
-			PRINTF("FLOOD: bundle for %u:%u delivered to %u:%u\n", dest_n.u8[0], dest_n.u8[1], route->dest.u8[0], route->dest.u8[1]);
-		}
-
-		if (entry->send_to < ROUTING_NEI_MEM) {
-			rimeaddr_copy(&entry->neighbours[entry->send_to], &route->dest);
-			entry->send_to++;
-			PRINTF("FLOOD: bundle %lu sent to %u nodes\n", route->bundle_num, entry->send_to);
-	    } else if (entry->send_to >= ROUTING_NEI_MEM) {
-	    	// Here we can delete the bundle from storage, because it will not be routed anyway
-			PRINTF("FLOOD: bundle sent to max number of nodes\n");
-
-			// Unset the forward flag
-			entry->flags &= ~ROUTING_FLAG_FORWARD;
-			flood_check_keep_bundle(route->bundle_num);
-		}
-
-	    break;
-
-	default:
-	    printf("FLOOD: error %d after %d tx\n", status, num_tx);
-	    break;
-	}
-
 	// Tell the agent to call us again to resubmit bundles
 	flood_schedule_resubmission();
+
+	/* Bundle is not busy anymore */
+	entry->flags &= ~ROUTING_FLAG_IN_TRANSIT;
+
+	if( status == ROUTING_STATUS_NACK ||
+		status == ROUTING_STATUS_FAIL ) {
+		// NACK = Other side rejected the bundle, try again later
+		// FAIL = Transmission failed
+		// --> note down address in blacklist
+		if( flood_blacklist_add(&ticket->neighbour) ) {
+			// Node is now past threshold and blacklisted, notify discovery
+			DISCOVERY.dead(&ticket->neighbour);
+			flood_blacklist_delete(&ticket->neighbour);
+		}
+
+		/* Free up the ticket */
+		convergence_layer_free_transmit_ticket(ticket);
+
+		return;
+	}
+
+	// Here: status == ROUTING_STATUS_OK
+	statistics_bundle_outgoing(1);
+
+	flood_blacklist_delete(&ticket->neighbour);
+
+	rimeaddr_t dest_n = convert_eid_to_rime(entry->destination_node);
+	if (rimeaddr_cmp(&ticket->neighbour, &dest_n)) {
+		PRINTF("FLOOD: bundle sent to destination node\n");
+		uint32_t bundle_number = ticket->bundle_number;
+
+		/* Free up the ticket */
+		convergence_layer_free_transmit_ticket(ticket);
+		ticket = NULL;
+
+		// Unset the forward flag
+		entry->flags &= ~ROUTING_FLAG_FORWARD;
+		flood_check_keep_bundle(bundle_number);
+
+		return;
+	} else {
+		PRINTF("FLOOD: bundle for %u:%u delivered to %u:%u\n", dest_n.u8[0], dest_n.u8[1], ticket->neighbour.u8[0], ticket->neighbour.u8[1]);
+	}
+
+	if (entry->send_to < ROUTING_NEI_MEM) {
+		rimeaddr_copy(&entry->neighbours[entry->send_to], &ticket->neighbour);
+		entry->send_to++;
+		PRINTF("FLOOD: bundle %lu sent to %u nodes\n", ticket->bundle_number, entry->send_to);
+	} else if (entry->send_to >= ROUTING_NEI_MEM) {
+		// Here we can delete the bundle from storage, because it will not be routed anyway
+		PRINTF("FLOOD: bundle sent to max number of nodes\n");
+
+		// Unset the forward flag
+		entry->flags &= ~ROUTING_FLAG_FORWARD;
+		flood_check_keep_bundle(ticket->bundle_number);
+	}
+
+	/* Free up the ticket */
+	convergence_layer_free_transmit_ticket(ticket);
 }
 
 /**
@@ -689,6 +681,9 @@ void flood_locally_delivered(struct mmem * bundlemem) {
 
 	// Check remaining live of bundle
 	flood_check_keep_bundle(entry->bundle_number);
+
+	// Tell the agent to call us again to resubmit bundles
+	flood_schedule_resubmission();
 }
 
 const struct routing_driver flood_route ={
@@ -698,7 +693,6 @@ const struct routing_driver flood_route ={
 	flood_new_bundle,
 	flood_del_bundle,
 	flood_sent,
-	flood_delete_list,
 	flood_resubmit_bundles,
 	flood_locally_delivered,
 };
