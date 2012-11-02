@@ -32,7 +32,11 @@
 struct blocked_neighbour_t {
 	struct blocked_neighbour_t * next;
 
+	/* Address of the neighbour */
 	rimeaddr_t neighbour;
+
+	/* Since when is he blocked? */
+	clock_time_t timestamp;
 };
 
 /**
@@ -104,11 +108,6 @@ struct transmit_ticket_t * convergence_layer_get_transmit_ticket_priority(uint8_
 	/* Initialize the ticket */
 	memset(ticket, 0, sizeof(struct transmit_ticket_t));
 
-#ifdef POINTER_TROUBLE
-	/* Is a valid ticket */
-	ticket->valid = CONVERGENCE_LAYER_VALID_FLAG;
-#endif
-
 	/* Add it to our list */
 	list_add(transmission_ticket_list, ticket);
 
@@ -126,13 +125,6 @@ struct transmit_ticket_t * convergence_layer_get_transmit_ticket()
 
 int convergence_layer_free_transmit_ticket(struct transmit_ticket_t * ticket)
 {
-#ifdef POINTER_TROUBLE
-	if( ticket->valid != CONVERGENCE_LAYER_VALID_FLAG ) {
-		LOG(LOGD_DTN, LOG_CL, LOGL_WRN, "Not double freeing ticket memory");
-		return -1;
-	}
-#endif
-
 	if( ticket->bundle != NULL ) {
 		bundle_dec(ticket->bundle);
 		ticket->bundle = NULL;
@@ -606,7 +598,8 @@ int convergence_layer_delete_bundle(uint32_t bundle_number)
 	return 1;
 }
 
-int convergence_layer_is_blocked(rimeaddr_t * neighbour) {
+int convergence_layer_is_blocked(rimeaddr_t * neighbour)
+{
 	struct blocked_neighbour_t * n = NULL;
 
 	for( n = list_head(blocked_neighbour_list);
@@ -620,7 +613,8 @@ int convergence_layer_is_blocked(rimeaddr_t * neighbour) {
 	return 0;
 }
 
-int convergence_layer_set_blocked(rimeaddr_t * neighbour) {
+int convergence_layer_set_blocked(rimeaddr_t * neighbour)
+{
 	struct blocked_neighbour_t * n = NULL;
 
 	n = memb_alloc(&blocked_neighbour_mem);
@@ -629,13 +623,18 @@ int convergence_layer_set_blocked(rimeaddr_t * neighbour) {
 		return -1;
 	}
 
+	/* Fill the struct */
 	rimeaddr_copy(&n->neighbour, neighbour);
+	n->timestamp = clock_time();
+
+	/* Add it to the list */
 	list_add(blocked_neighbour_list, n);
 
 	return 1;
 }
 
-int convergence_layer_set_unblocked(rimeaddr_t * neighbour) {
+int convergence_layer_set_unblocked(rimeaddr_t * neighbour)
+{
 	struct blocked_neighbour_t * n = NULL;
 
 	for( n = list_head(blocked_neighbour_list);
@@ -649,12 +648,59 @@ int convergence_layer_set_unblocked(rimeaddr_t * neighbour) {
 	}
 
 	return 0;
+}
 
+void check_blocked_neighbours() {
+	struct blocked_neighbour_t * n = NULL;
+	struct transmit_ticket_t * ticket = NULL;
+
+	for( n = list_head(blocked_neighbour_list);
+		 n != NULL;
+		 n = list_item_next(n) ) {
+
+		if( (clock_time() - n->timestamp) >= (CLOCK_SECOND * CONVERGENCE_LAYER_TIMEOUT ) ) {
+			/* We have a neighbour that takes quite long to reply apparently -
+			 * unblock him and resend the pending bundle
+			 */
+			break;
+		}
+	}
+
+	/* Nothing to do for us */
+	if( n == NULL ) {
+		return;
+	}
+
+	/* Go and find the currently transmitting ticket to that neighbour */
+	for( ticket = list_head(transmission_ticket_list);
+		 ticket != NULL;
+		 ticket = list_item_next(ticket) ) {
+		if( rimeaddr_cmp(&ticket->neighbour, &n->neighbour) && (ticket->flags & CONVERGENCE_LAYER_QUEUE_ACK_PEND) ) {
+			break;
+		}
+	}
+
+	/* Unblock the neighbour */
+	convergence_layer_set_unblocked(&n->neighbour);
+
+	LOG(LOGD_DTN, LOG_CL, LOGL_WRN, "Neighbour %u.%u stale, removing lock", n->neighbour.u8[0], n->neighbour.u8[1]);
+
+	/* There seems to be no ticket, nothing to do for us */
+	if( ticket == NULL ) {
+		return;
+	}
+
+	/* Otherwise: just reactivate the ticket, it will be transmitted again */
+	ticket->flags = CONVERGENCE_LAYER_QUEUE_ACTIVE;
+
+	/* Tell the process to resend the bundles */
+	process_poll(&convergence_layer_process);
 }
 
 PROCESS_THREAD(convergence_layer_process, ev, data)
 {
 	struct transmit_ticket_t * ticket = NULL;
+	static struct etimer stale_timer;
 
 	PROCESS_BEGIN();
 
@@ -668,36 +714,47 @@ PROCESS_THREAD(convergence_layer_process, ev, data)
 
 	LOG(LOGD_DTN, LOG_CL, LOGL_INF, "CL process in running");
 
+	/* Initialize state */
 	convergence_layer_transmitting = 0;
 	convergence_layer_queue = 0;
 
-	while(1) {
-		PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL);
+	/* Set timer */
+	etimer_set(&stale_timer, CLOCK_SECOND);
 
-		/* If we are currently transmitting, we cannot send another bundle */
-		if( convergence_layer_transmitting ) {
-			continue;
+	while(1) {
+		PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL || etimer_expired(&stale_timer));
+
+		if( etimer_expired(&stale_timer) ) {
+			check_blocked_neighbours();
+			etimer_reset(&stale_timer);
 		}
 
-		/* If we have been woken up, it must have been a poll to transmit outgoing bundles */
-		for(ticket = list_head(transmission_ticket_list);
-			ticket != NULL;
-			ticket = list_item_next(ticket) ) {
-			/* Tickets that are in any other state than ACTIVE cannot be transmitted */
-			if( ticket->flags != CONVERGENCE_LAYER_QUEUE_ACTIVE ) {
+		if( ev == PROCESS_EVENT_POLL ) {
+			/* If we are currently transmitting, we cannot send another bundle */
+			if( convergence_layer_transmitting ) {
 				continue;
 			}
 
-			/* Neighbour for which we are currently waiting on app-layer ACKs cannot receive anything now */
-			if( convergence_layer_is_blocked(&ticket->neighbour) ) {
-				continue;
+			/* If we have been woken up, it must have been a poll to transmit outgoing bundles */
+			for(ticket = list_head(transmission_ticket_list);
+				ticket != NULL;
+				ticket = list_item_next(ticket) ) {
+				/* Tickets that are in any other state than ACTIVE cannot be transmitted */
+				if( ticket->flags != CONVERGENCE_LAYER_QUEUE_ACTIVE ) {
+					continue;
+				}
+
+				/* Neighbour for which we are currently waiting on app-layer ACKs cannot receive anything now */
+				if( convergence_layer_is_blocked(&ticket->neighbour) ) {
+					continue;
+				}
+
+				/* Send the bundle just now */
+				convergence_layer_send_bundle(ticket);
+
+				/* Radio is busy now, defer */
+				break;
 			}
-
-			/* Send the bundle just now */
-			convergence_layer_send_bundle(ticket);
-
-			/* Radio is busy now, defer */
-			break;
 		}
 	}
 	PROCESS_END();
