@@ -69,6 +69,7 @@ AUTOSTART_PROCESSES(&udtn_sender_process);
 PROCESS_THREAD(udtn_sender_process, ev, data)
 {
 	uint8_t i;
+	int n;
 	static struct etimer timer;
 	static struct registration_api reg;
 	static uint16_t bundles_sent = 0;
@@ -208,7 +209,12 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 		/* Add the payload */
 		for(i=0; i<80; i++)
 			userdata[i] = i;
-		add_block(bundle_outgoing, 1, 2, userdata, 80);
+		n = add_block(bundle_outgoing, 1, 2, userdata, 80);
+		if( !n ) {
+			printf("not enough room for block\n");
+			bundle_dec(bundle_outgoing);
+			continue;
+		}
 
 		/* Hand the bundle over to the agent */
 		process_post(&agent_process, dtn_send_bundle_event, (void *) bundle_outgoing);
