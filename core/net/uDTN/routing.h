@@ -58,7 +58,7 @@
 #define ROUTING_STATUS_FAIL			0x02
 #define ROUTING_STATUS_NACK			0x04
 
-process_event_t dtn_bundle_resubmission_event;
+PROCESS_NAME(routing_process);
 
 /** the route_t struct is used to inform the network interface which bundle should be transmitted to whicht node*/
 struct route_t	{
@@ -83,7 +83,7 @@ struct routing_driver {
 	/** callback function is called by convergence layer */
 	void (* sent)(struct transmit_ticket_t * ticket, uint8_t status);
 	/** function to resubmit bundles currently in storage */
-	void (* resubmit_bundles)(uint8_t called_by_event);
+	void (* resubmit_bundles)();
 	/** notify storage, that bundle has been delivered locally */
 	void (* locally_delivered)(struct mmem * bundlemem);
 };
