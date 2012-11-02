@@ -11,6 +11,7 @@
 
 #include <string.h>
 #include "clock.h"
+#include "agent.h"
 #include "logging.h"
 #include "bundleslot.h"
 
@@ -54,9 +55,12 @@ uint8_t add_block(struct mmem *bundlemem, uint8_t type, uint8_t flags, uint8_t *
 	struct bundle_t *bundle;
 	struct bundle_block_t *block;
 	uint8_t i;
+	int n;
 
-	/* FIXME: Error case */
-	mmem_realloc(bundlemem, bundlemem->size + d_len + sizeof(struct bundle_block_t));
+	n = mmem_realloc(bundlemem, bundlemem->size + d_len + sizeof(struct bundle_block_t));
+	if( !n ) {
+		return -1;
+	}
 
 	bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 
@@ -326,6 +330,7 @@ static uint8_t decode_block(struct mmem *bundlemem, uint8_t *buffer, int max_len
 	uint32_t flags, size;
 	struct bundle_t *bundle;
 	struct bundle_block_t *block;
+	int n;
 
 	type = buffer[offs];
 	offs++;
@@ -341,8 +346,12 @@ static uint8_t decode_block(struct mmem *bundlemem, uint8_t *buffer, int max_len
 	}
 
 	block_offs = bundlemem->size;
-	/* FIXME: Catch error path */
-	mmem_realloc(bundlemem, bundlemem->size + sizeof(struct bundle_block_t) + size);
+
+	n = mmem_realloc(bundlemem, bundlemem->size + sizeof(struct bundle_block_t) + size);
+	if( !n ) {
+		LOG(LOGD_DTN, LOG_BUNDLE, LOGL_ERR, "Bundle payload length too big for MMEM.");
+		return 0;
+	}
 
 	bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 	bundle->num_blocks++;
