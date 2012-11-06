@@ -796,7 +796,7 @@ PROCESS_THREAD(convergence_layer_process, ev, data)
 	etimer_set(&stale_timer, CLOCK_SECOND);
 
 	while(1) {
-		PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL || ev == PROCESS_EVENT_CONTINUE || etimer_expired(&stale_timer));
+		PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL || etimer_expired(&stale_timer));
 
 		if( etimer_expired(&stale_timer) ) {
 			check_blocked_neighbours();
@@ -844,7 +844,7 @@ PROCESS_THREAD(convergence_layer_process, ev, data)
 
 			if( !transmission ) {
 				/* Something must be going on, but we did not transmit - reschedule ourselves */
-				process_post(&convergence_layer_process, PROCESS_EVENT_CONTINUE, NULL);
+				process_poll(&convergence_layer_process);
 			}
 		}
 	}
