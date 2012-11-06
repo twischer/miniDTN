@@ -16,6 +16,7 @@
 #include "netstack.h"
 #include "rimeaddr.h"
 #include "process.h"
+#include "list.h"
 
 #include "agent.h"
 #include "logging.h"
@@ -23,6 +24,7 @@
 #include "discovery.h"
 #include "dtn-network.h"
 #include "dispatching.h"
+#include "bundleslot.h"
 
 #include "convergence_layer.h"
 
@@ -78,6 +80,11 @@ int convergence_layer_slots;
  */
 int convergence_layer_queue;
 
+/**
+ * Use a unique sequence number of each outgoing segment
+ */
+uint8_t outgoing_sequence_number;
+
 int convergence_layer_init(void)
 {
 	// Start CL process
@@ -104,12 +111,19 @@ struct transmit_ticket_t * convergence_layer_get_transmit_ticket_priority(uint8_
 		LOG(LOGD_DTN, LOG_CL, LOGL_WRN, "Cannot allocate ticket");
 		return NULL;
 	}
+	ticket->timestamp = clock_time();
 
 	/* Initialize the ticket */
 	memset(ticket, 0, sizeof(struct transmit_ticket_t));
 
 	/* Add it to our list */
-	list_add(transmission_ticket_list, ticket);
+	if( priority == CONVERGENCE_LAYER_PRIORITY_NORMAL ) {
+		/* Append to list */
+		list_add(transmission_ticket_list, ticket);
+	} else {
+		/* Prepend to list */
+		list_push(transmission_ticket_list, ticket);
+	}
 
 	/* Count the used slots */
 	convergence_layer_slots++;
@@ -179,7 +193,8 @@ int convergence_layer_send_bundle(struct transmit_ticket_t * ticket)
 	if( ticket->bundle == NULL ) {
 		ticket->bundle = BUNDLE_STORAGE.read_bundle(ticket->bundle_number);
 		if( ticket->bundle == NULL ) {
-			LOG(LOGD_DTN, LOG_CL, LOGL_ERR, "Unable to read bundle %d", ticket->bundle_number);
+			LOG(LOGD_DTN, LOG_CL, LOGL_ERR, "Unable to read bundle %lu", ticket->bundle_number);
+			/* FIXME: Notify somebody */
 			return -1;
 		}
 	}
@@ -187,7 +202,7 @@ int convergence_layer_send_bundle(struct transmit_ticket_t * ticket)
 	/* Get our bundle struct and check the pointer */
 	bundle = (struct bundle_t *) MMEM_PTR(ticket->bundle);
 	if( bundle == NULL ) {
-		LOG(LOGD_DTN, LOG_CL, LOGL_ERR, "Invalid bundle pointer for bundle %d", ticket->bundle_number);
+		LOG(LOGD_DTN, LOG_CL, LOGL_ERR, "Invalid bundle pointer for bundle %lu", ticket->bundle_number);
 		bundle_dec(ticket->bundle);
 		ticket->bundle = NULL;
 		return -1;
@@ -216,6 +231,8 @@ int convergence_layer_send_bundle(struct transmit_ticket_t * ticket)
 	/* Get our buffer */
 	buffer = dtn_network_get_buffer();
 	if( buffer == NULL ) {
+		bundle_dec(ticket->bundle);
+		ticket->bundle = NULL;
 		return -1;
 	}
 
@@ -226,6 +243,9 @@ int convergence_layer_send_bundle(struct transmit_ticket_t * ticket)
 	buffer[0]  = 0;
 	buffer[0] |= CONVERGENCE_LAYER_TYPE_DATA & CONVERGENCE_LAYER_MASK_TYPE;
 	buffer[0] |= (CONVERGENCE_LAYER_FLAGS_FIRST | CONVERGENCE_LAYER_FLAGS_LAST) & CONVERGENCE_LAYER_MASK_FLAGS;
+	buffer[0] |= (outgoing_sequence_number << 2) & CONVERGENCE_LAYER_MASK_SEQNO;
+	ticket->sequence_number = outgoing_sequence_number;
+	outgoing_sequence_number = (outgoing_sequence_number + 1) % 4;
 	length = 1;
 
 	/* Encode the bundle into the buffer */
@@ -278,12 +298,11 @@ int convergence_layer_send_discovery(uint8_t * payload, uint8_t length, rimeaddr
 	return 1;
 }
 
-int convergence_layer_send_ack(rimeaddr_t * destination, uint8_t sequence_number, uint8_t type)
+int convergence_layer_send_ack(rimeaddr_t * destination, uint8_t sequence_number, uint8_t type, struct transmit_ticket_t * ticket)
 {
 	uint8_t * buffer = NULL;
-	struct transmit_ticket_t * ticket = NULL;
 
-	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Sending ACK or NACK to %u.%u for SeqNo %u", destination->u8[0], destination->u8[1], sequence_number);
+	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Sending ACK or NACK to %u.%u for SeqNo %u: %p", destination->u8[0], destination->u8[1], sequence_number, destination);
 
 	/* If we are currently transmitting or waiting for an ACK, do nothing */
 	if( convergence_layer_transmitting ) {
@@ -296,28 +315,20 @@ int convergence_layer_send_ack(rimeaddr_t * destination, uint8_t sequence_number
 		return -1;
 	}
 
-	/* We have to keep track of the outgoing packet, because we have to be able to retransmit */
-	ticket = convergence_layer_get_transmit_ticket_priority(CONVERGENCE_LAYER_PRIORITY_HIGH);
-	if( ticket == NULL ) {
-		LOG(LOGD_DTN, LOG_CL, LOGL_WRN, "Unable to allocate ticket to potentially retransmit ACK/NACK");
-	} else {
-		rimeaddr_copy(&ticket->neighbour, destination);
-		ticket->sequence_number = sequence_number;
-	}
-
 	if( type == CONVERGENCE_LAYER_TYPE_ACK ) {
 		// Construct the ACK
 		buffer[0] = 0;
 		buffer[0] |= CONVERGENCE_LAYER_TYPE_ACK & CONVERGENCE_LAYER_MASK_TYPE;
 		buffer[0] |= (sequence_number << 2) & CONVERGENCE_LAYER_MASK_SEQNO;
-		ticket->flags |= CONVERGENCE_LAYER_QUEUE_ACK;
 	} else if( type == CONVERGENCE_LAYER_TYPE_NACK ) {
 		// Construct the NACK
 		buffer[0] = 0;
 		buffer[0] |= CONVERGENCE_LAYER_TYPE_NACK & CONVERGENCE_LAYER_MASK_TYPE;
 		buffer[0] |= (sequence_number << 2) & CONVERGENCE_LAYER_MASK_SEQNO;
-		ticket->flags |= CONVERGENCE_LAYER_QUEUE_NACK;
 	}
+
+	/* Note down our latest attempt */
+	ticket->timestamp = clock_time();
 
 	/* Now we are transmitting */
 	convergence_layer_transmitting = 1;
@@ -328,13 +339,64 @@ int convergence_layer_send_ack(rimeaddr_t * destination, uint8_t sequence_number
 	return 1;
 }
 
+int convergence_layer_create_send_ack(rimeaddr_t * destination, uint8_t sequence_number, uint8_t type)
+{
+	struct transmit_ticket_t * ticket = NULL;
+
+	/* We have to keep track of the outgoing packet, because we have to be able to retransmit */
+	ticket = convergence_layer_get_transmit_ticket_priority(CONVERGENCE_LAYER_PRIORITY_HIGH);
+	if( ticket == NULL ) {
+		LOG(LOGD_DTN, LOG_CL, LOGL_WRN, "Unable to allocate ticket to potentially retransmit ACK/NACK");
+	} else {
+		rimeaddr_copy(&ticket->neighbour, destination);
+		ticket->sequence_number = sequence_number;
+		ticket->flags |= CONVERGENCE_LAYER_QUEUE_IN_TRANSIT;
+
+		if( type == CONVERGENCE_LAYER_TYPE_ACK ) {
+			ticket->flags |= CONVERGENCE_LAYER_QUEUE_ACK;
+		} else {
+			ticket->flags |= CONVERGENCE_LAYER_QUEUE_NACK;
+		}
+	}
+
+	return convergence_layer_send_ack(destination, sequence_number, type, ticket);
+}
+
+int convergence_layer_resend_ack(struct transmit_ticket_t * ticket)
+{
+	/* Check if we really have an ACK/NACK that is currently not beeing transmitted */
+	if( (!(ticket->flags & CONVERGENCE_LAYER_QUEUE_ACK) && !(ticket->flags & CONVERGENCE_LAYER_QUEUE_NACK)) || (ticket->flags & CONVERGENCE_LAYER_QUEUE_IN_TRANSIT) ) {
+		return 0;
+	}
+
+	/* Check for the retransmission timer */
+	if( (clock_time() - ticket->timestamp) < (CONVERGENCE_LAYER_RETRANSMIT_TIMEOUT * CLOCK_SECOND) ) {
+		return 0;
+	}
+
+	ticket->flags |= CONVERGENCE_LAYER_QUEUE_IN_TRANSIT;
+	uint8_t type = 0;
+	if( ticket->flags & CONVERGENCE_LAYER_QUEUE_ACK ) {
+		type = CONVERGENCE_LAYER_TYPE_ACK;
+	} else if( ticket->flags & CONVERGENCE_LAYER_QUEUE_NACK ) {
+		type = CONVERGENCE_LAYER_TYPE_NACK;
+	} else {
+		LOG(LOGD_DTN, LOG_CL, LOGL_ERR, "Unknown control packet type");
+		return 0;
+	}
+
+	convergence_layer_send_ack(&ticket->neighbour, ticket->sequence_number, type, ticket);
+
+	return 1;
+}
+
 int convergence_layer_parse_dataframe(rimeaddr_t * source, uint8_t * payload, uint8_t length, uint8_t flags, uint8_t sequence_number)
 {
 	struct mmem * bundlemem = NULL;
 	struct bundle_t * bundle = NULL;
 	int n;
 
-	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Bundle received %p from %u.%u", payload, source->u8[0], source->u8[1]);
+	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Bundle received %p from %u.%u with SeqNo %u: %p", payload, source->u8[0], source->u8[1], sequence_number, source);
 
 	/* Allocate memory, parse the bundle and set reference counter to 1 */
 	bundlemem = recover_bundle(payload, length);
@@ -358,14 +420,12 @@ int convergence_layer_parse_dataframe(rimeaddr_t * source, uint8_t * payload, ui
 	/* Hand over the bundle to dispatching */
 	n = dispatch_bundle(bundlemem);
 
-	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Bundle %lu received %p from %u.%u", bundle->bundle_num, payload, source->u8[0], source->u8[1]);
-
 	if( n ) {
 		/* Send out the ACK */
-		convergence_layer_send_ack(source, sequence_number, CONVERGENCE_LAYER_TYPE_ACK);
+		convergence_layer_create_send_ack(source, sequence_number, CONVERGENCE_LAYER_TYPE_ACK);
 	} else {
 		/* Send out NACK */
-		convergence_layer_send_ack(source, sequence_number, CONVERGENCE_LAYER_TYPE_NACK);
+		convergence_layer_create_send_ack(source, sequence_number, CONVERGENCE_LAYER_TYPE_NACK);
 	}
 
 	return 1;
@@ -381,7 +441,7 @@ int convergence_layer_parse_ackframe(rimeaddr_t * source, uint8_t * payload, uin
 	/* Poll the process to initiate transmission of the next bundle */
 	process_poll(&convergence_layer_process);
 
-	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Incoming ACK for SeqNo %u", sequence_number);
+	// LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Incoming ACK for SeqNo %u", sequence_number);
 
 	for(ticket = list_head(transmission_ticket_list);
 		ticket != NULL;
@@ -445,6 +505,8 @@ int convergence_layer_incoming_frame(rimeaddr_t * source, uint8_t * payload, uin
 		flags = (header & CONVERGENCE_LAYER_MASK_FLAGS) >> 0;
 		sequence_number = (header & CONVERGENCE_LAYER_MASK_SEQNO) >> 2;
 
+		LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Incoming data frame from %u.%u with SeqNo %u", source->u8[0], source->u8[1], sequence_number);
+
 		convergence_layer_parse_dataframe(source, data_pointer, data_length, flags, sequence_number);
 
 		return 1;
@@ -452,6 +514,8 @@ int convergence_layer_incoming_frame(rimeaddr_t * source, uint8_t * payload, uin
 
 	if( (header & CONVERGENCE_LAYER_MASK_TYPE) == CONVERGENCE_LAYER_TYPE_DISCOVERY ) {
 		/* is discovery */
+		LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Incoming discovery frame from %u.%u", source->u8[0], source->u8[1]);
+
 		DISCOVERY.receive(source, data_pointer, data_length);
 
 		return 1;
@@ -463,6 +527,8 @@ int convergence_layer_incoming_frame(rimeaddr_t * source, uint8_t * payload, uin
 
 		sequence_number = (header & CONVERGENCE_LAYER_MASK_SEQNO) >> 2;
 
+		LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Incoming Ack frame from %u.%u with SeqNo %u", source->u8[0], source->u8[1], sequence_number);
+
 		convergence_layer_parse_ackframe(source, data_pointer, data_length, sequence_number, CONVERGENCE_LAYER_TYPE_ACK);
 
 		return 1;
@@ -473,6 +539,8 @@ int convergence_layer_incoming_frame(rimeaddr_t * source, uint8_t * payload, uin
 		int sequence_number = 0;
 
 		sequence_number = (header & CONVERGENCE_LAYER_MASK_SEQNO) >> 2;
+
+		LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Incoming Nack frame from %u.%u with SeqNo %u", source->u8[0], source->u8[1], sequence_number);
 
 		convergence_layer_parse_ackframe(source, data_pointer, data_length, sequence_number, CONVERGENCE_LAYER_TYPE_NACK);
 
@@ -498,7 +566,10 @@ int convergence_layer_status(void * pointer, uint8_t outcome)
 
 	ticket = (struct transmit_ticket_t *) pointer;
 
-	if( !(ticket->flags & CONVERGENCE_LAYER_QUEUE_IN_TRANSIT) ) {
+	if( (ticket->flags & CONVERGENCE_LAYER_QUEUE_ACK) || (ticket->flags & CONVERGENCE_LAYER_QUEUE_NACK) ) {
+		/* Unset IN_TRANSIT flag */
+		ticket->flags &= ~CONVERGENCE_LAYER_QUEUE_IN_TRANSIT;
+
 		/* Must be a NACK or ACK */
 		if( outcome == CONVERGENCE_LAYER_STATUS_OK ) {
 			/* Great! */
@@ -507,27 +578,21 @@ int convergence_layer_status(void * pointer, uint8_t outcome)
 			return 1;
 		}
 
-		/* We have to retransmit */
-		/* FIXME: This is poor implementation, but it should be enough for the moment */
-		rimeaddr_t neighbour;
-		uint8_t sequence_number;
-		uint8_t type = 0;
+		/* Increase the retry counter */
+		ticket->tries ++;
 
-		rimeaddr_copy(&neighbour, &ticket->neighbour);
-		sequence_number = ticket->sequence_number;
-		if( ticket->flags & CONVERGENCE_LAYER_QUEUE_ACK ) {
-			type = CONVERGENCE_LAYER_TYPE_ACK;
-		} else if( ticket->flags & CONVERGENCE_LAYER_QUEUE_NACK ) {
-			type = CONVERGENCE_LAYER_TYPE_NACK;
-		} else {
-			LOG(LOGD_DTN, LOG_CL, LOGL_ERR, "Invalid ticket");
+		/* Give up on too many retries */
+		if( ticket->tries >= CONVERGENCE_LAYER_RETRANSMIT_TRIES ) {
+			LOG(LOGD_DTN, LOG_CL, LOGL_WRN, "CL: Giving up on ticket %p after %d tries", ticket, ticket->tries);
+			convergence_layer_free_transmit_ticket(ticket);
+
+			return 0;
 		}
 
-		/* Free the old ticket */
-		convergence_layer_free_transmit_ticket(ticket);
+		/* We have to retransmit */
+		process_poll(&convergence_layer_process);
 
-		/* And send again */
-		convergence_layer_send_ack(&neighbour, sequence_number, type);
+		return 1;
 	}
 
 	/* Bundle was transmitted successfully */
@@ -535,7 +600,13 @@ int convergence_layer_status(void * pointer, uint8_t outcome)
 		// Bundle is sent, now waiting for the app-layer ACK
 		ticket->flags = CONVERGENCE_LAYER_QUEUE_ACTIVE | CONVERGENCE_LAYER_QUEUE_ACK_PEND;
 
-		LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "LL Ack received, waiting for App-layer ACK");
+		LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "LL Ack received, waiting for App-layer ACK with SeqNo %u", ticket->sequence_number);
+
+		/* It is unlikely that we have to retransmit this bundle, so free up memory */
+		if( ticket->bundle != NULL ) {
+			bundle_dec(ticket->bundle);
+			ticket->bundle = NULL;
+		}
 
 		return 1;
 	}
@@ -701,6 +772,8 @@ PROCESS_THREAD(convergence_layer_process, ev, data)
 {
 	struct transmit_ticket_t * ticket = NULL;
 	static struct etimer stale_timer;
+	int n;
+	int transmission;
 
 	PROCESS_BEGIN();
 
@@ -716,29 +789,41 @@ PROCESS_THREAD(convergence_layer_process, ev, data)
 
 	/* Initialize state */
 	convergence_layer_transmitting = 0;
+	outgoing_sequence_number = 0;
 	convergence_layer_queue = 0;
 
 	/* Set timer */
 	etimer_set(&stale_timer, CLOCK_SECOND);
 
 	while(1) {
-		PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL || etimer_expired(&stale_timer));
+		PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL || ev == PROCESS_EVENT_CONTINUE || etimer_expired(&stale_timer));
 
 		if( etimer_expired(&stale_timer) ) {
 			check_blocked_neighbours();
 			etimer_reset(&stale_timer);
 		}
 
-		if( ev == PROCESS_EVENT_POLL ) {
+		if( ev == PROCESS_EVENT_POLL || ev == PROCESS_EVENT_CONTINUE ) {
 			/* If we are currently transmitting, we cannot send another bundle */
 			if( convergence_layer_transmitting ) {
 				continue;
 			}
 
+			transmission = 0;
+
 			/* If we have been woken up, it must have been a poll to transmit outgoing bundles */
 			for(ticket = list_head(transmission_ticket_list);
 				ticket != NULL;
 				ticket = list_item_next(ticket) ) {
+				if( ((ticket->flags & CONVERGENCE_LAYER_QUEUE_ACK) || (ticket->flags & CONVERGENCE_LAYER_QUEUE_NACK)) && !(ticket->flags & CONVERGENCE_LAYER_QUEUE_IN_TRANSIT) ) {
+					n = convergence_layer_resend_ack(ticket);
+					if( n ) {
+						/* Transmission happened */
+						transmission = 1;
+						break;
+					}
+				}
+
 				/* Tickets that are in any other state than ACTIVE cannot be transmitted */
 				if( ticket->flags != CONVERGENCE_LAYER_QUEUE_ACTIVE ) {
 					continue;
@@ -751,9 +836,15 @@ PROCESS_THREAD(convergence_layer_process, ev, data)
 
 				/* Send the bundle just now */
 				convergence_layer_send_bundle(ticket);
+				transmission = 1;
 
 				/* Radio is busy now, defer */
 				break;
+			}
+
+			if( !transmission ) {
+				/* Something must be going on, but we did not transmit - reschedule ourselves */
+				process_post(&convergence_layer_process, PROCESS_EVENT_CONTINUE, NULL);
 			}
 		}
 	}

@@ -18,22 +18,32 @@
 /**
  * How many outgoing bundles can we queue?
  */
-#define CONVERGENCE_LAYER_QUEUE 			10
+#define CONVERGENCE_LAYER_QUEUE 				10
 
 /**
  * How many queue slots remain free for internal use?
  */
-#define CONVERGENCE_LAYER_QUEUE_FREE 		(0.2 * CONVERGENCE_LAYER_QUEUE)
+#define CONVERGENCE_LAYER_QUEUE_FREE 			(0.2 * CONVERGENCE_LAYER_QUEUE)
 
 /**
  * How often shall we retransmit bundles before we notify routing
  */
-#define CONVERGENCE_LAYER_RETRIES			3
+#define CONVERGENCE_LAYER_RETRIES				3
 
 /**
  * How long shall we wait for an app-layer ACK or NACK? [in seconds]
  */
 #define CONVERGENCE_LAYER_TIMEOUT			5
+
+/**
+ * How long shell we wait before retransmitting an app-layer ACK or NACK? [in seconds]
+ */
+#define CONVERGENCE_LAYER_RETRANSMIT_TIMEOUT	0.5
+
+/**
+ * How often shall we retransmit?
+ */
+#define CONVERGENCE_LAYER_RETRANSMIT_TRIES		(CONVERGENCE_LAYER_TIMEOUT / CONVERGENCE_LAYER_RETRANSMIT_TIMEOUT)
 
 /**
  * Bundle queue flags
@@ -45,6 +55,7 @@
 #define CONVERGENCE_LAYER_QUEUE_FAIL		0x10
 #define CONVERGENCE_LAYER_QUEUE_ACK			0x20
 #define CONVERGENCE_LAYER_QUEUE_NACK		0x40
+
 
 /**
  * CL COMPAT VALUES
@@ -104,6 +115,7 @@ struct transmit_ticket_t {
 	rimeaddr_t neighbour;
 	uint32_t bundle_number;
 	uint8_t sequence_number;
+	clock_time_t timestamp;
 
 	struct mmem * bundle;
 };
