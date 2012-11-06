@@ -40,6 +40,13 @@
 #define BLACKLIST_THRESHOLD	3
 #define BLACKLIST_SIZE		3
 
+/**
+ * Internally used return values
+ */
+#define FLOOD_ROUTE_RETURN_OK 1
+#define FLOOD_ROUTE_RETURN_CONTINUE 0
+#define FLOOD_ROUTE_RETURN_FAIL -1
+
 struct blacklist_entry_t {
 	struct blacklist_entry_t * next;
 
@@ -179,40 +186,6 @@ void flood_new_neigh(rimeaddr_t *dest)
 	flood_schedule_resubmission();
 }
 
-uint8_t flood_send_to_local(void)
-{
-	struct routing_list_entry_t * n = NULL;
-	struct routing_entry_t * entry = NULL;
-	struct mmem * bundlemem = NULL;
-	int delivered = 0;
-
-	for( n = (struct routing_list_entry_t *) list_head(routing_list);
-		 n != NULL;
-		 n = list_item_next(n) ) {
-		entry = (struct routing_entry_t *) MMEM_PTR(&n->entry);
-
-		if( entry == NULL ) {
-			LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "broken MMEM structure for bundle %lu", entry->bundle_number);
-			continue;
-		}
-
-		// Should this bundle be delivered locally?
-		if( (entry->flags & ROUTING_FLAG_LOCAL) && !(entry->flags & ROUTING_FLAG_IN_DELIVERY) ) {
-			bundlemem = BUNDLE_STORAGE.read_bundle(entry->bundle_number);
-			if( bundlemem == NULL ) {
-				LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "cannot read bundle %lu", entry->bundle_number);
-				continue;
-			}
-
-			if( deliver_bundle(bundlemem) ) {
-				entry->flags |= ROUTING_FLAG_IN_DELIVERY;
-				delivered ++;
-			}
-		}
-	}
-
-	return delivered;
-}
 
 int flood_send_bundle(uint32_t bundle_number, rimeaddr_t neighbour)
 {
@@ -235,15 +208,139 @@ int flood_send_bundle(uint32_t bundle_number, rimeaddr_t neighbour)
 	return 1;
 }
 
-uint8_t flood_send_to_known(void)
+int flood_send_to_local(struct routing_entry_t * entry)
+{
+	struct mmem * bundlemem = NULL;
+
+	// Should this bundle be delivered locally?
+	if( (entry->flags & ROUTING_FLAG_LOCAL) && !(entry->flags & ROUTING_FLAG_IN_DELIVERY) ) {
+		bundlemem = BUNDLE_STORAGE.read_bundle(entry->bundle_number);
+		if( bundlemem == NULL ) {
+			LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "cannot read bundle %lu", entry->bundle_number);
+			return FLOOD_ROUTE_RETURN_CONTINUE;
+		}
+
+		if( deliver_bundle(bundlemem) ) {
+			entry->flags |= ROUTING_FLAG_IN_DELIVERY;
+		}
+	}
+
+	return FLOOD_ROUTE_RETURN_OK;
+}
+
+int flood_forward_directly(struct routing_entry_t * entry)
 {
 	struct discovery_neighbour_list_entry *nei_l = NULL;
-	struct routing_list_entry_t * n = NULL;
-	struct routing_entry_t * entry = NULL;
+	rimeaddr_t dest_node;
 	int h = 0;
 
-	/* First: deliver bundles to local services */
-	flood_send_to_local();
+	/* Who is the destination for this bundle? */
+	dest_node = convert_eid_to_rime(entry->destination_node);
+
+	/* First step: check, if the destination is one of our neighbours */
+	for( nei_l = DISCOVERY.neighbours();
+		 nei_l != NULL;
+		 nei_l = list_item_next(nei_l) ) {
+
+		if( rimeaddr_cmp(&nei_l->neighbour, &dest_node) ) {
+			break;
+		}
+	}
+
+	if( nei_l == NULL ) {
+		return FLOOD_ROUTE_RETURN_CONTINUE;
+	}
+
+	/* We know the neighbour, send it directly */
+	LOG(LOGD_DTN, LOG_ROUTE, LOGL_INF, "send bundle %lu to %u:%u directly", entry->bundle_number, nei_l->neighbour.u8[0], nei_l->neighbour.u8[1]);
+
+	/* Mark bundle as busy */
+	entry->flags |= ROUTING_FLAG_IN_TRANSIT;
+
+	/* And queue it for sending */
+	h = flood_send_bundle(entry->bundle_number, nei_l->neighbour);
+	if( h < 0 ) {
+		/* Enqueuing bundle failed - unblock it */
+		entry->flags &= ~ROUTING_FLAG_IN_TRANSIT;
+
+		/* If sending the bundle fails, all other will likely also fail */
+		return FLOOD_ROUTE_RETURN_FAIL;
+	}
+
+	/* We do not want the bundle to be sent to anybody else at the moment, so: */
+	return FLOOD_ROUTE_RETURN_OK;
+}
+
+int flood_forward_normal(struct routing_entry_t * entry)
+{
+	struct discovery_neighbour_list_entry *nei_l = NULL;
+	rimeaddr_t source_node;
+	int h = 0;
+
+	/* What is the source node of the bundle? */
+	source_node = convert_eid_to_rime(entry->source_node);
+
+	for( nei_l = DISCOVERY.neighbours();
+		 nei_l != NULL;
+		 nei_l = list_item_next(nei_l) ) {
+		int sent = 0;
+		int i;
+
+		if( rimeaddr_cmp(&nei_l->neighbour, &source_node) ) {
+			LOG(LOGD_DTN, LOG_ROUTE, LOGL_INF, "not sending bundle to originator");
+
+			/* Go on with the next neighbour */
+			continue;
+		}
+
+		if( rimeaddr_cmp(&nei_l->neighbour, &entry->received_from_node) ) {
+			LOG(LOGD_DTN, LOG_ROUTE, LOGL_DBG, "not sending back to sender");
+
+			/* Go on with the next neighbour */
+			continue;
+		}
+
+		/* Did we forward the bundle to that neighbour already? */
+		for (i = 0 ; i < ROUTING_NEI_MEM ; i++) {
+			if ( rimeaddr_cmp(&entry->neighbours[i], &nei_l->neighbour)){
+				LOG(LOGD_DTN, LOG_ROUTE, LOGL_DBG, "bundle %lu already sent to node %u:%u!", entry->bundle_number, entry->neighbours[i].u8[0], entry->neighbours[i].u8[1]);
+				sent = 1;
+
+				// Break the (narrowest) for
+				break;
+			}
+		}
+
+		if(!sent) {
+			LOG(LOGD_DTN, LOG_ROUTE, LOGL_INF, "send bundle %lu to %u:%u", entry->bundle_number, nei_l->neighbour.u8[0], nei_l->neighbour.u8[1]);
+
+			/* Mark bundle as busy */
+			entry->flags |= ROUTING_FLAG_IN_TRANSIT;
+
+			/* And queue it for sending */
+			h = flood_send_bundle(entry->bundle_number, nei_l->neighbour);
+			if( h < 0 ) {
+				/* Enqueuing bundle failed - unblock it */
+				entry->flags &= ~ROUTING_FLAG_IN_TRANSIT;
+
+				/* If sending the bundle fails, all other will likely also fail */
+				return FLOOD_ROUTE_RETURN_FAIL;
+			}
+
+			/* Only one bundle at a time */
+			return FLOOD_ROUTE_RETURN_OK;
+		}
+	}
+
+	return FLOOD_ROUTE_RETURN_CONTINUE;
+}
+
+uint8_t flood_send_to_known(void)
+{
+	struct routing_list_entry_t * n = NULL;
+	struct routing_entry_t * entry = NULL;
+	int try_to_forward = 1;
+	int h = 0;
 
 	LOG(LOGD_DTN, LOG_ROUTE, LOGL_DBG, "send to known neighbours");
 
@@ -259,94 +356,38 @@ uint8_t flood_send_to_known(void)
 			LOG(LOGD_DTN, LOG_ROUTE, LOGL_WRN, "Bundle with invalid MMEM structure");
 		}
 
+		/* Is the bundle for local? */
+		h = flood_send_to_local(entry);
+		/* We do not care about the return value, because we would continue anyway */
+
 		/* Skip this bundle, if it is not queued for forwarding */
-		if( !(entry->flags & ROUTING_FLAG_FORWARD) || (entry->flags & ROUTING_FLAG_IN_TRANSIT) ) {
+		if( !(entry->flags & ROUTING_FLAG_FORWARD) || (entry->flags & ROUTING_FLAG_IN_TRANSIT) || !try_to_forward ) {
 			continue;
 		}
 
-		/* Who is the destination for this bundle? */
-		rimeaddr_t dest_node = convert_eid_to_rime(entry->destination_node);
-
-		/* First step: check, if the destination is one of our neighbours */
-		for( nei_l = DISCOVERY.neighbours();
-			 nei_l != NULL;
-			 nei_l = list_item_next(nei_l) ) {
-
-			if( rimeaddr_cmp(&nei_l->neighbour, &dest_node) ) {
-				break;
-			}
-		}
-
-		if( nei_l != NULL ) {
-			/* We know the neighbour, send it directly */
-			LOG(LOGD_DTN, LOG_ROUTE, LOGL_INF, "send bundle %lu to %u:%u directly", entry->bundle_number, nei_l->neighbour.u8[0], nei_l->neighbour.u8[1]);
-
-			/* Mark bundle as busy */
-			entry->flags |= ROUTING_FLAG_IN_TRANSIT;
-
-			/* And queue it for sending */
-			h = flood_send_bundle(entry->bundle_number, nei_l->neighbour);
-			if( h < 0 ) {
-				/* Enqueuing bundle failed - unblock it */
-				entry->flags &= ~ROUTING_FLAG_IN_TRANSIT;
-
-				/* If sending the bundle fails, all other will likely also fail */
-				return 1;
-			}
-
-			/* We do not want the bundle to be sent to anybody else at the moment, so: */
+		/* Try to forward it to the destination, if it is our neighbour */
+		h = flood_forward_directly(entry);
+		if( h == FLOOD_ROUTE_RETURN_OK ) {
+			/* Bundle will be delivered, to skip the remainder if this function*/
+			continue;
+		} else if( h == FLOOD_ROUTE_RETURN_CONTINUE ) {
+			/* Bundle was not delivered, continue as normal */
+		} else if( h == FLOOD_ROUTE_RETURN_FAIL ) {
+			/* Enqueuing the bundle failed, to stop the forwarding process */
+			try_to_forward = 0;
 			continue;
 		}
 
 		/* At this point, we know that the bundle is not for one of our neighbours, so send it to all the others */
-		for( nei_l = DISCOVERY.neighbours();
-			 nei_l != NULL;
-			 nei_l = list_item_next(nei_l) ) {
-			int sent = 0;
-			int i;
-
-			rimeaddr_t source_node = convert_eid_to_rime(entry->source_node);
-			if( rimeaddr_cmp(&nei_l->neighbour, &source_node) ) {
-				LOG(LOGD_DTN, LOG_ROUTE, LOGL_INF, "not sending bundle to originator");
-
-				/* Go on with the next neighbour */
-				continue;
-			}
-
-			if( rimeaddr_cmp(&nei_l->neighbour, &entry->received_from_node) ) {
-				LOG(LOGD_DTN, LOG_ROUTE, LOGL_DBG, "not sending back to sender");
-
-				/* Go on with the next neighbour */
-				continue;
-			}
-
-			/* Did we forward the bundle to that neighbour already? */
-			for (i = 0 ; i < ROUTING_NEI_MEM ; i++) {
-				if ( rimeaddr_cmp(&entry->neighbours[i], &nei_l->neighbour)){
-					LOG(LOGD_DTN, LOG_ROUTE, LOGL_DBG, "bundle %lu already sent to node %u:%u!", entry->bundle_number, entry->neighbours[i].u8[0], entry->neighbours[i].u8[1]);
-					sent = 1;
-
-					// Break the (narrowest) for
-					break;
-				}
-			}
-
-			if(!sent) {
-				LOG(LOGD_DTN, LOG_ROUTE, LOGL_INF, "send bundle %lu to %u:%u", entry->bundle_number, nei_l->neighbour.u8[0], nei_l->neighbour.u8[1]);
-
-				/* Mark bundle as busy */
-				entry->flags |= ROUTING_FLAG_IN_TRANSIT;
-
-				/* And queue it for sending */
-				h = flood_send_bundle(entry->bundle_number, nei_l->neighbour);
-				if( h < 0 ) {
-					/* Enqueuing bundle failed - unblock it */
-					entry->flags &= ~ROUTING_FLAG_IN_TRANSIT;
-
-					/* If sending the bundle fails, all other will likely also fail */
-					return 1;
-				}
-			}
+		h = flood_forward_normal(entry);
+		if( h == FLOOD_ROUTE_RETURN_OK ) {
+			/* Bundle will be forwarded, continue as normal */
+		} else if( h == FLOOD_ROUTE_RETURN_CONTINUE ) {
+			/* Bundle will not be forwarded, continue as normal */
+		} else if( h == FLOOD_ROUTE_RETURN_FAIL ) {
+			/* Enqueuing the bundle failed, to stop the forwarding process */
+			try_to_forward = 0;
+			continue;
 		}
 	}
 
@@ -389,8 +430,8 @@ void flood_check_keep_bundle(uint32_t bundle_number) {
 		return;
 	}
 
-	LOG(LOGD_DTN, LOG_ROUTE, LOGL_INF, "Deleting bundle %u", entry->bundle_number);
-	BUNDLE_STORAGE.del_bundle(entry->bundle_number, REASON_DELIVERED);
+	LOG(LOGD_DTN, LOG_ROUTE, LOGL_INF, "Deleting bundle %lu", bundle_number);
+	BUNDLE_STORAGE.del_bundle(bundle_number, REASON_DELIVERED);
 }
 
 /**
@@ -549,6 +590,9 @@ void flood_sent(struct transmit_ticket_t * ticket, uint8_t status)
 	struct routing_list_entry_t * n = NULL;
 	struct routing_entry_t * entry = NULL;
 
+	// Tell the agent to call us again to resubmit bundles
+	flood_schedule_resubmission();
+
 	// Find the bundle in our internal storage
 	for( n = list_head(routing_list);
 		 n != NULL;
@@ -562,12 +606,9 @@ void flood_sent(struct transmit_ticket_t * ticket, uint8_t status)
 	}
 
 	if( entry == NULL ) {
-		LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "Bundle not in storage yet");
+		LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "Bundle not in storage");
 		return;
 	}
-
-	// Tell the agent to call us again to resubmit bundles
-	flood_schedule_resubmission();
 
 	/* Bundle is not busy anymore */
 	entry->flags &= ~ROUTING_FLAG_IN_TRANSIT;
@@ -638,6 +679,9 @@ void flood_locally_delivered(struct mmem * bundlemem) {
 	struct routing_entry_t * entry = NULL;
 	struct bundle_t * bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 
+	// Tell the agent to call us again to resubmit bundles
+	flood_schedule_resubmission();
+
 	if( bundle == NULL ) {
 		LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "flood_locally_delivered called with invalid pointer");
 		return;
@@ -674,9 +718,6 @@ void flood_locally_delivered(struct mmem * bundlemem) {
 
 	// Check remaining live of bundle
 	flood_check_keep_bundle(entry->bundle_number);
-
-	// Tell the agent to call us again to resubmit bundles
-	flood_schedule_resubmission();
 }
 
 PROCESS_THREAD(routing_process, ev, data)
