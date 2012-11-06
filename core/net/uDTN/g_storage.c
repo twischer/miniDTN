@@ -13,20 +13,26 @@
  * \file 
  * \author Georg von Zengen (vonzeng@ibr.cs.tu-bs.de)
  */
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+
 #include "contiki.h"
-#include "storage.h"
+#include "mac.h"
+#include "netstack.h"
 #include "cfs/cfs.h"
+#include "mmem.h"
+#include "memb.h"
+#include "cfs-coffee.h"
+#include "watchdog.h"
+
 #include "bundle.h"
 #include "sdnv.h"
 #include "status-report.h"
 #include "agent.h"
-#include "mmem.h"
-#include "memb.h"
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include "cfs-coffee.h"
 #include "hash.h"
+
+#include "storage.h"
 
 #define DEBUG 0
 #if DEBUG
@@ -36,7 +42,15 @@
 #define PRINTF(...)
 #endif
 
-#define STORAGE_FILE_NAME_LENGTH 15
+/**
+ * How long can a filename possibly be?
+ */
+#define STORAGE_FILE_NAME_LENGTH 	15
+
+/**
+ * How often should we save a bundle overview file to flash? [in seconds]
+ */
+#define STORAGE_WRITE_INTERVAL		120
 
 /**
  * Internal representation of a bundle
@@ -67,16 +81,32 @@ static uint16_t bundles_in_storage;
 /** Is used to periodically traverse all bundles and delete those that are expired */
 static struct ctimer g_store_timer;
 
+/** Is used to periodically write the list of bundles to flash */
+static struct ctimer g_store_write_timer;
+
 /** Flag to indicate whether the bundle list has changed since last writing the list file */
 static uint8_t bundle_list_changed = 0;
 
 /**
+ * COFFEE is so slow, that we are loosing radio packets while using the flash. Unfortunately, the
+ * radio is sending LL ACKs for these packets, so the other side does not know.
+ * Therefore, we have to disable the radio while reading or writing COFFEE, to avoid sending
+ * ACKs for packets that we cannot read out of the buffer.
+ *
+ * FIXME: This HACK is *very* ugly and poor design.
+ */
+#define RADIO_SAFE_STATE_ON()		NETSTACK_MAC.off(0)
+#define RADIO_SAFE_STATE_OFF()		NETSTACK_MAC.on()
+
+/**
  * "Internal" functions
  */
+void g_store_save_list_on_change();
 void g_store_prune();
 uint16_t del_bundle(uint32_t bundle_number, uint8_t reason);
 struct mmem * read_bundle(uint32_t bundle_number);
 void g_store_read_list();
+void g_store_save_list();
 
 /**
 * /brief called by agent at startup
@@ -90,22 +120,53 @@ void init(void)
 	memb_init(&bundle_mem);
 
 	bundles_in_storage = 0;
+	bundle_list_changed = 0;
 
 	// Try to restore our bundle list from the file system
 	g_store_read_list();
 
 	// Set the timer to regularly prune expired bundles
 	ctimer_set(&g_store_timer, CLOCK_SECOND*5, g_store_prune, NULL);
+
+	// Set the timer to regularly write the list of bundles to flash
+	ctimer_set(&g_store_write_timer, CLOCK_SECOND * STORAGE_WRITE_INTERVAL, g_store_save_list_on_change, NULL);
+}
+
+
+void g_store_save_list_on_change()
+{
+	printf("g_store_save_list_on_change()\n");
+
+	// In case the bundle list has changed, write the changes to the bundle list file
+	if( bundle_list_changed ) {
+		RADIO_SAFE_STATE_ON();
+
+		// Remove the old list file
+		cfs_remove(BUNDLE_STORAGE_FILE_NAME);
+
+		RADIO_SAFE_STATE_OFF();
+
+		// And create a new one
+		g_store_save_list();
+
+		bundle_list_changed = 0;
+	}
+
+	// Restart the timer
+	ctimer_restart(&g_store_write_timer);
 }
 
 /**
  * \brief Store the current bundle list into a file
+ * FIXME: This function is actually not necessary, we could also list the directory on startup and restore bundles that way
  */
 void g_store_save_list()
 {
 	int fd_write;
 	int n;
 	struct file_list_entry_t * entry = NULL;
+
+	RADIO_SAFE_STATE_ON();
 
 	// Reserve memory for our list
 	cfs_coffee_reserve(BUNDLE_STORAGE_FILE_NAME, sizeof(struct file_list_entry_t) * bundles_in_storage);
@@ -133,6 +194,8 @@ void g_store_save_list()
 	}
 
 	cfs_close(fd_write);
+
+	RADIO_SAFE_STATE_OFF();
 }
 
 /**
@@ -145,11 +208,14 @@ void g_store_read_list()
 	struct file_list_entry_t * entry = NULL;
 	int eof = 0;
 
+	RADIO_SAFE_STATE_ON();
+
 	// Open the file for reading
 	fd_read = cfs_open(BUNDLE_STORAGE_FILE_NAME, CFS_READ);
 	if( fd_read == -1 ) {
 		// Unable to open file, abort here
 		PRINTF("STORAGE: unable to open file %s, cannot read bundle list\n", BUNDLE_STORAGE_FILE_NAME);
+		RADIO_SAFE_STATE_OFF();
 		return;
 	}
 
@@ -158,6 +224,7 @@ void g_store_read_list()
 		if( entry == NULL ) {
 			printf("STORAGE: unable to allocate struct, cannot restore bundle list\n");
 			cfs_close(fd_read);
+			RADIO_SAFE_STATE_OFF();
 			return;
 		}
 
@@ -167,6 +234,7 @@ void g_store_read_list()
 		if( n == 0 ) {
 			// End of file reached
 			memb_free(&bundle_mem, entry);
+			RADIO_SAFE_STATE_OFF();
 			break;
 		}
 
@@ -174,6 +242,7 @@ void g_store_read_list()
 			printf("STORAGE: unable to read %u bytes from bundle list file\n", sizeof(struct file_list_entry_t));
 			cfs_close(fd_read);
 			memb_free(&bundle_mem, entry);
+			RADIO_SAFE_STATE_OFF();
 			return;
 		}
 
@@ -196,6 +265,8 @@ void g_store_read_list()
 	}
 
 	cfs_close(fd_read);
+
+	RADIO_SAFE_STATE_OFF();
 }
 
 /**
@@ -218,17 +289,6 @@ void g_store_prune()
 		}
 	}
 
-	// In case the bundle list has changed, write the changes to the bundle list file
-	if( bundle_list_changed ) {
-		// Remove the old list file
-		cfs_remove(BUNDLE_STORAGE_FILE_NAME);
-
-		// And create a new one
-		g_store_save_list();
-
-		bundle_list_changed = 0;
-	}
-
 	// Restart the timer
 	ctimer_restart(&g_store_timer);
 }
@@ -249,9 +309,13 @@ void reinit(void)
 
 		del_bundle(entry->bundle_num, REASON_DEPLETED_STORAGE);
 	}
-	
+
+	RADIO_SAFE_STATE_ON();
+
 	// Delete the bundle list file
 	cfs_remove(BUNDLE_STORAGE_FILE_NAME);
+
+	RADIO_SAFE_STATE_OFF();
 
 	// And reset our counters
 	bundles_in_storage = 0;
@@ -326,12 +390,15 @@ uint8_t save_bundle(struct mmem * bundlemem, uint32_t ** bundle_number_ptr)
 		return 0;
 	}
 
+	RADIO_SAFE_STATE_ON();
+
 	// Store the bundle into the file
 	n = cfs_coffee_reserve(bundle_filename, bundlemem->size);
 	if( n < 0 ) {
 		printf("STORAGE: unable to reserve %u bytes for bundle\n", bundlemem->size);
 		memb_free(&bundle_mem, entry);
 		bundle_dec(bundlemem);
+		RADIO_SAFE_STATE_OFF();
 		return 0;
 	}
 
@@ -342,6 +409,7 @@ uint8_t save_bundle(struct mmem * bundlemem, uint32_t ** bundle_number_ptr)
 		printf("STORAGE: unable to open file %s, cannot save bundle\n", bundle_filename);
 		memb_free(&bundle_mem, entry);
 		bundle_dec(bundlemem);
+		RADIO_SAFE_STATE_OFF();
 		return 0;
 	}
 
@@ -353,11 +421,14 @@ uint8_t save_bundle(struct mmem * bundlemem, uint32_t ** bundle_number_ptr)
 		cfs_remove(bundle_filename);
 		memb_free(&bundle_mem, entry);
 		bundle_dec(bundlemem);
+		RADIO_SAFE_STATE_OFF();
 		return 0;
 	}
 
 	// And close the file
 	cfs_close(fd_write);
+
+	RADIO_SAFE_STATE_OFF();
 
 	PRINTF("STORAGE: New Bundle %lu (%lu), Src %lu.%lu, Dest %lu.%lu, Seq %lu\n", bundle->bundle_num, entry->bundle_num, bundle->src_node, bundle->src_srv, bundle->dst_node, bundle->dst_srv, bundle->tstamp_seq);
 
@@ -442,7 +513,11 @@ uint16_t del_bundle(uint32_t bundle_number, uint8_t reason)
 		return 0;
 	}
 
+	RADIO_SAFE_STATE_ON();
+
 	cfs_remove(bundle_filename);
+
+	RADIO_SAFE_STATE_OFF();
 
 	// Mark the bundle list as changed
 	bundle_list_changed = 1;
@@ -494,8 +569,12 @@ struct mmem * read_bundle(uint32_t bundle_number)
 		return NULL;
 	}
 
-	/* FIXME: Error case */
-	mmem_realloc(bundlemem, entry->file_size);
+	n = mmem_realloc(bundlemem, entry->file_size);
+	if( !n ) {
+		printf("STORAGE: unable to realloc enough memory\n");
+		bundle_dec(bundlemem);
+		return NULL;
+	}
 
 	// Assign a unique bundle number
 	bundle->bundle_num = bundle_number++;
@@ -508,6 +587,8 @@ struct mmem * read_bundle(uint32_t bundle_number)
 		bundle_dec(bundlemem);
 		return NULL;
 	}
+
+	RADIO_SAFE_STATE_ON();
 
 	// Open the output file
 	fd_read = cfs_open(bundle_filename, CFS_READ);
@@ -529,7 +610,9 @@ struct mmem * read_bundle(uint32_t bundle_number)
 
 	// And close the file
 	cfs_close(fd_read);
-	
+
+	RADIO_SAFE_STATE_OFF();
+
 	return bundlemem;
 }
 
