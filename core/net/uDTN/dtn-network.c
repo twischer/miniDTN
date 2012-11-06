@@ -56,17 +56,18 @@ static void dtn_network_init(void)
  */
 static void dtn_network_input(void) 
 {
-	rimeaddr_t * source = NULL;
+	rimeaddr_t source;
 	uint8_t * buffer = NULL;
 	uint8_t length = 0;
 
 	leds_on(LEDS_ALL);
 
-	source = (rimeaddr_t *) packetbuf_addr(PACKETBUF_ADDR_SENDER);
+	/* Create a copy here, because otherwise packetbuf_clear will evaporate the address */
+	rimeaddr_copy(&source, packetbuf_addr(PACKETBUF_ADDR_SENDER));
 	buffer = packetbuf_dataptr();
 	length = packetbuf_datalen();
 
-	convergence_layer_incoming_frame(source, buffer, length);
+	convergence_layer_incoming_frame(&source, buffer, length);
 
 	leds_off(LEDS_ALL);
 }
