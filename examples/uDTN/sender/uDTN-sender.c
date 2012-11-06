@@ -71,7 +71,6 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 	uint8_t i;
 	int n;
 	static struct etimer timer;
-	static struct etimer backoff;
 	static struct registration_api reg;
 	static uint16_t bundles_sent = 0;
 	static uint32_t time_start, time_stop;
@@ -122,6 +121,11 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 	process_post(&udtn_sender_process, PROCESS_EVENT_CONTINUE, NULL);
 
 	while(1) {
+		/* Wait for storage to have enough free space */
+		while( BUNDLE_STORAGE.free_space(NULL) < 1 ) {
+			PROCESS_PAUSE();
+		}
+
 		/* Wait for the next incoming event */
 		PROCESS_WAIT_EVENT();
 
@@ -152,11 +156,7 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 
 		if( ev == dtn_bundle_store_failed ) {
 			/* Sending the last bundle failed, back off a bit */
-			printf("Bundle send failed, backing off\n");
-			etimer_set(&backoff, CLOCK_SECOND * 5);
-			PROCESS_WAIT_UNTIL(etimer_expired(&backoff));
 			bundles_sent--;
-			printf("5s are over\n");
 		}
 
 		/* Check for timeout */
