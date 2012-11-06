@@ -71,6 +71,7 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 	uint8_t i;
 	int n;
 	static struct etimer timer;
+	static struct etimer backoff;
 	static struct registration_api reg;
 	static uint16_t bundles_sent = 0;
 	static uint32_t time_start, time_stop;
@@ -145,8 +146,17 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 		}
 
 		/* Wait for the agent to process our outgoing bundle */
-		if( ev != dtn_bundle_stored && ev != PROCESS_EVENT_CONTINUE ) {
+		if( ev != dtn_bundle_stored && ev != dtn_bundle_store_failed && ev != PROCESS_EVENT_CONTINUE ) {
 			continue;
+		}
+
+		if( ev == dtn_bundle_store_failed ) {
+			/* Sending the last bundle failed, back off a bit */
+			printf("Bundle send failed, backing off\n");
+			etimer_set(&backoff, CLOCK_SECOND * 5);
+			PROCESS_WAIT_UNTIL(etimer_expired(&backoff));
+			bundles_sent--;
+			printf("5s are over\n");
 		}
 
 		/* Check for timeout */

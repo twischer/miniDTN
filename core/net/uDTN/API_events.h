@@ -46,6 +46,10 @@ process_event_t dtn_processing_finished;
  * \brief Event tell the service, that the outgoing bundle has reached save grounds
  */
 process_event_t dtn_bundle_stored;
+/**
+ * \brief Event tell the service, that the outgoing bundle could not be saved
+ */
+process_event_t dtn_bundle_store_failed;
 
 #endif
 /** @} */
