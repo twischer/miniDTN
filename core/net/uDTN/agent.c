@@ -140,6 +140,7 @@ PROCESS_THREAD(agent_process, ev, data)
 			uint32_t * bundle_number;
 			uint8_t n = 0;
 			struct bundle_t * bundle = NULL;
+			struct process * source_process = NULL;
 
 			bundleptr = (struct mmem *) data;
 			if( bundleptr == NULL ) {
@@ -159,20 +160,40 @@ PROCESS_THREAD(agent_process, ev, data)
 			set_attr(bundleptr, TIME_STAMP_SEQ_NR, &dtn_seq_nr);
 			dtn_seq_nr++;
 
+			// Copy the sending process, because 'bundle' will not be accessible anymore afterwards
+			source_process = bundle->source_process;
+
 			// Save the bundle in storage
 			n = BUNDLE_STORAGE.save_bundle(bundleptr, &bundle_number);
 
+			/* Saving the bundle failed... */
+			if( !n ) {
+				/* Decrement the sequence number */
+				dtn_seq_nr--;
+
+				/* Free memory */
+				bundle_dec(bundleptr);
+			}
+
+			// Reset our pointers to avoid using invalid ones
+			bundle = NULL;
+			bundleptr = NULL;
+
 			// If a sender process exists, notify it
-			if( bundle->source_process != NULL) {
-				// Bundle has been successfully saved, send event to service
-				process_post(bundle->source_process, dtn_bundle_stored, bundleptr);
+			if( source_process != NULL) {
+				if( n ) {
+					/* Bundle has been successfully saved, send event to service */
+					process_post(source_process, dtn_bundle_stored, bundleptr);
+				} else {
+					/* Bundle could not be saved, notify service */
+					process_post(source_process, dtn_bundle_store_failed, NULL);
+				}
 			}
 
 			// Now emulate the event to our agent
 			if( n ) {
 				data = bundle_number;
 				ev = dtn_bundle_in_storage_event;
-				// process_post(&agent_process, dtn_bundle_in_storage_event, bundle_number);
 			}
 		}
 		
