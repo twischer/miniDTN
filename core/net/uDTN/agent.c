@@ -170,9 +170,6 @@ PROCESS_THREAD(agent_process, ev, data)
 			if( !n ) {
 				/* Decrement the sequence number */
 				dtn_seq_nr--;
-
-				/* Free memory */
-				bundle_dec(bundleptr);
 			}
 
 			// Reset our pointers to avoid using invalid ones
