@@ -194,6 +194,10 @@ PROCESS_THREAD(test_process, ev, data)
 		three = mode;
 		four = mode;
 
+		if( mode % 1000 == 0 ) {
+			watchdog_periodic();
+		}
+
 		output_copy = HASH.hash_convenience(one, two, three, four);
 	}
 
