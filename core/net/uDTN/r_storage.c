@@ -220,6 +220,7 @@ uint8_t rs_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_number_ptr)
 
 		if( bundle_number == entrybdl->bundle_num ) {
 			PRINTF("STORAGE: %lu is the same bundle\n", entry->bundle_num);
+			bundle_dec(bundlemem);
 			return 1;
 		}
 	}
@@ -235,6 +236,7 @@ uint8_t rs_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_number_ptr)
 	entry = memb_alloc(&bundle_mem);
 	if( entry == NULL ) {
 		printf("STORAGE: unable to allocate struct, cannot store bundle\n");
+		bundle_dec(bundlemem);
 		return 0;
 	}
 
