@@ -306,6 +306,9 @@ int convergence_layer_send_ack(rimeaddr_t * destination, uint8_t sequence_number
 
 	/* If we are currently transmitting or waiting for an ACK, do nothing */
 	if( convergence_layer_transmitting ) {
+		/* This ticket has to be processed ASAP, so set timestamp to 0 */
+		ticket->timestamp = 0;
+
 		return -1;
 	}
 
@@ -419,6 +422,7 @@ int convergence_layer_parse_dataframe(rimeaddr_t * source, uint8_t * payload, ui
 
 	/* Hand over the bundle to dispatching */
 	n = dispatch_bundle(bundlemem);
+	bundlemem = NULL;
 
 	if( n ) {
 		/* Send out the ACK */
@@ -559,6 +563,9 @@ int convergence_layer_status(void * pointer, uint8_t outcome)
 	/* Something has been sent, so the radio is not blocked anymore */
 	convergence_layer_transmitting = 0;
 
+	/* Notify the process to commence transmitting outgoing bundles */
+	process_poll(&convergence_layer_process);
+
 	if( pointer == NULL ) {
 		/* Must be a discovery message */
 		return 0;
@@ -578,6 +585,11 @@ int convergence_layer_status(void * pointer, uint8_t outcome)
 			return 1;
 		}
 
+		if( outcome == CONVERGENCE_LAYER_STATUS_NOSEND ) {
+			// Has not been transmitted, so retry right away
+			ticket->timestamp = 0;
+		}
+
 		/* Increase the retry counter */
 		ticket->tries ++;
 
@@ -588,9 +600,6 @@ int convergence_layer_status(void * pointer, uint8_t outcome)
 
 			return 0;
 		}
-
-		/* We have to retransmit */
-		process_poll(&convergence_layer_process);
 
 		return 1;
 	}
@@ -637,9 +646,6 @@ int convergence_layer_status(void * pointer, uint8_t outcome)
 
 	/* Transmission did not work, retry it right away */
 	ticket->flags = CONVERGENCE_LAYER_QUEUE_ACTIVE;
-
-	/* Poll the process to initiate retransmission */
-	process_poll(&convergence_layer_process);
 
 	return 1;
 }
@@ -773,7 +779,6 @@ PROCESS_THREAD(convergence_layer_process, ev, data)
 	struct transmit_ticket_t * ticket = NULL;
 	static struct etimer stale_timer;
 	int n;
-	int transmission;
 
 	PROCESS_BEGIN();
 
@@ -803,13 +808,15 @@ PROCESS_THREAD(convergence_layer_process, ev, data)
 			etimer_reset(&stale_timer);
 		}
 
-		if( ev == PROCESS_EVENT_POLL || ev == PROCESS_EVENT_CONTINUE ) {
+		if( ev == PROCESS_EVENT_POLL ) {
 			/* If we are currently transmitting, we cannot send another bundle */
 			if( convergence_layer_transmitting ) {
+				/* We will get polled again when the MAC layers calls us back,
+				 * so lean back and relax
+				 */
 				continue;
 			}
 
-			transmission = 0;
 
 			/* If we have been woken up, it must have been a poll to transmit outgoing bundles */
 			for(ticket = list_head(transmission_ticket_list);
@@ -819,7 +826,6 @@ PROCESS_THREAD(convergence_layer_process, ev, data)
 					n = convergence_layer_resend_ack(ticket);
 					if( n ) {
 						/* Transmission happened */
-						transmission = 1;
 						break;
 					}
 				}
@@ -836,15 +842,9 @@ PROCESS_THREAD(convergence_layer_process, ev, data)
 
 				/* Send the bundle just now */
 				convergence_layer_send_bundle(ticket);
-				transmission = 1;
 
 				/* Radio is busy now, defer */
 				break;
-			}
-
-			if( !transmission ) {
-				/* Something must be going on, but we did not transmit - reschedule ourselves */
-				process_poll(&convergence_layer_process);
 			}
 		}
 	}
