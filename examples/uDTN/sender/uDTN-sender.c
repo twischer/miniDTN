@@ -58,6 +58,7 @@
 #include "sys/profiling.h"
 #include "watchdog.h"
 
+#include "discovery.h"
 #ifndef CONF_SEND_TO_NODE
 #error "I need a destination node - set CONF_SEND_TO_NODE"
 #endif
@@ -84,12 +85,8 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 	profiling_init();
 	profiling_start();
 
-	/* Initialize the agent */
-	agent_init();
-
 	/* Wait for the agent to be initialized */
-	etimer_set(&timer,  CLOCK_SECOND*5);
-	PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&timer));
+	PROCESS_PAUSE();
 
 	/* Register our endpoint to receive bundles */
 	reg.status=1;
@@ -103,9 +100,16 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 	profiling_report("init", 0);
 	watchdog_start();
 
-	/* Wait until the whole system is running (necessary?) */
-	etimer_set(&timer,  CLOCK_SECOND*2);
+	/* Wait until a neighbour has been discovered */
+	printf("Waiting for neighbour to appear...\n");
+	while( DISCOVERY.neighbours() == NULL ) {
+		PROCESS_PAUSE();
+	}
+
+	/* Give the receiver a second to start up */
+	etimer_set(&timer, CLOCK_SECOND);
 	PROCESS_WAIT_UNTIL(etimer_expired(&timer));
+
 	printf("Init done, starting test\n");
 
 	profiling_init();
@@ -121,15 +125,22 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 	process_post(&udtn_sender_process, PROCESS_EVENT_CONTINUE, NULL);
 
 	while(1) {
-		/* Wait for storage to have enough free space */
-		while( BUNDLE_STORAGE.free_space(NULL) < 1 ) {
-			PROCESS_PAUSE();
-		}
-
 		/* Wait for the next incoming event */
 		PROCESS_WAIT_EVENT();
 
-		/* We received a bundle - check if it is the sink telling us to
+		/* Check for timeout */
+		if (clock_seconds()-(time_start/CLOCK_SECOND) > 5400) {
+			profiling_stop();
+			watchdog_stop();
+			profiling_report("timeout", 0);
+			watchdog_start();
+
+			TEST_FAIL("Didn't receive ack from sink");
+
+			PROCESS_EXIT();
+		}
+
+		/* We received a bundle - assume it is the sink telling us to
 		 * stop sending */
 		if (ev == submit_data_to_application_event) {
 			struct mmem *recv = NULL;
@@ -155,20 +166,16 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 		}
 
 		if( ev == dtn_bundle_store_failed ) {
-			/* Sending the last bundle failed, back off a bit */
+			/* Sending the last bundle failed, do not send this time round */
 			bundles_sent--;
+			process_post(&udtn_sender_process, PROCESS_EVENT_CONTINUE, NULL);
+			continue;
 		}
 
-		/* Check for timeout */
-		if (clock_seconds()-(time_start/CLOCK_SECOND) > 5400) {
-			profiling_stop();
-			watchdog_stop();
-			profiling_report("timeout", 0);
-			watchdog_start();
-
-			TEST_FAIL("Didn't receive ack from sink");
-
-			PROCESS_EXIT();
+		/* Only proceed, when we have enough storage left */
+		if( BUNDLE_STORAGE.free_space(NULL) < 1 ) {
+			process_post(&udtn_sender_process, PROCESS_EVENT_CONTINUE, NULL);
+			continue;
 		}
 
 		/* Stop profiling if we've sent 1000 bundles. We still need to send
