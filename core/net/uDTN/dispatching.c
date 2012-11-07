@@ -92,7 +92,7 @@ int dispatch_bundle(struct mmem *bundlemem) {
 
 	// regular bundle, no custody
 	PRINTF("FORWARDING: Handing over to storage\n");
-	n = BUNDLE_STORAGE.save_bundle(bundlemem, &bundle_number, 1);
+	n = BUNDLE_STORAGE.save_bundle(bundlemem, &bundle_number);
 
 	// Now we have to send an event to our daemon
 	if( n ) {

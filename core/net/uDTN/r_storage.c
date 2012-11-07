@@ -165,6 +165,9 @@ uint8_t rs_make_room(struct mmem *bundlemem)
 //		return 1;
 //	}
 
+	// Now delete expired bundles
+	r_store_prune();
+
 	// Keep deleting bundles until we have enough MMEM and slots
 	while( bundles_in_storage >= BUNDLE_STORAGE_SIZE) { // || (avail_memory - bundle->size) < STORAGE_HIGH_WATERMARK ) {
 		struct bundle_list_entry_t * entry = list_head(bundle_list);
@@ -186,7 +189,7 @@ uint8_t rs_make_room(struct mmem *bundlemem)
 * \param bundle_number pointer where the bundle number will be stored (on success)
 * \return 0 on error, 1 on success
 */
-uint8_t rs_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_number_ptr, uint8_t force)
+uint8_t rs_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_number_ptr)
 {
 	struct bundle_t *entrybdl = NULL,
 					*bundle = NULL;
@@ -217,24 +220,12 @@ uint8_t rs_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_number_ptr, u
 
 		if( bundle_number == entrybdl->bundle_num ) {
 			PRINTF("STORAGE: %lu is the same bundle\n", entry->bundle_num);
-			bundle_dec(bundlemem);
 			return 1;
 		}
 	}
 
-	// Now delete expired bundles
-	r_store_prune();
-
-	if( bundles_in_storage >= BUNDLE_STORAGE_SIZE && !force ) {
-		/* Storage is full, cannot store bundle */
-		printf("STORAGE: rs_save_bundle does not have space\n");
-		bundle_dec(bundlemem);
-		return 0;
-	}
-
 	if( !rs_make_room(bundlemem) ) {
 		printf("STORAGE: Cannot store bundle, no room\n");
-		bundle_dec(bundlemem);
 		return 0;
 	}
 
@@ -244,7 +235,6 @@ uint8_t rs_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_number_ptr, u
 	entry = memb_alloc(&bundle_mem);
 	if( entry == NULL ) {
 		printf("STORAGE: unable to allocate struct, cannot store bundle\n");
-		bundle_dec(bundlemem);
 		return 0;
 	}
 

@@ -164,12 +164,15 @@ PROCESS_THREAD(agent_process, ev, data)
 			source_process = bundle->source_process;
 
 			// Save the bundle in storage
-			n = BUNDLE_STORAGE.save_bundle(bundleptr, &bundle_number, 0);
+			n = BUNDLE_STORAGE.save_bundle(bundleptr, &bundle_number);
 
 			/* Saving the bundle failed... */
 			if( !n ) {
 				/* Decrement the sequence number */
 				dtn_seq_nr--;
+
+				/* Free memory */
+				bundle_dec(bundleptr);
 			}
 
 			// Reset our pointers to avoid using invalid ones
