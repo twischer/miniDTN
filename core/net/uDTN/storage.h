@@ -66,7 +66,7 @@ struct storage_driver {
 	void (* init)(void);
 	void (* reinit)(void);
 	/** saves a bundle */
-	uint8_t (* save_bundle)(struct mmem *bundlemem, uint32_t ** bundle_number, uint8_t force);
+	uint8_t (* save_bundle)(struct mmem *bundlemem, uint32_t ** bundle_number);
 	/** deletes a bundle */
 	uint16_t (* del_bundle)(uint32_t bundle_num, uint8_t reason);
 	/** reads a bundle */

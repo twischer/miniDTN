@@ -326,7 +326,7 @@ void reinit(void)
 * \param bundle pointer to the bundle
 * \return the bundle number given to the bundle or <0 on errors
 */
-uint8_t save_bundle(struct mmem * bundlemem, uint32_t ** bundle_number_ptr, uint8_t force)
+uint8_t save_bundle(struct mmem * bundlemem, uint32_t ** bundle_number_ptr)
 {
 	struct bundle_t * bundle = NULL;
 	struct file_list_entry_t * entry = NULL;
