@@ -86,12 +86,8 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 	profiling_init();
 	profiling_start();
 
-	/* Initialize the agent */
-	agent_init();
-
 	/* Wait for the agent to be initialized */
-	etimer_set(&timer,  CLOCK_SECOND*5);
-	PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&timer));
+	PROCESS_PAUSE();
 
 	/* Register our endpoint to receive bundles */
 	reg.status=1;
