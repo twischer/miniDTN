@@ -49,8 +49,7 @@ struct cust_t {
 };
 
 
-
-
+#if 0
 LIST(cust_list);
 MEMB(cust_mem, struct cust_t, MAX_CUST);
 
@@ -58,10 +57,12 @@ static struct ctimer b_cust_timer;
 
 static uint8_t cust_cnt;
 static uint16_t time;
+#endif
 
 void retransmit();
 void b_cust_init(void)
 {
+#if 0
 	memb_init(&cust_mem);
 	list_init(cust_list);
 	time=5;
@@ -93,7 +94,7 @@ void retransmit(){
 		}
 	}
 	ctimer_set(&b_cust_timer,CLOCK_SECOND*mintime,retransmit,NULL);
-	
+#endif
 }
 
 /* XXX FIXME: Custody not implemented yet!
