@@ -102,25 +102,6 @@ packetbuf_copyfrom(const void *from, uint16_t len)
   return l;
 }
 /*---------------------------------------------------------------------------*/
-int
-packetbuf_ext_copyfrom(const void *from, uint16_t len, uint8_t seg_head, uint8_t ext_seg)
-{
-  uint16_t l;
-  uint8_t ext_len;
-  packetbuf_clear();
-  *packetbufptr=seg_head;
-  if(seg_head & (0x08)){
-	  ext_len=2;
-	  *(packetbufptr+1)=ext_seg;
-  }else{
-	  ext_len=1;
-  }
-  l = len  > (PACKETBUF_SIZE - ext_len) ? (PACKETBUF_SIZE - ext_len): len;
-  memcpy((packetbufptr+ext_len), from, l);
-  buflen = l+ext_len;
-  return l+ext_len;
-}
-/*---------------------------------------------------------------------------*/
 void
 packetbuf_compact(void)
 {

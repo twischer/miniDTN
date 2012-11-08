@@ -59,20 +59,21 @@ PROCESS_THREAD(dtnping_process, ev, data)
 {
 	static struct etimer timer;
 	static struct etimer timeout;
-	static struct bundle_t bun;
 	static uint32_t bundles_sent = 0;
 	static clock_time_t start;
 	clock_time_t end;
 
 	uint32_t tmp;
 	uint32_t payload_length;
-	uint8_t offset;
 
 	uint8_t payload_buffer[DTN_PING_LENGTH];
 	uint32_t source_node;
 	uint32_t source_service;
-	uint32_t incoming_timestamp;
 	uint32_t incoming_lifetime;
+
+	struct mmem * bundlemem = NULL;
+	struct bundle_t * bundle = NULL;
+	struct bundle_block_t * block = NULL;
 
 	PROCESS_BEGIN();
 
@@ -94,42 +95,43 @@ PROCESS_THREAD(dtnping_process, ev, data)
 		PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&timer));
 
 		// Create the reply bundle
-		create_bundle(&bun);
+		bundlemem = create_bundle();
+		if (!bundlemem) {
+			printf("create_bundle failed\n");
+			continue;
+		}
 
 		// Set the reply EID to the incoming bundle information
 		tmp = DTN_PING_NODE;
-		set_attr(&bun, DEST_NODE, &tmp);
+		set_attr(bundlemem, DEST_NODE, &tmp);
 
 		tmp = DTN_PING_ENDPOINT;
-		set_attr(&bun, DEST_SERV, &tmp);
+		set_attr(bundlemem, DEST_SERV, &tmp);
 
 		// Make us the sender, the custodian and the report to
 		tmp = dtn_node_id;
-		set_attr(&bun, SRC_NODE, &tmp);
-		set_attr(&bun, CUST_NODE, &tmp);
-		set_attr(&bun, CUST_SERV, &tmp);
-		set_attr(&bun, REP_NODE, &tmp);
-		set_attr(&bun, REP_SERV, &tmp);
+		set_attr(bundlemem, SRC_NODE, &tmp);
+		set_attr(bundlemem, CUST_NODE, &tmp);
+		set_attr(bundlemem, CUST_SERV, &tmp);
+		set_attr(bundlemem, REP_NODE, &tmp);
+		set_attr(bundlemem, REP_SERV, &tmp);
 
 		// Set our service to 11 [DTN_PING_ENDPOINT] (IBR-DTN expects that)
 		tmp = DTN_PING_ENDPOINT;
-		set_attr(&bun, SRC_SERV, &tmp);
+		set_attr(bundlemem, SRC_SERV, &tmp);
 
 		// Now set the flags
-		tmp = 0x10; // Endpoint is Singleton
-		set_attr(&bun, FLAGS, &tmp);
-
-		// Set the sequence number to the number of bundles sent
-		set_attr(&bun, TIME_STAMP_SEQ_NR, &bundles_sent);
+		tmp = BUNDLE_FLAG_SINGLETON;
+		set_attr(bundlemem, FLAGS, &tmp);
 
 		/**
 		 * Hardcoded creation timestamp based on:
 		 * date -j +%s   -    date -j 010100002000 +%s
 		 */
 		tmp = 0;
-		set_attr(&bun, TIME_STAMP, &tmp);
+		set_attr(bundlemem, TIME_STAMP, &tmp);
 		tmp = 0;
-		set_attr(&bun, LIFE_TIME, &tmp);
+		set_attr(bundlemem, LIFE_TIME, &tmp);
 
 		// Increment sequence number
 		bundles_sent ++;
@@ -147,10 +149,10 @@ PROCESS_THREAD(dtnping_process, ev, data)
 		}
 
 		// Flag 0x08 is last_block Flag
-		add_block(&bun, 1, 0x08, payload_buffer, DTN_PING_LENGTH);
+		add_block(bundlemem, 1, 0x08, payload_buffer, DTN_PING_LENGTH);
 
 		// And submit the bundle to the agent
-		process_post(&agent_process, dtn_send_bundle_event, (void *) &bun);
+		process_post(&agent_process, dtn_send_bundle_event, (void *) bundlemem);
 		start = clock_time();
 
 		etimer_set(&timeout, CLOCK_SECOND * 5);
@@ -164,36 +166,28 @@ PROCESS_THREAD(dtnping_process, ev, data)
 			continue;
 		}
 
-		// Reconstruct the bundle struct from the event
-		struct bundle_t * bundle;
-		bundle = (struct bundle_t *) data;
+		// Reconstruct the bundle and mmem struct from the event
+		bundlemem = (struct mmem *) data;
+		bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 
 		// Extract payload for further analysis
-		// Processing flags
-		offset = sdnv_decode(bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET] + 1, 4, &tmp) + 1;
-
-		// Payload Length
-		offset += sdnv_decode(bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET] + offset, 4, &payload_length);
-		memcpy(payload_buffer, bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET] + offset, payload_length);
-
-		// Extract source information
-		sdnv_decode(bundle->mem.ptr+bundle->offset_tab[SRC_NODE][OFFSET],
-				bundle->offset_tab[SRC_NODE][STATE], &source_node);
-		sdnv_decode(bundle->mem.ptr+bundle->offset_tab[SRC_SERV][OFFSET],
-				bundle->offset_tab[SRC_SERV][STATE], &source_service);
-
-		// Extract lifetime information
-		sdnv_decode(bundle->mem.ptr+bundle->offset_tab[LIFE_TIME][OFFSET],
-				bundle->offset_tab[LIFE_TIME][STATE], &incoming_lifetime);
-
-		// Delete the incoming bundle
-		delete_bundle(bundle);
+		block = get_payload_block(bundlemem);
 
 		// Reconstruct sequence Number
-		tmp = (((uint32_t) payload_buffer[3]) << 24) +
-				(((uint32_t) payload_buffer[2]) << 16) +
-				(((uint32_t) payload_buffer[1]) << 8) +
-				((uint32_t) payload_buffer[0]);
+		tmp = (((uint32_t) block->payload[3]) << 24) +
+				(((uint32_t) block->payload[2]) << 16) +
+				(((uint32_t) block->payload[1]) << 8) +
+				((uint32_t) block->payload[0]);
+
+		// Extract source information
+		get_attr(bundlemem, SRC_NODE, &source_node);
+		get_attr(bundlemem, SRC_SERV, &source_service);
+
+		// Extract lifetime information
+		get_attr(bundlemem, LIFE_TIME, &incoming_lifetime);
+
+		// Tell the agent, that have processed the bundle
+		process_post(&agent_process, dtn_processing_finished, bundlemem);
 
 		// Warn duplicate packets
 		if( tmp != bundles_sent ) {
@@ -201,7 +195,7 @@ PROCESS_THREAD(dtnping_process, ev, data)
 		}
 
 		// 64 bytes from ipn:2.11: seq=1 ttl=30 time=22.41 ms
-		printf("%lu bytes from ipn:%lu.%lu: seq=%lu ttl=%lu time=%d ms\n",
+		printf("%lu bytes from ipn:%lu.%lu: seq=%lu ttl=%lu time=%lu ms\n",
 				payload_length,
 				source_node,
 				source_service,

@@ -130,9 +130,9 @@ unsigned long clock_seconds(void);
 
 
 #elif WITH_DTN
-#define NETSTACK_CONF_NETWORK dtn_network_driver
+#define NETSTACK_CONF_NETWORK 	  dtn_network_driver
 #define RIMEADDR_CONF_SIZE        2
-
+#define UIP_CONF_UDP              0
 
 
 #else

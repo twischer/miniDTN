@@ -24,13 +24,11 @@
 #include "registration.h"
 #include "API_events.h"
 #include "bundle.h"
-#include "dtn_config.h"
 #include "agent.h"
 #include "storage.h"
 #include "sdnv.h"
 #include "redundance.h"
 #include "dispatching.h"
-#include "forwarding.h"
 #include "routing.h"
 #include "dtn-network.h"
 #include "node-id.h"
@@ -39,6 +37,10 @@
 #include "lib/memb.h"
 #include "discovery.h"
 #include "statistics.h"
+#include "convergence_layer.h"
+
+// #define ENABLE_LOGGING 1
+#include "logging.h"
 
 #define DEBUG 0
 #if DEBUG
@@ -48,48 +50,21 @@
 #define PRINTF(...)
 #endif
 
-static struct bundle_t * bundleptr;
-static struct bundle_t bundle;
+static struct mmem * bundleptr;
 
 uint32_t dtn_node_id;
 uint32_t dtn_seq_nr;
 PROCESS(agent_process, "AGENT process");
 AUTOSTART_PROCESSES(&agent_process);
-struct etimer resubmission_timer;
 
 void agent_init(void) {
+	// if the agent process is already running, to nothing
+	if( process_is_running(&agent_process) ) {
+		return;
+	}
+
+	// Otherwise start the agent process
 	process_start(&agent_process, NULL);
-}
-
-void
-agent_send_bundles(struct route_t * route)
-{
-	if(BUNDLE_STORAGE.read_bundle(route->bundle_num, &bundle)<=0){
-		PRINTF("BUNDLEPROTOCOL: agent_send_bundles() cannot find bundle %u\n", route->bundle_num);
-		return;
-	}
-
-	// How long did this bundle rot in our storage?
-	uint32_t elapsed_time = clock_seconds() - bundle.rec_time;
-
-	// Do not send bundles that are expired
-	if( bundle.lifetime < elapsed_time ) {
-		PRINTF("BUNDLEPROTOCOL: bundle expired\n");
-
-		// Bundle is expired
-		uint16_t tmp = bundle.bundle_num;
-		delete_bundle(&bundle);
-		BUNDLE_STORAGE.del_bundle(tmp, REASON_LIFETIME_EXPIRED);
-
-		return;
-	}
-
-	// Bundle can still be sent
-	uint32_t remaining_time = bundle.lifetime - elapsed_time;
-	set_attr(&bundle, LIFE_TIME, &remaining_time);
-	dtn_network_send(&bundle, route);
-
-	delete_bundle(&bundle);
 }
 
 /*  Bundle Protocol Prozess */
@@ -97,16 +72,17 @@ PROCESS_THREAD(agent_process, ev, data)
 {
 	PROCESS_BEGIN();
 	
+	dtn_node_id=node_id;
+	dtn_seq_nr=0;
 	
 	mmem_init();
 	BUNDLE_STORAGE.init();
 	BUNDLE_STORAGE.reinit();
 	ROUTING.init();
 	REDUNDANCE.init();
-	dtn_node_id=node_id; 
-	dtn_seq_nr=0;
 	registration_init();
-	
+	convergence_layer_init();
+
 	dtn_application_remove_event  = process_alloc_event();
 	dtn_application_registration_event = process_alloc_event();
 	dtn_application_status_event = process_alloc_event();
@@ -117,15 +93,13 @@ PROCESS_THREAD(agent_process, ev, data)
 	dtn_send_admin_record_event = process_alloc_event();
 	dtn_bundle_in_storage_event = process_alloc_event();
 	dtn_send_bundle_to_node_event = process_alloc_event();
-	dtn_bundle_resubmission_event = process_alloc_event();
+	dtn_processing_finished = process_alloc_event();
+	dtn_bundle_stored = process_alloc_event();
 	
 	CUSTODY.init();
 	DISCOVERY.init();
 	PRINTF("starting DTN Bundle Protocol \n");
 		
-
-	etimer_set(&resubmission_timer, 5 * CLOCK_SECOND);
-
 	struct registration_api *reg;
 	
 	while(1) {
@@ -133,20 +107,20 @@ PROCESS_THREAD(agent_process, ev, data)
 
 		if(ev == dtn_application_registration_event) {
 			reg = (struct registration_api *) data;
-			registration_new_app(reg->app_id, reg->application_process);
+
+			registration_new_app(reg->app_id, reg->application_process, reg->node_id);
 			PRINTF("BUNDLEPROTOCOL: Event empfangen, Registration, Name: %lu\n", reg->app_id);
 			continue;
 		}
 					
 		if(ev == dtn_application_status_event) {
-
 			int status;
 			reg = (struct registration_api *) data;
 			PRINTF("BUNDLEPROTOCOL: Event empfangen, Switch Status, Status: %i \n", reg->status);
 			if(reg->status == APP_ACTIVE)
-				status = registration_set_active(reg->app_id);
+				status = registration_set_active(reg->app_id, reg->node_id);
 			else if(reg->status == APP_PASSIVE)
-				status = registration_set_passive(reg->app_id);
+				status = registration_set_passive(reg->app_id, reg->node_id);
 			
 			if(status == -1) {
 				PRINTF("BUNDLEPROTOCOL: no registration found to switch \n");
@@ -158,36 +132,85 @@ PROCESS_THREAD(agent_process, ev, data)
 		if(ev == dtn_application_remove_event) {
 			reg = (struct registration_api *) data;
 			PRINTF("BUNDLEPROTOCOL: Event empfangen, Remove, Name: %lu \n", reg->app_id);
-			registration_remove_app(reg->app_id);
+			registration_remove_app(reg->app_id, reg->node_id);
 			continue;
 		}
 		
 		if(ev == dtn_send_bundle_event) {
-			PRINTF("BUNDLEPROTOCOL: bundle send \n");
-			bundleptr = (struct bundle_t *) data;
-			
-			bundleptr->rec_time=(uint32_t) clock_seconds(); 
-			if (bundleptr->size >= 110){
-				PRINTF("BUNDLEPROTOCOL: bundle too big size: %u\n" , bundleptr->size);
+			uint32_t * bundle_number;
+			uint8_t n = 0;
+			struct bundle_t * bundle = NULL;
+			struct process * source_process = NULL;
+
+			bundleptr = (struct mmem *) data;
+			if( bundleptr == NULL ) {
+				LOG(LOGD_DTN, LOG_AGENT, LOGL_ERR, "dtn_send_bundle_event with invalid pointer");
 				continue;
 			}
-			set_attr(bundleptr,TIME_STAMP_SEQ_NR,&dtn_seq_nr);
-			PRINTF("BUNDLEPROTOCOL: seq_num = %lu\n",dtn_seq_nr);
+
+			bundle = (struct bundle_t *) MMEM_PTR(bundleptr);
+			if( bundle == NULL ) {
+				LOG(LOGD_DTN, LOG_AGENT, LOGL_ERR, "dtn_send_bundle_event with invalid MMEM structure");
+				continue;
+			}
+
+			/* Go and find the process from which the bundle has been sent */
+			uint32_t app_id = registration_get_app_id(bundle->source_process);
+			if( app_id == 0xFFFF ) {
+				LOG(LOGD_DTN, LOG_AGENT, LOGL_ERR, "Unregistered process tries to send a bundle");
+				process_post(source_process, dtn_bundle_store_failed, NULL);
+				bundle_dec(bundleptr);
+				continue;
+			}
+
+			/* Find out, if the source process has set an app id */
+			uint32_t service_app_id;
+			get_attr(bundleptr, SRC_SERV, &service_app_id);
+
+			/* If the service did not set an app id, do it now */
+			if( service_app_id == 0 ) {
+				set_attr(bundleptr, SRC_SERV, &app_id);
+
+			}
+
+			/* Set the source node */
+			set_attr(bundleptr, SRC_NODE, &dtn_node_id);
+
+			LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "dtn_send_bundle_event(%p) with seqNo %lu", bundleptr, dtn_seq_nr);
+
+			// Set the outgoing sequence number
+			set_attr(bundleptr, TIME_STAMP_SEQ_NR, &dtn_seq_nr);
 			dtn_seq_nr++;
 
-			// Notify statistics module
-			statistics_bundle_generated(1);
-				
-			/* Fall through to dtn_bundle_in_storage_event if forwarding_bundle succeeded */
-			data = forwarding_bundle(bundleptr);
+			// Copy the sending process, because 'bundle' will not be accessible anymore afterwards
+			source_process = bundle->source_process;
 
-			// make sure, that nobody overwrites our pointer
+			// Save the bundle in storage
+			n = BUNDLE_STORAGE.save_bundle(bundleptr, &bundle_number);
+
+			/* Saving the bundle failed... */
+			if( !n ) {
+				/* Decrement the sequence number */
+				dtn_seq_nr--;
+			}
+
+			// Reset our pointers to avoid using invalid ones
+			bundle = NULL;
 			bundleptr = NULL;
 
-			if (data) {
-				ev = dtn_bundle_in_storage_event;
+			// Notify the sender process
+			if( n ) {
+				/* Bundle has been successfully saved, send event to service */
+				process_post(source_process, dtn_bundle_stored, bundleptr);
 			} else {
-				continue;
+				/* Bundle could not be saved, notify service */
+				process_post(source_process, dtn_bundle_store_failed, NULL);
+			}
+
+			// Now emulate the event to our agent
+			if( n ) {
+				data = bundle_number;
+				ev = dtn_bundle_in_storage_event;
 			}
 		}
 		
@@ -199,45 +222,36 @@ PROCESS_THREAD(agent_process, ev, data)
 		if(ev == dtn_beacon_event){
 			rimeaddr_t* src =(rimeaddr_t*) data;
 			ROUTING.new_neighbor(src);
-			PRINTF("BUNDLEPROTOCOL: foooooo\n");
+			LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "dtn_beacon_event for %u.%u", src->u8[0], src->u8[1]);
 			continue;
 		}
 
 		if(ev == dtn_bundle_in_storage_event){
-			uint16_t b_num = *(uint16_t *) data;
-			memb_free(saved_as_mem, data);
+			uint32_t bundle_number = *(uint32_t *) data;
 
-			PRINTF("BUNDLEPROTOCOL: bundle in storage %u %p\n",b_num, data);
-			if(ROUTING.new_bundle(b_num) < 0){
-				PRINTF("BUNDLEPROTOCOL: ERROR\n");
+			LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "bundle %lu in storage", bundle_number);
+
+			if(ROUTING.new_bundle(bundle_number) < 0){
+				LOG(LOGD_DTN, LOG_AGENT, LOGL_ERR, "routing reports error when announcing new bundle %lu", bundle_number);
 				continue;
 			}
 
-			ROUTING.resubmit_bundles(0);
 			continue;
 		}
 		
-		if(ev == dtn_bundle_resubmission_event) {
-			ROUTING.resubmit_bundles(1);
+	    if(ev == dtn_processing_finished) {
+	    	// data should contain the bundlemem ptr
+	    	struct mmem * bundlemem = (struct mmem *) data;
 
-			etimer_restart(&resubmission_timer);
-
-			continue;
-		}
-
-		if( etimer_expired(&resubmission_timer) ) {
-			ROUTING.resubmit_bundles(0);
-
-			// Even if there is nothing to do, call resubmit every second just to be absolutely sure
-			etimer_reset(&resubmission_timer);
-
-			continue;
-		}
+	    	// Notify routing, that service has finished processing a bundle
+	    	ROUTING.locally_delivered(bundlemem);
+	    }
 	}
 	PROCESS_END();
 }
 
-void agent_del_bundle(uint16_t bundle_number){
+void agent_del_bundle(uint32_t bundle_number){
+	convergence_layer_delete_bundle(bundle_number);
 	ROUTING.del_bundle(bundle_number);
 	CUSTODY.del_from_list(bundle_number);
 }

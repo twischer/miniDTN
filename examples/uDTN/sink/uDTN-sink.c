@@ -63,37 +63,37 @@
 
 
 /*---------------------------------------------------------------------------*/
-PROCESS(hello_world_process, "Hello world process");
-AUTOSTART_PROCESSES(&hello_world_process);
-static struct registration_api reg;
+PROCESS(udtn_sender_process, "uDTN Sink process");
+AUTOSTART_PROCESSES(&udtn_sender_process);
 /*---------------------------------------------------------------------------*/
 
-PROCESS_THREAD(hello_world_process, ev, data)
+PROCESS_THREAD(udtn_sender_process, ev, data)
 {
+	static struct registration_api reg;
 	static struct etimer timer;
-	static struct bundle_t bun;
 	static uint16_t bundles_recv = 0;
+	static uint16_t bundles_error = 0;
 	static uint32_t time_start, time_stop;
 	static uint8_t userdata[2];
 	uint32_t tmp;
-	uint32_t seqno;
-        clock_time_t now;
-        unsigned short now_fine;
+	static uint32_t seqno;
+	clock_time_t now;
+	unsigned short now_fine;
+	struct mmem * bundle_incoming;
+	static struct mmem * bundle_outgoing;
 
 	PROCESS_BEGIN();
 	profiling_init();
 	profiling_start();
 
-	agent_init();
-	reg.status=1;
-	reg.application_process=&hello_world_process;
-	reg.app_id=25;
-	printf("MAIN: event= %u\n",dtn_application_registration_event);
-	printf("main app_id %lu process %p\n", reg.app_id, &agent_process);
-	etimer_set(&timer,  CLOCK_SECOND*5);
-	PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&timer));
+	/* Wait for the agent to be initialized */
+	PROCESS_PAUSE();
 
-	process_post(&agent_process, dtn_application_registration_event,&reg);
+	/* Register our endpoint to receive bundles */
+	reg.status=1;
+	reg.application_process=&udtn_sender_process;
+	reg.app_id=25;
+	process_post(&agent_process, dtn_application_registration_event, &reg);
 
 	/* Profile initialization separately */
 	profiling_stop();
@@ -120,31 +120,64 @@ PROCESS_THREAD(hello_world_process, ev, data)
 				TEST_FAIL("Didn't receive enough bundles");
 				PROCESS_EXIT();
 			}
-			/* No timeout - restart while-loop */
-			continue;
+
+			if( ev != submit_data_to_application_event ) {
+				/* No timeout - restart while-loop */
+				continue;
+			}
 		}
 
 		/* If the etimer didn't expire we're getting a submit_data_to_application_event */
-		struct bundle_t *bundle;
-		bundle = (struct bundle_t *) data;
+		bundle_incoming = (struct mmem *) data;
 
 		leds_toggle(1);
 
-		sdnv_decode(bundle->mem.ptr+bundle->offset_tab[TIME_STAMP_SEQ_NR][OFFSET],
-				bundle->offset_tab[TIME_STAMP_SEQ_NR][STATE], &seqno);
-		sdnv_decode(bundle->mem.ptr+bundle->offset_tab[SRC_NODE][OFFSET],
-				bundle->offset_tab[SRC_NODE][STATE], &tmp);
+		/* Verify the content of the bundle */
+		struct bundle_block_t * block = get_payload_block(bundle_incoming);
+		int i;
+		int error = 0;
 
-		delete_bundle(bundle);
+		if( block == NULL ) {
+			printf("Payload: no block\n");
+			error = 1;
+		} else {
+			if( block->block_size != 80 ) {
+				printf("Payload: length is %d, should be 80\n", block->block_size);
+				error = 1;
+			}
+
+			for(i=0; i<80; i++) {
+				if( block->payload[i] != i ) {
+					printf("Payload: byte %d mismatch. Should be %02X, is %02X\n", i, i, block->payload[i]);
+					error = 1;
+				}
+			}
+		}
+
+		if( error ) {
+			bundles_error ++;
+
+			/* Tell the agent, that we have processed the bundle */
+			process_post(&agent_process, dtn_processing_finished, bundle_incoming);
+
+			continue;
+		}
+
+		get_attr(bundle_incoming, TIME_STAMP_SEQ_NR, &seqno);
+		get_attr(bundle_incoming, SRC_NODE, &tmp);
+
+		/* Tell the agent, that we have processed the bundle */
+		process_post(&agent_process, dtn_processing_finished, bundle_incoming);
 
 		bundles_recv++;
+
 		/* Start counting time after the first bundle arrived */
 		if (bundles_recv == 1) {
-		        do {
-		                now_fine = clock_time();
-		                now = clock_seconds();
-		        } while (now_fine != clock_time());
-		        time_start = ((unsigned long)now)*CLOCK_SECOND + now_fine%CLOCK_SECOND;
+			do {
+				now_fine = clock_time();
+				now = clock_seconds();
+			} while (now_fine != clock_time());
+			time_start = ((unsigned long)now)*CLOCK_SECOND + now_fine%CLOCK_SECOND;
 		}
 
 		if (bundles_recv%50 == 0)
@@ -155,49 +188,65 @@ PROCESS_THREAD(hello_world_process, ev, data)
 		if (bundles_recv==1000) {
 			leds_off(1);
 			profiling_stop();
-		        do {
-		                now_fine = clock_time();
-		                now = clock_seconds();
-		        } while (now_fine != clock_time());
-		        time_stop = ((unsigned long)now)*CLOCK_SECOND + now_fine%CLOCK_SECOND;
 
-			create_bundle(&bun);
+			do {
+				now_fine = clock_time();
+				now = clock_seconds();
+			} while (now_fine != clock_time());
+			time_stop = ((unsigned long)now)*CLOCK_SECOND + now_fine%CLOCK_SECOND;
 
-			/* tmp already holdy the src address of the sender */
-			set_attr(&bun, DEST_NODE, &tmp);
+			bundle_outgoing = create_bundle();
+
+			if( bundle_outgoing == NULL ) {
+				printf("create_bundle failed\n");
+				continue;
+			}
+
+			/* tmp already holds the src address of the sender */
+			set_attr(bundle_outgoing, DEST_NODE, &tmp);
 			tmp=25;
-			set_attr(&bun, DEST_SERV, &tmp);
+			set_attr(bundle_outgoing, DEST_SERV, &tmp);
 			tmp=dtn_node_id;
-			set_attr(&bun, SRC_NODE, &tmp);
-			set_attr(&bun, SRC_SERV,&tmp);
-			set_attr(&bun, CUST_NODE, &tmp);
-			set_attr(&bun, CUST_SERV, &tmp);
+			set_attr(bundle_outgoing, SRC_NODE, &tmp);
+			set_attr(bundle_outgoing, SRC_SERV,&tmp);
+			set_attr(bundle_outgoing, CUST_NODE, &tmp);
+			set_attr(bundle_outgoing, CUST_SERV, &tmp);
 
-			tmp=0;
-			set_attr(&bun, FLAGS, &tmp);
+			tmp=BUNDLE_FLAG_SINGLETON;
+			set_attr(bundle_outgoing, FLAGS, &tmp);
 			tmp=1;
-			set_attr(&bun, REP_NODE, &tmp);
-			set_attr(&bun, REP_SERV, &tmp);
+			set_attr(bundle_outgoing, REP_NODE, &tmp);
+			set_attr(bundle_outgoing, REP_SERV, &tmp);
 
 			/* Set the sequence number to the number of budles sent */
 			tmp = 1;
-			set_attr(&bun, TIME_STAMP_SEQ_NR, &tmp);
+			set_attr(bundle_outgoing, TIME_STAMP_SEQ_NR, &tmp);
 
 			tmp=2000;
-			set_attr(&bun, LIFE_TIME, &tmp);
+			set_attr(bundle_outgoing, LIFE_TIME, &tmp);
 			tmp=4;
-			set_attr(&bun, TIME_STAMP, &tmp);
+			set_attr(bundle_outgoing, TIME_STAMP, &tmp);
 
 			/* Add the payload */
 			userdata[0] = 'o';
 			userdata[1] = 'k';
-			add_block(&bun, 1, 2, userdata, 2);
+			add_block(bundle_outgoing, 1, 2, userdata, 2);
 
-			process_post(&agent_process, dtn_send_bundle_event, (void *) &bun);
+			/* Send out the bundle */
+			process_post(&agent_process, dtn_send_bundle_event, (void *) bundle_outgoing);
+
+			/* Wait for the agent to process our outgoing bundle */
+			PROCESS_WAIT_UNTIL(ev == dtn_bundle_stored);
+
+			/* Deactivate our registration, so that we do not receive bundles anymore */
+			reg.status = 0;
+			process_post(&agent_process, dtn_application_status_event, &reg);
 
 			watchdog_stop();
 			profiling_report("recv-1000", 0);
 			TEST_REPORT("throughput", 1000L*CLOCK_SECOND, time_stop-time_start, "bundles/s");
+			TEST_REPORT("errors", bundles_error, 1, "erronous bundles");
+
 			/* Packet loss in percent
 			   We received 1000 bundles, if seqno is 999 bundleloss is 0%
 			   If seqno is 1999 bundleloss is 50% (1000 received, 1000 lost) */

@@ -22,15 +22,13 @@
 #include "agent.h"
 #include "lib/mmem.h"
 #include "lib/list.h"
-#include "r_storage.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "dtn_config.h"
 #include "status-report.h"
-#include "forwarding.h"
 #include "profiling.h"
 #include "statistics.h"
+#include "hash.h"
 
 #define DEBUG 0
 #if DEBUG
@@ -43,16 +41,44 @@
 // defined in mmem.c, no function to access it though
 extern unsigned int avail_memory;
 
+/**
+ * Internal representation of a bundle
+ *
+ * The layout is quite fixed - the next pointer and the bundle_num have to go first because this struct
+ * has to be compatible with the struct storage_entry_t in storage.h!
+ */
+struct bundle_list_entry_t {
+	/** pointer to the next list element */
+	struct bundle_list_entry_t * next;
+
+	/** copy of the bundle number - necessary to have
+	 * a static address that we can pass on as an
+	 * argument to an event
+	 */
+	uint32_t bundle_num;
+
+	/** pointer to the actual bundle stored in MMEM */
+	struct mmem *bundle;
+};
+
+// List and memory blocks for the bundles
 LIST(bundle_list);
-MEMB(bundle_mem, struct file_list_entry_t, BUNDLE_STORAGE_SIZE);
+MEMB(bundle_mem, struct bundle_list_entry_t, BUNDLE_STORAGE_SIZE);
 
+// global, internal variables
+/** Counts the number of bundles in storage */
 static uint16_t bundles_in_storage;
-static struct ctimer r_store_timer;
-struct memb *saved_as_mem;
-static struct bundle_t bundle_str;
-static uint16_t bundle_number = 0;
 
+/** Is used to periodically traverse all bundles and delete those that are expired */
+static struct ctimer r_store_timer;
+
+/**
+ * "Internal" functions
+ */
 void r_store_prune();
+void rs_reinit(void);
+uint16_t rs_del_bundle(uint32_t bundle_number, uint8_t reason);
+void rs_update_statistics();
 
 /**
  * \brief internal function to send statistics to statistics module
@@ -69,21 +95,16 @@ void rs_init(void)
 {
 	PRINTF("STORAGE: init r_storage\n");
 
-	// Initialize the neighbour list
+	// Initialize the bundle list
 	list_init(bundle_list);
 
-	// Initialize the neighbour memory block
+	// Initialize the bundle memory block
 	memb_init(&bundle_mem);
 
 	// Initialize MMEM for the binary bundle storage
 	mmem_init();
 
 	bundles_in_storage = 0;
-	bundle_number = 0;
-
-	MEMB(saved_as_memb, uint16_t, 50);
-	saved_as_mem = &saved_as_memb;
-	memb_init(saved_as_mem);
 
 	rs_reinit();
 	rs_update_statistics();
@@ -96,17 +117,20 @@ void rs_init(void)
 */
 void r_store_prune()
 {
-	struct file_list_entry_t * entry;
+	uint32_t elapsed_time;
+	struct bundle_list_entry_t * entry = NULL;
+	struct bundle_t *bundle = NULL;
 
 	// Delete expired bundles from storage
 	for(entry = list_head(bundle_list);
 			entry != NULL;
 			entry = list_item_next(entry)) {
-		uint32_t elapsed_time = clock_seconds() - entry->rec_time;
+		bundle = (struct bundle_t *) MMEM_PTR(entry->bundle);
+		elapsed_time = clock_seconds() - bundle->rec_time;
 
-		if( entry->lifetime < elapsed_time ) {
-			PRINTF("STORAGE: bundle lifetime expired of bundle %u\n", entry->bundle_num);
-			rs_del_bundle(entry->bundle_num, REASON_LIFETIME_EXPIRED);
+		if( bundle->lifetime < elapsed_time ) {
+			PRINTF("STORAGE: bundle lifetime expired of bundle %lu\n", entry->bundle_num);
+			rs_del_bundle(bundle->bundle_num, REASON_LIFETIME_EXPIRED);
 		}
 	}
 
@@ -116,16 +140,16 @@ void r_store_prune()
 
 void rs_reinit(void)
 {
-	struct file_list_entry_t * entry;
-
-	// Start counting the bundle number from zero again
-	bundle_number = 0;
+	struct bundle_list_entry_t * entry = NULL;
+	struct bundle_t *bundle = NULL;
 
 	// Delete all bundles from storage
 	for(entry = list_head(bundle_list);
 			entry != NULL;
 			entry = list_item_next(entry)) {
-		rs_del_bundle(entry->bundle_num, REASON_NO_INFORMATION);
+		bundle = (struct bundle_t *) MMEM_PTR(entry->bundle);
+
+		rs_del_bundle(bundle->bundle_num, REASON_NO_INFORMATION);
 	}
 }
 
@@ -134,19 +158,19 @@ void rs_reinit(void)
  * have at least one slot and the number of required of memory free
  * besides the high watermark for MMEM
  */
-uint8_t rs_make_room(struct bundle_t * bundle)
+uint8_t rs_make_room(struct mmem *bundlemem)
 {
-	if( bundles_in_storage < BUNDLE_STORAGE_SIZE && (avail_memory - bundle->size) > STORAGE_HIGH_WATERMARK ) {
-		// We have enough memory, no need to do anything
-		return 1;
-	}
+//	if( bundles_in_storage < BUNDLE_STORAGE_SIZE && (avail_memory - bundle->block.block_size) > STORAGE_HIGH_WATERMARK ) {
+//		// We have enough memory, no need to do anything
+//		return 1;
+//	}
 
 	// Now delete expired bundles
 	r_store_prune();
 
 	// Keep deleting bundles until we have enough MMEM and slots
-	while( bundles_in_storage >= BUNDLE_STORAGE_SIZE || (avail_memory - bundle->size) < STORAGE_HIGH_WATERMARK ) {
-		struct file_list_entry_t * entry = list_head(bundle_list);
+	while( bundles_in_storage >= BUNDLE_STORAGE_SIZE) { // || (avail_memory - bundle->size) < STORAGE_HIGH_WATERMARK ) {
+		struct bundle_list_entry_t * entry = list_head(bundle_list);
 
 		if( entry == NULL ) {
 			// We do not have bundles in storage, stop deleting them
@@ -161,93 +185,74 @@ uint8_t rs_make_room(struct bundle_t * bundle)
 
 /**
 * \brief saves a bundle in storage
-* \param bundle pointer to the bundle
-* \return the bundle number given to the bundle or <0 on errors
+* \param bundlemem pointer to the bundle
+* \param bundle_number pointer where the bundle number will be stored (on success)
+* \return 0 on error, 1 on success
 */
-int32_t rs_save_bundle(struct bundle_t * bundle)
+uint8_t rs_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_number_ptr)
 {
-	uint8_t *tmp = bundle->mem.ptr;
-	struct file_list_entry_t * entry;
+	struct bundle_t *entrybdl = NULL,
+					*bundle = NULL;
+	struct bundle_list_entry_t * entry = NULL;
+	uint32_t bundle_number = 0;
 
-	if( bundle->size == 0 ) {
-		printf("STORAGE: Bundle not saved, size is 0\n");
-		return -1;
+	if( bundlemem == NULL ) {
+		printf("STORAGE: rs_save_bundle with invalid pointer %p\n", bundlemem);
+		return 0;
 	}
 
-	uint32_t src;
-	tmp=tmp+bundle->offset_tab[SRC_NODE][OFFSET];
-	sdnv_decode(tmp ,bundle->offset_tab[SRC_NODE][STATE], &src);
+	// Get the pointer to our bundle
+	bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 
-	uint32_t dest;
-	tmp=bundle->mem.ptr+bundle->offset_tab[DEST_NODE][OFFSET];
-	sdnv_decode(tmp ,bundle->offset_tab[DEST_NODE][STATE], &dest);
+	if( bundle == NULL ) {
+		printf("STORAGE: rs_save_bundle with invalid MMEM structure\n");
+		return 0;
+	}
 
-	uint32_t time_stamp;
-	tmp=bundle->mem.ptr+bundle->offset_tab[TIME_STAMP][OFFSET];
-	sdnv_decode(tmp, bundle->offset_tab[TIME_STAMP][STATE], &time_stamp);
-
-	uint32_t time_stamp_seq;
-	tmp=bundle->mem.ptr+bundle->offset_tab[TIME_STAMP_SEQ_NR][OFFSET];
-	sdnv_decode(tmp, bundle->offset_tab[TIME_STAMP_SEQ_NR][STATE], &time_stamp_seq);
-
-	uint32_t fraq_offset;
-	tmp=bundle->mem.ptr+bundle->offset_tab[FRAG_OFFSET][OFFSET];
-	sdnv_decode(tmp, bundle->offset_tab[FRAG_OFFSET][STATE], &fraq_offset);
+	// Calculate the bundle number
+	bundle_number = HASH.hash_convenience(bundle->tstamp_seq, bundle->tstamp, bundle->src_node, bundle->frag_offs);
 
 	// Look for duplicates in the storage
 	for(entry = list_head(bundle_list);
 		entry != NULL;
 		entry = list_item_next(entry)) {
-		if ( time_stamp_seq == entry->time_stamp_seq &&
-		    time_stamp == entry->time_stamp &&
-		    src == entry->src &&
-		    fraq_offset == entry->fraq_offset) {
+		entrybdl = (struct bundle_t *) MMEM_PTR(entry->bundle);
 
-			PRINTF("STORAGE: %u is the same bundle\n", entry->bundle_num);
-			return (int32_t) entry->bundle_num;
+		if( bundle_number == entrybdl->bundle_num ) {
+			PRINTF("STORAGE: %lu is the same bundle\n", entry->bundle_num);
+			bundle_dec(bundlemem);
+			return 1;
 		}
 	}
 
-	if( !rs_make_room(bundle) ) {
+	if( !rs_make_room(bundlemem) ) {
 		printf("STORAGE: Cannot store bundle, no room\n");
-		return -1;
+		return 0;
 	}
+
+	// Now we have to update the pointer to our bundle, because MMEM may have been modified (freed) and thus the pointer may have changed
+	bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 
 	entry = memb_alloc(&bundle_mem);
 	if( entry == NULL ) {
 		printf("STORAGE: unable to allocate struct, cannot store bundle\n");
-		return -1;
+		bundle_dec(bundlemem);
+		return 0;
 	}
 
 	// Clear the memory area
-	memset(entry, 0, sizeof(struct file_list_entry_t));
+	memset(entry, 0, sizeof(struct bundle_list_entry_t));
 
-	// Allocate some memory
-	int mem = mmem_alloc(&entry->ptr, bundle->size);
-	if( !mem ) {
-		printf("STORAGE: write of %u bytes failed\n", bundle->size);
-		memb_free(&bundle_mem, entry);
-		return -1;
-	}
-
+	// we copy the reference to the bundle, therefore we have to increase the reference counter
+	entry->bundle = bundlemem;
+	bundle_inc(bundlemem);
 	bundles_in_storage++;
 
 	// Set all required fields
-	entry->bundle_num = bundle_number ++;
-	entry->file_size = bundle->size;
-	entry->time_stamp_seq = time_stamp_seq;
-	entry->time_stamp = time_stamp;
-	entry->src = src;
-	entry->dest = dest;
-	entry->fraq_offset = fraq_offset;
-	entry->rec_time = bundle->rec_time;
-	entry->lifetime = bundle->lifetime;
-	rimeaddr_copy(&entry->msrc, &bundle->msrc);
+	bundle->bundle_num = bundle_number;
+	entry->bundle_num = bundle_number;
 
-	// Copy bundle into memory storage
-	memcpy(entry->ptr.ptr, bundle->mem.ptr, bundle->size);
-
-	PRINTF("STORAGE: New Bundle %u, Src %lu, Dest %lu, Seq %lu, Size %u\n", entry->bundle_num, src, dest, time_stamp_seq, entry->file_size);
+	PRINTF("STORAGE: New Bundle %lu (%lu), Src %lu, Dest %lu, Seq %lu\n", bundle->bundle_num, entry->bundle_num, bundle->src_node, bundle->dst_node, bundle->tstamp_seq);
 
 	// Notify the statistics module
 	rs_update_statistics();
@@ -255,51 +260,60 @@ int32_t rs_save_bundle(struct bundle_t * bundle)
 	// Add bundle to the list
 	list_add(bundle_list, entry);
 
-	return (int32_t) entry->bundle_num;
+	// Now we have to (virtually) free the incoming bundle slot
+	// This should do nothing, as we have incremented the reference counter before
+	bundle_dec(bundlemem);
+
+	// Now copy over the STATIC pointer to the bundle number, so that
+	// the caller can stick it into an event
+	*bundle_number_ptr = &entry->bundle_num;
+
+	return 1;
 }
 
 /**
-* \brief delets a bundle form storage
+* \brief deletes a bundle form storage
 * \param bundle_num bundle number to be deleted
 * \param reason reason code
-* \return 1 on succes or 0 on error
+* \return 1 on success or 0 on error
 */
-uint16_t rs_del_bundle(uint16_t bundle_num, uint8_t reason)
+uint16_t rs_del_bundle(uint32_t bundle_number, uint8_t reason)
 {
-	struct file_list_entry_t * entry;
+	struct bundle_t * bundle = NULL;
+	struct bundle_list_entry_t * entry = NULL;
 
-	PRINTF("STORAGE: Deleting Bundle %u with reason %u\n", bundle_num, reason);
+	PRINTF("STORAGE: Deleting Bundle %lu with reason %u\n", bundle_number, reason);
 
 	// Look for the bundle we are talking about
 	for(entry = list_head(bundle_list);
-			entry != NULL;
-			entry = list_item_next(entry)) {
-		if( entry->bundle_num == bundle_num ) {
+		entry != NULL;
+		entry = list_item_next(entry)) {
+		bundle = (struct bundle_t *) MMEM_PTR(entry->bundle);
+
+		if( bundle->bundle_num == bundle_number ) {
 			break;
 		}
 	}
 
 	if( entry == NULL ) {
-		PRINTF("STORAGE: Could not find bundle %u\n", bundle_num);
+		printf("STORAGE: Could not find bundle %lu on rs_del_bundle\n", bundle_number);
 		return 0;
 	}
 
 	// Figure out the source to send status report
-	if(rs_read_bundle(bundle_num, &bundle_str)){
-		bundle_str.del_reason = reason;
+	bundle = (struct bundle_t *) MMEM_PTR(entry->bundle);
+	bundle->del_reason = reason;
 
-		if( ((bundle_str.flags & 8 ) || (bundle_str.flags & 0x40000)) && (reason !=0xff )){
-			if (entry->src != dtn_node_id){
-				STATUS_REPORT.send(&bundle_str, 16, bundle_str.del_reason);
+	if( reason != REASON_DELIVERED ) {
+		// REASON_DELIVERED means "bundle delivered"
+		if( (bundle->flags & 8 ) || (bundle->flags & 0x40000) ){
+			if (bundle->src_node != dtn_node_id){
+				STATUS_REPORT.send(bundle, 16, bundle->del_reason);
 			}
 		}
 	}
-	delete_bundle(&bundle_str);
 
-	// Free the MMEM block inside the bundle
-	if (MMEM_PTR(&entry->ptr) != 0){
-		mmem_free(&entry->ptr);
-	}
+	bundle_dec(entry->bundle);
 
 	// Remove the bundle from the list
 	list_remove(bundle_list, entry);
@@ -307,7 +321,7 @@ uint16_t rs_del_bundle(uint16_t bundle_num, uint8_t reason)
 	bundles_in_storage--;
 
 	// Notified the agent, that a bundle has been deleted
-	agent_del_bundle(bundle_num);
+	agent_del_bundle(bundle_number);
 
 	// Notify the statistics module
 	rs_update_statistics();
@@ -320,57 +334,48 @@ uint16_t rs_del_bundle(uint16_t bundle_num, uint8_t reason)
 
 /**
 * \brief reads a bundle from storage
-* \param bundle_num bundle nuber to read
-* \param bundle empty bundle struct, bundle will be accessable here
-* \return 1 on succes or 0 on error
+* \param bundle_num bundle number to read
+* \return pointer to the MMEM struct
 */
-uint16_t rs_read_bundle(uint16_t bundle_num,struct bundle_t *bundle)
+struct mmem *rs_read_bundle(uint32_t bundle_num)
 {
-	struct file_list_entry_t * entry;
+	struct bundle_list_entry_t * entry = NULL;
+	struct bundle_t * bundle = NULL;
 
 	// Look for the bundle we are talking about
 	for(entry = list_head(bundle_list);
 			entry != NULL;
 			entry = list_item_next(entry)) {
-		if( entry->bundle_num == bundle_num ) {
+		bundle = (struct bundle_t *) MMEM_PTR(entry->bundle);
+
+		if( bundle->bundle_num == bundle_num ) {
 			break;
 		}
 	}
 
 	if( entry == NULL ) {
-		printf("STORAGE: Could not find bundle %u\n", bundle_num);
+		printf("STORAGE: Could not find bundle %lu in rs_read_bundle\n", bundle_num);
 		return 0;
 	}
 
-	if( entry->file_size == 0 ) {
-		printf("STORAGE: Found bundle %u but file size is %u\n", bundle_num, entry->file_size);
+	if( entry->bundle->size == 0 ) {
+		printf("STORAGE: Found bundle %lu but file size is %u\n", bundle_num, entry->bundle->size);
 		return 0;
 	}
 
-	if(MMEM_PTR(&entry->ptr) == NULL ) {
-		printf("STORAGE: bundle contains no MMEM ptr\n");
-		return 0;
-	}
+	// Someone requested the bundle, he will have to decrease the reference counter again
+	bundle_inc(entry->bundle);
 
-	if (!recover_bundel(bundle, MMEM_PTR(&entry->ptr), (int) entry->file_size)) {
-		// FIXME: Mark slot free
-		return 0;
-	}
-
-	bundle->rec_time = entry->rec_time;
-	bundle->custody = entry->custody;
-	rimeaddr_copy(&bundle->msrc, &entry->msrc);
-
-	return entry->file_size;
+	return entry->bundle;
 }
 
 
 /**
 * \brief checks if there is space for a bundle
-* \param bundle pointer to a bundel struct (not used here)
-* \return number of free solts
+* \param bundle pointer to a bundle struct (not used here)
+* \return number of free slots
 */
-uint16_t rs_free_space(struct bundle_t *bundle)
+uint16_t rs_free_space(struct mmem *bundlemem)
 {
 	return BUNDLE_STORAGE_SIZE - bundles_in_storage;
 }
@@ -390,7 +395,6 @@ struct storage_entry_t * rs_get_bundles(void)
 	return (struct storage_entry_t *) list_head(bundle_list);
 }
 
-
 const struct storage_driver r_storage = {
 	"R_STORAGE",
 	rs_init,
@@ -402,3 +406,6 @@ const struct storage_driver r_storage = {
 	rs_get_g_bundel_num,
 	rs_get_bundles,
 };
+
+/** @} */
+/** @} */

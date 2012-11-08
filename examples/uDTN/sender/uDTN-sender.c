@@ -52,47 +52,46 @@
 #include "net/uDTN/API_events.h"
 #include "net/uDTN/API_registration.h"
 
-//#include "net/dtn/realloc.h"
-
-#include "net/uDTN/dtn_config.h"
 #include "net/uDTN/storage.h"
 #include "mmem.h"
 #include "sys/test.h"
 #include "sys/profiling.h"
 #include "watchdog.h"
 
+#include "discovery.h"
 #ifndef CONF_SEND_TO_NODE
 #error "I need a destination node - set CONF_SEND_TO_NODE"
 #endif
 
 /*---------------------------------------------------------------------------*/
-PROCESS(hello_world_process, "Hello world process");
-AUTOSTART_PROCESSES(&hello_world_process);
-static struct registration_api reg;
-struct bundle_t bundle;
+PROCESS(udtn_sender_process, "uDTN Sender process");
+AUTOSTART_PROCESSES(&udtn_sender_process);
 /*---------------------------------------------------------------------------*/
-PROCESS_THREAD(hello_world_process, ev, data)
+PROCESS_THREAD(udtn_sender_process, ev, data)
 {
 	uint8_t i;
+	int n;
 	static struct etimer timer;
+	static struct registration_api reg;
 	static uint16_t bundles_sent = 0;
 	static uint32_t time_start, time_stop;
 	uint8_t userdata[80];
 	uint32_t tmp;
-        clock_time_t now;
-        unsigned short now_fine;
+	clock_time_t now;
+	unsigned short now_fine;
+	static struct mmem * bundle_outgoing;
 
 	PROCESS_BEGIN();
 	profiling_init();
 	profiling_start();
-	agent_init();
+
+	/* Wait for the agent to be initialized */
+	PROCESS_PAUSE();
+
+	/* Register our endpoint to receive bundles */
 	reg.status=1;
-	reg.application_process=&hello_world_process;
+	reg.application_process=&udtn_sender_process;
 	reg.app_id=25;
-	printf("MAIN: event= %u\n",dtn_application_registration_event);
-	printf("main app_id %lu process %p\n", reg.app_id, &agent_process);
-	etimer_set(&timer,  CLOCK_SECOND*5);
-	PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&timer));
 	process_post(&agent_process, dtn_application_registration_event,&reg);
 
 	/* Profile initialization separately */
@@ -100,96 +99,142 @@ PROCESS_THREAD(hello_world_process, ev, data)
 	watchdog_stop();
 	profiling_report("init", 0);
 	watchdog_start();
-	etimer_set(&timer,  CLOCK_SECOND*2);
+
+	/* Wait until a neighbour has been discovered */
+	printf("Waiting for neighbour to appear...\n");
+	while( DISCOVERY.neighbours() == NULL ) {
+		PROCESS_PAUSE();
+	}
+
+	/* Give the receiver a second to start up */
+	etimer_set(&timer, CLOCK_SECOND);
 	PROCESS_WAIT_UNTIL(etimer_expired(&timer));
+
 	printf("Init done, starting test\n");
 
 	profiling_init();
 	profiling_start();
 
-        do {
-                now_fine = clock_time();
-                now = clock_seconds();
-        } while (now_fine != clock_time());
-        time_start = ((unsigned long)now)*CLOCK_SECOND + now_fine%CLOCK_SECOND;
+	do {
+		now_fine = clock_time();
+		now = clock_seconds();
+	} while (now_fine != clock_time());
+	time_start = ((unsigned long)now)*CLOCK_SECOND + now_fine%CLOCK_SECOND;
+
+	/* Send ourselves the initial event */
+	process_post(&udtn_sender_process, PROCESS_EVENT_CONTINUE, NULL);
 
 	while(1) {
+		/* Wait for the next incoming event */
+		PROCESS_WAIT_EVENT();
 
-		/* Shortest possible pause */
-		PROCESS_PAUSE();
+		/* Check for timeout */
+		if (clock_seconds()-(time_start/CLOCK_SECOND) > 5400) {
+			profiling_stop();
+			watchdog_stop();
+			profiling_report("timeout", 0);
+			watchdog_start();
 
-		/* We received a bundle - check if it is the sink telling us to
+			TEST_FAIL("Didn't receive ack from sink");
+
+			PROCESS_EXIT();
+		}
+
+		/* We received a bundle - assume it is the sink telling us to
 		 * stop sending */
 		if (ev == submit_data_to_application_event) {
-			struct bundle_t *bun;
+			struct mmem *recv = NULL;
+			recv = (struct mmem *) data;
 
-			bun = (struct bundle_t *) data;
-			delete_bundle(bun);
+			/* Tell the agent, that we have processed the bundle */
+			process_post(&agent_process, dtn_processing_finished, recv);
 
 			profiling_stop();
 			watchdog_stop();
 			profiling_report("send-1000", 0);
 			watchdog_start();
+
 			TEST_REPORT("throughput", 1000*CLOCK_SECOND, time_stop-time_start, "bundles/s");
 			TEST_PASS();
+
 			PROCESS_EXIT();
 		}
 
-		/* Check for timeout */
-		if (clock_seconds()-(time_start/CLOCK_SECOND) > 900) {
-			profiling_stop();
-			watchdog_stop();
-			profiling_report("timeout", 0);
-			watchdog_start();
-			TEST_FAIL("Didn't receive ack from sink");
-			PROCESS_EXIT();
+		/* Wait for the agent to process our outgoing bundle */
+		if( ev != dtn_bundle_stored && ev != dtn_bundle_store_failed && ev != PROCESS_EVENT_CONTINUE ) {
+			continue;
+		}
+
+		if( ev == dtn_bundle_store_failed ) {
+			/* Sending the last bundle failed, do not send this time round */
+			bundles_sent--;
+			process_post(&udtn_sender_process, PROCESS_EVENT_CONTINUE, NULL);
+			continue;
+		}
+
+		/* Only proceed, when we have enough storage left */
+		if( BUNDLE_STORAGE.free_space(NULL) < 1 ) {
+			process_post(&udtn_sender_process, PROCESS_EVENT_CONTINUE, NULL);
+			continue;
 		}
 
 		/* Stop profiling if we've sent 1000 bundles. We still need to send
 		 * more since some might have been lost on the way */
 		if (bundles_sent == 1000) {
 			profiling_stop();
-		        do {
-		                now_fine = clock_time();
-		                now = clock_seconds();
-		        } while (now_fine != clock_time());
-		        time_stop = ((unsigned long)now)*CLOCK_SECOND + now_fine%CLOCK_SECOND;
+			do {
+				now_fine = clock_time();
+				now = clock_seconds();
+			} while (now_fine != clock_time());
+			time_stop = ((unsigned long)now)*CLOCK_SECOND + now_fine%CLOCK_SECOND;
 		}
 
-		create_bundle(&bundle);
+		/* Allocate memory for the outgoing bundle */
+		bundle_outgoing = create_bundle();
 
-		/* Source and destination */
+		if( bundle_outgoing == NULL ) {
+			printf("create_bundle failed\n");
+			continue;
+		}
+
+		/* Source, destination, custody and report-to nodes and services*/
 		tmp=CONF_SEND_TO_NODE;
-		set_attr(&bundle, DEST_NODE, &tmp);
+		set_attr(bundle_outgoing, DEST_NODE, &tmp);
 		tmp=25;
-		set_attr(&bundle, DEST_SERV, &tmp);
+		set_attr(bundle_outgoing, DEST_SERV, &tmp);
 		tmp=dtn_node_id;
-		set_attr(&bundle, SRC_NODE, &tmp);
-		set_attr(&bundle, SRC_SERV,&tmp);
-		set_attr(&bundle, CUST_NODE, &tmp);
-		set_attr(&bundle, CUST_SERV, &tmp);
+		set_attr(bundle_outgoing, SRC_NODE, &tmp);
+		set_attr(bundle_outgoing, SRC_SERV,&tmp);
+		set_attr(bundle_outgoing, CUST_NODE, &tmp);
+		set_attr(bundle_outgoing, CUST_SERV, &tmp);
+		set_attr(bundle_outgoing, REP_NODE, &tmp);
+		set_attr(bundle_outgoing, REP_SERV, &tmp);
 
-		tmp=0;
-		set_attr(&bundle, FLAGS, &tmp);
-		tmp=1;
-		set_attr(&bundle, REP_NODE, &tmp);
-		set_attr(&bundle, REP_SERV, &tmp);
+		/* Bundle flags */
+		tmp=BUNDLE_FLAG_SINGLETON;
+		set_attr(bundle_outgoing, FLAGS, &tmp);
 
-		/* Set the sequence number to the number of budles sent */
+		/* Set the sequence number to the number of bundles sent */
 		tmp = bundles_sent;
-		set_attr(&bundle, TIME_STAMP_SEQ_NR, &tmp);
+		set_attr(bundle_outgoing, TIME_STAMP_SEQ_NR, &tmp);
 
 		tmp=2000;
-		set_attr(&bundle, LIFE_TIME, &tmp);
+		set_attr(bundle_outgoing, LIFE_TIME, &tmp);
 		tmp=4;
-		set_attr(&bundle, TIME_STAMP, &tmp);
+		set_attr(bundle_outgoing, TIME_STAMP, &tmp);
 
 		/* Add the payload */
 		for(i=0; i<80; i++)
 			userdata[i] = i;
-		add_block(&bundle, 1, 2, userdata, 80);
+		n = add_block(bundle_outgoing, 1, 2, userdata, 80);
+		if( !n ) {
+			printf("not enough room for block\n");
+			bundle_dec(bundle_outgoing);
+			continue;
+		}
 
-		process_post(&agent_process, dtn_send_bundle_event, (void *) &bundle);
+		/* Hand the bundle over to the agent */
+		process_post(&agent_process, dtn_send_bundle_event, (void *) bundle_outgoing);
 
 		bundles_sent++;
 		/* Show progress every 50 bundles */

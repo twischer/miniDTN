@@ -21,15 +21,29 @@
 #include <stdio.h>
 #include "bundle.h"
 
-/** interface for redundance check moduldes*/
+/**
+ * Which redundance driver are we going to use?
+ */
+#ifdef CONF_REDUNDANCE
+#define REDUNDANCE CONF_REDUNDANCE
+#else
+#define REDUNDANCE b_redundance
+#endif
+
+/**
+ * How many recent bundles should be stored in the redundance module?
+ */
+#define REDUNDANCE_MAX 10
+
+/** interface for redundance check modules */
 struct redundance_check {
 	char *name;
 	/** called by agent at startup*/
 	void (* init)(void);
-	/** checks if bundel was delivered befor*/
-	uint8_t (* check)(struct bundle_t *bundle);
-	/** sets that bundle was deliverd */
-	uint8_t (* set)(struct bundle_t *bundle);
+	/** checks if bundle was delivered before */
+	uint8_t (* check)(struct mmem *bundlemem);
+	/** sets that bundle was delivered */
+	uint8_t (* set)(struct mmem *bundlemem);
 };
 
 extern const struct redundance_check REDUNDANCE;

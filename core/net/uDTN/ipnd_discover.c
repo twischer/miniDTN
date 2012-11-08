@@ -18,7 +18,6 @@
 */
 
 #include "custody-signal.h"
-#include "dtn_config.h"
 #include "dtn-network.h"
 #include "clock.h"
 #include "net/netstack.h"
@@ -33,6 +32,8 @@
 #include "sdnv.h"
 #include "statistics.h"
 #include "net/mac/frame802154.h" // for IEEE802154_PANID
+
+#include "convergence_layer.h"
 
 #define DEBUG 0
 #if DEBUG
@@ -276,7 +277,7 @@ void ipnd_dis_send() {
 
 	// Now: Send it
 	rimeaddr_t destination = {{0, 0}}; // Broadcast
-	dtn_send_discover(ipnd_buffer, offset, &destination);
+	convergence_layer_send_discovery(ipnd_buffer, offset, &destination);
 }
 
 /**

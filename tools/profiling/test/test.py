@@ -41,7 +41,6 @@ def mkdir_p(path):
 	except OSError as err:
 		if err.errno == errno.EEXIST:
 			logging.error("Directory %s already exists, aborting", path)
-		raise
 
 class Device(object):
 	"""Represents the actual device (Sky, INGA, ...) partaking in the test"""

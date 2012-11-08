@@ -18,10 +18,12 @@
 #include "sdnv.h"
 #include "administrative_record.h"
 #include "custody.h"
-#include "dtn_config.h"
 #include "delivery.h"
 #include "status-report.h"
-#include "forwarding.h"
+//#define ENABLE_LOGGING 1
+#include "logging.h"
+#include "storage.h"
+#include "dispatching.h"
 
 #define DEBUG 0
 #if DEBUG
@@ -32,101 +34,72 @@
 #endif
 
 
-void dispatch_bundle(struct bundle_t *bundle) {
-	PRINTF("DISPATCHING: bundle: %p\n", bundle->mem.ptr);
-	struct registration *n;
+int dispatch_bundle(struct mmem *bundlemem) {
+	struct bundle_t *bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
+	uint32_t * bundle_number;
+	int n;
 
-	uint16_t *saved_as_mem;
-	uint32_t dest=1;
-	sdnv_decode(bundle->mem.ptr + bundle->offset_tab[DEST_NODE][OFFSET], bundle->offset_tab[DEST_NODE][STATE], &dest);
-//	sdnv_decode(bundle->mem.ptr + bundle->offset_tab[FLAGS][OFFSET], bundle->offset_tab[FLAGS][STATE], &flags);
- 	//TODO warum sagt gcc das flags nicht bunutzt wird	
-	uint32_t dest_app=1;
-	sdnv_decode(bundle->mem.ptr + bundle->offset_tab[DEST_SERV][OFFSET], bundle->offset_tab[DEST_SERV][STATE], &dest_app);
+	if ((bundle->flags & BUNDLE_FLAG_ADM_REC) && (bundle->dst_node == dtn_node_id)) {
+		// The bundle is an ADMIN RECORD for our node, process it directly here without going into storage
 
-
+		/* XXX FIXME: Administrative records are not supported yet
+		 *
+		if(*(MMEM_PTR(bundle->block.type) & 32 ) {// is custody signal
+			PRINTF("DISPATCHING: received custody signal %u %u\n",bundle->offset_tab[DATA][OFFSET], bundle->mem.size);
 #if DEBUG
-//	PRINTF("DISPATCHING: [DEST_NODE][OFFSET]:%u [DEST_SERV][OFFSET]: %u \n", bundle->offset_tab[DEST_NODE][OFFSET],bundle->offset_tab[DEST_SERV][OFFSET]); 
-//	PRINTF("DISPATCHING: [DEST_NODE][STATE]:%u [DEST_SERV][STATE]: %u \n", bundle->offset_tab[DEST_NODE][STATE],bundle->offset_tab[DEST_SERV][STATE]); 
-//	PRINTF("DISPATCHING: destination eid: %lu:%lu \n", dest, dest_app);
-//	uint8_t i;
-//	for (i=0; i<17; i++){
-//		PRINTF("DISPATCHING: offset: %u , len: %u\n", bundle->offset_tab[i][OFFSET],bundle->offset_tab[i][STATE]);
-//	}
-#endif
-	
-	
-	
-	if((bundle->flags & 0x02) != 0) { //is bundle an admin record
-		
-		//printf("DISPATCHING: admin record detected \n");
-		
-		if(dest == dtn_node_id){
-				//printf("its for me\n");		
-				
-				if(*((uint8_t*)bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET]) & 32 ) {// is custody signal
-					PRINTF("DISPATCHING: received custody signal %u %u\n",bundle->offset_tab[DATA][OFFSET], bundle->mem.size);	
-				#if DEBUG
-					uint8_t i=0;
-					for (i=0; i< bundle->mem.size-bundle->offset_tab[DATA][OFFSET]; i++){
-						PRINTF("%x:", *((uint8_t*)bundle->mem.ptr +i+ bundle->offset_tab[DATA][OFFSET]));
-					}
-					PRINTF("\n");
-				#endif
-					//call custody signal method
-					if (*((uint8_t*)bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET]+1) & 128 ){	
-						CUSTODY.release(bundle);
-					}else{
-						CUSTODY.retransmit(bundle);
-					}
-
-				}else if( (*((uint8_t*)bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET]) & 16) && (*((uint8_t*)bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET]+1) & 2)) { // node accepted custody
-				//printf(" node acced\n");
-				#if DEBUG
-					uint8_t i=0;
-					for (i=0; i< bundle->mem.size; i++){
-						PRINTF("%x:", *((uint8_t*)bundle->mem.ptr +i));
-					}
-					PRINTF("\n");
-				#endif
-					
-
-					CUSTODY.release(bundle);
-				}
-				delete_bundle(bundle);
-				return;
-		}
-	}
-	
-	else {
-	
-		uint32_t dest_app;
-		sdnv_decode(bundle->mem.ptr + bundle->offset_tab[DEST_SERV][OFFSET], bundle->offset_tab[DEST_SERV][STATE], &dest_app);
-
-		PRINTF("DISPATCHING: destination eid: %lu:%lu  == %lu, reg_list=%p\n", dest, dest_app,dtn_node_id,list_head(reg_list));
-		//if (bundle->flags & 0x08){ // bundle is custody
-		//	STATUS_REPORT.send(bundle, 2,0);
-		//}
-		if(dest == (uint32_t)dtn_node_id){
-			for(n = list_head(reg_list); n != NULL; n = list_item_next(n)) {
-				PRINTF("DISPATCHING: %lu == %lu\n", n->app_id, dest_app);	
-				if(n->app_id == dest_app) {
-					PRINTF("DISPATCHING: Registration found \n");
-					deliver_bundle(bundle,n);
-					return;
-				}
+			uint8_t i=0;
+			for (i=0; i< bundle->mem.size-bundle->offset_tab[DATA][OFFSET]; i++){
+				PRINTF("%x:", *((uint8_t*)bundle->mem.ptr +i+ bundle->offset_tab[DATA][OFFSET]));
 			}
-			PRINTF("DISPATCHING: no service registrated for bundel\n");
-			delete_bundle(bundle);
-			return;
-		}
+			PRINTF("\n");
+#endif
+			//call custody signal method
+			if (*((uint8_t*)bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET]+1) & 128 ){
+				CUSTODY.release(bundle);
+			}else{
+				CUSTODY.retransmit(bundle);
+			}
+
+		}else if( (*((uint8_t*)bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET]) & 16) && (*((uint8_t*)bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET]+1) & 2)) { // node accepted custody
+			//printf(" node acced\n");
+#if DEBUG
+			uint8_t i=0;
+			for (i=0; i< bundle->mem.size; i++){
+				PRINTF("%x:", *((uint8_t*)bundle->mem.ptr +i));
+			}
+			PRINTF("\n");
+#endif
+
+
+			CUSTODY.release(bundle);
+		}*/
+
+		// Decrease the reference counter - this should deallocate the bundle
+		bundle_dec(bundlemem);
+
+		// Exit function, nothing else to do here
+		return 1;
 	}
 
-	saved_as_mem = forwarding_bundle(bundle);
-	if (saved_as_mem) {
-		process_post(&agent_process, dtn_bundle_in_storage_event, saved_as_mem);
+	// Now pass on the bundle to storage
+	if (bundle->flags & 0x08){
+		// bundle is custody
+		PRINTF("FORWARDING: Handing over to custody\n");
+
+		CUSTODY.decide(bundlemem, bundle_number);
+		return 1;
 	}
 
-	PRINTF("DISPATCHING: Bundle forwarded\n");
+	// regular bundle, no custody
+	PRINTF("FORWARDING: Handing over to storage\n");
+	n = BUNDLE_STORAGE.save_bundle(bundlemem, &bundle_number);
+
+	// Now we have to send an event to our daemon
+	if( n ) {
+		process_post(&agent_process, dtn_bundle_in_storage_event, bundle_number);
+		return 1;
+	}
+
+	return 0;
 }
 /** @} */
