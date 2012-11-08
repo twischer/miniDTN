@@ -22,6 +22,7 @@
 #include "lib/memb.h"
 #include "contiki.h"
 #include "clock.h"
+#include "logging.h"
 
 #include "bundle.h"
 #include "storage.h"
@@ -31,8 +32,8 @@
 #include "statistics.h"
 #include "bundleslot.h"
 #include "delivery.h"
-#include "logging.h"
 #include "convergence_layer.h"
+#include "registration.h"
 
 #include "routing.h"
 
@@ -507,7 +508,7 @@ int flood_new_bundle(uint32_t bundle_number)
 	list_add(routing_list, n);
 
 	// If we have a bundle for our node, mark the bundle
-	if( bundle->dst_node == (uint32_t) dtn_node_id ) {
+	if( registration_is_local(bundle->dst_srv, bundle->dst_node) ) {
 		LOG(LOGD_DTN, LOG_ROUTE, LOGL_DBG, "bundle is for local");
 		entry->flags |= ROUTING_FLAG_LOCAL;
 
@@ -515,6 +516,7 @@ int flood_new_bundle(uint32_t bundle_number)
 			// Apparently the bundle is *only* for us
 			entry->flags &= ~ROUTING_FLAG_FORWARD;
 		} else {
+			LOG(LOGD_DTN, LOG_ROUTE, LOGL_DBG, "bundle is for forward");
 			// Bundle is also for somebody else
 			entry->flags |= ROUTING_FLAG_FORWARD;
 		}

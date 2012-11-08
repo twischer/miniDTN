@@ -107,20 +107,20 @@ PROCESS_THREAD(agent_process, ev, data)
 
 		if(ev == dtn_application_registration_event) {
 			reg = (struct registration_api *) data;
-			registration_new_app(reg->app_id, reg->application_process);
+
+			registration_new_app(reg->app_id, reg->application_process, reg->node_id);
 			PRINTF("BUNDLEPROTOCOL: Event empfangen, Registration, Name: %lu\n", reg->app_id);
 			continue;
 		}
 					
 		if(ev == dtn_application_status_event) {
-
 			int status;
 			reg = (struct registration_api *) data;
 			PRINTF("BUNDLEPROTOCOL: Event empfangen, Switch Status, Status: %i \n", reg->status);
 			if(reg->status == APP_ACTIVE)
-				status = registration_set_active(reg->app_id);
+				status = registration_set_active(reg->app_id, reg->node_id);
 			else if(reg->status == APP_PASSIVE)
-				status = registration_set_passive(reg->app_id);
+				status = registration_set_passive(reg->app_id, reg->node_id);
 			
 			if(status == -1) {
 				PRINTF("BUNDLEPROTOCOL: no registration found to switch \n");
@@ -132,7 +132,7 @@ PROCESS_THREAD(agent_process, ev, data)
 		if(ev == dtn_application_remove_event) {
 			reg = (struct registration_api *) data;
 			PRINTF("BUNDLEPROTOCOL: Event empfangen, Remove, Name: %lu \n", reg->app_id);
-			registration_remove_app(reg->app_id);
+			registration_remove_app(reg->app_id, reg->node_id);
 			continue;
 		}
 		
@@ -153,6 +153,28 @@ PROCESS_THREAD(agent_process, ev, data)
 				LOG(LOGD_DTN, LOG_AGENT, LOGL_ERR, "dtn_send_bundle_event with invalid MMEM structure");
 				continue;
 			}
+
+			/* Go and find the process from which the bundle has been sent */
+			uint32_t app_id = registration_get_app_id(bundle->source_process);
+			if( app_id == 0xFFFF ) {
+				LOG(LOGD_DTN, LOG_AGENT, LOGL_ERR, "Unregistered process tries to send a bundle");
+				process_post(source_process, dtn_bundle_store_failed, NULL);
+				bundle_dec(bundleptr);
+				continue;
+			}
+
+			/* Find out, if the source process has set an app id */
+			uint32_t service_app_id;
+			get_attr(bundleptr, SRC_SERV, &service_app_id);
+
+			/* If the service did not set an app id, do it now */
+			if( service_app_id == 0 ) {
+				set_attr(bundleptr, SRC_SERV, &app_id);
+
+			}
+
+			/* Set the source node */
+			set_attr(bundleptr, SRC_NODE, &dtn_node_id);
 
 			LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "dtn_send_bundle_event(%p) with seqNo %lu", bundleptr, dtn_seq_nr);
 
@@ -176,15 +198,13 @@ PROCESS_THREAD(agent_process, ev, data)
 			bundle = NULL;
 			bundleptr = NULL;
 
-			// If a sender process exists, notify it
-			if( source_process != NULL) {
-				if( n ) {
-					/* Bundle has been successfully saved, send event to service */
-					process_post(source_process, dtn_bundle_stored, bundleptr);
-				} else {
-					/* Bundle could not be saved, notify service */
-					process_post(source_process, dtn_bundle_store_failed, NULL);
-				}
+			// Notify the sender process
+			if( n ) {
+				/* Bundle has been successfully saved, send event to service */
+				process_post(source_process, dtn_bundle_stored, bundleptr);
+			} else {
+				/* Bundle could not be saved, notify service */
+				process_post(source_process, dtn_bundle_store_failed, NULL);
 			}
 
 			// Now emulate the event to our agent
