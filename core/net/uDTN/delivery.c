@@ -30,6 +30,7 @@
 #include "statistics.h"
 //#define ENABLE_LOGGING 1
 #include "logging.h"
+#include "API_registration.h"
 
 #define DEBUG 0
 #if DEBUG
@@ -107,7 +108,8 @@ int deliver_bundle(struct mmem *bundlemem) {
 		n != NULL;
 		n = list_item_next(n)) {
 
-		if(n->app_id == bundle->dst_srv) {
+		if(n->app_id == bundle->dst_srv &&
+		   n->node_id == bundle->dst_node ) {
 			if(n->status == APP_ACTIVE) {
 				if( !n->busy ) {
 					LOG(LOGD_DTN, LOG_BUNDLE, LOGL_DBG, "Service found, delivering...");
