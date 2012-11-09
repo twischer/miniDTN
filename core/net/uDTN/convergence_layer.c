@@ -401,6 +401,10 @@ int convergence_layer_parse_dataframe(rimeaddr_t * source, uint8_t * payload, ui
 
 	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Bundle received %p from %u.%u with SeqNo %u: %p", payload, source->u8[0], source->u8[1], sequence_number, source);
 
+	if( flags != (CONVERGENCE_LAYER_FLAGS_FIRST | CONVERGENCE_LAYER_FLAGS_LAST ) ) {
+		LOG(LOGD_DTN, LOG_CL, LOGL_ERR, "Bundle received %p from %u.%u with invalid flags %02X", payload, source->u8[0], source->u8[1], flags);
+	}
+
 	/* Allocate memory, parse the bundle and set reference counter to 1 */
 	bundlemem = bundle_recover_bundle(payload, length);
 	if( !bundlemem ) {
