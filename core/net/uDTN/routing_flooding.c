@@ -506,22 +506,27 @@ int routing_flooding_new_bundle(uint32_t bundle_number)
 	// Nothing can go wrong anymore, add the (surrounding) struct to the list
 	list_add(routing_list, n);
 
-	// If we have a bundle for our node, mark the bundle
-	if( registration_is_local(bundle->dst_srv, bundle->dst_node) ) {
+	/* Here we decide if a bundle is to be delivered locally and/or forwarded */
+	if( bundle->dst_srv == dtn_node_id ) {
+		/* This bundle is for our node_id, deliver locally */
 		LOG(LOGD_DTN, LOG_ROUTE, LOGL_DBG, "bundle is for local");
 		entry->flags |= ROUTING_FLAG_LOCAL;
-
-		if( bundle->flags & BUNDLE_FLAG_SINGLETON ) {
-			// Apparently the bundle is *only* for us
-			entry->flags &= ~ROUTING_FLAG_FORWARD;
-		} else {
-			LOG(LOGD_DTN, LOG_ROUTE, LOGL_DBG, "bundle is for forward");
-			// Bundle is also for somebody else
-			entry->flags |= ROUTING_FLAG_FORWARD;
-		}
 	} else {
+		/* This bundle is not (directly) for us and will be forwarded */
 		LOG(LOGD_DTN, LOG_ROUTE, LOGL_DBG, "bundle is for forward");
-		// Bundle is not for us, only for forwarding
+		entry->flags |= ROUTING_FLAG_FORWARD;
+	}
+
+	if( !(bundle->flags & BUNDLE_FLAG_SINGLETON) ) {
+		/* Bundle is not Singleton, so forward it in any case */
+		LOG(LOGD_DTN, LOG_ROUTE, LOGL_DBG, "bundle is for forward");
+		entry->flags |= ROUTING_FLAG_FORWARD;
+	}
+
+	if( registration_is_local(bundle->dst_srv, bundle->dst_node) ) {
+		/* Bundle is for a local registration, so deliver it locally */
+		LOG(LOGD_DTN, LOG_ROUTE, LOGL_DBG, "bundle is for local and forward");
+		entry->flags |= ROUTING_FLAG_LOCAL;
 		entry->flags |= ROUTING_FLAG_FORWARD;
 	}
 
@@ -716,6 +721,19 @@ void routing_flooding_bundle_delivered_locally(struct mmem * bundlemem) {
 
 	// Free the bundle memory
 	bundle_decrement(bundlemem);
+
+	/* We count ourselves as node as well, so list us as receiver of a bundle copy */
+	if (entry->send_to < ROUTING_NEI_MEM) {
+		rimeaddr_copy(&entry->neighbours[entry->send_to], &rimeaddr_node_addr);
+		entry->send_to++;
+		LOG(LOGD_DTN, LOG_ROUTE, LOGL_DBG, "bundle %lu sent to %u nodes", entry->bundle_number, entry->send_to);
+	} else if (entry->send_to >= ROUTING_NEI_MEM) {
+		// Here we can delete the bundle from storage, because it will not be routed anyway
+		LOG(LOGD_DTN, LOG_ROUTE, LOGL_DBG, "bundle %lu sent to max number of nodes, deleting", entry->bundle_number);
+
+		/* Unsetting the forward flag will make routing_flooding_check_keep_bundle delete the bundle */
+		entry->flags &= ~ROUTING_FLAG_FORWARD;
+	}
 
 	// Check remaining live of bundle
 	routing_flooding_check_keep_bundle(entry->bundle_number);
