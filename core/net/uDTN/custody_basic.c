@@ -12,19 +12,20 @@
 * \author Georg von Zengen (vonzeng@ibr.cs.tu-bs.de)
 */
 
-#include "custody-signal.h"
-#include "custody.h"
-#include "bundle.h"
-#include "storage.h"
+#include <string.h>
+
 #include "memb.h"
 #include "list.h"
+#include "mmem.h"
+
+#include "bundle.h"
+#include "storage.h"
 #include "routing.h"
 #include "sdnv.h"
 #include "agent.h"
-#include "status-report.h"
-#include "mmem.h"
+#include "statusreport.h"
 
-#include <string.h>
+#include "custody.h"
 
 #define RETRANSMIT 1000
 #define MAX_CUST 10 
@@ -466,7 +467,7 @@ void b_cust_del_from_list(uint32_t bundle_num)
 	return;
 }
 
-const struct custody_driver b_custody ={
+const struct custody_driver custody_basic ={
 	"B_CUSTODY",
 	b_cust_init,
 	b_cust_release,

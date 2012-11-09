@@ -48,6 +48,7 @@
 
 #include <stdio.h>
 #include <string.h> // memcpy
+
 #include "hash.h"
 
 #define _rotl(x,r) ((x << r) | (x >> (32 - r)))

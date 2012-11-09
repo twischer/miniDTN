@@ -40,8 +40,8 @@
 #include "net/netstack.h"
 #include "net/packetbuf.h"
 #include "dev/leds.h"
-#include "net/uDTN/API_registration.h"
-#include "net/uDTN/API_events.h"
+
+#include "net/uDTN/api.h"
 #include "net/uDTN/agent.h"
 #include "net/uDTN/bundle.h"
 #include "net/uDTN/sdnv.h"
@@ -64,7 +64,6 @@ PROCESS_THREAD(dtnping_process, ev, data)
 	clock_time_t end;
 
 	uint32_t tmp;
-	uint32_t payload_length;
 
 	uint8_t payload_buffer[DTN_PING_LENGTH];
 	uint32_t source_node;
@@ -195,8 +194,8 @@ PROCESS_THREAD(dtnping_process, ev, data)
 		}
 
 		// 64 bytes from ipn:2.11: seq=1 ttl=30 time=22.41 ms
-		printf("%lu bytes from ipn:%lu.%lu: seq=%lu ttl=%lu time=%lu ms\n",
-				payload_length,
+		printf("%u bytes from ipn:%lu.%lu: seq=%lu ttl=%lu time=%lu ms\n",
+				block->block_size,
 				source_node,
 				source_service,
 				tmp,

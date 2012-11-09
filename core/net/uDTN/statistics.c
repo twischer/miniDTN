@@ -11,10 +11,11 @@
 
 #include <string.h> // for memcpy
 
-#include "statistics.h"
 #include "agent.h"
 #include "contiki.h"
 #include "bundle.h"
+
+#include "statistics.h"
 
 #define DEBUG 0
 #if DEBUG

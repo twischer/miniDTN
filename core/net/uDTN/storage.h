@@ -19,10 +19,11 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include "bundle.h"
+
 #include "contiki.h"
-#include "bundle.h"
 #include "memb.h"
+
+#include "bundle.h"
 
 /**
  * Which storage driver are we going to use?
@@ -31,7 +32,7 @@
 #ifdef CONF_BUNDLE_STORAGE
 #define BUNDLE_STORAGE CONF_BUNDLE_STORAGE
 #else
-#define BUNDLE_STORAGE r_storage
+#define BUNDLE_STORAGE storage_mmem
 #endif
 
 /**

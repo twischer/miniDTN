@@ -17,10 +17,8 @@
 #ifndef __CUSTODY_H__
 #define __CUSTODY_H__
 
-#include <stdlib.h>
-#include <stdio.h>
-#include "custody-signal.h"
-#include "bundle.h"
+#include "mmem.h"
+#include "contiki.h"
 
 /**
  * Which custody driver are we going to use?
@@ -28,7 +26,7 @@
 #ifdef CONF_CUSTODY
 #define CUSTODY CONF_CUSTODY
 #else
-#define CUSTODY b_custody
+#define CUSTODY custody_basic
 #endif
 
 /**

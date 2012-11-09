@@ -2,7 +2,9 @@
 #define __BUNDLESLOT_H__
 
 #include <stddef.h>
+
 #include "mmem.h"
+#include "contiki.h"
 
 /* Kernel container_of function
  * WARNING: The ({}) macro extenstion is GCC-specific,

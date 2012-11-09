@@ -19,6 +19,9 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+
+#include "contiki.h"
+
 #include "bundle.h"
 
 /**
@@ -27,7 +30,7 @@
 #ifdef CONF_REDUNDANCE
 #define REDUNDANCE CONF_REDUNDANCE
 #else
-#define REDUNDANCE b_redundance
+#define REDUNDANCE redundancy_basic
 #endif
 
 /**

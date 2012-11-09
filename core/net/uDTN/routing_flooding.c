@@ -745,7 +745,7 @@ PROCESS_THREAD(routing_process, ev, data)
 	PROCESS_END();
 }
 
-const struct routing_driver flood_route ={
+const struct routing_driver routing_flooding ={
 	"flood_route",
 	flood_init,
 	flood_new_neigh,

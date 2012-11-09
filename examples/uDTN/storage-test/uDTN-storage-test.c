@@ -49,9 +49,9 @@
 #include "list.h"
 #include "cfs-coffee.h"
 
-#include "agent.h"
-#include "bundle.h"
-#include "storage.h"
+#include "net/uDTN/agent.h"
+#include "net/uDTN/bundle.h"
+#include "net/uDTN/storage.h"
 
 #define TEST_BUNDLES 10
 

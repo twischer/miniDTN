@@ -13,8 +13,11 @@
 #define STATUS_REPORT_H
 
 #include <stdint.h>
-#include "bundle.h"
+
+#include "contiki.h"
 #include "mmem.h"
+
+#include "bundle.h"
 
 
 /**
@@ -23,7 +26,7 @@
 #ifdef CONF_STATUS_REPORT
 #define STATUS_REPORT CONF_STATUS_REPORT
 #else
-#define STATUS_REPORT b_status
+#define STATUS_REPORT statusreport_basic
 #endif
 
 /*========================================== STATUS FLAGS ==========================================*/
@@ -64,15 +67,14 @@ typedef struct {
 	uint8_t reason_code;
 	struct mmem mem;
 } status_report_t;
+
 /** interface for status report modules */
 struct status_report_driver {
 	char *name;
 	/** sends a status report to the "report to"-node */
 	uint8_t (* send)(struct bundle_t *bundle,uint8_t status, uint8_t reason);
 };
-
 extern const struct status_report_driver STATUS_REPORT;
-
 #endif
 /** @} */
 /** @} */

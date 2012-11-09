@@ -13,24 +13,21 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "custody-signal.h"
-
 #include "lib/list.h"
-#include "bundle.h"
-#include "API_events.h"
-#include "registration.h"
-#include "status-report.h"
-#include "sdnv.h"
 #include "process.h"
+#include "logging.h"
+
+#include "bundle.h"
+#include "api.h"
+#include "registration.h"
+#include "statusreport.h"
+#include "sdnv.h"
 #include "agent.h"
 #include "custody.h"
-#include "delivery.h"
-#include "redundance.h"
-#include "dev/leds.h"
+#include "redundancy.h"
 #include "statistics.h"
-//#define ENABLE_LOGGING 1
-#include "logging.h"
-#include "API_registration.h"
+
+#include "delivery.h"
 
 #define DEBUG 0
 #if DEBUG

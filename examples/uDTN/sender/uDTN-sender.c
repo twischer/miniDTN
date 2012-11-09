@@ -43,22 +43,19 @@
 #include <string.h>
 
 #include "contiki.h"
-
 #include "net/netstack.h"
 #include "net/packetbuf.h"
-
-#include "net/uDTN/bundle.h"
-#include "net/uDTN/agent.h"
-#include "net/uDTN/API_events.h"
-#include "net/uDTN/API_registration.h"
-
-#include "net/uDTN/storage.h"
 #include "mmem.h"
 #include "sys/test.h"
 #include "sys/profiling.h"
 #include "watchdog.h"
 
-#include "discovery.h"
+#include "net/uDTN/bundle.h"
+#include "net/uDTN/agent.h"
+#include "net/uDTN/api.h"
+#include "net/uDTN/storage.h"
+#include "net/uDTN/discovery.h"
+
 #ifndef CONF_SEND_TO_NODE
 #error "I need a destination node - set CONF_SEND_TO_NODE"
 #endif

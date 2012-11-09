@@ -14,14 +14,17 @@
  * Headerfile for sdnv functions
  * \author Georg von Zengen (vonzeng@ibr.cs.tu-bs.de) 
  */
-#include <stdint.h>
-#include <stdio.h>
 #ifndef __SDNV_H__
 #define __SDNV_H__
 
-
+#include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
+
+#include "contiki.h"
+
 typedef uint8_t *sdnv_t;
+
 /**
 * \brief encodes an uint32 value in sdnv
 * \param val value to be encoded

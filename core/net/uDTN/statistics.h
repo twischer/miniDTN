@@ -13,8 +13,8 @@
 #ifndef STATISTICS_H
 #define STATISTICS_H
 
-#include "net/rime/rimeaddr.h"
 #include "contiki.h"
+#include "net/rime/rimeaddr.h"
 
 #ifdef STATISTICS_CONF_ELEMENTS
 #define STATISTICS_ELEMENTS STATISTICS_CONF_ELEMENTS

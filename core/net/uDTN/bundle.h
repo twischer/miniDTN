@@ -15,8 +15,11 @@
  * \author Georg von Zengen (vonzeng@ibr.cs.tu-bs.de) 
  */
 #include <stdint.h>
+
+#include "contiki.h"
 #include "mmem.h"
 #include "net/rime/rimeaddr.h"
+#include "process.h"
 
 #ifndef __BUNDLE_H__
 #define __BUNDLE_H__

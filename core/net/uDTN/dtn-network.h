@@ -16,11 +16,14 @@
 #ifndef DTN_NETWORK_H
 #define DTN_NETWORK_H
 
+#include "contiki.h"
 #include "contiki-conf.h"
 #include "rime.h"
 #include "net/rime/rimeaddr.h"
+
 #include "bundle.h"
 #include "routing.h"
+
 extern const struct network_driver dtn_network_driver;
 
 extern const struct mac_driver *dtn_network_mac;

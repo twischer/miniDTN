@@ -1,19 +1,17 @@
-#include "bundle.h"
-#include "bundleslot.h"
-#include "sdnv.h"
-#include "mmem.h"
-#include "sys/process.h"
 #include <stdlib.h>
 #include <stdio.h>
-#if CONTIKI_TARGET_SKY
-//	#include "net/dtn/realloc.h"
-#endif
-
 #include <string.h>
+
+#include "mmem.h"
+#include "sys/process.h"
 #include "clock.h"
-#include "agent.h"
 #include "logging.h"
+
+#include "sdnv.h"
 #include "bundleslot.h"
+#include "agent.h"
+
+#include "bundle.h"
 
 /**
  * "Internal" functions

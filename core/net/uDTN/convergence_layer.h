@@ -12,8 +12,10 @@
 #ifndef CONVERGENCE_LAYER_H
 #define CONVERGENCE_LAYER_H
 
+#include "contiki.h"
 #include "rimeaddr.h"
 #include "process.h"
+#include "mmem.h"
 
 /**
  * How many outgoing bundles can we queue?

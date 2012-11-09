@@ -12,6 +12,9 @@
 #ifndef DELIVERY_H
 #define DELIVERY_H
 
+#include "contiki.h"
+#include "mmem.h"
+
 /**
  * \brief unblocks a service that was previously delivering a bundle
  * \param bundle MMEM pointer

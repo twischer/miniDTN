@@ -25,10 +25,11 @@
 #include "memb.h"
 #include "cfs-coffee.h"
 #include "watchdog.h"
+#include "list.h"
 
 #include "bundle.h"
 #include "sdnv.h"
-#include "status-report.h"
+#include "statusreport.h"
 #include "agent.h"
 #include "hash.h"
 
@@ -643,7 +644,7 @@ struct storage_entry_t * get_bundles(void)
 	return (struct storage_entry_t *) list_head(bundle_list);
 }
 
-const struct storage_driver g_storage = {
+const struct storage_driver storage_coffee = {
 	"G_STORAGE",
 	init,
 	reinit,
