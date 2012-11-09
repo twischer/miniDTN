@@ -66,8 +66,9 @@ PROCESS_THREAD(agent_process, ev, data)
 {
 	PROCESS_BEGIN();
 	
-	dtn_node_id=node_id;
-	dtn_seq_nr=0;
+	/* We obtain our dtn_node_id from the RIME address of the node */
+	dtn_node_id = convert_rime_to_eid(&rimeaddr_node_addr);
+	dtn_seq_nr = 0;
 	
 	mmem_init();
 	convergence_layer_init();
@@ -91,7 +92,7 @@ PROCESS_THREAD(agent_process, ev, data)
 	dtn_processing_finished = process_alloc_event();
 	dtn_bundle_stored = process_alloc_event();
 	
-	PRINTF("starting DTN Bundle Protocol \n");
+	PRINTF("Starting DTN Bundle Protocol Agent with ID %lu\n", dtn_node_id);
 		
 	struct registration_api *reg;
 	
