@@ -24,6 +24,7 @@
 #include "net/rime/rimeaddr.h"
 #include "clock.h"
 #include "net/mac/frame802154.h" // for IEEE802154_PANID
+#include "logging.h"
 
 #include "dtn_network.h"
 #include "agent.h"
@@ -32,14 +33,6 @@
 #include "convergence_layer.h"
 
 #include "discovery.h"
-
-#define DEBUG 0
-#if DEBUG
-#include <stdio.h>
-#define PRINTF(...) printf(__VA_ARGS__)
-#else
-#define PRINTF(...)
-#endif
 
 void discovery_ipnd_refresh_neighbour(rimeaddr_t * neighbour);
 void discovery_ipnd_save_neighbour(rimeaddr_t * neighbour);
@@ -100,7 +93,7 @@ void discovery_ipnd_init()
 
  // Fill the datastructure here
 
-	printf("DISCOVERY: whitelist enabled\n");
+	LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_WRN, "Whitelist enabled");
 #endif
 
 	// Start discovery process
@@ -159,7 +152,7 @@ uint8_t discovery_ipnd_parse_eid(uint32_t * eid, uint8_t * buffer, uint8_t lengt
 	if( strncmp((char *) &buffer[offset], "ipn:", 4) == 0 ) {
 		*eid = atoi((char *) &buffer[offset + 4]);
 	} else {
-		PRINTF("IPND: unknown EID format %s\n", &buffer[offset + 4]);
+		LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_WRN, "Unknown EID format %s", &buffer[offset + 4]);
 	}
 
 	return offset + sdnv_length;
@@ -195,7 +188,7 @@ void discovery_ipnd_receive(rimeaddr_t * source, uint8_t * payload, uint8_t leng
 
 	// Version
 	if( payload[offset++] != 0x02 ) {
-		PRINTF("IPND: version mismatch\n");
+		LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_WRN, "IPND version mismatch");
 		return;
 	}
 
@@ -219,7 +212,7 @@ void discovery_ipnd_receive(rimeaddr_t * source, uint8_t * payload, uint8_t leng
 		offset += discovery_ipnd_parse_bloomfilter(&payload[offset], length - offset);
 	}
 
-	PRINTF("IPND: Discovery from %lu with flags %02X and seqNo %u\n", eid, flags, sequenceNumber);
+	LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "Discovery from %lu with flags %02X and seqNo %u", eid, flags, sequenceNumber);
 }
 
 
@@ -296,7 +289,7 @@ void discovery_ipnd_refresh_neighbour(rimeaddr_t * neighbour)
 	}
 
 	if( !found ) {
-		PRINTF("DISCOVERY: ignoring peer %u.%u, not on whitelist\n", neighbour->u8[0], neighbour->u8[1]);
+		LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_WRN, "Ignoring peer %u.%u, not on whitelist", neighbour->u8[0], neighbour->u8[1]);
 		return;
 	}
 #endif
@@ -333,7 +326,7 @@ void discovery_ipnd_delete_neighbour(rimeaddr_t * neighbour)
 		return;
 	}
 
-	printf("DISCOVERY: Neighbour %u.%u disappeared\n", neighbour->u8[0], neighbour->u8[1]);
+	LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_INF, "Neighbour %u.%u disappeared", neighbour->u8[0], neighbour->u8[1]);
 
 	for(entry = list_head(neighbour_list);
 			entry != NULL;
@@ -371,16 +364,15 @@ void discovery_ipnd_save_neighbour(rimeaddr_t * neighbour)
 	entry = memb_alloc(&neighbour_mem);
 
 	if( entry == NULL ) {
-		PRINTF("DISCOVERY: no more space for neighbours");
+		LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_WRN, "no more space for neighbours");
 		return;
 	}
 
-	printf("DISCOVERY: Found new neighbour %u.%u\n", neighbour->u8[0], neighbour->u8[1]);
+	LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_INF, "Found new neighbour %u.%u", neighbour->u8[0], neighbour->u8[1]);
 
 	// Clean the entry struct, so that "active" becomes zero
 	memset(entry, 0, sizeof(struct discovery_basic_neighbour_list_entry));
 
-	PRINTF("DISCOVERY: Saving neighbour %u:%u \n", neighbour->u8[0], neighbour->u8[1]);
 	entry->active = 1;
 	rimeaddr_copy(&(entry->neighbour), neighbour);
 	entry->timestamp_last = clock_seconds();
@@ -420,7 +412,7 @@ PROCESS_THREAD(discovery_process, ev, data)
 
 	etimer_set(&discovery_timeout_timer, DISCOVERY_NEIGHBOUR_TIMEOUT * CLOCK_SECOND);
 	etimer_set(&discovery_cycle_timer, DISCOVERY_CYCLE * CLOCK_SECOND);
-	PRINTF("DISCOVERY: process running\n");
+	LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_INF, "Discovery process running");
 
 	while(1) {
 		PROCESS_WAIT_EVENT();
@@ -432,7 +424,7 @@ PROCESS_THREAD(discovery_process, ev, data)
 					entry != NULL;
 					entry = entry->next) {
 				if( entry->active && (clock_seconds() - entry->timestamp_last) > DISCOVERY_NEIGHBOUR_TIMEOUT ) {
-					PRINTF("DISCOVERY: Neighbour %u:%u timed out: %lu vs. %lu = %lu\n", entry->neighbour.u8[0], entry->neighbour.u8[1], clock_time(), entry->timestamp_last, clock_time() - entry->timestamp_last);
+					LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "Neighbour %u.%u timed out: %lu vs. %lu = %lu", entry->neighbour.u8[0], entry->neighbour.u8[1], clock_time(), entry->timestamp_last, clock_time() - entry->timestamp_last);
 					discovery_ipnd_delete_neighbour(&entry->neighbour);
 				}
 			}

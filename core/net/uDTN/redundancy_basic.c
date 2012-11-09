@@ -27,6 +27,7 @@
 #include "sdnv.h"
 #include "redundancy.h"
 #include "bundle.h"
+#include "agent.h"
 
 uint32_t redundance_bundle_list[REDUNDANCE_MAX];
 uint8_t redundance_bundle_list_pointer;

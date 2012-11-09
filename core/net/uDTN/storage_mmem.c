@@ -21,6 +21,7 @@
 #include "contiki.h"
 #include "lib/mmem.h"
 #include "lib/list.h"
+#include "logging.h"
 
 #include "bundle.h"
 #include "sdnv.h"
@@ -95,7 +96,7 @@ void storage_mmem_update_statistics() {
 */
 void storage_mmem_init(void)
 {
-	PRINTF("STORAGE: init r_storage\n");
+	LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "storage_mmem init");
 
 	// Initialize the bundle list
 	list_init(bundle_list);
@@ -131,7 +132,7 @@ void storage_mmem_prune()
 		elapsed_time = clock_seconds() - bundle->rec_time;
 
 		if( bundle->lifetime < elapsed_time ) {
-			PRINTF("STORAGE: bundle lifetime expired of bundle %lu\n", entry->bundle_num);
+			LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "bundle lifetime expired of bundle %lu", entry->bundle_num);
 			storage_mmem_delete_bundle(bundle->bundle_num, REASON_LIFETIME_EXPIRED);
 		}
 	}
@@ -198,7 +199,7 @@ uint8_t storage_mmem_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_num
 	uint32_t bundle_number = 0;
 
 	if( bundlemem == NULL ) {
-		printf("STORAGE: rs_save_bundle with invalid pointer %p\n", bundlemem);
+		LOG(LOGD_DTN, LOG_STORE, LOGL_WRN, "storage_mmem_save_bundle with invalid pointer %p", bundlemem);
 		return 0;
 	}
 
@@ -206,7 +207,7 @@ uint8_t storage_mmem_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_num
 	bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 
 	if( bundle == NULL ) {
-		printf("STORAGE: rs_save_bundle with invalid MMEM structure\n");
+		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "storage_mmem_save_bundle with invalid MMEM structure");
 		return 0;
 	}
 
@@ -220,14 +221,14 @@ uint8_t storage_mmem_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_num
 		entrybdl = (struct bundle_t *) MMEM_PTR(entry->bundle);
 
 		if( bundle_number == entrybdl->bundle_num ) {
-			PRINTF("STORAGE: %lu is the same bundle\n", entry->bundle_num);
+			LOG(LOGD_DTN, LOG_STORE, LOGL_DBG, "%lu is the same bundle", entry->bundle_num);
 			bundle_decrement(bundlemem);
 			return 1;
 		}
 	}
 
 	if( !storage_mmem_make_room(bundlemem) ) {
-		printf("STORAGE: Cannot store bundle, no room\n");
+		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "Cannot store bundle, no room");
 		return 0;
 	}
 
@@ -236,7 +237,7 @@ uint8_t storage_mmem_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_num
 
 	entry = memb_alloc(&bundle_mem);
 	if( entry == NULL ) {
-		printf("STORAGE: unable to allocate struct, cannot store bundle\n");
+		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to allocate struct, cannot store bundle");
 		bundle_decrement(bundlemem);
 		return 0;
 	}
@@ -253,7 +254,7 @@ uint8_t storage_mmem_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_num
 	bundle->bundle_num = bundle_number;
 	entry->bundle_num = bundle_number;
 
-	PRINTF("STORAGE: New Bundle %lu (%lu), Src %lu, Dest %lu, Seq %lu\n", bundle->bundle_num, entry->bundle_num, bundle->src_node, bundle->dst_node, bundle->tstamp_seq);
+	LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "New Bundle %lu (%lu), Src %lu, Dest %lu, Seq %lu", bundle->bundle_num, entry->bundle_num, bundle->src_node, bundle->dst_node, bundle->tstamp_seq);
 
 	// Notify the statistics module
 	storage_mmem_update_statistics();
@@ -283,7 +284,7 @@ uint16_t storage_mmem_delete_bundle(uint32_t bundle_number, uint8_t reason)
 	struct bundle_t * bundle = NULL;
 	struct bundle_list_entry_t * entry = NULL;
 
-	PRINTF("STORAGE: Deleting Bundle %lu with reason %u\n", bundle_number, reason);
+	LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "Deleting Bundle %lu with reason %u", bundle_number, reason);
 
 	// Look for the bundle we are talking about
 	for(entry = list_head(bundle_list);
@@ -297,7 +298,7 @@ uint16_t storage_mmem_delete_bundle(uint32_t bundle_number, uint8_t reason)
 	}
 
 	if( entry == NULL ) {
-		printf("STORAGE: Could not find bundle %lu on storage_mmem_delete_bundle\n", bundle_number);
+		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "Could not find bundle %lu on storage_mmem_delete_bundle", bundle_number);
 		return 0;
 	}
 
@@ -355,12 +356,12 @@ struct mmem *storage_mmem_read_bundle(uint32_t bundle_num)
 	}
 
 	if( entry == NULL ) {
-		printf("STORAGE: Could not find bundle %lu in rs_read_bundle\n", bundle_num);
+		LOG(LOGD_DTN, LOG_STORE, LOGL_WRN, "Could not find bundle %lu in storage_mmem_read_bundle", bundle_num);
 		return 0;
 	}
 
 	if( entry->bundle->size == 0 ) {
-		printf("STORAGE: Found bundle %lu but file size is %u\n", bundle_num, entry->bundle->size);
+		LOG(LOGD_DTN, LOG_STORE, LOGL_WRN, "Found bundle %lu but file size is %u", bundle_num, entry->bundle->size);
 		return 0;
 	}
 

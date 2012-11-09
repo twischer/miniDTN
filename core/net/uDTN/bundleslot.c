@@ -5,6 +5,7 @@
 
 #include "bundle.h"
 
+#include "agent.h"
 #include "bundleslot.h"
 
 /* Defines how many bundles can be used (in storage, used) on this node at once */

@@ -26,15 +26,6 @@
 
 #include "dispatching.h"
 
-#define DEBUG 0
-#if DEBUG
-#include <stdio.h>
-#define PRINTF(...) printf(__VA_ARGS__)
-#else
-#define PRINTF(...)
-#endif
-
-
 int dispatching_dispatch_bundle(struct mmem *bundlemem) {
 	struct bundle_t *bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 	uint32_t * bundle_number;
@@ -85,14 +76,14 @@ int dispatching_dispatch_bundle(struct mmem *bundlemem) {
 	// Now pass on the bundle to storage
 	if (bundle->flags & 0x08){
 		// bundle is custody
-		PRINTF("FORWARDING: Handing over to custody\n");
+		LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "Handing over to custody");
 
 		CUSTODY.decide(bundlemem, bundle_number);
 		return 1;
 	}
 
 	// regular bundle, no custody
-	PRINTF("FORWARDING: Handing over to storage\n");
+	LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "Handing over to storage");
 	n = BUNDLE_STORAGE.save_bundle(bundlemem, &bundle_number);
 
 	// Now we have to send an event to our daemon

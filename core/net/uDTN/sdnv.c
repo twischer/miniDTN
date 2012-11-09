@@ -15,6 +15,8 @@
 
 #include "logging.h"
 
+#include "agent.h"
+
 /** maximum sdnv length */
 #define MAX_LENGTH 8 
 
