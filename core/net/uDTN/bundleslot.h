@@ -24,9 +24,9 @@ struct bundle_slot_t *bundleslot_get_free();
 
 void bundleslot_free(struct bundle_slot_t *bs);
 
-int bundleslot_inc(struct bundle_slot_t *bs);
+int bundleslot_increment(struct bundle_slot_t *bs);
 
-int bundleslot_dec(struct bundle_slot_t *bs);
+int bundleslot_decrement(struct bundle_slot_t *bs);
 
 
 

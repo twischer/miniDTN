@@ -187,7 +187,7 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 		}
 
 		/* Allocate memory for the outgoing bundle */
-		bundle_outgoing = create_bundle();
+		bundle_outgoing = bundle_create_bundle();
 
 		if( bundle_outgoing == NULL ) {
 			printf("create_bundle failed\n");
@@ -196,37 +196,37 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 
 		/* Source, destination, custody and report-to nodes and services*/
 		tmp=CONF_SEND_TO_NODE;
-		set_attr(bundle_outgoing, DEST_NODE, &tmp);
+		bundle_set_attr(bundle_outgoing, DEST_NODE, &tmp);
 		tmp=25;
-		set_attr(bundle_outgoing, DEST_SERV, &tmp);
+		bundle_set_attr(bundle_outgoing, DEST_SERV, &tmp);
 		tmp=dtn_node_id;
-		set_attr(bundle_outgoing, SRC_NODE, &tmp);
-		set_attr(bundle_outgoing, SRC_SERV,&tmp);
-		set_attr(bundle_outgoing, CUST_NODE, &tmp);
-		set_attr(bundle_outgoing, CUST_SERV, &tmp);
-		set_attr(bundle_outgoing, REP_NODE, &tmp);
-		set_attr(bundle_outgoing, REP_SERV, &tmp);
+		bundle_set_attr(bundle_outgoing, SRC_NODE, &tmp);
+		bundle_set_attr(bundle_outgoing, SRC_SERV,&tmp);
+		bundle_set_attr(bundle_outgoing, CUST_NODE, &tmp);
+		bundle_set_attr(bundle_outgoing, CUST_SERV, &tmp);
+		bundle_set_attr(bundle_outgoing, REP_NODE, &tmp);
+		bundle_set_attr(bundle_outgoing, REP_SERV, &tmp);
 
 		/* Bundle flags */
 		tmp=BUNDLE_FLAG_SINGLETON;
-		set_attr(bundle_outgoing, FLAGS, &tmp);
+		bundle_set_attr(bundle_outgoing, FLAGS, &tmp);
 
 		/* Set the sequence number to the number of bundles sent */
 		tmp = bundles_sent;
-		set_attr(bundle_outgoing, TIME_STAMP_SEQ_NR, &tmp);
+		bundle_set_attr(bundle_outgoing, TIME_STAMP_SEQ_NR, &tmp);
 
 		tmp=2000;
-		set_attr(bundle_outgoing, LIFE_TIME, &tmp);
+		bundle_set_attr(bundle_outgoing, LIFE_TIME, &tmp);
 		tmp=4;
-		set_attr(bundle_outgoing, TIME_STAMP, &tmp);
+		bundle_set_attr(bundle_outgoing, TIME_STAMP, &tmp);
 
 		/* Add the payload */
 		for(i=0; i<80; i++)
 			userdata[i] = i;
-		n = add_block(bundle_outgoing, 1, 2, userdata, 80);
+		n = bundle_add_block(bundle_outgoing, 1, 2, userdata, 80);
 		if( !n ) {
 			printf("not enough room for block\n");
-			bundle_dec(bundle_outgoing);
+			bundle_decrement(bundle_outgoing);
 			continue;
 		}
 

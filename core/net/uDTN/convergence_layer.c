@@ -22,7 +22,7 @@
 #include "logging.h"
 #include "storage.h"
 #include "discovery.h"
-#include "dtn-network.h"
+#include "dtn_network.h"
 #include "dispatching.h"
 #include "bundleslot.h"
 
@@ -140,7 +140,7 @@ struct transmit_ticket_t * convergence_layer_get_transmit_ticket()
 int convergence_layer_free_transmit_ticket(struct transmit_ticket_t * ticket)
 {
 	if( ticket->bundle != NULL ) {
-		bundle_dec(ticket->bundle);
+		bundle_decrement(ticket->bundle);
 		ticket->bundle = NULL;
 	}
 
@@ -203,7 +203,7 @@ int convergence_layer_send_bundle(struct transmit_ticket_t * ticket)
 	bundle = (struct bundle_t *) MMEM_PTR(ticket->bundle);
 	if( bundle == NULL ) {
 		LOG(LOGD_DTN, LOG_CL, LOGL_ERR, "Invalid bundle pointer for bundle %lu", ticket->bundle_number);
-		bundle_dec(ticket->bundle);
+		bundle_decrement(ticket->bundle);
 		ticket->bundle = NULL;
 		return -1;
 	}
@@ -216,7 +216,7 @@ int convergence_layer_send_bundle(struct transmit_ticket_t * ticket)
 		LOG(LOGD_DTN, LOG_CL, LOGL_INF, "Bundle %d has expired, not sending it", ticket->bundle_number);
 
 		/* Bundle is expired */
-		bundle_dec(ticket->bundle);
+		bundle_decrement(ticket->bundle);
 
 		/* Tell storage to delete - it will take care of the rest */
 		BUNDLE_STORAGE.del_bundle(ticket->bundle_number, REASON_LIFETIME_EXPIRED);
@@ -226,12 +226,12 @@ int convergence_layer_send_bundle(struct transmit_ticket_t * ticket)
 
 	/* Update remaining lifetime of bundle */
 	uint32_t remaining_time = bundle->lifetime - elapsed_time;
-	set_attr(ticket->bundle, LIFE_TIME, &remaining_time);
+	bundle_set_attr(ticket->bundle, LIFE_TIME, &remaining_time);
 
 	/* Get our buffer */
 	buffer = dtn_network_get_buffer();
 	if( buffer == NULL ) {
-		bundle_dec(ticket->bundle);
+		bundle_decrement(ticket->bundle);
 		ticket->bundle = NULL;
 		return -1;
 	}
@@ -249,7 +249,7 @@ int convergence_layer_send_bundle(struct transmit_ticket_t * ticket)
 	length = 1;
 
 	/* Encode the bundle into the buffer */
-	length += encode_bundle(ticket->bundle, buffer + 1, buffer_length - 1);
+	length += bundle_encode_bundle(ticket->bundle, buffer + 1, buffer_length - 1);
 
 	/* Flag the bundle as being in transit now */
 	ticket->flags |= CONVERGENCE_LAYER_QUEUE_IN_TRANSIT;
@@ -402,7 +402,7 @@ int convergence_layer_parse_dataframe(rimeaddr_t * source, uint8_t * payload, ui
 	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Bundle received %p from %u.%u with SeqNo %u: %p", payload, source->u8[0], source->u8[1], sequence_number, source);
 
 	/* Allocate memory, parse the bundle and set reference counter to 1 */
-	bundlemem = recover_bundle(payload, length);
+	bundlemem = bundle_recover_bundle(payload, length);
 	if( !bundlemem ) {
 		LOG(LOGD_DTN, LOG_CL, LOGL_WRN, "Error recovering bundle");
 		return -1;
@@ -421,7 +421,7 @@ int convergence_layer_parse_dataframe(rimeaddr_t * source, uint8_t * payload, ui
 	DISCOVERY.alive(source);
 
 	/* Hand over the bundle to dispatching */
-	n = dispatch_bundle(bundlemem);
+	n = dispatching_dispatch_bundle(bundlemem);
 	bundlemem = NULL;
 
 	if( n ) {
@@ -462,7 +462,7 @@ int convergence_layer_parse_ackframe(rimeaddr_t * source, uint8_t * payload, uin
 
 	/* We can already free the bundle memory */
 	if( ticket->bundle != NULL ) {
-		bundle_dec(ticket->bundle);
+		bundle_decrement(ticket->bundle);
 		ticket->bundle = NULL;
 	}
 
@@ -613,7 +613,7 @@ int convergence_layer_status(void * pointer, uint8_t outcome)
 
 		/* It is unlikely that we have to retransmit this bundle, so free up memory */
 		if( ticket->bundle != NULL ) {
-			bundle_dec(ticket->bundle);
+			bundle_decrement(ticket->bundle);
 			ticket->bundle = NULL;
 		}
 
@@ -637,7 +637,7 @@ int convergence_layer_status(void * pointer, uint8_t outcome)
 
 		/* We can already free the bundle memory */
 		if( ticket->bundle != NULL ) {
-			bundle_dec(ticket->bundle);
+			bundle_decrement(ticket->bundle);
 			ticket->bundle = NULL;
 		}
 

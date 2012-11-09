@@ -1,7 +1,7 @@
 #ifndef ADMINISTRATIVE_RECORD_H
 #define ADMINISTRATIVE_RECORD_H
 
-#include "custody-signal.h"
+#include "custody_signal.h"
 #include "statusreport.h"
 
 #define CUSTODY_SIGNAL					(0x20)

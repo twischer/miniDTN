@@ -46,7 +46,7 @@ void registration_init(void);
  *
  * \return 1 on success, 0 on error
  */
-int registration_new_app(uint32_t app_id, struct process * application_process, uint32_t node_id);
+int registration_new_application(uint32_t app_id, struct process * application_process, uint32_t node_id);
 
 /**
  * \brief deletes registration of service
@@ -54,7 +54,7 @@ int registration_new_app(uint32_t app_id, struct process * application_process, 
  * \param app_id service id
  * \param node_id Node ID
  */
-void registration_remove_app(uint32_t app_id, uint32_t node_id);
+void registration_remove_application(uint32_t app_id, uint32_t node_id);
 
 /**
  * \brief sets state of service active
@@ -103,7 +103,7 @@ struct process * registration_get_process(uint32_t app_id, uint32_t node_id);
  *
  * \return app_id, 0xFFFF on error
  */
-uint32_t registration_get_app_id(struct process * application_process);
+uint32_t registration_get_application_id(struct process * application_process);
 
 /**
  * \brief Checks whether the bundle is for a local process

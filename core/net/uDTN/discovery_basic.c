@@ -24,9 +24,8 @@
 #include "net/packetbuf.h" 
 #include "net/rime/rimeaddr.h"
 
-#include "dtn-network.h"
+#include "dtn_network.h"
 #include "agent.h"
-#include "dtn-network.h" 
 
 #include "discovery.h"
 
@@ -38,10 +37,10 @@
 #define PRINTF(...)
 #endif
 
-void b_dis_neighbour_found(rimeaddr_t * neighbour);
-void b_dis_refresh_neighbour(rimeaddr_t * neighbour);
-void b_dis_save_neighbour(rimeaddr_t * neighbour);
-void b_dis_stop_pending();
+void discovery_basic_neighbour_found(rimeaddr_t * neighbour);
+void discovery_basic_refresh_neighbour(rimeaddr_t * neighbour);
+void discovery_basic_save_neighbour(rimeaddr_t * neighbour);
+void discovery_basic_stop_pending();
 
 #define DISCOVERY_NEIGHBOUR_CACHE	3
 #define DISCOVERY_NEIGHBOUR_TIMEOUT	5
@@ -73,7 +72,7 @@ uint8_t discovery_pending_start = 0;
 static struct etimer discovery_timeout_timer;
 static struct etimer discovery_pending_timer;
 
-void b_dis_init()
+void discovery_basic_init()
 {
 	// Enable discovery module
 	discovery_status = 1;
@@ -92,7 +91,7 @@ void b_dis_init()
 * \brief sends a discovery message 
 * \param bundle pointer to a bundle (not used here)
 */
-uint8_t b_dis_neighbour(rimeaddr_t * dest)
+uint8_t discovery_basic_is_neighbour(rimeaddr_t * dest)
 {
 	struct discovery_basic_neighbour_list_entry * entry;
 
@@ -108,7 +107,7 @@ uint8_t b_dis_neighbour(rimeaddr_t * dest)
 	return 0;
 }
 
-void b_dis_send(rimeaddr_t * destination)
+void discovery_basic_send_discovery(rimeaddr_t * destination)
 {
 	if( discovery_status == 0 ) {
 		return;
@@ -125,7 +124,7 @@ void b_dis_send(rimeaddr_t * destination)
 * \param msg pointer to the received message
 * \return 1 if msg is an answer or 0 if not
 */
-uint8_t b_dis_is_beacon(uint8_t * msg)
+uint8_t discovery_basic_is_beacon(uint8_t * msg)
 {
 	uint8_t test[8]="DTN_HERE";
 	uint8_t i;
@@ -142,7 +141,7 @@ uint8_t b_dis_is_beacon(uint8_t * msg)
 * \param msg pointer to the received message
 * \return 1 if msg is a discovery message or 0 if not
 */
-uint8_t b_dis_is_discover(uint8_t * msg, rimeaddr_t * dest)
+uint8_t discovery_basic_is_discovery(uint8_t * msg, rimeaddr_t * dest)
 {
 	uint8_t test[13]="DTN_DISCOVERY";
 	uint8_t i;
@@ -165,7 +164,7 @@ uint8_t b_dis_is_discover(uint8_t * msg, rimeaddr_t * dest)
 /**
  * Enable discovery functionality
  */
-void b_dis_enable()
+void discovery_basic_enable()
 {
 	discovery_status = 1;
 }
@@ -174,7 +173,7 @@ void b_dis_enable()
  * Disable discovery functionality
  * Prevents outgoing packets from being sent
  */
-void b_dis_disable()
+void discovery_basic_disable()
 {
 	discovery_status = 0;
 }
@@ -182,36 +181,36 @@ void b_dis_disable()
 /**
  * DTN Network has received an incoming packet, save the sender as neighbour
  */
-void b_dis_receive(rimeaddr_t * source, uint8_t * payload, uint8_t length)
+void discovery_basic_receive(rimeaddr_t * source, uint8_t * payload, uint8_t length)
 {
 	PRINTF("DISCOVERY: received from %u:%u\n", source->u8[1], source->u8[0]);
 
 	// Save all peer from which we receive packets to the active neighbours list
-	b_dis_refresh_neighbour(source);
+	discovery_basic_refresh_neighbour(source);
 
 	// Either somebody wants to discover ourselves
-	if( b_dis_is_discover(payload, source) ) {
+	if( discovery_basic_is_discovery(payload, source) ) {
 		PRINTF("is_discover\n");
 		return;
 	}
 
 	// Or we have received a reply to our query
-	if( b_dis_is_beacon(payload) ) {
+	if( discovery_basic_is_beacon(payload) ) {
 		PRINTF("is_beacon\n");
-		b_dis_neighbour_found(source);
+		discovery_basic_neighbour_found(source);
 	}
 }
 
 /**
  * We have found a new neighbour, now go and notify the agent
  */
-void b_dis_neighbour_found(rimeaddr_t * neighbour)
+void discovery_basic_neighbour_found(rimeaddr_t * neighbour)
 {
 	PRINTF("DISCOVERY: sending DTN BEACON Event for %u.%u\n", neighbour->u8[0], neighbour->u8[1]);
 	process_post(&agent_process, dtn_beacon_event, neighbour);
 
 	// Once we have found a new neighbour, we will stop discovering other nodes
-	b_dis_stop_pending();
+	discovery_basic_stop_pending();
 }
 
 /**
@@ -219,7 +218,7 @@ void b_dis_neighbour_found(rimeaddr_t * neighbour)
  * Yes: refresh timestamp
  * No:  Create entry
  */
-void b_dis_refresh_neighbour(rimeaddr_t * neighbour)
+void discovery_basic_refresh_neighbour(rimeaddr_t * neighbour)
 {
 	struct discovery_basic_neighbour_list_entry * entry;
 
@@ -233,16 +232,16 @@ void b_dis_refresh_neighbour(rimeaddr_t * neighbour)
 		}
 	}
 
-	b_dis_save_neighbour(neighbour);
+	discovery_basic_save_neighbour(neighbour);
 }
 
 /**
  * Save neighbour to local cache
  */
-void b_dis_save_neighbour(rimeaddr_t * neighbour)
+void discovery_basic_save_neighbour(rimeaddr_t * neighbour)
 {
 	// If we know that neighbour already, no need to re-add it
-	if( b_dis_neighbour(neighbour) ) {
+	if( discovery_basic_is_neighbour(neighbour) ) {
 		return;
 	}
 
@@ -291,12 +290,12 @@ void b_dis_save_neighbour(rimeaddr_t * neighbour)
  * Returns 1 if neighbour is already known in (likely) in range
  * Returns 0 otherwise
  */
-uint8_t b_dis_discover(rimeaddr_t * dest)
+uint8_t discovery_basic_discover(rimeaddr_t * dest)
 {
 	PRINTF("DISCOVERY: agent asks to discover %u:%u\n", dest->u8[1], dest->u8[0]);
 
 	// Check, if we already know this neighbour
-	if(b_dis_neighbour(dest)) {
+	if(discovery_basic_is_neighbour(dest)) {
 		return 1;
 	}
 
@@ -305,7 +304,7 @@ uint8_t b_dis_discover(rimeaddr_t * dest)
 	process_poll(&discovery_process);
 
 	// Otherwise, send out a discovery beacon
-	b_dis_send(dest);
+	discovery_basic_send_discovery(dest);
 
 	return 0;
 }
@@ -313,7 +312,7 @@ uint8_t b_dis_discover(rimeaddr_t * dest)
 /**
  * Returns the list of currently known neighbours
  */
-struct discovery_neighbour_list_entry * b_dis_list_neighbours()
+struct discovery_neighbour_list_entry * discovery_basic_list_neighbours()
 {
 	return list_head(neighbour_list);
 }
@@ -321,7 +320,7 @@ struct discovery_neighbour_list_entry * b_dis_list_neighbours()
 /**
  * Stops pending discoveries
  */
-void b_dis_stop_pending()
+void discovery_basic_stop_pending()
 {
 	discovery_pending = 0;
 	etimer_stop(&discovery_pending_timer);
@@ -370,11 +369,11 @@ PROCESS_THREAD(discovery_process, ev, data)
 		 * If we have a discovery pending, resend the beacon multiple times
 		 */
 		if( discovery_pending && etimer_expired(&discovery_pending_timer) ) {
-			b_dis_send(NULL);
+			discovery_basic_send_discovery(NULL);
 			discovery_pending ++;
 
 			if( discovery_pending > (DISCOVERY_TRIES + 1)) {
-				b_dis_stop_pending();
+				discovery_basic_stop_pending();
 			} else {
 				etimer_reset(&discovery_pending_timer);
 			}
@@ -394,16 +393,16 @@ PROCESS_THREAD(discovery_process, ev, data)
 
 const struct discovery_driver discovery_basic = {
 	.name = "B_DISCOVERY",
-	.init = b_dis_init,
-	.is_neighbour = b_dis_neighbour,
-	.enable = b_dis_enable,
-	.disable = b_dis_disable,
-	.receive = b_dis_receive,
-	.alive = b_dis_refresh_neighbour,
+	.init = discovery_basic_init,
+	.is_neighbour = discovery_basic_is_neighbour,
+	.enable = discovery_basic_enable,
+	.disable = discovery_basic_disable,
+	.receive = discovery_basic_receive,
+	.alive = discovery_basic_refresh_neighbour,
 	.dead = NULL,
-	.discover = b_dis_discover,
-	.neighbours = b_dis_list_neighbours,
-	.stop_pending = b_dis_stop_pending,
+	.discover = discovery_basic_discover,
+	.neighbours = discovery_basic_list_neighbours,
+	.stop_pending = discovery_basic_stop_pending,
 };
 /** @} */
 /** @} */

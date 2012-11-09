@@ -42,7 +42,7 @@ void registration_init(void)
 	LOG(LOGD_DTN, LOG_AGENT, LOGL_INF, "Registration init ok");
 }
 
-int registration_new_app(uint32_t app_id, struct process *application_process, uint32_t node_id)
+int registration_new_application(uint32_t app_id, struct process *application_process, uint32_t node_id)
 {
 	struct registration * n = NULL;
 
@@ -94,7 +94,7 @@ struct process * registration_get_process(uint32_t app_id, uint32_t node_id)
 	return NULL;
 }
 
-void registration_remove_app(uint32_t app_id, uint32_t node_id)
+void registration_remove_application(uint32_t app_id, uint32_t node_id)
 {
 	struct registration * n = NULL;
 	
@@ -109,7 +109,6 @@ void registration_remove_app(uint32_t app_id, uint32_t node_id)
 		}
 	}
 }
-
 
 int registration_set_active(uint32_t app_id, uint32_t node_id) {
 	struct registration * n = NULL;
@@ -171,7 +170,7 @@ int registration_return_status(uint32_t app_id, uint32_t node_id)
 	return -1;
 }
 
-uint32_t registration_get_app_id(struct process * application_process)
+uint32_t registration_get_application_id(struct process * application_process)
 {
 	struct registration * n = NULL;
 

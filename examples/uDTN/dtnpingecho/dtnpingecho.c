@@ -91,7 +91,7 @@ PROCESS_THREAD(dtnping_process, ev, data)
 		uint8_t payload_buffer[64];
 		uint8_t payload_length;
 
-		block = get_payload_block(bundlemem);
+		block = bundle_get_payload_block(bundlemem);
 		payload_length = block->block_size;
 		if (payload_length > 64) {
 			printf("Payload too big, clamping to maximum size.\n");
@@ -99,12 +99,12 @@ PROCESS_THREAD(dtnping_process, ev, data)
 		memcpy(payload_buffer, block->payload, payload_length);
 
 		// Extract the source information to send a reply back
-		get_attr(bundlemem, SRC_NODE, &source_node);
-		get_attr(bundlemem, SRC_SERV, &source_service);
+		bundle_get_attr(bundlemem, SRC_NODE, &source_node);
+		bundle_get_attr(bundlemem, SRC_SERV, &source_service);
 
 		// Extract timestamp and lifetime from incoming bundle
-		get_attr(bundlemem, TIME_STAMP, &incoming_timestamp);
-		get_attr(bundlemem, LIFE_TIME, &incoming_lifetime);
+		bundle_get_attr(bundlemem, TIME_STAMP, &incoming_timestamp);
+		bundle_get_attr(bundlemem, LIFE_TIME, &incoming_lifetime);
 
 		// Tell the agent, that have processed the bundle
 		process_post(&agent_process, dtn_processing_finished, bundlemem);
@@ -113,38 +113,38 @@ PROCESS_THREAD(dtnping_process, ev, data)
 		printf("PING %lu received\n", bundles_recv);
 
 		// Create the reply bundle
-		bundlemem = create_bundle();
+		bundlemem = bundle_create_bundle();
 		if (!bundlemem) {
 			printf("create_bundle failed\n");
 			continue;
 		}
 
 		// Set the reply EID to the incoming bundle information
-		set_attr(bundlemem, DEST_NODE, &source_node);
-		set_attr(bundlemem, DEST_SERV, &source_service);
+		bundle_set_attr(bundlemem, DEST_NODE, &source_node);
+		bundle_set_attr(bundlemem, DEST_SERV, &source_service);
 
 		// Make us the sender, the custodian and the report to
 		tmp = dtn_node_id;
-		set_attr(bundlemem, SRC_NODE, &tmp);
-		set_attr(bundlemem, CUST_NODE, &tmp);
-		set_attr(bundlemem, CUST_SERV, &tmp);
-		set_attr(bundlemem, REP_NODE, &tmp);
-		set_attr(bundlemem, REP_SERV, &tmp);
+		bundle_set_attr(bundlemem, SRC_NODE, &tmp);
+		bundle_set_attr(bundlemem, CUST_NODE, &tmp);
+		bundle_set_attr(bundlemem, CUST_SERV, &tmp);
+		bundle_set_attr(bundlemem, REP_NODE, &tmp);
+		bundle_set_attr(bundlemem, REP_SERV, &tmp);
 
 		// Set our service to 11 [DTN_PING_ENDPOINT] (IBR-DTN expects that)
 		tmp = DTN_PING_ENDPOINT;
-		set_attr(bundlemem, SRC_SERV, &tmp);
+		bundle_set_attr(bundlemem, SRC_SERV, &tmp);
 
 		// Now set the flags
 		tmp = BUNDLE_FLAG_SINGLETON;
-		set_attr(bundlemem, FLAGS, &tmp);
+		bundle_set_attr(bundlemem, FLAGS, &tmp);
 
 		// Set the same lifetime and timestamp as the incoming bundle
-		set_attr(bundlemem, LIFE_TIME, &incoming_lifetime);
-		set_attr(bundlemem, TIME_STAMP, &incoming_timestamp);
+		bundle_set_attr(bundlemem, LIFE_TIME, &incoming_lifetime);
+		bundle_set_attr(bundlemem, TIME_STAMP, &incoming_timestamp);
 
 		// Copy payload from incoming bundle
-		add_block(bundlemem, 1, 0, payload_buffer, payload_length);
+		bundle_add_block(bundlemem, 1, 0, payload_buffer, payload_length);
 
 		// And submit the bundle to the agent
 		process_post(&agent_process, dtn_send_bundle_event, (void *) bundlemem);

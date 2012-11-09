@@ -1,7 +1,7 @@
 STORAGE=storage_coffee.c storage_mmem.c
 BUNDLE=sdnv.c bundle.c bundleslot.c
-NETWORK=convergence_layer.c dtn-network.c
-CUSTODY=custody_basic.c custody_null.c custody-signal.c
+NETWORK=convergence_layer.c dtn_network.c
+CUSTODY=custody_basic.c custody_null.c custody_signal.c
 AGENT=agent.c delivery.c dispatching.c registration.c statistics.c statusreport_basic.c
 HASH=hash_xor.c hash_xxfast.c
 DISCOVERY=discovery_basic.c discovery_ipnd.c discovery_static.c

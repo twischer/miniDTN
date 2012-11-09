@@ -17,7 +17,7 @@
 #include "convergence_layer.h"
 #include "agent.h"
 
-#include "dtn-network.h"
+#include "dtn_network.h"
 
 /**
  * Init function called by the Contiki netstack

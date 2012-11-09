@@ -98,12 +98,12 @@ LIST(blacklist_list);
 MEMB(routing_mem, struct routing_list_entry_t, BUNDLE_STORAGE_SIZE);
 LIST(routing_list);
 
-uint8_t flood_send_to_known(void);
+uint8_t routing_flooding_send_to_known_neighbours(void);
 
 /**
  * \brief Adds (or refreshes) the entry of 'neighbour' on the blacklist
  */
-int flood_blacklist_add(rimeaddr_t * neighbour)
+int routing_flooding_blacklist_add(rimeaddr_t * neighbour)
 {
 	struct blacklist_entry_t * entry;
 
@@ -148,7 +148,7 @@ int flood_blacklist_add(rimeaddr_t * neighbour)
 /**
  * \brief Deletes a neighbour from the blacklist
  */
-void flood_blacklist_delete(rimeaddr_t * neighbour)
+void routing_flooding_blacklist_delete(rimeaddr_t * neighbour)
 {
 	struct blacklist_entry_t * entry;
 
@@ -167,13 +167,13 @@ void flood_blacklist_delete(rimeaddr_t * neighbour)
 /**
 * \brief called by agent at startup
 */
-void flood_init(void)
+void routing_flooding_init(void)
 {
 	// Start CL process
 	process_start(&routing_process, NULL);
 }
 
-void flood_schedule_resubmission(void)
+void routing_flooding_schedule_resubmission(void)
 {
 	process_poll(&routing_process);
 }
@@ -182,13 +182,12 @@ void flood_schedule_resubmission(void)
 * \brief checks if there are bundle to send to dest
 * \param dest pointer to the address of the new neighbor
 */
-void flood_new_neigh(rimeaddr_t *dest)
+void routing_flooding_new_neighbour(rimeaddr_t *dest)
 {
-	flood_schedule_resubmission();
+	routing_flooding_schedule_resubmission();
 }
 
-
-int flood_send_bundle(uint32_t bundle_number, rimeaddr_t neighbour)
+int routing_flooding_send_bundle(uint32_t bundle_number, rimeaddr_t neighbour)
 {
 	struct transmit_ticket_t * ticket = NULL;
 
@@ -209,7 +208,7 @@ int flood_send_bundle(uint32_t bundle_number, rimeaddr_t neighbour)
 	return 1;
 }
 
-int flood_send_to_local(struct routing_entry_t * entry)
+int routing_flooding_send_to_local(struct routing_entry_t * entry)
 {
 	struct mmem * bundlemem = NULL;
 
@@ -221,7 +220,7 @@ int flood_send_to_local(struct routing_entry_t * entry)
 			return FLOOD_ROUTE_RETURN_CONTINUE;
 		}
 
-		if( deliver_bundle(bundlemem) ) {
+		if( delivery_deliver_bundle(bundlemem) ) {
 			entry->flags |= ROUTING_FLAG_IN_DELIVERY;
 		}
 	}
@@ -229,7 +228,7 @@ int flood_send_to_local(struct routing_entry_t * entry)
 	return FLOOD_ROUTE_RETURN_OK;
 }
 
-int flood_forward_directly(struct routing_entry_t * entry)
+int routing_flooding_forward_directly(struct routing_entry_t * entry)
 {
 	struct discovery_neighbour_list_entry *nei_l = NULL;
 	rimeaddr_t dest_node;
@@ -259,7 +258,7 @@ int flood_forward_directly(struct routing_entry_t * entry)
 	entry->flags |= ROUTING_FLAG_IN_TRANSIT;
 
 	/* And queue it for sending */
-	h = flood_send_bundle(entry->bundle_number, nei_l->neighbour);
+	h = routing_flooding_send_bundle(entry->bundle_number, nei_l->neighbour);
 	if( h < 0 ) {
 		/* Enqueuing bundle failed - unblock it */
 		entry->flags &= ~ROUTING_FLAG_IN_TRANSIT;
@@ -272,7 +271,7 @@ int flood_forward_directly(struct routing_entry_t * entry)
 	return FLOOD_ROUTE_RETURN_OK;
 }
 
-int flood_forward_normal(struct routing_entry_t * entry)
+int routing_flooding_forward_normal(struct routing_entry_t * entry)
 {
 	struct discovery_neighbour_list_entry *nei_l = NULL;
 	rimeaddr_t source_node;
@@ -319,7 +318,7 @@ int flood_forward_normal(struct routing_entry_t * entry)
 			entry->flags |= ROUTING_FLAG_IN_TRANSIT;
 
 			/* And queue it for sending */
-			h = flood_send_bundle(entry->bundle_number, nei_l->neighbour);
+			h = routing_flooding_send_bundle(entry->bundle_number, nei_l->neighbour);
 			if( h < 0 ) {
 				/* Enqueuing bundle failed - unblock it */
 				entry->flags &= ~ROUTING_FLAG_IN_TRANSIT;
@@ -336,7 +335,7 @@ int flood_forward_normal(struct routing_entry_t * entry)
 	return FLOOD_ROUTE_RETURN_CONTINUE;
 }
 
-uint8_t flood_send_to_known(void)
+uint8_t routing_flooding_send_to_known_neighbours(void)
 {
 	struct routing_list_entry_t * n = NULL;
 	struct routing_entry_t * entry = NULL;
@@ -358,7 +357,7 @@ uint8_t flood_send_to_known(void)
 		}
 
 		/* Is the bundle for local? */
-		h = flood_send_to_local(entry);
+		h = routing_flooding_send_to_local(entry);
 		/* We do not care about the return value, because we would continue anyway */
 
 		/* Skip this bundle, if it is not queued for forwarding */
@@ -367,7 +366,7 @@ uint8_t flood_send_to_known(void)
 		}
 
 		/* Try to forward it to the destination, if it is our neighbour */
-		h = flood_forward_directly(entry);
+		h = routing_flooding_forward_directly(entry);
 		if( h == FLOOD_ROUTE_RETURN_OK ) {
 			/* Bundle will be delivered, to skip the remainder if this function*/
 			continue;
@@ -380,7 +379,7 @@ uint8_t flood_send_to_known(void)
 		}
 
 		/* At this point, we know that the bundle is not for one of our neighbours, so send it to all the others */
-		h = flood_forward_normal(entry);
+		h = routing_flooding_forward_normal(entry);
 		if( h == FLOOD_ROUTE_RETURN_OK ) {
 			/* Bundle will be forwarded, continue as normal */
 		} else if( h == FLOOD_ROUTE_RETURN_CONTINUE ) {
@@ -398,15 +397,15 @@ uint8_t flood_send_to_known(void)
 /**
  * Wrapper function for agent calls to resubmit bundles for already known neighbours
  */
-void flood_resubmit_bundles() {
-	flood_schedule_resubmission();
+void routing_flooding_resubmit_bundles() {
+	routing_flooding_schedule_resubmission();
 }
 
 /**
  * \brief Checks whether a bundle still has to be kept or can be deleted
  * \param bundle_number Number of the bundle
  */
-void flood_check_keep_bundle(uint32_t bundle_number) {
+void routing_flooding_check_keep_bundle(uint32_t bundle_number) {
 	struct routing_list_entry_t * n = NULL;
 	struct routing_entry_t * entry = NULL;
 
@@ -440,7 +439,7 @@ void flood_check_keep_bundle(uint32_t bundle_number) {
 * \param bundle_number bundle number of the bundle
 * \return >0 on success, <0 on error
 */
-int flood_new_bundle(uint32_t bundle_number)
+int routing_flooding_new_bundle(uint32_t bundle_number)
 {
 	struct routing_list_entry_t * n = NULL;
 	struct routing_entry_t * entry = NULL;
@@ -494,7 +493,7 @@ int flood_new_bundle(uint32_t bundle_number)
 		LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "invalid bundle pointer for bundle %lu", bundle_number);
 		mmem_free(&n->entry);
 		memb_free(&routing_mem, n);
-		bundle_dec(bundlemem);
+		bundle_decrement(bundlemem);
 		return -1;
 	}
 
@@ -528,15 +527,15 @@ int flood_new_bundle(uint32_t bundle_number)
 
 	// Now copy the necessary attributes from the bundle
 	entry->bundle_number = bundle_number;
-	get_attr(bundlemem, DEST_NODE, &entry->destination_node);
-	get_attr(bundlemem, SRC_NODE, &entry->source_node);
+	bundle_get_attr(bundlemem, DEST_NODE, &entry->destination_node);
+	bundle_get_attr(bundlemem, SRC_NODE, &entry->source_node);
 	rimeaddr_copy(&entry->received_from_node, &bundle->msrc);
 
 	// Now that we have the bundle, we do not need the allocated memory anymore
-	bundle_dec(bundlemem);
+	bundle_decrement(bundlemem);
 
 	// Schedule to deliver and forward the bundle
-	flood_schedule_resubmission();
+	routing_flooding_schedule_resubmission();
 
 	// We do not have a failure here, so it must be a success
 	return 1;
@@ -546,7 +545,7 @@ int flood_new_bundle(uint32_t bundle_number)
 * \brief deletes bundle from list
 * \param bundle_num bundle nuber of the bundle
 */
-void flood_del_bundle(uint32_t bundle_number)
+void routing_flooding_delete_bundle(uint32_t bundle_number)
 {
 	struct routing_list_entry_t * n = NULL;
 	struct routing_entry_t * entry = NULL;
@@ -587,13 +586,13 @@ void flood_del_bundle(uint32_t bundle_number)
 * \param status status code
 * \num_tx number of retransmissions 
 */
-void flood_sent(struct transmit_ticket_t * ticket, uint8_t status)
+void routing_flooding_bundle_sent(struct transmit_ticket_t * ticket, uint8_t status)
 {
 	struct routing_list_entry_t * n = NULL;
 	struct routing_entry_t * entry = NULL;
 
 	// Tell the agent to call us again to resubmit bundles
-	flood_schedule_resubmission();
+	routing_flooding_schedule_resubmission();
 
 	// Find the bundle in our internal storage
 	for( n = list_head(routing_list);
@@ -620,10 +619,10 @@ void flood_sent(struct transmit_ticket_t * ticket, uint8_t status)
 		// NACK = Other side rejected the bundle, try again later
 		// FAIL = Transmission failed
 		// --> note down address in blacklist
-		if( flood_blacklist_add(&ticket->neighbour) ) {
+		if( routing_flooding_blacklist_add(&ticket->neighbour) ) {
 			// Node is now past threshold and blacklisted, notify discovery
 			DISCOVERY.dead(&ticket->neighbour);
-			flood_blacklist_delete(&ticket->neighbour);
+			routing_flooding_blacklist_delete(&ticket->neighbour);
 		}
 
 		/* Free up the ticket */
@@ -635,7 +634,7 @@ void flood_sent(struct transmit_ticket_t * ticket, uint8_t status)
 	// Here: status == ROUTING_STATUS_OK
 	statistics_bundle_outgoing(1);
 
-	flood_blacklist_delete(&ticket->neighbour);
+	routing_flooding_blacklist_delete(&ticket->neighbour);
 
 	rimeaddr_t dest_n = convert_eid_to_rime(entry->destination_node);
 	if (rimeaddr_cmp(&ticket->neighbour, &dest_n)) {
@@ -648,7 +647,7 @@ void flood_sent(struct transmit_ticket_t * ticket, uint8_t status)
 
 		// Unset the forward flag
 		entry->flags &= ~ROUTING_FLAG_FORWARD;
-		flood_check_keep_bundle(bundle_number);
+		routing_flooding_check_keep_bundle(bundle_number);
 
 		return;
 	} else {
@@ -665,7 +664,7 @@ void flood_sent(struct transmit_ticket_t * ticket, uint8_t status)
 
 		// Unset the forward flag
 		entry->flags &= ~ROUTING_FLAG_FORWARD;
-		flood_check_keep_bundle(ticket->bundle_number);
+		routing_flooding_check_keep_bundle(ticket->bundle_number);
 	}
 
 	/* Free up the ticket */
@@ -676,13 +675,13 @@ void flood_sent(struct transmit_ticket_t * ticket, uint8_t status)
  * \brief Incoming notification, that service has finished processing bundle
  * \param bundle_num Number of the bundle
  */
-void flood_locally_delivered(struct mmem * bundlemem) {
+void routing_flooding_bundle_delivered_locally(struct mmem * bundlemem) {
 	struct routing_list_entry_t * n = NULL;
 	struct routing_entry_t * entry = NULL;
 	struct bundle_t * bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 
 	// Tell the agent to call us again to resubmit bundles
-	flood_schedule_resubmission();
+	routing_flooding_schedule_resubmission();
 
 	if( bundle == NULL ) {
 		LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "flood_locally_delivered called with invalid pointer");
@@ -713,13 +712,13 @@ void flood_locally_delivered(struct mmem * bundlemem) {
 	entry->flags &= ~ROUTING_FLAG_LOCAL;
 
 	// Unblock the receiving service
-	unblock_service(bundlemem);
+	delivery_unblock_service(bundlemem);
 
 	// Free the bundle memory
-	bundle_dec(bundlemem);
+	bundle_decrement(bundlemem);
 
 	// Check remaining live of bundle
-	flood_check_keep_bundle(entry->bundle_number);
+	routing_flooding_check_keep_bundle(entry->bundle_number);
 }
 
 PROCESS_THREAD(routing_process, ev, data)
@@ -739,7 +738,7 @@ PROCESS_THREAD(routing_process, ev, data)
 	while(1) {
 		PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL);
 
-		flood_send_to_known();
+		routing_flooding_send_to_known_neighbours();
 	}
 
 	PROCESS_END();
@@ -747,12 +746,12 @@ PROCESS_THREAD(routing_process, ev, data)
 
 const struct routing_driver routing_flooding ={
 	"flood_route",
-	flood_init,
-	flood_new_neigh,
-	flood_new_bundle,
-	flood_del_bundle,
-	flood_sent,
-	flood_resubmit_bundles,
-	flood_locally_delivered,
+	routing_flooding_init,
+	routing_flooding_new_neighbour,
+	routing_flooding_new_bundle,
+	routing_flooding_delete_bundle,
+	routing_flooding_bundle_sent,
+	routing_flooding_resubmit_bundles,
+	routing_flooding_bundle_delivered_locally,
 };
 

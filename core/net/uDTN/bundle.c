@@ -16,11 +16,11 @@
 /**
  * "Internal" functions
  */
-static uint8_t decode_block(struct mmem *bundlemem, uint8_t *buffer, int max_len);
-static uint8_t encode_block(struct bundle_block_t *block, uint8_t *buffer, uint8_t max_len);
+static uint8_t bundle_decode_block(struct mmem *bundlemem, uint8_t *buffer, int max_len);
+static uint8_t bundle_encode_block(struct bundle_block_t *block, uint8_t *buffer, uint8_t max_len);
 
 
-struct mmem *create_bundle()
+struct mmem * bundle_create_bundle()
 {
 	int ret;
 	struct bundle_slot_t *bs;
@@ -48,7 +48,7 @@ struct mmem *create_bundle()
 	return &bs->bundle;
 }
 
-uint8_t add_block(struct mmem *bundlemem, uint8_t type, uint8_t flags, uint8_t *data, uint8_t d_len)
+uint8_t bundle_add_block(struct mmem *bundlemem, uint8_t type, uint8_t flags, uint8_t *data, uint8_t d_len)
 {
 	struct bundle_t *bundle;
 	struct bundle_block_t *block;
@@ -83,7 +83,7 @@ uint8_t add_block(struct mmem *bundlemem, uint8_t type, uint8_t flags, uint8_t *
 	return d_len;
 }
 
-struct bundle_block_t *get_block(struct mmem *bundlemem, uint8_t i)
+struct bundle_block_t *bundle_get_block(struct mmem *bundlemem, uint8_t i)
 {
 	struct bundle_t *bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 	struct bundle_block_t *block = (struct bundle_block_t *) bundle->block_data;
@@ -98,7 +98,7 @@ struct bundle_block_t *get_block(struct mmem *bundlemem, uint8_t i)
 	return block;
 }
 
-struct bundle_block_t *get_block_by_type(struct mmem *bundlemem, uint8_t type)
+struct bundle_block_t *bundle_get_block_by_type(struct mmem *bundlemem, uint8_t type)
 {
 	struct bundle_t *bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 	struct bundle_block_t *block = (struct bundle_block_t *) bundle->block_data;
@@ -115,11 +115,11 @@ struct bundle_block_t *get_block_by_type(struct mmem *bundlemem, uint8_t type)
 	return NULL;
 }
 
-struct bundle_block_t * get_payload_block(struct mmem * bundlemem) {
-	return get_block_by_type(bundlemem, BUNDLE_BLOCK_TYPE_PAYLOAD);
+struct bundle_block_t * bundle_get_payload_block(struct mmem * bundlemem) {
+	return bundle_get_block_by_type(bundlemem, BUNDLE_BLOCK_TYPE_PAYLOAD);
 }
 
-uint8_t set_attr(struct mmem *bundlemem, uint8_t attr, uint32_t *val)
+uint8_t bundle_set_attr(struct mmem *bundlemem, uint8_t attr, uint32_t *val)
 {
 	struct bundle_t *bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 	LOG(LOGD_DTN, LOG_BUNDLE, LOGL_DBG, "set attr %lx",*val);
@@ -177,7 +177,7 @@ uint8_t set_attr(struct mmem *bundlemem, uint8_t attr, uint32_t *val)
 	return 1;
 }
 
-uint8_t get_attr(struct mmem *bundlemem, uint8_t attr, uint32_t *val)
+uint8_t bundle_get_attr(struct mmem *bundlemem, uint8_t attr, uint32_t *val)
 {
 	struct bundle_t *bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 	LOG(LOGD_DTN, LOG_BUNDLE, LOGL_DBG, "get attr: %d in %lx", attr, *val);
@@ -233,13 +233,13 @@ uint8_t get_attr(struct mmem *bundlemem, uint8_t attr, uint32_t *val)
 	return 1;
 }
 
-struct mmem *recover_bundle(uint8_t *buffer, int size)
+struct mmem *bundle_recover_bundle(uint8_t *buffer, int size)
 {
 	uint32_t primary_size, value;
 	uint8_t offs = 0;
 	struct mmem *bundlemem;
 	struct bundle_t *bundle;
-	bundlemem = create_bundle();
+	bundlemem = bundle_create_bundle();
 	if (!bundlemem)
 		return NULL;
 
@@ -311,18 +311,18 @@ struct mmem *recover_bundle(uint8_t *buffer, int size)
 
 	/* FIXME: Loop around and decode all blocks - does this work? */
 	while (size-offs > 1) {
-		offs += decode_block(bundlemem, &buffer[offs], size-offs);
+		offs += bundle_decode_block(bundlemem, &buffer[offs], size-offs);
 	}
 
 	return bundlemem;
 
 err:
-	delete_bundle(bundlemem);
+	bundle_delete_bundle(bundlemem);
 	return NULL;
 
 }
 
-static uint8_t decode_block(struct mmem *bundlemem, uint8_t *buffer, int max_len)
+static uint8_t bundle_decode_block(struct mmem *bundlemem, uint8_t *buffer, int max_len)
 {
 	uint8_t type, block_offs, offs = 0;
 	uint32_t flags, size;
@@ -366,7 +366,7 @@ static uint8_t decode_block(struct mmem *bundlemem, uint8_t *buffer, int max_len
 	return offs + block->block_size;
 }
 
-uint8_t encode_bundle(struct mmem *bundlemem, uint8_t *buffer, int max_len)
+uint8_t bundle_encode_bundle(struct mmem *bundlemem, uint8_t *buffer, int max_len)
 {
 	uint32_t value;
 	uint8_t offs = 0, blklen_offs, i;
@@ -486,7 +486,7 @@ uint8_t encode_bundle(struct mmem *bundlemem, uint8_t *buffer, int max_len)
 
 	block = (struct bundle_block_t *) bundle->block_data;
 	for (i=0;i<bundle->num_blocks;i++) {
-		offs += encode_block(block, &buffer[offs], max_len - offs);
+		offs += bundle_encode_block(block, &buffer[offs], max_len - offs);
 		/* Reference the next block */
 		block = (struct bundle_block_t *) &block->payload[block->block_size];
 	}
@@ -494,7 +494,7 @@ uint8_t encode_bundle(struct mmem *bundlemem, uint8_t *buffer, int max_len)
 	return offs;
 }
 
-static uint8_t encode_block(struct bundle_block_t *block, uint8_t *buffer, uint8_t max_len)
+static uint8_t bundle_encode_block(struct bundle_block_t *block, uint8_t *buffer, uint8_t max_len)
 {
 	uint8_t offs = 0;
 	int ret;
@@ -524,27 +524,27 @@ static uint8_t encode_block(struct bundle_block_t *block, uint8_t *buffer, uint8
 	return offs;
 }
 
-int bundle_inc(struct mmem *bundlemem)
+int bundle_increment(struct mmem *bundlemem)
 {
 	struct bundle_slot_t *bs;
 	struct bundle_t *bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
-	LOG(LOGD_DTN, LOG_BUNDLE, LOGL_DBG, "bundle_inc(%p) %u", bundle, bundle->rec_time);
+	LOG(LOGD_DTN, LOG_BUNDLE, LOGL_DBG, "bundle_increment(%p) %u", bundle, bundle->rec_time);
 
 	bs = container_of(bundlemem, struct bundle_slot_t, bundle);
-	return bundleslot_inc(bs);
+	return bundleslot_increment(bs);
 }
 
-int bundle_dec(struct mmem *bundlemem)
+int bundle_decrement(struct mmem *bundlemem)
 {
 	struct bundle_slot_t *bs;
 	struct bundle_t *bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
-	LOG(LOGD_DTN, LOG_BUNDLE, LOGL_DBG, "bundle_dec(%p) %u", bundle, bundle->rec_time);
+	LOG(LOGD_DTN, LOG_BUNDLE, LOGL_DBG, "bundle_decrement(%p) %u", bundle, bundle->rec_time);
 
 	bs = container_of(bundlemem, struct bundle_slot_t, bundle);
-	return bundleslot_dec(bs);
+	return bundleslot_decrement(bs);
 }
 
-uint16_t delete_bundle(struct mmem *bundlemem)
+uint16_t bundle_delete_bundle(struct mmem *bundlemem)
 {
 	struct bundle_slot_t *bs;
 	struct bundle_t *bundle = (struct bundle_t *) MMEM_PTR(bundlemem);

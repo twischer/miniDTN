@@ -36,7 +36,7 @@ uint8_t redundance_bundle_list_pointer;
 * \param bundle pointer to bundle
 * \return 1 if bundle was delivered before or 0 if not
 */
-uint8_t check(struct mmem *bundlemem)
+uint8_t redundancy_basic_check(struct mmem *bundlemem)
 {
 	struct bundle_t * bundle = NULL;
 	int i;
@@ -60,7 +60,7 @@ uint8_t check(struct mmem *bundlemem)
 * \param bundle pointer to bundle
 * \return 1 on successor 0 on error
 */
-uint8_t set(struct mmem *bundlemem)
+uint8_t redundancy_basic_set(struct mmem *bundlemem)
 {
 	struct bundle_t * bundle = NULL;
 
@@ -76,7 +76,7 @@ uint8_t set(struct mmem *bundlemem)
 /**
 * \brief called by agent at startup
 */
-void b_red_init(void)
+void redundancy_basic_init(void)
 {
 	LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "REDUNDANCE: starting");
 
@@ -89,9 +89,9 @@ void b_red_init(void)
 
 const struct redundance_check redundancy_basic ={
 	"B_REDUNDANCE",
-	b_red_init,
-	check,
-	set,
+	redundancy_basic_init,
+	redundancy_basic_check,
+	redundancy_basic_set,
 };
 /** @} */
 /** @} */

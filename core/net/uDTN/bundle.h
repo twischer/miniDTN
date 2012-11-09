@@ -149,7 +149,7 @@ struct bundle_t{
 * \param size size of raw data
 * \return 1 on success or 0 if something fails
 */
-struct mmem *recover_bundle(uint8_t *buffer,int size);
+struct mmem *bundle_recover_bundle(uint8_t *buffer,int size);
 /**
 * \brief Encodes the bundle to raw data
 * \param bundle_t pointer to the bundle struct
@@ -157,7 +157,7 @@ struct mmem *recover_bundle(uint8_t *buffer,int size);
 * \param size Size of the buffer
 * \return The number of bytes that were written to buf
 */
-uint8_t encode_bundle(struct mmem *bundlemem, uint8_t *buffer, int max_len);
+uint8_t bundle_encode_bundle(struct mmem *bundlemem, uint8_t *buffer, int max_len);
 /**
 * \brief stets an attribute of a bundle
 * \param bundle_t pointer to bundle
@@ -165,7 +165,7 @@ uint8_t encode_bundle(struct mmem *bundlemem, uint8_t *buffer, int max_len);
 * \param val pointer to the value to be set 
 * \return length of the seted value on success or 0 on error
 */
-uint8_t set_attr(struct mmem *bundlemem, uint8_t attr, uint32_t *val);
+uint8_t bundle_set_attr(struct mmem *bundlemem, uint8_t attr, uint32_t *val);
 /**
 * \brief Gets an attribute of a bundle
 * \param bundle_t pointer to bundle
@@ -173,19 +173,19 @@ uint8_t set_attr(struct mmem *bundlemem, uint8_t attr, uint32_t *val);
 * \param val pointer to the variable where the value will be written
 * \return length of the seted value on success or 0 on error
 */
-uint8_t get_attr(struct mmem *bundlemem, uint8_t attr, uint32_t *val);
+uint8_t bundle_get_attr(struct mmem *bundlemem, uint8_t attr, uint32_t *val);
 
 /** \brief Get a new bundle structure allocated
  *  \return MMEM allocation of the bundle, NULL in case of an error
  */
-struct mmem *create_bundle();
+struct mmem *bundle_create_bundle();
 /** \brief free a given MMEM allocation of a bundle struct
  *  \param bundlemem the MMEM allocation to free
  *
  *  A bit of magic is involved here because we want to also free
  *  the bundleslot that this bundle belongs to.
  */
-uint16_t delete_bundle(struct mmem *bundlemem);
+uint16_t bundle_delete_bundle(struct mmem *bundlemem);
 
 /** \brief Add a block to a bundle
  *  \param bundlemem pointer to the MMEM allocation of the bundle
@@ -195,7 +195,7 @@ uint16_t delete_bundle(struct mmem *bundlemem);
  *  \param d_len length of the block payload
  * \return 1 on success or 0 on error
  */
-uint8_t add_block(struct mmem *bundlemem, uint8_t type, uint8_t flags, uint8_t *data, uint8_t d_len);
+uint8_t bundle_add_block(struct mmem *bundlemem, uint8_t type, uint8_t flags, uint8_t *data, uint8_t d_len);
 
 /**
 * \brief Returns a pointer a bundle block
@@ -203,7 +203,7 @@ uint8_t add_block(struct mmem *bundlemem, uint8_t type, uint8_t flags, uint8_t *
 * \param i index of the block. Starts at 0
 * \return the block or NULL on error
 */
-struct bundle_block_t *get_block(struct mmem *bundlemem, uint8_t i);
+struct bundle_block_t *bundle_get_block(struct mmem *bundlemem, uint8_t i);
 
 /**
  * \brief Returns pointer to first bundle block of specific type
@@ -211,14 +211,14 @@ struct bundle_block_t *get_block(struct mmem *bundlemem, uint8_t i);
  * \param type type of the block (see bundle.h)
  * \return the block of NULL on error
  */
-struct bundle_block_t *get_block_by_type(struct mmem *bundlemem, uint8_t type);
+struct bundle_block_t *bundle_get_block_by_type(struct mmem *bundlemem, uint8_t type);
 
 /**
  * \brief Returns pointer to bundle payload block
  * \param bundlemem MMEM allocation of the bundle
  * \return the block of NULL on error
  */
-struct bundle_block_t * get_payload_block(struct mmem * bundlemem);
+struct bundle_block_t * bundle_get_payload_block(struct mmem * bundlemem);
 
 /**
  * \brief converts IPN EIDs (uint32_t) into the RIME address
@@ -229,8 +229,8 @@ rimeaddr_t convert_eid_to_rime(uint32_t eid);
  */
 uint32_t convert_rime_to_eid(rimeaddr_t * dest);
 
-int bundle_dec(struct mmem *bundlemem);
-int bundle_inc(struct mmem *bundlemem);
+int bundle_decrement(struct mmem *bundlemem);
+int bundle_increment(struct mmem *bundlemem);
 
 #endif
 /** @} */

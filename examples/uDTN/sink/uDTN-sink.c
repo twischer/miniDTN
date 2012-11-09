@@ -127,7 +127,7 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 		leds_toggle(1);
 
 		/* Verify the content of the bundle */
-		struct bundle_block_t * block = get_payload_block(bundle_incoming);
+		struct bundle_block_t * block = bundle_get_payload_block(bundle_incoming);
 		int i;
 		int error = 0;
 
@@ -157,8 +157,8 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 			continue;
 		}
 
-		get_attr(bundle_incoming, TIME_STAMP_SEQ_NR, &seqno);
-		get_attr(bundle_incoming, SRC_NODE, &tmp);
+		bundle_get_attr(bundle_incoming, TIME_STAMP_SEQ_NR, &seqno);
+		bundle_get_attr(bundle_incoming, SRC_NODE, &tmp);
 
 		/* Tell the agent, that we have processed the bundle */
 		process_post(&agent_process, dtn_processing_finished, bundle_incoming);
@@ -189,7 +189,7 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 			} while (now_fine != clock_time());
 			time_stop = ((unsigned long)now)*CLOCK_SECOND + now_fine%CLOCK_SECOND;
 
-			bundle_outgoing = create_bundle();
+			bundle_outgoing = bundle_create_bundle();
 
 			if( bundle_outgoing == NULL ) {
 				printf("create_bundle failed\n");
@@ -197,34 +197,34 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 			}
 
 			/* tmp already holds the src address of the sender */
-			set_attr(bundle_outgoing, DEST_NODE, &tmp);
+			bundle_set_attr(bundle_outgoing, DEST_NODE, &tmp);
 			tmp=25;
-			set_attr(bundle_outgoing, DEST_SERV, &tmp);
+			bundle_set_attr(bundle_outgoing, DEST_SERV, &tmp);
 			tmp=dtn_node_id;
-			set_attr(bundle_outgoing, SRC_NODE, &tmp);
-			set_attr(bundle_outgoing, SRC_SERV,&tmp);
-			set_attr(bundle_outgoing, CUST_NODE, &tmp);
-			set_attr(bundle_outgoing, CUST_SERV, &tmp);
+			bundle_set_attr(bundle_outgoing, SRC_NODE, &tmp);
+			bundle_set_attr(bundle_outgoing, SRC_SERV,&tmp);
+			bundle_set_attr(bundle_outgoing, CUST_NODE, &tmp);
+			bundle_set_attr(bundle_outgoing, CUST_SERV, &tmp);
 
 			tmp=BUNDLE_FLAG_SINGLETON;
-			set_attr(bundle_outgoing, FLAGS, &tmp);
+			bundle_set_attr(bundle_outgoing, FLAGS, &tmp);
 			tmp=1;
-			set_attr(bundle_outgoing, REP_NODE, &tmp);
-			set_attr(bundle_outgoing, REP_SERV, &tmp);
+			bundle_set_attr(bundle_outgoing, REP_NODE, &tmp);
+			bundle_set_attr(bundle_outgoing, REP_SERV, &tmp);
 
 			/* Set the sequence number to the number of budles sent */
 			tmp = 1;
-			set_attr(bundle_outgoing, TIME_STAMP_SEQ_NR, &tmp);
+			bundle_set_attr(bundle_outgoing, TIME_STAMP_SEQ_NR, &tmp);
 
 			tmp=2000;
-			set_attr(bundle_outgoing, LIFE_TIME, &tmp);
+			bundle_set_attr(bundle_outgoing, LIFE_TIME, &tmp);
 			tmp=4;
-			set_attr(bundle_outgoing, TIME_STAMP, &tmp);
+			bundle_set_attr(bundle_outgoing, TIME_STAMP, &tmp);
 
 			/* Add the payload */
 			userdata[0] = 'o';
 			userdata[1] = 'k';
-			add_block(bundle_outgoing, 1, 2, userdata, 2);
+			bundle_add_block(bundle_outgoing, 1, 2, userdata, 2);
 
 			/* Send out the bundle */
 			process_post(&agent_process, dtn_send_bundle_event, (void *) bundle_outgoing);

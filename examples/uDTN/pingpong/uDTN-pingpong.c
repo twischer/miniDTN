@@ -112,7 +112,7 @@ static inline struct mmem *bundle_convenience(uint16_t dest, uint16_t dst_srv, u
 	uint32_t tmp;
 	struct mmem *bundlemem;
 
-	bundlemem = create_bundle();
+	bundlemem = bundle_create_bundle();
 	if (!bundlemem) {
 		printf("create_bundle failed\n");
 		return NULL;
@@ -120,29 +120,29 @@ static inline struct mmem *bundle_convenience(uint16_t dest, uint16_t dst_srv, u
 
 	/* Source and destination */
 	tmp=dest;
-	set_attr(bundlemem, DEST_NODE, &tmp);
+	bundle_set_attr(bundlemem, DEST_NODE, &tmp);
 	tmp=dst_srv;
-	set_attr(bundlemem, DEST_SERV, &tmp);
+	bundle_set_attr(bundlemem, DEST_SERV, &tmp);
 	tmp=dtn_node_id;
-	set_attr(bundlemem, SRC_NODE, &tmp);
-	set_attr(bundlemem, CUST_NODE, &tmp);
-	set_attr(bundlemem, CUST_SERV, &tmp);
-	set_attr(bundlemem, REP_NODE, &tmp);
-	set_attr(bundlemem, REP_SERV, &tmp);
+	bundle_set_attr(bundlemem, SRC_NODE, &tmp);
+	bundle_set_attr(bundlemem, CUST_NODE, &tmp);
+	bundle_set_attr(bundlemem, CUST_SERV, &tmp);
+	bundle_set_attr(bundlemem, REP_NODE, &tmp);
+	bundle_set_attr(bundlemem, REP_SERV, &tmp);
 
 	tmp=src_srv;
-	set_attr(bundlemem, SRC_SERV,&tmp);
+	bundle_set_attr(bundlemem, SRC_SERV,&tmp);
 
 	tmp=BUNDLE_FLAG_SINGLETON;
-	set_attr(bundlemem, FLAGS, &tmp);
+	bundle_set_attr(bundlemem, FLAGS, &tmp);
 
 	tmp=2000;
-	set_attr(bundlemem, LIFE_TIME, &tmp);
+	bundle_set_attr(bundlemem, LIFE_TIME, &tmp);
 
 	tmp=4;
-	set_attr(bundlemem, TIME_STAMP, &tmp);
+	bundle_set_attr(bundlemem, TIME_STAMP, &tmp);
 
-	add_block(bundlemem, 1, 0, data, len);
+	bundle_add_block(bundlemem, 1, 0, data, len);
 
 	return bundlemem;
 }
@@ -251,7 +251,7 @@ PROCESS_THREAD(ping_process, ev, data)
 			diff = get_time();
 
 			/* Check receiver */
-			block = get_payload_block(recv);
+			block = bundle_get_payload_block(recv);
 
 			if( block == NULL ) {
 				printf("PING: No Payload\n");
@@ -345,7 +345,7 @@ PROCESS_THREAD(pong_process, ev, data)
 		recv = (struct mmem *) data;
 
 		/* Find the source node */
-		get_attr(recv, SRC_NODE, &tmp);
+		bundle_get_attr(recv, SRC_NODE, &tmp);
 
 		/* Check sender */
 		if (tmp != CONF_DEST_NODE) {
@@ -360,7 +360,7 @@ PROCESS_THREAD(pong_process, ev, data)
 		PRINTF("PONG: recv\n");
 
 		/* Verify the content of the bundle */
-		block = get_payload_block(recv);
+		block = bundle_get_payload_block(recv);
 		int i;
 
 		if( block == NULL ) {

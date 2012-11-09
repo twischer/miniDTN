@@ -20,7 +20,7 @@
 *   \param  bundle bundle to be processed
 *   \returns <= 0 on error >0 on success
 */
-int dispatch_bundle(struct mmem *bundlemem);
+int dispatching_dispatch_bundle(struct mmem *bundlemem);
 
 #endif
 

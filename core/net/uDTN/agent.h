@@ -47,7 +47,7 @@ process_event_t dtn_send_bundle_to_node_event;
 *    called by contikis main function
 */
 void agent_init(void);
-void agent_del_bundle(uint32_t bundle_number);
+void agent_delete_bundle(uint32_t bundle_number);
 
 /**
  * \brief uDTN log domains

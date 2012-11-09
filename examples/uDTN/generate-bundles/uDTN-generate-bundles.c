@@ -120,39 +120,39 @@ PROCESS_THREAD(bundle_verificator_process, ev, data)
 
 	PROCESS_PAUSE();
 
-	bundle1 = create_bundle();
+	bundle1 = bundle_create_bundle();
 	/* Set node destination and source address */
 	val=0x0001;
-	set_attr(bundle1, DEST_NODE, &val);
+	bundle_set_attr(bundle1, DEST_NODE, &val);
 	val=23;
-	set_attr(bundle1, DEST_SERV, &val);
+	bundle_set_attr(bundle1, DEST_SERV, &val);
 	val=0x0002;
-	set_attr(bundle1, SRC_NODE, &val);
-	set_attr(bundle1, CUST_NODE, &val);
+	bundle_set_attr(bundle1, SRC_NODE, &val);
+	bundle_set_attr(bundle1, CUST_NODE, &val);
 	val=42;
-	set_attr(bundle1, SRC_SERV,&val);
-	set_attr(bundle1, CUST_SERV, &val);
+	bundle_set_attr(bundle1, SRC_SERV,&val);
+	bundle_set_attr(bundle1, CUST_SERV, &val);
 
 	val=0;
-	set_attr(bundle1, FLAGS, &val);
+	bundle_set_attr(bundle1, FLAGS, &val);
 
 	val=1;
-	set_attr(bundle1, REP_NODE, &val);
-	set_attr(bundle1, REP_SERV, &val);
+	bundle_set_attr(bundle1, REP_NODE, &val);
+	bundle_set_attr(bundle1, REP_SERV, &val);
 
 	val = numbundles;
-	set_attr(bundle1, TIME_STAMP_SEQ_NR, &val);
+	bundle_set_attr(bundle1, TIME_STAMP_SEQ_NR, &val);
 	val=1;
-	set_attr(bundle1, LIFE_TIME, &val);
+	bundle_set_attr(bundle1, LIFE_TIME, &val);
 	val=4;
-	set_attr(bundle1, TIME_STAMP, &val);
+	bundle_set_attr(bundle1, TIME_STAMP, &val);
 
 	/* Add the data block to the bundle */
-	add_block(bundle1, 1, 2, databuf, DATASIZE);
+	bundle_add_block(bundle1, 1, 2, databuf, DATASIZE);
 
-	len1 = encode_bundle(bundle1, buffer1, 120);
-	bundle2 = recover_bundle(buffer1, len1);
-	len2 = encode_bundle(bundle2, buffer2, 120);
+	len1 = bundle_encode_bundle(bundle1, buffer1, 120);
+	bundle2 = bundle_recover_bundle(buffer1, len1);
+	len2 = bundle_encode_bundle(bundle2, buffer2, 120);
 
 	if (len1 != len2)
 		LOG(LOGD_APP, 0, LOGL_ERR, "Length mismatch - len1: %u, len2: %u\n", len1, len2);
@@ -170,8 +170,8 @@ PROCESS_THREAD(bundle_verificator_process, ev, data)
 			break;
 		}
 	}
-	delete_bundle(bundle1);
-	delete_bundle(bundle2);
+	bundle_delete_bundle(bundle1);
+	bundle_delete_bundle(bundle2);
 	if (first != -1 || len1 != len2) {
 		TEST_FAIL("Buffer mismatch");
 		process_exit(&bundle_verificator_process);
@@ -195,38 +195,38 @@ PROCESS_THREAD(bundle_generator_process, ev, data)
 	while(1) {
 		PROCESS_PAUSE();
 
-		bundlemem = create_bundle();
+		bundlemem = bundle_create_bundle();
 		/* Set node destination and source address */
 		val=0x0001;
-		set_attr(bundlemem, DEST_NODE, &val);
+		bundle_set_attr(bundlemem, DEST_NODE, &val);
 		val=23;
-		set_attr(bundlemem, DEST_SERV, &val);
+		bundle_set_attr(bundlemem, DEST_SERV, &val);
 		val=0x0002;
-		set_attr(bundlemem, SRC_NODE, &val);
-		set_attr(bundlemem, CUST_NODE, &val);
+		bundle_set_attr(bundlemem, SRC_NODE, &val);
+		bundle_set_attr(bundlemem, CUST_NODE, &val);
 		val=42;
-		set_attr(bundlemem, SRC_SERV,&val);
-		set_attr(bundlemem, CUST_SERV, &val);
+		bundle_set_attr(bundlemem, SRC_SERV,&val);
+		bundle_set_attr(bundlemem, CUST_SERV, &val);
 
 		val=0;
-		set_attr(bundlemem, FLAGS, &val);
+		bundle_set_attr(bundlemem, FLAGS, &val);
 
 		val=1;
-		set_attr(bundlemem, REP_NODE, &val);
-		set_attr(bundlemem, REP_SERV, &val);
+		bundle_set_attr(bundlemem, REP_NODE, &val);
+		bundle_set_attr(bundlemem, REP_SERV, &val);
 
 		val = numbundles;
-		set_attr(bundlemem, TIME_STAMP_SEQ_NR, &val);
+		bundle_set_attr(bundlemem, TIME_STAMP_SEQ_NR, &val);
 		val=1;
-		set_attr(bundlemem, LIFE_TIME, &val);
+		bundle_set_attr(bundlemem, LIFE_TIME, &val);
 		val=4;
-		set_attr(bundlemem, TIME_STAMP, &val);
+		bundle_set_attr(bundlemem, TIME_STAMP, &val);
 
 		/* Add the data block to the bundle */
-		add_block(bundlemem, 1, 2, databuf, DATASIZE);
+		bundle_add_block(bundlemem, 1, 2, databuf, DATASIZE);
 
 		numbundles++;
-		delete_bundle(bundlemem);
+		bundle_delete_bundle(bundlemem);
 	}
 	PROCESS_END();
 }
