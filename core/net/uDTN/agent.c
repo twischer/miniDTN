@@ -194,7 +194,7 @@ PROCESS_THREAD(agent_process, ev, data)
 			// Notify the sender process
 			if( n ) {
 				/* Bundle has been successfully saved, send event to service */
-				process_post(source_process, dtn_bundle_stored, bundleptr);
+				process_post(source_process, dtn_bundle_stored, NULL);
 			} else {
 				/* Bundle could not be saved, notify service */
 				process_post(source_process, dtn_bundle_store_failed, NULL);
