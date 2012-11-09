@@ -4,13 +4,16 @@
 * \defgroup b_satus Basic status report modul
 * @{
 */
-#include "bundle.h"
-#include "status-report.h"
-#include "agent.h"
+#include <string.h>
+
 #include "mmem.h"
+
+#include "bundle.h"
+#include "agent.h"
 #include "storage.h"
 #include "sdnv.h"
-#include <string.h>
+
+#include "statusreport.h"
 
 static struct mmem report;
 /**
@@ -159,7 +162,7 @@ uint8_t b_stat_send(struct bundle_t *bundle,uint8_t status, uint8_t reason)
 	return 0;
 }
 
-const struct status_report_driver b_status ={
+const struct status_report_driver statusreport_basic = {
 	"B_STATUS",
 	b_stat_send,
 };

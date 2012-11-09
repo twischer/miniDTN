@@ -34,7 +34,7 @@
 #ifdef CONF_ROUTING
 #define ROUTING CONF_ROUTING
 #else
-#define ROUTING flood_route
+#define ROUTING routing_flooding
 #endif
 
 /**

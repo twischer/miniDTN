@@ -12,6 +12,8 @@
 #include <stdlib.h>
 
 #include "lib/list.h"
+#include "logging.h"
+
 #include "agent.h"
 #include "bundle.h"
 #include "registration.h"
@@ -19,10 +21,9 @@
 #include "administrative_record.h"
 #include "custody.h"
 #include "delivery.h"
-#include "status-report.h"
-//#define ENABLE_LOGGING 1
-#include "logging.h"
+#include "statusreport.h"
 #include "storage.h"
+
 #include "dispatching.h"
 
 #define DEBUG 0

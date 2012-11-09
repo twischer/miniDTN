@@ -15,9 +15,10 @@
 #include "lib/list.h"
 #include "logging.h"
 
-#include "API_registration.h"
-#include "registration.h"
+#include "api.h"
 #include "agent.h"
+
+#include "registration.h"
 
 /* Maximum number of registered services */
 #ifdef CONF_MAX_REGISTRATIONS

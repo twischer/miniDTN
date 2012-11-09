@@ -46,19 +46,16 @@
 
 #include "net/netstack.h"
 #include "net/packetbuf.h"
-
-#include "net/uDTN/bundle.h"
-#include "net/uDTN/agent.h"
-#include "net/uDTN/API_events.h"
-#include "net/uDTN/API_registration.h"
-
-#include "net/uDTN/storage.h"
+#include "logging.h"
 #include "mmem.h"
 #include "sys/profiling.h"
 #include "sys/test.h"
 #include "watchdog.h"
-#define ENABLE_LOGGING 1
-#include "logging.h"
+
+#include "net/uDTN/bundle.h"
+#include "net/uDTN/agent.h"
+#include "net/uDTN/api.h"
+#include "net/uDTN/storage.h"
 
 #ifndef DATASIZE
 #define DATASIZE 30

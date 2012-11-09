@@ -18,14 +18,15 @@
 #include <stdio.h>
 #include <string.h> // memset
 
-#include "sdnv.h"
-#include "redundance.h"
-#include "bundle.h"
 #include "lib/list.h"
 #include "lib/memb.h"
 #include "contiki.h"
 #include "sys/ctimer.h"
 #include "logging.h"
+
+#include "sdnv.h"
+#include "redundancy.h"
+#include "bundle.h"
 
 uint32_t redundance_bundle_list[REDUNDANCE_MAX];
 uint8_t redundance_bundle_list_pointer;
@@ -86,7 +87,7 @@ void b_red_init(void)
 	redundance_bundle_list_pointer = 0;
 }
 
-const struct redundance_check b_redundance ={
+const struct redundance_check redundancy_basic ={
 	"B_REDUNDANCE",
 	b_red_init,
 	check,

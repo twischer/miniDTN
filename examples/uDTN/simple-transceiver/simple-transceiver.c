@@ -47,8 +47,7 @@
 
 #include "net/uDTN/bundle.h"
 #include "net/uDTN/agent.h"
-#include "net/uDTN/API_events.h"
-#include "net/uDTN/API_registration.h"
+#include "net/uDTN/api.h"
 
 /*---------------------------------------------------------------------------*/
 #ifndef CONF_SEND_TO_NODE

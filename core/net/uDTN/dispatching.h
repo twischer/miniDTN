@@ -11,6 +11,9 @@
 #ifndef DISPATCHING_H
 #define DISPATCHING_H
 
+#include "contiki.h"
+#include "mmem.h"
+
 /**
 *   \brief decides if bundle must be delivered or forwarded
 *

@@ -17,18 +17,18 @@
 * \author Wolf-Bastian Pšttner (poettner@ibr.cs.tu-bs.de)
 */
 
-#include "custody-signal.h"
-#include "dtn-network.h"
+#include <string.h> // for memset
+
 #include "clock.h"
 #include "net/netstack.h"
 #include "net/packetbuf.h" 
 #include "net/rime/rimeaddr.h"
 
+#include "dtn-network.h"
 #include "agent.h"
-#include "status-report.h"
 #include "dtn-network.h" 
+
 #include "discovery.h"
-#include <string.h> // for memset
 
 #define DEBUG 0
 #if DEBUG
@@ -392,7 +392,7 @@ PROCESS_THREAD(discovery_process, ev, data)
 	PROCESS_END();
 }
 
-const struct discovery_driver b_discovery = {
+const struct discovery_driver discovery_basic = {
 	.name = "B_DISCOVERY",
 	.init = b_dis_init,
 	.is_neighbour = b_dis_neighbour,

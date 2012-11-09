@@ -2,7 +2,7 @@
 #define ADMINISTRATIVE_RECORD_H
 
 #include "custody-signal.h"
-#include "status-report.h"
+#include "statusreport.h"
 
 #define CUSTODY_SIGNAL					(0x20)
 

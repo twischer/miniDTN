@@ -9,18 +9,12 @@
  * \author Georg von Zengen (vonzeng@ibr.cs.tu-bs.de) 
  */
 
-/*
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-*/
-
 #include "netstack.h"
 #include "packetbuf.h"
 #include "leds.h"
+#include "logging.h"
 
 #include "convergence_layer.h"
-#include "logging.h"
 #include "agent.h"
 
 #include "dtn-network.h"

@@ -6,7 +6,6 @@
 * \file
 *
 */
-#include "custody-signal.h"
 #include "custody.h"
 
 void null_cust_init(void)
@@ -39,7 +38,7 @@ void null_cust_del_from_list(uint32_t bundle_num)
 	return;
 }
 
-const struct custody_driver null_custody ={
+const struct custody_driver custody_null ={
 	"NULL_CUSTODY",
 	null_cust_init,
 	null_cust_release,

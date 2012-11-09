@@ -16,6 +16,7 @@
 
 #include <stdio.h>
 #include <string.h> // memcpy
+
 #include "hash.h"
 
 void hash_xor_init() {

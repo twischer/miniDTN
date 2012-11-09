@@ -8,39 +8,33 @@
  *        
  */
  
-#include "cfs.h"
-#include "cfs-coffee.h"
-
 #include <stdlib.h>
 #include <string.h>
 
 #include "clock.h"
 #include "timer.h"
 #include "net/netstack.h"
-#include "mmem.h"
 #include "net/rime/rimeaddr.h"
+#include "mmem.h"
+#include "lib/memb.h"
+#include "logging.h"
+#include "node-id.h"
 
-#include "API_registration.h"
+#include "api.h"
 #include "registration.h"
-#include "API_events.h"
 #include "bundle.h"
-#include "agent.h"
 #include "storage.h"
 #include "sdnv.h"
-#include "redundance.h"
+#include "redundancy.h"
 #include "dispatching.h"
 #include "routing.h"
 #include "dtn-network.h"
-#include "node-id.h"
 #include "custody.h"
-#include "status-report.h"
-#include "lib/memb.h"
 #include "discovery.h"
 #include "statistics.h"
 #include "convergence_layer.h"
 
-// #define ENABLE_LOGGING 1
-#include "logging.h"
+#include "agent.h"
 
 #define DEBUG 0
 #if DEBUG
@@ -76,12 +70,13 @@ PROCESS_THREAD(agent_process, ev, data)
 	dtn_seq_nr=0;
 	
 	mmem_init();
-	BUNDLE_STORAGE.init();
-	BUNDLE_STORAGE.reinit();
-	ROUTING.init();
-	REDUNDANCE.init();
-	registration_init();
 	convergence_layer_init();
+	BUNDLE_STORAGE.init();
+	REDUNDANCE.init();
+	CUSTODY.init();
+	ROUTING.init();
+	DISCOVERY.init();
+	registration_init();
 
 	dtn_application_remove_event  = process_alloc_event();
 	dtn_application_registration_event = process_alloc_event();
@@ -96,8 +91,6 @@ PROCESS_THREAD(agent_process, ev, data)
 	dtn_processing_finished = process_alloc_event();
 	dtn_bundle_stored = process_alloc_event();
 	
-	CUSTODY.init();
-	DISCOVERY.init();
 	PRINTF("starting DTN Bundle Protocol \n");
 		
 	struct registration_api *reg;

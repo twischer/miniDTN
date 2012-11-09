@@ -42,25 +42,19 @@
 
 #include "contiki.h"
 #include "watchdog.h"
-
-//#include "../platform/avr-raven/cfs-coffee-arch.h"
-//#include "cfs.h"
-
 #include "sys/profiling.h"
 #include "sys/test.h"
-
 #include "process.h"
 #include "net/netstack.h"
 #include "net/packetbuf.h"
-#include "net/uDTN/API_registration.h"
-#include "net/uDTN/API_events.h"
-#include "net/uDTN/agent.h"
 #include "dev/leds.h"
 #include "dev/cc2420.h"
-#include "net/uDTN/bundle.h"
-#include "net/uDTN/sdnv.h"
 #include "etimer.h"
 
+#include "net/uDTN/api.h"
+#include "net/uDTN/agent.h"
+#include "net/uDTN/bundle.h"
+#include "net/uDTN/sdnv.h"
 
 /*---------------------------------------------------------------------------*/
 PROCESS(udtn_sender_process, "uDTN Sink process");

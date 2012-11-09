@@ -42,22 +42,17 @@
 #include <string.h>
 
 #include "contiki.h"
-
 #include "net/netstack.h"
 #include "net/packetbuf.h"
+#include "watchdog.h"
+#include "sys/test.h"
+#include "sys/profiling.h"
 
 #include "net/uDTN/bundle.h"
 #include "net/uDTN/agent.h"
 #include "net/uDTN/sdnv.h"
-#include "net/uDTN/API_events.h"
-#include "net/uDTN/API_registration.h"
-
+#include "net/uDTN/api.h"
 #include "net/uDTN/storage.h"
-
-/* Needed for profiling/testing */
-#include "watchdog.h"
-#include "sys/test.h"
-#include "sys/profiling.h"
 
 #define MODE_PASSIVE 0
 #define MODE_ACTIVE 1

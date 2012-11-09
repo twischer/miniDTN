@@ -17,23 +17,22 @@
 * \author Wolf-Bastian Pšttner (poettner@ibr.cs.tu-bs.de)
 */
 
-#include "custody-signal.h"
-#include "dtn-network.h"
-#include "clock.h"
+#include <string.h> // for memset
+
 #include "net/netstack.h"
 #include "net/packetbuf.h" 
 #include "net/rime/rimeaddr.h"
-
-#include "agent.h"
-#include "status-report.h"
-#include "dtn-network.h" 
-#include "discovery.h"
-#include <string.h> // for memset
-#include "sdnv.h"
-#include "statistics.h"
+#include "clock.h"
 #include "net/mac/frame802154.h" // for IEEE802154_PANID
 
+#include "dtn-network.h"
+#include "agent.h"
+#include "dtn-network.h" 
+#include "sdnv.h"
+#include "statistics.h"
 #include "convergence_layer.h"
+
+#include "discovery.h"
 
 #define DEBUG 0
 #if DEBUG
@@ -454,7 +453,7 @@ PROCESS_THREAD(discovery_process, ev, data)
 	PROCESS_END();
 }
 
-const struct discovery_driver ipnd_discovery = {
+const struct discovery_driver discovery_ipnd = {
 	"IPND_DISCOVERY",
 	ipnd_dis_init,
 	ipnd_dis_neighbour,

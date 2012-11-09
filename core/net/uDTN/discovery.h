@@ -17,9 +17,9 @@
 #ifndef DISCOVERY_H
 #define DISCOVERY_H
 
-#include <stdint.h>
-#include "bundle.h"
-#include "mmem.h"
+#include "contiki.h"
+#include "rime.h"
+#include "process.h"
 
 /**
  * Which discovery driver are we going to use?
@@ -27,7 +27,7 @@
 #ifdef CONF_DISCOVERY
 #define DISCOVERY CONF_DISCOVERY
 #else
-#define DISCOVERY ipnd_discovery
+#define DISCOVERY discovery_ipnd
 #endif
 
 PROCESS_NAME(discovery_process);

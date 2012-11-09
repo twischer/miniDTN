@@ -14,21 +14,23 @@
  * \author Georg von Zengen (vonzeng@ibr.cs.tu-bs.de)
  */
 
-#include "contiki.h"
-
-#include "storage.h"
-#include "bundle.h"
-#include "sdnv.h"
-#include "agent.h"
-#include "lib/mmem.h"
-#include "lib/list.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "status-report.h"
+
+#include "contiki.h"
+#include "lib/mmem.h"
+#include "lib/list.h"
+
+#include "bundle.h"
+#include "sdnv.h"
+#include "agent.h"
+#include "statusreport.h"
 #include "profiling.h"
 #include "statistics.h"
 #include "hash.h"
+
+#include "storage.h"
 
 #define DEBUG 0
 #if DEBUG
@@ -395,7 +397,7 @@ struct storage_entry_t * rs_get_bundles(void)
 	return (struct storage_entry_t *) list_head(bundle_list);
 }
 
-const struct storage_driver r_storage = {
+const struct storage_driver storage_mmem = {
 	"R_STORAGE",
 	rs_init,
 	rs_reinit,

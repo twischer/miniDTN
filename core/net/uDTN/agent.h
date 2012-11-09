@@ -19,7 +19,6 @@
 #define AGENT_H
 
 #include "contiki.h"
-#include "routing.h"
 
 extern uint32_t dtn_node_id;
 extern uint32_t dtn_seq_nr;

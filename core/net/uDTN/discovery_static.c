@@ -1,17 +1,13 @@
-#include "custody-signal.h"
-#include "dtn-network.h"
 #include "clock.h"
 #include "net/netstack.h"
 #include "net/packetbuf.h" 
 #include "net/rime/rimeaddr.h"
 
+#include "dtn-network.h"
 #include "agent.h"
-#include "status-report.h"
 #include "dtn-network.h" 
-#include "discovery.h"
-#include "dev/leds.h"
-#include "storage.h"
 
+#include "discovery.h"
 
 #define DEBUG 0
 #if DEBUG
@@ -66,7 +62,7 @@ void s_dis_stop_pending()
 
 }
 
-const struct discovery_driver s_discovery ={
+const struct discovery_driver discovery_static ={
 	.name = "S_DISCOVERY",
 	.init = s_dis_init,
 	.is_neighbour = s_dis_neighbour,
