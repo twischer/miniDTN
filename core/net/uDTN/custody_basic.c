@@ -30,15 +30,6 @@
 #define RETRANSMIT 1000
 #define MAX_CUST 10 
 
-#define DEBUG 0
-#if DEBUG
-#include <stdio.h>
-#define PRINTF(...) printf(__VA_ARGS__)
-#else
-#define PRINTF(...)
-#endif
-
-
 struct cust_t {
 	struct cust *next;
 	uint32_t bundle_num;

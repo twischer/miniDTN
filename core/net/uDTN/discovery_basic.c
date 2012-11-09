@@ -23,19 +23,12 @@
 #include "net/netstack.h"
 #include "net/packetbuf.h" 
 #include "net/rime/rimeaddr.h"
+#include "logging.h"
 
 #include "dtn_network.h"
 #include "agent.h"
 
 #include "discovery.h"
-
-#define DEBUG 0
-#if DEBUG
-#include <stdio.h>
-#define PRINTF(...) printf(__VA_ARGS__)
-#else
-#define PRINTF(...)
-#endif
 
 void discovery_basic_neighbour_found(rimeaddr_t * neighbour);
 void discovery_basic_refresh_neighbour(rimeaddr_t * neighbour);
@@ -114,7 +107,7 @@ void discovery_basic_send_discovery(rimeaddr_t * destination)
 	}
 
 	rimeaddr_t dest={{0,0}};
-	PRINTF("dtn_send_discover\n");
+	LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "dtn_send_discover");
 
 	convergence_layer_send_discovery((uint8_t *) "DTN_DISCOVERY", 13, &dest);
 }
@@ -155,7 +148,7 @@ uint8_t discovery_basic_is_discovery(uint8_t * msg, rimeaddr_t * dest)
 		return 1;
 	}
 
-	PRINTF("DTN DISCOVERY\n");
+	LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "DTN DISCOVERY");
 	convergence_layer_send_discovery((uint8_t *) "DTN_HERE", 8, dest);
 
 	return 1;
@@ -183,20 +176,20 @@ void discovery_basic_disable()
  */
 void discovery_basic_receive(rimeaddr_t * source, uint8_t * payload, uint8_t length)
 {
-	PRINTF("DISCOVERY: received from %u:%u\n", source->u8[1], source->u8[0]);
+	LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "received from %u:%u", source->u8[1], source->u8[0]);
 
 	// Save all peer from which we receive packets to the active neighbours list
 	discovery_basic_refresh_neighbour(source);
 
 	// Either somebody wants to discover ourselves
 	if( discovery_basic_is_discovery(payload, source) ) {
-		PRINTF("is_discover\n");
+		LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "is_discover");
 		return;
 	}
 
 	// Or we have received a reply to our query
 	if( discovery_basic_is_beacon(payload) ) {
-		PRINTF("is_beacon\n");
+		LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "is_beacon");
 		discovery_basic_neighbour_found(source);
 	}
 }
@@ -206,7 +199,7 @@ void discovery_basic_receive(rimeaddr_t * source, uint8_t * payload, uint8_t len
  */
 void discovery_basic_neighbour_found(rimeaddr_t * neighbour)
 {
-	PRINTF("DISCOVERY: sending DTN BEACON Event for %u.%u\n", neighbour->u8[0], neighbour->u8[1]);
+	LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "sending DTN BEACON Event for %u.%u", neighbour->u8[0], neighbour->u8[1]);
 	process_post(&agent_process, dtn_beacon_event, neighbour);
 
 	// Once we have found a new neighbour, we will stop discovering other nodes
@@ -263,7 +256,7 @@ void discovery_basic_save_neighbour(rimeaddr_t * neighbour)
 			}
 		}
 
-		PRINTF("DISCOVERY: Removing neighbour %u.%u to make room\n", delete->neighbour.u8[0], delete->neighbour.u8[1]);
+		LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_INF, "Removing neighbour %u.%u to make room", delete->neighbour.u8[0], delete->neighbour.u8[1]);
 
 		// And remove if from the list and free the memory
 		memb_free(&neighbour_mem, delete);
@@ -276,7 +269,7 @@ void discovery_basic_save_neighbour(rimeaddr_t * neighbour)
 	// Clean the entry struct, so that "active" becomes zero
 	memset(entry, 0, sizeof(struct discovery_basic_neighbour_list_entry));
 
-	PRINTF("DISCOVERY: Saving neighbour %u:%u \n", neighbour->u8[0], neighbour->u8[1]);
+	LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "DISCOVERY: Saving neighbour %u.%u", neighbour->u8[0], neighbour->u8[1]);
 	entry->active = 1;
 	rimeaddr_copy(&(entry->neighbour), neighbour);
 	entry->timestamp = clock_time();
@@ -292,7 +285,7 @@ void discovery_basic_save_neighbour(rimeaddr_t * neighbour)
  */
 uint8_t discovery_basic_discover(rimeaddr_t * dest)
 {
-	PRINTF("DISCOVERY: agent asks to discover %u:%u\n", dest->u8[1], dest->u8[0]);
+	LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "agent asks to discover %u.%u", dest->u8[0], dest->u8[1]);
 
 	// Check, if we already know this neighbour
 	if(discovery_basic_is_neighbour(dest)) {
@@ -343,7 +336,7 @@ PROCESS_THREAD(discovery_process, ev, data)
 	PROCESS_BEGIN();
 
 	etimer_set(&discovery_timeout_timer, DISCOVERY_NEIGHBOUR_TIMEOUT * CLOCK_SECOND);
-	PRINTF("DISCOVERY: process running\n");
+	LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "Basic Discovery process running");
 
 	while(1) {
 		PROCESS_WAIT_EVENT();
@@ -355,7 +348,7 @@ PROCESS_THREAD(discovery_process, ev, data)
 					entry != NULL;
 					entry = entry->next) {
 				if( entry->active && (clock_time() - entry->timestamp) > (DISCOVERY_NEIGHBOUR_TIMEOUT * CLOCK_SECOND) ) {
-					PRINTF("DISCOVERY: Neighbour %u:%u timed out: %lu vs. %lu = %lu\n", entry->neighbour.u8[1], entry->neighbour.u8[0], clock_time(), entry->timestamp, clock_time() - entry->timestamp);
+					LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_INF, "Neighbour %u.%u timed out: %lu vs. %lu = %lu", entry->neighbour.u8[0], entry->neighbour.u8[1], clock_time(), entry->timestamp, clock_time() - entry->timestamp);
 
 					memb_free(&neighbour_mem, entry);
 					list_remove(neighbour_list, entry);

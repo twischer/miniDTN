@@ -14,16 +14,9 @@
 #include "agent.h"
 #include "contiki.h"
 #include "bundle.h"
+#include "logging.h"
 
 #include "statistics.h"
-
-#define DEBUG 0
-#if DEBUG
-#include <stdio.h>
-#define PRINTF(...) printf(__VA_ARGS__)
-#else
-#define PRINTF(...)
-#endif
 
 process_event_t dtn_statistics_overrun;
 
@@ -62,7 +55,7 @@ uint8_t statistics_get_pointer()
  */
 uint16_t statistics_setup(struct process * process)
 {
-	PRINTF("STATISTICS: setup()\n");
+	LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "setup()");
 
 	// Reset the results (just to be sure)
 	statistics_reset();
@@ -84,7 +77,7 @@ uint8_t statistics_get_bundle(uint8_t * buffer, uint8_t maximum_length)
 {
 	int offset = 0;
 
-	PRINTF("STATISTICS: get_bundle(%p, %u)\n", buffer, maximum_length);
+	LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "get_bundle(%p, %u)", buffer, maximum_length);
 
 	// Store the timestamp of this period
 	memcpy(buffer + offset, &statistics_timestamp, sizeof(statistics_timestamp));
@@ -112,7 +105,7 @@ uint8_t statistics_get_contacts_bundle(uint8_t * buffer, uint8_t maximum_length)
 {
 	int offset = 0;
 
-	PRINTF("STATISTICS: get_contacts_bundle(%p, %u)\n", buffer, maximum_length);
+	LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "get_contacts_bundle(%p, %u)", buffer, maximum_length);
 
 	// This should never happen
 	if( contacts_pointer > STATISTICS_CONTACTS ) {
@@ -139,7 +132,7 @@ uint8_t statistics_get_contacts_bundle(uint8_t * buffer, uint8_t maximum_length)
  */
 void statistics_reset_contacts()
 {
-	PRINTF("STATISTICS: reset_contacts()\n");
+	LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "reset_contacts()");
 
 	memset(statistics_contacts, 0, sizeof(struct contact_element_t) * STATISTICS_CONTACTS);
 	contacts_pointer = 0;
@@ -151,7 +144,7 @@ void statistics_reset_contacts()
  */
 void statistics_reset(void)
 {
-	PRINTF("STATISTICS: reset()\n");
+	LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "reset()");
 
 	// Nullify the whole array
 	memset(statistics_array, 0, sizeof(struct statistics_element_t) * STATISTICS_ELEMENTS);
@@ -166,7 +159,7 @@ void statistics_reset(void)
 void statistics_bundle_incoming(uint8_t count)
 {
 #if STATISTICS_ELEMENTS > 0
-	PRINTF("STATISTICS: bundle_incoming(%u)\n", count);
+	LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "bundle_incoming(%u)", count);
 
 	statistics_array[statistics_get_pointer()].bundles_incoming += count;
 #endif
@@ -178,7 +171,7 @@ void statistics_bundle_incoming(uint8_t count)
 void statistics_bundle_outgoing(uint8_t count)
 {
 #if STATISTICS_ELEMENTS > 0
-	PRINTF("STATISTICS: bundle_outgoing(%u)\n", count);
+	LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "bundle_outgoing(%u)", count);
 
 	statistics_array[statistics_get_pointer()].bundles_outgoing += count;
 #endif
@@ -190,7 +183,7 @@ void statistics_bundle_outgoing(uint8_t count)
 void statistics_bundle_generated(uint8_t count)
 {
 #if STATISTICS_ELEMENTS > 0
-	PRINTF("STATISTICS: bundle_generated(%u)\n", count);
+	LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "bundle_generated(%u)", count);
 
 	statistics_array[statistics_get_pointer()].bundles_generated += count;
 #endif
@@ -202,7 +195,7 @@ void statistics_bundle_generated(uint8_t count)
 void statistics_bundle_delivered(uint8_t count)
 {
 #if STATISTICS_ELEMENTS > 0
-	PRINTF("STATISTICS: statistics_bundle_delivered(%u)\n", count);
+	LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "statistics_bundle_delivered(%u)", count);
 
 	statistics_array[statistics_get_pointer()].bundles_delivered += count;
 #endif
@@ -214,7 +207,7 @@ void statistics_bundle_delivered(uint8_t count)
 void statistics_storage_bundles(uint8_t bundles)
 {
 #if STATISTICS_ELEMENTS > 0
-	PRINTF("STATISTICS: storage_bundles(%u)\n", bundles);
+	LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "storage_bundles(%u)", bundles);
 
 	statistics_array[statistics_get_pointer()].storage_bundles = bundles;
 #endif
@@ -226,7 +219,7 @@ void statistics_storage_bundles(uint8_t bundles)
 void statistics_storage_memory(uint16_t free)
 {
 #if STATISTICS_ELEMENTS > 0
-	PRINTF("STATISTICS: storage_memory(%u)\n", free);
+	LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "storage_memory(%u)", free);
 
 	statistics_array[statistics_get_pointer()].storage_memory = free;
 #endif
@@ -238,7 +231,7 @@ void statistics_storage_memory(uint16_t free)
 void statistics_contacts_up(rimeaddr_t * peer)
 {
 #if STATISTICS_ELEMENTS > 0
-	PRINTF("STATISTICS: contacts_up(%u.%u)\n", peer->u8[0], peer->u8[1]);
+	LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "contacts_up(%u.%u)", peer->u8[0], peer->u8[1]);
 #endif
 }
 
@@ -248,7 +241,7 @@ void statistics_contacts_up(rimeaddr_t * peer)
 void statistics_contacts_down(rimeaddr_t * peer, uint16_t duration)
 {
 #if STATISTICS_ELEMENTS > 0
-	PRINTF("STATISTICS: contacts_down(%u.%u, %u)\n", peer->u8[0], peer->u8[1], duration);
+	LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "contacts_down(%u.%u, %u)", peer->u8[0], peer->u8[1], duration);
 
 	statistics_array[statistics_get_pointer()].contacts_count ++;
 	statistics_array[statistics_get_pointer()].contacts_duration += duration;
@@ -281,11 +274,11 @@ void statistics_contacts_down(rimeaddr_t * peer, uint16_t duration)
 
 	// Avoid overrunning the array
 	if( contacts_pointer >= STATISTICS_CONTACTS && statistics_event_process != NULL ) {
-		PRINTF("STATISTICS: contacts full, sending event\n");
+		LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "contacts full, sending event");
 		process_post(statistics_event_process, dtn_statistics_overrun, NULL);
 	} else if( statistics_event_process == NULL ) {
 		// Nobody is interested in our data anyway, start from the beginning
-		PRINTF("STATISTICS: contacts full, clearing array\n");
+		LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "contacts full, clearing array");
 		statistics_reset_contacts();
 	}
 #endif

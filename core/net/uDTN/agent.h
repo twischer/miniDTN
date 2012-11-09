@@ -52,15 +52,15 @@ void agent_delete_bundle(uint32_t bundle_number);
 /**
  * \brief uDTN log domains
  */
-#define LOG_NET    0
-#define LOG_BUNDLE 1
-#define LOG_ROUTE  2
-#define LOG_STORE  3
-#define LOG_SDNV   4
-#define LOG_SLOTS  5
-#define LOG_AGENT  6
-#define LOG_CL	   7
-
+#define LOG_NET    		0
+#define LOG_BUNDLE 		1
+#define LOG_ROUTE  		2
+#define LOG_STORE  		3
+#define LOG_SDNV   		4
+#define LOG_SLOTS  		5
+#define LOG_AGENT  		6
+#define LOG_CL	   		7
+#define LOG_DISCOVERY	8
 #endif
 
 /** @} */

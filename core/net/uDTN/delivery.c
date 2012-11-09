@@ -29,14 +29,6 @@
 
 #include "delivery.h"
 
-#define DEBUG 0
-#if DEBUG
-#include <stdio.h>
-#define PRINTF(...) printf(__VA_ARGS__)
-#else
-#define PRINTF(...)
-#endif
-
 void delivery_unblock_service(struct mmem * bundlemem) {
 	struct registration * n = NULL;
 	struct bundle_t * bundle = NULL;

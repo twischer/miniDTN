@@ -9,6 +9,12 @@
  * \author Georg von Zengen (vonzeng@ibr.cs.tu-bs.de) 
  */
 
+#ifdef CONF_LOGLEVEL
+#define LOGLEVEL CONF_LOGLEVEL
+#else
+#define LOGLEVEL LOGL_INF
+#endif
+
 #include "netstack.h"
 #include "packetbuf.h"
 #include "leds.h"
@@ -26,14 +32,14 @@ static void dtn_network_init(void)
 {
 	/* Set up log domains */
 	logging_init();
-	logging_domain_level_set(LOGD_DTN, LOG_NET, LOGL_DBG);
-	logging_domain_level_set(LOGD_DTN, LOG_BUNDLE, LOGL_DBG);
-	logging_domain_level_set(LOGD_DTN, LOG_ROUTE, LOGL_DBG);
-	logging_domain_level_set(LOGD_DTN, LOG_STORE, LOGL_DBG);
-	logging_domain_level_set(LOGD_DTN, LOG_SDNV, LOGL_DBG);
-	logging_domain_level_set(LOGD_DTN, LOG_SLOTS, LOGL_DBG);
-	logging_domain_level_set(LOGD_DTN, LOG_AGENT, LOGL_DBG);
-	logging_domain_level_set(LOGD_DTN, LOG_CL, LOGL_DBG);
+	logging_domain_level_set(LOGD_DTN, LOG_NET, LOGLEVEL);
+	logging_domain_level_set(LOGD_DTN, LOG_BUNDLE, LOGLEVEL);
+	logging_domain_level_set(LOGD_DTN, LOG_ROUTE, LOGLEVEL);
+	logging_domain_level_set(LOGD_DTN, LOG_STORE, LOGLEVEL);
+	logging_domain_level_set(LOGD_DTN, LOG_SDNV, LOGLEVEL);
+	logging_domain_level_set(LOGD_DTN, LOG_SLOTS, LOGLEVEL);
+	logging_domain_level_set(LOGD_DTN, LOG_AGENT, LOGLEVEL);
+	logging_domain_level_set(LOGD_DTN, LOG_CL, LOGLEVEL);
 
 	/* Clear the packet buffer */
 	packetbuf_clear();

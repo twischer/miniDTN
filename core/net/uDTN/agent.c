@@ -36,14 +36,6 @@
 
 #include "agent.h"
 
-#define DEBUG 0
-#if DEBUG
-#include <stdio.h>
-#define PRINTF(...) printf(__VA_ARGS__)
-#else
-#define PRINTF(...)
-#endif
-
 static struct mmem * bundleptr;
 
 uint32_t dtn_node_id;
@@ -92,7 +84,7 @@ PROCESS_THREAD(agent_process, ev, data)
 	dtn_processing_finished = process_alloc_event();
 	dtn_bundle_stored = process_alloc_event();
 	
-	PRINTF("Starting DTN Bundle Protocol Agent with ID %lu\n", dtn_node_id);
+	LOG(LOGD_DTN, LOG_AGENT, LOGL_INF, "Starting DTN Bundle Protocol Agent with ID %lu", dtn_node_id);
 		
 	struct registration_api *reg;
 	
@@ -103,21 +95,21 @@ PROCESS_THREAD(agent_process, ev, data)
 			reg = (struct registration_api *) data;
 
 			registration_new_application(reg->app_id, reg->application_process, reg->node_id);
-			PRINTF("BUNDLEPROTOCOL: Event empfangen, Registration, Name: %lu\n", reg->app_id);
+			LOG(LOGD_DTN, LOG_AGENT, LOGL_INF, "New Service registration for endpoint %lu", reg->app_id);
 			continue;
 		}
 					
 		if(ev == dtn_application_status_event) {
 			int status;
 			reg = (struct registration_api *) data;
-			PRINTF("BUNDLEPROTOCOL: Event empfangen, Switch Status, Status: %i \n", reg->status);
+			LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "Service switching status to %i", reg->status);
 			if(reg->status == APP_ACTIVE)
 				status = registration_set_active(reg->app_id, reg->node_id);
 			else if(reg->status == APP_PASSIVE)
 				status = registration_set_passive(reg->app_id, reg->node_id);
 			
 			if(status == -1) {
-				PRINTF("BUNDLEPROTOCOL: no registration found to switch \n");
+				LOG(LOGD_DTN, LOG_AGENT, LOGL_ERR, "no registration found to switch");
 			}
 
 			continue;
@@ -125,7 +117,7 @@ PROCESS_THREAD(agent_process, ev, data)
 		
 		if(ev == dtn_application_remove_event) {
 			reg = (struct registration_api *) data;
-			PRINTF("BUNDLEPROTOCOL: Event empfangen, Remove, Name: %lu \n", reg->app_id);
+			LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "Unregistering service for endpoint %lu", reg->app_id);
 			registration_remove_application(reg->app_id, reg->node_id);
 			continue;
 		}
@@ -209,7 +201,7 @@ PROCESS_THREAD(agent_process, ev, data)
 		}
 		
 		if(ev == dtn_send_admin_record_event) {
-			PRINTF("BUNDLEPROTOCOL: send admin record \n");
+			LOG(LOGD_DTN, LOG_AGENT, LOGL_ERR, "Send admin record currently not implemented");
 			continue;
 		}
 
@@ -245,6 +237,8 @@ PROCESS_THREAD(agent_process, ev, data)
 }
 
 void agent_delete_bundle(uint32_t bundle_number){
+	LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "Agent deleting bundle no %lu", bundle_number);
+
 	convergence_layer_delete_bundle(bundle_number);
 	ROUTING.del_bundle(bundle_number);
 	CUSTODY.del_from_list(bundle_number);

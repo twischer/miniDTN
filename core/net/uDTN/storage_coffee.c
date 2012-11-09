@@ -26,6 +26,7 @@
 #include "cfs-coffee.h"
 #include "watchdog.h"
 #include "list.h"
+#include "logging.h"
 
 #include "bundle.h"
 #include "sdnv.h"
@@ -34,14 +35,6 @@
 #include "hash.h"
 
 #include "storage.h"
-
-#define DEBUG 0
-#if DEBUG
-#include <stdio.h>
-#define PRINTF(...) printf(__VA_ARGS__)
-#else
-#define PRINTF(...)
-#endif
 
 /**
  * How long can a filename possibly be?
@@ -136,7 +129,7 @@ void storage_mmem_init(void)
 
 void storage_coffee_save_list_on_change()
 {
-	printf("g_store_save_list_on_change()\n");
+	LOG(LOGD_DTN, LOG_STORE, LOGL_DBG, "g_store_save_list_on_change()");
 
 	// In case the bundle list has changed, write the changes to the bundle list file
 	if( bundle_list_changed ) {
@@ -176,7 +169,7 @@ void storage_coffee_save_list()
 	fd_write = cfs_open(BUNDLE_STORAGE_FILE_NAME, CFS_WRITE);
 	if( fd_write == -1 ) {
 		// Unable to open file, abort here
-		printf("STORAGE: unable to open file %s, cannot save bundle list\n", BUNDLE_STORAGE_FILE_NAME);
+		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to open file %s, cannot save bundle list", BUNDLE_STORAGE_FILE_NAME);
 		return;
 	}
 
@@ -187,7 +180,7 @@ void storage_coffee_save_list()
 		n = cfs_write(fd_write, entry, sizeof(struct file_list_entry_t));
 
 		if( n != sizeof(struct file_list_entry_t) ) {
-			printf("STORAGE: unable to append %u bytes to bundle list file, aborting\n", sizeof(struct file_list_entry_t));
+			LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to append %u bytes to bundle list file, aborting", sizeof(struct file_list_entry_t));
 			cfs_close(fd_write);
 			cfs_remove(BUNDLE_STORAGE_FILE_NAME);
 			return;
@@ -215,7 +208,7 @@ void storage_coffee_read_list()
 	fd_read = cfs_open(BUNDLE_STORAGE_FILE_NAME, CFS_READ);
 	if( fd_read == -1 ) {
 		// Unable to open file, abort here
-		PRINTF("STORAGE: unable to open file %s, cannot read bundle list\n", BUNDLE_STORAGE_FILE_NAME);
+		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to open file %s, cannot read bundle list", BUNDLE_STORAGE_FILE_NAME);
 		RADIO_SAFE_STATE_OFF();
 		return;
 	}
@@ -223,7 +216,7 @@ void storage_coffee_read_list()
 	while( !eof ) {
 		entry = memb_alloc(&bundle_mem);
 		if( entry == NULL ) {
-			printf("STORAGE: unable to allocate struct, cannot restore bundle list\n");
+			LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to allocate struct, cannot restore bundle list");
 			cfs_close(fd_read);
 			RADIO_SAFE_STATE_OFF();
 			return;
@@ -240,7 +233,7 @@ void storage_coffee_read_list()
 		}
 
 		if( n != sizeof(struct file_list_entry_t) ) {
-			printf("STORAGE: unable to read %u bytes from bundle list file\n", sizeof(struct file_list_entry_t));
+			LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to read %u bytes from bundle list file", sizeof(struct file_list_entry_t));
 			cfs_close(fd_read);
 			memb_free(&bundle_mem, entry);
 			RADIO_SAFE_STATE_OFF();
@@ -256,7 +249,7 @@ void storage_coffee_read_list()
 		struct mmem * testbundle = NULL;
 		testbundle = storage_coffee_read_bundle(entry->bundle_num);
 		if( testbundle == NULL ) {
-			printf("STORAGE: unable to restore bundle %lu\n", entry->bundle_num);
+			LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to restore bundle %lu", entry->bundle_num);
 			list_remove(bundle_list, entry);
 			memb_free(&bundle_mem, entry);
 			continue;
@@ -285,7 +278,7 @@ void storage_coffee_store_prune()
 		elapsed_time = clock_seconds() - entry->rec_time;
 
 		if( entry->lifetime < elapsed_time ) {
-			PRINTF("STORAGE: bundle lifetime expired of bundle %lu\n", entry->bundle_num);
+			LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "bundle lifetime expired of bundle %lu", entry->bundle_num);
 			storage_coffee_delete_bundle(entry->bundle_num, REASON_LIFETIME_EXPIRED);
 		}
 	}
@@ -337,7 +330,7 @@ uint8_t storage_coffee_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_n
 	uint32_t bundle_number;
 
 	if( bundlemem == NULL ) {
-		printf("STORAGE: save_bundle with invalid pointer %p\n", bundlemem);
+		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "save_bundle with invalid pointer %p", bundlemem);
 		return 0;
 	}
 
@@ -345,7 +338,7 @@ uint8_t storage_coffee_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_n
 	bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 
 	if( bundle == NULL ) {
-		printf("STORAGE: save_bundle with invalid MMEM structure\n");
+		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "save_bundle with invalid MMEM structure");
 		return 0;
 	}
 
@@ -358,7 +351,7 @@ uint8_t storage_coffee_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_n
 		entry = list_item_next(entry)) {
 
 		if( bundle_number == entry->bundle_num ) {
-			PRINTF("STORAGE: %lu is the same bundle\n", entry->bundle_num);
+			LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "%lu is the same bundle", entry->bundle_num);
 			bundle_decrement(bundlemem);
 			return entry->bundle_num;
 		}
@@ -367,7 +360,7 @@ uint8_t storage_coffee_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_n
 	// Allocate some memory for our bundle
 	entry = memb_alloc(&bundle_mem);
 	if( entry == NULL ) {
-		printf("STORAGE: unable to allocate struct, cannot store bundle\n");
+		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to allocate struct, cannot store bundle");
 		bundle_decrement(bundlemem);
 		return 0;
 	}
@@ -387,7 +380,7 @@ uint8_t storage_coffee_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_n
 	// determine the filename
 	n = snprintf(bundle_filename, STORAGE_FILE_NAME_LENGTH, "%lu.b", entry->bundle_num);
 	if( n == STORAGE_FILE_NAME_LENGTH ) {
-		printf("STORAGE: file name buffer is too short\n");
+		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "file name buffer is too short");
 		memb_free(&bundle_mem, entry);
 		bundle_decrement(bundlemem);
 		return 0;
@@ -398,7 +391,7 @@ uint8_t storage_coffee_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_n
 	// Store the bundle into the file
 	n = cfs_coffee_reserve(bundle_filename, bundlemem->size);
 	if( n < 0 ) {
-		printf("STORAGE: unable to reserve %u bytes for bundle\n", bundlemem->size);
+		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to reserve %u bytes for bundle", bundlemem->size);
 		memb_free(&bundle_mem, entry);
 		bundle_decrement(bundlemem);
 		RADIO_SAFE_STATE_OFF();
@@ -409,7 +402,7 @@ uint8_t storage_coffee_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_n
 	fd_write = cfs_open(bundle_filename, CFS_WRITE);
 	if( fd_write == -1 ) {
 		// Unable to open file, abort here
-		printf("STORAGE: unable to open file %s, cannot save bundle\n", bundle_filename);
+		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to open file %s, cannot save bundle", bundle_filename);
 		memb_free(&bundle_mem, entry);
 		bundle_decrement(bundlemem);
 		RADIO_SAFE_STATE_OFF();
@@ -419,7 +412,7 @@ uint8_t storage_coffee_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_n
 	// Write our complete bundle
 	n = cfs_write(fd_write, bundle, bundlemem->size);
 	if( n != bundlemem->size ) {
-		printf("STORAGE: unable to write %u bytes to file %s, aborting\n", bundlemem->size, bundle_filename);
+		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to write %u bytes to file %s, aborting", bundlemem->size, bundle_filename);
 		cfs_close(fd_write);
 		cfs_remove(bundle_filename);
 		memb_free(&bundle_mem, entry);
@@ -433,7 +426,7 @@ uint8_t storage_coffee_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_n
 
 	RADIO_SAFE_STATE_OFF();
 
-	PRINTF("STORAGE: New Bundle %lu (%lu), Src %lu.%lu, Dest %lu.%lu, Seq %lu\n", bundle->bundle_num, entry->bundle_num, bundle->src_node, bundle->src_srv, bundle->dst_node, bundle->dst_srv, bundle->tstamp_seq);
+	LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "New Bundle %lu (%lu), Src %lu.%lu, Dest %lu.%lu, Seq %lu", bundle->bundle_num, entry->bundle_num, bundle->src_node, bundle->src_srv, bundle->dst_node, bundle->dst_srv, bundle->tstamp_seq);
 
 	// Add bundle to the list
 	list_add(bundle_list, entry);
@@ -466,7 +459,7 @@ uint16_t storage_coffee_delete_bundle(uint32_t bundle_number, uint8_t reason)
 	char bundle_filename[STORAGE_FILE_NAME_LENGTH];
 	int n;
 
-	PRINTF("STORAGE: Deleting Bundle %lu with reason %u\n", bundle_number, reason);
+	LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "Deleting Bundle %lu with reason %u", bundle_number, reason);
 
 	// Look for the bundle we are talking about
 	for(entry = list_head(bundle_list);
@@ -479,7 +472,7 @@ uint16_t storage_coffee_delete_bundle(uint32_t bundle_number, uint8_t reason)
 	}
 
 	if( entry == NULL ) {
-		printf("STORAGE: Could not find bundle %lu on del_bundle\n", bundle_number);
+		LOG(LOGD_DTN, LOG_STORE, LOGL_WRN, "Could not find bundle %lu on del_bundle", bundle_number);
 		return 0;
 	}
 
@@ -490,7 +483,7 @@ uint16_t storage_coffee_delete_bundle(uint32_t bundle_number, uint8_t reason)
 
 		bundlemem = storage_coffee_read_bundle(bundle_number);
 		if( bundlemem == NULL ) {
-			printf("STORAGE: unable to read back bundle %lu\n", bundle_number);
+			LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to read back bundle %lu", bundle_number);
 			return 0;
 		}
 
@@ -512,7 +505,7 @@ uint16_t storage_coffee_delete_bundle(uint32_t bundle_number, uint8_t reason)
 	// determine the filename and remove the file
 	n = snprintf(bundle_filename, STORAGE_FILE_NAME_LENGTH, "%lu.b", entry->bundle_num);
 	if( n == STORAGE_FILE_NAME_LENGTH ) {
-		printf("STORAGE: file name buffer is too short\n");
+		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "file name buffer is too short");
 		return 0;
 	}
 
@@ -549,7 +542,7 @@ struct mmem * storage_coffee_read_bundle(uint32_t bundle_number)
 	int fd_read;
 	int n;
 
-	PRINTF("STORAGE: Reading Bundle %lu\n", bundle_number);
+	LOG(LOGD_DTN, LOG_STORE, LOGL_DBG, "Reading Bundle %lu", bundle_number);
 
 	// Look for the bundle we are talking about
 	for(entry = list_head(bundle_list);
@@ -562,19 +555,19 @@ struct mmem * storage_coffee_read_bundle(uint32_t bundle_number)
 	}
 
 	if( entry == NULL ) {
-		PRINTF("STORAGE: Could not find bundle %lu on read_bundle\n", bundle_number);
+		LOG(LOGD_DTN, LOG_STORE, LOGL_WRN, "Could not find bundle %lu on read_bundle", bundle_number);
 		return 0;
 	}
 
 	bundlemem = bundle_create_bundle();
 	if( bundlemem == NULL ) {
-		printf("STORAGE: cannot allocate memory for bundle %lu\n", bundle_number);
+		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "cannot allocate memory for bundle %lu", bundle_number);
 		return NULL;
 	}
 
 	n = mmem_realloc(bundlemem, entry->file_size);
 	if( !n ) {
-		printf("STORAGE: unable to realloc enough memory\n");
+		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to realloc enough memory");
 		bundle_decrement(bundlemem);
 		return NULL;
 	}
@@ -586,7 +579,7 @@ struct mmem * storage_coffee_read_bundle(uint32_t bundle_number)
 	// determine the filename
 	n = snprintf(bundle_filename, STORAGE_FILE_NAME_LENGTH, "%lu.b", entry->bundle_num);
 	if( n == STORAGE_FILE_NAME_LENGTH ) {
-		printf("STORAGE: file name buffer is too short\n");
+		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "file name buffer is too short");
 		bundle_decrement(bundlemem);
 		return NULL;
 	}
@@ -597,7 +590,7 @@ struct mmem * storage_coffee_read_bundle(uint32_t bundle_number)
 	fd_read = cfs_open(bundle_filename, CFS_READ);
 	if( fd_read == -1 ) {
 		// Unable to open file, abort here
-		printf("STORAGE: unable to open file %s, cannot read bundle\n", bundle_filename);
+		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to open file %s, cannot read bundle", bundle_filename);
 		bundle_decrement(bundlemem);
 		return NULL;
 	}
@@ -605,7 +598,7 @@ struct mmem * storage_coffee_read_bundle(uint32_t bundle_number)
 	// Read our complete bundle
 	n = cfs_read(fd_read, MMEM_PTR(bundlemem), bundlemem->size);
 	if( n != bundlemem->size ) {
-		printf("STORAGE: unable to read %u bytes from file %s, aborting\n", bundlemem->size, bundle_filename);
+		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to read %u bytes from file %s, aborting", bundlemem->size, bundle_filename);
 		bundle_decrement(bundlemem);
 		cfs_close(fd_read);
 		return NULL;
