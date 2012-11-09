@@ -507,7 +507,7 @@ int routing_flooding_new_bundle(uint32_t bundle_number)
 	list_add(routing_list, n);
 
 	/* Here we decide if a bundle is to be delivered locally and/or forwarded */
-	if( bundle->dst_srv == dtn_node_id ) {
+	if( bundle->dst_node == dtn_node_id ) {
 		/* This bundle is for our node_id, deliver locally */
 		LOG(LOGD_DTN, LOG_ROUTE, LOGL_DBG, "bundle is for local");
 		entry->flags |= ROUTING_FLAG_LOCAL;
@@ -523,7 +523,7 @@ int routing_flooding_new_bundle(uint32_t bundle_number)
 		entry->flags |= ROUTING_FLAG_FORWARD;
 	}
 
-	if( registration_is_local(bundle->dst_srv, bundle->dst_node) ) {
+	if( registration_is_local(bundle->dst_srv, bundle->dst_node) && bundle->dst_node != dtn_node_id) {
 		/* Bundle is for a local registration, so deliver it locally */
 		LOG(LOGD_DTN, LOG_ROUTE, LOGL_DBG, "bundle is for local and forward");
 		entry->flags |= ROUTING_FLAG_LOCAL;
