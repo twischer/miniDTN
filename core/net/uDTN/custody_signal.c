@@ -16,7 +16,7 @@
 #include "sdnv.h"
 #include "custody.h"
 
-#include "custody-signal.h"
+#include "custody_signal.h"
 
 void custody_signal_received(custody_signal_t *custody_signal) {
 #if 0
@@ -34,26 +34,26 @@ void custody_signal_received(custody_signal_t *custody_signal) {
 #endif
 }	
 
-void set_signal_status (uint8_t reason, uint8_t transfer_result, custody_signal_t *return_signal) {
+void custody_signal_set_signal_status (uint8_t reason, uint8_t transfer_result, custody_signal_t *return_signal) {
 #if 0
 	return_signal->status = transfer_result | reason;
 #endif
 }
 
-void set_signal_time(custody_signal_t *return_signal) {
+void custody_signal_set_signal_time(custody_signal_t *return_signal) {
 #if 0
 	return_signal->custody_signal_time = clock_time();
 #endif
 }
 
-void copy_timestamp_to_signal (struct bundle_t *bundle , custody_signal_t *return_signal) {
+void custody_signal_copy_timestamp_to_signal (struct bundle_t *bundle , custody_signal_t *return_signal) {
 #if 0
 	sdnv_decode(bundle->mem->ptr + bundle->offset_tab[TIME_STAMP][OFFSET], bundle->offset_tab[TIME_STAMP][STATE], return_signal->bundle_creation_timestamp);
 	sdnv_decode(bundle->mem->ptr + bundle->offset_tab[TIME_STAMP_SEQ_NR][OFFSET], bundel->offset_tab[TIME_STAMP_SEQ_NR][STATE], return_signal->bundle_creation_timestamp_seq);
 #endif
 }
 
-void copy_eid_to_signal(struct bundle_t *bundle, custody_signal_t *return_signal) {
+void custody_signal_copy_eid_to_signal(struct bundle_t *bundle, custody_signal_t *return_signal) {
 #if 0
 	sdnv_decode(bundle->mem->ptr + bundle->offset_tab[SRC_NODE][OFFSET], bundle->offset_tab[SRC_NODE][STATE], return_signal->src_node);
 

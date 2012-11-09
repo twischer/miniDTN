@@ -61,7 +61,7 @@ static uint16_t time;
 #endif
 
 void retransmit();
-void b_cust_init(void)
+void custody_basic_init(void)
 {
 #if 0
 	memb_init(&cust_mem);
@@ -446,35 +446,35 @@ void b_cust_del_from_list(uint16_t bundle_num)
 }
 */
 
-uint8_t b_cust_release(struct mmem *bundlemem)
+uint8_t custody_basic_release(struct mmem *bundlemem)
 {
 	return 0;
 }
-uint8_t b_cust_restransmit(struct mmem *bundlemem)
+uint8_t custody_basic_retransmit(struct mmem *bundlemem)
 {
 	return 0;
 }
-uint8_t b_cust_report(struct mmem *bundlemem, uint8_t status)
+uint8_t custody_basic_report(struct mmem *bundlemem, uint8_t status)
 {
 	return 0;
 }
-uint8_t b_cust_decide(struct mmem *bundlemem, uint32_t * bundle_number)
+uint8_t custody_basic_decide(struct mmem *bundlemem, uint32_t * bundle_number)
 {
 	return 0;
 }
-void b_cust_del_from_list(uint32_t bundle_num)
+void custody_basic_delete_from_list(uint32_t bundle_num)
 {
 	return;
 }
 
 const struct custody_driver custody_basic ={
 	"B_CUSTODY",
-	b_cust_init,
-	b_cust_release,
-	b_cust_report,
-	b_cust_decide,
-	b_cust_restransmit,
-	b_cust_del_from_list,
+	custody_basic_init,
+	custody_basic_release,
+	custody_basic_report,
+	custody_basic_decide,
+	custody_basic_retransmit,
+	custody_basic_delete_from_list,
 };
 /** @} */
 /** @} */

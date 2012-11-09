@@ -157,14 +157,14 @@ uint8_t b_stat_send(struct bundle_t *bundle,uint8_t status, uint8_t reason)
 }
 */
 
-uint8_t b_stat_send(struct bundle_t *bundle,uint8_t status, uint8_t reason)
+uint8_t statusreport_basic_send(struct bundle_t *bundle,uint8_t status, uint8_t reason)
 {
 	return 0;
 }
 
 const struct status_report_driver statusreport_basic = {
 	"B_STATUS",
-	b_stat_send,
+	statusreport_basic_send,
 };
 /** @} */
 /** @} */

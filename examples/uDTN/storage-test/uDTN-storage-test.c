@@ -75,7 +75,7 @@ uint8_t my_create_bundle(uint32_t sequence_number, uint32_t * bundle_number, uin
 	uint8_t payload[60];
 	uint32_t * bundle_number_ptr;
 
-	ptr = create_bundle();
+	ptr = bundle_create_bundle();
 	if( ptr == NULL ) {
 		printf("CREATE: Bundle %lu could not be allocated\n", sequence_number);
 		return 0;
@@ -83,14 +83,14 @@ uint8_t my_create_bundle(uint32_t sequence_number, uint32_t * bundle_number, uin
 
 	// Set all attributes
 	for(i=VERSION; i<=FRAG_OFFSET; i++) {
-		set_attr(ptr, i, &i);
+		bundle_set_attr(ptr, i, &i);
 	}
 
 	// But set the sequence number to something monotonically increasing
-	set_attr(ptr, TIME_STAMP_SEQ_NR, &sequence_number);
+	bundle_set_attr(ptr, TIME_STAMP_SEQ_NR, &sequence_number);
 
 	// Set the lifetime
-	set_attr(ptr, LIFE_TIME, &lifetime);
+	bundle_set_attr(ptr, LIFE_TIME, &lifetime);
 
 	// Fill the payload
 	for(i=0; i<60; i++) {
@@ -98,7 +98,7 @@ uint8_t my_create_bundle(uint32_t sequence_number, uint32_t * bundle_number, uin
 	}
 
 	// Add a payload block
-	add_block(ptr, BUNDLE_BLOCK_TYPE_PAYLOAD, 0, payload, 60);
+	bundle_add_block(ptr, BUNDLE_BLOCK_TYPE_PAYLOAD, 0, payload, 60);
 
 	// And tell storage to save the bundle
 	n = BUNDLE_STORAGE.save_bundle(ptr, &bundle_number_ptr);
@@ -134,7 +134,7 @@ uint8_t my_verify_bundle(uint32_t bundle_number, uint32_t sequence_number) {
 
 	// Verify the attributes
 	for(i=VERSION; i<=FRAG_OFFSET; i++) {
-		get_attr(ptr, i, &attr);
+		bundle_get_attr(ptr, i, &attr);
 
 		if( i == TIME_STAMP_SEQ_NR ||
 			i == LENGTH ||
@@ -150,13 +150,13 @@ uint8_t my_verify_bundle(uint32_t bundle_number, uint32_t sequence_number) {
 	}
 
 	// Verify the sequence number
-	get_attr(ptr, TIME_STAMP_SEQ_NR, &attr);
+	bundle_get_attr(ptr, TIME_STAMP_SEQ_NR, &attr);
 	if( attr != sequence_number ) {
 		printf("VERIFY: sequence number mismatch\n");
 		errors ++;
 	}
 
-	block = get_payload_block(ptr);
+	block = bundle_get_payload_block(ptr);
 	if( block == NULL ) {
 		printf("VERIFY: unable to get payload block\n");
 		errors ++;
@@ -170,7 +170,7 @@ uint8_t my_verify_bundle(uint32_t bundle_number, uint32_t sequence_number) {
 		}
 	}
 
-	bundle_dec(ptr);
+	bundle_decrement(ptr);
 
 	if( errors ) {
 		return 0;

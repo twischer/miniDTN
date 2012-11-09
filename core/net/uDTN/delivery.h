@@ -19,7 +19,7 @@
  * \brief unblocks a service that was previously delivering a bundle
  * \param bundle MMEM pointer
  */
-void unblock_service(struct mmem * bundlemem);
+void delivery_unblock_service(struct mmem * bundlemem);
 
 /**
 *   \brief delivers bundle to a registered service
@@ -27,7 +27,7 @@ void unblock_service(struct mmem * bundlemem);
 *   \param bundle pointer to bundle 
 *   \param registration pointer to registered service
 */
-int deliver_bundle(struct mmem *bundlemem);
+int delivery_deliver_bundle(struct mmem *bundlemem);
 
 #endif
 

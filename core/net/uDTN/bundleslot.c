@@ -66,7 +66,7 @@ void bundleslot_free(struct bundle_slot_t *bs)
 }
 
 /* Increment usage count */
-int bundleslot_inc(struct bundle_slot_t *bs)
+int bundleslot_increment(struct bundle_slot_t *bs)
 {
 	LOG(LOGD_DTN, LOG_SLOTS, LOGL_DBG, "bundleslot_inc(%p) to %u", bs, bs->ref+1);
 
@@ -78,7 +78,7 @@ int bundleslot_inc(struct bundle_slot_t *bs)
 }
 
 /* Decrement usage count, free if necessary */
-int bundleslot_dec(struct bundle_slot_t *bs)
+int bundleslot_decrement(struct bundle_slot_t *bs)
 {
 	LOG(LOGD_DTN, LOG_SLOTS, LOGL_DBG, "bundleslot_dec(%p) to %u", bs, bs->ref-1);
 

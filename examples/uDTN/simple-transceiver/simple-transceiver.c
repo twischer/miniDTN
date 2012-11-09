@@ -67,31 +67,31 @@ int send_bundle(uint32_t destination_node, uint32_t destination_service, uint8_t
 	int n;
 
 	/* Allocate memory for the outgoing bundle */
-	outgoing_bundle_memory = create_bundle();
+	outgoing_bundle_memory = bundle_create_bundle();
 	if( outgoing_bundle_memory == NULL ) {
 		printf("No memory to send bundle\n");
 		return -1;
 	}
 
 	/* Set the destination node and service */
-	set_attr(outgoing_bundle_memory, DEST_NODE, &destination_node);
-	set_attr(outgoing_bundle_memory, DEST_SERV, &destination_service);
+	bundle_set_attr(outgoing_bundle_memory, DEST_NODE, &destination_node);
+	bundle_set_attr(outgoing_bundle_memory, DEST_SERV, &destination_service);
 
 	/* The endpoint is a singleton endpoint */
 	tmp = BUNDLE_FLAG_SINGLETON;
-	set_attr(outgoing_bundle_memory, FLAGS, &tmp);
+	bundle_set_attr(outgoing_bundle_memory, FLAGS, &tmp);
 
 	/* Lifetime is a full hour */
 	tmp = 3600;
-	set_attr(outgoing_bundle_memory, LIFE_TIME, &tmp);
+	bundle_set_attr(outgoing_bundle_memory, LIFE_TIME, &tmp);
 
 	/* Add the payload block */
-	n = add_block(outgoing_bundle_memory, BUNDLE_BLOCK_TYPE_PAYLOAD, 0, payload, length);
+	n = bundle_add_block(outgoing_bundle_memory, BUNDLE_BLOCK_TYPE_PAYLOAD, 0, payload, length);
 	if( !n ) {
 		printf("Not enough memory for payload block\n");
 
 		/* If anything goes wrong, we have to free memory */
-		bundle_dec(outgoing_bundle_memory);
+		bundle_decrement(outgoing_bundle_memory);
 
 		return -1;
 	}
@@ -175,11 +175,11 @@ PROCESS_THREAD(simple_transceiver_process, ev, data)
 			/* We can read several attributes as defined in bundle.h */
 			uint32_t source_node;
 			uint32_t source_service;
-			get_attr(incoming_bundle_memory, SRC_NODE, &source_node);
-			get_attr(incoming_bundle_memory, SRC_SERV, &source_service);
+			bundle_get_attr(incoming_bundle_memory, SRC_NODE, &source_node);
+			bundle_get_attr(incoming_bundle_memory, SRC_SERV, &source_service);
 
 			/* We can obtain the bundle payload block like so: */
-			struct bundle_block_t * block = get_payload_block(incoming_bundle_memory);
+			struct bundle_block_t * block = bundle_get_payload_block(incoming_bundle_memory);
 
 			printf("Bundle received from ipn:%lu.%lu with %u bytes\n", source_node, source_service, block->block_size);
 

@@ -35,7 +35,7 @@
 #endif
 
 
-int dispatch_bundle(struct mmem *bundlemem) {
+int dispatching_dispatch_bundle(struct mmem *bundlemem) {
 	struct bundle_t *bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 	uint32_t * bundle_number;
 	int n;
@@ -76,7 +76,7 @@ int dispatch_bundle(struct mmem *bundlemem) {
 		}*/
 
 		// Decrease the reference counter - this should deallocate the bundle
-		bundle_dec(bundlemem);
+		bundle_decrement(bundlemem);
 
 		// Exit function, nothing else to do here
 		return 1;

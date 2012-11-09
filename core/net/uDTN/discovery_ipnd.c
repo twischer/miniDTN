@@ -25,9 +25,8 @@
 #include "clock.h"
 #include "net/mac/frame802154.h" // for IEEE802154_PANID
 
-#include "dtn-network.h"
+#include "dtn_network.h"
 #include "agent.h"
-#include "dtn-network.h" 
 #include "sdnv.h"
 #include "statistics.h"
 #include "convergence_layer.h"
@@ -42,8 +41,8 @@
 #define PRINTF(...)
 #endif
 
-void ipnd_dis_refresh_neighbour(rimeaddr_t * neighbour);
-void ipnd_dis_save_neighbour(rimeaddr_t * neighbour);
+void discovery_ipnd_refresh_neighbour(rimeaddr_t * neighbour);
+void discovery_ipnd_save_neighbour(rimeaddr_t * neighbour);
 
 #define DISCOVERY_NEIGHBOUR_CACHE	3
 #define DISCOVERY_CYCLE				1
@@ -84,7 +83,7 @@ uint16_t discovery_sequencenumber = 0;
 
 rimeaddr_t discovery_whitelist[DISCOVERY_IPND_WHITELIST];
 
-void ipnd_dis_init()
+void discovery_ipnd_init()
 {
 	// Enable discovery module
 	discovery_status = 1;
@@ -112,7 +111,7 @@ void ipnd_dis_init()
 * \brief sends a discovery message 
 * \param bundle pointer to a bundle (not used here)
 */
-uint8_t ipnd_dis_neighbour(rimeaddr_t * dest)
+uint8_t discovery_ipnd_is_neighbour(rimeaddr_t * dest)
 {
 	struct discovery_basic_neighbour_list_entry * entry;
 
@@ -136,7 +135,7 @@ uint8_t ipnd_dis_neighbour(rimeaddr_t * dest)
 /**
  * Enable discovery functionality
  */
-void ipnd_dis_enable()
+void discovery_ipnd_enable()
 {
 	discovery_status = 1;
 }
@@ -145,12 +144,12 @@ void ipnd_dis_enable()
  * Disable discovery functionality
  * Prevents outgoing packets from being sent
  */
-void ipnd_dis_disable()
+void discovery_ipnd_disable()
 {
 	discovery_status = 0;
 }
 
-uint8_t ipnd_parse_eid(uint32_t * eid, uint8_t * buffer, uint8_t length) {
+uint8_t discovery_ipnd_parse_eid(uint32_t * eid, uint8_t * buffer, uint8_t length) {
 	uint32_t sdnv_length = 0;
 	int offset = 0;
 
@@ -166,18 +165,18 @@ uint8_t ipnd_parse_eid(uint32_t * eid, uint8_t * buffer, uint8_t length) {
 	return offset + sdnv_length;
 }
 
-uint8_t ipnd_parse_service_block(uint8_t * buffer, uint8_t length) {
+uint8_t discovery_ipnd_parse_service_block(uint8_t * buffer, uint8_t length) {
 	return 0;
 }
 
-uint8_t ipnd_parse_bloomfilter(uint8_t * buffer, uint8_t length) {
+uint8_t discovery_ipnd_parse_bloomfilter(uint8_t * buffer, uint8_t length) {
 	return 0;
 }
 
 /**
  * DTN Network has received an incoming packet, save the sender as neighbour
  */
-void ipnd_dis_receive(rimeaddr_t * source, uint8_t * payload, uint8_t length)
+void discovery_ipnd_receive(rimeaddr_t * source, uint8_t * payload, uint8_t length)
 {
 	int offset = 0;
 
@@ -192,7 +191,7 @@ void ipnd_dis_receive(rimeaddr_t * source, uint8_t * payload, uint8_t length)
 	}
 
 	// Save all peer from which we receive packets to the active neighbours list
-	ipnd_dis_refresh_neighbour(source);
+	discovery_ipnd_refresh_neighbour(source);
 
 	// Version
 	if( payload[offset++] != 0x02 ) {
@@ -209,22 +208,22 @@ void ipnd_dis_receive(rimeaddr_t * source, uint8_t * payload, uint8_t length)
 
 	uint32_t eid = 0;
 	if( flags & IPND_FLAGS_SOURCE_EID ) {
-		offset += ipnd_parse_eid(&eid, &payload[offset], length - offset);
+		offset += discovery_ipnd_parse_eid(&eid, &payload[offset], length - offset);
 	}
 
 	if( flags & IPND_FLAGS_SERVICE_BLOCK ) {
-		offset += ipnd_parse_service_block(&payload[offset], length - offset);
+		offset += discovery_ipnd_parse_service_block(&payload[offset], length - offset);
 	}
 
 	if( flags & IPND_FLAGS_BLOOMFILTER ) {
-		offset += ipnd_parse_bloomfilter(&payload[offset], length - offset);
+		offset += discovery_ipnd_parse_bloomfilter(&payload[offset], length - offset);
 	}
 
 	PRINTF("IPND: Discovery from %lu with flags %02X and seqNo %u\n", eid, flags, sequenceNumber);
 }
 
 
-void ipnd_dis_send() {
+void discovery_ipnd_send() {
 	uint8_t ipnd_buffer[DISCOVERY_IPND_BUFFER_LEN];
 	char string_buffer[20];
 	int offset = 0;
@@ -284,7 +283,7 @@ void ipnd_dis_send() {
  * Yes: refresh timestamp
  * No:  Create entry
  */
-void ipnd_dis_refresh_neighbour(rimeaddr_t * neighbour)
+void discovery_ipnd_refresh_neighbour(rimeaddr_t * neighbour)
 {
 #if DISCOVERY_IPND_WHITELIST > 0
 	int i;
@@ -319,13 +318,13 @@ void ipnd_dis_refresh_neighbour(rimeaddr_t * neighbour)
 		}
 	}
 
-	ipnd_dis_save_neighbour(neighbour);
+	discovery_ipnd_save_neighbour(neighbour);
 }
 
 /**
  * Marks a neighbour as 'dead' after multiple transmission attempts have failed
  */
-void ipnd_dis_delete_neighbour(rimeaddr_t * neighbour)
+void discovery_ipnd_delete_neighbour(rimeaddr_t * neighbour)
 {
 	struct discovery_basic_neighbour_list_entry * entry;
 
@@ -356,7 +355,7 @@ void ipnd_dis_delete_neighbour(rimeaddr_t * neighbour)
 /**
  * Save neighbour to local cache
  */
-void ipnd_dis_save_neighbour(rimeaddr_t * neighbour)
+void discovery_ipnd_save_neighbour(rimeaddr_t * neighbour)
 {
 	if( discovery_status == 0 ) {
 		// Not initialized yet
@@ -364,7 +363,7 @@ void ipnd_dis_save_neighbour(rimeaddr_t * neighbour)
 	}
 
 	// If we know that neighbour already, no need to re-add it
-	if( ipnd_dis_neighbour(neighbour) ) {
+	if( discovery_ipnd_is_neighbour(neighbour) ) {
 		return;
 	}
 
@@ -399,7 +398,7 @@ void ipnd_dis_save_neighbour(rimeaddr_t * neighbour)
 /**
  * Returns the list of currently known neighbours
  */
-struct discovery_neighbour_list_entry * ipnd_dis_list_neighbours()
+struct discovery_neighbour_list_entry * discovery_ipnd_list_neighbours()
 {
 	return list_head(neighbour_list);
 }
@@ -407,7 +406,7 @@ struct discovery_neighbour_list_entry * ipnd_dis_list_neighbours()
 /**
  * Stops pending discoveries
  */
-void ipnd_dis_stop_pending()
+void discovery_ipnd_stop_pending()
 {
 
 }
@@ -434,7 +433,7 @@ PROCESS_THREAD(discovery_process, ev, data)
 					entry = entry->next) {
 				if( entry->active && (clock_seconds() - entry->timestamp_last) > DISCOVERY_NEIGHBOUR_TIMEOUT ) {
 					PRINTF("DISCOVERY: Neighbour %u:%u timed out: %lu vs. %lu = %lu\n", entry->neighbour.u8[0], entry->neighbour.u8[1], clock_time(), entry->timestamp_last, clock_time() - entry->timestamp_last);
-					ipnd_dis_delete_neighbour(&entry->neighbour);
+					discovery_ipnd_delete_neighbour(&entry->neighbour);
 				}
 			}
 
@@ -445,7 +444,7 @@ PROCESS_THREAD(discovery_process, ev, data)
 		 * Regularly send out our discovery beacon
 		 */
 		if( etimer_expired(&discovery_cycle_timer) ) {
-			ipnd_dis_send();
+			discovery_ipnd_send();
 			etimer_reset(&discovery_cycle_timer);
 		}
 	}
@@ -455,16 +454,16 @@ PROCESS_THREAD(discovery_process, ev, data)
 
 const struct discovery_driver discovery_ipnd = {
 	"IPND_DISCOVERY",
-	ipnd_dis_init,
-	ipnd_dis_neighbour,
-	ipnd_dis_enable,
-	ipnd_dis_disable,
-	ipnd_dis_receive,
-	ipnd_dis_refresh_neighbour,
-	ipnd_dis_delete_neighbour,
-	ipnd_dis_neighbour,
-	ipnd_dis_list_neighbours,
-	ipnd_dis_stop_pending,
+	discovery_ipnd_init,
+	discovery_ipnd_is_neighbour,
+	discovery_ipnd_enable,
+	discovery_ipnd_disable,
+	discovery_ipnd_receive,
+	discovery_ipnd_refresh_neighbour,
+	discovery_ipnd_delete_neighbour,
+	discovery_ipnd_is_neighbour,
+	discovery_ipnd_list_neighbours,
+	discovery_ipnd_stop_pending,
 };
 /** @} */
 /** @} */

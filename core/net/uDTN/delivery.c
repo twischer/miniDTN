@@ -37,7 +37,7 @@
 #define PRINTF(...)
 #endif
 
-void unblock_service(struct mmem * bundlemem) {
+void delivery_unblock_service(struct mmem * bundlemem) {
 	struct registration * n = NULL;
 	struct bundle_t * bundle = NULL;
 
@@ -49,7 +49,7 @@ void unblock_service(struct mmem * bundlemem) {
 	bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 	if( bundle == NULL ) {
 		LOG(LOGD_DTN, LOG_BUNDLE, LOGL_ERR, "invalid bundle");
-		bundle_dec(bundlemem);
+		bundle_decrement(bundlemem);
 		return;
 	}
 
@@ -77,7 +77,7 @@ void unblock_service(struct mmem * bundlemem) {
  * \param bundlemem Pointer to the MMEM bundle representation
  * \returns <0 on error >=0 on success
  */
-int deliver_bundle(struct mmem *bundlemem) {
+int delivery_deliver_bundle(struct mmem *bundlemem) {
 	struct registration * n = NULL;
 	struct bundle_t * bundle = NULL;
 	int delivered = 0;
@@ -90,13 +90,13 @@ int deliver_bundle(struct mmem *bundlemem) {
 	bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 	if( bundle == NULL ) {
 		LOG(LOGD_DTN, LOG_BUNDLE, LOGL_ERR, "invalid bundle");
-		bundle_dec(bundlemem);
+		bundle_decrement(bundlemem);
 		return -1;
 	}
 
 	// Check if the bundle has been delivered before
 	if( REDUNDANCE.check(bundlemem) ) {
-		bundle_dec(bundlemem);
+		bundle_decrement(bundlemem);
 		return -1;
 	}
 
@@ -130,7 +130,7 @@ int deliver_bundle(struct mmem *bundlemem) {
 
 	if( !delivered ) {
 		// if we did not find a registration, deallocate the memory
-		bundle_dec(bundlemem);
+		bundle_decrement(bundlemem);
 
 		// Return error code
 		return -1;

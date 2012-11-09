@@ -91,41 +91,41 @@ void send_bundle(uint8_t * payload, uint8_t length)
 {
 	uint32_t tmp;
 
-	create_bundle(&bundle_out);
+	bundle_create_bundle(&bundle_out);
 
 	/* Source and destination */
 	tmp = CONF_SEND_TO_NODE;
-	set_attr(&bundle_out, DEST_NODE, &tmp);
+	bundle_set_attr(&bundle_out, DEST_NODE, &tmp);
 	tmp = CONF_SEND_TO_APP;
-	set_attr(&bundle_out, DEST_SERV, &tmp);
+	bundle_set_attr(&bundle_out, DEST_SERV, &tmp);
 
 	tmp = dtn_node_id;
-	set_attr(&bundle_out, SRC_NODE, &tmp);
+	bundle_set_attr(&bundle_out, SRC_NODE, &tmp);
 	tmp = CONF_SEND_FROM_APP;
-	set_attr(&bundle_out, SRC_SERV,&tmp);
+	bundle_set_attr(&bundle_out, SRC_SERV,&tmp);
 
 	tmp = 0;
-	set_attr(&bundle_out, CUST_NODE, &tmp);
-	set_attr(&bundle_out, CUST_SERV, &tmp);
-	set_attr(&bundle_out, REP_NODE, &tmp);
-	set_attr(&bundle_out, REP_SERV, &tmp);
+	bundle_set_attr(&bundle_out, CUST_NODE, &tmp);
+	bundle_set_attr(&bundle_out, CUST_SERV, &tmp);
+	bundle_set_attr(&bundle_out, REP_NODE, &tmp);
+	bundle_set_attr(&bundle_out, REP_SERV, &tmp);
 
 	tmp = 0x10; // Endpoint is Singleton
-	set_attr(&bundle_out, FLAGS, &tmp);
+	bundle_set_attr(&bundle_out, FLAGS, &tmp);
 
 	// Lifetime of a full day
 	tmp = 86400;
-	set_attr(&bundle_out, LIFE_TIME, &tmp);
+	bundle_set_attr(&bundle_out, LIFE_TIME, &tmp);
 
 	/**
 	 * Hardcoded creation timestamp based on:
 	 * date -j +%s   -    date -j 010100002000 +%s
 	 */
 	tmp = 388152261 + clock_seconds();
-	set_attr(&bundle_out, TIME_STAMP, &tmp);
+	bundle_set_attr(&bundle_out, TIME_STAMP, &tmp);
 
 	// Add the payload block
-	add_block(&bundle_out, 1, 0, payload, length);
+	bundle_add_block(&bundle_out, 1, 0, payload, length);
 
 	// Submit the bundle to the agent
 	process_post(&agent_process, dtn_send_bundle_event, (void *) &bundle_out);
@@ -295,10 +295,10 @@ PROCESS_THREAD(temperature_process, ev, data)
 
 			uint8_t payload_buffer[80];
 
-			block = get_block(bundle);
+			block = bundle_get_block(bundle);
 			memcpy(payload_buffer, MMEM_PTR(&block->payload), block->block_size);
 
-			delete_bundle(bundle);
+			bundle_delete_bundle(bundle);
 
 			printf("APP: Payload (%u): ", block->block_size);
 			int i;
@@ -361,7 +361,7 @@ PROCESS_THREAD(dtnping_process, ev, data)
 		uint8_t payload_length;
 		uint8_t offset;
 
-		block_in = get_block(bundle_in);
+		block_in = bundle_get_block(bundle_in);
 		payload_length = block_in->block_size;
 
 		// Safeguard agains buffer overflow
@@ -373,15 +373,15 @@ PROCESS_THREAD(dtnping_process, ev, data)
 		memcpy(payload_buffer, MMEM_PTR(&block_in->payload), payload_length);
 
 		// Extract the source information to send a reply back
-		get_attr(bundle_in, SRC_NODE, &source_node);
-		get_attr(bundle_in, SRC_SERV, &source_service);
+		bundle_get_attr(bundle_in, SRC_NODE, &source_node);
+		bundle_get_attr(bundle_in, SRC_SERV, &source_service);
 
 		// Extract timestamp and lifetime from incoming bundle
-		get_attr(bundle_in, TIME_STAMP, &incoming_timestamp);
-		get_attr(bundle_in, LIFE_TIME, &incoming_lifetime);
+		bundle_get_attr(bundle_in, TIME_STAMP, &incoming_timestamp);
+		bundle_get_attr(bundle_in, LIFE_TIME, &incoming_lifetime);
 
 		// Delete the incoming bundle
-		delete_bundle(bundle_in);
+		bundle_delete_bundle(bundle_in);
 
 		bundles_recv++;
         uint32_t seqno = (((uint32_t) (payload_buffer[0] & 0xFF)) <<  0) +
@@ -392,35 +392,35 @@ PROCESS_THREAD(dtnping_process, ev, data)
 		printf("PING: PING %lu (SeqNo %lu) received\n", bundles_recv, seqno);
 
 		// Create the reply bundle
-		create_bundle(&bundle_out);
+		bundle_create_bundle(&bundle_out);
 
 		// Set the reply EID to the incoming bundle information
-		set_attr(&bundle_out, DEST_NODE, &source_node);
-		set_attr(&bundle_out, DEST_SERV, &source_service);
+		bundle_set_attr(&bundle_out, DEST_NODE, &source_node);
+		bundle_set_attr(&bundle_out, DEST_SERV, &source_service);
 
 		// Make us the sender, the custodian and the report to
 		tmp = dtn_node_id;
-		set_attr(&bundle_out, SRC_NODE, &tmp);
-		set_attr(&bundle_out, CUST_NODE, &tmp);
-		set_attr(&bundle_out, CUST_SERV, &tmp);
-		set_attr(&bundle_out, REP_NODE, &tmp);
-		set_attr(&bundle_out, REP_SERV, &tmp);
+		bundle_set_attr(&bundle_out, SRC_NODE, &tmp);
+		bundle_set_attr(&bundle_out, CUST_NODE, &tmp);
+		bundle_set_attr(&bundle_out, CUST_SERV, &tmp);
+		bundle_set_attr(&bundle_out, REP_NODE, &tmp);
+		bundle_set_attr(&bundle_out, REP_SERV, &tmp);
 
 		// Set our service to 11 [DTN_PING_ENDPOINT] (IBR-DTN expects that)
 		tmp = DTN_PING_ENDPOINT;
-		set_attr(&bundle_out, SRC_SERV, &tmp);
+		bundle_set_attr(&bundle_out, SRC_SERV, &tmp);
 
 		// Now set the flags
 		tmp = 0x10; // Endpoint is Singleton
-		set_attr(&bundle_out, FLAGS, &tmp);
+		bundle_set_attr(&bundle_out, FLAGS, &tmp);
 
 		// Set the same lifetime and timestamp as the incoming bundle
-		set_attr(&bundle_out, LIFE_TIME, &incoming_lifetime);
-		set_attr(&bundle_out, TIME_STAMP, &incoming_timestamp);
+		bundle_set_attr(&bundle_out, LIFE_TIME, &incoming_lifetime);
+		bundle_set_attr(&bundle_out, TIME_STAMP, &incoming_timestamp);
 
 		// Copy payload from incoming bundle
 		// Flag 0x08 is last_block Flag, add_block takes care of this
-		add_block(&bundle_out, 1, 0, payload_buffer, payload_length);
+		bundle_add_block(&bundle_out, 1, 0, payload_buffer, payload_length);
 
 		// And submit the bundle to the agent
 		process_post(&agent_process, dtn_send_bundle_event, (void *) &bundle_out);

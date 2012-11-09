@@ -102,17 +102,17 @@ static uint8_t bundle_list_changed = 0;
 /**
  * "Internal" functions
  */
-void g_store_save_list_on_change();
-void g_store_prune();
-uint16_t del_bundle(uint32_t bundle_number, uint8_t reason);
-struct mmem * read_bundle(uint32_t bundle_number);
-void g_store_read_list();
-void g_store_save_list();
+void storage_coffee_save_list_on_change();
+void storage_coffee_store_prune();
+uint16_t storage_coffee_delete_bundle(uint32_t bundle_number, uint8_t reason);
+struct mmem * storage_coffee_read_bundle(uint32_t bundle_number);
+void storage_coffee_read_list();
+void storage_coffee_save_list();
 
 /**
 * /brief called by agent at startup
 */
-void init(void)
+void storage_mmem_init(void)
 {
 	// Initialize the bundle list
 	list_init(bundle_list);
@@ -124,17 +124,17 @@ void init(void)
 	bundle_list_changed = 0;
 
 	// Try to restore our bundle list from the file system
-	g_store_read_list();
+	storage_coffee_read_list();
 
 	// Set the timer to regularly prune expired bundles
-	ctimer_set(&g_store_timer, CLOCK_SECOND*5, g_store_prune, NULL);
+	ctimer_set(&g_store_timer, CLOCK_SECOND*5, storage_coffee_store_prune, NULL);
 
 	// Set the timer to regularly write the list of bundles to flash
-	ctimer_set(&g_store_write_timer, CLOCK_SECOND * STORAGE_WRITE_INTERVAL, g_store_save_list_on_change, NULL);
+	ctimer_set(&g_store_write_timer, CLOCK_SECOND * STORAGE_WRITE_INTERVAL, storage_coffee_save_list_on_change, NULL);
 }
 
 
-void g_store_save_list_on_change()
+void storage_coffee_save_list_on_change()
 {
 	printf("g_store_save_list_on_change()\n");
 
@@ -148,7 +148,7 @@ void g_store_save_list_on_change()
 		RADIO_SAFE_STATE_OFF();
 
 		// And create a new one
-		g_store_save_list();
+		storage_coffee_save_list();
 
 		bundle_list_changed = 0;
 	}
@@ -161,7 +161,7 @@ void g_store_save_list_on_change()
  * \brief Store the current bundle list into a file
  * FIXME: This function is actually not necessary, we could also list the directory on startup and restore bundles that way
  */
-void g_store_save_list()
+void storage_coffee_save_list()
 {
 	int fd_write;
 	int n;
@@ -202,7 +202,7 @@ void g_store_save_list()
 /**
  * Restore the bundle list from a file
  */
-void g_store_read_list()
+void storage_coffee_read_list()
 {
 	int fd_read;
 	int n;
@@ -254,7 +254,7 @@ void g_store_read_list()
 
 		// Now that we have the index entry, we have to try to read the bundle
 		struct mmem * testbundle = NULL;
-		testbundle = read_bundle(entry->bundle_num);
+		testbundle = storage_coffee_read_bundle(entry->bundle_num);
 		if( testbundle == NULL ) {
 			printf("STORAGE: unable to restore bundle %lu\n", entry->bundle_num);
 			list_remove(bundle_list, entry);
@@ -262,7 +262,7 @@ void g_store_read_list()
 			continue;
 		}
 
-		bundle_dec(testbundle);
+		bundle_decrement(testbundle);
 	}
 
 	cfs_close(fd_read);
@@ -273,7 +273,7 @@ void g_store_read_list()
 /**
 * \brief deletes expired bundles from storage
 */
-void g_store_prune()
+void storage_coffee_store_prune()
 {
 	uint32_t elapsed_time;
 	struct file_list_entry_t * entry = NULL;
@@ -286,7 +286,7 @@ void g_store_prune()
 
 		if( entry->lifetime < elapsed_time ) {
 			PRINTF("STORAGE: bundle lifetime expired of bundle %lu\n", entry->bundle_num);
-			del_bundle(entry->bundle_num, REASON_LIFETIME_EXPIRED);
+			storage_coffee_delete_bundle(entry->bundle_num, REASON_LIFETIME_EXPIRED);
 		}
 	}
 
@@ -297,7 +297,7 @@ void g_store_prune()
 /**
  * \brief Sets the storage to its initial state
  */
-void reinit(void)
+void storage_mmem_reinit(void)
 {
 	// Remove all bundles from storage
 	while(bundles_in_storage > 0) {
@@ -308,7 +308,7 @@ void reinit(void)
 			break;
 		}
 
-		del_bundle(entry->bundle_num, REASON_DEPLETED_STORAGE);
+		storage_coffee_delete_bundle(entry->bundle_num, REASON_DEPLETED_STORAGE);
 	}
 
 	RADIO_SAFE_STATE_ON();
@@ -327,7 +327,7 @@ void reinit(void)
 * \param bundle pointer to the bundle
 * \return the bundle number given to the bundle or <0 on errors
 */
-uint8_t save_bundle(struct mmem * bundlemem, uint32_t ** bundle_number_ptr)
+uint8_t storage_coffee_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_number_ptr)
 {
 	struct bundle_t * bundle = NULL;
 	struct file_list_entry_t * entry = NULL;
@@ -359,7 +359,7 @@ uint8_t save_bundle(struct mmem * bundlemem, uint32_t ** bundle_number_ptr)
 
 		if( bundle_number == entry->bundle_num ) {
 			PRINTF("STORAGE: %lu is the same bundle\n", entry->bundle_num);
-			bundle_dec(bundlemem);
+			bundle_decrement(bundlemem);
 			return entry->bundle_num;
 		}
 	}
@@ -368,7 +368,7 @@ uint8_t save_bundle(struct mmem * bundlemem, uint32_t ** bundle_number_ptr)
 	entry = memb_alloc(&bundle_mem);
 	if( entry == NULL ) {
 		printf("STORAGE: unable to allocate struct, cannot store bundle\n");
-		bundle_dec(bundlemem);
+		bundle_decrement(bundlemem);
 		return 0;
 	}
 
@@ -389,7 +389,7 @@ uint8_t save_bundle(struct mmem * bundlemem, uint32_t ** bundle_number_ptr)
 	if( n == STORAGE_FILE_NAME_LENGTH ) {
 		printf("STORAGE: file name buffer is too short\n");
 		memb_free(&bundle_mem, entry);
-		bundle_dec(bundlemem);
+		bundle_decrement(bundlemem);
 		return 0;
 	}
 
@@ -400,7 +400,7 @@ uint8_t save_bundle(struct mmem * bundlemem, uint32_t ** bundle_number_ptr)
 	if( n < 0 ) {
 		printf("STORAGE: unable to reserve %u bytes for bundle\n", bundlemem->size);
 		memb_free(&bundle_mem, entry);
-		bundle_dec(bundlemem);
+		bundle_decrement(bundlemem);
 		RADIO_SAFE_STATE_OFF();
 		return 0;
 	}
@@ -411,7 +411,7 @@ uint8_t save_bundle(struct mmem * bundlemem, uint32_t ** bundle_number_ptr)
 		// Unable to open file, abort here
 		printf("STORAGE: unable to open file %s, cannot save bundle\n", bundle_filename);
 		memb_free(&bundle_mem, entry);
-		bundle_dec(bundlemem);
+		bundle_decrement(bundlemem);
 		RADIO_SAFE_STATE_OFF();
 		return 0;
 	}
@@ -423,7 +423,7 @@ uint8_t save_bundle(struct mmem * bundlemem, uint32_t ** bundle_number_ptr)
 		cfs_close(fd_write);
 		cfs_remove(bundle_filename);
 		memb_free(&bundle_mem, entry);
-		bundle_dec(bundlemem);
+		bundle_decrement(bundlemem);
 		RADIO_SAFE_STATE_OFF();
 		return 0;
 	}
@@ -443,7 +443,7 @@ uint8_t save_bundle(struct mmem * bundlemem, uint32_t ** bundle_number_ptr)
 	bundles_in_storage++;
 
 	// Now we have to free the incoming bundle slot
-	bundle_dec(bundlemem);
+	bundle_decrement(bundlemem);
 
 	// Now copy over the STATIC pointer to the bundle number, so that
 	// the caller can stick it into an event
@@ -458,7 +458,7 @@ uint8_t save_bundle(struct mmem * bundlemem, uint32_t ** bundle_number_ptr)
 * \param reason reason code
 * \return 1 on success or 0 on error
 */
-uint16_t del_bundle(uint32_t bundle_number, uint8_t reason)
+uint16_t storage_coffee_delete_bundle(uint32_t bundle_number, uint8_t reason)
 {
 	struct bundle_t * bundle = NULL;
 	struct file_list_entry_t * entry = NULL;
@@ -488,7 +488,7 @@ uint16_t del_bundle(uint32_t bundle_number, uint8_t reason)
 		// REASON_DELIVERED means "bundle delivered" and does not need a report
 		// FIXME: really?
 
-		bundlemem = read_bundle(bundle_number);
+		bundlemem = storage_coffee_read_bundle(bundle_number);
 		if( bundlemem == NULL ) {
 			printf("STORAGE: unable to read back bundle %lu\n", bundle_number);
 			return 0;
@@ -503,7 +503,7 @@ uint16_t del_bundle(uint32_t bundle_number, uint8_t reason)
 			}
 		}
 
-		bundle_dec(bundlemem);
+		bundle_decrement(bundlemem);
 	}
 
 	// Remove the bundle from the list
@@ -527,7 +527,7 @@ uint16_t del_bundle(uint32_t bundle_number, uint8_t reason)
 	bundles_in_storage--;
 
 	// Notified the agent, that a bundle has been deleted
-	agent_del_bundle(bundle_number);
+	agent_delete_bundle(bundle_number);
 
 	// Free the storage struct
 	memb_free(&bundle_mem, entry);
@@ -540,7 +540,7 @@ uint16_t del_bundle(uint32_t bundle_number, uint8_t reason)
 * \param bundle_num bundle number to read
 * \return 1 on success or 0 on error
 */
-struct mmem * read_bundle(uint32_t bundle_number)
+struct mmem * storage_coffee_read_bundle(uint32_t bundle_number)
 {
 	struct bundle_t * bundle = NULL;
 	struct file_list_entry_t * entry = NULL;
@@ -566,7 +566,7 @@ struct mmem * read_bundle(uint32_t bundle_number)
 		return 0;
 	}
 
-	bundlemem = create_bundle();
+	bundlemem = bundle_create_bundle();
 	if( bundlemem == NULL ) {
 		printf("STORAGE: cannot allocate memory for bundle %lu\n", bundle_number);
 		return NULL;
@@ -575,7 +575,7 @@ struct mmem * read_bundle(uint32_t bundle_number)
 	n = mmem_realloc(bundlemem, entry->file_size);
 	if( !n ) {
 		printf("STORAGE: unable to realloc enough memory\n");
-		bundle_dec(bundlemem);
+		bundle_decrement(bundlemem);
 		return NULL;
 	}
 
@@ -587,7 +587,7 @@ struct mmem * read_bundle(uint32_t bundle_number)
 	n = snprintf(bundle_filename, STORAGE_FILE_NAME_LENGTH, "%lu.b", entry->bundle_num);
 	if( n == STORAGE_FILE_NAME_LENGTH ) {
 		printf("STORAGE: file name buffer is too short\n");
-		bundle_dec(bundlemem);
+		bundle_decrement(bundlemem);
 		return NULL;
 	}
 
@@ -598,7 +598,7 @@ struct mmem * read_bundle(uint32_t bundle_number)
 	if( fd_read == -1 ) {
 		// Unable to open file, abort here
 		printf("STORAGE: unable to open file %s, cannot read bundle\n", bundle_filename);
-		bundle_dec(bundlemem);
+		bundle_decrement(bundlemem);
 		return NULL;
 	}
 
@@ -606,7 +606,7 @@ struct mmem * read_bundle(uint32_t bundle_number)
 	n = cfs_read(fd_read, MMEM_PTR(bundlemem), bundlemem->size);
 	if( n != bundlemem->size ) {
 		printf("STORAGE: unable to read %u bytes from file %s, aborting\n", bundlemem->size, bundle_filename);
-		bundle_dec(bundlemem);
+		bundle_decrement(bundlemem);
 		cfs_close(fd_read);
 		return NULL;
 	}
@@ -624,7 +624,7 @@ struct mmem * read_bundle(uint32_t bundle_number)
 * \param bundle pointer to a bundle struct (not used here)
 * \return number of free slots
 */
-uint16_t free_space(struct mmem * bundlemem)
+uint16_t storage_coffee_get_free_space(struct mmem * bundlemem)
 {
 	return BUNDLE_STORAGE_SIZE - bundles_in_storage;
 }
@@ -632,28 +632,28 @@ uint16_t free_space(struct mmem * bundlemem)
 /**
 * \returns the number of saved bundles
 */
-uint16_t get_g_bundel_num(void){
+uint16_t storage_coffee_get_bundle_numbers(void){
 	return bundles_in_storage;
 }
 
 /**
  * \returns pointer to first bundle list entry
  */
-struct storage_entry_t * get_bundles(void)
+struct storage_entry_t * storage_coffee_get_bundles(void)
 {
 	return (struct storage_entry_t *) list_head(bundle_list);
 }
 
 const struct storage_driver storage_coffee = {
 	"G_STORAGE",
-	init,
-	reinit,
-	save_bundle,
-	del_bundle,
-	read_bundle,
-	free_space,
-	get_g_bundel_num,
-	get_bundles,
+	storage_mmem_init,
+	storage_mmem_reinit,
+	storage_coffee_save_bundle,
+	storage_coffee_delete_bundle,
+	storage_coffee_read_bundle,
+	storage_coffee_get_free_space,
+	storage_coffee_get_bundle_numbers,
+	storage_coffee_get_bundles,
 };
 /** @} */
 /** @} */
