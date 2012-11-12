@@ -5,10 +5,6 @@
 #undef QUEUEBUF_CONF_NUM
 #define QUEUEBUF_CONF_NUM 0
 
-// Disable uIP6's buffer
-#undef UIP_CONF_BUFFER_SIZE
-#define UIP_CONF_BUFFER_SIZE 0
- 
 // Set our MMEM size
 #undef MMEM_CONF_SIZE
 #define MMEM_CONF_SIZE 4150
@@ -21,16 +17,6 @@
 #define STATISTICS_CONF_ELEMENTS 4
 #define STATISTICS_CONF_PERIOD 3600
 #define STATISTICS_CONF_CONTACTS 15
-
-// Set the link layer compatibility to IBR-DTN
-#define IBR_COMP 1
-
-// Disable profiling to save memory
-#undef PROFILES_CONF_MAX
-#define PROFILES_CONF_MAX 0 
-
-#undef PROFILES_CONF_STACKSIZE
-#define PROFILES_CONF_STACKSIZE 0
 
 // Set our channel
 #undef CHANNEL_802_15_4
