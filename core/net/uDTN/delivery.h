@@ -3,10 +3,11 @@
  * @{
  */
 
- /**
+/**
  * \file
- *         Headerfile for Bundle delivery
+ * \brief Headerfile for Bundle delivery
  *
+ * \author Georg von Zengen <vonzeng@ibr.cs.tu-bs.de>
  */
  
 #ifndef DELIVERY_H
@@ -17,17 +18,16 @@
 
 /**
  * \brief unblocks a service that was previously delivering a bundle
- * \param bundle MMEM pointer
+ * \param bundlemem Pointer to MMEM structure
  */
 void delivery_unblock_service(struct mmem * bundlemem);
 
 /**
 *   \brief delivers bundle to a registered service
 *
-*   \param bundle pointer to bundle 
-*   \param registration pointer to registered service
+*   \param bundlemem Pointer to MMEM structure
 */
-int delivery_deliver_bundle(struct mmem *bundlemem);
+int delivery_deliver_bundle(struct mmem * bundlemem);
 
 #endif
 

@@ -1,3 +1,15 @@
+/**
+ * \addtogroup bprocess
+ * @{
+ */
+
+/**
+ * \file
+ * \brief Bundle Slot memory management
+ *
+ * \author Daniel Willmann <daniel@totalueberwachung.de>
+ */
+
 #include <stdint.h>
 #include <string.h>
 #include <stdio.h>

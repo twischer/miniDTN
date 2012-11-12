@@ -1,18 +1,19 @@
 /**
- * \addtogroup hashing
+ * \addtogroup hash
  * @{
  */
 
- /**
+/**
  * \defgroup hash_xor 'Hashing' implementation using the XOR function
  *
  * @{
  */
 
 /**
-* \file Implementation of the hashing interface based on the XOR function
-* \author Wolf-Bastian Pšttner <poettner@ibr.cs.tu-bs.de>
-*/
+ * \file
+ * \brief Implementation of the hashing interface based on the XOR function
+ * \author Wolf-Bastian Poettner <poettner@ibr.cs.tu-bs.de>
+ */
 
 #include <stdio.h>
 #include <string.h> // memcpy

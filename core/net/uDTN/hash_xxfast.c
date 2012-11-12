@@ -1,18 +1,20 @@
 /**
- * \addtogroup hashing
+ * \addtogroup hash
  * @{
  */
 
- /**
+/**
  * \defgroup hash_xxfast Hashing implementation using the xxFAST algorithm
  *
  * @{
  */
 
 /**
-* \file Implementation of the hashing interface based on the xxFAST algorithm
-* \author Wolf-Bastian Pšttner <poettner@ibr.cs.tu-bs.de>
-*/
+ * \file
+ * \brief Implementation of the hashing interface based on the xxFAST algorithm
+ * \author Yann Collet
+ * \author Wolf-Bastian Poettner <poettner@ibr.cs.tu-bs.de>
+ */
 
 /*
    xxHash - Fast Hash algorithm

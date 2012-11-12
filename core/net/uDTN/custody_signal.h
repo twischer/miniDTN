@@ -1,3 +1,14 @@
+/**
+ * \addtogroup admininistrative_records
+ * @{
+ */
+
+/**
+ * \file
+ * \brief Definition of Custody Signals
+ * \author Georg von Zengen <vonzeng@ibr.cs.tu-bs.de>
+ */
+
 #ifndef CUSTODY_SIGNAL_H
 #define CUSTODY_SIGNAL_H
 

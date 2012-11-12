@@ -1,19 +1,24 @@
- /**
- * \defgroup agent Bundle Protocol
+/**
+ * \addtogroup net
+ * @{
+ */
+
+/**
+ * \defgroup agent uDTN: Bundle Protocol stack
  *
  * @{
  */
- 
- /**
- * \defgroup bprocess Bundle Protocol Process
+
+/**
+ * \defgroup bprocess Bundle Protocol Agent
  *
  * @{
  */
+
 /** 
-* \file
-*
-*/
- 
+ * \file
+ * \author Georg von Zengen <vonzeng@ibr.cs.tu-bs.de>
+ */
 
 #ifndef AGENT_H
 #define AGENT_H
@@ -63,5 +68,6 @@ void agent_delete_bundle(uint32_t bundle_number);
 #define LOG_DISCOVERY	8
 #endif
 
+/** @} */
 /** @} */
 /** @} */

@@ -3,7 +3,7 @@
  * @{
  */
 
- /**
+/**
  * \defgroup custody Custody modules
  *
  * @{
@@ -11,9 +11,10 @@
 
 /**
  * \file 
- * this file defines the interface for custody modules
- * \author Georg von Zengen (vonzeng@ibr.cs.tu-bs.de)
+ * \brief this file defines the interface for custody modules
+ * \author Georg von Zengen <vonzeng@ibr.cs.tu-bs.de>
  */
+
 #ifndef __CUSTODY_H__
 #define __CUSTODY_H__
 

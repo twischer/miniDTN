@@ -1,17 +1,19 @@
 /**
- * \addtogroup bstorage
+ * \addtogroup bundle_storage
  * @{
  */
 
- /**
- * \defgroup r_storage RAM storage modules
+/**
+ * \defgroup bundle_storage_mmem MMEM-based temporary Storage
  *
  * @{
  */
 
 /**
  * \file 
- * \author Georg von Zengen (vonzeng@ibr.cs.tu-bs.de)
+ * \author Georg von Zengen <vonzeng@ibr.cs.tu-bs.de>
+ * \author Daniel Willmann <daniel@totalueberwachung.de>
+ * \author Wolf-Bastian Poettner <poettner@ibr.cs.tu-bs.de>
  */
 
 #include <stdlib.h>
@@ -84,8 +86,8 @@ void storage_mmem_update_statistics() {
 }
 
 /**
-* /brief called by agent at startup
-*/
+ * \brief called by agent at startup
+ */
 void storage_mmem_init(void)
 {
 	LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "storage_mmem init");
@@ -108,8 +110,8 @@ void storage_mmem_init(void)
 }
 
 /**
-* \brief deletes expired bundles from storage
-*/
+ * \brief deletes expired bundles from storage
+ */
 void storage_mmem_prune()
 {
 	uint32_t elapsed_time;
@@ -132,6 +134,9 @@ void storage_mmem_prune()
 	ctimer_restart(&r_store_timer);
 }
 
+/**
+ * \brief Sets the storage to its initial state
+ */
 void storage_mmem_reinit(void)
 {
 	struct bundle_list_entry_t * entry = NULL;
@@ -148,9 +153,9 @@ void storage_mmem_reinit(void)
 }
 
 /**
- * This function delete as many bundles from the storage as necessary to
- * have at least one slot and the number of required of memory free
- * besides the high watermark for MMEM
+ * \brief This function delete as many bundles from the storage as necessary to have at least one slot and the number of required of memory free
+ * \param bundlemem Pointer to the MMEM struct containing the bundle
+ * \return 1 on success, 0 if no room could be made free
  */
 uint8_t storage_mmem_make_room(struct mmem *bundlemem)
 {
@@ -178,11 +183,11 @@ uint8_t storage_mmem_make_room(struct mmem *bundlemem)
 }
 
 /**
-* \brief saves a bundle in storage
-* \param bundlemem pointer to the bundle
-* \param bundle_number pointer where the bundle number will be stored (on success)
-* \return 0 on error, 1 on success
-*/
+ * \brief saves a bundle in storage
+ * \param bundlemem pointer to the bundle
+ * \param bundle_number_ptr pointer where the bundle number will be stored (on success)
+ * \return 0 on error, 1 on success
+ */
 uint8_t storage_mmem_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_number_ptr)
 {
 	struct bundle_t *entrybdl = NULL,
@@ -266,11 +271,11 @@ uint8_t storage_mmem_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_num
 }
 
 /**
-* \brief deletes a bundle form storage
-* \param bundle_num bundle number to be deleted
-* \param reason reason code
-* \return 1 on success or 0 on error
-*/
+ * \brief deletes a bundle from storage
+ * \param bundle_number bundle number to be deleted
+ * \param reason reason code
+ * \return 1 on success or 0 on error
+ */
 uint16_t storage_mmem_delete_bundle(uint32_t bundle_number, uint8_t reason)
 {
 	struct bundle_t * bundle = NULL;
@@ -327,10 +332,10 @@ uint16_t storage_mmem_delete_bundle(uint32_t bundle_number, uint8_t reason)
 }
 
 /**
-* \brief reads a bundle from storage
-* \param bundle_num bundle number to read
-* \return pointer to the MMEM struct
-*/
+ * \brief reads a bundle from storage
+ * \param bundle_num bundle number to read
+ * \return pointer to the MMEM struct, NULL on error
+ */
 struct mmem *storage_mmem_read_bundle(uint32_t bundle_num)
 {
 	struct bundle_list_entry_t * entry = NULL;
@@ -375,25 +380,26 @@ struct mmem *storage_mmem_read_bundle(uint32_t bundle_num)
 	return entry->bundle;
 }
 
-
 /**
-* \brief checks if there is space for a bundle
-* \param bundle pointer to a bundle struct (not used here)
-* \return number of free slots
-*/
-uint16_t storage_mmem_get_free_space(struct mmem *bundlemem)
+ * \brief checks if there is space for a bundle
+ * \param bundlemem pointer to a bundle struct (not used here)
+ * \return number of free slots
+ */
+uint16_t storage_mmem_get_free_space(struct mmem * bundlemem)
 {
 	return BUNDLE_STORAGE_SIZE - bundles_in_storage;
 }
 
 /**
-* \returns the number of saved bundles
-*/
+ * \brief Get the number of slots available in storage
+ * \returns the number of free slots
+ */
 uint16_t storage_mmem_get_bundle_numbers(void){
 	return bundles_in_storage;
 }
 
 /**
+ * \brief Get the bundle list
  * \returns pointer to first bundle list entry
  */
 struct storage_entry_t * storage_mmem_get_bundles(void)

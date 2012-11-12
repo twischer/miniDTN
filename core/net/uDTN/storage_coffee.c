@@ -1,18 +1,20 @@
 /**
- * \addtogroup bstorage
+ * \addtogroup bundle_storage
  * @{
  */
 
- /**
- * \defgroup g_storage flash storage modules
+/**
+ * \defgroup bundle_storage_coffee COFFEE-based persistent Storage
  *
  * @{
  */
 
 /**
  * \file 
- * \author Georg von Zengen (vonzeng@ibr.cs.tu-bs.de)
+ * \author Georg von Zengen <vonzeng@ibr.cs.tu-bs.de>
+ * \author Wolf-Bastian Poettner <poettner@ibr.cs.tu-bs.de>
  */
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -103,8 +105,8 @@ void storage_coffee_read_list();
 void storage_coffee_save_list();
 
 /**
-* /brief called by agent at startup
-*/
+ * \brief called by agent at startup
+ */
 void storage_mmem_init(void)
 {
 	// Initialize the bundle list
@@ -126,7 +128,9 @@ void storage_mmem_init(void)
 	ctimer_set(&g_store_write_timer, CLOCK_SECOND * STORAGE_WRITE_INTERVAL, storage_coffee_save_list_on_change, NULL);
 }
 
-
+/**
+ * \brief Check whether the bundle list has been changed and if so, write to COFFEE
+ */
 void storage_coffee_save_list_on_change()
 {
 	LOG(LOGD_DTN, LOG_STORE, LOGL_DBG, "g_store_save_list_on_change()");
@@ -193,7 +197,7 @@ void storage_coffee_save_list()
 }
 
 /**
- * Restore the bundle list from a file
+ * \brief Restore the bundle list from a file
  */
 void storage_coffee_read_list()
 {
@@ -264,8 +268,8 @@ void storage_coffee_read_list()
 }
 
 /**
-* \brief deletes expired bundles from storage
-*/
+ * \brief deletes expired bundles from storage
+ */
 void storage_coffee_prune()
 {
 	uint32_t elapsed_time;
@@ -316,10 +320,11 @@ void storage_mmem_reinit(void)
 }
 
 /**
- * This function delete as many bundles from the storage as necessary to
- * have at least one slot free
+ * \brief This function delete as many bundles from the storage as necessary to have at least one slot free
+ * \param bundlemem Pointer to the MMEM struct containing the bundle
+ * \return 1 on success, 0 if no room could be made free
  */
-uint8_t storage_coffee_make_room(struct mmem *bundlemem)
+uint8_t storage_coffee_make_room(struct mmem * bundlemem)
 {
 	struct file_list_entry_t * entry = NULL;
 	struct bundle_t * bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
@@ -358,10 +363,11 @@ uint8_t storage_coffee_make_room(struct mmem *bundlemem)
 }
 
 /**
-* \brief saves a bundle in storage
-* \param bundle pointer to the bundle
-* \return the bundle number given to the bundle or <0 on errors
-*/
+ * \brief saves a bundle in storage
+ * \param bundlemem pointer to the MMEM struct containing the bundle
+ * \param bundle_number_ptr The pointer to the bundle number will be stored here
+ * \return 1 on success, 0 otherwise
+ */
 uint8_t storage_coffee_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_number_ptr)
 {
 	struct bundle_t * bundle = NULL;
@@ -493,11 +499,11 @@ uint8_t storage_coffee_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_n
 }
 
 /**
-* \brief deletes a bundle form storage
-* \param bundle_num bundle number to be deleted
-* \param reason reason code
-* \return 1 on success or 0 on error
-*/
+ * \brief deletes a bundle form storage
+ * \param bundle_number bundle number to be deleted
+ * \param reason reason code
+ * \return 1 on success or 0 on error
+ */
 uint16_t storage_coffee_delete_bundle(uint32_t bundle_number, uint8_t reason)
 {
 	struct bundle_t * bundle = NULL;
@@ -576,10 +582,10 @@ uint16_t storage_coffee_delete_bundle(uint32_t bundle_number, uint8_t reason)
 }
 
 /**
-* \brief reads a bundle from storage
-* \param bundle_num bundle number to read
-* \return 1 on success or 0 on error
-*/
+ * \brief reads a bundle from storage
+ * \param bundle_number bundle number to read
+ * \return pointer to the MMEM struct containing the bundle (caller has to free)
+ */
 struct mmem * storage_coffee_read_bundle(uint32_t bundle_number)
 {
 	struct bundle_t * bundle = NULL;
@@ -668,23 +674,25 @@ struct mmem * storage_coffee_read_bundle(uint32_t bundle_number)
 }
 
 /**
-* \brief checks if there is space for a bundle
-* \param bundle pointer to a bundle struct (not used here)
-* \return number of free slots
-*/
+ * \brief checks if there is space for a bundle
+ * \param bundlemem pointer to a bundle struct (not used here)
+ * \return number of free slots
+ */
 uint16_t storage_coffee_get_free_space(struct mmem * bundlemem)
 {
 	return BUNDLE_STORAGE_SIZE - bundles_in_storage;
 }
 
 /**
-* \returns the number of saved bundles
-*/
+ * \brief Get the number of slots available in storage
+ * \returns the number of free slots
+ */
 uint16_t storage_coffee_get_bundle_numbers(void){
 	return bundles_in_storage;
 }
 
 /**
+ * \brief Get the bundle list
  * \returns pointer to first bundle list entry
  */
 struct storage_entry_t * storage_coffee_get_bundles(void)

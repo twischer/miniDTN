@@ -1,19 +1,21 @@
 /**
- * \addtogroup redundance
+ * \addtogroup redundancy
  * @{
  */
 
- /**
- * \defgroup b_redundance basic redundance check module
+/**
+ * \defgroup redundancy_basic basic redundancy check module
  *
  * @{
  */
 
 /**
-* \file
-* implementation of basic redundance check module
-* \author Georg von Zengen (vonzeng@ibr.cs.tu-bs.de) 
-*/
+ * \file
+ * \brief implementation of basic redundancy check module
+ * \author Georg von Zengen <vonzeng@ibr.cs.tu-bs.de>
+ * \author Wolf-Bastian Poettner <poettner@ibr.cs.tu-bs.de>
+ */
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h> // memset
@@ -33,11 +35,11 @@ uint32_t redundance_bundle_list[REDUNDANCE_MAX];
 uint8_t redundance_bundle_list_pointer;
 
 /**
-* \brief checks if bundle was delivered before
-* \param bundle pointer to bundle
-* \return 1 if bundle was delivered before or 0 if not
-*/
-uint8_t redundancy_basic_check(struct mmem *bundlemem)
+ * \brief checks if bundle was delivered before
+ * \param bundlemem pointer to bundle
+ * \return 1 if bundle was delivered before, 0 otherwise
+ */
+uint8_t redundancy_basic_check(struct mmem * bundlemem)
 {
 	struct bundle_t * bundle = NULL;
 	int i;
@@ -57,11 +59,11 @@ uint8_t redundancy_basic_check(struct mmem *bundlemem)
 }
 
 /**
-* \brief saves the bundle in a list of delivered bundles
-* \param bundle pointer to bundle
-* \return 1 on successor 0 on error
-*/
-uint8_t redundancy_basic_set(struct mmem *bundlemem)
+ * \brief saves the bundle in a list of delivered bundles
+ * \param bundlemem pointer to bundle
+ * \return 1 on successor 0 on error
+ */
+uint8_t redundancy_basic_set(struct mmem * bundlemem)
 {
 	struct bundle_t * bundle = NULL;
 
@@ -72,11 +74,10 @@ uint8_t redundancy_basic_set(struct mmem *bundlemem)
 
 	return 1;
 }
-
 		
 /**
-* \brief called by agent at startup
-*/
+ * \brief called by agent at startup
+ */
 void redundancy_basic_init(void)
 {
 	LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "REDUNDANCE: starting");

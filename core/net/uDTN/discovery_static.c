@@ -1,3 +1,22 @@
+/**
+ * \addtogroup discovery
+ * @{
+ */
+
+/**
+ * \defgroup discovery_static Static discovery module
+ *
+ * @{
+ */
+
+/**
+ * \file
+ * \brief Static discovery Module
+ *
+ * \author Georg von Zengen <vonzeng@ibr.cs.tu-bs.de>
+ * \author Wolf-Bastian Poettner <poettner@ibr.cs.tu-bs.de>
+ */
+
 #include "net/rime/rimeaddr.h"
 
 #include "discovery.h"

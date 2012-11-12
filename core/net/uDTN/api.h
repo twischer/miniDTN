@@ -3,15 +3,19 @@
  * @{
  */
 
- /**
+/**
  * \defgroup api Bundle Protocol API
  *
  * @{
  */
 
 /**
- * \file uDTN API
+ * \file
+ * \brief uDTN API
+ * \author Georg von Zengen <vonzeng@ibr.cs.tu-bs.de>
+ * \author Wolf-Bastian Poettner <poettner@ibr.cs.tu-bs.de>
  */
+
 #ifndef API_H
 #define API_H
 

@@ -1,16 +1,18 @@
 /**
-* \addtogroup custody 
-* @{
-*/
+ * \addtogroup custody
+ * @{
+ */
+
 /**
-* \defgroup b_cust basic custody module
-* @{
-*/
+ * \defgroup custody_basic basic custody module
+ * @{
+ */
+
 /**
-* \file 
-* implementation of a basic costody modul
-* \author Georg von Zengen (vonzeng@ibr.cs.tu-bs.de)
-*/
+ * \file
+ * \brief implementation of a basic custody module
+ * \author Georg von Zengen <vonzeng@ibr.cs.tu-bs.de>
+ */
 
 #include <string.h>
 

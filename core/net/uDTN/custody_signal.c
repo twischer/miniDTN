@@ -1,13 +1,14 @@
 /**
- * \addtogroup admin_record
+ * \addtogroup admininistrative_records
  * @{
  */
 
-
 /**
-*   \file
-*   	 Funktionen zum erstellen eines Custody Signals
-*/
+ * \file
+ * \brief Implementation of Custody Signals
+ * \author Georg von Zengen <vonzeng@ibr.cs.tu-bs.de>
+ */
+
 #include <stdlib.h>
 #include <string.h>
 

@@ -3,14 +3,15 @@
  *
  * @{
  */
-/**
-* \defgroup bnet Network interface
-* @{
-*/
 
- /**
+/**
+ * \defgroup dtn_network Network Layer interface
+ * @{
+ */
+
+/**
  * \file
- * \author Georg von Zengen (vonzeng@ibr.cs.tu-bs.de) 
+ * \author Georg von Zengen <vonzeng@ibr.cs.tu-bs.de>
  */
 
 #ifndef DTN_NETWORK_H

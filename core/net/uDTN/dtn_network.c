@@ -1,12 +1,14 @@
 /**
- * \addtogroup bnet
+ * \addtogroup dtn_network
  * @{
  */
 
 /**
  * \file
  *
- * \author Georg von Zengen (vonzeng@ibr.cs.tu-bs.de) 
+ * \author Georg von Zengen <vonzeng@ibr.cs.tu-bs.de>
+ * \author Daniel Willmann <daniel@totalueberwachung.de>
+ * \author Wolf-Bastian Pšttner <poettner@ibr.cs.tu-bs.de>
  */
 
 #ifdef CONF_LOGLEVEL

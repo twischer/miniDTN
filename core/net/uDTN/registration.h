@@ -4,11 +4,12 @@
  */
  
 /**
- * \file Handle Service Registrations
+ * \file
+ * \brief Handle Service Registrations
  *
  * \author Georg von Zengen <vonzeng@ibr.cs.tu-bs.de>
- * \author Wolf-Bastian Pšttner <poettner@ibr.cs.tu-bs.de>
  */
+
 #ifndef REGISTRATION_H
 #define REGISTRATION_H
 
@@ -41,7 +42,7 @@ void registration_init(void);
  * \brief registers a new service
  *
  * \param app_id id of service
- * \param process pointer to service
+ * \param application_process pointer to service
  * \param node_id Node ID
  *
  * \return 1 on success, 0 on error

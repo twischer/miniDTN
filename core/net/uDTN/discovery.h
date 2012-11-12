@@ -3,17 +3,18 @@
  * @{
  */
 
- /**
+/**
  * \defgroup discovery Discovery modules
  *
  * @{
  */
 
 /**
-* \file
-* defines the interface for discovery modules
-* \author Georg von Zengen (vonzeng@ibr.cs.tu-bs.de) 
-*/
+ * \file
+ * \brief defines the interface for discovery modules
+ * \author Georg von Zengen <vonzeng@ibr.cs.tu-bs.de>
+ */
+
 #ifndef DISCOVERY_H
 #define DISCOVERY_H
 

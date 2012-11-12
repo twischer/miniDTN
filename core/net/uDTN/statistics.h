@@ -5,10 +5,10 @@
  */
 
 /**
- * \file uDTN Statistics Module
- * \author Wolf-Bastian Pšttner (poettner@ibr.cs.tu-bs.de)
+ * \file
+ * \brief uDTN Statistics Module header
+ * \author Wolf-Bastian Poettner <poettner@ibr.cs.tu-bs.de>
  */
-
 
 #ifndef STATISTICS_H
 #define STATISTICS_H

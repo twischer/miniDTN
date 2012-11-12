@@ -3,19 +3,18 @@
  * @{
  */
 
- /**
- * \defgroup ipnd_biscover  IP-ND discovery module
+/**
+ * \defgroup discovery_basic Basic discovery module
  *
  * @{
  */
 
 /**
-* \file
-* IP-ND compliant discovery module
-* IP-ND = http://tools.ietf.org/html/draft-irtf-dtnrg-ipnd-01
-*
-* \author Wolf-Bastian Pšttner (poettner@ibr.cs.tu-bs.de)
-*/
+ * \file
+ * \brief Basic discovery module
+ *
+ * \author Georg von Zengen <vonzeng@ibr.cs.tu-bs.de>
+ */
 
 #include <string.h> // for memset
 
@@ -65,6 +64,9 @@ uint8_t discovery_pending_start = 0;
 static struct etimer discovery_timeout_timer;
 static struct etimer discovery_pending_timer;
 
+/**
+ * \brief Initialize basic discovery module
+ */
 void discovery_basic_init()
 {
 	// Enable discovery module
@@ -81,9 +83,10 @@ void discovery_basic_init()
 }
 
 /** 
-* \brief sends a discovery message 
-* \param bundle pointer to a bundle (not used here)
-*/
+ * \brief Is the provided address currently listed as neighbour?
+ * \param dest Address of the potential neighbour
+ * \return 1 if neighbour, 0 otherwise
+ */
 uint8_t discovery_basic_is_neighbour(rimeaddr_t * dest)
 {
 	struct discovery_basic_neighbour_list_entry * entry;
@@ -100,6 +103,10 @@ uint8_t discovery_basic_is_neighbour(rimeaddr_t * dest)
 	return 0;
 }
 
+/**
+ * \brief Send out discovery to provided address
+ * \param destination Address to send the discovery to
+ */
 void discovery_basic_send_discovery(rimeaddr_t * destination)
 {
 	if( discovery_status == 0 ) {
@@ -113,10 +120,10 @@ void discovery_basic_send_discovery(rimeaddr_t * destination)
 }
 
 /**
-* \brief checks if msg is an answer to a discovery message
-* \param msg pointer to the received message
-* \return 1 if msg is an answer or 0 if not
-*/
+ * \brief checks if incoming message is an answer to a discovery message
+ * \param msg pointer to the received message
+ * \return 1 if msg is an answer or 0 if not
+ */
 uint8_t discovery_basic_is_beacon(uint8_t * msg)
 {
 	uint8_t test[8]="DTN_HERE";
@@ -130,10 +137,11 @@ uint8_t discovery_basic_is_beacon(uint8_t * msg)
 }
 
 /**
-* \brief hecks if msg is a discovery message
-* \param msg pointer to the received message
-* \return 1 if msg is a discovery message or 0 if not
-*/
+ * \brief checks if incoming message is a discovery message
+ * \param msg pointer to the received message
+ * \param dest Node the discovery was received from
+ * \return 1 if msg is a discovery message or 0 if not
+ */
 uint8_t discovery_basic_is_discovery(uint8_t * msg, rimeaddr_t * dest)
 {
 	uint8_t test[13]="DTN_DISCOVERY";
@@ -155,7 +163,7 @@ uint8_t discovery_basic_is_discovery(uint8_t * msg, rimeaddr_t * dest)
 }
 
 /**
- * Enable discovery functionality
+ * \brief Enable discovery functionality
  */
 void discovery_basic_enable()
 {
@@ -163,7 +171,7 @@ void discovery_basic_enable()
 }
 
 /**
- * Disable discovery functionality
+ * \brief Disable discovery functionality
  * Prevents outgoing packets from being sent
  */
 void discovery_basic_disable()
@@ -172,7 +180,10 @@ void discovery_basic_disable()
 }
 
 /**
- * DTN Network has received an incoming packet, save the sender as neighbour
+ * \brief DTN Network has received an incoming discovery packet
+ * \param source Source address of the packet
+ * \param payload Payload pointer of the packet
+ * \param length Length of the payload
  */
 void discovery_basic_receive(rimeaddr_t * source, uint8_t * payload, uint8_t length)
 {
@@ -195,7 +206,8 @@ void discovery_basic_receive(rimeaddr_t * source, uint8_t * payload, uint8_t len
 }
 
 /**
- * We have found a new neighbour, now go and notify the agent
+ * \brief We have found a new neighbour, now go and notify the agent
+ * \param neighbour Address of the newly found neighbour
  */
 void discovery_basic_neighbour_found(rimeaddr_t * neighbour)
 {
@@ -207,9 +219,11 @@ void discovery_basic_neighbour_found(rimeaddr_t * neighbour)
 }
 
 /**
- * Checks if ''neighbours'' is already known
+ * \brief Checks if ''neighbours'' is already known
  * Yes: refresh timestamp
  * No:  Create entry
+ *
+ * \param neighbour Address of the neighbour that should be refreshed
  */
 void discovery_basic_refresh_neighbour(rimeaddr_t * neighbour)
 {
@@ -229,7 +243,8 @@ void discovery_basic_refresh_neighbour(rimeaddr_t * neighbour)
 }
 
 /**
- * Save neighbour to local cache
+ * \brief Save neighbour to local cache
+ * \param neighbour Address of the neighbour
  */
 void discovery_basic_save_neighbour(rimeaddr_t * neighbour)
 {
@@ -279,9 +294,10 @@ void discovery_basic_save_neighbour(rimeaddr_t * neighbour)
 
 
 /**
- * Start to discover a neighbour
- * Returns 1 if neighbour is already known in (likely) in range
- * Returns 0 otherwise
+ * \brief Start to discover a neighbour
+ *
+ * \param dest Address of the neighbour
+ * \return 1 if neighbour is already known in (likely) in range, 0 otherwise
  */
 uint8_t discovery_basic_discover(rimeaddr_t * dest)
 {
@@ -303,7 +319,8 @@ uint8_t discovery_basic_discover(rimeaddr_t * dest)
 }
 
 /**
- * Returns the list of currently known neighbours
+ * \brief Returns the list of currently known neighbours
+ * \return Pointer to list with neighbours
  */
 struct discovery_neighbour_list_entry * discovery_basic_list_neighbours()
 {
@@ -311,7 +328,7 @@ struct discovery_neighbour_list_entry * discovery_basic_list_neighbours()
 }
 
 /**
- * Stops pending discoveries
+ * \brief Stops pending discoveries
  */
 void discovery_basic_stop_pending()
 {
@@ -320,7 +337,7 @@ void discovery_basic_stop_pending()
 }
 
 /**
- * Starts a periodic rediscovery
+ * \brief Starts a periodic rediscovery
  */
 void b_dis_start_pending()
 {
@@ -329,7 +346,7 @@ void b_dis_start_pending()
 }
 
 /**
- * Basic Discovery Persistent Process
+ * \brief Basic Discovery Persistent Process
  */
 PROCESS_THREAD(discovery_process, ev, data)
 {
