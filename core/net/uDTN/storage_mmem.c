@@ -360,6 +360,18 @@ struct mmem *storage_mmem_read_bundle(uint32_t bundle_num)
 	// Someone requested the bundle, he will have to decrease the reference counter again
 	bundle_increment(entry->bundle);
 
+	/* How long did this bundle rot in our storage? */
+	uint32_t elapsed_time = clock_seconds() - bundle->rec_time;
+
+	/* Update lifetime of bundle */
+	if( bundle->lifetime < elapsed_time ) {
+		bundle->lifetime = 0;
+		bundle->rec_time = clock_seconds();
+	} else {
+		bundle->lifetime = bundle->lifetime - elapsed_time;
+		bundle->rec_time = clock_seconds();
+	}
+
 	return entry->bundle;
 }
 

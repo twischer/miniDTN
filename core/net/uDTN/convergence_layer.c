@@ -208,11 +208,8 @@ int convergence_layer_send_bundle(struct transmit_ticket_t * ticket)
 		return -1;
 	}
 
-	/* How long did this bundle rot in our storage? */
-	uint32_t elapsed_time = clock_seconds() - bundle->rec_time;
-
 	/* Check if bundle has expired */
-	if( bundle->lifetime < elapsed_time ) {
+	if( bundle->lifetime == 0 ) {
 		LOG(LOGD_DTN, LOG_CL, LOGL_INF, "Bundle %d has expired, not sending it", ticket->bundle_number);
 
 		/* Bundle is expired */
@@ -223,10 +220,6 @@ int convergence_layer_send_bundle(struct transmit_ticket_t * ticket)
 
 		return -1;
 	}
-
-	/* Update remaining lifetime of bundle */
-	uint32_t remaining_time = bundle->lifetime - elapsed_time;
-	bundle_set_attr(ticket->bundle, LIFE_TIME, &remaining_time);
 
 	/* Get our buffer */
 	buffer = dtn_network_get_buffer();
