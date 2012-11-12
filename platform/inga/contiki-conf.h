@@ -133,6 +133,9 @@ unsigned long clock_seconds(void);
 #define NETSTACK_CONF_NETWORK 	  dtn_network_driver
 #define RIMEADDR_CONF_SIZE        2
 #define UIP_CONF_UDP              0
+#define UIP_CONF_ICMP6            0
+#define UIP_CONF_UDP              0
+#define UIP_CONF_TCP              0
 
 
 #else
@@ -195,17 +198,17 @@ unsigned long clock_seconds(void);
 
 
 #if WITH_DTN
-#define CHANNEL_802_15_4          23
-#define NETSTACK_CONF_MAC	  csma_driver
-#define NETSTACK_CONF_RDC    	  nullrdc_driver 
-#define NETSTACK_CONF_FRAMER      framer_802154
-#define NETSTACK_CONF_RADIO       rf230_driver
-#define RF230_CONF_AUTOACK        1
-#define SICSLOWPAN_CONF_ACK_ALL   0
-#define RF230_CONF_AUTORETRIES    2
-#ifndef QUEUEBUF_CONF_NUM
-#define QUEUEBUF_CONF_NUM                16
+#define CHANNEL_802_15_4         23
+#define NETSTACK_CONF_MAC	  	 csma_driver
+#define NETSTACK_CONF_RDC    	 nullrdc_driver
+#define NETSTACK_CONF_FRAMER     framer_802154
+#define NETSTACK_CONF_RADIO      rf230_driver
+#define RF230_CONF_AUTOACK       1
+#define SICSLOWPAN_CONF_ACK_ALL  0
+#define RF230_CONF_AUTORETRIES   2
 
+#ifndef QUEUEBUF_CONF_NUM
+#define QUEUEBUF_CONF_NUM        16
 #endif
 
 #elif 1 /* No radio cycling */
