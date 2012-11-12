@@ -96,7 +96,7 @@ static uint8_t bundle_list_changed = 0;
  * "Internal" functions
  */
 void storage_coffee_save_list_on_change();
-void storage_coffee_store_prune();
+void storage_coffee_prune();
 uint16_t storage_coffee_delete_bundle(uint32_t bundle_number, uint8_t reason);
 struct mmem * storage_coffee_read_bundle(uint32_t bundle_number);
 void storage_coffee_read_list();
@@ -120,7 +120,7 @@ void storage_mmem_init(void)
 	storage_coffee_read_list();
 
 	// Set the timer to regularly prune expired bundles
-	ctimer_set(&g_store_timer, CLOCK_SECOND*5, storage_coffee_store_prune, NULL);
+	ctimer_set(&g_store_timer, CLOCK_SECOND*5, storage_coffee_prune, NULL);
 
 	// Set the timer to regularly write the list of bundles to flash
 	ctimer_set(&g_store_write_timer, CLOCK_SECOND * STORAGE_WRITE_INTERVAL, storage_coffee_save_list_on_change, NULL);
@@ -266,7 +266,7 @@ void storage_coffee_read_list()
 /**
 * \brief deletes expired bundles from storage
 */
-void storage_coffee_store_prune()
+void storage_coffee_prune()
 {
 	uint32_t elapsed_time;
 	struct file_list_entry_t * entry = NULL;
@@ -316,6 +316,48 @@ void storage_mmem_reinit(void)
 }
 
 /**
+ * This function delete as many bundles from the storage as necessary to
+ * have at least one slot free
+ */
+uint8_t storage_coffee_make_room(struct mmem *bundlemem)
+{
+	struct file_list_entry_t * entry = NULL;
+	struct bundle_t * bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
+
+	/* Delete expired bundles first */
+	storage_coffee_prune();
+
+	/* Keep deleting bundles until we have enough slots */
+	while( bundles_in_storage >= BUNDLE_STORAGE_SIZE) {
+		/* We need this double-loop because otherwise we would be modifying the list
+		 * while iterating through it
+		 */
+		for( entry = list_head(bundle_list);
+			 entry != NULL;
+			 entry = list_item_next(entry) ) {
+			/* If the new bundle has a longer lifetime than the bundle in our storage,
+			 * delete the bundle from storage to make room
+			 */
+			if( bundlemem != NULL && bundle->lifetime > entry->lifetime ) {
+				break;
+			}
+		}
+
+		/* Either the for loop did nothing or did not break */
+		if( entry == NULL ) {
+			/* We do not have deletable bundles in storage, stop deleting them */
+			return 0;
+		}
+
+		/* Otherwise just delete */
+		storage_coffee_delete_bundle(entry->bundle_num, REASON_DEPLETED_STORAGE);
+	}
+
+	/* At least one slot is free now */
+	return 1;
+}
+
+/**
 * \brief saves a bundle in storage
 * \param bundle pointer to the bundle
 * \return the bundle number given to the bundle or <0 on errors
@@ -355,6 +397,11 @@ uint8_t storage_coffee_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_n
 			bundle_decrement(bundlemem);
 			return entry->bundle_num;
 		}
+	}
+
+	if( !storage_coffee_make_room(bundlemem) ) {
+		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "Cannot store bundle, no room");
+		return 0;
 	}
 
 	// Allocate some memory for our bundle
@@ -638,7 +685,7 @@ struct storage_entry_t * storage_coffee_get_bundles(void)
 }
 
 const struct storage_driver storage_coffee = {
-	"G_STORAGE",
+	"STORAGE_COFFEE",
 	storage_mmem_init,
 	storage_mmem_reinit,
 	storage_coffee_save_bundle,
