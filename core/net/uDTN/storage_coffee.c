@@ -619,10 +619,6 @@ struct mmem * storage_coffee_read_bundle(uint32_t bundle_number)
 		return NULL;
 	}
 
-	// Assign a unique bundle number
-	bundle->bundle_num = bundle_number++;
-	entry->bundle_num = bundle->bundle_num;
-
 	// determine the filename
 	n = snprintf(bundle_filename, STORAGE_FILE_NAME_LENGTH, "%lu.b", entry->bundle_num);
 	if( n == STORAGE_FILE_NAME_LENGTH ) {
