@@ -3,19 +3,19 @@
  * @{
  */
 
- /**
- * \defgroup ipnd_biscover  IP-ND discovery module
+/**
+ * \defgroup discovery_ipnd IP-ND discovery module
  *
  * @{
  */
 
 /**
-* \file
-* IP-ND compliant discovery module
-* IP-ND = http://tools.ietf.org/html/draft-irtf-dtnrg-ipnd-01
-*
-* \author Wolf-Bastian Pšttner (poettner@ibr.cs.tu-bs.de)
-*/
+ * \file
+ * \brief IP-ND compliant discovery module
+ * IP-ND = http://tools.ietf.org/html/draft-irtf-dtnrg-ipnd-01
+ *
+ * \author Wolf-Bastian Poettner <poettner@ibr.cs.tu-bs.de>
+ */
 
 #include <string.h> // for memset
 
@@ -76,6 +76,9 @@ uint16_t discovery_sequencenumber = 0;
 
 rimeaddr_t discovery_whitelist[DISCOVERY_IPND_WHITELIST];
 
+/**
+ * \brief IPND Discovery init function (called by agent)
+ */
 void discovery_ipnd_init()
 {
 	// Enable discovery module
@@ -101,9 +104,10 @@ void discovery_ipnd_init()
 }
 
 /** 
-* \brief sends a discovery message 
-* \param bundle pointer to a bundle (not used here)
-*/
+ * \brief Checks if address is currently listed a neighbour
+ * \param dest Address of potential neighbour
+ * \return 1 if neighbour, 0 otherwise
+ */
 uint8_t discovery_ipnd_is_neighbour(rimeaddr_t * dest)
 {
 	struct discovery_basic_neighbour_list_entry * entry;
@@ -126,7 +130,7 @@ uint8_t discovery_ipnd_is_neighbour(rimeaddr_t * dest)
 }
 
 /**
- * Enable discovery functionality
+ * \brief Enable discovery functionality
  */
 void discovery_ipnd_enable()
 {
@@ -134,7 +138,7 @@ void discovery_ipnd_enable()
 }
 
 /**
- * Disable discovery functionality
+ * \brief Disable discovery functionality
  * Prevents outgoing packets from being sent
  */
 void discovery_ipnd_disable()
@@ -142,6 +146,13 @@ void discovery_ipnd_disable()
 	discovery_status = 0;
 }
 
+/**
+ * \brief Parses an incoming EID in an IPND frame
+ * \param eid Pointer where the EID will be stored
+ * \param buffer Pointer to the incoming EID
+ * \param length Length of the Pointer
+ * \return Length of the parsed EID
+ */
 uint8_t discovery_ipnd_parse_eid(uint32_t * eid, uint8_t * buffer, uint8_t length) {
 	uint32_t sdnv_length = 0;
 	int offset = 0;
@@ -155,19 +166,35 @@ uint8_t discovery_ipnd_parse_eid(uint32_t * eid, uint8_t * buffer, uint8_t lengt
 		LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_WRN, "Unknown EID format %s", &buffer[offset + 4]);
 	}
 
+	/* FIXME: really? */
 	return offset + sdnv_length;
 }
 
+/**
+ * \brief Dummy function that could parse the IPND service block
+ * \param buffer Pointer to the block
+ * \param length Length of the block
+ * \return dummy
+ */
 uint8_t discovery_ipnd_parse_service_block(uint8_t * buffer, uint8_t length) {
 	return 0;
 }
 
+/**
+ * \brief Dummy function that could parse the IPND bloom filter
+ * \param buffer Pointer to the filter
+ * \param length Length of the filter
+ * \return dummy
+ */
 uint8_t discovery_ipnd_parse_bloomfilter(uint8_t * buffer, uint8_t length) {
 	return 0;
 }
 
 /**
- * DTN Network has received an incoming packet, save the sender as neighbour
+ * \brief DTN Network has received an incoming discovery packet
+ * \param source Source address of the packet
+ * \param payload Payload pointer of the packet
+ * \param length Length of the payload
  */
 void discovery_ipnd_receive(rimeaddr_t * source, uint8_t * payload, uint8_t length)
 {
@@ -215,7 +242,9 @@ void discovery_ipnd_receive(rimeaddr_t * source, uint8_t * payload, uint8_t leng
 	LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "Discovery from %lu with flags %02X and seqNo %u", eid, flags, sequenceNumber);
 }
 
-
+/**
+ * \brief Send out IPND beacon
+ */
 void discovery_ipnd_send() {
 	uint8_t ipnd_buffer[DISCOVERY_IPND_BUFFER_LEN];
 	char string_buffer[20];
@@ -272,9 +301,11 @@ void discovery_ipnd_send() {
 }
 
 /**
- * Checks if ''neighbours'' is already known
+ * \brief Checks if ''neighbours'' is already known
  * Yes: refresh timestamp
  * No:  Create entry
+ *
+ * \param neighbour Address of the neighbour that should be refreshed
  */
 void discovery_ipnd_refresh_neighbour(rimeaddr_t * neighbour)
 {
@@ -315,7 +346,8 @@ void discovery_ipnd_refresh_neighbour(rimeaddr_t * neighbour)
 }
 
 /**
- * Marks a neighbour as 'dead' after multiple transmission attempts have failed
+ * \brief Marks a neighbour as 'dead' after multiple transmission attempts have failed
+ * \param neighbour Address of the neighbour
  */
 void discovery_ipnd_delete_neighbour(rimeaddr_t * neighbour)
 {
@@ -346,7 +378,8 @@ void discovery_ipnd_delete_neighbour(rimeaddr_t * neighbour)
 }
 
 /**
- * Save neighbour to local cache
+ * \brief Save neighbour to local cache
+ * \param neighbour Address of the neighbour
  */
 void discovery_ipnd_save_neighbour(rimeaddr_t * neighbour)
 {
@@ -388,7 +421,8 @@ void discovery_ipnd_save_neighbour(rimeaddr_t * neighbour)
 }
 
 /**
- * Returns the list of currently known neighbours
+ * \brief Returns the list of currently known neighbours
+ * \return Pointer to list with neighbours
  */
 struct discovery_neighbour_list_entry * discovery_ipnd_list_neighbours()
 {
@@ -396,7 +430,7 @@ struct discovery_neighbour_list_entry * discovery_ipnd_list_neighbours()
 }
 
 /**
- * Stops pending discoveries
+ * \brief Stops pending discoveries
  */
 void discovery_ipnd_stop_pending()
 {
@@ -404,7 +438,7 @@ void discovery_ipnd_stop_pending()
 }
 
 /**
- * IPND Discovery Persistent Process
+ * \brief IPND Discovery Persistent Process
  */
 PROCESS_THREAD(discovery_process, ev, data)
 {

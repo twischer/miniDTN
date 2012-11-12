@@ -3,7 +3,7 @@
  * @{
  */
 
- /**
+/**
  * \defgroup routing Routing modules
  *
  * @{
@@ -11,9 +11,11 @@
 
 /**
  * \file 
- * this file defines the interface for routing modules
- * \author Georg von Zengen (vonzeng@ibr.cs.tu-bs.de)
+ * \brief this file defines the interface for routing modules
+ * \author Georg von Zengen <vonzeng@ibr.cs.tu-bs.de>
+ * \author Wolf-Bastian Poettner <poettner@ibr.cs.tu-bs.de>
  */
+
 #ifndef __ROUTING_H__
 #define __ROUTING_H__
 
@@ -75,7 +77,7 @@ struct routing_driver {
 	/** module init, called by agent at startup*/
 	void (* init)(void);
 	/** informs the module about a new neighbor */
-	void (* new_neighbor)(rimeaddr_t *dest);
+	void (* new_neighbor)(rimeaddr_t * dest);
 	/** informs the module about a new bundel */
 	int (* new_bundle)(uint32_t bundle_num);
 	/** delete bundle form routing list */

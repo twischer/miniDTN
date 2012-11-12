@@ -5,8 +5,9 @@
  */
 
 /**
- * \file uDTN Statistics Module
- * \author Wolf-Bastian Pšttner (poettner@ibr.cs.tu-bs.de)
+ * \file
+ * \brief uDTN Statistics Module implementation
+ * \author Wolf-Bastian Poettner <poettner@ibr.cs.tu-bs.de>
  */
 
 #include <string.h> // for memcpy

@@ -1,3 +1,21 @@
+/**
+ * \addtogroup agent
+ *
+ * @{
+ */
+
+/**
+ * \defgroup admininistrative_records Administrative Records
+ *
+ * @{
+ */
+
+/**
+ * \file
+ * \brief Defines admin records
+ * \author Georg von Zengen <vonzeng@ibr.cs.tu-bs.de>
+ */
+
 #ifndef ADMINISTRATIVE_RECORD_H
 #define ADMINISTRATIVE_RECORD_H
 

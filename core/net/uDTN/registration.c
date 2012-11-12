@@ -5,8 +5,9 @@
 /**
  * \file
  *
+ * \author Georg von Zengen <vonzeng@ibr.cs.tu-bs.de>
+ * \author Wolf-Bastian Poettner <poettner@ibr.cs.tu-bs.de>
  */
- 
  
 #include <stdio.h>
 #include <string.h>

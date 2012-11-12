@@ -1,11 +1,12 @@
  /**
- * \addtogroup sdnv SDNV
+ * \addtogroup sdnv SDNV Functions
  *
  * @{
  */
+
 /**
  * \file 
- * implementation of sdnv functions
+ * \brief implementation of SDNV functions
  * \author Georg von Zengen (vonzeng@ibr.cs.tu-bs.de) 
  */
 

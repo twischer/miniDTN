@@ -1,3 +1,18 @@
+/**
+ * \addtogroup bundle
+ *
+ * @{
+ */
+
+/**
+ * \file
+ * \brief this file implements the bundle memory representation
+ *
+ * \author Georg von Zengen (vonzeng@ibr.cs.tu-bs.de)
+ * \author Daniel Willmann <daniel@totalueberwachung.de>
+ * \author Wolf-Bastian Poettner <poettner@ibr.cs.tu-bs.de>
+ */
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>

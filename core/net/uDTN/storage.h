@@ -3,17 +3,18 @@
  * @{
  */
 
- /**
- * \defgroup bstorage Storage modules
+/**
+ * \defgroup bundle_storage Bundle Storage modules
  *
  * @{
  */
 
 /**
  * \file 
- * this file defines the interface for storage modules
- * \author Georg von Zengen (vonzeng@ibr.cs.tu-bs.de)
+ * \brief this file defines the interface for storage modules
+ * \author Georg von Zengen <vonzeng@ibr.cs.tu-bs.de>
  */
+
 #ifndef __STORAGE_H__
 #define __STORAGE_H__
 

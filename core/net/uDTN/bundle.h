@@ -3,17 +3,21 @@
  * @{
  */
 
- /**
- * \defgroup bundle Bundle 
+/**
+ * \defgroup bundle Bundle Memory Representation
  *
  * @{
  */
 
 /**
  * \file 
- * this file defines bundle stucture
+ * \brief this file defines the bundle memory representation
+ *
  * \author Georg von Zengen (vonzeng@ibr.cs.tu-bs.de) 
+ * \author Daniel Willmann <daniel@totalueberwachung.de>
+ * \author Wolf-Bastian Poettner <poettner@ibr.cs.tu-bs.de>
  */
+
 #include <stdint.h>
 
 #include "contiki.h"
@@ -143,67 +147,73 @@ struct bundle_t{
 };
 
 /**
-* \brief generates the bundle struct from raw data
-* \param bundle_t pointer to empty bundle struct
-* \param buffer pointer to the buffer with raw data
-* \param size size of raw data
-* \return 1 on success or 0 if something fails
-*/
-struct mmem *bundle_recover_bundle(uint8_t *buffer,int size);
+ * \brief generates the bundle struct from raw data
+ * \param buffer pointer to the buffer with raw data
+ * \param size size of raw data
+ * \return Pointer to the MMEM struct containing the bundle
+ */
+struct mmem * bundle_recover_bundle(uint8_t * buffer, int size);
+
 /**
-* \brief Encodes the bundle to raw data
-* \param bundle_t pointer to the bundle struct
-* \param buffer pointer to a buffer
-* \param size Size of the buffer
-* \return The number of bytes that were written to buf
-*/
-uint8_t bundle_encode_bundle(struct mmem *bundlemem, uint8_t *buffer, int max_len);
+ * \brief Encodes the bundle to raw data
+ * \param bundlemem pointer to the MMEM struct containing the bundle
+ * \param buffer pointer to a buffer
+ * \param max_len Size of the buffer
+ * \return The number of bytes that were written to buf
+ */
+uint8_t bundle_encode_bundle(struct mmem * bundlemem, uint8_t * buffer, int max_len);
+
 /**
-* \brief stets an attribute of a bundle
-* \param bundle_t pointer to bundle
-* \param attr attribute to be set
-* \param val pointer to the value to be set 
-* \return length of the seted value on success or 0 on error
-*/
+ * \brief sets an attribute of a bundle
+ * \param bundlemem pointer to the MMEM struct containing bundle
+ * \param attr attribute to be set
+ * \param val pointer to the value to be set
+ * \return length of the set value on success or 0 on error
+ */
 uint8_t bundle_set_attr(struct mmem *bundlemem, uint8_t attr, uint32_t *val);
+
 /**
-* \brief Gets an attribute of a bundle
-* \param bundle_t pointer to bundle
-* \param attr attribute to get
-* \param val pointer to the variable where the value will be written
-* \return length of the seted value on success or 0 on error
-*/
-uint8_t bundle_get_attr(struct mmem *bundlemem, uint8_t attr, uint32_t *val);
-
-/** \brief Get a new bundle structure allocated
- *  \return MMEM allocation of the bundle, NULL in case of an error
- */
-struct mmem *bundle_create_bundle();
-/** \brief free a given MMEM allocation of a bundle struct
- *  \param bundlemem the MMEM allocation to free
- *
- *  A bit of magic is involved here because we want to also free
- *  the bundleslot that this bundle belongs to.
- */
-uint16_t bundle_delete_bundle(struct mmem *bundlemem);
-
-/** \brief Add a block to a bundle
- *  \param bundlemem pointer to the MMEM allocation of the bundle
- *  \param type type of the block
- *  \param flags processing flags of the block
- *  \param data pointer to the block payload
- *  \param d_len length of the block payload
+ * \brief Gets an attribute of a bundle
+ * \param bundlemem pointer to the MMEM struct containing the bundle
+ * \param attr attribute to get
+ * \param val pointer to the variable where the value will be written
  * \return 1 on success or 0 on error
  */
-uint8_t bundle_add_block(struct mmem *bundlemem, uint8_t type, uint8_t flags, uint8_t *data, uint8_t d_len);
+uint8_t bundle_get_attr(struct mmem *bundlemem, uint8_t attr, uint32_t *val);
 
 /**
-* \brief Returns a pointer a bundle block
-* \param bundlemem MMEM allocation of the bundle
-* \param i index of the block. Starts at 0
-* \return the block or NULL on error
-*/
-struct bundle_block_t *bundle_get_block(struct mmem *bundlemem, uint8_t i);
+ * \brief Get a new bundle structure allocated
+ * \return MMEM allocation of the bundle, NULL in case of an error
+ */
+struct mmem * bundle_create_bundle();
+
+/**
+ * \brief free a given MMEM allocation of a bundle struct
+ * \param bundlemem the MMEM allocation to free
+ *
+ * A bit of magic is involved here because we want to also free
+ * the bundleslot that this bundle belongs to.
+ */
+uint16_t bundle_delete_bundle(struct mmem * bundlemem);
+
+/**
+ * \brief Add a block to a bundle
+ * \param bundlemem pointer to the MMEM allocation of the bundle
+ * \param type type of the block
+ * \param flags processing flags of the block
+ * \param data pointer to the block payload
+ * \param d_len length of the block payload
+ * \return 1 on success or 0 on error
+ */
+uint8_t bundle_add_block(struct mmem * bundlemem, uint8_t type, uint8_t flags, uint8_t * data, uint8_t d_len);
+
+/**
+ * \brief Returns a pointer a bundle block
+ * \param bundlemem MMEM allocation of the bundle
+ * \param i index of the block. Starts at 0
+ * \return the block or NULL on error
+ */
+struct bundle_block_t * bundle_get_block(struct mmem * bundlemem, uint8_t i);
 
 /**
  * \brief Returns pointer to first bundle block of specific type
@@ -211,7 +221,7 @@ struct bundle_block_t *bundle_get_block(struct mmem *bundlemem, uint8_t i);
  * \param type type of the block (see bundle.h)
  * \return the block of NULL on error
  */
-struct bundle_block_t *bundle_get_block_by_type(struct mmem *bundlemem, uint8_t type);
+struct bundle_block_t * bundle_get_block_by_type(struct mmem * bundlemem, uint8_t type);
 
 /**
  * \brief Returns pointer to bundle payload block
@@ -224,12 +234,23 @@ struct bundle_block_t * bundle_get_payload_block(struct mmem * bundlemem);
  * \brief converts IPN EIDs (uint32_t) into the RIME address
  */
 rimeaddr_t convert_eid_to_rime(uint32_t eid);
+
 /**
  * \brief converts a RIME address into an IPN EID
  */
 uint32_t convert_rime_to_eid(rimeaddr_t * dest);
 
+/**
+ * \brief Decrements the reference counter for a MMEM struct containing a bundle
+ * Frees the struct when reference counter is down to 0
+ * \return Returns the number of remaining references on the bundle or -1 on error
+ */
 int bundle_decrement(struct mmem *bundlemem);
+
+/**
+ * \brief Increments the reference counter for a MMEM struct containing a bundle
+ * \return Returns the number of references on the bundle or -1 on error
+ */
 int bundle_increment(struct mmem *bundlemem);
 
 #endif

@@ -1,3 +1,15 @@
+/**
+ * \addtogroup bprocess
+ * @{
+ */
+
+/**
+ * \file
+ * \brief Header for Bundle Slot memory management
+ *
+ * \author Daniel Willmann <daniel@totalueberwachung.de>
+ */
+
 #ifndef __BUNDLESLOT_H__
 #define __BUNDLESLOT_H__
 

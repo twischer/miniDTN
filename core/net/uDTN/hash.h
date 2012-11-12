@@ -4,14 +4,15 @@
  */
 
 /**
- * \defgroup hashing Hashing modules
+ * \defgroup hash Hashing modules
  *
  * @{
  */
 
 /**
- * \file This file defines the interface for Hashing modules
- * \author Wolf-Bastian Pšttner <poettner@ibr.cs.tu-bs.de>
+ * \file
+ * \brief This file defines the interface for Hashing modules
+ * \author Wolf-Bastian Poettner <poettner@ibr.cs.tu-bs.de>
  */
 
 #ifndef HASH_H

@@ -1,9 +1,18 @@
 /** 
-* \addtogroup status
-* @{
-* \defgroup b_satus Basic status report modul
-* @{
-*/
+ * \addtogroup bundle_status
+ * @{
+ */
+
+/**
+ * \defgroup bundle_status_basic Basic status report module
+ * @{
+ */
+
+/**
+ * \file
+ * \author Georg von Zengen <vonzeng@ibr.cs.tu-bs.de>
+ */
+
 #include <string.h>
 
 #include "mmem.h"

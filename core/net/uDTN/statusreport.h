@@ -1,14 +1,18 @@
 /**
-* /addtogroup agent 
-* @{
-* /defgroup status Status reports
-* @{
-*/
+ * \addtogroup agent
+ * @{
+ */
 
 /**
-* \file
-*
-*/
+ * \defgroup bundle_status Bundle Status reports
+ * @{
+ */
+
+/**
+ * \file
+ * \author Georg von Zengen <vonzeng@ibr.cs.tu-bs.de>
+ */
+
 #ifndef STATUS_REPORT_H
 #define STATUS_REPORT_H
 
@@ -18,7 +22,6 @@
 #include "mmem.h"
 
 #include "bundle.h"
-
 
 /**
  * Which status-report driver are we going to use?

@@ -1,13 +1,15 @@
 /**
- * \defgroup cl Convergence Layer
+ * \addtogroup cl
  *
  * @{
  */
 
 /**
-* \file IEEE 802.15.4 Convergence Layer Implementation
-* \author Wolf-Bastian Pšttner <poettner@ibr.cs.tu-bs.de>
-*/
+ * \file
+ * \brief IEEE 802.15.4 Convergence Layer Implementation
+ * \author Georg von Zengen <vonzeng@ibr.cs.tu-bs.de>
+ * \author Wolf-Bastian Poettner <poettner@ibr.cs.tu-bs.de>
+ */
 
 #include <string.h> // memset
 

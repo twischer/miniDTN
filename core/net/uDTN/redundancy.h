@@ -3,17 +3,18 @@
  * @{
  */
 
- /**
- * \defgroup redundance Redundance check moduldes
+/**
+ * \defgroup redundancy Redundancy check moduldes
  *
  * @{
  */
 
 /**
-* \file
-* defines the interface for redundance check moduldes
-* \author Georg von Zengen (vonzeng@ibr.cs.tu-bs.de) 
-*/
+ * \file
+ * \brief defines the interface for redundancy check modules
+ * \author Georg von Zengen <vonzeng@ibr.cs.tu-bs.de>
+ */
+
 #ifndef __REDUNDANCE_H__
 #define __REDUNDANCE_H__
 

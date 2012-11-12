@@ -1,11 +1,18 @@
 /**
-* \addtogroup custody 
-* @{
-* \defgroup nullcust NULL custody
-* @{
-* \file
-*
-*/
+ * \addtogroup custody
+ * @{
+ */
+
+/**
+ * \defgroup custody_null NULL custody module
+ * @{
+ */
+
+/**
+ * \file
+ * \author Georg von Zengen <vonzeng@ibr.cs.tu-bs.de>
+ */
+
 #include "custody.h"
 
 void custody_null_init(void)

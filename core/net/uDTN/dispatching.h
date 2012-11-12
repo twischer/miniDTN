@@ -2,12 +2,13 @@
  * \addtogroup bprocess
  * @{
  */
- 
- 
- /**
+
+/**
  * \file
- *         
+ * \brief Bundle dispatching module
+ * \author Georg von Zengen <vonzeng@ibr.cs.tu-bs.de>
  */
+
 #ifndef DISPATCHING_H
 #define DISPATCHING_H
 
@@ -15,12 +16,12 @@
 #include "mmem.h"
 
 /**
-*   \brief decides if bundle must be delivered or forwarded
+*   \brief Handles Admin Records, custody bundles and regular bundles
 *
-*   \param  bundle bundle to be processed
+*   \param bundlemem Pointer to MMEM structure
 *   \returns <= 0 on error >0 on success
 */
-int dispatching_dispatch_bundle(struct mmem *bundlemem);
+int dispatching_dispatch_bundle(struct mmem * bundlemem);
 
 #endif
 
