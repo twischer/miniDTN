@@ -33,14 +33,6 @@
 
 #include "storage.h"
 
-#define DEBUG 0
-#if DEBUG
-#include <stdio.h>
-#define PRINTF(...) printf(__VA_ARGS__)
-#else
-#define PRINTF(...)
-#endif
-
 // defined in mmem.c, no function to access it though
 extern unsigned int avail_memory;
 
@@ -176,7 +168,7 @@ uint8_t storage_mmem_make_room(struct mmem *bundlemem)
 
 		if( entry == NULL ) {
 			// We do not have bundles in storage, stop deleting them
-			break;
+			return 0;
 		}
 
 		storage_mmem_delete_bundle(entry->bundle_num, REASON_DEPLETED_STORAGE);
@@ -398,7 +390,7 @@ struct storage_entry_t * storage_mmem_get_bundles(void)
 }
 
 const struct storage_driver storage_mmem = {
-	"R_STORAGE",
+	"STORAGE_MMEM",
 	storage_mmem_init,
 	storage_mmem_reinit,
 	storage_mmem_save_bundle,
