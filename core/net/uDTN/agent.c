@@ -64,6 +64,10 @@ PROCESS_THREAD(agent_process, ev, data)
 	dtn_node_id = convert_rime_to_eid(&rimeaddr_node_addr);
 	dtn_seq_nr = 0;
 	
+	/* We are initialized quite early - give Contiki some time to do its stuff */
+	process_poll(&agent_process);
+	PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL);
+
 	mmem_init();
 	convergence_layer_init();
 	BUNDLE_STORAGE.init();
@@ -158,7 +162,6 @@ PROCESS_THREAD(agent_process, ev, data)
 			/* If the service did not set an app id, do it now */
 			if( service_app_id == 0 ) {
 				bundle_set_attr(bundleptr, SRC_SERV, &app_id);
-
 			}
 
 			/* Set the source node */
