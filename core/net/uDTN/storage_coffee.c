@@ -20,7 +20,6 @@
 #include <string.h>
 
 #include "contiki.h"
-#include "mac.h"
 #include "netstack.h"
 #include "cfs/cfs.h"
 #include "mmem.h"
@@ -107,7 +106,7 @@ void storage_coffee_save_list();
 /**
  * \brief called by agent at startup
  */
-void storage_mmem_init(void)
+void storage_coffee_init(void)
 {
 	// Initialize the bundle list
 	list_init(bundle_list);
@@ -294,7 +293,7 @@ void storage_coffee_prune()
 /**
  * \brief Sets the storage to its initial state
  */
-void storage_mmem_reinit(void)
+void storage_coffee_reinit(void)
 {
 	// Remove all bundles from storage
 	while(bundles_in_storage > 0) {
@@ -327,13 +326,16 @@ void storage_mmem_reinit(void)
 uint8_t storage_coffee_make_room(struct mmem * bundlemem)
 {
 	struct file_list_entry_t * entry = NULL;
-	struct bundle_t * bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
+	struct bundle_t * bundle = NULL;
 
 	/* Delete expired bundles first */
 	storage_coffee_prune();
 
 	/* Keep deleting bundles until we have enough slots */
 	while( bundles_in_storage >= BUNDLE_STORAGE_SIZE) {
+		/* Obtain the new pointer each time, since the address may change */
+		bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
+
 		/* We need this double-loop because otherwise we would be modifying the list
 		 * while iterating through it
 		 */
@@ -343,7 +345,7 @@ uint8_t storage_coffee_make_room(struct mmem * bundlemem)
 			/* If the new bundle has a longer lifetime than the bundle in our storage,
 			 * delete the bundle from storage to make room
 			 */
-			if( bundlemem != NULL && bundle->lifetime > entry->lifetime ) {
+			if( bundlemem != NULL && bundle->lifetime - (clock_seconds() - bundle->rec_time) >= entry->lifetime - (clock_seconds() - entry->rec_time) ) {
 				break;
 			}
 		}
@@ -409,6 +411,9 @@ uint8_t storage_coffee_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_n
 		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "Cannot store bundle, no room");
 		return 0;
 	}
+
+	/* Update the pointer to the bundle, address may have changed due to storage_coffee_make_room and MMEM reallocations */
+	bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 
 	// Allocate some memory for our bundle
 	entry = memb_alloc(&bundle_mem);
@@ -702,8 +707,8 @@ struct storage_entry_t * storage_coffee_get_bundles(void)
 
 const struct storage_driver storage_coffee = {
 	"STORAGE_COFFEE",
-	storage_mmem_init,
-	storage_mmem_reinit,
+	storage_coffee_init,
+	storage_coffee_reinit,
 	storage_coffee_save_bundle,
 	storage_coffee_delete_bundle,
 	storage_coffee_read_bundle,
