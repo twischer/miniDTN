@@ -79,7 +79,7 @@ struct routing_driver {
 	/** informs the module about a new neighbor */
 	void (* new_neighbor)(rimeaddr_t * dest);
 	/** informs the module about a new bundel */
-	int (* new_bundle)(uint32_t bundle_num);
+	int (* new_bundle)(uint32_t * bundle_num);
 	/** delete bundle form routing list */
 	void (* del_bundle)(uint32_t bundle_num);
 	/** callback function is called by convergence layer */

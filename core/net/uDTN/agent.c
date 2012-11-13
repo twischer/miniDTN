@@ -58,6 +58,9 @@ void agent_init(void) {
 /*  Bundle Protocol Prozess */
 PROCESS_THREAD(agent_process, ev, data)
 {
+	uint32_t * bundle_number_ptr = NULL;
+	struct registration_api * reg;
+
 	PROCESS_BEGIN();
 	
 	/* We obtain our dtn_node_id from the RIME address of the node */
@@ -92,8 +95,6 @@ PROCESS_THREAD(agent_process, ev, data)
 	
 	LOG(LOGD_DTN, LOG_AGENT, LOGL_INF, "Starting DTN Bundle Protocol Agent with ID %lu", dtn_node_id);
 		
-	struct registration_api *reg;
-	
 	while(1) {
 		PROCESS_WAIT_EVENT_UNTIL(ev);
 
@@ -129,7 +130,6 @@ PROCESS_THREAD(agent_process, ev, data)
 		}
 		
 		if(ev == dtn_send_bundle_event) {
-			uint32_t * bundle_number;
 			uint8_t n = 0;
 			struct bundle_t * bundle = NULL;
 			struct process * source_process = NULL;
@@ -177,7 +177,7 @@ PROCESS_THREAD(agent_process, ev, data)
 			source_process = bundle->source_process;
 
 			// Save the bundle in storage
-			n = BUNDLE_STORAGE.save_bundle(bundleptr, &bundle_number);
+			n = BUNDLE_STORAGE.save_bundle(bundleptr, &bundle_number_ptr);
 
 			/* Saving the bundle failed... */
 			if( !n ) {
@@ -200,7 +200,7 @@ PROCESS_THREAD(agent_process, ev, data)
 
 			// Now emulate the event to our agent
 			if( n ) {
-				data = bundle_number;
+				data = (void *) bundle_number_ptr;
 				ev = dtn_bundle_in_storage_event;
 			}
 		}
@@ -218,12 +218,12 @@ PROCESS_THREAD(agent_process, ev, data)
 		}
 
 		if(ev == dtn_bundle_in_storage_event){
-			uint32_t bundle_number = *(uint32_t *) data;
+			uint32_t * bundle_number = (uint32_t *) data;
 
-			LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "bundle %lu in storage", bundle_number);
+			LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "bundle %lu in storage", *bundle_number);
 
 			if(ROUTING.new_bundle(bundle_number) < 0){
-				LOG(LOGD_DTN, LOG_AGENT, LOGL_ERR, "routing reports error when announcing new bundle %lu", bundle_number);
+				LOG(LOGD_DTN, LOG_AGENT, LOGL_ERR, "routing reports error when announcing new bundle %lu", *bundle_number);
 				continue;
 			}
 
