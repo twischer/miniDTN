@@ -1,9 +1,14 @@
 CFLAGS += -DPROJECT_CONF_H=\"project-conf.h\"
-CONTIKI_PROJECT =uDTN-sink 
+CONTIKI_PROJECT = uDTN-sink 
 all: $(CONTIKI_PROJECT)
 
-#UIP_CONF_IPV6=1
+# If there is something about coffee in the config, use it
+ifneq (,$(findstring storage_coffee,$(CFLAGS)))
+  # Compiling with COFFEE Storage
+  COFFEE_FILES=5
+endif
+
 CONF_DTN=1
-COFFEE_FILES=4
+
 CONTIKI = ../../..
 include $(CONTIKI)/Makefile.include
