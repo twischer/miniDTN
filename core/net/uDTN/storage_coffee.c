@@ -117,8 +117,13 @@ void storage_coffee_init(void)
 	bundles_in_storage = 0;
 	bundle_list_changed = 0;
 
+#if BUNDLE_STORAGE_INIT
+	LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "Formatting flash");
+	cfs_coffee_format();
+#else
 	// Try to restore our bundle list from the file system
 	storage_coffee_read_list();
+#endif
 
 	// Set the timer to regularly prune expired bundles
 	ctimer_set(&g_store_timer, CLOCK_SECOND*5, storage_coffee_prune, NULL);

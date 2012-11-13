@@ -30,8 +30,8 @@
  * Which storage driver are we going to use?
  * Default is RAM
  */
-#ifdef CONF_BUNDLE_STORAGE
-#define BUNDLE_STORAGE CONF_BUNDLE_STORAGE
+#ifdef BUNDLE_CONF_STORAGE
+#define BUNDLE_STORAGE BUNDLE_CONF_STORAGE
 #else
 #define BUNDLE_STORAGE storage_mmem
 #endif
@@ -49,6 +49,16 @@
  * How do we call the bundle list representation file (if applicable)
  */
 #define BUNDLE_STORAGE_FILE_NAME "list_file"
+
+/**
+ * Should storage go into an initial safe state when starting up?
+ * Otherwise, some storages may try to reconstruct the last start before powering down
+ */
+#ifdef BUNDLE_CONF_STORAGE_INIT
+#define BUNDLE_STORAGE_INIT BUNDLE_CONF_STORAGE_INIT
+#else
+#define BUNDLE_STORAGE_INIT 0
+#endif
 
 /**
  * Representation of a bundle as returned by the "get_bundles" call to the storage module
