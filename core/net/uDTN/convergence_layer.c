@@ -154,7 +154,10 @@ int convergence_layer_free_transmit_ticket(struct transmit_ticket_t * ticket)
 
 	memb_free(&transmission_ticket_mem, ticket);
 
-	convergence_layer_queue--;
+	/* Only dequeue bundles that have been in the queue */
+	if( (ticket->flags & CONVERGENCE_LAYER_QUEUE_ACTIVE) || (ticket->flags & CONVERGENCE_LAYER_QUEUE_DONE) || (ticket->flags & CONVERGENCE_LAYER_QUEUE_FAIL) ) {
+		convergence_layer_queue--;
+	}
 
 	/* Count the used slots */
 	convergence_layer_slots--;
