@@ -170,8 +170,11 @@ PROCESS_THREAD(bundle_verificator_process, ev, data)
 			break;
 		}
 	}
-	bundle_delete_bundle(bundle1);
-	bundle_delete_bundle(bundle2);
+	bundle_decrement(bundle1);
+	bundle_decrement(bundle2);
+
+	bundle1 = NULL;
+	bundle2 = NULL;
 	if (first != -1 || len1 != len2) {
 		TEST_FAIL("Buffer mismatch");
 		process_exit(&bundle_verificator_process);
@@ -226,7 +229,7 @@ PROCESS_THREAD(bundle_generator_process, ev, data)
 		bundle_add_block(bundlemem, 1, 2, databuf, DATASIZE);
 
 		numbundles++;
-		bundle_delete_bundle(bundlemem);
+		bundle_decrement(bundlemem);
 	}
 	PROCESS_END();
 }

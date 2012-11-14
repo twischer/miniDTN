@@ -86,9 +86,9 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 	PROCESS_PAUSE();
 
 	/* Register our endpoint to receive bundles */
-	reg.status=1;
-	reg.application_process=&udtn_sender_process;
-	reg.app_id=25;
+	reg.status = APP_ACTIVE;
+	reg.application_process = PROCESS_CURRENT();
+	reg.app_id = 25;
 	process_post(&agent_process, dtn_application_registration_event,&reg);
 
 	/* Profile initialization separately */
@@ -199,26 +199,14 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 		bundle_set_attr(bundle_outgoing, DEST_NODE, &tmp);
 		tmp=25;
 		bundle_set_attr(bundle_outgoing, DEST_SERV, &tmp);
-		tmp=dtn_node_id;
-		bundle_set_attr(bundle_outgoing, SRC_NODE, &tmp);
-		bundle_set_attr(bundle_outgoing, SRC_SERV,&tmp);
-		bundle_set_attr(bundle_outgoing, CUST_NODE, &tmp);
-		bundle_set_attr(bundle_outgoing, CUST_SERV, &tmp);
-		bundle_set_attr(bundle_outgoing, REP_NODE, &tmp);
-		bundle_set_attr(bundle_outgoing, REP_SERV, &tmp);
 
 		/* Bundle flags */
 		tmp=BUNDLE_FLAG_SINGLETON;
 		bundle_set_attr(bundle_outgoing, FLAGS, &tmp);
 
-		/* Set the sequence number to the number of bundles sent */
-		tmp = bundles_sent;
-		bundle_set_attr(bundle_outgoing, TIME_STAMP_SEQ_NR, &tmp);
-
+		/* Bundle lifetime */
 		tmp=2000;
 		bundle_set_attr(bundle_outgoing, LIFE_TIME, &tmp);
-		tmp=4;
-		bundle_set_attr(bundle_outgoing, TIME_STAMP, &tmp);
 
 		/* Add the payload */
 		for(i=0; i<80; i++)
