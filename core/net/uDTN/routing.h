@@ -59,6 +59,7 @@
 #define ROUTING_STATUS_OK			0x01
 #define ROUTING_STATUS_FAIL			0x02
 #define ROUTING_STATUS_NACK			0x04
+#define ROUTING_STATUS_ERROR		0x08
 
 PROCESS_NAME(routing_process);
 
