@@ -96,8 +96,6 @@ PROCESS(coordinator_process, "Coordinator");
 
 AUTOSTART_PROCESSES(&coordinator_process);
 
-static struct registration_api reg_ping;
-static struct registration_api reg_pong;
 struct bundle_t bundle;
 /*---------------------------------------------------------------------------*/
 
@@ -118,30 +116,25 @@ static inline struct mmem *bundle_convenience(uint16_t dest, uint16_t dst_srv, u
 		return NULL;
 	}
 
-	/* Source and destination */
+	/* Destination node and service */
 	tmp=dest;
 	bundle_set_attr(bundlemem, DEST_NODE, &tmp);
 	tmp=dst_srv;
 	bundle_set_attr(bundlemem, DEST_SERV, &tmp);
-	tmp=dtn_node_id;
-	bundle_set_attr(bundlemem, SRC_NODE, &tmp);
-	bundle_set_attr(bundlemem, CUST_NODE, &tmp);
-	bundle_set_attr(bundlemem, CUST_SERV, &tmp);
-	bundle_set_attr(bundlemem, REP_NODE, &tmp);
-	bundle_set_attr(bundlemem, REP_SERV, &tmp);
 
+	/* Source Service */
 	tmp=src_srv;
-	bundle_set_attr(bundlemem, SRC_SERV,&tmp);
+	bundle_set_attr(bundlemem, SRC_SERV, &tmp);
 
+	/* Bundle flags */
 	tmp=BUNDLE_FLAG_SINGLETON;
 	bundle_set_attr(bundlemem, FLAGS, &tmp);
 
+	/* Bundle lifetime */
 	tmp=2000;
 	bundle_set_attr(bundlemem, LIFE_TIME, &tmp);
 
-	tmp=4;
-	bundle_set_attr(bundlemem, TIME_STAMP, &tmp);
-
+	/* Bundle payload block */
 	bundle_add_block(bundlemem, 1, 0, data, len);
 
 	return bundlemem;
@@ -154,7 +147,8 @@ PROCESS_THREAD(coordinator_process, ev, data)
 
 	profiling_init();
 	profiling_start();
-	agent_init();
+
+	PROCESS_PAUSE();
 
 	printf("Starting tests\n");
 
@@ -191,6 +185,7 @@ PROCESS_THREAD(ping_process, ev, data)
 	static struct etimer timer;
 	struct mmem *bundlemem, *recv;
 	struct bundle_block_t *block;
+	static struct registration_api reg_ping;
 	uint8_t i;
 	uint8_t userdata[PAYLOAD_LEN];
 	uint32_t *u32_ptr;
@@ -199,9 +194,9 @@ PROCESS_THREAD(ping_process, ev, data)
 	PROCESS_BEGIN();
 
 	/* Register our endpoint */
-	reg_ping.status=1;
-	reg_ping.application_process=&ping_process;
-	reg_ping.app_id=5;
+	reg_ping.status = APP_ACTIVE;
+	reg_ping.application_process = PROCESS_CURRENT();
+	reg_ping.app_id = 5;
 	process_post(&agent_process, dtn_application_registration_event, &reg_ping);
 
 	/* Wait a second */
@@ -320,14 +315,15 @@ PROCESS_THREAD(pong_process, ev, data)
 	static uint16_t bundle_sent = 0;
 	struct mmem *bundlemem, *recv;
 	struct bundle_block_t *block;
+	static struct registration_api reg_pong;
 	uint32_t *u32_ptr, tmp;
 
 	PROCESS_BEGIN();
 
 	/* Register our endpoint */
-	reg_pong.status=1;
-	reg_pong.application_process=&pong_process;
-	reg_pong.app_id=7;
+	reg_pong.status = APP_ACTIVE;
+	reg_pong.application_process = PROCESS_CURRENT();
+	reg_pong.app_id = 7;
 	process_post(&agent_process, dtn_application_registration_event, &reg_pong);
 
 	/* Wait a second */
