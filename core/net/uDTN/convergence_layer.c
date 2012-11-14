@@ -566,7 +566,13 @@ int convergence_layer_status(void * pointer, uint8_t outcome)
 	convergence_layer_transmitting = 0;
 
 	/* Notify the process to commence transmitting outgoing bundles */
-	process_poll(&convergence_layer_process);
+	if( outcome == CONVERGENCE_LAYER_STATUS_NOSEND ) {
+		/* Send event to slow the stuff down */
+		process_post(&convergence_layer_process, PROCESS_EVENT_CONTINUE, NULL);
+	} else {
+		/* Poll to make it faster */
+		process_poll(&convergence_layer_process);
+	}
 
 	if( pointer == NULL ) {
 		/* Must be a discovery message */
@@ -803,14 +809,14 @@ PROCESS_THREAD(convergence_layer_process, ev, data)
 	etimer_set(&stale_timer, CLOCK_SECOND);
 
 	while(1) {
-		PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL || etimer_expired(&stale_timer));
+		PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL || ev == PROCESS_EVENT_CONTINUE || etimer_expired(&stale_timer));
 
 		if( etimer_expired(&stale_timer) ) {
 			check_blocked_neighbours();
 			etimer_reset(&stale_timer);
 		}
 
-		if( ev == PROCESS_EVENT_POLL ) {
+		if( ev == PROCESS_EVENT_POLL || ev == PROCESS_EVENT_CONTINUE ) {
 			/* If we are currently transmitting, we cannot send another bundle */
 			if( convergence_layer_transmitting ) {
 				/* We will get polled again when the MAC layers calls us back,
