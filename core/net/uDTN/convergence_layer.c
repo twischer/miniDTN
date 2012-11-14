@@ -249,6 +249,16 @@ int convergence_layer_send_bundle(struct transmit_ticket_t * ticket)
 	/* Encode the bundle into the buffer */
 	length += bundle_encode_bundle(ticket->bundle, buffer + 1, buffer_length - 1);
 
+	/* Check if we may violate the maximum length */
+	if( length > CONVERGENCE_LAYER_MAX_LENGTH ) {
+		ticket->flags = CONVERGENCE_LAYER_QUEUE_FAIL;
+
+		/* Notify routing module */
+		ROUTING.sent(ticket, ROUTING_STATUS_ERROR);
+
+		return -1;
+	}
+
 	/* Flag the bundle as being in transit now */
 	ticket->flags |= CONVERGENCE_LAYER_QUEUE_IN_TRANSIT;
 
@@ -593,6 +603,12 @@ int convergence_layer_status(void * pointer, uint8_t outcome)
 			return 1;
 		}
 
+		/* Fatal error, retry is pointless */
+		if( outcome == CONVERGENCE_LAYER_STATUS_FATAL ) {
+			convergence_layer_free_transmit_ticket(ticket);
+			return 1;
+		}
+
 		if( outcome == CONVERGENCE_LAYER_STATUS_NOSEND ) {
 			// Has not been transmitted, so retry right away
 			ticket->timestamp = 0;
@@ -624,6 +640,17 @@ int convergence_layer_status(void * pointer, uint8_t outcome)
 			bundle_decrement(ticket->bundle);
 			ticket->bundle = NULL;
 		}
+
+		return 1;
+	}
+
+	/* Fatal error, no retry necessary */
+	if( outcome == CONVERGENCE_LAYER_STATUS_FATAL ) {
+		/* This neighbour is now unblocked */
+		convergence_layer_set_unblocked(&ticket->neighbour);
+
+		/* Notify routing module */
+		ROUTING.sent(ticket, ROUTING_STATUS_ERROR);
 
 		return 1;
 	}

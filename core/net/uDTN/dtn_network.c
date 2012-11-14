@@ -86,9 +86,12 @@ static void dtn_network_sent(void * pointer, int status, int num_tx)
 	case MAC_TX_DEFERRED:
 	case MAC_TX_COLLISION:
 	case MAC_TX_ERR:
-	case MAC_TX_ERR_FATAL:
 	default:
 		outcome = CONVERGENCE_LAYER_STATUS_NOSEND;
+		break;
+	case MAC_TX_ERR_FATAL:
+		/* Fatal errors occur when the buffer is too small */
+		outcome = CONVERGENCE_LAYER_STATUS_FATAL;
 		break;
 	case MAC_TX_NOACK:
 		outcome = CONVERGENCE_LAYER_STATUS_NOACK;

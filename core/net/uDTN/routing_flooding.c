@@ -667,6 +667,20 @@ void routing_flooding_bundle_sent(struct transmit_ticket_t * ticket, uint8_t sta
 		return;
 	}
 
+	if( status == ROUTING_STATUS_ERROR ) {
+		LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "Bundle %lu has fatal error, deleting", ticket->bundle_number);
+
+		/* Bundle failed permanently, we can delete it because it will never be delivered anyway */
+		entry->flags = 0;
+
+		routing_flooding_check_keep_bundle(ticket->bundle_number);
+
+		/* Free up the ticket */
+		convergence_layer_free_transmit_ticket(ticket);
+
+		return;
+	}
+
 	// Here: status == ROUTING_STATUS_OK
 	statistics_bundle_outgoing(1);
 

@@ -65,7 +65,6 @@
 #define CONVERGENCE_LAYER_QUEUE_ACK			0x20
 #define CONVERGENCE_LAYER_QUEUE_NACK		0x40
 
-
 /**
  * CL COMPAT VALUES
  */
@@ -99,6 +98,7 @@
 #define CONVERGENCE_LAYER_STATUS_OK			0x01
 #define CONVERGENCE_LAYER_STATUS_NOACK		0x02
 #define CONVERGENCE_LAYER_STATUS_NOSEND		0x04
+#define CONVERGENCE_LAYER_STATUS_FATAL		0x08
 
 /**
  * CL Priority Values
@@ -107,6 +107,11 @@
 #define CONVERGENCE_LAYER_PRIORITY_HIGH		0x02
 
 #define CONVERGENCE_LAYER_VALID_FLAG		0x7a03ab12UL
+
+/**
+ * Maximum payload length of one outgoing frame
+ */
+#define CONVERGENCE_LAYER_MAX_LENGTH 116
 
 /**
  * Convergence Layer Process
