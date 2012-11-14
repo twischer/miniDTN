@@ -76,13 +76,12 @@ PROCESS_THREAD(dtnping_process, ev, data)
 
 	PROCESS_BEGIN();
 
-	agent_init();
+	/* Give agent time to initialize */
+	PROCESS_PAUSE();
 
-	etimer_set(&timer,  CLOCK_SECOND*1);
-	PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&timer));
-
-	reg.status = 1;
-	reg.application_process = &dtnping_process;
+	/* Register ping endpoint */
+	reg.status = APP_ACTIVE;
+	reg.application_process = PROCESS_CURRENT();
 	reg.app_id = DTN_PING_ENDPOINT;
 	process_post(&agent_process, dtn_application_registration_event, &reg);
 
