@@ -619,7 +619,7 @@ struct mmem * storage_coffee_read_bundle(uint32_t bundle_number)
 
 	if( entry == NULL ) {
 		LOG(LOGD_DTN, LOG_STORE, LOGL_WRN, "Could not find bundle %lu on read_bundle", bundle_number);
-		return 0;
+		return NULL;
 	}
 
 	bundlemem = bundle_create_bundle();
