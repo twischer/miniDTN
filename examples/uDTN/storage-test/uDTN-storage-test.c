@@ -229,6 +229,55 @@ PROCESS_THREAD(test_process, ev, data)
 	} while (now_fine != clock_time());
 	time_start = ((unsigned long)now)*CLOCK_SECOND + now_fine%CLOCK_SECOND;
 
+	printf("Create, Read and Delete in sequence\n");
+	for(i=0; i<TEST_BUNDLES; i++) {
+		PROCESS_PAUSE();
+
+		if( my_create_bundle(i, &bundle_numbers[i], 3600) ) {
+			printf("\tBundle %lu created successfully \n", i);
+		} else {
+			printf("\tBundle %lu could not be created \n", i);
+			errors ++;
+			continue;
+		}
+
+		if( my_verify_bundle(bundle_numbers[i], i) ) {
+			printf("\tBundle %lu read back successfully \n", i);
+		} else {
+			printf("\tBundle %lu could not be read back and verified \n", i);
+			errors ++;
+		}
+
+		n = BUNDLE_STORAGE.del_bundle(bundle_numbers[i], REASON_DELIVERED);
+
+		if( n ) {
+			printf("\tBundle %lu deleted successfully\n", i);
+		} else {
+			printf("\tBundle %lu could not be deleted\n", i);
+			errors++;
+		}
+
+		if( BUNDLE_STORAGE.get_bundles() != NULL ) {
+			printf("Bundle list is not empty\n");
+			errors ++;
+		}
+
+		if( BUNDLE_STORAGE.get_bundle_num() > 0 ) {
+			printf("Storage reports more than 0 bundles\n");
+			errors ++;
+		}
+
+		if( BUNDLE_STORAGE.free_space(NULL) != bundle_slots_free ) {
+			printf("Storage does not report enough free slots\n");
+			errors ++;
+		}
+
+		if( avail_memory != initial_memory ) {
+			printf("MMEM fail\n");
+			errors++;
+		}
+	}
+
 	for(mode=0; mode<6; mode ++) {
 		PROCESS_PAUSE();
 
