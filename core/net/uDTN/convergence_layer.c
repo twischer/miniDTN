@@ -192,7 +192,7 @@ int convergence_layer_send_bundle(struct transmit_ticket_t * ticket)
 	uint8_t * buffer = NULL;
 	uint8_t buffer_length = 0;
 
-	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Sending bundle %lu to %u.%u", ticket->bundle_number, ticket->neighbour.u8[0], ticket->neighbour.u8[1]);
+	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Sending bundle %lu to %u.%u with ticket %p", ticket->bundle_number, ticket->neighbour.u8[0], ticket->neighbour.u8[1], ticket);
 
 	/* Read the bundle from storage, if it is not in memory */
 	if( ticket->bundle == NULL ) {
@@ -310,7 +310,7 @@ int convergence_layer_send_ack(rimeaddr_t * destination, uint8_t sequence_number
 {
 	uint8_t * buffer = NULL;
 
-	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Sending ACK or NACK to %u.%u for SeqNo %u: %p", destination->u8[0], destination->u8[1], sequence_number, destination);
+	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Sending ACK or NACK to %u.%u for SeqNo %u with ticket %p", destination->u8[0], destination->u8[1], sequence_number, ticket);
 
 	/* If we are currently transmitting or waiting for an ACK, do nothing */
 	if( convergence_layer_transmitting ) {
@@ -407,8 +407,6 @@ int convergence_layer_parse_dataframe(rimeaddr_t * source, uint8_t * payload, ui
 	struct bundle_t * bundle = NULL;
 	int n;
 
-	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Bundle received %p from %u.%u with SeqNo %u: %p", payload, source->u8[0], source->u8[1], sequence_number, source);
-
 	if( flags != (CONVERGENCE_LAYER_FLAGS_FIRST | CONVERGENCE_LAYER_FLAGS_LAST ) ) {
 		LOG(LOGD_DTN, LOG_CL, LOGL_ERR, "Bundle received %p from %u.%u with invalid flags %02X", payload, source->u8[0], source->u8[1], flags);
 	}
@@ -420,11 +418,13 @@ int convergence_layer_parse_dataframe(rimeaddr_t * source, uint8_t * payload, ui
 		return -1;
 	}
 
-	bundle = (struct bundle_t*) MMEM_PTR(bundlemem);
+	bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 	if( !bundle ) {
 		LOG(LOGD_DTN, LOG_CL, LOGL_WRN, "Invalid bundle pointer");
 		return -1;
 	}
+
+	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Bundle %lu received from %u.%u with SeqNo %u", bundle->bundle_num, source->u8[0], source->u8[1], sequence_number);
 
 	/* Store the node from which we received the bundle */
 	rimeaddr_copy(&bundle->msrc, source);
@@ -457,7 +457,7 @@ int convergence_layer_parse_ackframe(rimeaddr_t * source, uint8_t * payload, uin
 	/* Poll the process to initiate transmission of the next bundle */
 	process_poll(&convergence_layer_process);
 
-	// LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Incoming ACK for SeqNo %u", sequence_number);
+	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Incoming ACK from %u.%u for SeqNo %u", source->u8[0], source->u8[1], sequence_number);
 
 	for(ticket = list_head(transmission_ticket_list);
 		ticket != NULL;
@@ -825,7 +825,7 @@ PROCESS_THREAD(convergence_layer_process, ev, data)
 	memb_init(&blocked_neighbour_mem);
 	list_init(blocked_neighbour_list);
 
-	LOG(LOGD_DTN, LOG_CL, LOGL_INF, "CL process in running");
+	LOG(LOGD_DTN, LOG_CL, LOGL_INF, "CL process is running");
 
 	/* Initialize state */
 	convergence_layer_transmitting = 0;
