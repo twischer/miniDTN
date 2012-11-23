@@ -27,7 +27,7 @@ parser.add_argument("-d", "--dirty", dest="dirty", action="store_true", default=
 parser.add_argument("-c", "--config", dest="configfile", default="config.yaml",
 		help="where to read the config from")
 parser.add_argument("-x", "--xml", dest="xmlreport", default=False,
-		help="output the test reports in XML (for easy parsing with jenkins)")
+		help="output the test reports in XML (for easy parsing with jenkins), takes path to XML-report-dir as argument")
 parser.add_argument("--only-tests",
 		dest="only_tests", default=[],
                 action=MakeList,
