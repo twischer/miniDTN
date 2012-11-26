@@ -1,0 +1,29 @@
+$(info Making XMEGA Xplained)
+
+ifndef CONTIKI
+  $(error CONTIKI not defined! You must specify where CONTIKI resides!)
+endif
+
+#basic defines
+
+CONTIKI_CPU=$(CONTIKI)/cpu/avr
+MCU=atxmega256a3
+
+AVRDUDE_PROGRAMMER=jtag2_mkii
+
+# specific
+CONTIKI_TARGET_DIRS = . drv/
+
+CONTIKI_MAIN=contiki-main
+# CONTIKI_CORE=contiki-main
+CONTIKI_TARGET_MAIN = ${CONTIKI_CORE}.o
+CONTIKI_TARGET_SOURCEFILES += contiki-main.c uart.c rtimer-arch.c
+
+CONTIKI_PLAT_DEFS = -DF_CPU=32000000UL -DAUTO_CRC_PADDING=2 -DAUTOSTART_ENABLE -D__PROG_TYPES_COMPAT__=1
+
+CFLAGS += -std=c99
+
+AVRDUDE_OPTIONS=-V
+
+### includes
+include $(CONTIKI_CPU)/Makefile.avr
