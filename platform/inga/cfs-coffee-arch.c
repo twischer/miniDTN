@@ -736,6 +736,10 @@ void external_flash_write_page(coffee_page_t page, CFS_CONF_OFFSET_TYPE offset, 
 		return;
 	}
 
+	if( (size + offset) > COFFEE_PAGE_SIZE ) {
+		return;
+	}
+
 	unsigned char buffer[COFFEE_PAGE_SIZE];
 
 	// Now read the current content of that page
