@@ -276,7 +276,7 @@ int routing_flooding_forward_directly(struct routing_entry_t * entry)
 	}
 
 	/* We know the neighbour, send it directly */
-	LOG(LOGD_DTN, LOG_ROUTE, LOGL_INF, "send bundle %lu to %u:%u directly", entry->bundle_number, nei_l->neighbour.u8[0], nei_l->neighbour.u8[1]);
+	LOG(LOGD_DTN, LOG_ROUTE, LOGL_INF, "send bundle %lu to %u.%u directly", entry->bundle_number, nei_l->neighbour.u8[0], nei_l->neighbour.u8[1]);
 
 	/* Mark bundle as busy */
 	entry->flags |= ROUTING_FLAG_IN_TRANSIT;
@@ -332,7 +332,7 @@ int routing_flooding_forward_normal(struct routing_entry_t * entry)
 		/* Did we forward the bundle to that neighbour already? */
 		for (i = 0 ; i < ROUTING_NEI_MEM ; i++) {
 			if ( rimeaddr_cmp(&entry->neighbours[i], &nei_l->neighbour)){
-				LOG(LOGD_DTN, LOG_ROUTE, LOGL_DBG, "bundle %lu already sent to node %u:%u!", entry->bundle_number, entry->neighbours[i].u8[0], entry->neighbours[i].u8[1]);
+				LOG(LOGD_DTN, LOG_ROUTE, LOGL_DBG, "bundle %lu already sent to node %u.%u!", entry->bundle_number, entry->neighbours[i].u8[0], entry->neighbours[i].u8[1]);
 				sent = 1;
 
 				// Break the (narrowest) for
@@ -341,7 +341,7 @@ int routing_flooding_forward_normal(struct routing_entry_t * entry)
 		}
 
 		if(!sent) {
-			LOG(LOGD_DTN, LOG_ROUTE, LOGL_INF, "send bundle %lu to %u:%u", entry->bundle_number, nei_l->neighbour.u8[0], nei_l->neighbour.u8[1]);
+			LOG(LOGD_DTN, LOG_ROUTE, LOGL_INF, "send bundle %lu to %u.%u", entry->bundle_number, nei_l->neighbour.u8[0], nei_l->neighbour.u8[1]);
 
 			/* Mark bundle as busy */
 			entry->flags |= ROUTING_FLAG_IN_TRANSIT;
