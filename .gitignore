@@ -6,6 +6,9 @@
 *.elf
 *.ihex
 *.inga
+*.hex
+*.sky
+*.pyc
 obj_*
 symbols.*
 Makefile.target
