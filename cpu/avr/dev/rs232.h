@@ -79,7 +79,7 @@ in contiki-conf.h)."
  *             number of stop and data bits, ...
  */
 void
-rs232_init (uint8_t port, uint8_t bd, uint8_t ffmt);
+rs232_init (uint8_t port, uint16_t bd, uint8_t ffmt);
 
 /**
  * \brief      Set an input handler for incoming RS232 data

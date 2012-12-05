@@ -295,7 +295,7 @@ ISR(USART1_RX_vect)
 
 /*---------------------------------------------------------------------------*/
 void
-rs232_init(uint8_t port, uint8_t bd, uint8_t ffmt)
+rs232_init(uint8_t port, uint16_t bd, uint8_t ffmt)
 {
   
 
