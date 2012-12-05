@@ -55,6 +55,9 @@
 #elif defined (__AVR_ATmega8__) || defined (__AVR_ATmega8515__) \
    || defined (__AVR_ATmega16__) || defined (__AVR_ATmega32__)
 #include "dev/rs232_atmega32.h"
+// This is MCU specific, no general XMega file here
+#elif defined (__AVR_ATxmega256A3__)
+#include "dev/rs232_atxmega256a3.h"
 #else
 #error "Please implement a rs232 header for your MCU (or set the MCU type \
 in contiki-conf.h)."

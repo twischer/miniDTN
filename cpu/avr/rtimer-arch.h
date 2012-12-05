@@ -43,22 +43,26 @@
  * rtimer_arch_now() will then return 0, likely hanging the cpu if used.
  * Timer1 is used if Timer3 is not available.
  */
+
 #ifndef RTIMER_ARCH_PRESCALER
-#define RTIMER_ARCH_PRESCALER 1024UL
+	#define RTIMER_ARCH_PRESCALER 1024UL
 #endif
+
 #if RTIMER_ARCH_PRESCALER
-#define RTIMER_ARCH_SECOND (F_CPU/RTIMER_ARCH_PRESCALER)
+	#define RTIMER_ARCH_SECOND (F_CPU/RTIMER_ARCH_PRESCALER)
 #else
-#define RTIMER_ARCH_SECOND 0
+	#define RTIMER_ARCH_SECOND 0
 #endif
 
 
-#ifdef TCNT3
-#define rtimer_arch_now() (TCNT3)
+#if defined (__AVR_XMEGA__)
+	#define rtimer_arch_now() (RTC_CNT)
+#elif defined(TCNT3)
+	#define rtimer_arch_now() (TCNT3)
 #elif RTIMER_ARCH_PRESCALER
-#define rtimer_arch_now() (TCNT1)
+	#define rtimer_arch_now() (TCNT1)
 #else
-#define rtimer_arch_now() (0)
+	#define rtimer_arch_now() (0)
 #endif
 
 #endif /* __RTIMER_ARCH_H__ */

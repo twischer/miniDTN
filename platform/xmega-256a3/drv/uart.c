@@ -23,7 +23,7 @@ void uart_init(void)
     USARTC0.CTRLC = 0x03;			// async, no parity, 8 bit data, 1 stop bit
  
     // Enable transmitter only
-    USARTC0.CTRLB = USART_TXEN_bm;
+	USARTC0.CTRLB = USART_TXEN_bm;
 
 	stdout = &mystdout;
 }

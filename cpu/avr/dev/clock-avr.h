@@ -285,6 +285,14 @@
    * counter value in TCNT2 is cleared automatically. \
    */ \
   TIMSK = _BV (OCIE2);
+#elif defined(__AVR_XMEGA__)
+
+#define AVR_OUTPUT_COMPARE_INT TCC0_OVF_vect
+
+#define OCRSetup() \
+	TCC0.PER = TIMER_TOP;						\
+	TCC0.INTCTRLA = TC0_OVFINTLVL_gm;				\
+	TCC0.CTRLA = TIMER_PRESCALE; 
 #else
 #error "Setup CPU in clock-avr.h"
 #endif

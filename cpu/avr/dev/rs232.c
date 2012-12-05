@@ -69,6 +69,7 @@ typedef struct {
   volatile uint8_t * ucsrc;
   volatile uint8_t txwait;
   int (* input_handler)(unsigned char);
+  volatile uint8_t * ust; // with XMega we have a seperate status register that gives us information about the buffer
 } rs232_t;
 
 #if defined (__AVR_ATmega128__) || defined(__AVR_ATmega1284P__) || defined(__AVR_ATmega1281__) || defined(__AVR_ATmega128RFA1__)
@@ -81,7 +82,8 @@ static rs232_t rs232_ports[2] = {
     &UCSR0B,
     &UCSR0C,
     0,
-    NULL
+    NULL,
+	&UCSR0A
   },
 
   {  // UART1
@@ -92,7 +94,8 @@ static rs232_t rs232_ports[2] = {
     &UCSR1B,
     &UCSR1C,
     0,
-    NULL
+    NULL,
+	&UCSR1A
   }
 };
 #elif defined (__AVR_AT90USB1287__)
@@ -133,6 +136,23 @@ static rs232_t rs232_ports[1] = {
     NULL
   }
 };
+#elif defined (__AVR_ATxmega256A3__)
+// XMEGA has 3 UARTS Ports
+
+static rs232_t rs232_ports[1] = {
+  {   // UART0
+    &USARTE0.DATA,	// udr
+    &USARTE0.BAUDCTRLB,	// ubrrh
+    &USARTE0.BAUDCTRLA,	// ubrrl
+    &USARTE0.CTRLA,	// ucsra
+    &USARTE0.CTRLB,	// ucsrb	
+    &USARTE0.CTRLC,	// ucsrc
+    0,		// txwait
+    NULL,	// callback
+    &USARTE0.STATUS // ust
+  }
+};
+
 #else
 #error Please define the UART registers for your MCU!
 #endif
@@ -172,6 +192,29 @@ ISR(USART1_RX_vect)
     rs232_ports[RS232_PORT_1].input_handler(c);
   }
 }
+
+#elif defined(__AVR_XMEGA__)
+/*---------------------------------------------------------------------------*/
+ISR(USARTC0_TXC_vect)
+{
+  rs232_ports[RS232_PORT_0].txwait = 0;
+}
+
+/*---------------------------------------------------------------------------*/
+ISR(USARTC0_RXC_vect)
+{
+  unsigned char c;
+
+  c = *(rs232_ports[RS232_PORT_0].udr);
+
+  if(rs232_ports[RS232_PORT_0].input_handler != NULL) {
+    rs232_ports[RS232_PORT_0].input_handler(c);
+  }
+}
+
+/** 
+ * @TODO define other Interrupts see iox256a3.h:6555ff
+ */
 
 #elif defined (__AVR_ATmega644__)
 /*---------------------------------------------------------------------------*/
@@ -252,30 +295,68 @@ ISR(USART1_RX_vect)
 
 /*---------------------------------------------------------------------------*/
 void
-rs232_init (uint8_t port, uint8_t bd, uint8_t ffmt)
+rs232_init(uint8_t port, uint8_t bd, uint8_t ffmt)
 {
-  *(rs232_ports[port].ubrrh) = (uint8_t)(bd>>8);
-  *(rs232_ports[port].ubrrl) = (uint8_t)bd;
+  
 
   /*
    * - Enable receiver and transmitter,
    * - Enable interrupts for receiver and transmitter
    */
-  *(rs232_ports[port].ucsrb) = USART_INTERRUPT_RX_COMPLETE | \
-    USART_RECEIVER_ENABLE | USART_TRANSMITTER_ENABLE;
 
-  /*
-   * - mode (sync. / async)
-   * - Parity
-   * - Stop bits
-   * - charater size (9 bits are currently not supported)
-   * - clock polarity
-   */
-  *(rs232_ports[port].ucsrc) = USART_UCSRC_SEL | ffmt;
+	#ifdef __AVR_XMEGA__
+	/*
+		// *(rs232_ports[port].ucsra) = 0x3C; // enable high level interrupt for RX and TX
+		*(rs232_ports[port].ucsra) = 0; // disable interrupts
+		*(rs232_ports[port].ucsrc) = ffmt;
+		*(rs232_ports[port].ucsrb) = USART_RECEIVER_ENABLE | USART_TRANSMITTER_ENABLE;
+*/
+	if(port == 0 || port == 1)
+	{
+		PORTE.OUTSET = PIN3_bm;
+		PORTE.DIRSET = PIN3_bm;
+	}
+	//USARTE0.BAUDCTRLB = 0x00;			// BSCALE = 0
+	//USARTE0.BAUDCTRLA = 12;
+	//USARTE0.BAUDCTRLB = 0xCC;			// BSCALE = 0
+	//USARTE0.BAUDCTRLA = 0xF5;
 
-  rs232_ports[port].txwait = 0;
+	// printf("High: %X Low: %X\n", (uint8_t) (bd>>8), (uint8_t) bd );
 
-  rs232_ports[port].input_handler = NULL;
+	*(rs232_ports[port].ubrrh) = (uint8_t) (bd>>8);
+	*(rs232_ports[port].ubrrl) = (uint8_t) (bd & 0xFF);
+
+	USARTE0.CTRLA = 0;				// no interrupts please
+	USARTE0.CTRLC = 0x03;			// async, no parity, 8 bit data, 1 stop bit
+	USARTE0.CTRLB = USART_TXEN_bm;
+
+	  //*(rs232_ports[port].ucsra) = 0x3C; // enable high level interrupt for RX and TX
+		//*(rs232_ports[port].ucsra) = 0; // disable interrupts
+		//*(rs232_ports[port].ucsrc) = ffmt;
+		//*(rs232_ports[port].ucsrb) = USART_RECEIVER_ENABLE | USART_TRANSMITTER_ENABLE;
+	
+	#else
+		*(rs232_ports[port].ubrrh) = (uint8_t)(bd>>8);
+  		*(rs232_ports[port].ubrrl) = (uint8_t)bd;
+		*(rs232_ports[port].ucsrb) = USART_INTERRUPT_RX_COMPLETE | USART_RECEIVER_ENABLE | USART_TRANSMITTER_ENABLE;
+
+	/*
+	   * - mode (sync. / async)
+	   * - Parity
+	   * - Stop bits
+	   * - charater size (9 bits are currently not supported)
+	   * - clock polarity
+	   */
+	  *(rs232_ports[port].ucsrc) = USART_UCSRC_SEL | ffmt;
+
+	  rs232_ports[port].txwait = 0;
+
+	  rs232_ports[port].input_handler = NULL;
+	#endif
+
+  
+
+  
 }
 
 void
@@ -316,9 +397,15 @@ rs232_printf(uint8_t port, const char *fmt, ...)
 void
 rs232_send(uint8_t port, unsigned char c)
 {
-  while (!(*(rs232_ports[port].ucsra) & (1 << UDRE1))) {
-		}
-  *(rs232_ports[port].udr) = c;
+  #ifdef __AVR_XMEGA__
+  while ( !( USARTE0.STATUS & USART_DREIF_bm) );
+  USARTE0.DATA = c;
+  #else
+  	while (!(*(rs232_ports[port].ucsra) & (1 << UDRE1))) { }
+*(rs232_ports[port].udr) = c;
+  #endif
+	
+  
 }
 /*---------------------------------------------------------------------------*/
 void

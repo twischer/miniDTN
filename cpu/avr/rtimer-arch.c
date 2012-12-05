@@ -44,12 +44,14 @@
 /* OBS: 8 seconds maximum time! */
 
 #include <avr/io.h>
+
 #include <avr/interrupt.h>
 #include <stdio.h>
 
 #include "sys/energest.h"
 #include "sys/rtimer.h"
 #include "rtimer-arch.h"
+
 
 #if defined(__AVR_ATmega1281__) || defined(__AVR_ATmega1284P__)
 #define ETIMSK TIMSK3
@@ -63,19 +65,19 @@
 
 #define OCIE3C	OCIE3B
 #define OCF3C	OCF3B
-#endif
+#endif // 1281 / 1284p
 
 #if defined(__AVR_AT90USB1287__) || defined(__AVR_ATmega128RFA1__) 
 #define ETIMSK TIMSK3
 #define ETIFR TIFR3
 #define TICIE3 ICIE3
-#endif
+#endif // atusb
 
 #if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega644__)
 #define TIMSK TIMSK1
 #define TICIE1 ICIE1
 #define TIFR TIFR1
-#endif
+#endif // 328p / 644
 
 /* Track flow through rtimer interrupts*/
 #if DEBUGFLOWSIZE&&0
@@ -86,7 +88,21 @@ extern uint8_t debugflowsize,debugflow[DEBUGFLOWSIZE];
 #endif
 
 /*---------------------------------------------------------------------------*/
-#if defined(TCNT3) && RTIMER_ARCH_PRESCALER
+
+#if defined(__AVR_XMEGA__)
+ISR(RTC_OVF_vect)
+{
+	//timer--;
+	//if(timer <= 0)
+	//{
+	//	timer = TIMER_LIMIT;
+	//	PORTR_OUTTGL = PIN1_bm;
+	//	printf("toggle %10d\n", i++);
+	//}
+
+	rtimer_run_next();
+}
+#elif defined(TCNT3) && RTIMER_ARCH_PRESCALER
 ISR (TIMER3_COMPA_vect) {
   DEBUGFLOW('/');
   ENERGEST_ON(ENERGEST_TYPE_IRQ);
@@ -129,7 +145,29 @@ rtimer_arch_init(void)
   sreg = SREG;
   cli ();
 
-#ifdef TCNT3
+#if defined(__AVR_XMEGA__)
+	printf("pre rtimer init\n");
+	OSC.CTRL |= OSC_RC32KEN_bm;
+	do {
+		/* Wait for the 32kHz oscillator to stabilize. */
+	} while ( ( OSC.STATUS & OSC_RC32KRDY_bm ) == 0);
+	/* Set internal 32kHz oscillator as clock source for RTC. 
+	 * (scaled down to 1024) */
+	CLK.RTCCTRL = CLK_RTCSRC_RCOSC_gc | CLK_RTCEN_bm;
+
+  /* Write 1 to clear existing timer function flags*/
+	RTC.INTFLAGS |= 0x02;
+	RTC.INTCTRL   = 0x00;
+
+	/*wait for CNT update and sync*/
+	RTC.CNT = 0x0000;
+	while (RTC.STATUS & RTC_SYNCBUSY_bm) {;}
+	/*start the clock, no prescaler (1024)*/
+	RTC.CTRL = RTC_PRESCALER_DIV1_gc;
+
+	printf("post rtimer init\n");
+#elif defined(TCNT3)
+
   /* Disable all timer functions */
   ETIMSK &= ~((1 << OCIE3A) | (1 << OCIE3B) | (1 << TOIE3) |
       (1 << TICIE3) | (1 << OCIE3C));
@@ -144,7 +182,7 @@ rtimer_arch_init(void)
 
   /* Reset counter */
   TCNT3 = 0;
-
+  
 #if RTIMER_ARCH_PRESCALER==1024
   TCCR3B |= 5;
 #elif RTIMER_ARCH_PRESCALER==256
@@ -185,7 +223,7 @@ rtimer_arch_init(void)
 #elif RTIMER_ARCH_PRESCALER==1
   TCCR1B |= 1;
 #else
-#error Timer1 PRESCALER factor not supported.
+	#error Timer1 PRESCALER factor not supported.
 #endif
 
 #endif /* TCNT3 */
@@ -204,7 +242,18 @@ rtimer_arch_schedule(rtimer_clock_t t)
   sreg = SREG;
   cli ();
   DEBUGFLOW(':');
-#ifdef TCNT3
+#if defined(__AVR_XMEGA__)
+	// uint16_t CNT_pre=RTC_CNT;
+	//stop rtc clearing RTC
+	RTC.CTRL = 0x00;
+	while (RTC.STATUS & RTC_SYNCBUSY_bm) {;}
+
+	//Set period and trigger overflow interrupt (medium level)
+	RTC.PER = (uint16_t) t;
+	RTC.INTCTRL |= RTC_OVFINTLVL_MED_gc;
+	//start RTC again
+	RTC.CTRL = RTC_PRESCALER_DIV1_gc;
+#elif defined(TCNT3)
   /* Set compare register */
   OCR3A = t;
   /* Write 1s to clear all timer function flags */

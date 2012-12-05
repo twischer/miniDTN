@@ -60,9 +60,27 @@
 #define WATCHDOG_CONF_BALANCE 0
 #endif
 
+/*
 #include "dev/watchdog.h"
 #include <avr/wdt.h>
 #include <avr/interrupt.h>
+*/
+
+#include <contiki-conf.h>
+#include <avrdef.h>
+#include <avr/io.h>
+#include <avr/wdt.h>
+#include <avr/interrupt.h>
+#include <dev/watchdog.h>
+
+#ifdef __AVR_XMEGA__
+#ifndef wdt_disable
+#define wdt_disable() \
+	uint8_t temp = (WDT.CTRL & ~WDT_ENABLE_bm) | WDT_CEN_bm; \
+	CCP = CCP_IOREG_gc; \
+	WDT.CTRL = temp
+#endif
+#endif
 
 /* Keep address over reboots */
 void *watchdog_return_addr __attribute__ ((section (".noinit")));
@@ -86,7 +104,12 @@ watchdog_init(void)
     Random code may have caused the last reset.
  */
     watchdog_return_addr = 0;
+
+#ifdef __AVR_XMEGA__
+	RST.STATUS |= RST_WDRF_bm;
+#else
 	MCUSR&=~(1<<WDRF);
+#endif
     wdt_disable();
 #if WATCHDOG_CONF_BALANCE && WATCHDOG_CONF_TIMEOUT >= 0
 	stopped = 1;
