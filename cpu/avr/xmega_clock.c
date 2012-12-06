@@ -1,5 +1,12 @@
 #include "xmega_clock.h"
 
+void xmega_clock_output(void)
+{
+	//Enable output of clock on PortC Pin 7 (p.161)
+	PORTC.DIR = 0x80; // set PortC.7 as output pin
+	PORTCFG.CLKEVOUT = 0x1; // set clock to be on portc.7
+}
+
 /**
  * We will use the 2 MHz internal oscillator by default as the source for the PLL
  *

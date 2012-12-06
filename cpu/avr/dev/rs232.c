@@ -136,7 +136,7 @@ static rs232_t rs232_ports[1] = {
     NULL
   }
 };
-#elif defined (__AVR_ATxmega256A3__)
+#elif defined (__AVR_ATxmega256A3__) || defined (__AVR_ATxmega256A3B__)
 // XMEGA has 3 UARTS Ports
 
 static rs232_t rs232_ports[1] = {

@@ -39,8 +39,6 @@
  */
 
 #include "contiki.h"
-#include "dev/leds.h"
-
 #include <stdio.h> /* For printf() */
 /*---------------------------------------------------------------------------*/
 PROCESS(hello_world_process, "Hello world process");
@@ -50,19 +48,11 @@ PROCESS_THREAD(hello_world_process, ev, data)
 {
   PROCESS_BEGIN();
 
-	static struct etimer myTimer;
-	
   printf("Hello, world\n");
-	
-	etimer_set(&myTimer, CLOCK_SECOND);
 	
 	while(1)
 	{
-		PROCESS_WAIT_EVENT();
-		printf("Toggle LED0 from process\n");
-		PORTR_OUTTGL = PIN0_bm;
-	
-		etimer_restart(&myTimer);
+		PROCESS_YIELD();
 	}
 	
   

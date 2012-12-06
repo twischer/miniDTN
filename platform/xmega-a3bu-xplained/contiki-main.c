@@ -13,11 +13,9 @@
 #include <string.h>
 #include <dev/watchdog.h>
 
-//#include "interrupt.h"
+//#include <dev/leds.h>
 
-#include <dev/leds.h>
-
-#include <util/delay.h>
+//#include <util/delay.h>
 
 #include <dev/rs232.h>
 #include "dev/serial-line.h"
@@ -26,43 +24,14 @@
 #include <autostart.h>
 #include "rtimer-arch.h"
 
-/*
-//#include "contiki-net.h"
-//#include "contiki-lib.h"
-
-#include "dev/rs232.h"
-
-//#include "clock.h"
-//#include <interrupt.h>
-//#include <cfs.h>
-//#include <sd.h>
-//#include <spi-xmega.h>
-//
-
-//#include "compiler.h"
-//#include "preprocessor.h"
-//#include "sysclk.h"
-
-
-
-void setup_board(void) {
-    //enable relay output
-    PORTE.DIR |= (1<<1);
-
-}
-
-*/
-
-#include "drv/uart.h"
+// TESTING
 
 /*
-#define TIMER_LIMIT 199
-
-volatile int timer = TIMER_LIMIT;
-
-static int i = 0;
+#include "radio/rf230bb/rf230bb.h"
+#include "net/mac/frame802154.h"
+#include "net/mac/framer-802154.h"
+#include "net/sicslowpan.h"
 */
-
 
 /*
 ISR(TCC1_OVF_vect) 
@@ -111,78 +80,41 @@ void setup_clock()
 }
 */
 
-void setup_clock()
-{
-	// 2MHz internal oscillator is selected by default for the PLL (00 in the MSB)	
-	OSC.PLLCTRL = 0 | XMEGA_PLL_FACTOR; // was: OSC_PLLFAC4_bm, moved to contiki-conf.h
-	 // or 32 Mhz clock divided by 4 times 4 == 32 Mhz
-	 // OSC.PLLCTRL = OSC_PLLSRC1_bm | OSC_PLLFAC2_bm;
-	 
-	// Enable PLL
-	OSC.CTRL |= OSC_PLLEN_bm;
-	// Wait for it to stablize
-	while ( !(OSC.STATUS & OSC_PLLEN_bm) ) ;
-	// Set main system clock to PLL internal clock
-	CCP = CCP_IOREG_gc; // Secret handshake so we can change clock
-	CLK.CTRL = (CLK.CTRL & ~CLK_SCLKSEL_gm ) | CLK_SCLKSEL_PLL_gc;
-}
-
 void init(void)
 {
 	cli();
-
-	PORTR_DIRSET |= PIN0_bm | PIN1_bm; // init LEDs
-	PORTR_OUTSET = 0;
-
-	// 2MHz by default, 1024er Divider, Zählen bis 39: 19.97ms
-	// 32MHz
 	
-	//timer_init_199Hz();
+	// enable High, Med and Low interrupts
+	xmega_interrupt_enable(PMIC_HILVLEN_bm | PMIC_MEDLVLEN_bm | PMIC_LOLVLEN_bm);
 	
-	// interrupt_init( PMIC_HILVLEN_bm | PMIC_MEDLVLEN_bm | PMIC_LOLVLEN_bm /*PMIC_CTRL_HML_gm*/ );
-	
-	// enable ALL interrupts
-	PMIC.CTRL |= PMIC_HILVLEN_bm | PMIC_MEDLVLEN_bm | PMIC_LOLVLEN_bm; 
-
-	setup_clock();
+	// init clock
+	xmega_clock_init();
+	// init timer
 	clock_init();
 
-	// Enable output of clock on PortC Pin 7 (p.161)
-	PORTC.DIR = 0x80; // set PortC.7 as output pin
-	// PORTC.PIN7CTRL = (3 << 3); KP
-	PORTCFG.CLKEVOUT = 0x1; // set clock to be on portc.7
-	// 
-
-	//uart_init();
-	
+	// init RS232
 	rs232_init(RS232_PORT_0, USART_BAUD_9600, USART_PARITY_NONE | USART_STOP_BITS_1 | USART_DATA_BITS_8);
  	rs232_redirect_stdout(RS232_PORT_0);
 
-	printf("rs232 init\n");
-	
-//  	interrupt_start();
-
+	// watchdog
 	watchdog_init();
-	
-	printf("welcome\n");
+	//watchdog_start();
 
+	// rtimer	
 	rtimer_init();
-	printf("rtimer init\n");
-
+	
 	// Initialize process subsystem
 	process_init();
-	printf("process init\n");
 
 	// etimers must be started before ctimer_init
 	process_start(&etimer_process, NULL);
-	printf("process_start\n");
 
+	// autostart processes
 	autostart_start(autostart_processes);
-	printf("autostart_start\n");
-
-	// system_clock_init();
 
 	sei();
+
+	printf("Welcome to Contiki.XMega\n");
 }
 
 int main(void)

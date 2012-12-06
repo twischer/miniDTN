@@ -70,6 +70,7 @@ void
 leds_arch_set(unsigned char leds)
 {
 #ifdef PLATFORM_HAS_LEDS
+printf("leds_arch_set(%x); (%x) (%x)\n", leds, LEDS_CONF_GREEN, LEDS_GREEN);
   LEDS_PxOUT = (LEDS_PxOUT & ~(LEDS_CONF_GREEN|LEDS_CONF_YELLOW))
     | ((leds & LEDS_GREEN) ? 0 : LEDS_CONF_GREEN)
     | ((leds & LEDS_YELLOW) ? 0 : LEDS_CONF_YELLOW);

@@ -55,8 +55,10 @@
 #endif
 
 
-#if defined (__AVR_XMEGA__)
+#if defined (__AVR_ATxmega256A3U__) || defined (__AVR_ATxmega256A3__)
 	#define rtimer_arch_now() (RTC_CNT)
+#elif defined(__AVR_ATxmega256A3B__) || defined(__AVR_ATxmega256A3BU__)
+	#define rtimer_arch_now() (RTC32.CNT)
 #elif defined(TCNT3)
 	#define rtimer_arch_now() (TCNT3)
 #elif RTIMER_ARCH_PRESCALER

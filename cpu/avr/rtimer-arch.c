@@ -89,17 +89,15 @@ extern uint8_t debugflowsize,debugflow[DEBUGFLOWSIZE];
 
 /*---------------------------------------------------------------------------*/
 
-#if defined(__AVR_XMEGA__)
+// This is XMega specific!!
+#if defined(__AVR_ATxmega256A3__) || defined(__AVR_ATxmega256A3U__)
 ISR(RTC_OVF_vect)
 {
-	//timer--;
-	//if(timer <= 0)
-	//{
-	//	timer = TIMER_LIMIT;
-	//	PORTR_OUTTGL = PIN1_bm;
-	//	printf("toggle %10d\n", i++);
-	//}
-
+	rtimer_run_next();
+}
+#elif defined(__AVR_ATxmega256A3B__) || defined(__AVR_ATxmega256A3BU__)
+ISR(RTC32_OVF_vect)
+{
 	rtimer_run_next();
 }
 #elif defined(TCNT3) && RTIMER_ARCH_PRESCALER
@@ -145,27 +143,50 @@ rtimer_arch_init(void)
   sreg = SREG;
   cli ();
 
-#if defined(__AVR_XMEGA__)
-	printf("pre rtimer init\n");
+#if defined(__AVR_ATxmega256A3__) || defined(__AVR_ATxmega256A3U__)
+	/*
 	OSC.CTRL |= OSC_RC32KEN_bm;
 	do {
-		/* Wait for the 32kHz oscillator to stabilize. */
+	// Wait for the 32kHz oscillator to stabilize.
 	} while ( ( OSC.STATUS & OSC_RC32KRDY_bm ) == 0);
-	/* Set internal 32kHz oscillator as clock source for RTC. 
-	 * (scaled down to 1024) */
+	// Set internal 32kHz oscillator as clock source for RTC. (scaled down to 1024)
 	CLK.RTCCTRL = CLK_RTCSRC_RCOSC_gc | CLK_RTCEN_bm;
 
-  /* Write 1 to clear existing timer function flags*/
+	// Write 1 to clear existing timer function flags
 	RTC.INTFLAGS |= 0x02;
 	RTC.INTCTRL   = 0x00;
 
-	/*wait for CNT update and sync*/
+	//wait for CNT update and sync
 	RTC.CNT = 0x0000;
 	while (RTC.STATUS & RTC_SYNCBUSY_bm) {;}
-	/*start the clock, no prescaler (1024)*/
+	// start the clock, no prescaler (was 1024) 
 	RTC.CTRL = RTC_PRESCALER_DIV1_gc;
+	*/
+#elif defined(__AVR_ATxmega256A3BU__) || defined(__AVR_ATxmega256A3B__)
+	// enable internal 32KHz oscillator
+	OSC.CTRL |= OSC_RC32KEN_bm;
+	do {
+	// Wait for the 32kHz oscillator to stabilize.
+	} while ( ( OSC.STATUS & OSC_RC32KRDY_bm ) == 0);
+	
+	// Set internal 32kHz oscillator as clock source for RTC.
+	CLK.RTCCTRL = CLK_RTCSRC_TOSC32_gc | CLK_RTCEN_bm;
 
-	printf("post rtimer init\n");
+
+ 	// Clear Interrupts (p. 229)
+	RTC32.INTFLAGS |= 0x02;
+	// Set Interrupt Level (p. 229)
+	RTC32.INTCTRL   = RTC32_OVFINTLVL_LO_gc; // 01 = low, 10 = mid, 11 = high level
+
+	// wait for CNT update and sync
+	RTC32.CNT = 0x0000;
+	// Start synchronisation between CNRT
+	RTC32.SYNCCTRL |= 0x10;
+
+	while (RTC32.SYNCCTRL & 0x10);
+	
+	// start the clock, no prescaler (1024)
+	RTC32.CTRL |= RTC32_ENABLE_bm; // enable 32 Bit RTC
 #elif defined(TCNT3)
 
   /* Disable all timer functions */
@@ -242,7 +263,7 @@ rtimer_arch_schedule(rtimer_clock_t t)
   sreg = SREG;
   cli ();
   DEBUGFLOW(':');
-#if defined(__AVR_XMEGA__)
+#if defined(__AVR_ATxmega256A3__) || defined(__AVR_ATxmega256A3U__)
 	// uint16_t CNT_pre=RTC_CNT;
 	//stop rtc clearing RTC
 	RTC.CTRL = 0x00;
@@ -253,6 +274,16 @@ rtimer_arch_schedule(rtimer_clock_t t)
 	RTC.INTCTRL |= RTC_OVFINTLVL_MED_gc;
 	//start RTC again
 	RTC.CTRL = RTC_PRESCALER_DIV1_gc;
+
+#elif defined(__AVR_ATxmega256A3BU__) || defined(__AVR_ATxmega256A3B__)
+	RTC32.CTRL = 0x00;
+		
+	while(RTC32.SYNCCTRL & RTC32_SYNCBUSY_bm);
+	
+	RTC32.PER = (uint16_t) t;
+	RTC32.INTCTRL |= RTC32_OVFINTLVL_LO_gc;
+	
+	RTC32.CTRL |= RTC32_ENABLE_bm;
 #elif defined(TCNT3)
   /* Set compare register */
   OCR3A = t;

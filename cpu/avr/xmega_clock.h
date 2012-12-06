@@ -3,7 +3,6 @@
 
 #include <avr/io.h>
 #include <stdint.h>
-#include <avrdef.h>
 
 #if F_CPU == 32000000UL
 	//#define XMEGA_OSC_SOURCE	OSC_RC32MEN_bm
@@ -41,6 +40,7 @@
 	#error CPU Frequence Unknown
 #endif
 
+void xmega_clock_output(void);
 void xmega_clock_init(void);
 
 

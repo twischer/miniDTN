@@ -63,7 +63,6 @@ ifndef MOTELIST
      cut -f 4 -d \  | \
      perl -ne 'print $$1 . " " if(m-(/dev/\w+)-);')
   CMOTES=$(MOTES)
-
 endif
 
 motelist: sky-motelist
