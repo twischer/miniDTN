@@ -66,6 +66,8 @@
 #include <avr/interrupt.h>
 */
 
+// This is needed because AVR libc does not support WDT yet
+
 #include <contiki-conf.h>
 #include <avrdef.h>
 #include <avr/io.h>
@@ -76,11 +78,11 @@
 #ifdef __AVR_XMEGA__
 #ifndef wdt_disable
 #define wdt_disable() \
-	uint8_t temp = (WDT.CTRL & ~WDT_ENABLE_bm) | WDT_CEN_bm; \
 	CCP = CCP_IOREG_gc; \
-	WDT.CTRL = temp
+	WDT.CTRL = (WDT.CTRL & ~WDT_ENABLE_bm) | WDT_CEN_bm;
 #endif
 #endif
+
 
 /* Keep address over reboots */
 void *watchdog_return_addr __attribute__ ((section (".noinit")));
@@ -106,10 +108,11 @@ watchdog_init(void)
     watchdog_return_addr = 0;
 
 #ifdef __AVR_XMEGA__
-	RST.STATUS |= RST_WDRF_bm;
+	
 #else
 	MCUSR&=~(1<<WDRF);
 #endif
+
     wdt_disable();
 #if WATCHDOG_CONF_BALANCE && WATCHDOG_CONF_TIMEOUT >= 0
 	stopped = 1;
@@ -125,9 +128,17 @@ watchdog_start(void)
 	if(!stopped)
 #endif
 	{
-		wdt_enable(WATCHDOG_CONF_TIMEOUT);
+		#ifdef __AVR_XMEGA__	
+			// enable watchdog	
+			CCP = CCP_IOREG_gc;
+			WDT.CTRL = WATCHDOG_CONF_TIMEOUT |  WDT_CEN_bm | WDT_ENABLE_bm;
+		#else
+			wdt_enable(WATCHDOG_CONF_TIMEOUT);
+		#endif
+
+// Enable Interrupt
 #if defined (__AVR_ATmega1284P__)
-		WDTCSR |= _BV(WDIE);
+		WDTCSR |= _BV(WDIE);	
 #endif
 	}
 #endif  
@@ -140,7 +151,17 @@ watchdog_periodic(void)
 #if WATCHDOG_CONF_BALANCE
 	if(!stopped)
 #endif
+		
+	#ifdef __AVR_XMEGA__
+		// reset watchdog
+		CCP = CCP_IOREG_gc;
+		WDT.CTRL = (RST.CTRL & ~WDT_ENABLE_bm) | WDT_CEN_bm;
+		CCP = CCP_IOREG_gc;
+		WDT.CTRL = WATCHDOG_CONF_TIMEOUT |  WDT_CEN_bm | WDT_ENABLE_bm;
+	#else
 		wdt_reset();
+	#endif
+
 #endif
 }
 /*---------------------------------------------------------------------------*/
@@ -152,6 +173,7 @@ watchdog_stop(void)
 	stopped++;
 #endif
 	wdt_disable();
+// Disable Interrupt
 #if defined (__AVR_ATmega1284P__)
 	WDTCSR &= ~_BV(WDIE);
 #endif

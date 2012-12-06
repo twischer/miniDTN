@@ -33,53 +33,6 @@
 #include "net/sicslowpan.h"
 */
 
-/*
-ISR(TCC1_OVF_vect) 
-{	
-	//timer--;
-	//if(timer <= 0)
-	//{
-	//	timer = TIMER_LIMIT;
-	//	PORTR_OUTTGL = PIN1_bm;
-	//	printf("toggle %10d\n", i++);
-	//}
-}
-*/
-
-/*
-void timer_init_199Hz()
-{
-	TCC1.CTRLA = TC_CLKSEL_DIV1024_gc; // Presacler 1024
-	TCC1.CTRLB = 0x00; // select Modus: Normal
-	TCC1.PER = 157; // Overflow bei 39
-	TCC1.CNT = 0x00; // Zurücksetzen auf 0
-	TCC1.INTCTRLA = 0b00000011; // Interrupt Highlevel
-
-	
-}
-*/
-
-/*
-void setup_clock()
-{
-    OSC.CTRL |= XMEGA_OSC_SOURCE; // enable Oscillator
-    while(!(OSC.STATUS & XMEGA_OSC_READY)); // Wait for the oscillator to stablize
-
-//    DFLLRC32M.COMP1 = 0x12;
-//    DFLLRC32M.COMP2 = 0x7A;
-  
-
-//    OSC.DFLLCTRL = 0x02;
-//    DFLLRC32M.CTRL = 1;
-
-    //OSC.DFLLCTRL = (0 << OSC_RC32MCREF_bp);
-    //DFLLRC32M.CTRL = DFLL_ENABLE_bm;
-    
-    CCP = CCP_IOREG_gc;
-    CLK.CTRL = XMEGA_CLK_SOURCE;
-}
-*/
-
 void init(void)
 {
 	cli();
@@ -98,7 +51,7 @@ void init(void)
 
 	// watchdog
 	watchdog_init();
-	//watchdog_start();
+	watchdog_start();
 
 	// rtimer	
 	rtimer_init();

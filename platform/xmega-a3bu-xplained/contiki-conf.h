@@ -28,5 +28,7 @@
 #define LEDS_CONF_YELLOW PIN1_bm
 #define LEDS_CONF_ALL (PIN0_bm | PIN1_bm)
 
+#define WATCHDOG_CONF_TIMEOUT WDT_PER_2KCLK_gc
+
 
 #endif /* __CONTIKI_CONF_H__ */
