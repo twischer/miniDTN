@@ -140,7 +140,33 @@ volatile extern signed char rf230_last_rssi;
 				    HAL_SPI_TRANSFER_WAIT(),		\
 				    HAL_SPI_TRANSFER_READ() )
 #endif
-#elif defined(__AVR__)
+#elif defined(__AVR_XMEGA__)
+#include <avr/io.h>
+#include <avr/interrupt.h>
+
+#define HAL_SPI_TRANSFER_OPEN() { \
+  HAL_ENTER_CRITICAL_REGION();	  \
+  HAL_SS_LOW(); /* Start the SPI transaction by pulling the Slave Select low. */
+
+// (PORTC.OUT = PORTC.OUT & ~(PIN4_bm));
+#define HAL_SPI_TRANSFER_WRITE(to_write) (SPIC.DATA = (to_write))
+
+// (PORTC.OUT |= (1<<4));
+#define HAL_SPI_TRANSFER_WAIT() ({while((SPIC.STATUS & SPI_IF_bm) == 0) {;}}) /* wait until the  */
+
+#define HAL_SPI_TRANSFER_READ() (SPIC.DATA)
+
+#define HAL_SPI_TRANSFER_CLOSE() \
+    HAL_SS_HIGH(); /* End the transaction by pulling the Slave Select High. */ \
+    HAL_LEAVE_CRITICAL_REGION(); \
+    }
+
+#define HAL_SPI_TRANSFER(to_write) (	  \
+				    HAL_SPI_TRANSFER_WRITE(to_write),	\
+				    HAL_SPI_TRANSFER_WAIT(),		\
+				    HAL_SPI_TRANSFER_READ() )
+
+#elif defined(__AVR__) /* AVR_XMEGA */
 /*
  * AVR with hardware SPI tranfers (TODO: move to hw spi hal for avr cpu)
  */
@@ -206,9 +232,9 @@ inline uint8_t spiWrite(uint8_t byte)
 /** \brief  This function initializes the Hardware Abstraction Layer.
  */
 #if defined(__AVR_ATmega128RFA1__)
-//#define HAL_RF230_ISR() ISR(RADIO_VECT)
-#define HAL_TIME_ISR()  ISR(TIMER1_OVF_vect)
-#define HAL_TICK_UPCNT() (TCNT1)
+#define HAL_RF230_ISR() ISR(RADIO_VECT)
+//#define HAL_TIME_ISR()  ISR(TIMER1_OVF_vect)
+//#define HAL_TICK_UPCNT() (TCNT1)
 void
 hal_init(void)
 {
@@ -218,6 +244,42 @@ hal_init(void)
  //   TIFR1 |= (1 << ICF1);             /* Clear Input Capture Flag. */
  //   HAL_ENABLE_OVERFLOW_INTERRUPT(); /* Enable Timer1 overflow interrupt. */
     hal_enable_trx_interrupt();    /* Enable interrupts from the radio transceiver. */
+}
+
+#elif defined(__AVR_XMEGA__)
+
+#define HAL_RF230_ISR() ISR(RADIO_VECT)
+#define HAL_TIME_ISR()  ()
+#define HAL_TICK_UPCNT() ()
+
+void
+hal_init(void)
+{
+	/*Reset variables used in file.*/
+	hal_system_time = 0;
+	//  hal_reset_flags();
+
+	/*IO Specific Initialization - sleep and reset pins. */
+	DDR_SLP_TR |= (1 << SLP_TR); /* Enable SLP_TR as output. */
+	DDR_RST    |= (1 << RSTPIN); /* Enable RST as output. */
+	
+	/*SPI Specific Initialization.*/
+	/* Set SS, CLK and MOSI as output. */
+	HAL_DDR_SPI  |= (1 << HAL_DD_SS) | (1 << HAL_DD_SCK) | (1 << HAL_DD_MOSI);
+	HAL_PORT_SPI |= (1 << HAL_DD_SS) | (1 << HAL_DD_SCK); /* Set SS and CLK high */
+	/* Run SPI at max speed */
+	/* PORTC */
+	PORTC.DIR = (1 << SSPIN) | (1 << MOSIPIN) | (1 << SCKPIN) | (1 << RSTPIN) | (1 << SLPTRPIN); // configure output pins
+	PORTC.OUT |= (1 << SSPIN); // set !SS = 1
+	SPIC.INTCTRL = 0x2; /* set interrupt level to medium */
+	SPIC.CTRL |= SPI_CLK2X_bm | SPI_ENABLE_bm | SPI_MASTER_bm | SPI_MODE_0_gc | SPI_PRESCALER_DIV64_gc; /* Enable SPI module, master operation and double SPI Speed. */
+	
+	/*TIMER1 Specific Initialization.*/
+	//TCCR1B = HAL_TCCR1B_CONFIG;       /* Set clock prescaler */
+	//TIFR1 |= (1 << ICF1);             /* Clear Input Capture Flag. */
+	//HAL_ENABLE_OVERFLOW_INTERRUPT(); /* Enable Timer1 overflow interrupt. */
+	// this line will map to macro HAL_ENABLE_RADIO_INTERRUPT in hal.h
+	hal_enable_trx_interrupt();    /* Enable interrupts from the radio transceiver. */
 }
 
 #elif defined(__AVR__)
@@ -463,7 +525,78 @@ hal_subregister_write(uint16_t address, uint8_t mask, uint8_t position,
  sei();
 }
 
-#else /* defined(__AVR_ATmega128RFA1__) */
+#elif defined(__AVR_XMEGA__) /* defined(__AVR_ATmega128RFA1__) */
+
+uint8_t
+hal_register_read(uint8_t address)
+{
+    uint8_t register_value;
+    /* Add the register read command to the register address. */
+    /* Address should be < 0x2f so no need to mask */
+//  address &= 0x3f;
+    address |= 0x80;
+
+    HAL_SPI_TRANSFER_OPEN();
+
+    /*Send Register address and read register content.*/
+    HAL_SPI_TRANSFER(address);
+    register_value = HAL_SPI_TRANSFER(0);
+
+    HAL_SPI_TRANSFER_CLOSE();
+
+    return register_value;
+}
+
+void
+hal_register_write(uint8_t address, uint8_t value)
+{
+    /* Add the Register Write (short mode) command to the address. */
+    address = 0xc0 | address;
+
+		
+
+    HAL_SPI_TRANSFER_OPEN();
+
+    /*Send Register address and write register content.*/
+    HAL_SPI_TRANSFER(address);
+
+    HAL_SPI_TRANSFER(value);
+
+    HAL_SPI_TRANSFER_CLOSE();
+
+		
+}
+
+uint8_t
+hal_subregister_read(uint8_t address, uint8_t mask, uint8_t position)
+{
+    /* Read current register value and mask out subregister. */
+    uint8_t register_value = hal_register_read(address);
+    register_value &= mask;
+    register_value >>= position; /* Align subregister value. */
+
+    return register_value;
+}
+
+void
+hal_subregister_write(uint8_t address, uint8_t mask, uint8_t position,
+                            uint8_t value)
+{
+    /* Read current register value and mask area outside the subregister. */
+    volatile uint8_t register_value = hal_register_read(address);
+    register_value &= ~mask;
+
+    /* Start preparing the new subregister value. shift in place and mask. */
+    value <<= position;
+    value &= mask;
+
+    value |= register_value; /* Set the new subregister value. */
+
+    /* Write the modified register value. */
+    hal_register_write(address, value);
+}
+
+#else /* defined(__AVR__XMEGA__) */
 /*----------------------------------------------------------------------------*/
 /** \brief  This function reads data from one of the radio transceiver's registers.
  *
@@ -1038,10 +1171,12 @@ HAL_RF230_ISR()
  */
 void TIMER1_OVF_vect(void);
 #else  /* !DOXYGEN */
-HAL_TIME_ISR()
-{
-    hal_system_time++;
-}
+	#ifndef __AVR_XMEGA__
+	HAL_TIME_ISR()
+	{
+	    hal_system_time++;
+	}
+	#endif
 #endif
 
 /** @} */

@@ -258,6 +258,8 @@
 #   define USARTVECT  USART1_RX_vect
 //#   define TICKTIMER  3
 //#   define HAS_SPARE_TIMER // Not used
+#elif defined(__AVR_ATxmega256A3BU__) || defined(__AVR_ATxmega256A3__) || defined(__AVR_ATxmega256A3U__) || defined(__AVR_ATxmega256A3B__)
+	// these defines are CPU Speficic - So take a look into your platform file!
 #else
 
 #error "Platform undefined in hal.h"
@@ -292,65 +294,103 @@
  * if TICKTIMER is defined as 0.
  * \{
  */
-#if defined(__AVR__)
-#define CAT(x, y)      x##y
-#define CAT2(x, y, z)  x##y##z
-#define DDR(x)         CAT(DDR,  x)
-#define PORT(x)        CAT(PORT, x)
-#define PIN(x)         CAT(PIN,  x)
-#define UCSR(num, let) CAT2(UCSR,num,let)
-#define RXEN(x)        CAT(RXEN,x)
-#define TXEN(x)        CAT(TXEN,x)
-#define TXC(x)         CAT(TXC,x)
-#define RXC(x)         CAT(RXC,x)
-#define RXCIE(x)       CAT(RXCIE,x)
-#define UCSZ(x,y)      CAT2(UCSZ,x,y)
-#define UBRR(x,y)      CAT2(UBRR,x,y)
-#define UDRE(x)        CAT(UDRE,x)
-#define UDRIE(x)       CAT(UDRIE,x)
-#define UDR(x)         CAT(UDR,x)
-#define TCNT(x)        CAT(TCNT,x)
-#define TIMSK(x)       CAT(TIMSK,x)
-#define TCCR(x,y)      CAT2(TCCR,x,y)
-#define COM(x,y)       CAT2(COM,x,y)
-#define OCR(x,y)       CAT2(OCR,x,y)
-#define CS(x,y)        CAT2(CS,x,y)
-#define WGM(x,y)       CAT2(WGM,x,y)
-#define OCIE(x,y)      CAT2(OCIE,x,y)
-#define COMPVECT(x)    CAT2(TIMER,x,_COMPA_vect)
-#define UDREVECT(x)    CAT2(USART,x,_UDRE_vect)
-#define RXVECT(x)      CAT2(USART,x,_RX_vect)
+#if defined(__AVR_XMEGA__)
+	#define CAT(x, y)      x##y
+	
+	#define CAT_DIR(x, y)      x##y .DIR
+	#define CAT_OUT(x,y)   x##y .OUT
+	#define CAT_IN(x,y)    x##y .IN
+
+	#define CAT2(x, y, z)  x##y##z
+
+	#define CAT2_DIR(x, y, z)  x##y##z .DIR
+	#define CAT2_IN(x, y, z)  x##y##z .IN
+	#define CAT2_OUT(x, y, z)  x##y##z .OUT
+
+	#define DDR(x)         CAT_DIR(PORT, x)
+	#define PORT(x)        CAT_OUT(PORT, x)
+	#define PIN(x)         CAT_OUT(PORT, x) // Pin is used for READ operations only
+	#define UCSR(num, let) CAT2(UCSR,num,let)
+	#define RXEN(x)        CAT(RXEN,x)
+	#define TXEN(x)        CAT(TXEN,x)
+	#define TXC(x)         CAT(TXC,x)
+	#define RXC(x)         CAT(RXC,x)
+	#define RXCIE(x)       CAT(RXCIE,x)
+	#define UCSZ(x,y)      CAT2(UCSZ,x,y)
+	#define UBRR(x,y)      CAT2(UBRR,x,y)
+	#define UDRE(x)        CAT(UDRE,x)
+	#define UDRIE(x)       CAT(UDRIE,x)
+	#define UDR(x)         CAT(UDR,x)
+	#define TCNT(x)        CAT(TCNT,x)
+	#define TIMSK(x)       CAT(TIMSK,x)
+	#define TCCR(x,y)      CAT2(TCCR,x,y)
+	#define COM(x,y)       CAT2(COM,x,y)
+	#define OCR(x,y)       CAT2(OCR,x,y)
+	#define CS(x,y)        CAT2(CS,x,y)
+	#define WGM(x,y)       CAT2(WGM,x,y)
+	#define OCIE(x,y)      CAT2(OCIE,x,y)
+	#define COMPVECT(x)    CAT2(TIMER,x,_COMPA_vect)
+	#define UDREVECT(x)    CAT2(USART,x,_UDRE_vect)
+	#define RXVECT(x)      CAT2(USART,x,_RX_vect)
+#elif defined(__AVR__)
+	#define CAT(x, y)      x##y
+	#define CAT2(x, y, z)  x##y##z
+	#define DDR(x)         CAT(DDR,  x)
+	#define PORT(x)        CAT(PORT, x)
+	#define PIN(x)         CAT(PIN,  x)
+	#define UCSR(num, let) CAT2(UCSR,num,let)
+	#define RXEN(x)        CAT(RXEN,x)
+	#define TXEN(x)        CAT(TXEN,x)
+	#define TXC(x)         CAT(TXC,x)
+	#define RXC(x)         CAT(RXC,x)
+	#define RXCIE(x)       CAT(RXCIE,x)
+	#define UCSZ(x,y)      CAT2(UCSZ,x,y)
+	#define UBRR(x,y)      CAT2(UBRR,x,y)
+	#define UDRE(x)        CAT(UDRE,x)
+	#define UDRIE(x)       CAT(UDRIE,x)
+	#define UDR(x)         CAT(UDR,x)
+	#define TCNT(x)        CAT(TCNT,x)
+	#define TIMSK(x)       CAT(TIMSK,x)
+	#define TCCR(x,y)      CAT2(TCCR,x,y)
+	#define COM(x,y)       CAT2(COM,x,y)
+	#define OCR(x,y)       CAT2(OCR,x,y)
+	#define CS(x,y)        CAT2(CS,x,y)
+	#define WGM(x,y)       CAT2(WGM,x,y)
+	#define OCIE(x,y)      CAT2(OCIE,x,y)
+	#define COMPVECT(x)    CAT2(TIMER,x,_COMPA_vect)
+	#define UDREVECT(x)    CAT2(USART,x,_UDRE_vect)
+	#define RXVECT(x)      CAT2(USART,x,_RX_vect)
 #endif
 
 /* TODO: Move to CPU specific */
 #if defined(CONTIKI_TARGET_MULLE)
-#define CAT(x, y)      x##y.BYTE
-#define CAT2(x, y, z)  x##y##z.BYTE
-#define DDR(x)         CAT(PD,  x)
-#define PORT(x)        CAT(P, x)
-#define PIN(x)         CAT(P, x)
-#define UCSR(num, let) CAT2(UCSR,num,let)
-#define RXEN(x)        CAT(RXEN,x)
-#define TXEN(x)        CAT(TXEN,x)
-#define TXC(x)         CAT(TXC,x)
-#define RXC(x)         CAT(RXC,x)
-#define RXCIE(x)       CAT(RXCIE,x)
-#define UCSZ(x,y)      CAT2(UCSZ,x,y)
-#define UBRR(x,y)      CAT2(UBRR,x,y)
-#define UDRE(x)        CAT(UDRE,x)
-#define UDRIE(x)       CAT(UDRIE,x)
-#define UDR(x)         CAT(UDR,x)
-#define TCNT(x)        CAT(TCNT,x)
-#define TIMSK(x)       CAT(TIMSK,x)
-#define TCCR(x,y)      CAT2(TCCR,x,y)
-#define COM(x,y)       CAT2(COM,x,y)
-#define OCR(x,y)       CAT2(OCR,x,y)
-#define CS(x,y)        CAT2(CS,x,y)
-#define WGM(x,y)       CAT2(WGM,x,y)
-#define OCIE(x,y)      CAT2(OCIE,x,y)
-#define COMPVECT(x)    CAT2(TIMER,x,_COMPA_vect)
-#define UDREVECT(x)    CAT2(USART,x,_UDRE_vect)
-#define RXVECT(x)      CAT2(USART,x,_RX_vect)
+	#define CAT(x, y)      x##y.BYTE
+	#define CAT2(x, y, z)  x##y##z.BYTE
+	#define DDR(x)         CAT(PD,  x)
+	#define PORT(x)        CAT(P, x)
+	#define PIN(x)         CAT(P, x)
+	#define UCSR(num, let) CAT2(UCSR,num,let)
+	#define RXEN(x)        CAT(RXEN,x)
+	#define TXEN(x)        CAT(TXEN,x)
+	#define TXC(x)         CAT(TXC,x)
+	#define RXC(x)         CAT(RXC,x)
+	#define RXCIE(x)       CAT(RXCIE,x)
+	#define UCSZ(x,y)      CAT2(UCSZ,x,y)
+	#define UBRR(x,y)      CAT2(UBRR,x,y)
+	#define UDRE(x)        CAT(UDRE,x)
+	#define UDRIE(x)       CAT(UDRIE,x)
+	#define UDR(x)         CAT(UDR,x)
+	#define TCNT(x)        CAT(TCNT,x)
+	#define TIMSK(x)       CAT(TIMSK,x)
+	#define TCCR(x,y)      CAT2(TCCR,x,y)
+	#define COM(x,y)       CAT2(COM,x,y)
+	#define OCR(x,y)       CAT2(OCR,x,y)
+	#define CS(x,y)        CAT2(CS,x,y)
+	#define WGM(x,y)       CAT2(WGM,x,y)
+	#define OCIE(x,y)      CAT2(OCIE,x,y)
+	#define COMPVECT(x)    CAT2(TIMER,x,_COMPA_vect)
+	#define UDREVECT(x)    CAT2(USART,x,_UDRE_vect)
+	#define RXVECT(x)      CAT2(USART,x,_RX_vect)
 #endif
 
 /** \} */
@@ -370,7 +410,44 @@
 //#define hal_get_slptr( ) (    ( TRXPR & ( 1 << SLPTR ) ) >> SLPTR )  /**< Read current state of the SLP_TR pin (High/Low). */
 #define hal_get_slptr( )      ( TRXPR & ( 1 << SLPTR ) )  /**< Read current state of the SLP_TR pin (High/Low). */
 
+#elif defined(__AVR_XMEGA__)
+#define SLP_TR                SLPTRPIN            /**< Pin number that corresponds to the SLP_TR pin. */
+#define DDR_SLP_TR            DDR( SLPTRPORT )    /**< Data Direction Register that corresponds to the port where SLP_TR is connected. */
+#define PORT_SLP_TR           PORT( SLPTRPORT )   /**< Port (Write Access) where SLP_TR is connected. */
+#define PIN_SLP_TR            PIN( SLPTRPORT )    /**< Pin (Read Access) where SLP_TR is connected. */
+#define hal_set_slptr_high( ) ( PORT_SLP_TR |= ( 1 << SLP_TR ) )      /**< This macro pulls the SLP_TR pin high. */
+#define hal_set_slptr_low( )  ( PORT_SLP_TR &= ~( 1 << SLP_TR ) )     /**< This macro pulls the SLP_TR pin low. */
+//#define hal_get_slptr( ) (    ( PIN_SLP_TR & ( 1 << SLP_TR ) ) >> SLP_TR )  /**< Read current state of the SLP_TR pin (High/Low). */
+#define hal_get_slptr( )      ( PIN_SLP_TR & ( 1 << SLP_TR ) )   /**< Read current state of the SLP_TR pin (High/Low). */ 
+// Not for XMega
+// #define RST                   RSTPIN              /**< Pin number that corresponds to the RST pin. */
+#define DDR_RST               DDR( RSTPORT )      /**< Data Direction Register that corresponds to the port where RST is */
+#define PORT_RST              PORT( RSTPORT )     /**< Port (Write Access) where RST is connected. */
+#define PIN_RST               PIN( RSTPORT /* BUG? */)      /**< Pin (Read Access) where RST is connected. */
+#define hal_set_rst_high( )   ( PORT_RST |= ( 1 << RSTPIN ) )  /**< This macro pulls the RST pin high. */
+#define hal_set_rst_low( )    ( PORT_RST &= ~( 1 << RSTPIN ) ) /**< This macro pulls the RST pin low. */
+#define hal_get_rst( )        ( ( PIN_RST & ( 1 << RSTPIN )  ) >> RST )  /**< Read current state of the RST pin (High/Low). */
+#define HAL_SS_PIN            SSPIN               /**< The slave select pin. */
+#define HAL_SCK_PIN           SCKPIN              /**< Data bit for SCK. */
+#define HAL_MOSI_PIN          MOSIPIN
+#define HAL_MISO_PIN          MISOPIN
+#define HAL_PORT_SPI          PORT( SPIPORT )     /**< The SPI module is located on PORTB. */
+#define HAL_PORT_SS            PORT( SSPORT )
+#define HAL_PORT_SCK           PORT( SCKPORT )
+#define HAL_PORT_MOSI          PORT( MOSIPORT )     /**< The SPI module uses GPIO might be split on different ports. */
+#define HAL_PORT_MISO          PORT( MISOPORT )     /**< The SPI module uses GPIO might be split on different ports. */
+#define HAL_DDR_SPI           DDR( SPIPORT )      /**< Data Direction Register for PORTB. */
+#define HAL_DDR_SS             DDR( SSPORT )      /**< Data Direction Register for MISO GPIO pin. */
+#define HAL_DDR_SCK            DDR( SCKPORT )      /**< Data Direction Register for MISO GPIO pin. */
+#define HAL_DDR_MOSI           DDR( MOSIPORT )      /**< Data Direction Register for MISO GPIO pin. */
+#define HAL_DDR_MISO           DDR( MISOPORT )      /**< Data Direction Register for MOSI GPIO pin. */
+#define HAL_DD_SS             SSPIN               /**< Data Direction bit for SS. */
+#define HAL_DD_SCK            SCKPIN              /**< Data Direction bit for SCK. */
+#define HAL_DD_MOSI           MOSIPIN             /**< Data Direction bit for MOSI. */
+#define HAL_DD_MISO           MISOPIN             /**< Data Direction bit for MISO. */
+
 #else
+
 #define SLP_TR                SLPTRPIN            /**< Pin number that corresponds to the SLP_TR pin. */
 #define DDR_SLP_TR            DDR( SLPTRPORT )    /**< Data Direction Register that corresponds to the port where SLP_TR is connected. */
 #define PORT_SLP_TR           PORT( SLPTRPORT )   /**< Port (Write Access) where SLP_TR is connected. */
@@ -419,48 +496,61 @@
  *  symbols (16 us ticks).
  */
 
-#if defined(__AVR__)
-#if ( F_CPU == 16000000UL )
-    #define HAL_TCCR1B_CONFIG ( ( 1 << ICES1 ) | ( 1 << CS12 ) )
-    #define HAL_US_PER_SYMBOL ( 1 )
-    #define HAL_SYMBOL_MASK   ( 0xFFFFffff )
-#elif ( F_CPU == 8000000UL )
-    #define HAL_TCCR1B_CONFIG ( ( 1 << ICES1 ) | ( 1 << CS11 ) | ( 1 << CS10 ) )
-    #define HAL_US_PER_SYMBOL ( 2 )
-    #define HAL_SYMBOL_MASK   ( 0x7FFFffff )
-#elif ( F_CPU == 4000000UL )
-    #define HAL_TCCR1B_CONFIG ( ( 1 << ICES1 ) | ( 1 << CS11 ) | ( 1 << CS10 ) )
-    #define HAL_US_PER_SYMBOL ( 1 )
-    #define HAL_SYMBOL_MASK   ( 0xFFFFffff )
-#elif ( F_CPU == 1000000UL )
-    #define HAL_TCCR1B_CONFIG ( ( 1 << ICES1 ) | ( 1 << CS11 ) )
-    #define HAL_US_PER_SYMBOL ( 2 )
-    #define HAL_SYMBOL_MASK   ( 0x7FFFffff )
-#else
-    #error "Clock speed not supported."
-#endif
+#if defined(__AVR_XMEGA__)
+	
+	#define HAL_ENABLE_OVERFLOW_INTERRUPT( ) ( /*TIMSK1 |= ( 1 << TOIE1 )*/ )
+	#define HAL_DISABLE_OVERFLOW_INTERRUPT( ) ( /* TIMSK1 &= ~( 1 << TOIE1 )*/ )	
 
-#if HARWARE_REVISION == ZIGBIT
-// IRQ E5 for Zigbit example
-#define RADIO_VECT INT5_vect
-#define HAL_ENABLE_RADIO_INTERRUPT( ) { ( EIMSK |= ( 1 << INT5 ) ) ; EICRB |= 0x0C ; PORTE &= ~(1<<PE5);  DDRE &= ~(1<<DDE5); }
-#define HAL_DISABLE_RADIO_INTERRUPT( ) ( EIMSK &= ~( 1 << INT5 ) )
-#else
-#define RADIO_VECT TIMER1_CAPT_vect
-// Raven and Jackdaw
-#define HAL_ENABLE_RADIO_INTERRUPT( ) ( TIMSK1 |= ( 1 << ICIE1 ) )
-#define HAL_DISABLE_RADIO_INTERRUPT( ) ( TIMSK1 &= ~( 1 << ICIE1 ) )
-#endif
+	#define HAL_ENTER_CRITICAL_REGION( ) {uint8_t volatile saved_sreg = SREG; cli( )
+	#define HAL_LEAVE_CRITICAL_REGION( ) SREG = saved_sreg; } /* sei() needed here? */
+	
+	// This is the IRQ Vector we receive on the Port pin IRQPIN
+	#define RADIO_VECT PORTC_INT0_vect
+	#define HAL_ENABLE_RADIO_INTERRUPT( ) { PORTC.INTCTRL = (PORTC.INTCTRL & 0xC) | 0x2; /* Enable med level interrupt0 for portc */ PORTC.INT0MASK = (1 << IRQPIN); /* Enable Interrupt on Pin 2 */ PORTC.DIR = (0xFF & (~(1 << IRQPIN))); /* Set IRQ Pin as Input (force 0) */ PORTC.PIN2CTRL = (PORTC.PIN2CTRL & (~0x7)) | 0x1; /* First Force 000 and then set last bit to 1 -> trigger for rising edge */ PORTC.INTFLAGS = 1; /* Clear interrupt */  } /* ( EIMSK |= ( 1 << INT5 ) ) ; EICRB |= 0x0C ; PORTE &= ~(1<<PE5);  DDRE &= ~(1<<DDE5); */
+	#define HAL_DISABLE_RADIO_INTERRUPT( ) ( PORTC.INTCTRL = (PORTC.INTCTRL & (~0x2)); ) /* EIMSK &= ~( 1 << INT5 )  */
 
-#define HAL_ENABLE_OVERFLOW_INTERRUPT( ) ( TIMSK1 |= ( 1 << TOIE1 ) )
-#define HAL_DISABLE_OVERFLOW_INTERRUPT( ) ( TIMSK1 &= ~( 1 << TOIE1 ) )
+#elif defined(__AVR__)
+	#if ( F_CPU == 16000000UL )
+	    #define HAL_TCCR1B_CONFIG ( ( 1 << ICES1 ) | ( 1 << CS12 ) )
+	    #define HAL_US_PER_SYMBOL ( 1 )
+	    #define HAL_SYMBOL_MASK   ( 0xFFFFffff )
+	#elif ( F_CPU == 8000000UL )
+	    #define HAL_TCCR1B_CONFIG ( ( 1 << ICES1 ) | ( 1 << CS11 ) | ( 1 << CS10 ) )
+	    #define HAL_US_PER_SYMBOL ( 2 )
+	    #define HAL_SYMBOL_MASK   ( 0x7FFFffff )
+	#elif ( F_CPU == 4000000UL )
+	    #define HAL_TCCR1B_CONFIG ( ( 1 << ICES1 ) | ( 1 << CS11 ) | ( 1 << CS10 ) )
+	    #define HAL_US_PER_SYMBOL ( 1 )
+	    #define HAL_SYMBOL_MASK   ( 0xFFFFffff )
+	#elif ( F_CPU == 1000000UL )
+	    #define HAL_TCCR1B_CONFIG ( ( 1 << ICES1 ) | ( 1 << CS11 ) )
+	    #define HAL_US_PER_SYMBOL ( 2 )
+	    #define HAL_SYMBOL_MASK   ( 0x7FFFffff )
+	#else
+	    #error "Clock speed not supported."
+	#endif
 
-/** This macro will protect the following code from interrupts.*/
-#define HAL_ENTER_CRITICAL_REGION( ) {uint8_t volatile saved_sreg = SREG; cli( )
+	#if HARWARE_REVISION == ZIGBIT
+	// IRQ E5 for Zigbit example
+		#define RADIO_VECT INT5_vect
+		#define HAL_ENABLE_RADIO_INTERRUPT( ) { ( EIMSK |= ( 1 << INT5 ) ) ; EICRB |= 0x0C ; PORTE &= ~(1<<PE5);  DDRE &= ~(1<<DDE5); }
+		#define HAL_DISABLE_RADIO_INTERRUPT( ) ( EIMSK &= ~( 1 << INT5 ) )
+	#else
+		#define RADIO_VECT TIMER1_CAPT_vect
+		// Raven and Jackdaw
+		#define HAL_ENABLE_RADIO_INTERRUPT( ) ( TIMSK1 |= ( 1 << ICIE1 ) )
+		#define HAL_DISABLE_RADIO_INTERRUPT( ) ( TIMSK1 &= ~( 1 << ICIE1 ) )
+	#endif
 
-/** This macro must always be used in conjunction with HAL_ENTER_CRITICAL_REGION
-    so that interrupts are enabled again.*/
-#define HAL_LEAVE_CRITICAL_REGION( ) SREG = saved_sreg;}
+	#define HAL_ENABLE_OVERFLOW_INTERRUPT( ) ( TIMSK1 |= ( 1 << TOIE1 ) )
+	#define HAL_DISABLE_OVERFLOW_INTERRUPT( ) ( TIMSK1 &= ~( 1 << TOIE1 ) )
+
+	/** This macro will protect the following code from interrupts.*/
+	#define HAL_ENTER_CRITICAL_REGION( ) {uint8_t volatile saved_sreg = SREG; cli( )
+
+	/** This macro must always be used in conjunction with HAL_ENTER_CRITICAL_REGION
+	    so that interrupts are enabled again.*/
+	#define HAL_LEAVE_CRITICAL_REGION( ) SREG = saved_sreg;}
 
 #else /* MULLE */
 
