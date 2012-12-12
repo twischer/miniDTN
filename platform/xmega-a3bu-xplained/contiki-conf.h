@@ -30,5 +30,120 @@
 
 #define WATCHDOG_CONF_TIMEOUT WDT_PER_2KCLK_gc
 
+// RF230 / 231 / 232 / 233
+
+#define SSPORT     C
+#define SSPIN      (0x04)
+#define SPIPORT    C
+#define MOSIPIN    (0x05)
+#define MISOPIN    (0x06)
+#define SCKPIN     (0x07)
+#define RSTPORT    C
+#define RSTPIN     (0x00)
+#define IRQPORT    C
+#define IRQPIN     (0x02)
+#define SLPTRPORT  C
+#define SLPTRPIN   (0x03)
+//#define TXCWPORT   C
+//#define TXCWPIN    (0x00)
+//#define USART      0
+//#define USARTVECT  USART0_RX_vect
+// #define TICKTIMER  3
+
+//#define UIP_CONF_IPV6 1
+
+#define ENERGEST_CONF_ON          0
+
+#if RF230BB
+	#undef PACKETBUF_CONF_HDR_SIZE 
+#endif
+
+#if UIP_CONF_IPV6
+	#define RIMEADDR_CONF_SIZE        8
+	#define UIP_CONF_ICMP6            1
+	#define UIP_CONF_UDP              1
+	#define UIP_CONF_TCP              1
+	//#define UIP_CONF_IPV6_RPL         0
+	#define NETSTACK_CONF_NETWORK       sicslowpan_driver
+	#define SICSLOWPAN_CONF_COMPRESSION SICSLOWPAN_COMPRESSION_HC06
+#else
+	#define RIMEADDR_CONF_SIZE        2
+	#define NETSTACK_CONF_NETWORK     rime_driver
+#endif
+#define UIP_CONF_DS6_NBR_NBU      20
+#define UIP_CONF_DS6_DEFRT_NBU    2
+#define UIP_CONF_DS6_PREFIX_NBU   3
+#define UIP_CONF_DS6_ROUTE_NBU    20
+#define UIP_CONF_DS6_ADDR_NBU     3
+#define UIP_CONF_DS6_MADDR_NBU    0
+#define UIP_CONF_DS6_AADDR_NBU    0
+
+#define UIP_CONF_LL_802154       1
+#define UIP_CONF_LLH_LEN         0
+
+/* 10 bytes per stateful address context - see sicslowpan.c */
+/* Default is 1 context with prefix aaaa::/64 */
+/* These must agree with all the other nodes or there will be a failure to communicate! */
+#define SICSLOWPAN_CONF_MAX_ADDR_CONTEXTS 1
+#define SICSLOWPAN_CONF_ADDR_CONTEXT_0 {addr_contexts[0].prefix[0]=0xaa;addr_contexts[0].prefix[1]=0xaa;}
+#define SICSLOWPAN_CONF_ADDR_CONTEXT_1 {addr_contexts[1].prefix[0]=0xbb;addr_contexts[1].prefix[1]=0xbb;}
+#define SICSLOWPAN_CONF_ADDR_CONTEXT_2 {addr_contexts[2].prefix[0]=0x20;addr_contexts[2].prefix[1]=0x01;addr_contexts[2].prefix[2]=0x49;addr_contexts[2].prefix[3]=0x78,addr_contexts[2].prefix[4]=0x1d;addr_contexts[2].prefix[5]=0xb1;}
+
+/* 211 bytes per queue buffer */
+#define QUEUEBUF_CONF_NUM         8
+
+/* 54 bytes per queue ref buffer */
+#define QUEUEBUF_CONF_REF_NUM     2
+
+/* Take the default TCP maximum segment size for efficiency and simpler wireshark captures */
+/* Use this to prevent 6LowPAN fragmentation (whether or not fragmentation is enabled) */
+//#define UIP_CONF_TCP_MSS      48
+
+/* 30 bytes per TCP connection */
+/* 6LoWPAN does not do well with concurrent TCP streams, as new browser GETs collide with packets coming */
+/* from previous GETs, causing decreased throughput, retransmissions, and timeouts. Increase to study this. */
+#define UIP_CONF_MAX_CONNECTIONS 1
+
+/* 2 bytes per TCP listening port */
+#define UIP_CONF_MAX_LISTENPORTS 1
+
+/* 25 bytes per UDP connection */
+#define UIP_CONF_UDP_CONNS      10
+
+#define UIP_CONF_IP_FORWARD      0
+#define UIP_CONF_FWCACHE_SIZE    0
+
+#define UIP_CONF_IPV6_CHECKS     1
+#define UIP_CONF_IPV6_QUEUE_PKT  1
+#define UIP_CONF_IPV6_REASSEMBLY 0
+
+#define UIP_CONF_UDP_CHECKSUMS   1
+#define UIP_CONF_TCP_SPLIT       1
+#define UIP_CONF_DHCP_LIGHT      1
+
+#define NETSTACK_CONF_MAC         nullmac_driver
+#define NETSTACK_CONF_RDC         nullrdc_driver
+#define NETSTACK_CONF_FRAMER      framer_802154
+#define NETSTACK_CONF_RADIO       rf230_driver
+#define CHANNEL_802_15_4          26
+#define RADIO_CONF_CALIBRATE_INTERVAL 256
+/* AUTOACK receive mode gives better rssi measurements, even if ACK is never requested */
+#define RF230_CONF_AUTOACK        0
+/* Request 802.15.4 ACK on all packets sent (else autoretry). This is primarily for testing. */
+#define SICSLOWPAN_CONF_ACK_ALL   0
+/* Number of auto retry attempts+1, 1-16. Set zero to disable extended TX_ARET_ON mode with CCA) */
+#define RF230_CONF_AUTORETRIES    3
+/* Number of CSMA attempts 0-7. 802.15.4 2003 standard max is 5. */
+#define RF230_CONF_CSMARETRIES    5
+/* CCA theshold energy -91 to -61 dBm (default -77). Set this smaller than the expected minimum rssi to avoid packet collisions */
+/* The Jackdaw menu 'm' command is helpful for determining the smallest ever received rssi */
+#define RF230_CONF_CCA_THRES    -85
+/* Allow 6lowpan fragments (needed for large TCP maximum segment size) */
+#define SICSLOWPAN_CONF_FRAG      1
+/* Most browsers reissue GETs after 3 seconds which stops fragment reassembly so a longer MAXAGE does no good */
+#define SICSLOWPAN_CONF_MAXAGE    3
+/* How long to wait before terminating an idle TCP connection. Smaller to allow faster sleep. Default is 120 seconds */
+#define UIP_CONF_WAIT_TIMEOUT     5
+
 
 #endif /* __CONTIKI_CONF_H__ */
