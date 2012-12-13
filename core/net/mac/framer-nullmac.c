@@ -91,6 +91,12 @@ parse(void)
   return 0;
 }
 /*---------------------------------------------------------------------------*/
+static int
+set_pan_id(uint16_t pan_id)
+{
+	return 0;
+}
+/*---------------------------------------------------------------------------*/
 const struct framer framer_nullmac = {
-  create, parse
+  create, parse, set_pan_id
 };

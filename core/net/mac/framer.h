@@ -46,7 +46,7 @@ struct framer {
 
   int (* create)(void);
   int (* parse)(void);
-
+  int (* set_pan_id)(uint16_t);
 };
 
 #endif /* __FRAMER_H__ */

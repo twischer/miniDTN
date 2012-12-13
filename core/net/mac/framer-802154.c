@@ -56,8 +56,7 @@
 
 static uint8_t mac_dsn;
 static uint8_t initialized = 0;
-static const uint16_t mac_dst_pan_id = IEEE802154_PANID;
-static const uint16_t mac_src_pan_id = IEEE802154_PANID;
+static uint16_t mac_pan_id = IEEE802154_PANID;
 
 /*---------------------------------------------------------------------------*/
 static int
@@ -120,7 +119,7 @@ create(void)
   } else {
     params.fcf.src_addr_mode = FRAME802154_LONGADDRMODE;
   }
-  params.dest_pid = mac_dst_pan_id;
+  params.dest_pid = mac_pan_id;
 
   /*
    *  If the output address is NULL in the Rime buf, then it is broadcast
@@ -144,7 +143,7 @@ create(void)
   }
 
   /* Set the source PAN ID to the global variable. */
-  params.src_pid = mac_src_pan_id;
+  params.src_pid = mac_pan_id;
   
   /*
    * Set up the source address using only the long address mode for
@@ -178,7 +177,7 @@ parse(void)
   if(frame802154_parse(packetbuf_dataptr(), len, &frame) &&
      packetbuf_hdrreduce(len - frame.payload_len)) {
     if(frame.fcf.dest_addr_mode) {
-      if(frame.dest_pid != mac_src_pan_id &&
+      if(frame.dest_pid != mac_pan_id &&
          frame.dest_pid != FRAME802154_BROADCASTPANDID) {
         /* Packet to another PAN */
         PRINTF("15.4: for another pan %u\n", frame.dest_pid);
@@ -203,6 +202,14 @@ parse(void)
   return 0;
 }
 /*---------------------------------------------------------------------------*/
+static int
+set_pan_id(uint16_t pan_id)
+{
+	mac_pan_id = pan_id;
+	return 0;
+}
+/*---------------------------------------------------------------------------*/
+
 const struct framer framer_802154 = {
-  create, parse
+  create, parse, set_pan_id
 };
