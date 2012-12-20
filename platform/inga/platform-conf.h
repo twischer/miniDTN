@@ -42,8 +42,10 @@
  * Definitions below are dictated by the hardware and not really
  * changeable!
  */
-/* Platform INGA */
+/* Platform INGA @todo... */
 #define INGA 1
+#define PLATFORM       PLATFORM_AVR
+#define INGA_REVISION INGA_12
 
 #define PLATFORM_HAS_LEDS   1
 #define PLATFORM_HAS_BUTTON 1
@@ -56,7 +58,7 @@
 /* Our clock resolution, this is the same as Unix HZ. */
 #define CLOCK_CONF_SECOND 128UL
 
-//#define BAUD2UBR(baud) ((F_CPU/baud))
+//#define BAUD2UBR(baud) ((F_CPU/baud)) /** @todo: needed? */
 
 /* Types for clocks and uip_stats */
 typedef unsigned short uip_stats_t;

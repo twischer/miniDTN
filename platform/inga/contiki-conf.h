@@ -33,7 +33,7 @@
 
 /**
  * \file
- *         Configuration for Atmel Raven
+ *         Configuration for INGA platform
  *
  * \author
  *         Simon Barner <barner@in.tum.de>
@@ -44,9 +44,6 @@
 #define __CONTIKI_CONF_H__
 
 /* MCU and clock rate */
-#define PLATFORM       PLATFORM_AVR
-//#define RAVEN_REVISION RAVEN_D
-#define INGA_REVISION INGA_12
 #include <stdint.h>
 #include "platform-conf.h"
 
