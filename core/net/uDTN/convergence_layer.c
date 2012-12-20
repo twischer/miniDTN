@@ -27,6 +27,7 @@
 #include "dtn_network.h"
 #include "dispatching.h"
 #include "bundleslot.h"
+#include "statusreport.h"
 
 #include "convergence_layer.h"
 
@@ -453,6 +454,7 @@ int convergence_layer_parse_dataframe(rimeaddr_t * source, uint8_t * payload, ui
 int convergence_layer_parse_ackframe(rimeaddr_t * source, uint8_t * payload, uint8_t length, uint8_t sequence_number, uint8_t type)
 {
 	struct transmit_ticket_t * ticket = NULL;
+	struct bundle_t * bundle = NULL;
 
 	/* This neighbour is now unblocked */
 	convergence_layer_set_unblocked(source);
@@ -475,10 +477,14 @@ int convergence_layer_parse_ackframe(rimeaddr_t * source, uint8_t * payload, uin
 		return -1;
 	}
 
-	/* We can already free the bundle memory */
+	/* Does the originator need forward notification? */
 	if( ticket->bundle != NULL ) {
-		bundle_decrement(ticket->bundle);
-		ticket->bundle = NULL;
+		bundle = (struct bundle_t *) MMEM_PTR(ticket->bundle);
+
+		/* Is the forward report flag set? */
+		if( bundle->flags & BUNDLE_FLAG_REP_FWD ) {
+			STATUSREPORT.send(ticket->bundle, NODE_FORWARDED_BUNDLE, NO_ADDITIONAL_INFORMATION);
+		}
 	}
 
 	if( type == CONVERGENCE_LAYER_TYPE_ACK ) {
@@ -493,6 +499,12 @@ int convergence_layer_parse_ackframe(rimeaddr_t * source, uint8_t * payload, uin
 
 		/* Notify routing module */
 		ROUTING.sent(ticket, ROUTING_STATUS_NACK);
+	}
+
+	/* We can free the bundle memory */
+	if( ticket->bundle != NULL ) {
+		bundle_decrement(ticket->bundle);
+		ticket->bundle = NULL;
 	}
 
 	return 1;
