@@ -93,7 +93,8 @@ PROCESS_THREAD(agent_process, ev, data)
 	dtn_processing_finished = process_alloc_event();
 	dtn_bundle_stored = process_alloc_event();
 	
-	LOG(LOGD_DTN, LOG_AGENT, LOGL_INF, "Starting DTN Bundle Protocol Agent with ID %lu", dtn_node_id);
+	// We use printf here, to make this message visible in every case!
+	printf("Starting DTN Bundle Protocol Agent with ID %lu\n", dtn_node_id);
 		
 	while(1) {
 		PROCESS_WAIT_EVENT_UNTIL(ev);
