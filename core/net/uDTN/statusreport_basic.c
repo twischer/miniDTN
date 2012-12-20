@@ -11,169 +11,254 @@
 /**
  * \file
  * \author Georg von Zengen <vonzeng@ibr.cs.tu-bs.de>
+ * \author Wolf-Bastian Pšttner <poettner@ibr.cs.tu-bs.de>
  */
 
 #include <string.h>
 
 #include "mmem.h"
+#include "logging.h"
 
 #include "bundle.h"
 #include "agent.h"
 #include "storage.h"
 #include "sdnv.h"
+#include "api.h"
+#include "administrative_record.h"
+#include "eid.h"
 
 #include "statusreport.h"
 
-static struct mmem report;
+#define BUFFER_LENGTH 100
+
 /**
-* \brief sends a status report for a bundle to the "report-to"-node
-* \param bundle pointer to bundle 
-* \param status status code for the bundle
-* \param reason reason code for the status
-*/
-
-/* XXX FIXME: Status reporting is not supported at the moment
-uint8_t b_stat_send(struct bundle_t *bundle,uint8_t status, uint8_t reason)
+ * \brief Encode a bundle status report from the struct to a flat buffer
+ */
+int statusreport_encode(status_report_t * report, uint8_t * buffer, uint8_t length)
 {
-	//printf("STAT: send %u %u\n",status,reason);
-	uint8_t size=4; //1byte admin record +1 byte status + 1byte reason + 1byte timestamp (0)
-	uint8_t type=16;
-	uint16_t f_len,d_len;
-	uint32_t len;
-	uint8_t j;
-	if( bundle->flags & 1){ //bundle fragment
-		type +=1;
-		size += bundle->offset_tab[FRAG_OFFSET][STATE];
-		uint8_t off=0;
-		while( *((uint8_t*)bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET] + off) != 0){
-			f_len=sdnv_len((uint8_t*)bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET]+1+off);
-			d_len=sdnv_len((uint8_t*)bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET]+1+f_len+off);
-			sdnv_decode((uint8_t*)bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET]+1+f_len+d_len+off , d_len , &len);
-			off+=f_len + d_len + len;
-		}
-		f_len=sdnv_len((uint8_t*)bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET]+1+off);
-		d_len=sdnv_len((uint8_t*)bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET]+1+f_len+off);
-		sdnv_decode((uint8_t*)bundle->mem.ptr + bundle->offset_tab[DATA][OFFSET]+1+f_len+d_len+off , d_len , &len);
-		size+=len;
+	uint8_t offset = 0;
+	int ret = 0;
+
+	// Encode that we have an status record
+	buffer[offset++] = TYPE_CODE_BUNDLE_STATUS_REPORT;
+
+	// Store the 8 bit fields for status flags and reason code
+	buffer[offset++] = report->status_flags;
+	buffer[offset++] = report->reason_code;
+
+	/* For responses to fragments */
+	if( report->fragment ) {
+		// Set the header flag
+		buffer[0] |= ADMIN_FLAGS_IS_FOR_FRAGMENT;
+
+		/* Fragment offset */
+		ret = sdnv_encode(report->dtn_time_seconds, &buffer[offset], length - offset);
+		if (ret < 0)
+			return -1;
+		offset += ret;
+
+		/* Fragment length */
+		ret = sdnv_encode(report->dtn_time_seconds, &buffer[offset], length - offset);
+		if (ret < 0)
+			return -1;
+		offset += ret;
 	}
 
-	size += bundle->offset_tab[TIME_STAMP][STATE];
-	size += bundle->offset_tab[TIME_STAMP_SEQ_NR][STATE];
-	size += bundle->offset_tab[SRC_NODE][STATE];
-	size += bundle->offset_tab[SRC_SERV][STATE];
-	
+	/**
+	 * TODO: We assume here, that all status reports have a timestamp. This is true in
+	 * the latest version of RFC5050 but is not necessarily true in the future
+	 */
 
-	if (!mmem_alloc(&report,size)){
-		printf("STAT: mmem ERROR\n");
-		return 0;
-	}
-	*((uint8_t*) MMEM_PTR(&report))= type;
-	*((uint8_t*) MMEM_PTR(&report)+1)= status;
-	*((uint8_t*) MMEM_PTR(&report)+2)= reason;
-	uint8_t offset=3;
-	printf("STAT: %p %p ",MMEM_PTR(&report),MMEM_PTR(&bundle->mem));
-	for (j=0;j<bundle->mem.size;j++){
-		printf("%x:",*((uint8_t*) bundle->mem.ptr+ j));
-	}
-	printf("\n");
-	if( bundle->flags & 1){ 
-		memcpy(((uint8_t*) report.ptr) + offset, bundle->mem.ptr + bundle->offset_tab[FRAG_OFFSET][OFFSET],bundle->offset_tab[TIME_STAMP][STATE]);
-		offset+= bundle->offset_tab[FRAG_OFFSET][STATE];
-		struct mmem sdnv;
-		uint8_t sdnv_len= sdnv_encoding_len(len);
-		if(!mmem_alloc(&sdnv,sdnv_len)){
-			printf("STAT: mmem ERROR2\n");
-			mmem_free(&report);
-			return 0;
-		}
-		sdnv_encode(len, (uint8_t*) sdnv.ptr, sdnv_len);
-		memcpy(((uint8_t*) report.ptr) + offset , sdnv.ptr , sdnv_len);
-		offset+= sdnv_len;
-		mmem_free(&sdnv);
-	}
-	*(((uint8_t*) report.ptr)+offset)= 0;
-	offset+=1;
-	memcpy(((uint8_t*) report.ptr) + offset, bundle->mem.ptr + bundle->offset_tab[TIME_STAMP][OFFSET],bundle->offset_tab[TIME_STAMP][STATE]);
-	offset+= bundle->offset_tab[TIME_STAMP][STATE];
-	memcpy(((uint8_t*) report.ptr) + offset, bundle->mem.ptr + bundle->offset_tab[TIME_STAMP_SEQ_NR][OFFSET], bundle->offset_tab[TIME_STAMP_SEQ_NR][STATE]);
-	offset+= bundle->offset_tab[TIME_STAMP_SEQ_NR][STATE];
-	memcpy(((uint8_t*) report.ptr) + offset, bundle->mem.ptr + bundle->offset_tab[SRC_NODE][OFFSET], bundle->offset_tab[SRC_NODE][STATE]);
-	offset+= bundle->offset_tab[SRC_NODE][STATE];
-	memcpy(((uint8_t*) report.ptr) + offset, bundle->mem.ptr + bundle->offset_tab[SRC_SERV][OFFSET], bundle->offset_tab[SRC_SERV][STATE]);
+	/* DTN Time Seconds */
+	ret = sdnv_encode(report->dtn_time_seconds, &buffer[offset], length - offset);
+	if (ret < 0)
+		return -1;
+	offset += ret;
 
-	struct bundle_t rep_bundle;
-	create_bundle(&rep_bundle);
-	uint32_t tmp;
-	if(status&2){
-		sdnv_decode((uint8_t*)bundle->mem.ptr + bundle->offset_tab[CUST_NODE][OFFSET],bundle->offset_tab[CUST_NODE][STATE],&tmp);
-	}else{
-		sdnv_decode((uint8_t*)bundle->mem.ptr + bundle->offset_tab[REP_NODE][OFFSET],bundle->offset_tab[REP_NODE][STATE],&tmp);
-	}
-	set_attr(&rep_bundle, DEST_NODE, &tmp);
-	printf("STAT: %lu %u\n",tmp,status);
-	if(status&2){
-	
-		sdnv_decode((uint8_t*)bundle->mem.ptr + bundle->offset_tab[CUST_SERV][OFFSET],bundle->offset_tab[CUST_SERV][STATE],&tmp);
-	}else{
-		sdnv_decode((uint8_t*)bundle->mem.ptr + bundle->offset_tab[REP_SERV][OFFSET],bundle->offset_tab[REP_SERV][STATE],&tmp);
-	}
-	set_attr(&rep_bundle, DEST_SERV, &tmp);
-	printf("STAT: %lu \n",tmp);
-	set_attr(&rep_bundle, SRC_NODE, &dtn_node_id);
-	tmp=2;
-	set_attr(&rep_bundle, FLAGS, &tmp);
-	tmp=0;
-	set_attr(&rep_bundle, SRC_SERV, &tmp);
-	set_attr(&rep_bundle, REP_NODE, &tmp);
-	set_attr(&rep_bundle, REP_SERV, &tmp);
-	set_attr(&rep_bundle, CUST_NODE, &tmp);
-	set_attr(&rep_bundle, CUST_SERV, &tmp);
-	set_attr(&rep_bundle, TIME_STAMP, &tmp);
-	set_attr(&rep_bundle,TIME_STAMP_SEQ_NR,&dtn_seq_nr);
-	dtn_seq_nr++;
-	tmp=3000;
-	set_attr(&rep_bundle, LIFE_TIME, &tmp);
-	unsigned int old_size = rep_bundle.mem.size;
-	if(!mmem_realloc(&rep_bundle.mem, rep_bundle.mem.size + size)){
-		printf("STAT: mmem ERROR3\n");
-		mmem_free(&report);
-		mmem_free(&rep_bundle.mem);
-		return 0;
-	}
-	memcpy((char *)rep_bundle.mem.ptr+ old_size, report.ptr, size);
-	mmem_free(&report);
-	uint8_t i;
-	for (i=0; i< rep_bundle.mem.size; i++){
-		printf("%x:",*((uint8_t *)rep_bundle.mem.ptr + i));
-	}
-	printf("\n");
-	
-	rep_bundle.size= rep_bundle.mem.size;
-	int32_t saved=BUNDLE_STORAGE.save_bundle(&rep_bundle);
-	printf("STAT: bundle_num %ld\n",saved);
-	if (saved >=0){
+	/* DTN Time Nanoseconds */
+	ret = sdnv_encode(report->dtn_time_nanoseconds, &buffer[offset], length - offset);
+	if (ret < 0)
+		return -1;
+	offset += ret;
 
-		uint16_t *saved_as_num= memb_alloc(saved_as_mem);
-		*saved_as_num= (uint16_t)saved;
-		delete_bundle(&rep_bundle);
-		process_post(&agent_process,dtn_bundle_in_storage_event, saved_as_num);
-		return 1;
-	}else{
-		delete_bundle(&rep_bundle);
-		return 0;
-	}
+	/* Now we need the creation timestamp of the original bundle */
+	ret = sdnv_encode(report->bundle_creation_timestamp, &buffer[offset], length - offset);
+	if (ret < 0)
+		return -1;
+	offset += ret;
 
+	/* And the sequence number of the original bundle */
+	ret = sdnv_encode(report->bundle_sequence_number, &buffer[offset], length - offset);
+	if (ret < 0)
+		return -1;
+	offset += ret;
+
+	/* Now encode the original source EID in string format */
+	offset += eid_create_full_length(report->source_eid_node, report->source_eid_service, &buffer[offset], length - offset);
+
+	return offset;
 }
-*/
 
-uint8_t statusreport_basic_send(struct bundle_t *bundle,uint8_t status, uint8_t reason)
+int statusreport_decode(status_report_t * report, uint8_t * buffer, uint8_t length)
 {
-	return 0;
+	int offset = 0;
+	int ret;
+
+	// Check for the proper type
+	if( !(buffer[offset] & TYPE_CODE_BUNDLE_STATUS_REPORT) ) {
+		LOG(LOGD_DTN, LOG_AGENT, LOGL_WRN, "Status Report Format mismatch");
+		return -1;
+	}
+
+	if( buffer[offset++] & ADMIN_FLAGS_IS_FOR_FRAGMENT ) {
+		report->fragment = 1;
+	}
+
+	// Set report struct to 0
+	memset(report, 0, sizeof(status_report_t));
+
+	// Recover status flags and reason code
+	report->status_flags = buffer[offset++];
+	report->reason_code = buffer[offset++];
+
+	// Recover fragment offset and length (if present)
+	if( report->fragment ) {
+		/* Fragment offset */
+		ret = sdnv_decode(&buffer[offset], length - offset, &report->dtn_time_seconds);
+		if( ret < 0 )
+			return -1;
+		offset += ret;
+
+		/* Fragment length */
+		ret = sdnv_decode(&buffer[offset], length - offset, &report->dtn_time_seconds);
+		if( ret < 0 )
+			return -1;
+		offset += ret;
+	}
+
+	// FIXME: seconds and nanoseconds could be present 0 - n times. We assume here 1
+	/* Recover dtn_time seconds */
+	ret = sdnv_decode(&buffer[offset], length - offset, &report->dtn_time_seconds);
+	if( ret < 0 )
+		return -1;
+	offset += ret;
+
+	/* Recover dtn_time nanoseconds */
+	ret = sdnv_decode(&buffer[offset], length - offset, &report->dtn_time_nanoseconds);
+	if( ret < 0 )
+		return -1;
+	offset += ret;
+
+	/* Recover timestamp */
+	ret = sdnv_decode(&buffer[offset], length - offset, &report->bundle_creation_timestamp);
+	if( ret < 0 )
+		return -1;
+	offset += ret;
+
+	/* Recover timestamp sequence number */
+	ret = sdnv_decode(&buffer[offset], length - offset, &report->bundle_sequence_number);
+	if( ret < 0 )
+		return -1;
+	offset += ret;
+
+	/* Recover the EID */
+	ret = eid_parse_full_length(&buffer[offset], length - offset, &report->source_eid_node, &report->source_eid_service);
+	if( ret < 0 )
+		return -1;
+
+	return 1;
+}
+
+/**
+ * \brief sends a status report for a bundle to the "report-to"-node
+ * \param bundle pointer to bundle
+ * \param status status code for the bundle
+ * \param reason reason code for the status
+ */
+uint8_t statusreport_basic_send(struct mmem * bundlemem, uint8_t status, uint8_t reason)
+{
+	uint32_t bundle_flags;
+	uint32_t report_node_id;
+	uint32_t report_service_id;
+	uint32_t flags;
+	uint32_t lifetime;
+	struct mmem * report_bundle = NULL;
+	struct bundle_t * bundle = NULL;
+	status_report_t report;
+	uint8_t buffer[BUFFER_LENGTH];
+	int ret;
+
+	// Check if we really should send a report
+	bundle_get_attr(bundlemem, FLAGS, &bundle_flags);
+	if( !(bundle_flags & BUNDLE_FLAG_REPORT) ) {
+		return 0;
+	}
+
+	printf("Sending out status report for status %u and reason %u\n", status, reason);
+
+	// Fill out the statusreport struct
+	memset(&report, 0, sizeof(status_report_t));
+	report.status_flags = status;
+	report.reason_code = reason;
+
+	// FIXME: the time stored here is badly broken but we do not have any better solution ATM
+	report.dtn_time_seconds = clock_seconds();
+	report.dtn_time_nanoseconds = 0;
+
+	// Collect all necessary information to fill out the report
+	bundle_get_attr(bundlemem, SRC_NODE, &report.source_eid_node);
+	bundle_get_attr(bundlemem, SRC_SERV, &report.source_eid_service);
+	bundle_get_attr(bundlemem, TIME_STAMP, &report.bundle_creation_timestamp);
+	bundle_get_attr(bundlemem, TIME_STAMP_SEQ_NR, &report.bundle_sequence_number);
+
+	// Collect all necessary information to create report bundle
+	bundle_get_attr(bundlemem, REP_NODE, &report_node_id);
+	bundle_get_attr(bundlemem, REP_SERV, &report_service_id);
+
+	// Allocate memory for our bundle
+	report_bundle = bundle_create_bundle();
+
+	// "Fake" the source of the bundle to be the agent
+	// Otherwise we cannot send bundles, because we do not have an endpoint registration
+	bundle = (struct bundle_t *) MMEM_PTR(report_bundle);
+	bundle->source_process = &agent_process;
+
+	// Set destination addresses for the outgoing bundle
+	bundle_set_attr(report_bundle, DEST_NODE, &report_node_id);
+	bundle_set_attr(report_bundle, DEST_SERV, &report_service_id);
+
+	// Copy timestamp from incoming bundle
+	bundle_set_attr(report_bundle, TIME_STAMP, &report.bundle_creation_timestamp);
+
+	printf("Report goes to %lu.%lu\n", report_node_id, report_service_id);
+
+	// Set lifetime
+	lifetime = 3600;
+	bundle_set_attr(report_bundle, LIFE_TIME, &lifetime);
+
+	// Make the outgoing bundle an admin record
+	flags = BUNDLE_FLAG_ADM_REC;
+	bundle_set_attr(report_bundle, FLAGS, &flags);
+
+	// Encode status report
+	ret = statusreport_encode(&report, buffer, BUFFER_LENGTH);
+	if( ret < 0 )
+		return -1;
+
+	// Add status report to bundle
+	ret = bundle_add_block(report_bundle, BUNDLE_BLOCK_TYPE_PAYLOAD, BUNDLE_BLOCK_FLAG_NULL, buffer, ret);
+	if( ret < 0 )
+		return -1;
+
+	// Send out the report
+	process_post(&agent_process, dtn_send_bundle_event, report_bundle);
+
+	return 1;
 }
 
 const struct status_report_driver statusreport_basic = {
-	"B_STATUS",
-	statusreport_basic_send,
+		"STATUSREPORT_BASIC",
+		statusreport_basic_send,
 };
 /** @} */
 /** @} */
