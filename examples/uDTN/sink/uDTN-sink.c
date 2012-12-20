@@ -57,11 +57,11 @@
 #include "net/uDTN/sdnv.h"
 
 /*---------------------------------------------------------------------------*/
-PROCESS(udtn_sender_process, "uDTN Sink process");
-AUTOSTART_PROCESSES(&udtn_sender_process);
+PROCESS(udtn_sink_process, "uDTN Sink process");
+AUTOSTART_PROCESSES(&udtn_sink_process);
 /*---------------------------------------------------------------------------*/
 
-PROCESS_THREAD(udtn_sender_process, ev, data)
+PROCESS_THREAD(udtn_sink_process, ev, data)
 {
 	static struct registration_api reg;
 	static struct etimer timer;
@@ -212,7 +212,7 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 			/* Add the payload */
 			userdata[0] = 'o';
 			userdata[1] = 'k';
-			bundle_add_block(bundle_outgoing, 1, 2, userdata, 2);
+			bundle_add_block(bundle_outgoing, BUNDLE_BLOCK_TYPE_PAYLOAD, BUNDLE_BLOCK_FLAG_NULL, userdata, 2);
 
 			/* Send out the bundle */
 			process_post(&agent_process, dtn_send_bundle_event, (void *) bundle_outgoing);

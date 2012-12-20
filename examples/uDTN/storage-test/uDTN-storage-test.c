@@ -98,7 +98,7 @@ uint8_t my_create_bundle(uint32_t sequence_number, uint32_t * bundle_number, uin
 	}
 
 	// Add a payload block
-	bundle_add_block(ptr, BUNDLE_BLOCK_TYPE_PAYLOAD, 0, payload, 60);
+	bundle_add_block(ptr, BUNDLE_BLOCK_TYPE_PAYLOAD, BUNDLE_BLOCK_FLAG_NULL, payload, 60);
 
 	// And tell storage to save the bundle
 	n = BUNDLE_STORAGE.save_bundle(ptr, &bundle_number_ptr);
@@ -194,15 +194,10 @@ PROCESS_THREAD(test_process, ev, data)
 
 	PROCESS_BEGIN();
 
+  PROCESS_PAUSE();
+
 	profiling_init();
 	profiling_start();
-
-	// Wait some time
-	etimer_set(&timer, CLOCK_SECOND);
-	PROCESS_WAIT_UNTIL(etimer_expired(&timer));
-
-	// Initialize the agent (necessary?)
-	agent_init();
 
 	// Wait again
 	etimer_set(&timer, CLOCK_SECOND);

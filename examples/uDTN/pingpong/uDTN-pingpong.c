@@ -135,7 +135,7 @@ static inline struct mmem *bundle_convenience(uint16_t dest, uint16_t dst_srv, u
 	bundle_set_attr(bundlemem, LIFE_TIME, &tmp);
 
 	/* Bundle payload block */
-	bundle_add_block(bundlemem, 1, 0, data, len);
+	bundle_add_block(bundlemem, BUNDLE_BLOCK_TYPE_PAYLOAD, BUNDLE_BLOCK_FLAG_NULL, data, len);
 
 	return bundlemem;
 }

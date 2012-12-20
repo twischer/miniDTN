@@ -86,7 +86,7 @@ int send_bundle(uint32_t destination_node, uint32_t destination_service, uint8_t
 	bundle_set_attr(outgoing_bundle_memory, LIFE_TIME, &tmp);
 
 	/* Add the payload block */
-	n = bundle_add_block(outgoing_bundle_memory, BUNDLE_BLOCK_TYPE_PAYLOAD, 0, payload, length);
+	n = bundle_add_block(outgoing_bundle_memory, BUNDLE_BLOCK_TYPE_PAYLOAD, BUNDLE_BLOCK_FLAG_NULL, payload, length);
 	if( !n ) {
 		printf("Not enough memory for payload block\n");
 
