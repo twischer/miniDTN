@@ -541,9 +541,6 @@ uint16_t storage_coffee_delete_bundle(uint32_t bundle_number, uint8_t reason)
 
 	// Figure out the source to send status report
 	if( reason != REASON_DELIVERED ) {
-		// REASON_DELIVERED means "bundle delivered" and does not need a report
-		// FIXME: really?
-
 		bundlemem = storage_coffee_read_bundle(bundle_number);
 		if( bundlemem == NULL ) {
 			LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to read back bundle %lu", bundle_number);
@@ -553,13 +550,14 @@ uint16_t storage_coffee_delete_bundle(uint32_t bundle_number, uint8_t reason)
 		bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 		bundle->del_reason = reason;
 
-		if( (bundle->flags & 8 ) || (bundle->flags & 0x40000) ){
+		if( (bundle->flags & BUNDLE_FLAG_CUST_REQ ) || (bundle->flags & BUNDLE_FLAG_REP_DELETE) ){
 			if (bundle->src_node != dtn_node_id){
-				STATUS_REPORT.send(bundle, 16, bundle->del_reason);
+				STATUSREPORT.send(bundlemem, 16, bundle->del_reason);
 			}
 		}
 
 		bundle_decrement(bundlemem);
+		bundle = NULL;
 	}
 
 	// Remove the bundle from the list

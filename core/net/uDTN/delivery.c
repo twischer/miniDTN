@@ -141,6 +141,11 @@ int delivery_deliver_bundle(struct mmem *bundlemem) {
 		CUSTODY.report(bundlemem, 128);
 	}
 
+	// Possibly send status report
+	if( bundle->flags & BUNDLE_FLAG_REP_DELIV ) {
+		STATUSREPORT.send(bundlemem, NODE_DELIVERED_BUNDLE, NO_ADDITIONAL_INFORMATION);
+	}
+
 #if DEBUG_H
 	uint16_t time = clock_time();
 	time -= bundle->debug_time;

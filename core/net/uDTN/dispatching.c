@@ -33,6 +33,7 @@ int dispatching_dispatch_bundle(struct mmem *bundlemem) {
 	struct bundle_t *bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 	uint32_t * bundle_number;
 	int n;
+	uint8_t received_report = 0;
 
 	if ((bundle->flags & BUNDLE_FLAG_ADM_REC) && (bundle->dst_node == dtn_node_id)) {
 		// The bundle is an ADMIN RECORD for our node, process it directly here without going into storage
@@ -85,9 +86,31 @@ int dispatching_dispatch_bundle(struct mmem *bundlemem) {
 		return 1;
 	}
 
+	// Does the sender want a "received" status report?
+	if( bundle->flags & BUNDLE_FLAG_REP_RECV ) {
+		received_report = 1;
+	}
+
 	// regular bundle, no custody
 	LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "Handing over to storage");
 	n = BUNDLE_STORAGE.save_bundle(bundlemem, &bundle_number);
+	bundlemem = NULL;
+
+	// Send out a "received" status report if requested
+	if( received_report ) {
+		// Read back from storage
+		bundlemem = BUNDLE_STORAGE.read_bundle(*bundle_number);
+
+		if( bundlemem != NULL) {
+			LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "Sending out delivery report for bundle %lu", *bundle_number);
+
+			// Send out report
+			STATUSREPORT.send(bundlemem, NODE_RECEIVED_BUNDLE, NO_ADDITIONAL_INFORMATION);
+
+			// Free memory
+			bundle_decrement(bundlemem);
+		}
+	}
 
 	// Now we have to send an event to our daemon
 	if( n ) {

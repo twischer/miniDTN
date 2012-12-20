@@ -304,15 +304,15 @@ uint16_t storage_mmem_delete_bundle(uint32_t bundle_number, uint8_t reason)
 	bundle->del_reason = reason;
 
 	if( reason != REASON_DELIVERED ) {
-		// REASON_DELIVERED means "bundle delivered"
-		if( (bundle->flags & 8 ) || (bundle->flags & 0x40000) ){
+		if( (bundle->flags & BUNDLE_FLAG_CUST_REQ ) || (bundle->flags & BUNDLE_FLAG_REP_DELETE) ){
 			if (bundle->src_node != dtn_node_id){
-				STATUS_REPORT.send(bundle, 16, bundle->del_reason);
+				STATUSREPORT.send(entry->bundle, 16, bundle->del_reason);
 			}
 		}
 	}
 
 	bundle_decrement(entry->bundle);
+	bundle = NULL;
 
 	// Remove the bundle from the list
 	list_remove(bundle_list, entry);
