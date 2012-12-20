@@ -31,6 +31,7 @@
 #include "sdnv.h"
 #include "statistics.h"
 #include "convergence_layer.h"
+#include "eid.h"
 
 #include "discovery.h"
 
@@ -154,20 +155,15 @@ void discovery_ipnd_disable()
  * \return Length of the parsed EID
  */
 uint8_t discovery_ipnd_parse_eid(uint32_t * eid, uint8_t * buffer, uint8_t length) {
-	uint32_t sdnv_length = 0;
-	int offset = 0;
+	int ret = 0;
 
-	// int sdnv_decode(const uint8_t* bp, size_t len, uint32_t* val)
-	offset += sdnv_decode(&buffer[offset], 4 , &sdnv_length);
-
-	if( strncmp((char *) &buffer[offset], "ipn:", 4) == 0 ) {
-		*eid = atoi((char *) &buffer[offset + 4]);
-	} else {
-		LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_WRN, "Unknown EID format %s", &buffer[offset + 4]);
+	/* Parse EID */
+	ret = eid_parse_host_length(buffer, length, eid);
+	if( ret < 0 ) {
+		return 0;
 	}
 
-	/* FIXME: really? */
-	return offset + sdnv_length;
+	return ret;
 }
 
 /**
@@ -268,14 +264,7 @@ void discovery_ipnd_send() {
 	/**
 	 * Add node's EID
 	 */
-	// Print to buffer, determine length
-	len = sprintf(string_buffer, "ipn:%lu", dtn_node_id);
-	// SDNV encode length
-	offset += sdnv_encode(len, &ipnd_buffer[offset], DISCOVERY_IPND_BUFFER_LEN - offset);
-	// Copy string to buffer
-	memcpy(&ipnd_buffer[offset], string_buffer, len);
-	// Shift buffer
-	offset += len;
+	offset += eid_create_host_length(dtn_node_id, &ipnd_buffer[offset], DISCOVERY_IPND_BUFFER_LEN - offset);
 
 	/**
 	 * Add static Service block
