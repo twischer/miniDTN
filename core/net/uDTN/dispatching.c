@@ -78,7 +78,7 @@ int dispatching_dispatch_bundle(struct mmem *bundlemem) {
 	}
 
 	// Now pass on the bundle to storage
-	if (bundle->flags & 0x08){
+	if (bundle->flags & BUNDLE_FLAG_CUST_REQ){
 		// bundle is custody
 		LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "Handing over to custody");
 
