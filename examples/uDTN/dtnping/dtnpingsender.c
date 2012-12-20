@@ -147,7 +147,7 @@ PROCESS_THREAD(dtnping_process, ev, data)
 		}
 
 		// Flag 0x08 is last_block Flag
-		bundle_add_block(bundlemem, 1, 0x08, payload_buffer, DTN_PING_LENGTH);
+		bundle_add_block(bundlemem, BUNDLE_BLOCK_TYPE_PAYLOAD, BUNDLE_BLOCK_FLAG_NULL, payload_buffer, DTN_PING_LENGTH);
 
 		// And submit the bundle to the agent
 		process_post(&agent_process, dtn_send_bundle_event, (void *) bundlemem);

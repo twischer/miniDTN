@@ -113,7 +113,7 @@ void send_bundle(uint8_t * payload, uint8_t length)
 	bundle_set_attr(bundle_out, TIME_STAMP, &tmp);
 
 	// Add the payload block
-	bundle_add_block(bundle_out, 1, 0, payload, length);
+	bundle_add_block(bundle_out, BUNDLE_BLOCK_TYPE_PAYLOAD, BUNDLE_BLOCK_FLAG_NULL, payload, length);
 
 	// Submit the bundle to the agent
 	process_post(&agent_process, dtn_send_bundle_event, (void *) bundle_out);
@@ -322,7 +322,6 @@ PROCESS_THREAD(temperature_process, ev, data)
 /*---------------------------------------------------------------------------*/
 PROCESS_THREAD(dtnping_process, ev, data)
 {
-	static struct etimer timer;
 	static uint32_t bundles_recv = 0;
 	uint32_t tmp;
 
@@ -337,15 +336,12 @@ PROCESS_THREAD(dtnping_process, ev, data)
 
 	PROCESS_BEGIN();
 
-	agent_init();
+	PROCESS_PAUSE();
 
-	etimer_set(&timer, CLOCK_SECOND*1);
-	PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&timer));
-
-	reg.status = 1;
-	reg.application_process = &dtnping_process;
-	reg.app_id = DTN_PING_ENDPOINT;
-	process_post(&agent_process, dtn_application_registration_event,&reg);
+	reg_ping.status = APP_ACTIVE;
+	reg_ping.application_process = &dtnping_process;
+	reg_ping.app_id = DTN_PING_ENDPOINT;
+	process_post(&agent_process, dtn_application_registration_event, &reg_ping);
 
 	while (1) {
 		PROCESS_WAIT_EVENT_UNTIL(ev == submit_data_to_application_event);
@@ -403,7 +399,7 @@ PROCESS_THREAD(dtnping_process, ev, data)
 		bundle_set_attr(bundlemem, TIME_STAMP, &incoming_timestamp);
 
 		// Copy payload from incoming bundle
-		bundle_add_block(bundlemem, 1, 0, payload_buffer, payload_length);
+		bundle_add_block(bundlemem, BUNDLE_BLOCK_TYPE_PAYLOAD, BUNDLE_BLOCK_FLAG_NULL, payload_buffer, payload_length);
 
 		// And submit the bundle to the agent
 		process_post(&agent_process, dtn_send_bundle_event, (void *) bundlemem);

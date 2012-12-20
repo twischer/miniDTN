@@ -211,7 +211,7 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 		/* Add the payload */
 		for(i=0; i<80; i++)
 			userdata[i] = i;
-		n = bundle_add_block(bundle_outgoing, 1, 2, userdata, 80);
+		n = bundle_add_block(bundle_outgoing, BUNDLE_BLOCK_TYPE_PAYLOAD, BUNDLE_BLOCK_FLAG_NULL, userdata, 80);
 		if( !n ) {
 			printf("not enough room for block\n");
 			bundle_decrement(bundle_outgoing);

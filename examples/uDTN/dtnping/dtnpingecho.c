@@ -142,7 +142,7 @@ PROCESS_THREAD(dtnping_process, ev, data)
 		bundle_set_attr(bundlemem, TIME_STAMP, &incoming_timestamp);
 
 		// Copy payload from incoming bundle
-		bundle_add_block(bundlemem, 1, 0, payload_buffer, payload_length);
+		bundle_add_block(bundlemem, BUNDLE_BLOCK_TYPE_PAYLOAD, BUNDLE_BLOCK_FLAG_NULL, payload_buffer, payload_length);
 
 		// And submit the bundle to the agent
 		process_post(&agent_process, dtn_send_bundle_event, (void *) bundlemem);
