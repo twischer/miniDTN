@@ -74,10 +74,11 @@ PROCESS_THREAD(profiling_process, ev, data)
 	static struct etimer timer;
 	PROCESS_BEGIN();
 
+  PROCESS_PAUSE();
+
 	logging_init();
 	logging_domain_level_set(LOGD_APP, 0, LOGL_DBG);
 
-	agent_init();
 	etimer_set(&timer, CLOCK_SECOND*1);
 	PROCESS_WAIT_UNTIL(etimer_expired(&timer));
 	LOG(LOGD_APP, 0, LOGL_INF, "Checking bundle encoding/decoding");
@@ -148,7 +149,7 @@ PROCESS_THREAD(bundle_verificator_process, ev, data)
 	bundle_set_attr(bundle1, TIME_STAMP, &val);
 
 	/* Add the data block to the bundle */
-	bundle_add_block(bundle1, 1, 2, databuf, DATASIZE);
+	bundle_add_block(bundle1, BUNDLE_BLOCK_TYPE_PAYLOAD, BUNDLE_BLOCK_FLAG_NULL, databuf, DATASIZE);
 
 	len1 = bundle_encode_bundle(bundle1, buffer1, 120);
 	bundle2 = bundle_recover_bundle(buffer1, len1);
@@ -226,7 +227,7 @@ PROCESS_THREAD(bundle_generator_process, ev, data)
 		bundle_set_attr(bundlemem, TIME_STAMP, &val);
 
 		/* Add the data block to the bundle */
-		bundle_add_block(bundlemem, 1, 2, databuf, DATASIZE);
+		bundle_add_block(bundlemem, BUNDLE_BLOCK_TYPE_PAYLOAD, BUNDLE_BLOCK_FLAG_NULL, databuf, DATASIZE);
 
 		numbundles++;
 		bundle_decrement(bundlemem);
