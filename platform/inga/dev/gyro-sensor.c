@@ -1,11 +1,12 @@
-/* GYROSCOPE sensor interface 
- * Author  : Georg von Zengen
- * Created : 2011/10/17
+/** GYROSCOPE sensor interface 
+ * @author  : Georg von Zengen
+ * @date : 2011/10/17
+ * @todo: License here?
  */
 #include "contiki.h"
 #include "lib/sensors.h"
-#include "interfaces/gyro-l3g4200d.h"
-#include "dev/gyro-sensor.h"
+#include "l3g4200d.h"
+#include "gyro-sensor.h"
 const struct sensors_sensor gyro_sensor;
 uint8_t gyro_state=0;
 /*---------------------------------------------------------------------------*/

@@ -37,7 +37,7 @@
  *      Ulf Kulau <kulau@ibr.cs.tu-bs.de>
  */
 
-#include "gyro-l3g4200d.h"
+#include "l3g4200d.h"
 
 int8_t l3g4200d_init(void) {
 	uint8_t i = 0;
