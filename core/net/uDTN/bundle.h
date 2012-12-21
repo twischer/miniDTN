@@ -164,7 +164,7 @@ struct mmem * bundle_recover_bundle(uint8_t * buffer, int size);
  * \param max_len Size of the buffer
  * \return The number of bytes that were written to buf
  */
-uint8_t bundle_encode_bundle(struct mmem * bundlemem, uint8_t * buffer, int max_len);
+int bundle_encode_bundle(struct mmem * bundlemem, uint8_t * buffer, int max_len);
 
 /**
  * \brief sets an attribute of a bundle
@@ -208,7 +208,7 @@ uint16_t bundle_delete_bundle(struct mmem * bundlemem);
  * \param d_len length of the block payload
  * \return 1 on success or 0 on error
  */
-uint8_t bundle_add_block(struct mmem * bundlemem, uint8_t type, uint8_t flags, uint8_t * data, uint8_t d_len);
+int bundle_add_block(struct mmem * bundlemem, uint8_t type, uint8_t flags, uint8_t * data, uint8_t d_len);
 
 /**
  * \brief Returns a pointer a bundle block
