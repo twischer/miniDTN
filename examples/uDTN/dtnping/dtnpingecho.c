@@ -90,9 +90,16 @@ PROCESS_THREAD(dtnping_process, ev, data)
 		uint8_t payload_length;
 
 		block = bundle_get_payload_block(bundlemem);
-		payload_length = block->block_size;
-		if (payload_length > 64) {
+		if( block == NULL ) {
+			printf("No payload block\n");
+			continue;
+		}
+
+		if (block->block_size > 64) {
 			printf("Payload too big, clamping to maximum size.\n");
+			payload_length = 64;
+		} else {
+			payload_length = block->block_size;
 		}
 		memcpy(payload_buffer, block->payload, payload_length);
 
