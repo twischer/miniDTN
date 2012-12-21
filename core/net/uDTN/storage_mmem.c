@@ -219,6 +219,7 @@ uint8_t storage_mmem_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_num
 
 		if( bundle_number == entrybdl->bundle_num ) {
 			LOG(LOGD_DTN, LOG_STORE, LOGL_DBG, "%lu is the same bundle", entry->bundle_num);
+			*bundle_number_ptr = &entry->bundle_num;
 			bundle_decrement(bundlemem);
 			return 1;
 		}

@@ -407,6 +407,7 @@ uint8_t storage_coffee_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_n
 
 		if( bundle_number == entry->bundle_num ) {
 			LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "%lu is the same bundle", entry->bundle_num);
+			*bundle_number_ptr = &entry->bundle_num;
 			bundle_decrement(bundlemem);
 			return entry->bundle_num;
 		}
