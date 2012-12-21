@@ -312,6 +312,9 @@ uint16_t storage_mmem_delete_bundle(uint32_t bundle_number, uint8_t reason)
 		}
 	}
 
+	// Notified the agent, that a bundle has been deleted
+	agent_delete_bundle(bundle_number);
+
 	bundle_decrement(entry->bundle);
 	bundle = NULL;
 
@@ -319,9 +322,6 @@ uint16_t storage_mmem_delete_bundle(uint32_t bundle_number, uint8_t reason)
 	list_remove(bundle_list, entry);
 
 	bundles_in_storage--;
-
-	// Notified the agent, that a bundle has been deleted
-	agent_delete_bundle(bundle_number);
 
 	// Notify the statistics module
 	storage_mmem_update_statistics();
