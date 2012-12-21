@@ -77,6 +77,7 @@
 struct mmem {
   struct mmem *next;
   unsigned int size;
+  unsigned int real_size;
   void *ptr;
 };
 
