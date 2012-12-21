@@ -561,6 +561,9 @@ uint16_t storage_coffee_delete_bundle(uint32_t bundle_number, uint8_t reason)
 		bundle = NULL;
 	}
 
+	// Notified the agent, that a bundle has been deleted
+	agent_delete_bundle(bundle_number);
+
 	// Remove the bundle from the list
 	list_remove(bundle_list, entry);
 
@@ -580,9 +583,6 @@ uint16_t storage_coffee_delete_bundle(uint32_t bundle_number, uint8_t reason)
 	// Mark the bundle list as changed
 	bundle_list_changed = 1;
 	bundles_in_storage--;
-
-	// Notified the agent, that a bundle has been deleted
-	agent_delete_bundle(bundle_number);
 
 	// Free the storage struct
 	memb_free(&bundle_mem, entry);
