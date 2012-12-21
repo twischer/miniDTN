@@ -113,6 +113,8 @@ PROCESS_THREAD(dtnping_process, ev, data)
 
 		// Tell the agent, that have processed the bundle
 		process_post(&agent_process, dtn_processing_finished, bundlemem);
+		bundlemem = NULL;
+		bundle = NULL;
 
 		bundles_recv++;
 		printf("PING %lu received\n", bundles_recv);
@@ -127,14 +129,6 @@ PROCESS_THREAD(dtnping_process, ev, data)
 		// Set the reply EID to the incoming bundle information
 		bundle_set_attr(bundlemem, DEST_NODE, &source_node);
 		bundle_set_attr(bundlemem, DEST_SERV, &source_service);
-
-		// Make us the sender, the custodian and the report to
-		tmp = dtn_node_id;
-		bundle_set_attr(bundlemem, SRC_NODE, &tmp);
-		bundle_set_attr(bundlemem, CUST_NODE, &tmp);
-		bundle_set_attr(bundlemem, CUST_SERV, &tmp);
-		bundle_set_attr(bundlemem, REP_NODE, &tmp);
-		bundle_set_attr(bundlemem, REP_SERV, &tmp);
 
 		// Set our service to 11 [DTN_PING_ENDPOINT] (IBR-DTN expects that)
 		tmp = DTN_PING_ENDPOINT;

@@ -6,6 +6,7 @@
 #define MMEM_CONF_SIZE 2000
 
 // Set the PAN ID that IBR-DTN uses
+#undef IEEE802154_CONF_PANID
 #define IEEE802154_CONF_PANID 0x780
 
 // Disable the CSMA retransmission buffers
