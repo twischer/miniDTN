@@ -110,7 +110,7 @@ struct bundle_block_t {
 	 * IEEE-805.15.4 limits the size here. */
 	uint8_t block_size;
 	uint8_t payload[];
-};
+} __attribute__((packed));
 
 /**
 * \brief this struct defines the bundle for internal processing
@@ -146,8 +146,9 @@ struct bundle_t{
 	uint16_t debug_time;
 #endif
 	uint8_t num_blocks;
+
 	uint8_t block_data[];
-};
+} __attribute__ ((packed));
 
 /**
  * \brief generates the bundle struct from raw data
