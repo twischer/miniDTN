@@ -65,6 +65,12 @@
 #define MMEM_SIZE 4096
 #endif
 
+#ifdef MMEM_CONF_ALIGNMENT
+#define MMEM_ALIGNMENT MMEM_CONF_ALIGNMENT
+#else
+#define MMEM_ALIGNMENT 2
+#endif
+
 LIST(mmemlist);
 unsigned int avail_memory;
 static char memory[MMEM_SIZE];
@@ -112,9 +118,14 @@ mmem_alloc(struct mmem *m, unsigned int size)
   m->ptr = &memory[MMEM_SIZE - avail_memory];
   /* Remember the size of this memory block. */
   m->size = size;
+  m->real_size = size;
+
+  while( m->real_size % MMEM_ALIGNMENT != 0 ) {
+	  m->real_size ++;
+  }
 
   /* Decrease the amount of available memory. */
-  avail_memory -= size;
+  avail_memory -= m->real_size;
   /* Return non-zero to indicate that we were able to allocate
      memory. */
   return 1;
@@ -132,8 +143,8 @@ mmem_alloc(struct mmem *m, unsigned int size)
 void
 mmem_free(struct mmem *m)
 {
-  if(m->size > MMEM_SIZE - avail_memory){
-	PRINTF("MMEM: too much free %u\n",m->size);
+  if(m->real_size > MMEM_SIZE - avail_memory){
+	PRINTF("MMEM: too much free %u\n", m->real_size);
         return;
   }
   struct mmem *n;
@@ -146,11 +157,11 @@ mmem_free(struct mmem *m)
     /* Update all the memory pointers that points to memory that is
        after the allocation that is to be removed. */
     for(n = m->next; n != NULL; n = n->next) {
-      n->ptr = (void *)((char *)n->ptr - m->size);
+      n->ptr = (void *)((char *)n->ptr - m->real_size);
     }
   }
 
-  avail_memory += m->size;
+  avail_memory += m->real_size;
 //  PRINTF("MMEM: free %u\n",avail_memory);
 
   /* Remove the memory block from the list. */
@@ -171,7 +182,13 @@ mmem_free(struct mmem *m)
 int
 mmem_realloc(struct mmem *mem, unsigned int size)
 {
-  int diff = (int)size - mem->size;
+  int mysize = size;
+
+  while( mysize % MMEM_ALIGNMENT != 0 ) {
+	  mysize ++;
+  }
+
+  int diff = (int)mysize - mem->real_size;
 
   /* Already the correct size */
   if (diff == 0)
@@ -197,6 +214,7 @@ mmem_realloc(struct mmem *mem, unsigned int size)
   }
 
   mem->size = size;
+  mem->real_size = mysize;
   avail_memory -= diff;
   return 1;
 }
@@ -220,6 +238,7 @@ mmem_reparent(struct mmem *m_old, struct mmem *m_new)
 	list_insert(mmemlist, m_old, m_new);
 	list_remove(mmemlist, m_old);
 	m_old->size = 0;
+	m_old->real_size = 0;
 }
 
 /*---------------------------------------------------------------------------*/
