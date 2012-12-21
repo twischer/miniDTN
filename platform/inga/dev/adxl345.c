@@ -36,7 +36,7 @@
  * \author
  *      Ulf Kulau <kulau@ibr.cs.tu-bs.de>
  */
-#include "acc-adxl345.h"
+#include "adxl345.h"
 
 int8_t
 adxl345_init(void)

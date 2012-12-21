@@ -4,8 +4,8 @@
  */
 #include "contiki.h"
 #include "lib/sensors.h"
-#include "interfaces/acc-adxl345.h"
-#include "dev/acc-sensor.h"
+#include "adxl345.h"
+#include "adxl345-sensor.h"
 const struct sensors_sensor acc_sensor;
 uint8_t acc_state=0;
 /*---------------------------------------------------------------------------*/
