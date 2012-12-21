@@ -38,73 +38,119 @@
  */
 #include "acc-adxl345.h"
 
-int8_t adxl345_init(void) {
-	uint8_t i = 0;
-	mspi_chip_release(ADXL345_CS);
-	mspi_init(ADXL345_CS, MSPI_MODE_3, MSPI_BAUD_MAX);
+int8_t
+adxl345_init(void)
+{
+  uint8_t i = 0;
+  mspi_chip_release(ADXL345_CS);
+  mspi_init(ADXL345_CS, MSPI_MODE_3, MSPI_BAUD_MAX);
 
-	adxl345_write(ADXL345_DATA_FORMAT_REG, ADXL345_DATA_FORMAT_DATA);
-	adxl345_write(ADXL345_POWER_CTL_REG, ADXL345_POWER_CTL_DATA);
-	adxl345_write(ADXL345_BW_RATE_REG, ADXL345_BW_RATE_DATA);
+  adxl345_write(ADXL345_DATA_FORMAT_REG, ADXL345_DATA_FORMAT_DATA);
+  adxl345_write(ADXL345_POWER_CTL_REG, ADXL345_POWER_CTL_DATA);
+  adxl345_write(ADXL345_BW_RATE_REG, ADXL345_BW_RATE_DATA);
 
-	while (adxl345_read(ADXL345_DEVICE_ID_REG) != ADXL345_DEVICE_ID_DATA) {
-		_delay_ms(10);
-		if (i++ > 10) {
-			return -1;
-		}
-	}
-	return 0;
+  while (adxl345_read(ADXL345_DEVICE_ID_REG) != ADXL345_DEVICE_ID_DATA) {
+    _delay_ms(10);
+    if (i++ > 10) {
+      return -1;
+    }
+  }
+  return 0;
 
 }
-
-uint16_t adxl345_get_x_acceleration(void) {
-	uint8_t byteLow;
-	uint8_t byteHigh;
-	byteLow = adxl345_read(ADXL345_OUTX_LOW_REG);
-	byteHigh = adxl345_read(ADXL345_OUTX_HIGH_REG);
-
-	return ((byteHigh << 8) + byteLow);
+/*----------------------------------------------------------------------------*/
+inline void adxl345_set_g_range(uint8_t range) {
+  uint8_t tmp_reg = adxl345_read(ADXL345_DATA_FORMAT_REG);
+  adxl345_write(ADXL345_DATA_FORMAT_REG, (tmp_reg & 0xFC) | (range & 0x03));
+  // range is set as (datasheet_value / 16) to allow calculation in 16bit range
+/*
+  switch (range) {
+    case ADXL345_MODE_2G:
+      adxl345_cfg.gdiv = 16;
+      break;
+    case ADXL345_MODE_4G:
+      adxl345_cfg.gdiv = 8;
+      break;
+    case ADXL345_MODE_8G:
+      adxl345_cfg.gdiv = 4;
+      break;
+    case ADXL345_MODE_16G:
+      adxl345_cfg.gdiv = 2;
+      break;
+  }
+*/
 }
-
-uint16_t adxl345_get_y_acceleration(void) {
-	uint8_t byteLow;
-	uint8_t byteHigh;
-	byteLow = adxl345_read(ADXL345_OUTY_LOW_REG);
-	byteHigh = adxl345_read(ADXL345_OUTY_HIGH_REG);
-	return (byteHigh << 8) + byteLow;
+/*----------------------------------------------------------------------------*/
+void adxl345_set_fifomode(uint8_t mode) {
+  uint8_t tmp_reg = adxl345_read(ADXL345_FIFO_CTL_REG);
+  adxl345_write(ADXL345_FIFO_CTL_REG, (tmp_reg & 0x3F) | (mode & 0xC0));
 }
-
-uint16_t adxl345_get_z_acceleration(void) {
-	uint8_t byteLow;
-	uint8_t byteHigh;
-	byteLow = adxl345_read(ADXL345_OUTZ_LOW_REG);
-	byteHigh = adxl345_read(ADXL345_OUTZ_HIGH_REG);
-	return (byteHigh << 8) + byteLow;
+/*----------------------------------------------------------------------------*/
+void adxl345_set_powermode(uint8_t mode) {
+  uint8_t tmp_reg = adxl345_read(ADXL345_POWER_CTL_REG);
+//  adxl345_write(ADXL345_POWER_CTL_REG, (tmp_reg & 0x??) | (mode & 0x??));
 }
+/*----------------------------------------------------------------------------*/
+uint16_t
+adxl345_get_x_acceleration(void)
+{
+  uint8_t byteLow;
+  uint8_t byteHigh;
+  byteLow = adxl345_read(ADXL345_OUTX_LOW_REG);
+  byteHigh = adxl345_read(ADXL345_OUTX_HIGH_REG);
 
-acc_data_t adxl345_get_acceleration(void) {
-	acc_data_t adxl345_data;
-	adxl345_data.acc_x_value = adxl345_get_x_acceleration();
-	adxl345_data.acc_y_value = adxl345_get_y_acceleration();
-	adxl345_data.acc_z_value = adxl345_get_z_acceleration();
-	return adxl345_data;
+  return ((byteHigh << 8) + byteLow);
 }
-
-void adxl345_write(uint8_t reg, uint8_t data) {
-	mspi_chip_select(ADXL345_CS);
-	reg &= 0x7F;
-	mspi_transceive(reg);
-	mspi_transceive(data);
-	mspi_chip_release(ADXL345_CS);
+/*----------------------------------------------------------------------------*/
+uint16_t
+adxl345_get_y_acceleration(void)
+{
+  uint8_t byteLow;
+  uint8_t byteHigh;
+  byteLow = adxl345_read(ADXL345_OUTY_LOW_REG);
+  byteHigh = adxl345_read(ADXL345_OUTY_HIGH_REG);
+  return (byteHigh << 8) +byteLow;
 }
-
-uint8_t adxl345_read(uint8_t reg) {
-	uint8_t data;
-	mspi_chip_select(ADXL345_CS);
-	reg |= 0x80;
-	mspi_transceive(reg);
-	data = mspi_transceive(MSPI_DUMMY_BYTE);
-	mspi_chip_release(ADXL345_CS);
-	return data;
+/*----------------------------------------------------------------------------*/
+uint16_t
+adxl345_get_z_acceleration(void)
+{
+  uint8_t byteLow;
+  uint8_t byteHigh;
+  byteLow = adxl345_read(ADXL345_OUTZ_LOW_REG);
+  byteHigh = adxl345_read(ADXL345_OUTZ_HIGH_REG);
+  return (byteHigh << 8) +byteLow;
+}
+/*----------------------------------------------------------------------------*/
+acc_data_t
+adxl345_get_acceleration(void)
+{
+  acc_data_t adxl345_data;
+  adxl345_data.acc_x_value = adxl345_get_x_acceleration();
+  adxl345_data.acc_y_value = adxl345_get_y_acceleration();
+  adxl345_data.acc_z_value = adxl345_get_z_acceleration();
+  return adxl345_data;
+}
+/*----------------------------------------------------------------------------*/
+void
+adxl345_write(uint8_t reg, uint8_t data)
+{
+  mspi_chip_select(ADXL345_CS);
+  reg &= 0x7F;
+  mspi_transceive(reg);
+  mspi_transceive(data);
+  mspi_chip_release(ADXL345_CS);
+}
+/*----------------------------------------------------------------------------*/
+uint8_t
+adxl345_read(uint8_t reg)
+{
+  uint8_t data;
+  mspi_chip_select(ADXL345_CS);
+  reg |= 0x80;
+  mspi_transceive(reg);
+  data = mspi_transceive(MSPI_DUMMY_BYTE);
+  mspi_chip_release(ADXL345_CS);
+  return data;
 }
 

@@ -158,6 +158,10 @@
  */
 #define ADXL345_POWER_CTL_DATA		0x08
 
+
+#define ADXL345_FIFO_CTL_REG		0x38
+
+
 /*!
  * ADXL Data Rate and Power Mode Control Register
  */
@@ -202,14 +206,22 @@
 #define ADXL345_OUTY_HIGH_REG		0x35
 #define ADXL345_OUTZ_LOW_REG		0x36
 #define ADXL345_OUTZ_HIGH_REG		0x37
+
 /*\endcond*/
+
+#define ADXL345_RANGE_L			0
+
+#define ADXL345_MODE_2G				(0x0 << ADXL345_RANGE_L)
+#define ADXL345_MODE_4G				(0x1 << ADXL345_RANGE_L)
+#define ADXL345_MODE_8G				(0x2 << ADXL345_RANGE_L)
+#define ADXL345_MODE_16G			(0x3 << ADXL345_RANGE_L)
 
 
 typedef struct {
 	uint16_t acc_x_value;
 	uint16_t acc_y_value;
 	uint16_t acc_z_value;
-}acc_data_t;
+} acc_data_t;
 
 /**
  * \brief Initialize the ADXL345 Acceleration Sensor
@@ -226,6 +238,10 @@ typedef struct {
  * 		 	</ul>
  */
 int8_t adxl345_init(void);
+
+inline void adxl345_set_g_range(uint8_t range);
+void adxl345_set_fifomode(uint8_t mode);
+void adxl345_set_powermode(uint8_t mode);
 
 /**
  * \brief This function returns the current measured acceleration
@@ -260,12 +276,12 @@ uint16_t adxl345_get_z_acceleration(void);
  */
 acc_data_t adxl345_get_acceleration(void);
 
- /**
-  * \brief This function writes data to the given register
-  *        of the ADXL345
-  * \param reg  The register address
-  * \param data The data value
-  */
+/**
+ * \brief This function writes data to the given register
+ *        of the ADXL345
+ * \param reg  The register address
+ * \param data The data value
+ */
 void adxl345_write(uint8_t reg, uint8_t data);
 
 /**
