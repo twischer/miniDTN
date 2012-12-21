@@ -64,7 +64,7 @@ struct routing_list_entry_t {
 
 	/** pointer to MMEM containing the routing_entry_t */
 	struct mmem entry;
-};
+} __attribute__ ((packed));
 
 struct routing_entry_t {
 	/** number of the bundle */
@@ -87,7 +87,7 @@ struct routing_entry_t {
 
 	/** neighbour from which we have received the bundle */
 	rimeaddr_t received_from_node;
-};
+} __attribute__ ((packed));
 
 /**
  * Routing process
