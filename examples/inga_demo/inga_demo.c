@@ -10,12 +10,12 @@
  */
 	
 #include "contiki.h"
-#include "interfaces/acc-adxl345.h"             //tested
+#include "dev/adxl345.h"             //tested
 #include "interfaces/flash-microSD.h"           //tested
 #include "interfaces/flash-at45db.h"            //tested
-#include "interfaces/pressure-bmp085.h"         //tested
-#include "interfaces/gyro-l3g4200d.h"           //tested
-#include "interfaces/pressure-mpl115a.h"        //tested (not used)
+#include "dev/bmp085.h"         //tested
+#include "dev/l3g4200d.h"           //tested
+#include "dev/mpl115a.h"        //tested (not used)
 #include "drv/adc-drv.h"
 
 #include <util/delay.h>
