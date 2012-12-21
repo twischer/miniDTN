@@ -476,6 +476,8 @@ int routing_flooding_new_bundle(uint32_t * bundle_number)
 	struct mmem * bundlemem = NULL;
 	struct bundle_t * bundle = NULL;
 
+	LOG(LOGD_DTN, LOG_ROUTE, LOGL_DBG, "agent announces bundle %lu", *bundle_number);
+
 	// Let us see, if we know this bundle already
 	for( n = list_head(routing_list);
 		 n != NULL;
@@ -484,7 +486,7 @@ int routing_flooding_new_bundle(uint32_t * bundle_number)
 		entry = (struct routing_entry_t *) MMEM_PTR(&n->entry);
 
 		if( entry->bundle_number == *bundle_number ) {
-			LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "agent announces bundle %lu that is already known", bundle_number);
+			LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "agent announces bundle %lu that is already known", *bundle_number);
 			return -1;
 		}
 	}
@@ -511,7 +513,7 @@ int routing_flooding_new_bundle(uint32_t * bundle_number)
 	// Now go and request the bundle from storage
 	bundlemem = BUNDLE_STORAGE.read_bundle(*bundle_number);
 	if( bundlemem == NULL ) {
-		LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "unable to read bundle %lu", bundle_number);
+		LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "unable to read bundle %lu", *bundle_number);
 		mmem_free(&n->entry);
 		memb_free(&routing_mem, n);
 		return -1;
@@ -520,7 +522,7 @@ int routing_flooding_new_bundle(uint32_t * bundle_number)
 	// Get our bundle struct and check the pointer
 	bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 	if( bundle == NULL ) {
-		LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "invalid bundle pointer for bundle %lu", bundle_number);
+		LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "invalid bundle pointer for bundle %lu", *bundle_number);
 		mmem_free(&n->entry);
 		memb_free(&routing_mem, n);
 		bundle_decrement(bundlemem);
