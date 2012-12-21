@@ -23,9 +23,6 @@
  */
 
 /**
- * \addtogroup Device Interfaces
- * @{
- *
  * \addtogroup adxl345_interface
  * @{
  */

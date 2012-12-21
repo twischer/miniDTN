@@ -23,8 +23,6 @@
  */
 
 /**
- * \addtogroup Device Interfaces
- * @{
  *
  * \defgroup mpl115a_interface Pressure Sensor (Barometer) MPL115A
  *

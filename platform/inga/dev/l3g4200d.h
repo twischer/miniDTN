@@ -23,9 +23,6 @@
  */
 
 /**
- * \addtogroup Device Interfaces
- * @{
- *
  * \defgroup L3G4200D_interface ST L3G4200D 3-axis Gyroscope interface
  *
  * <p>

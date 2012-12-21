@@ -23,9 +23,6 @@
  */
 
 /**
- * \addtogroup Device Interfaces
- * @{
- *
  * \addtogroup L3G4200D_interface
  * @{
  */
@@ -38,70 +35,78 @@
  */
 
 #include "l3g4200d.h"
+int8_t
+l3g4200d_init(void) {
+  uint8_t i = 0;
 
-int8_t l3g4200d_init(void) {
-	uint8_t i = 0;
-
-	i2c_init();
-	while (l3g4200d_read8bit(L3G4000D_WHO_I_AM_REG) != 0xD3) {
-		_delay_ms(10);
-		if (i++ > 10) {
-			return -1;
-		}
-	}
-	l3g4200d_write8bit(L3G4000D_CTRL_REG1, 0x0F);
-	return 0;
+  i2c_init();
+  while (l3g4200d_read8bit(L3G4000D_WHO_I_AM_REG) != 0xD3) {
+    _delay_ms(10);
+    if (i++ > 10) {
+      return -1;
+    }
+  }
+  l3g4200d_write8bit(L3G4000D_CTRL_REG1, 0x0F);
+  return 0;
 }
+/*---------------------------------------------------------------------------*/
+angle_data_t
+l3g4200d_get_angle(void) {
+  angle_data_t this_angle;
 
-angle_data_t l3g4200d_get_angle(void) {
-	angle_data_t this_angle;
-
-	this_angle.angle_x_value = l3g4200d_get_x_angle();
-	this_angle.angle_y_value = l3g4200d_get_y_angle();
-	this_angle.angle_z_value = l3g4200d_get_z_angle();
-	return this_angle;
+  this_angle.angle_x_value = l3g4200d_get_x_angle();
+  this_angle.angle_y_value = l3g4200d_get_y_angle();
+  this_angle.angle_z_value = l3g4200d_get_z_angle();
+  return this_angle;
 }
-
-uint16_t l3g4200d_get_x_angle(void) {
-	return l3g4200d_read16bit(L3G4000D_OUT_X_L);
+/*---------------------------------------------------------------------------*/
+uint16_t
+l3g4200d_get_x_angle(void) {
+  return l3g4200d_read16bit(L3G4000D_OUT_X_L);
 }
-
-uint16_t l3g4200d_get_y_angle(void) {
-	return l3g4200d_read16bit(L3G4000D_OUT_Y_L);
+/*---------------------------------------------------------------------------*/
+uint16_t
+l3g4200d_get_y_angle(void) {
+  return l3g4200d_read16bit(L3G4000D_OUT_Y_L);
 }
-
-uint16_t l3g4200d_get_z_angle(void) {
-	return l3g4200d_read16bit(L3G4000D_OUT_Z_L);
+/*---------------------------------------------------------------------------*/
+uint16_t
+l3g4200d_get_z_angle(void) {
+  return l3g4200d_read16bit(L3G4000D_OUT_Z_L);
 }
-
-uint8_t l3g4200d_get_temp(void){
-	return l3g4200d_read8bit(L3G4000D_OUT_TEMP);
+/*---------------------------------------------------------------------------*/
+uint8_t
+l3g4200d_get_temp(void) {
+  return l3g4200d_read8bit(L3G4000D_OUT_TEMP);
 }
-
-uint8_t l3g4200d_read8bit(uint8_t addr) {
-	uint8_t lsb = 0;
-	i2c_start(L3G4200D_DEV_ADDR_W);
-	i2c_write(addr);
-	i2c_rep_start(L3G4200D_DEV_ADDR_R);
-	i2c_read_nack(&lsb);
-	i2c_stop();
-	return lsb;
+/*---------------------------------------------------------------------------*/
+uint8_t
+l3g4200d_read8bit(uint8_t addr) {
+  uint8_t lsb = 0;
+  i2c_start(L3G4200D_DEV_ADDR_W);
+  i2c_write(addr);
+  i2c_rep_start(L3G4200D_DEV_ADDR_R);
+  i2c_read_nack(&lsb);
+  i2c_stop();
+  return lsb;
 }
-
-uint16_t l3g4200d_read16bit(uint8_t addr) {
-	uint8_t lsb = 0, msb = 0;
-	i2c_start(L3G4200D_DEV_ADDR_W);
-	i2c_write((addr | 0x80));
-	i2c_rep_start(L3G4200D_DEV_ADDR_R);
-	i2c_read_ack(&lsb);
-	i2c_read_nack(&msb);
-	i2c_stop();
-	return (uint16_t) ((msb << 8) + lsb);
+/*---------------------------------------------------------------------------*/
+uint16_t
+l3g4200d_read16bit(uint8_t addr) {
+  uint8_t lsb = 0, msb = 0;
+  i2c_start(L3G4200D_DEV_ADDR_W);
+  i2c_write((addr | 0x80));
+  i2c_rep_start(L3G4200D_DEV_ADDR_R);
+  i2c_read_ack(&lsb);
+  i2c_read_nack(&msb);
+  i2c_stop();
+  return (uint16_t) ((msb << 8) + lsb);
 }
-
-void l3g4200d_write8bit(uint8_t addr, uint8_t data){
-	i2c_start(L3G4200D_DEV_ADDR_W);
-	i2c_write(addr);
-	i2c_write(data);
-	i2c_stop();
+/*---------------------------------------------------------------------------*/
+void
+l3g4200d_write8bit(uint8_t addr, uint8_t data) {
+  i2c_start(L3G4200D_DEV_ADDR_W);
+  i2c_write(addr);
+  i2c_write(data);
+  i2c_stop();
 }

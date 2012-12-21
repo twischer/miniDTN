@@ -4,7 +4,7 @@
  */
 #include "contiki.h"
 #include "lib/sensors.h"
-#include "dev/pressure-bmp085.h"
+#include "dev/bmp085.h"
 #include "dev/pressure-sensor.h"
 const struct sensors_sensor pressure_sensor;
 uint8_t press_state=0;

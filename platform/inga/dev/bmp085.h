@@ -23,7 +23,6 @@
  */
 
 /**
- * \addtogroup Device Interfaces
  * @{
  *
  * \defgroup Bosch BMP085 Digital Pressure Sensor

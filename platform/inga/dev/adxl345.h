@@ -23,8 +23,6 @@
  */
 
 /**
- * \addtogroup Device Interfaces
- *
  * \section about About
  * The interfaces are the second layer above the hardware and aim to separate
  * the discrete hardware from the user application layer.
