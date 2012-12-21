@@ -1,0 +1,13 @@
+/** \addtogroup inga
+ * @{
+ **/
+
+/**
+\defgroup inga_driver Sensor Drivers
+
+@{
+
+*/
+
+/** @} */
+/** @} */
