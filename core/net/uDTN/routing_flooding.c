@@ -589,6 +589,8 @@ void routing_flooding_delete_bundle(uint32_t bundle_number)
 	struct routing_list_entry_t * n = NULL;
 	struct routing_entry_t * entry = NULL;
 
+	LOG(LOGD_DTN, LOG_ROUTE, LOGL_DBG, "flood_del_bundle for bundle %lu", bundle_number);
+
 	// Find the bundle in our internal storage
 	for( n = list_head(routing_list);
 		 n != NULL;
