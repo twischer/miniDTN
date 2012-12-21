@@ -451,7 +451,7 @@ void routing_flooding_check_keep_bundle(uint32_t bundle_number) {
 		}
 	}
 
-	if( entry == NULL ) {
+	if( n == NULL ) {
 		LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "Bundle not in storage yet");
 		return;
 	}
@@ -601,7 +601,7 @@ void routing_flooding_delete_bundle(uint32_t bundle_number)
 		}
 	}
 
-	if( entry == NULL ) {
+	if( n == NULL ) {
 		LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "flood_del_bundle for bundle %lu that we do not know", bundle_number);
 		return;
 	}
@@ -644,7 +644,7 @@ void routing_flooding_bundle_sent(struct transmit_ticket_t * ticket, uint8_t sta
 		}
 	}
 
-	if( entry == NULL ) {
+	if( n == NULL ) {
 		LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "Bundle not in storage");
 		return;
 	}
