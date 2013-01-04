@@ -27,19 +27,30 @@
  * SUCH DAMAGE.
  *
  * This file is part of the Contiki operating system.
- *
- * @(#)$$
  */
+
+#include <util/delay.h>
+
 #define PRINTF(FORMAT,args...) printf_P(PSTR(FORMAT),##args)
 
-#define ANNOUNCE_BOOT 1    //adds about 600 bytes to program size
+/* If defined 1, prints boot screen informations.
+ * @note: Adds about 600 bytes to program size
+ */
+#ifndef ANNOUNCE_BOOT
+#define ANNOUNCE_BOOT 1
+#endif
+
 #if ANNOUNCE_BOOT
 #define PRINTA(FORMAT,args...) printf_P(PSTR(FORMAT),##args)
 #else
 #define PRINTA(...)
 #endif
 
+/* If defined 1, prints debug infos. */
+#ifndef DEBUG
 #define DEBUG 0
+#endif
+
 #if DEBUG
 #define PRINTD(FORMAT,args...) printf_P(PSTR(FORMAT),##args)
 #else
@@ -73,7 +84,7 @@ uint8_t debugflowsize,debugflow[DEBUGFLOWSIZE];
 #include "net/mac/framer-802154.h"
 #include "net/sicslowpan.h"
 
-#else                 //radio driver using Atmel/Cisco 802.15.4'ish MAC
+#else              //radio driver using Atmel/Cisco 802.15.4'ish MAC
 #include <stdbool.h>
 #include "mac.h"
 #include "sicslowmac.h"
@@ -84,6 +95,7 @@ uint8_t debugflowsize,debugflow[DEBUGFLOWSIZE];
 #include "contiki.h"
 #include "contiki-net.h"
 #include "contiki-lib.h"
+/** @todo not really used! */
 #include "node-id.h"
 
 #include "dev/rs232.h"
@@ -110,12 +122,28 @@ uint8_t debugflowsize,debugflow[DEBUGFLOWSIZE];
 /* Get periodic prints from idle loop, from clock seconds or rtimer interrupts */
 /* Use of rtimer will conflict with other rtimer interrupts such as contikimac radio cycling */
 /* STAMPS will print ENERGEST outputs if that is enabled. */
-#define PERIODICPRINTS 1
+#ifndef PERIODICPRINTS
+#define PERIODICPRINTS 0
+#endif
+
 #if PERIODICPRINTS
-//#define PINGS 64
+/** Enables pings with given interval [seconds] */
+#ifndef PINGS
+#define PINGS 0
+#endif
+/** Enables route prints with given interval [seconds] */
+#ifndef ROUTES
 #define ROUTES 600
+#endif
+/** Enables time stamps with given interval [seconds] */
+#ifndef STAMPS
 #define STAMPS 60
+#endif
+/** Activates stack monitor with given interval [seconds] */
+#ifndef STACKMONITOR
 #define STACKMONITOR 600
+#endif
+
 uint32_t clocktime;
 #define TESTRTIMER 0
 #if TESTRTIMER
@@ -123,7 +151,7 @@ uint8_t rtimerflag=1;
 struct rtimer rt;
 void rtimercycle(void) {rtimerflag=1;}
 #endif
-#endif
+#endif /* PERIODICPRINTS */
 
 #if WITH_NODE_ID
 uint16_t node_id;
@@ -131,22 +159,33 @@ uint16_t node_id;
 
 /*-------------------------------------------------------------------------*/
 /*----------------------Configuration of the .elf file---------------------*/
-#if 1
+#if (__AVR_LIBC_VERSION__ >= 10700UL)
 /* The proper way to set the signature is */
 #include <avr/signature.h>
 #else
-/* Older avr-gcc's may not define the needed SIGNATURE bytes. Do it manually if you get an error */
-typedef struct {const unsigned char B2;const unsigned char B1;const unsigned char B0;} __signature_t;
+/* signature API not available before avr-lib-1.7.0. Do it manually.*/
+typedef struct {
+  const unsigned char B2;
+  const unsigned char B1;
+  const unsigned char B0;
+} __signature_t;
 #define SIGNATURE __signature_t __signature __attribute__((section (".signature")))
 SIGNATURE = {
-  .B2 = 0x05,//SIGNATURE_2, //ATMEGA1284p
-  .B1 = 0x97,//SIGNATURE_1, //128KB flash
-  .B0 = 0x1E,//SIGNATURE_0, //Atmel
+  .B2 = 0x05, //SIGNATURE_2, //ATMEGA1284p
+  .B1 = 0x97, //SIGNATURE_1, //128KB flash
+  .B0 = 0x1E, //SIGNATURE_0, //Atmel
 };
 #endif
 
-/* JTAG, SPI enabled, Internal RC osc, Boot flash size 4K, 6CK+65msec delay, brownout disabled */
-FUSES ={.low = 0xe2, .high = 0x99, .extended = 0xff,};
+/** Fuse-settings:
+ * JTAG, SPI enabled, Internal RC osc, Boot flash size 4K,
+ * 6CK+65msec delay, brownout disabled
+ */
+FUSES = {
+  .low = 0xe2,
+  .high = 0x99,     // default
+  .extended = 0xff, // default
+};
 
 /* Put the default settings into program flash memory */
 /* Webserver builds can set some defaults in httpd-fsdata.c via makefsdata.h */
@@ -197,21 +236,20 @@ uint8_t default_txpower PROGMEM = RF230_MAX_TX_POWER;
 #else
 uint8_t default_txpower PROGMEM = 0;
 #endif
-
-/* Get a pseudo random number using the ADC */
+/** Get a pseudo random number using the ADC */
 static uint8_t
 rng_get_uint8(void) {
-uint8_t i,j;
-  ADCSRA=1<<ADEN;             //Enable ADC, not free running, interrupt disabled, fastest clock
-  for (i=0;i<4;i++) {
-    ADMUX = 0;                //toggle reference to increase noise
-    ADMUX =0x1E;              //Select AREF as reference, measure 1.1 volt bandgap reference.
-    ADCSRA|=1<<ADSC;          //Start conversion
-    while (ADCSRA&(1<<ADSC)); //Wait till done
-	j = (j<<2) + ADC;
+  uint8_t i, j;
+  ADCSRA = 1 << ADEN;     //Enable ADC, not free running, interrupt disabled, fastest clock
+  for (i = 0; i < 4; i++) {
+    ADMUX = 0;            //toggle reference to increase noise
+    ADMUX = 0x1E;         //Select AREF as reference, measure 1.1 volt bandgap reference.
+    ADCSRA |= 1 << ADSC;  //Start conversion
+    while (ADCSRA & (1 << ADSC)); //Wait till done
+    j = (j << 2) + ADC;
   }
-  ADCSRA=0;                   //Disable ADC
-  PRINTD("rng issues %d\n",j);
+  ADCSRA = 0;             //Disable ADC
+  PRINTD("rng issues %d\n", j);
   return j;
 }
 
@@ -444,6 +482,8 @@ get_txpower_from_eeprom(void) {
 /*------Done in a subroutine to keep main routine stack usage small--------*/
 void initialize(void)
 {
+  
+  _delay_ms(200);
   uint8_t reason;
   extern void *watchdog_return_addr;
 
@@ -464,43 +504,27 @@ void initialize(void)
   clock_init();
 
 #if STACKMONITOR
-  /* Simple stack pointer highwater monitor. Checks for magic numbers in the main
-   * loop. In conjuction with PERIODICPRINTS, never-used stack will be printed
+#define STACK_FREE_MARK 0x4242
+  /* Simple stack pointer highwater monitor.
+   * Places magic numbers in free RAM that are checked in the main loop.
+   * In conjuction with PERIODICPRINTS, never-used stack will be printed
    * every STACKMONITOR seconds.
    */
-{
-extern uint16_t __bss_end;
-uint16_t p=(uint16_t)&__bss_end;
+  {
+    extern uint16_t __bss_end;
+    uint16_t p = (uint16_t) & __bss_end;
     do {
-      *(uint16_t *)p = 0x4242;
-      p+=10;
-    } while (p<SP-10); //don't overwrite our own stack
-}
+      *(uint16_t *) p = STACK_FREE_MARK;
+      p += 10;
+    } while (p < SP - 10); //don't overwrite our own stack
+  }
 #endif
 
-/* Get a random (or probably different) seed for the 802.15.4 packet sequence number.
- * Some layers will ignore duplicates found in a history (e.g. Contikimac)
- * causing the initial packets to be ignored after a short-cycle restart.
- */
- random_init(rng_get_uint8());
-
-#define CONF_CALIBRATE_OSCCAL 0
-#if CONF_CALIBRATE_OSCCAL
-void calibrate_rc_osc_32k();
-{
-extern uint8_t osccal_calibrated;
-uint8_t i;
-  PRINTD("\nBefore calibration OSCCAL=%x\n",OSCCAL);
-  for (i=0;i<10;i++) { 
-    calibrate_rc_osc_32k();  
-    PRINTD("Calibrated=%x\n",osccal_calibrated);
-//#include <util/delay_basic.h>
-//#define delay_us( us )   ( _delay_loop_2(1+(us*F_CPU)/4000000UL) ) 
-//   delay_us(50000);
- }
-   clock_init();
-}
-#endif 
+  /* Get a random (or probably different) seed for the 802.15.4 packet sequence number.
+   * Some layers will ignore duplicates found in a history (e.g. Contikimac)
+   * causing the initial packets to be ignored after a short-cycle restart.
+   */
+  random_init(rng_get_uint8());//@todo: check
 
   PRINTA("\n*******Booting %s*******\nReset reason: ",CONTIKI_VERSION_STRING);
   /* Print out reset reason */
@@ -521,10 +545,10 @@ uint8_t i;
   /* Flash initialization */
   at45db_init();
 
-/* rtimers needed for radio cycling */
+  /* rtimers needed for radio cycling */
   rtimer_init();
 
- /* Initialize process subsystem */
+  /* Initialize process subsystem */
   process_init();
 
   /* etimers must be started before ctimer_init */
@@ -764,29 +788,6 @@ main(void)
     process_run();
     watchdog_periodic();
 
-#if 0
-/* Various entry points for debugging in the AVR Studio simulator.
- * Set as next statement and step into the routine.
- */
-    NETSTACK_RADIO.send(packetbuf_hdrptr(), 42);
-    process_poll(&rf230_process);
-    packetbuf_clear();
-    len = rf230_read(packetbuf_dataptr(), PACKETBUF_SIZE);
-    packetbuf_set_datalen(42);
-    NETSTACK_RDC.input();
-#endif
-
-#if 0
-/* Clock.c can trigger a periodic PLL calibration in the RF230BB driver.
- * This can show when that happens.
- */
-    extern uint8_t rf230_calibrated;
-    if (rf230_calibrated) {
-      PRINTD("\nRF230 calibrated!\n");
-      rf230_calibrated=0;
-    }
-#endif
-
 #if DEBUGFLOWSIZE
   if (debugflowsize) {
     debugflow[debugflowsize]=0;
@@ -799,128 +800,114 @@ main(void)
 
 #if PERIODICPRINTS
 #if TESTRTIMER
-/* Timeout can be increased up to 8 seconds maximum.
- * A one second cycle is convenient for triggering the various debug printouts.
- * The triggers are staggered to avoid printing everything at once.
- */
+    /* Timeout can be increased up to 8 seconds maximum.
+     * A one second cycle is convenient for triggering the various debug printouts.
+     * The triggers are staggered to avoid printing everything at once.
+     */
     if (rtimerflag) {
-      rtimer_set(&rt, RTIMER_NOW()+ RTIMER_ARCH_SECOND*1UL, 1,(void *) rtimercycle, NULL);
-      rtimerflag=0;
+      rtimer_set(&rt, RTIMER_NOW() + RTIMER_ARCH_SECOND * 1UL, 1, (void *) rtimercycle, NULL);
+      rtimerflag = 0;
 #else
-  if (clocktime!=clock_seconds()) {
-     clocktime=clock_seconds();
+    if (clocktime != clock_seconds()) {
+      clocktime = clock_seconds();
 #endif
 
 #if STAMPS
-if ((clocktime%STAMPS)==0) {
+      /* Print time stamps. */
+      if ((clocktime % STAMPS) == 0) {
 #if ENERGEST_CONF_ON
 #include "lib/print-stats.h"
-	print_stats();
+        print_stats();
 #elif RADIOSTATS
-extern volatile unsigned long radioontime;
-  PRINTF("%u(%u)s\n",clocktime,radioontime);
+        extern volatile unsigned long radioontime;
+        PRINTF("%u(%u)s\n", clocktime, radioontime);
 #else
-  PRINTF("%us\n",clocktime);
+        PRINTF("%us\n", clocktime);
+#endif
+      }
 #endif
 
-}
-#endif
 #if TESTRTIMER
-      clocktime+=1;
+      clocktime += 1;
 #endif
 
 #if PINGS && UIP_CONF_IPV6
-extern void raven_ping6(void); 
-if ((clocktime%PINGS)==1) {
-  PRINTF("**Ping\n");
-  raven_ping6();
-}
+      extern void raven_ping6(void);
+      if ((clocktime % PINGS) == 1) {
+        PRINTF("**Ping\n");
+        raven_ping6();
+      }
 #endif
 
 #if ROUTES && UIP_CONF_IPV6
-if ((clocktime%ROUTES)==2) {
-      
-extern uip_ds6_nbr_t uip_ds6_nbr_cache[];
-extern uip_ds6_route_t uip_ds6_routing_table[];
-extern uip_ds6_netif_t uip_ds6_if;
+      if ((clocktime % ROUTES) == 2) {
 
-  uint8_t i,j;
-  PRINTF("\nAddresses [%u max]\n",UIP_DS6_ADDR_NB);
-  for (i=0;i<UIP_DS6_ADDR_NB;i++) {
-    if (uip_ds6_if.addr_list[i].isused) {
-      ipaddr_add(&uip_ds6_if.addr_list[i].ipaddr);
-      PRINTF("\n");
-    }
-  }
-  PRINTF("\nNeighbors [%u max]\n",UIP_DS6_NBR_NB);
-  for(i = 0,j=1; i < UIP_DS6_NBR_NB; i++) {
-    if(uip_ds6_nbr_cache[i].isused) {
-      ipaddr_add(&uip_ds6_nbr_cache[i].ipaddr);
-      PRINTF("\n");
-      j=0;
-    }
-  }
-  if (j) PRINTF("  <none>");
-  PRINTF("\nRoutes [%u max]\n",UIP_DS6_ROUTE_NB);
-  for(i = 0,j=1; i < UIP_DS6_ROUTE_NB; i++) {
-    if(uip_ds6_routing_table[i].isused) {
-      ipaddr_add(&uip_ds6_routing_table[i].ipaddr);
-      PRINTF("/%u (via ", uip_ds6_routing_table[i].length);
-      ipaddr_add(&uip_ds6_routing_table[i].nexthop);
- //     if(uip_ds6_routing_table[i].state.lifetime < 600) {
-        PRINTF(") %lus\n", uip_ds6_routing_table[i].state.lifetime);
- //     } else {
- //       PRINTF(")\n");
- //     }
-      j=0;
-    }
-  }
-  if (j) PRINTF("  <none>");
-  PRINTF("\n---------\n");
-}
-#endif
+        extern uip_ds6_nbr_t uip_ds6_nbr_cache[];
+        extern uip_ds6_route_t uip_ds6_routing_table[];
+        extern uip_ds6_netif_t uip_ds6_if;
+
+        uint8_t i, j;
+        PRINTF("\nAddresses [%u max]\n", UIP_DS6_ADDR_NB);
+        for (i = 0; i < UIP_DS6_ADDR_NB; i++) {
+          if (uip_ds6_if.addr_list[i].isused) {
+            ipaddr_add(&uip_ds6_if.addr_list[i].ipaddr);
+            PRINTF("\n");
+          }
+        }
+        PRINTF("\nNeighbors [%u max]\n", UIP_DS6_NBR_NB);
+        for (i = 0, j = 1; i < UIP_DS6_NBR_NB; i++) {
+          if (uip_ds6_nbr_cache[i].isused) {
+            ipaddr_add(&uip_ds6_nbr_cache[i].ipaddr);
+            PRINTF("\n");
+            j = 0;
+          }
+        }
+        if (j) PRINTF("  <none>");
+        PRINTF("\nRoutes [%u max]\n", UIP_DS6_ROUTE_NB);
+        for (i = 0, j = 1; i < UIP_DS6_ROUTE_NB; i++) {
+          if (uip_ds6_routing_table[i].isused) {
+            ipaddr_add(&uip_ds6_routing_table[i].ipaddr);
+            PRINTF("/%u (via ", uip_ds6_routing_table[i].length);
+            ipaddr_add(&uip_ds6_routing_table[i].nexthop);
+            //     if(uip_ds6_routing_table[i].state.lifetime < 600) {
+            PRINTF(") %lus\n", uip_ds6_routing_table[i].state.lifetime);
+            //     } else {
+            //       PRINTF(")\n");
+            //     }
+            j = 0;
+          }
+        }
+        if (j) PRINTF("  <none>");
+        PRINTF("\n---------\n");
+      }
+#endif /* ROUTES && UIP_CONF_IPV6 */
 
 #if STACKMONITOR
-if ((clocktime%STACKMONITOR)==3) {
-  extern uint16_t __bss_end;
-  uint16_t p=(uint16_t)&__bss_end;
-  do {
-    if (*(uint16_t *)p != 0x4242) {
-      PRINTF("Never-used stack > %d bytes\n",p-(uint16_t)&__bss_end);
-      break;
-    }
-    p+=10;
-  } while (p<RAMEND-10);
-}
+      /* Checks for highest address with STACK_FREE_MARKs in RAM */
+      if ((clocktime % STACKMONITOR) == 3) {
+        extern uint16_t __bss_end;
+        uint16_t p = (uint16_t) & __bss_end;
+        do {
+          if (*(uint16_t *) p != STACK_FREE_MARK) {
+            PRINTF("Never-used stack > %d bytes\n", p - (uint16_t) & __bss_end);
+            break;
+          }
+          p += 10;
+        } while (p < RAMEND - 10);
+      }
 #endif
 
     }
 #endif /* PERIODICPRINTS */
 
-#if RF230BB&&0
-extern uint8_t rf230processflag;
-    if (rf230processflag) {
-      PRINTF("rf230p%d",rf230processflag);
-      rf230processflag=0;
-    }
-#endif
-
-#if RF230BB&&0
-extern uint8_t rf230_interrupt_flag;
-    if (rf230_interrupt_flag) {
- //   if (rf230_interrupt_flag!=11) {
-        PRINTF("**RI%u",rf230_interrupt_flag);
- //   }
-      rf230_interrupt_flag=0;
-    }
-#endif
   }
   return 0;
 }
 
 /*---------------------------------------------------------------------------*/
 
-void log_message(char *m1, char *m2)
+void
+log_message(char *m1, char *m2)
 {
   PRINTF("%s%s\n", m1, m2);
 }
