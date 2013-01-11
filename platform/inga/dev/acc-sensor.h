@@ -28,12 +28,19 @@
  */
 
 /**
- * \addtogroup inga_driver
+ * \file
+ *      Accelerometer sensor definition
+ * \author
+ *      Ulf Kulau <kulau@ibr.cs.tu-bs.de>
+ */
+
+/**
+ * \addtogroup inga_sensors
  * @{
  */
 
 /** 
- * \defgroup inga_acc_driver ADXL345 Accelerometer Sensor Driver
+ * \defgroup inga_acc_driver ADXL345 Accelerometer Sensor
  * @{
  */
 
@@ -128,7 +135,7 @@ extern const struct sensors_sensor acc_sensor;
 #define ADXL345_SENSOR_POWERMODE    30
 /** @} */
 
-#endif /* __ACC-SENSOR_H__ */
+/** @} */
+/** @} */
 
-/** @} */
-/** @} */
+#endif /* __ACC-SENSOR_H__ */

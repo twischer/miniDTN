@@ -73,7 +73,7 @@ uint8_t debugflowsize,debugflow[DEBUGFLOWSIZE];
 #include <dev/watchdog.h>
 #include "lib/sensors.h"
 #include "dev/button-sensor.h"
-#include "interfaces/flash-at45db.h"
+#include "dev/at45db.h"
 
 #include "loader/symbols-def.h"
 #include "loader/symtab.h"

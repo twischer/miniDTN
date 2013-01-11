@@ -29,78 +29,67 @@
 
 /**
  * \file
- *      Accelerometer sensor implementation
+ *      ADC driver implementation
  * \author
  *      Ulf Kulau <kulau@ibr.cs.tu-bs.de>
  */
 
-/* Acceleration sensor interface 
- * Author  : Georg von Zengen
- * Created : 2011/10/17
+/**
+ * \addtogroup inga_sensors_driver
+ * @{
  */
-#include "contiki.h"
-#include "lib/sensors.h"
-#include "adxl345.h"
-#include "acc-sensor.h"
-const struct sensors_sensor acc_sensor;
-uint8_t acc_state=0;
-/*---------------------------------------------------------------------------*/
-static int
-value(int type)
-{
-  switch(type) {
-  case ADXL345_X:
-    return adxl345_get_x_acceleration();
 
-  case ADXL345_Y:
-    return adxl345_get_y_acceleration();
+/**
+ * \addtogroup adc_driver
+ * @{
+ */
 
-  case ADXL345_Z:
-    return adxl345_get_z_acceleration();
-  }
-  return 0;
-}
-/*---------------------------------------------------------------------------*/
-static int
-status(int type)
-{
-  switch (type) {
-    case SENSORS_ACTIVE:
-      break;
-    case SENSORS_READY:
-      break;
-  }
-  return acc_state;
-}
-/*---------------------------------------------------------------------------*/
-static int
-configure(int type, int c)
-{
-  switch (type) {
-    case SENSORS_ACTIVE:
-      if (c) {
-        if (!status(SENSORS_ACTIVE)) {
-          // TODO...
-        }
-        acc_state=1;// TODO: SENSORS_READY?
-        return adxl345_init();
-      } else {
-        // deactivate
-      }
-      break;
-    case ADXL345_SENSOR_SENSITIVITY:
-      // TODO: check if initialized?
-      adxl345_set_g_range(c);
-      break;
-    case ADXL345_SENSOR_FIFOMODE:
-      adxl345_set_fifomode(c);
-      break;
-    case ADXL345_SENSOR_POWERMODE:
-      adxl345_set_powermode(c);
-      break;
-    default:
-    break;
+
+#include "adc.h"
+void
+adc_init(uint8_t mode, uint8_t ref) {
+  ADCSRA = ((ADC_ENABLE) | (ADC_PRESCALE_64));
+  ADCSRB = 0x00;
+  ADMUX = ref;
+
+  if (mode != ADC_SINGLE_CONVERSION) {
+    ADCSRB |= (0x07 & mode);
+    ADCSRA |= ((ADC_TRIGGER_ENABLE) | (ADC_INTERRUPT_ENABLE));
   }
 }
-/*---------------------------------------------------------------------------*/
-SENSORS_SENSOR(acc_sensor, "ACCELERATION", value, configure, status);
+void
+adc_set_mux(uint8_t mux) {
+  static uint8_t used_adcs = 0;
+  /*save energy by disabling the i/o input buffer*/
+  if (mux < 8) {
+    used_adcs |= (1 << mux);
+    DIDR0 |= used_adcs;
+  }
+  ADMUX &= (0xE0);
+  ADMUX |= mux;
+  ADCSRA |= ADC_START;
+}
+uint16_t
+adc_get_value(void) {
+  if (ADCSRA & ADC_TRIGGER_ENABLE) {
+    /*just read the ADC data register*/
+    return ADCW;
+  } else {
+    /*start single conversion*/
+    while (ADCSRA & (1 << ADSC)) {
+      ;
+    }
+    return ADCW;
+  }
+}
+uint16_t
+adc_get_value_from(uint8_t chn) {
+  adc_set_mux(chn);
+  return adc_get_value();
+}
+void
+adc_deinit(void) {
+  ADCSRA = ADC_STOP;
+  ADCSRB = ADC_STOP;
+  ADMUX = ADC_STOP;
+}

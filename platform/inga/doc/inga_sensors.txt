@@ -1,0 +1,17 @@
+/**
+ * \addtogroup inga
+ * @{
+ */
+
+/**
+ * \defgroup inga_sensors Sensors
+ *
+ * The INGA platforms provides a variety of sensors.
+ *
+ * They can all be used with the default contiki sensor interface.
+ * 
+ * @{
+ */
+
+/** @} */ // inga_sensors
+/** @} */ // inga

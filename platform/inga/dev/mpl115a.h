@@ -28,8 +28,19 @@
  */
 
 /**
- *
- * \defgroup mpl115a_interface Pressure Sensor (Barometer) MPL115A
+ * \file
+ *		MPL115A Pressure Sensor (Barometer) interface definitions
+ * \author
+ *      Ulf Kulau <kulau@ibr.cs.tu-bs.de>
+ */
+
+/**
+ * \addtogroup inga_sensors_driver
+ * @{
+ */
+
+/**
+ * \defgroup mpl115a_interface MPL115A Pressure Sensor (Barometer)
  *
  * <p> A pressure sensor sounds a little bit strange in conjunction with
  * a health care sensor node, but it exists an interesting task. With the help
@@ -45,16 +56,9 @@
  * \note The pressure compensation costs about 6 32Bit multiplications
  * </p>
  * @{
- *
  */
 
-/**
- * \file
- *		MPL115A Pressure Sensor (Barometer) interface definitions
- * \author
- *      Ulf Kulau <kulau@ibr.cs.tu-bs.de>
- */
-#include "../drv/mspi-drv.h"
+#include "../dev/mspi.h"
 #include <util/delay.h>
 
 #ifndef PRESSUREMPL115A_H_
@@ -328,5 +332,8 @@ void mpl115a_read_coefficients(void);
  * \return      The data value
  */
 uint8_t mpl115a_cmd(uint8_t reg);
+
+/** @} */ // mpl115a_interface
+/** @} */ // inga_sensors_driver
 
 #endif /* PRESSUREMPL115A_H_ */

@@ -28,11 +28,18 @@
  */
 
 /**
- * \addtogroup inga_driver
+ * \file
+ *      Pressure sensor interface definition
+ * \author
+ *      Georg von Zengen
+ */
+
+/**
+ * \addtogroup inga_sensors
  * @{
  */
 
-/** \defgroup inga_pressure_driver Pressure Sensor Driver
+/** \defgroup inga_pressure_driver Pressure Sensor
  * @{
  */
 
@@ -46,8 +53,7 @@ extern const struct sensors_sensor  pressure_sensor;
 #define  TEMP 0
 #define  PRESS 1
 
+/** @} */
+/** @} */
 
 #endif /* __PRESS-SENSOR_H__ */
-
-/** @} */
-/** @} */

@@ -28,27 +28,26 @@
  */
 
 /**
- * \defgroup L3G4200D_interface ST L3G4200D 3-axis Gyroscope interface
- *
- * <p>
- * </p>
- *
- *
- * @{
- *
- */
-
-/**
  * \file
- *		ST L3G4200D 3-axis Gyroscope interface definitions
+ *      ST L3G4200D 3-axis Gyroscope interface definitions
  * \author
  *      Ulf Kulau <kulau@ibr.cs.tu-bs.de>
  */
 
+/**
+ * \addtogroup inga_sensors_driver
+ * @{
+ */
+
+/** \defgroup l3g4200d_interface ST L3G4200D 3-axis Gyroscope interface
+ * @{
+ */
+
+
 #ifndef GYROL3G4200D_H_
 #define GYROL3G4200D_H_
 
-#include "../drv/i2c-drv.h"
+#include "../dev/i2c.h"
 #include <util/delay.h>
 
 /*Pressure Sensor BMP085 device address*/
@@ -90,4 +89,8 @@ uint8_t l3g4200d_get_temp(void);
 uint16_t l3g4200d_read16bit(uint8_t addr);
 uint8_t l3g4200d_read8bit(uint8_t addr);
 void l3g4200d_write8bit(uint8_t addr, uint8_t data);
+
+/** @} */ // l3g4200d_interface
+/** @} */ // inga_sensors_driver
+
 #endif /* GYROL3G4200D_H_ */

@@ -1,0 +1,12 @@
+/**
+ * \addtogroup inga
+ * @{
+ */
+
+/**
+ * \defgroup inga_bus_driver Bus Drivers
+ * @{
+ */
+
+/** @} */ // inga_bus_driver
+/** @} */ // inga

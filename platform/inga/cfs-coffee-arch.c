@@ -723,7 +723,7 @@ avr_flash_write(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE si
 
 #ifdef COFFEE_AVR_EXTERNAL
 
-#include "interfaces/flash-at45db.h"
+#include "interfaces/at45db.h"
 
 void external_flash_write_page(coffee_page_t page, CFS_CONF_OFFSET_TYPE offset, uint8_t * buf, CFS_CONF_OFFSET_TYPE size) {
 	PRINTF("external_flash_write_page(page %u, offset %u, buf %p, size %u) \n", page, offset, buf, size);

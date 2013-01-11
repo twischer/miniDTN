@@ -7,7 +7,7 @@ CONTIKI_TARGET_SOURCEFILES += contiki-inga-main.c contiki-inga-default-init-net.
 #CONTIKI_TARGET_SOURCEFILES += cfs-coffee.c cfs-coffee-arch.c
 #Needed for slip
 CONTIKI_TARGET_SOURCEFILES += button-sensor.c sensors.c slip_uart0.c slip.c adxl345.c gyro-sensor.c pressure-sensor.c radio-sensor.c
-CONTIKI_TARGET_SOURCEFILES += adc-drv.c  i2c-drv.c  mspi-drv.c adxl345.c   flash-microSD.c  bmp085.c flash-at45db.c  l3g4200d.c  mpl115a.c
+CONTIKI_TARGET_SOURCEFILES += adc.c  i2c.c  mspi.c adxl345.c   microSD.c  bmp085.c at45db.c  l3g4200d.c  mpl115a.c
 
 CONTIKIAVR=$(CONTIKI)/cpu/avr
 CONTIKIBOARD=.

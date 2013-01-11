@@ -28,11 +28,19 @@
  */
 
 /**
- * \addtogroup inga_driver
+ * \file
+ *      Gyroscope sensor definition
+ * \author
+ *      Ulf Kulau <kulau@ibr.cs.tu-bs.de>
+ */
+
+/**
+ * \addtogroup inga_sensors
  * @{
  */
 
-/** \defgroup inga_gyro_driver Gyroscope Sensor Driver
+/**
+ * \defgroup inga_gyro_driver Gyroscope Sensor
  * @{
  */
 
@@ -48,8 +56,7 @@ extern const struct sensors_sensor gyro_sensor;
 #define Z_AS 2
 #define TEMP_AS 3
 
+/** @} */ // inga_gyro_driver
+/** @} */ // inga_sensors
 
 #endif /* __GYRO-SENSOR_H__ */
-
-/** @} */
-/** @} */

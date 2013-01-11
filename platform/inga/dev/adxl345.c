@@ -23,16 +23,17 @@
  */
 
 /**
- * \addtogroup adxl345_interface
- * @{
- */
-
-/**
  * \file
  *      ADXL345 Accelerometer interface implementation
  * \author
  *      Ulf Kulau <kulau@ibr.cs.tu-bs.de>
  */
+
+/**
+ * \addtogroup adxl345_interface
+ * @{
+ */
+
 #include "adxl345.h"
 
 int8_t

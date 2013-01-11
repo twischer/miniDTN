@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006, Technical University of Munich
+ * Copyright (c) 2012, TU Braunschweig.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,44 +25,55 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * This file is part of the Contiki operating system.
- *
- * @(#)$$
- *
  */
 
 /**
  * \file
- *       Sample loadable module
- *
+ *		I2C driver definitions
  * \author
- *       Simon Barner <barner@in.tum.de>
+ *      Stephan Rottman <rottmann@ibr.cs.tu-bs.de>
  */
-#include <stdio.h>
-#include "dev/rs232.h"
-#include "contiki.h"
 
-PROCESS(test_process1, "Test process");
-PROCESS_THREAD(test_process1, ev, data)
-{
-  static struct etimer etimer;
+/**
+ * \addtogroup inga_bus_driver
+ * @{
+ */
 
-  PROCESS_BEGIN();
+/**
+ * \defgroup i2c_driver I2C-Bus Driver
+ * @{
+ */
 
-  rs232_print (RS232_PORT_1, "test_process 1 starting\n");
+#include <avr/io.h>
 
-  while(1) {
-    etimer_set(&etimer, CLOCK_SECOND);
-    PROCESS_WAIT_UNTIL(etimer_expired(&etimer));
-    rs232_print (RS232_PORT_1, "Tick\n");
-    etimer_set(&etimer, CLOCK_SECOND);
-    PROCESS_WAIT_UNTIL(etimer_expired(&etimer));
-    rs232_print (RS232_PORT_1, "Tack\n");
-  }
-
-  PROCESS_END();
-}
+#ifndef I2CDRV_H_
+#define I2CDRV_H_
 
 
-CLIF struct process * const autostart_processes[] = {&test_process1};
+#define I2C_HIGH_SPEED	 0
+
+
+#define I2C_START        0x08
+#define I2C_REP_START    0x10
+#define I2C_MT_SLA_ACK   0x18
+#define I2C_MT_DATA_ACK  0x28
+#define I2C_MR_SLA_ACK   0x40
+#define I2C_MR_DATA_ACK  0x50
+#define I2C_MR_DATA_NACK 0x58
+
+
+void i2c_init(void);
+void i2c_stop(void);
+
+int8_t i2c_start(uint8_t addr);
+int8_t i2c_rep_start(uint8_t addr);
+int8_t i2c_write(uint8_t data);
+int8_t i2c_read(uint8_t *data, uint8_t ack);
+int8_t i2c_read_ack(uint8_t *data);
+int8_t i2c_read_nack(uint8_t *data);
+
+
+#endif /* I2CDRV_H_ */
+
+/** @} */
+/** @} */

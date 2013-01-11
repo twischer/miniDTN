@@ -28,36 +28,26 @@
  */
 
 /**
- * \section about About
- * The interfaces are the second layer above the hardware and aim to separate
- * the discrete hardware from the user application layer.
- *
- * \section usage Usage
- *
- * The interfaces are compatible with contiki os and can be directly used
- * in a process environment.
- * 
- * \author Ulf Kulau <kulau@ibr.cs.tu-bs.de>
- *
- * @{
- *
- * \defgroup adxl345_interface Accelerometer Interface (ADXL345)
- *
- * @{
- *
- */
-
-/**
  * \file
  *		ADXL345 Accelerometer interface definitions
  * \author
  *      Ulf Kulau <kulau@ibr.cs.tu-bs.de>
  */
 
+/**
+ * \addtogroup inga_sensors_driver
+ * @{
+ */
+
+/**
+ * \defgroup adxl345_interface ADXL345 Accelerometer Interface
+ * @{
+ */
+
 #ifndef ADXL345_H_
 #define ADXL345_H_
 
-#include "../drv/mspi-drv.h"
+#include "../dev/mspi.h"
 #include <stdio.h>
 #include <util/delay.h>
 
@@ -267,5 +257,7 @@ void adxl345_write(uint8_t reg, uint8_t data);
  */
 uint8_t adxl345_read(uint8_t reg);
 
+/** @} */
+/** @} */
 
 #endif /* ADXL345_H_ */

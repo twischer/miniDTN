@@ -28,27 +28,29 @@
  */
 
 /**
+ * \file
+ *		Bosch BMP085 Digital Pressure Sensor driver definition
+ * \author
+ *      Ulf Kulau <kulau@ibr.cs.tu-bs.de>
+ */
+
+/**
+ * \addtogroup inga_sensors_driver
  * @{
+ */
+
+/**
+ * \defgroup bmp085_interface BMP085 Digital Pressure Sensor
  *
- * \defgroup Bosch BMP085 Digital Pressure Sensor
- *
- * <p>With an pressure sensor it is possible to measure the activity of
+ * <p>With a pressure sensor it is possible to measure the activity of
  * a person. Especially the Bosch BMP085 allows the registration of small
  * height fluctuations by sensing the air pressure. In some related papers,
  * a concrete application was implemented, to show how a fall analysis could
  * be done</p>
- *
  * @{
- *
  */
 
-/**
- * \file
- *		Bosch BMP085 Digital Pressure Sensor
- * \author
- *      Ulf Kulau <kulau@ibr.cs.tu-bs.de>
- */
-#include "../drv/i2c-drv.h"
+#include "../dev/i2c.h"
 #include <util/delay.h>
 
 #ifndef PRESSUREBMP085_H_
@@ -254,5 +256,8 @@ uint16_t bmp085_read16bit_data(uint8_t addr);
  * \return 8Bit (one Byte) data from bmp085
  */
 uint8_t bmp085_read8bit_data(uint8_t addr);
+
+/** @} */
+/** @} */
 
 #endif /* PRESSUREBMP085_H_ */

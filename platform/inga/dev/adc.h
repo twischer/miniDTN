@@ -1,25 +1,32 @@
-/* Copyright (c) 2010, Ulf Kulau
+/*
+ * Copyright (c) 2012, TU Braunschweig.
+ * All rights reserved. 
  *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation
- * files (the "Software"), to deal in the Software without
- * restriction, including without limitation the rights to use,
- * copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the
- * Software is furnished to do so, subject to the following
- * conditions:
+ * Redistribution and use in source and binary forms, with or without 
+ * modification, are permitted provided that the following conditions 
+ * are met: 
+ * 1. Redistributions of source code must retain the above copyright 
+ *    notice, this list of conditions and the following disclaimer. 
+ * 2. Redistributions in binary form must reproduce the above copyright 
+ *    notice, this list of conditions and the following disclaimer in the 
+ *    documentation and/or other materials provided with the distribution. 
+ * 3. Neither the name of the Institute nor the names of its contributors 
+ *    may be used to endorse or promote products derived from this software 
+ *    without specific prior written permission. 
  *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
+ * THIS SOFTWARE IS PROVIDED BY THE INSTITUTE AND CONTRIBUTORS ``AS IS'' AND 
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE 
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE 
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE INSTITUTE OR CONTRIBUTORS BE LIABLE 
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL 
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS 
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) 
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT 
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY 
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF 
+ * SUCH DAMAGE. 
  *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
- * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
- * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
- * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
- * OTHER DEALINGS IN THE SOFTWARE.
+ * This file is part of the Contiki operating system.
  */
 
 /**
@@ -40,80 +47,22 @@
  * \section usage Usage
  * The software library is full compatible with contiki os and can be directly used
  * in a process by adding the specific header files.
- *
- * \section lic License
- *
- * <pre>Copyright (c) 2009, Ulf Kulau <kulau@ibr.cs.tu-bs.de>
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation
- * files (the "Software"), to deal in the Software without
- * restriction, including without limitation the rights to use,
- * copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the
- * Software is furnished to do so, subject to the following
- * conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
- * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
- * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
- * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
- * OTHER DEALINGS IN THE SOFTWARE.</pre>
  */
 
+/**
+ * \file
+ *		ADC driver definitions
+ * \author
+ *      Ulf Kulau <kulau@ibr.cs.tu-bs.de>
+ */
 
 /**
- * \addtogroup Drivers
- *
- * \section about About
- *
- * These are the low level hardware drivers for the new developed sensor node,
- * which was designed and developed by Ulf Kulau during his project thesis. The
- * sensor node is based on the Atmel AVR Raven so please use the following
- * datasheets for further information about the hardware:
- * <ul>
- * <li>ATmega164A/164PA/324A/324PA/644A/644PA/1284/1284P
- * <li>AT86RF230
- * </ul>
- *
- * \section usage Usage
- *
- * The hardware drivers are used to interface the various external peripherals.
- *
- * \section lic License
- *
- * <pre>Copyright (c) 2009, Ulf Kulau <kulau@ibr.cs.tu-bs.de>
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation
- * files (the "Software"), to deal in the Software without
- * restriction, including without limitation the rights to use,
- * copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the
- * Software is furnished to do so, subject to the following
- * conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
- * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
- * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
- * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
- * OTHER DEALINGS IN THE SOFTWARE.</pre>
- *
+ * \addtogroup inga_sensors_driver
  * @{
- *
- * \defgroup adc_driver Analog Digital Converter (ADC)
+ */
+
+/**
+ * \defgroup adc_driver Analog Digital Converter (internal ADC)
  *
  * <p>The ATmega1284p has 8 ADC-channels. You can run the ADC in
  *    different modes like just "single coversion", "free running" or
@@ -122,13 +71,6 @@
  *    a gain factor)</p>
  * @{
  *
- */
-
-/**
- * \file
- *		ADC driver definitions
- * \author
- *      Ulf Kulau <kulau@ibr.cs.tu-bs.de>
  */
 
 #ifndef ADCCTR_H_
@@ -144,54 +86,54 @@
 /*!
  * mode: ADC Single Conversion
  * \note The ADC will make just one conversion cycle (normal use)
-*/
+ */
 #define ADC_SINGLE_CONVERSION	0xFF
 /*!
  * mode: ADC Free Running Mode
  * \note The ADC runs all the time. An interrupt occurs whenever one ADC cycle
  * will finish
-*/
+ */
 #define ADC_FREE_RUNNING		0x00
 /*!
  * mode: ADC Analog Comparator
  * \note Sets the ADC to comparator mode.
-*/
+ */
 #define ADC_ANALOG_COMPARATOR	(1 << ADTS0)
 /*!
  * mode: External Interrupt Trigger
  * \note Enables the auto trigger mode. The ADC will start a conversion, whenever
  * changes on external interrupt will occur.
-*/
+ */
 #define ADC_EXT_INTERRUPT		(1 << ADTS1)
 /*!
  * mode: Timer0 Compare Flag Trigger
  * \note Enables the auto trigger mode. The ADC will start a conversion, whenever
  * Timer0 Compare Flag is set.
-*/
+ */
 #define ADC_TIMER0_COMP_FLAG	((1 << ADTS1) | (1 << ADTS0))
 /*!
  * mode: Timer0 Compare Flag Trigger
  * \note Enables the auto trigger mode. The ADC will start a conversion, whenever
  * Timer0 overflow occurs.
-*/
+ */
 #define ADC_TIMER0_OVERFLOW		(1 << ADTS2)
 /*!
  * mode: Timer1 Compare Flag Trigger
  * \note Enables the auto trigger mode. The ADC will start a conversion, whenever
  * Timer0 Compare Flag is set.
-*/
+ */
 #define ADC_TIMER1_COMP_FLAG	((1 << ADTS2) | (1 << ADTS0))
 /*!
  * mode: Timer1 Compare Flag Trigger
  * \note Enables the auto trigger mode. The ADC will start a conversion, whenever
  * Timer0 overflow occurs.
-*/
+ */
 #define ADC_TIMER1_OVERFLOW		((1 << ADTS2) | (1 << ADTS1))
 /*!
  * mode: Timer1 Compare Flag Trigger
  * \note Enables the auto trigger mode. The ADC will start a conversion, whenever
  * Timer0 Capture Flag is set.
-*/
+ */
 #define ADC_TIMER1_CAPTURE		((1 << ADTS2) | (1 << ADTS1) | (1 << ADTS0))
 
 /********************************************************************
@@ -201,22 +143,22 @@
 /*!
  * ref: External Reference Voltage (Aref)
  * \note The ADC reference voltage is provided by the external reference pin Aref
-*/
+ */
 #define	ADC_REF_AREF   			0
 /*!
  * ref: Supply Voltage Reference (AVcc)
  * \note The ADC reference voltage is provided by the supply voltage.
-*/
+ */
 #define	ADC_REF_AVCC   			(1 << REFS0)
 /*!
  * ref: Internal 1.1V Reference
  * \note The ADC reference voltage is provided by internal 1.1V
-*/
+ */
 #define	ADC_REF_1100MV_INT   	(1 << REFS1)
 /*!
  * ref: Internal 2.56V Reference
  * \note The ADC reference voltage is provided by internal 2.56V
-*/
+ */
 #define	ADC_REF_2560MV_INT   	((1 << REFS1)| (1 << REFS0))
 
 
@@ -286,7 +228,6 @@
  */
 
 
-
 /**
  * \brief      Initialize the ADC module
  *
@@ -339,5 +280,7 @@ void adc_set_mux(uint8_t mux);
  */
 void adc_deinit(void);
 
+/** @} */
+/** @} */
 
 #endif /* ADCCTR_H_ */
