@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <dev/watchdog.h>
+#include <stdbool.h>
 
 //#include <dev/leds.h>
 
@@ -20,6 +21,9 @@
 #include <dev/rs232.h>
 #include "dev/serial-line.h"
 #include "dev/slip.h"
+
+// settings manager
+#include "settings.h"
 
 #include <autostart.h>
 #include "rtimer-arch.h"
@@ -38,36 +42,98 @@
 
 /* Begin Code from INGA*/
 
-#ifdef IEEE802154_PANADDR
-uint16_t eemem_panaddr EEMEM = IEEE802154_PANADDR;
-#else
-uint16_t eemem_panaddr EEMEM = 0;
-#endif
-
-#ifdef IEEE802154_PANID
-uint16_t eemem_panid EEMEM = IEEE802154_PANID;
-#else
-uint16_t eemem_panid EEMEM = 0xABCD;
+// Apps 
+#if defined(APP_SETTINGS_DELETE)
+	#include "settings_delete.h"
+#elif defined(APP_SETTINGS_SET)
+	#include "settings_set.h"
 #endif
 
 
-#ifdef NODE_ID
-uint16_t eemem_nodeid EEMEM = NODEID;
-#else
-uint16_t eemem_nodeid EEMEM = 0;
-#endif
+void platform_radio_init(void)
+{
+	// Using default or project value as default value
+	// NOTE: These variables will always be overwritten when having an eeprom value
+	
+	uint8_t radio_tx_power = RADIO_TX_POWER;
+	uint8_t radio_channel = RADIO_CHANNEL;
+	uint8_t pan_id = RADIO_PAN_ID;
+	uint16_t pan_addr = NODE_ID;
+	uint8_t ieee_addr[8] = {0,0,0,0,0,0,0,0};
+	
+	// Start radio and radio receive process
+	NETSTACK_RADIO.init();
+	
+	// NODE_ID
+	if(settings_check(SETTINGS_KEY_PAN_ADDR, 0) == true)
+	{
+		pan_addr = settings_get_uint16(SETTINGS_KEY_PAN_ADDR, 0);
+	}
+	else
+	{
+		printf("NodeID/PanAddr not in EEPROM - using default\n");
+	}
 
-#ifdef CHANNEL_802_15_4
-uint8_t eemem_channel[2] EEMEM = {CHANNEL_802_15_4, ~CHANNEL_802_15_4};
-#else
-uint8_t eemem_channel[2] EEMEM = {26, ~26};
-#endif
+	// TX_POWER
+	if(settings_check(SETTINGS_KEY_TXPOWER, 0) == true)
+	{
+		radio_tx_power = settings_get_uint8(SETTINGS_KEY_TXPOWER, 0);
+	}
+	else
+	{
+		printf("Radio TXPower not in EEPROM - using default\n");
+	}
 
-#ifdef RF230_MAX_TX_POWER
-uint8_t eemem_txpower EEMEM = RF230_MAX_TX_POWER;
-#else
-uint8_t eemem_txpower EEMEM = 0;
-#endif
+	// CHANNEL
+	if(settings_check(SETTINGS_KEY_CHANNEL, 0) == true)
+	{
+		radio_channel = settings_get_uint8(SETTINGS_KEY_CHANNEL, 0);
+	}
+	else
+	{
+		printf("Radio Channel not in EEPROM - using default\n");
+	}
+	
+	
+	// IEEE ADDR
+	// if setting not set or invalid data - generate ieee_addr from node_id 
+	if(settings_check(SETTINGS_KEY_EUI64, 0) != true || settings_get(SETTINGS_KEY_EUI64, 0, &ieee_addr, (size_t*) sizeof(ieee_addr)) != SETTINGS_STATUS_OK)
+	{
+		ieee_addr[0] = 0;
+		ieee_addr[1] = 0;
+		ieee_addr[2] = 0;
+		ieee_addr[3] = 0;
+		ieee_addr[4] = 0;
+		ieee_addr[5] = 0;
+		ieee_addr[6] = (pan_addr >> 8) & 0xFF;
+		ieee_addr[7] = pan_addr & 0xFF;
+		
+		printf("Radio IEEE Addr not in EEPROM - using default\n");
+	}
+	
+	printf("network_id(pan_id): 0x%X\n", pan_addr);
+	printf("node_id(pan_addr): 0x%X\n", pan_addr);
+	printf("radio_tx_power: 0x%X\n", radio_tx_power);
+	printf("radio_channel: 0x%X\n", radio_channel);
+	printf("ieee_addr: 0x%X\n", ieee_addr);
+	
+	rimeaddr_t addr = {{(pan_addr >> 8) & 0xFF, pan_addr & 0xFF}};
+	rimeaddr_set_node_addr(&addr);
+	
+	rf230_set_pan_addr(
+		pan_id, // Network address 2 byte // get_panid_from_eeprom() 
+		pan_addr, // PAN ADD 2 Byte // get_panaddr_from_eeprom()
+		(uint8_t *) &ieee_addr // MAC ADDRESS 8 byte
+	);
+	
+	rf230_set_channel(radio_channel);
+	rf230_set_txpower(radio_tx_power);
+	
+	queuebuf_init();
+	NETSTACK_RDC.init();
+	NETSTACK_MAC.init();
+	NETSTACK_NETWORK.init();
+}
 
 /* End code from INGA*/
 
@@ -102,24 +168,23 @@ void init(void)
 	process_start(&etimer_process, NULL);
 
 	ctimer_init();
-	/* Start radio and radio receive process */
 
-	// @DEBUG
-	//PORTR.DIRSET = PIN1_bm;
-	//PORTR.OUT |= PIN1_bm;
+	platform_radio_init();
 
-	printf("before radio init\n");
+	// printf("Welcome to Contiki.XMega | F_CPU = %d\n", (unsigned long) F_CPU);
 
-	NETSTACK_RADIO.init();
+	// autostart processes
+	autostart_start(autostart_processes);
 	
-	rimeaddr_t addr = {0xA, 0x3};
-	rimeaddr_set_node_addr(&addr); 
+	#if defined(APP_SETTINGS_SET)
+		process_start(&settings_set_process, NULL);
+	#endif
 	
-	rf230_set_pan_addr(
-		eemem_panid, // get_panid_from_eeprom() 
-		eemem_panaddr, //get_panaddr_from_eeprom()
-		(uint8_t *)&addr.u8
-	);
+	#if defined(APP_SETTINGS_DELETE)
+		process_start(&settings_delete_process, NULL);
+	#endif
+
+	// ....
 	
 	rf230_set_channel(26); //get_channel_from_eeprom()
 	rf230_set_txpower(55); // get_txpower_from_eeprom()

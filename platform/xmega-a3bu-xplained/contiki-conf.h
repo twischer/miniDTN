@@ -125,7 +125,7 @@
 #define NETSTACK_CONF_RDC         nullrdc_driver
 #define NETSTACK_CONF_FRAMER      framer_802154
 #define NETSTACK_CONF_RADIO       rf230_driver
-#define CHANNEL_802_15_4          26
+
 #define RADIO_CONF_CALIBRATE_INTERVAL 256
 /* AUTOACK receive mode gives better rssi measurements, even if ACK is never requested */
 #define RF230_CONF_AUTOACK        0
@@ -145,5 +145,39 @@
 /* How long to wait before terminating an idle TCP connection. Smaller to allow faster sleep. Default is 120 seconds */
 #define UIP_CONF_WAIT_TIMEOUT     5
 
+// RADIO_CHANNEL
+#ifndef RADIO_CONF_CHANNEL
+	#define RADIO_CHANNEL	26
+#else
+	#define RADIO_CHANNEL	RADIO_CONF_CHANNEL
+#endif
+
+// RADIO_TX_POWER
+#ifndef RADIO_CONF_TX_POWER
+	#define RADIO_TX_POWER	255
+#else
+	#define RADIO_TX_POWER	RADIO_CONF_TX_POWER
+#endif
+
+// NODE_ID
+#ifdef NODE_ID
+	#undef NODE_ID
+	#warning Use NODE_CONF_ID to define your NodeId
+#endif
+
+#ifndef NODE_CONF_ID
+	#define NODE_ID	0
+#else
+	#define NODE_ID	NODE_CONF_ID
+#endif
+
+// RADIO_TX_POWER
+#ifndef RADIO_CONF_PAN_ID
+	#define RADIO_PAN_ID	0xABCD
+#else
+	#define RADIO_PAN_ID	RADIO_CONF_TX_POWER
+#endif
+
+void platform_radio_init(void);
 
 #endif /* __CONTIKI_CONF_H__ */
