@@ -16,7 +16,7 @@
 #define CCIF
 #define CLIF
 
-// Simply define this
+// This is for serial line IP communication
 #define SLIP_PORT RS232_PORT_0
 
 #define PLATFORM_HAS_LEDS	1
@@ -32,6 +32,7 @@
 
 // RF230 / 231 / 232 / 233
 
+// Radio: RF230/231/232/233
 #define SSPORT     C
 #define SSPIN      (0x04)
 #define SPIPORT    C

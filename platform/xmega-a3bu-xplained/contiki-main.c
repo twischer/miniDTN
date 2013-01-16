@@ -29,17 +29,24 @@
 
 // TESTING
 
-#include "radio/rf230bb/rf230bb.h"
-#include "net/mac/frame802154.h"
-#include "net/mac/framer-802154.h"
-#include "net/sicslowpan.h"
+// Radioq
+
+#if RF230BB
+	#include "radio/rf230bb/rf230bb.h"
+	#include "net/mac/frame802154.h"
+	#include "net/mac/framer-802154.h"
+	#include "net/sicslowpan.h"
+#else
+	#error No Xmega radio driver available
+#endif
 
 #include "contiki-net.h"
 #include "contiki-lib.h"
 
 #include "net/rime.h"
 
-/* Begin Code from INGA*/
+// NodeID
+// #include "dev/nodeid.h"
 
 // Apps 
 #if defined(APP_SETTINGS_DELETE)
@@ -47,8 +54,6 @@
 #elif defined(APP_SETTINGS_SET)
 	#include "settings_set.h"
 #endif
-
-#include <avr/eeprom.h>
 
 void platform_radio_init(void)
 {
@@ -189,8 +194,6 @@ void init(void)
 	
 	
 
-	// autostart processes
-	autostart_start(autostart_processes);
 
 	sei();
 
