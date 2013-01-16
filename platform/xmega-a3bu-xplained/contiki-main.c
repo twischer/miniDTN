@@ -8,7 +8,6 @@
 
 #include <avr/pgmspace.h>
 #include <avr/fuse.h>
-#include <avr/eeprom.h>
 #include <stdio.h>
 #include <string.h>
 #include <dev/watchdog.h>
@@ -49,6 +48,7 @@
 	#include "settings_set.h"
 #endif
 
+#include <avr/eeprom.h>
 
 void platform_radio_init(void)
 {
@@ -186,14 +186,8 @@ void init(void)
 
 	// ....
 	
-	rf230_set_channel(26); //get_channel_from_eeprom()
-	rf230_set_txpower(55); // get_txpower_from_eeprom()
 	
 	
-	queuebuf_init();
-	NETSTACK_RDC.init();
-	NETSTACK_MAC.init();
-	NETSTACK_NETWORK.init();
 
 	// autostart processes
 	autostart_start(autostart_processes);
