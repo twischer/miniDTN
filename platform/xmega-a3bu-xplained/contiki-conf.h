@@ -8,6 +8,7 @@
 // include drivers for this platform here because there are #ifdef's in the .h files that we need immedeately
 #include "xmega_clock.h"
 #include "xmega_interrupt.h"
+#include "xmega_timer.h"
 
 #define PLATFORM PLATFORM_AVR
 

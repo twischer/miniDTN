@@ -152,7 +152,7 @@ void init(void)
 	// init clock
 	xmega_clock_init();
 	
-	// init timer
+	// init the timer
 	clock_init();
 
 	// init RS232
