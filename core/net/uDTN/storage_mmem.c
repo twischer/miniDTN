@@ -157,25 +157,48 @@ void storage_mmem_reinit(void)
  * \param bundlemem Pointer to the MMEM struct containing the bundle
  * \return 1 on success, 0 if no room could be made free
  */
-uint8_t storage_mmem_make_room(struct mmem *bundlemem)
+uint8_t storage_mmem_make_room(struct mmem * bundlemem)
 {
-//	if( bundles_in_storage < BUNDLE_STORAGE_SIZE && (avail_memory - bundle->block.block_size) > STORAGE_HIGH_WATERMARK ) {
-//		// We have enough memory, no need to do anything
-//		return 1;
-//	}
+	struct bundle_list_entry_t * entry = NULL;
+	struct bundle_t * bundle_new = NULL;
+	struct bundle_t * bundle_old = NULL;
 
-	// Now delete expired bundles
+	/* Now delete expired bundles */
 	storage_mmem_prune();
 
-	// Keep deleting bundles until we have enough MMEM and slots
-	while( bundles_in_storage >= BUNDLE_STORAGE_SIZE) { // || (avail_memory - bundle->size) < STORAGE_HIGH_WATERMARK ) {
-		struct bundle_list_entry_t * entry = list_head(bundle_list);
+	/* If we do not have a pointer, we cannot compare - do nothing */
+	if( bundlemem == NULL ) {
+		return 0;
+	}
 
+	/* Keep deleting bundles until we have enough slots */
+	while( bundles_in_storage >= BUNDLE_STORAGE_SIZE) {
+		/* Obtain the new pointer each time, since the address may change */
+		bundle_new = (struct bundle_t *) MMEM_PTR(bundlemem);
+
+		/* We need this double-loop because otherwise we would be modifying the list
+		 * while iterating through it
+		 */
+		for( entry = list_head(bundle_list);
+			 entry != NULL;
+			 entry = list_item_next(entry) ) {
+			bundle_old = (struct bundle_t *) MMEM_PTR(entry->bundle);
+
+			/* If the new bundle has a longer lifetime than the bundle in our storage,
+			 * delete the bundle from storage to make room
+			 */
+			if( bundle_new->lifetime - (clock_seconds() - bundle_new->rec_time) >= bundle_old->lifetime - (clock_seconds() - bundle_old->rec_time) ) {
+				break;
+			}
+		}
+
+		/* Either the for loop did nothing or did not break */
 		if( entry == NULL ) {
-			// We do not have bundles in storage, stop deleting them
+			/* We do not have deletable bundles in storage, stop deleting them */
 			return 0;
 		}
 
+		/* Delete Bundle */
 		storage_mmem_delete_bundle(entry->bundle_num, REASON_DEPLETED_STORAGE);
 	}
 
