@@ -98,7 +98,7 @@ uint32_t hash_xxfast_buffer(uint8_t * buffer, uint16_t length)
 	return crc;
 }
 
-uint32_t hash_xxfast_convenience(uint32_t one, uint32_t two, uint32_t three, uint32_t four)
+uint32_t hash_xxfast_convenience(uint32_t one, uint32_t two, uint32_t three, uint32_t four, uint32_t five)
 {
 	uint8_t buffer[16];
 
@@ -106,11 +106,12 @@ uint32_t hash_xxfast_convenience(uint32_t one, uint32_t two, uint32_t three, uin
 	memcpy(buffer + 4, &two, sizeof(uint32_t));
 	memcpy(buffer + 8, &three, sizeof(uint32_t));
 	memcpy(buffer + 12, &four, sizeof(uint32_t));
+	memcpy(buffer + 16, &five, sizeof(uint32_t));
 
 	return hash_xxfast_buffer(buffer, 16);
 }
 
-uint32_t hash_xxfast_convenience_ptr(uint32_t * one, uint32_t * two, uint32_t * three, uint32_t * four)
+uint32_t hash_xxfast_convenience_ptr(uint32_t * one, uint32_t * two, uint32_t * three, uint32_t * four, uint32_t * five)
 {
 	uint8_t buffer[16];
 
@@ -118,6 +119,7 @@ uint32_t hash_xxfast_convenience_ptr(uint32_t * one, uint32_t * two, uint32_t * 
 	memcpy(buffer + 4, two, sizeof(uint32_t));
 	memcpy(buffer + 8, three, sizeof(uint32_t));
 	memcpy(buffer + 12, four, sizeof(uint32_t));
+	memcpy(buffer + 16, five, sizeof(uint32_t));
 
 	return hash_xxfast_buffer(buffer, 16);
 }
