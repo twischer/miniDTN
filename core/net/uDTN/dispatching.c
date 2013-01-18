@@ -26,14 +26,77 @@
 #include "delivery.h"
 #include "statusreport.h"
 #include "storage.h"
+#include "hash.h"
 
 #include "dispatching.h"
+
+/**
+ * \brief This function checks, whether an incoming admin record is a bundle delivery report. If so, the corresponding bundle is deleted from storage
+ * \param bundlemem Pointer to the MMEM struct containing the bundle
+ * \return 1 on success, < 0 otherwise
+ */
+int dispatching_check_report(struct mmem * bundlemem) {
+	struct bundle_t * bundle = NULL;
+	struct bundle_block_t * payload_block = NULL;
+	status_report_t report;
+	int ret = 0;
+	uint32_t bundle_number = 0;
+
+	/* Get the bundle */
+	bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
+
+	/* Return on invalid pointer */
+	if( bundle == NULL ) {
+		return -1;
+	}
+
+	/* Get the payload block pointer */
+	payload_block = bundle_get_payload_block(bundlemem);
+
+	/* Check if the bundle has a payload block */
+	if( payload_block == NULL ) {
+		return -1;
+	}
+
+	/* Check if the block contains a status report */
+	if( !(payload_block->payload[0] & TYPE_CODE_BUNDLE_STATUS_REPORT) ) {
+		return -1;
+	}
+
+	/* Decode the status report */
+	ret = statusreport_decode(&report, payload_block->payload, payload_block->block_size);
+
+	/* Do not continue on error */
+	if( ret < 0 ) {
+		return -1;
+	}
+
+	/* Abort of no delivery report */
+	if( !(report.status_flags & NODE_DELIVERED_BUNDLE) ) {
+		return -1;
+	}
+
+	/* Calculate bundle number */
+	bundle_number = HASH.hash_convenience(report.bundle_sequence_number, report.bundle_creation_timestamp, report.bundle_creation_timestamp, report.fragment_offset, report.fragment_length);
+
+	LOG(LOGD_DTN, LOG_AGENT, LOGL_INF, "Received delivery report for bundle %lu from ipn:%lu, deleting", bundle_number, bundle->src_node);
+
+	/* And delete the bundle without sending additional reports */
+	BUNDLE_STORAGE.del_bundle(bundle_number, REASON_DELIVERED);
+
+	return 1;
+}
 
 int dispatching_dispatch_bundle(struct mmem *bundlemem) {
 	struct bundle_t *bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 	uint32_t * bundle_number;
 	int n;
 	uint8_t received_report = 0;
+
+	/* If we receive a delivery report for a bundle, delete the corresponding bundle from storage */
+	if( bundle->flags & BUNDLE_FLAG_ADM_REC ) {
+		dispatching_check_report(bundlemem);
+	}
 
 	if ((bundle->flags & BUNDLE_FLAG_ADM_REC) && (bundle->dst_node == dtn_node_id)) {
 		// The bundle is an ADMIN RECORD for our node, process it directly here without going into storage
