@@ -100,7 +100,7 @@ uint32_t hash_xxfast_buffer(uint8_t * buffer, uint16_t length)
 
 uint32_t hash_xxfast_convenience(uint32_t one, uint32_t two, uint32_t three, uint32_t four, uint32_t five)
 {
-	uint8_t buffer[16];
+	uint8_t buffer[20];
 
 	memcpy(buffer + 0, &one, sizeof(uint32_t));
 	memcpy(buffer + 4, &two, sizeof(uint32_t));
@@ -113,7 +113,7 @@ uint32_t hash_xxfast_convenience(uint32_t one, uint32_t two, uint32_t three, uin
 
 uint32_t hash_xxfast_convenience_ptr(uint32_t * one, uint32_t * two, uint32_t * three, uint32_t * four, uint32_t * five)
 {
-	uint8_t buffer[16];
+	uint8_t buffer[20];
 
 	memcpy(buffer + 0, one, sizeof(uint32_t));
 	memcpy(buffer + 4, two, sizeof(uint32_t));
