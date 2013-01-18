@@ -86,6 +86,9 @@ int eid_parse_full(char * buffer, uint8_t length, uint32_t * node_id, uint32_t *
 	/* And service part */
 	*service_id = atoi(delimeter);
 
+	/* Reconstruct the original string */
+	*delimeter = '.';
+
 	return strlen(buffer) + strlen(delimeter) + 1;
 }
 
