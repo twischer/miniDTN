@@ -336,6 +336,11 @@ uint8_t storage_coffee_make_room(struct mmem * bundlemem)
 	/* Delete expired bundles first */
 	storage_coffee_prune();
 
+	/* If we do not have a pointer, we cannot compare - do nothing */
+	if( bundlemem == NULL ) {
+		return 0;
+	}
+
 	/* Keep deleting bundles until we have enough slots */
 	while( bundles_in_storage >= BUNDLE_STORAGE_SIZE) {
 		/* Obtain the new pointer each time, since the address may change */
@@ -350,7 +355,7 @@ uint8_t storage_coffee_make_room(struct mmem * bundlemem)
 			/* If the new bundle has a longer lifetime than the bundle in our storage,
 			 * delete the bundle from storage to make room
 			 */
-			if( bundlemem != NULL && bundle->lifetime - (clock_seconds() - bundle->rec_time) >= entry->lifetime - (clock_seconds() - entry->rec_time) ) {
+			if( bundle->lifetime - (clock_seconds() - bundle->rec_time) >= entry->lifetime - (clock_seconds() - entry->rec_time) ) {
 				break;
 			}
 		}
