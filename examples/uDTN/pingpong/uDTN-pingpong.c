@@ -165,7 +165,7 @@ PROCESS_THREAD(coordinator_process, ev, data)
 	 * Otherwise wait for ping to finish. */
 	PROCESS_WAIT_UNTIL(!process_is_running(&ping_process));
 
-	etimer_set(&timer, CLOCK_SECOND*10);
+	etimer_set(&timer, CLOCK_SECOND*120);
 	PROCESS_WAIT_UNTIL(etimer_expired(&timer));
 
 	profiling_stop();
