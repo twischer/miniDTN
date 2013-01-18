@@ -403,7 +403,7 @@ uint8_t storage_coffee_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_n
 	}
 
 	// Calculate the bundle number
-	bundle_number = HASH.hash_convenience(bundle->tstamp_seq, bundle->tstamp, bundle->src_node, bundle->frag_offs);
+	bundle_number = HASH.hash_convenience(bundle->tstamp_seq, bundle->tstamp, bundle->src_node, bundle->frag_offs, bundle->app_len);
 
 	// Look for duplicates in the storage
 	for(entry = list_head(bundle_list);
