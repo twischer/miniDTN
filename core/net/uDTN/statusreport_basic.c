@@ -194,7 +194,7 @@ uint8_t statusreport_basic_send(struct mmem * bundlemem, uint8_t status, uint8_t
 		return 0;
 	}
 
-	printf("Sending out status report for status %u and reason %u\n", status, reason);
+	LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "Sending out status report for status %u and reason %u", status, reason);
 
 	// Fill out the statusreport struct
 	memset(&report, 0, sizeof(status_report_t));
@@ -230,7 +230,7 @@ uint8_t statusreport_basic_send(struct mmem * bundlemem, uint8_t status, uint8_t
 	// Copy timestamp from incoming bundle
 	bundle_set_attr(report_bundle, TIME_STAMP, &report.bundle_creation_timestamp);
 
-	printf("Report goes to %lu.%lu\n", report_node_id, report_service_id);
+	LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "Report goes to %lu.%lu", report_node_id, report_service_id);
 
 	// Set lifetime
 	lifetime = 3600;
