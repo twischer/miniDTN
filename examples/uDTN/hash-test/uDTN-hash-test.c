@@ -62,7 +62,7 @@ AUTOSTART_PROCESSES(&test_process);
 PROCESS_THREAD(test_process, ev, data)
 {
 	static uint32_t expected_result[8];
-	uint8_t mytest[16];
+	uint8_t mytest[20];
 	int i;
 	int mode = 0;
 	int errors = 0;
@@ -76,8 +76,11 @@ PROCESS_THREAD(test_process, ev, data)
 	uint32_t two;
 	uint32_t three;
 	uint32_t four;
+	uint32_t five;
 
 	PROCESS_BEGIN();
+
+	PROCESS_PAUSE();
 
 	profiling_init();
 	profiling_start();
@@ -162,15 +165,16 @@ PROCESS_THREAD(test_process, ev, data)
 		output_buffer = HASH.hash_buffer(mytest, 16);
 		printf("\t Buffer: %lu \n", output_buffer);
 
-		output_ptr = HASH.hash_convenience_ptr((uint32_t *) &mytest[0], (uint32_t *) &mytest[4], (uint32_t *) &mytest[8], (uint32_t *) &mytest[12]);
+		output_ptr = HASH.hash_convenience_ptr((uint32_t *) &mytest[0], (uint32_t *) &mytest[4], (uint32_t *) &mytest[8], (uint32_t *) &mytest[12], (uint32_t *) &mytest[16]);
 		printf("\t Pointer: %lu \n", output_ptr);
 
 		memcpy(&one, &mytest[0], sizeof(uint32_t));
 		memcpy(&two, &mytest[4], sizeof(uint32_t));
 		memcpy(&three, &mytest[8], sizeof(uint32_t));
 		memcpy(&four, &mytest[12], sizeof(uint32_t));
+		memcpy(&five, &mytest[16], sizeof(uint32_t));
 
-		output_copy = HASH.hash_convenience(one, two, three, four);
+		output_copy = HASH.hash_convenience(one, two, three, four, five);
 		printf("\t Copy: %lu \n", output_copy);
 
 		if( (output_buffer != output_ptr) || (output_buffer != output_copy) || (output_buffer != expected_result[mode]) ) {
@@ -193,12 +197,13 @@ PROCESS_THREAD(test_process, ev, data)
 		two = mode;
 		three = mode;
 		four = mode;
+		five = mode;
 
 		if( mode % 1000 == 0 ) {
 			watchdog_periodic();
 		}
 
-		output_copy = HASH.hash_convenience(one, two, three, four);
+		output_copy = HASH.hash_convenience(one, two, three, four, five);
 	}
 
 	do {
