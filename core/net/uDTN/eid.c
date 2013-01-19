@@ -6,7 +6,7 @@
 /**
  * \file
  *
- * \author Wolf-Bastian Pšttner <poettner@ibr.cs.tu-bs.de>
+ * \author Wolf-Bastian PÃ¶ttner <poettner@ibr.cs.tu-bs.de>
  */
 
 #include <string.h>
@@ -62,6 +62,7 @@ int eid_parse_host_length(uint8_t * buffer, uint8_t length, uint32_t * node_id)
 int eid_parse_full(char * buffer, uint8_t length, uint32_t * node_id, uint32_t * service_id)
 {
 	char * delimeter = NULL;
+	int result;
 
 	/* Do we have an ipn scheme? */
 	if( strncmp(buffer, "ipn:", 4) != 0 ) {
@@ -86,10 +87,12 @@ int eid_parse_full(char * buffer, uint8_t length, uint32_t * node_id, uint32_t *
 	/* And service part */
 	*service_id = atoi(delimeter);
 
-	/* Reconstruct the original string */
-	*delimeter = '.';
+	result = strlen(buffer) + strlen(delimeter) + 1;
 
-	return strlen(buffer) + strlen(delimeter) + 1;
+	/* Reconstruct the original string */
+	*(delimeter-1) = '.';
+
+	return result;
 }
 
 

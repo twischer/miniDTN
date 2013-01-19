@@ -77,7 +77,7 @@ int dispatching_check_report(struct mmem * bundlemem) {
 	}
 
 	/* Calculate bundle number */
-	bundle_number = HASH.hash_convenience(report.bundle_sequence_number, report.bundle_creation_timestamp, report.bundle_creation_timestamp, report.fragment_offset, report.fragment_length);
+	bundle_number = HASH.hash_convenience(report.bundle_sequence_number, report.bundle_creation_timestamp, report.source_eid_node, report.fragment_offset, report.fragment_length);
 
 	LOG(LOGD_DTN, LOG_AGENT, LOGL_INF, "Received delivery report for bundle %lu from ipn:%lu, deleting", bundle_number, bundle->src_node);
 
@@ -96,6 +96,7 @@ int dispatching_dispatch_bundle(struct mmem *bundlemem) {
 	/* If we receive a delivery report for a bundle, delete the corresponding bundle from storage */
 	if( bundle->flags & BUNDLE_FLAG_ADM_REC ) {
 		dispatching_check_report(bundlemem);
+		bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 	}
 
 	if ((bundle->flags & BUNDLE_FLAG_ADM_REC) && (bundle->dst_node == dtn_node_id)) {
