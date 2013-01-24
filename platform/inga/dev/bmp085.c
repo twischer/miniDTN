@@ -39,6 +39,124 @@
  */
 
 #include "bmp085.h"
+
+/*!
+ * I2C address to read data
+ */
+#define BMP085_DEV_ADDR_R		0xEF
+/*!
+ * I2C address to write data
+ */
+#define BMP085_DEV_ADDR_W		0xEE
+/*Control register address*/
+/*!
+ * Basic control register address
+ */
+#define BMP085_CTRL_REG_ADDR	0xF4
+/*!
+ * Control register address for temperature
+ */
+#define BMP085_CTRL_REG_TEMP	0x2E
+/*!
+ * Control register address for oversampling mode 0
+ */
+#define BMP085_CTRL_REG_PRESS_0	0x34
+/*!
+ * Control register address for oversampling mode 1
+ */
+#define BMP085_CTRL_REG_PRESS_1	0x74
+/*!
+ * Control register address for oversampling mode 2
+ */
+#define BMP085_CTRL_REG_PRESS_2	0xB4
+/*!
+ * Control register address for oversampling mode 3
+ */
+#define BMP085_CTRL_REG_PRESS_3	0xF4
+/*Data register*/
+/*!
+ * Main data register address
+ */
+#define BMP085_DATA_REG_N		0xF6
+/*!
+ * Extended data register address for 19bit
+ * resolution
+ */
+#define BMP085_DATA_REG_X		0xF8
+/*EEPROM Register addresses for calibration data*/
+/*!
+ * Coefficient AC1 eeprom address
+ */
+#define BMP085_AC1_ADDR 		0xAA
+/*!
+ * Coefficient AC2 eeprom address
+ */
+#define BMP085_AC2_ADDR			0xAC
+/*!
+ * Coefficient AC3 eeprom address
+ */
+#define BMP085_AC3_ADDR			0xAE
+/*!
+ * Coefficient AC4 eeprom address
+ */
+#define BMP085_AC4_ADDR			0xB0
+/*!
+ * Coefficient AC5 eeprom address
+ */
+#define BMP085_AC5_ADDR			0xB2
+/*!
+ * Coefficient AC6 eeprom address
+ */
+#define BMP085_AC6_ADDR			0xB4
+/*!
+ * Coefficient B1 eeprom address
+ */
+#define BMP085_B1_ADDR			0xB6
+/*!
+ * Coefficient B2 eeprom address
+ */
+#define BMP085_B2_ADDR			0xB8
+/*!
+ * Coefficient MB eeprom address
+ */
+#define BMP085_MB_ADDR			0xBA
+/*!
+ * Coefficient MC eeprom address
+ */
+#define BMP085_MC_ADDR			0xBC
+/*!
+ * Coefficient MD eeprom address
+ */
+#define BMP085_MD_ADDR			0xBE
+
+/*!
+ * Hold all coefficients
+ */
+typedef struct {
+  volatile int16_t ac1;
+  volatile int16_t ac2;
+  volatile int16_t ac3;
+  volatile uint16_t ac4;
+  volatile uint16_t ac5;
+  volatile uint16_t ac6;
+  volatile int16_t b1;
+  volatile int16_t b2;
+  volatile int16_t mb;
+  volatile int16_t mc;
+  volatile int16_t md;
+} bmp085_calib_data;
+
+/*!
+ * Hold all coefficients
+ */
+static bmp085_calib_data bmp085_coeff;
+
+static uint8_t bmp085_read8bit_data(uint8_t addr);
+static uint16_t bmp085_read16bit_data(uint8_t addr);
+static void bmp085_read_calib_data(void);
+static int32_t bmp085_read_uncomp_pressure(uint8_t mode);
+static int32_t bmp085_read_uncomp_temperature(void);
+
 int8_t
 bmp085_init(void) {
   uint8_t i = 0;
@@ -52,9 +170,10 @@ bmp085_init(void) {
   bmp085_read_calib_data();
   return 0;
 }
+
 /*---------------------------------------------------------------------------*/
-int32_t
-bmp085_read_temperature(void) {
+static int32_t
+bmp085_read_uncomp_temperature(void) {
   i2c_start(BMP085_DEV_ADDR_W);
   i2c_write(BMP085_CTRL_REG_ADDR);
   i2c_write(BMP085_CTRL_REG_TEMP);
@@ -62,9 +181,10 @@ bmp085_read_temperature(void) {
   _delay_ms(5);
   return (int32_t) (bmp085_read16bit_data(BMP085_DATA_REG_N));
 }
+
 /*---------------------------------------------------------------------------*/
-int32_t
-bmp085_read_pressure(uint8_t mode) {
+static int32_t
+bmp085_read_uncomp_pressure(uint8_t mode) {
   int32_t pressure;
   i2c_start(BMP085_DEV_ADDR_W);
   i2c_write(BMP085_CTRL_REG_ADDR);
@@ -95,14 +215,15 @@ bmp085_read_pressure(uint8_t mode) {
   pressure += bmp085_read8bit_data(BMP085_DATA_REG_X);
   return (pressure >> (8 - mode));
 }
+
 /*---------------------------------------------------------------------------*/
 int32_t
-bmp085_read_comp_temperature(void) {
+bmp085_read_temperature(void) {
   int32_t ut = 0, compt = 0;
 
   int32_t x1, x2, b5;
 
-  ut = bmp085_read_temperature();
+  ut = bmp085_read_uncomp_temperature();
 
   x1 = ((int32_t) ut - (int32_t) bmp085_coeff.ac6)
           * (int32_t) bmp085_coeff.ac5 >> 15;
@@ -112,17 +233,18 @@ bmp085_read_comp_temperature(void) {
 
   return compt;
 }
+
 /*---------------------------------------------------------------------------*/
 int32_t
-bmp085_read_comp_pressure(uint8_t mode) {
+bmp085_read_pressure(uint8_t mode) {
   int32_t ut = 0, compt = 0;
   int32_t up = 0, compp = 0;
 
   int32_t x1, x2, b5, b6, x3, b3, p;
   uint32_t b4, b7;
 
-  ut = bmp085_read_temperature();
-  up = bmp085_read_pressure(mode);
+  ut = bmp085_read_uncomp_temperature();
+  up = bmp085_read_uncomp_pressure(mode);
 
   x1 = ((int32_t) ut - (int32_t) bmp085_coeff.ac6)
           * (int32_t) bmp085_coeff.ac5 >> 15;
@@ -153,8 +275,9 @@ bmp085_read_comp_pressure(uint8_t mode) {
   compp = p + ((x1 + x2 + 3791) >> 4);
   return compp;
 }
+
 /*---------------------------------------------------------------------------*/
-void
+static void
 bmp085_read_calib_data(void) {
   bmp085_coeff.ac1 = bmp085_read16bit_data(BMP085_AC1_ADDR);
   bmp085_coeff.ac2 = bmp085_read16bit_data(BMP085_AC2_ADDR);
@@ -168,8 +291,9 @@ bmp085_read_calib_data(void) {
   bmp085_coeff.mc = bmp085_read16bit_data(BMP085_MC_ADDR);
   bmp085_coeff.md = bmp085_read16bit_data(BMP085_MD_ADDR);
 }
+
 /*---------------------------------------------------------------------------*/
-uint16_t
+static uint16_t
 bmp085_read16bit_data(uint8_t addr) {
   uint8_t msb = 0, lsb = 0;
   i2c_start(BMP085_DEV_ADDR_W);
@@ -180,8 +304,9 @@ bmp085_read16bit_data(uint8_t addr) {
   i2c_stop();
   return (uint16_t) ((msb << 8) | lsb);
 }
+
 /*---------------------------------------------------------------------------*/
-uint8_t
+static uint8_t
 bmp085_read8bit_data(uint8_t addr) {
   uint8_t lsb = 0;
   i2c_start(BMP085_DEV_ADDR_W);
