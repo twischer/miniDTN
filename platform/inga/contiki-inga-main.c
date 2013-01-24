@@ -157,6 +157,10 @@ void rtimercycle(void) {rtimerflag=1;}
 uint16_t node_id;
 #endif
 
+#ifndef USART_BAUD_INGA
+#define USART_BAUD_INGA USART_BAUD_19200
+#endif
+
 /*-------------------------------------------------------------------------*/
 /*----------------------Configuration of the .elf file---------------------*/
 #if (__AVR_LIBC_VERSION__ >= 10700UL)
@@ -498,7 +502,7 @@ void initialize(void)
   watchdog_start();
 
   /* Second rs232 port for debugging */
-  rs232_init(RS232_PORT_0, USART_BAUD_19200,USART_PARITY_NONE | USART_STOP_BITS_1 | USART_DATA_BITS_8);
+  rs232_init(RS232_PORT_0, USART_BAUD_INGA,USART_PARITY_NONE | USART_STOP_BITS_1 | USART_DATA_BITS_8);
   /* Redirect stdout to second port */
   rs232_redirect_stdout(RS232_PORT_0);
   clock_init();
