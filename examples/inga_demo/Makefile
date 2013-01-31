@@ -5,6 +5,8 @@ CFLAGS += -DWITH_NODE_ID=1
 ifdef NODE_ID
 	CFLAGS +=-DNODEID=$(NODE_ID)
 endif
+#INGA_BAUDRATE = 38400
+TARGET=inga
 
 CONTIKI = ../..
 include $(CONTIKI)/Makefile.include

@@ -26,11 +26,11 @@
 
 #include <stdio.h> /* For printf() */
 /*---------------------------------------------------------------------------*/
-PROCESS(hello_world_process, "Hello world process");
-AUTOSTART_PROCESSES(&hello_world_process);
+PROCESS(default_app_process, "Hello world process");
+AUTOSTART_PROCESSES(&default_app_process);
 /*---------------------------------------------------------------------------*/
 static struct etimer timer;
-PROCESS_THREAD(hello_world_process, ev, data)
+PROCESS_THREAD(default_app_process, ev, data)
 {
   PROCESS_BEGIN();
   	SENSORS_ACTIVATE(button_sensor);
