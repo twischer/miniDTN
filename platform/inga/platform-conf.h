@@ -25,8 +25,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $Id: platform-conf.h,v 1.2 2010/12/16 22:52:27 adamdunkels Exp $
  */
 
 /**
@@ -42,10 +40,12 @@
  * Definitions below are dictated by the hardware and not really
  * changeable!
  */
-/* Platform INGA @todo... */
-#define INGA 1
-#define PLATFORM       PLATFORM_AVR
+/** Set default INGA revision if nothing else set */
+#ifndef INGA_REVISION
 #define INGA_REVISION INGA_12
+#endif
+
+#define PLATFORM       PLATFORM_AVR
 
 #define PLATFORM_HAS_LEDS   1
 #define PLATFORM_HAS_BUTTON 1
@@ -55,8 +55,10 @@
 #define F_CPU          8000000UL
 #endif
 
-/* Our clock resolution, this is the same as Unix HZ. */
+/* Our clock resolution, this is the same as Unix HZ. Depends on F_CPU */
+#ifndef CLOCK_CONF_SECOND
 #define CLOCK_CONF_SECOND 128UL
+#endif
 
 //#define BAUD2UBR(baud) ((F_CPU/baud)) /** @todo: needed? */
 

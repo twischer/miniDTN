@@ -32,6 +32,7 @@
  *
  */
 
+/** @todo Missing implementation */
 #ifndef NODE_ID_H
 #define NODE_ID_H
 
