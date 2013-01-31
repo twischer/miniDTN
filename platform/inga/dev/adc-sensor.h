@@ -29,67 +29,29 @@
 
 /**
  * \file
- *      Gyroscope sensor implementation
+ *      Analog Digital Converter sensor definitions
  * \author
- *      Georg von Zengen
+ *      Enrico Joerns <e.joerns@tu-bs.de>
  */
 
-#include "contiki.h"
+#ifndef ADC_SENSOR_H
+#define	ADC_SENSOR_H
+
+/**
+ * \addtogroup inga_sensors
+ * @{
+ */
+
+/** 
+ * \defgroup inga_adc_driver Analog to Digital Converter (ADC)
+ * @{
+ */
+
 #include "lib/sensors.h"
-#include "l3g4200d.h"
-#include "gyro-sensor.h"
-const struct sensors_sensor gyro_sensor;
-uint8_t gyro_state=0;
-/*---------------------------------------------------------------------------*/
-static int
-value(int type)
-{
-  switch(type) {
-  case X_AS:
-    return l3g4200d_get_x_angle();
 
-  case Y_AS:
-    return l3g4200d_get_z_angle();
+extern const struct sensors_sensor adc_sensor;
 
-  case Z_AS:
-    return l3g4200d_get_y_angle();
+/** @} */ // inga_adc_driver
+/** @} */ // inga_sensors
 
-  case TEMP_AS:
-		return (uint8_t) l3g4200d_get_temp();
-  }
-  return 0;
-}
-/*---------------------------------------------------------------------------*/
-static int
-status(int type)
-{
-  return gyro_state;
-}
-/*---------------------------------------------------------------------------*/
-static int
-configure(int type, int c)
-{
-  switch (type) {
-    case SENSORS_ACTIVE:
-      if (c) {
-        if (!status(SENSORS_ACTIVE)) {
-          // TODO...
-        }
-//        acc_state=1;// TODO: SENSORS_READY?
-//        return adxl345_init();
-      } else {
-        // deactivate
-      }
-      break;
-    case GYRO_SENSITIVITY:
-      // TODO: check if initialized?
-      l3g4200d_set_dps(c);
-      break;
-    default:
-    break;
-  }
-  gyro_state=1;
-  return l3g4200d_init();
-}
-/*---------------------------------------------------------------------------*/
-SENSORS_SENSOR(gyro_sensor, "GYROSCOPE", value, configure, status);
+#endif	/* ADC_SENSOR_H */

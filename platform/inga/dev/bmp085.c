@@ -54,23 +54,23 @@
  */
 #define BMP085_CTRL_REG_ADDR	0xF4
 /*!
- * Control register address for temperature
+ * Control register value for temperature
  */
 #define BMP085_CTRL_REG_TEMP	0x2E
 /*!
- * Control register address for oversampling mode 0
+ * Control register value for oversampling mode 0
  */
 #define BMP085_CTRL_REG_PRESS_0	0x34
 /*!
- * Control register address for oversampling mode 1
+ * Control register value for oversampling mode 1
  */
 #define BMP085_CTRL_REG_PRESS_1	0x74
 /*!
- * Control register address for oversampling mode 2
+ * Control register value for oversampling mode 2
  */
 #define BMP085_CTRL_REG_PRESS_2	0xB4
 /*!
- * Control register address for oversampling mode 3
+ * Control register value for oversampling mode 3
  */
 #define BMP085_CTRL_REG_PRESS_3	0xF4
 /*Data register*/

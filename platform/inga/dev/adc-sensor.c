@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, TU Braunschweig.
+ * Copyright (c) 2012, TU Braunschweig.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,33 +29,23 @@
 
 /**
  * \file
- *      Gyroscope sensor implementation
+ *      Analog Digital Converter sensor implementation
  * \author
- *      Georg von Zengen
+ *      Enrico Joerns <e.joerns@tu-bs.de>
  */
 
-#include "contiki.h"
-#include "lib/sensors.h"
-#include "l3g4200d.h"
-#include "gyro-sensor.h"
-const struct sensors_sensor gyro_sensor;
-uint8_t gyro_state=0;
+#include "adc-sensor.h"
+
+static uint8_t cfg_mode;
+static uint8_t cfg_ref;
+
+const struct sensors_sensor adc_sensor;
+uint8_t adc_state=0;
 /*---------------------------------------------------------------------------*/
 static int
 value(int type)
 {
   switch(type) {
-  case X_AS:
-    return l3g4200d_get_x_angle();
-
-  case Y_AS:
-    return l3g4200d_get_z_angle();
-
-  case Z_AS:
-    return l3g4200d_get_y_angle();
-
-  case TEMP_AS:
-		return (uint8_t) l3g4200d_get_temp();
   }
   return 0;
 }
@@ -63,7 +53,13 @@ value(int type)
 static int
 status(int type)
 {
-  return gyro_state;
+  switch (type) {
+    case SENSORS_ACTIVE:
+      break;
+    case SENSORS_READY:
+      break;
+  }
+  return adc_state;
 }
 /*---------------------------------------------------------------------------*/
 static int
@@ -75,21 +71,13 @@ configure(int type, int c)
         if (!status(SENSORS_ACTIVE)) {
           // TODO...
         }
-//        acc_state=1;// TODO: SENSORS_READY?
-//        return adxl345_init();
       } else {
         // deactivate
       }
       break;
-    case GYRO_SENSITIVITY:
-      // TODO: check if initialized?
-      l3g4200d_set_dps(c);
-      break;
     default:
     break;
   }
-  gyro_state=1;
-  return l3g4200d_init();
 }
 /*---------------------------------------------------------------------------*/
-SENSORS_SENSOR(gyro_sensor, "GYROSCOPE", value, configure, status);
+SENSORS_SENSOR(adc_sensor, "ADC", value, configure, status);

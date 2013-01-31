@@ -48,6 +48,42 @@
 #define __GYRO_SENSOR_H__
 
 #include "lib/sensors.h"
+#include "l3g4200d.h"
+
+/**
+ * \name Configurations
+ * @{
+ */
+/** Configures the sensitivity. */
+#define GYRO_SENSITIVITY  10
+/** Configures the output data rate. */
+#define GYRO_DATA_RATE    20
+/** Configures the fifo mode. */
+#define GYRO_FIFOMODE     30
+/** @} */
+
+/**
+ * \name Sensitivity Values
+ * \see GYRO_SENSITIVITY
+ * @{ */
+/// 250 dps
+#define GYRO_250DPS  L3G4200D_250DPS
+/// 500 dps
+#define GYRO_500DPS  L3G4200D_500DPS
+/// 2000 dps
+#define GYRO_2000DPS L3G4200D_2000DPS
+/** @} */
+
+
+/** \name Data rate Values.
+ *  \see GYRO_DATARATE
+ * @{
+ */
+#define GYRO_100HZ  L3G4200D_100HZ
+#define GYRO_200HZ  L3G4200D_200HZ
+#define GYRO_400HZ  L3G4200D_400HZ
+#define GYRO_800HZ  L3G4200D_800HZ
+/** @} */
 
 extern const struct sensors_sensor gyro_sensor;
 
@@ -56,7 +92,7 @@ extern const struct sensors_sensor gyro_sensor;
 #define Z_AS 2
 #define TEMP_AS 3
 
+#endif /* __GYRO-SENSOR_H__ */
+
 /** @} */ // inga_gyro_driver
 /** @} */ // inga_sensors
-
-#endif /* __GYRO-SENSOR_H__ */
