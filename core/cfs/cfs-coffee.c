@@ -224,6 +224,7 @@ write_header(struct file_header *hdr, coffee_page_t page)
 {
   hdr->flags |= HDR_FLAG_VALID;
   COFFEE_WRITE(hdr, sizeof(*hdr), page * COFFEE_PAGE_SIZE);
+	PRINTF("hdr.flags = %x\n", hdr->flags);
 }
 /*---------------------------------------------------------------------------*/
 static void
@@ -233,6 +234,7 @@ read_header(struct file_header *hdr, coffee_page_t page)
 #if DEBUG
   if(HDR_ACTIVE(*hdr) && !HDR_VALID(*hdr)) {
     PRINTF("Invalid header at page %u!\n", (unsigned)page);
+	PRINTF("hdr.flags = %x\n", hdr->flags);
   }
 #endif
 }

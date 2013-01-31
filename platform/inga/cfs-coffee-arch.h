@@ -57,8 +57,12 @@
 #define COFFEE_STATIC     1
 #elif COFFEE_FILES==4           //4=program flash with full file system
 #define COFFEE_AVR_FLASH  1
-#else
+#elif COFFEE_FILES==5			//5=use external onboard flash with full file system
 #define COFFEE_AVR_EXTERNAL 1
+#elif COFFEE_FILES==6           //6=sdcard flash for full file system
+#define COFFEE_AVR_SDCARD  1
+#else
+#error COFFEE_FILES value is undefined
 #endif
 
 #ifdef COFFEE_AVR_EEPROM
@@ -219,6 +223,57 @@ void external_flash_read(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSE
 void external_flash_erase(coffee_page_t sector);
 
 #endif /* COFFEE_AVR_EXTERNAL */
+
+#ifdef COFFEE_AVR_SDCARD
+/* Byte page size, starting address on page boundary, and size of the file system */
+#define COFFEE_PAGE_SIZE          512
+#ifndef COFFEE_ADDRESS
+#define COFFEE_ADDRESS            0x0
+#endif
+#define COFFEE_PAGES              70UL
+#define COFFEE_START              (COFFEE_ADDRESS)
+#define COFFEE_SIZE               (COFFEE_PAGES * COFFEE_PAGE_SIZE)
+
+/* These must agree with the parameters passed to makefsdata */
+#define COFFEE_SECTOR_SIZE        COFFEE_PAGE_SIZE
+#define COFFEE_NAME_LENGTH        16
+
+/* These are used internally by the coffee file system */
+/* Micro logs are not needed for single page sectors */
+#define COFFEE_MAX_OPEN_FILES     6
+#define COFFEE_FD_SET_SIZE        8
+#define COFFEE_LOG_TABLE_LIMIT    16
+#define COFFEE_DYN_SIZE           (COFFEE_PAGE_SIZE*1)
+#define COFFEE_MICRO_LOGS         0
+#define COFFEE_LOG_SIZE           128
+
+/* coffee_page_t is used for page and sector numbering
+ * uint8_t can handle 511 pages.
+ * cfs_offset_t is used for full byte addresses
+ * If CFS_CONF_OFFSET_TYPE is not defined it defaults to int.
+ * uint16_t can handle up to a 65535 byte file system.
+ */
+#define coffee_page_t uint32_t
+#define CFS_CONF_OFFSET_TYPE uint32_t
+
+#define COFFEE_WRITE(buf, size, offset) \
+		external_flash_write(offset, (uint8_t *) buf, size)
+
+#define COFFEE_READ(buf, size, offset) \
+		external_flash_read(offset, (uint8_t *) buf, size)
+
+#define COFFEE_ERASE(sector) \
+		external_flash_erase(sector)
+
+void external_flash_write_page(coffee_page_t page, CFS_CONF_OFFSET_TYPE offset, uint8_t * buf, CFS_CONF_OFFSET_TYPE size);
+
+void external_flash_write(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE size);
+
+void external_flash_read(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE size);
+
+void external_flash_erase(coffee_page_t sector);
+
+#endif /* COFFEE_AVR_SDCARD */
 
 int coffee_file_test(void);
 #endif /* !COFFEE_ARCH_H */

@@ -900,3 +900,184 @@ void external_flash_erase(coffee_page_t sector) {
 */
 
 #endif /* COFFEE_AVR_EXTERNAL */
+
+#ifdef COFFEE_AVR_SDCARD
+#include "drv/fat/diskio.h"
+static uint8_t cfs_buffer[512];
+struct diskio_device_info *cfs_info = 0;
+
+void external_flash_write_page(coffee_page_t page, CFS_CONF_OFFSET_TYPE offset, uint8_t * buf, CFS_CONF_OFFSET_TYPE size) {
+	PRINTF("external_flash_write_page(page %lu, offset %lu, buf %p, size %lu) \n", page, offset, buf, size);
+
+	if( size < 1 ) {
+		return;
+	}
+
+	if( page > COFFEE_PAGES ) {
+		return;
+	}
+
+	// Now read the current content of that page
+	diskio_read_block( cfs_info, page, cfs_buffer );
+
+	watchdog_periodic();
+
+	// Copy over the new content
+	memcpy(cfs_buffer + offset, buf, size);
+
+	// And write the page again
+	diskio_write_block( cfs_info, page, cfs_buffer );
+
+	watchdog_periodic();
+
+	PRINTF("Page %lu programmed with %lu bytes (%lu new)\n", page, COFFEE_PAGE_SIZE, size);
+}
+
+void external_flash_write(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE size) {
+	PRINTF(">>>>> external_flash_write(addr %lu, buf %p, size %lu)\n", addr, buf, size);
+
+	if( addr > COFFEE_SIZE ) {
+		return;
+	}
+
+	// Which is the first page we will be programming
+	coffee_page_t current_page = addr / COFFEE_PAGE_SIZE;
+	CFS_CONF_OFFSET_TYPE written = 0;
+
+	while(written < size) {
+		// get the start address of the current page
+		CFS_CONF_OFFSET_TYPE page_start = current_page * COFFEE_PAGE_SIZE;
+		CFS_CONF_OFFSET_TYPE offset = 0;
+
+		if( addr > page_start ) {
+			// Frist page offset
+			offset = addr - page_start;
+		}
+
+		CFS_CONF_OFFSET_TYPE length = size - written;
+
+		if( length > (COFFEE_PAGE_SIZE - offset) ) {
+			length = COFFEE_PAGE_SIZE - offset;
+		}
+
+		external_flash_write_page(current_page, offset, buf + written, length);
+		written += length;
+		current_page++;
+	}
+
+#if DEBUG
+	int g;
+	printf("WROTE: ");
+	for(g=0; g<size; g++) {
+		printf("%02X ", buf[g] & 0xFF, buf[g] & 0xFF);
+	}
+	printf("\n");
+#endif
+}
+
+void external_flash_read_page(coffee_page_t page, CFS_CONF_OFFSET_TYPE offset, uint8_t *buf, CFS_CONF_OFFSET_TYPE size) {
+	PRINTF("external_flash_read_page(page %lu, offset %lu, buf %p, size %lu)\n", page, offset, buf, size );
+
+	if( page > COFFEE_PAGES ) {
+		return;
+	}
+
+	diskio_read_block( cfs_info, page, cfs_buffer );
+	memcpy(buf, cfs_buffer + offset, size);
+
+#if DEBUG
+	int g;
+	printf("READ: ");
+	for(g=0; g<size; g++) {
+		printf("%02X ", buf[g] & 0xFF, buf[g] & 0xFF);
+	}
+	printf("\n");
+#endif
+
+}
+
+void external_flash_read(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE size) {
+	PRINTF(">>>>> external_flash_read(addr %lu, buf %p, size %lu)\n", addr, buf, size );
+
+	if( size < 1 ) {
+		return;
+	}
+
+	if( addr > COFFEE_SIZE ) {
+		return;
+	}
+
+	// First of all: find out what the number of the page is
+	coffee_page_t current_page = addr / COFFEE_PAGE_SIZE;
+	CFS_CONF_OFFSET_TYPE read = 0;
+
+	while( read < size ) {
+		// get the start address of the current page
+		CFS_CONF_OFFSET_TYPE page_start = current_page * COFFEE_PAGE_SIZE;
+		CFS_CONF_OFFSET_TYPE offset = 0;
+
+		if( addr > page_start ) {
+			// Frist page offset
+			offset = addr - page_start;
+		}
+
+		CFS_CONF_OFFSET_TYPE length = size - read;
+
+		if( length > (COFFEE_PAGE_SIZE - offset) ) {
+			length = (COFFEE_PAGE_SIZE - offset);
+		}
+
+		external_flash_read_page(current_page, offset, buf + read, length);
+
+		PRINTF("Page %lu read with %lu bytes (offset %lu)\n", current_page, length, offset);
+
+		read += length;
+		current_page++;
+	}
+
+#if DEBUG
+	int g;
+	printf("READ: ");
+	for(g=0; g<size; g++) {
+		printf("%02X ", buf[g] & 0xFF, buf[g] & 0xFF);
+	}
+	printf("\n");
+#endif
+}
+
+void external_flash_erase(coffee_page_t page) {
+	if( page > COFFEE_PAGES ) {
+		return;
+	}
+
+	PRINTF("external_flash_erase(page %lu)\n", page);
+	memset(cfs_buffer, 0, 512);
+
+	diskio_write_block( cfs_info, page, cfs_buffer );
+	watchdog_periodic();
+}
+
+/*
+void external_flash_erase(coffee_page_t sector) {
+	if( sector > COFFEE_SECTORS ) {
+		return;
+	}
+
+	// This has to erase the contents of a whole sector
+	// AT45DB cannot directly delete a sector, we have to do it manually
+	PRINTF("external_flash_erase(sector %u)\n", sector);
+	CFS_CONF_OFFSET_TYPE h;
+
+	coffee_page_t start = sector * COFFEE_BLOCKS_PER_SECTOR;
+	coffee_page_t end = start + COFFEE_BLOCKS_PER_SECTOR;
+
+	for(h=start; h<end; h++) {
+		PRINTF("Deleting block %u\n", h);
+
+		at45db_erase_block(h);
+		watchdog_periodic();
+	}
+}
+*/
+
+#endif /* COFFEE_AVR_SDCARD */

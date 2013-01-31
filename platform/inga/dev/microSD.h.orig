@@ -1,5 +1,9 @@
 /*
+<<<<<<< HEAD:platform/inga/dev/microSD.h
  * Copyright (c) 2012, TU Braunschweig.
+=======
+ * Copyright (c) 2010, Institute of Operating Systems and Computer Networks (TU Brunswick).
+>>>>>>> FAT:platform/inga/interfaces/flash-microSD.h
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,6 +29,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+<<<<<<< HEAD:platform/inga/dev/microSD.h
+=======
+ *
+ * Author: Ulf Kulau <kulau@ibr.cs.tu-bs.de>
+ *         Christoph Peltz <peltz@ibr.cs.tu-bs.de>
+>>>>>>> FAT:platform/inga/interfaces/flash-microSD.h
  */
 
 /**
@@ -57,13 +67,27 @@
  * "big" SD-Cards and the microSD-Cards can be interfaced by SPI and use the same
  * Instruction set, so this interface can be used for both SD-Card types.</p>
  * @{
+<<<<<<< HEAD:platform/inga/dev/microSD.h
+=======
+ *
+ */
+
+/**
+ * \file
+ *		MicroSD Card interface definitions
+ * \author
+ * 		Original Source Code:
+ * 		Ulrich Radig
+ * 		Modified by:
+ *      Ulf Kulau <kulau@ibr.cs.tu-bs.de>
  *		Christoph Peltz <peltz@ibr.cs.tu-bs.de>
+>>>>>>> FAT:platform/inga/interfaces/flash-microSD.h
  */
 
 #ifndef FLASH_MICROSD_H_
 #define FLASH_MICROSD_H_
 
-#include "mspi.h"
+#include "../dev/mspi.h"
 #include <stdio.h>
 #include <util/delay.h>
 
@@ -163,12 +187,17 @@ uint8_t microSD_write_block(uint32_t addr, uint8_t *buffer);
  *
  * \return R1 response byte or 0xFF in case of read/write timeout
  */
+<<<<<<< HEAD:platform/inga/dev/microSD.h
+uint8_t microSD_write_cmd(uint8_t *cmd);
+
+/** @} */ // l3g4200d_interface
+/** @} */ // inga_device_driver
+=======
 uint8_t microSD_write_cmd(uint8_t *cmd, uint8_t *resp );
 uint16_t microSD_data_crc( uint8_t *data );
 uint8_t microSD_set_CRC( uint8_t enable );
 uint64_t microSD_get_card_size();
 uint32_t microSD_get_block_num();
-/** @} */ // l3g4200d_interface
-/** @} */ // inga_device_driver
+>>>>>>> FAT:platform/inga/interfaces/flash-microSD.h
 
 #endif /* FLASH_MICROSD_H_ */
