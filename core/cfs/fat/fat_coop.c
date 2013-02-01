@@ -44,7 +44,7 @@
  *      Christoph Peltz <peltz@ibr.cs.tu-bs.de>
  */
  
-#include "fat.h"
+#include "cfs-fat.h"
 #include "fat_coop.h"
 #include "watchdog.h"
 #include "fat-coop-arch.h"

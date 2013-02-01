@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Institute of Operating Systems and Computer Networks (TU Brunswick).
+ * Copyright (c) 2012, Institute of Operating Systems and Computer Networks (TU Braunschweig).
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -32,8 +32,9 @@
 /**
  * \addtogroup Device Interfaces
  * @{
- *
- * \defgroup diskio_layer DiskIO Abstraction Layer
+ */
+
+/** \defgroup diskio_layer DiskIO Abstraction Layer
  *
  *	\note This interface was inspired by the diskio-interface of the FatFS-Module.
  *
@@ -42,7 +43,6 @@
  * This abstraction layer enabled the filesystem drivers to do exactly that.</p>
  *
  * @{
- *
  */
 
 /**
@@ -91,23 +91,38 @@
  * Stores the necessary information to identify a device using the diskio-Library.
  */
 struct diskio_device_info {
-	/** Specifies the recognized type of the memory */
-	uint8_t type;
-	/** Number to identify device */
-	uint8_t number;
-	/** Will be ignored if PARTITION flag is not set in type,
-	 * otherwise tells which partition of this device is meant */
-	uint8_t partition;
-	/** Number of sectors on this device */
-	uint32_t num_sectors;
-	/** How big is one sector in bytes */
-	uint16_t sector_size;
-	/** If this is a Partition, this indicates which is the
-	 * first_sector belonging to this partition on this device */
-	uint32_t first_sector;
+  /** Specifies the recognized type of the memory */
+  uint8_t type;
+  /** Number to identify device */
+  uint8_t number;
+  /** Will be ignored if PARTITION flag is not set in type,
+   * otherwise tells which partition of this device is meant */
+  uint8_t partition;
+  /** Number of sectors on this device */
+  uint32_t num_sectors;
+  /** How big is one sector in bytes */
+  uint16_t sector_size;
+  /** If this is a Partition, this indicates which is the
+   * first_sector belonging to this partition on this device */
+  uint32_t first_sector;
 };
 
-void print_device_info( struct diskio_device_info *dev );
+/**
+ * Prints information about the specified device.
+ * 
+ * <b>Output Format:</b> \n
+ * DiskIO Device Info\n
+ * type = text \n
+ * number = X\n
+ * partition = X\n
+ * num_sectors = X\n
+ * sector_size = X\n
+ * first_sector = X
+
+ * \param *dev the pointer to the device info struct
+ */
+void print_device_info(struct diskio_device_info *dev);
+
 /**
  * Reads one block from the specified device and stores it in buffer.
  *
@@ -116,7 +131,7 @@ void print_device_info( struct diskio_device_info *dev );
  * \param *buffer buffer in which the data is written
  * \return DISKIO_SUCCESS on success, otherwise not 0 for an error
  */
-int diskio_read_block( struct diskio_device_info *dev, uint32_t block_address, uint8_t *buffer );
+int diskio_read_block(struct diskio_device_info *dev, uint32_t block_address, uint8_t *buffer);
 
 /**
  * Reads multiple blocks from the specified device.
@@ -129,7 +144,7 @@ int diskio_read_block( struct diskio_device_info *dev, uint32_t block_address, u
  * \param *buffer buffer in which the data is written
  * \return DISKIO_SUCCESS on success, otherwise not 0 for an error
  */
-int diskio_read_blocks( struct diskio_device_info *dev, uint32_t block_start_address, uint8_t num_blocks, uint8_t *buffer );
+int diskio_read_blocks(struct diskio_device_info *dev, uint32_t block_start_address, uint8_t num_blocks, uint8_t *buffer);
 
 /**
  * Writes a single block to the specified device
@@ -139,7 +154,7 @@ int diskio_read_blocks( struct diskio_device_info *dev, uint32_t block_start_add
  * \param *buffer buffer in which the data is stored
  * \return DISKIO_SUCCESS on success, !0 on error
  */
-int diskio_write_block( struct diskio_device_info *dev, uint32_t block_address, uint8_t *buffer );
+int diskio_write_block(struct diskio_device_info *dev, uint32_t block_address, uint8_t *buffer);
 
 /**
  * Writes multiple blocks to the specified device
@@ -150,7 +165,7 @@ int diskio_write_block( struct diskio_device_info *dev, uint32_t block_address, 
  * \param *buffer buffer where the data is stored
  * \return DISKIO_SUCCESS on success, !0 on error
  */
-int diskio_write_blocks( struct diskio_device_info *dev, uint32_t block_start_address, uint8_t num_blocks, uint8_t *buffer );
+int diskio_write_blocks(struct diskio_device_info *dev, uint32_t block_start_address, uint8_t num_blocks, uint8_t *buffer);
 
 /**
  * Returns the device-Database.
@@ -178,6 +193,9 @@ int diskio_detect_devices();
  * The functions will then use the default device to operate.
  * \param *dev the pointer to the device info, which will be the new default device
  */
-void diskio_set_default_device( struct diskio_device_info *dev );
+void diskio_set_default_device(struct diskio_device_info *dev);
 
 #endif
+
+/** @} */
+/** @} */

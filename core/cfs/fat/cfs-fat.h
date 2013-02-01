@@ -28,16 +28,16 @@
  *
  * Author: Christoph Peltz <peltz@ibr.cs.tu-bs.de>
  */
- 
+
 /**
  * \addtogroup Drivers
  * @{
  *
  * \defgroup fat_driver FAT Driver
  *
- * <p></p>
+ * Additional function for the FAT file system.
+ * 
  * @{
- *
  */
 
 /**
@@ -46,7 +46,7 @@
  * \author
  *      Christoph Peltz <peltz@ibr.cs.tu-bs.de>
  */
- 
+
 #ifndef _FAT_H_
 #define _FAT_H_
 
@@ -75,85 +75,110 @@
 #define FAT_FD_POOL_SIZE 5
 
 struct FAT_Info {
-	uint8_t type; /** Either FAT16, FAT32 or FAT_INVALID */
-	uint16_t BPB_BytesPerSec;
-	uint8_t BPB_SecPerClus;
-	uint16_t BPB_RsvdSecCnt;
-	uint8_t BPB_NumFATs;
-	uint16_t BPB_RootEntCnt;
-	uint32_t BPB_TotSec;
-	uint8_t BPB_Media;
-	uint32_t BPB_FATSz;
-	uint32_t BPB_RootClus; /** only valid for FAT32 */
+  uint8_t type; /** Either FAT16, FAT32 or FAT_INVALID */
+  uint16_t BPB_BytesPerSec;
+  uint8_t BPB_SecPerClus;
+  uint16_t BPB_RsvdSecCnt;
+  uint8_t BPB_NumFATs;
+  uint16_t BPB_RootEntCnt;
+  uint32_t BPB_TotSec;
+  uint8_t BPB_Media;
+  uint32_t BPB_FATSz;
+  uint32_t BPB_RootClus; /** only valid for FAT32 */
 };
 
 struct dir_entry {
-	uint8_t DIR_Name[11];
-	uint8_t DIR_Attr;
-	uint8_t DIR_NTRes;
-	uint8_t CrtTimeTenth;
-	uint16_t DIR_CrtTime;
-	uint16_t DIR_CrtDate;
-	uint16_t DIR_LstAccessDate;
-	uint16_t DIR_FstClusHI;
-	uint16_t DIR_WrtTime;
-	uint16_t DIR_WrtDate;
-	uint16_t DIR_FstClusLO;
-	uint32_t DIR_FileSize;
+  uint8_t DIR_Name[11];
+  uint8_t DIR_Attr;
+  uint8_t DIR_NTRes;
+  uint8_t CrtTimeTenth;
+  uint16_t DIR_CrtTime;
+  uint16_t DIR_CrtDate;
+  uint16_t DIR_LstAccessDate;
+  uint16_t DIR_FstClusHI;
+  uint16_t DIR_WrtTime;
+  uint16_t DIR_WrtDate;
+  uint16_t DIR_FstClusLO;
+  uint32_t DIR_FileSize;
 };
 
 struct file {
-	//metadata
-	/** Cluster Position on disk */
-	uint32_t cluster;
-	uint32_t dir_entry_sector;
-	uint16_t dir_entry_offset;
-	struct dir_entry dir_entry;
-	uint32_t nth_cluster;
-	uint32_t n;
+  //metadata
+  /** Cluster Position on disk */
+  uint32_t cluster;
+  uint32_t dir_entry_sector;
+  uint16_t dir_entry_offset;
+  struct dir_entry dir_entry;
+  uint32_t nth_cluster;
+  uint32_t n;
 };
 
 struct file_desc {
-	//cfs_offset_t offset;
-	uint32_t offset;
-	struct file *file;
-	uint8_t flags;
+  //cfs_offset_t offset;
+  uint32_t offset;
+  struct file *file;
+  uint8_t flags;
 };
 
-int mkfs_fat( struct diskio_device_info *dev );
-
-int fat_mkdir(char *);
-int fat_rmdir(char *);
+/**
+ * 
+ * @param 
+ * @return 
+ */
+int cfs_fat_rmdir(char *);
 
 /**
  * Tries to mount the defined device.
  *
  * \param dev The device on which a FAT-FS should be mounted.
- * \return 0 on success, 1 if the bootsector was not found or corrupted, 2 if the FAT-Type wasn't supported.
+ * \return 0 on success, 1 if the bootsector was not found or corrupted,
+ * 2 if the FAT-Type wasn't supported.
  */
-uint8_t fat_mount_device( struct diskio_device_info *dev );
+uint8_t cfs_fat_mount_device(struct diskio_device_info *dev);
 
 /**
  * Umounts the mounted device. Invalidates all file descriptors.
  * Syncs all FATs and flushes cached data.
  */
-void fat_umount_device();
+void cfs_fat_umount_device();
 
 /**
  * Populates the give FAT_Info with the mounted FAT_Info.
  *
  * \param *info The FAT_Info struct which should be populated.
  */
-void get_fat_info( struct FAT_Info *info );
+void cfs_fat_get_fat_info(struct FAT_Info *info);
 
 /**
  * Syncs every FAT with the first FAT. Can take much time.
  */
-void fat_sync_fats();
+void cfs_fat_sync_fats();
 
-void fat_flush();
-uint32_t fat_file_size(int fd);
+/**
+ * 
+ */
+void cfs_fat_flush();
 
-void print_cluster_chain( int fd );
-void print_file_info( int fd );
+/**
+ * 
+ * @param fd
+ * @return 
+ */
+uint32_t cfs_fat_file_size(int fd);
+
+/**
+ * 
+ * @param fd
+ */
+void print_cluster_chain(int fd);
+
+/**
+ * 
+ * @param fd
+ */
+void print_file_info(int fd);
+
 #endif
+
+/** @} */
+/** @} */

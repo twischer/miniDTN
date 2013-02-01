@@ -51,7 +51,7 @@
 #define FAT_COOP_H
 
 #include <stdint.h>
-#include "fat.h"
+#include "cfs-fat.h"
 
 #define FAT_COOP_BUFFER_SIZE 128
 #define FAT_COOP_QUEUE_SIZE 15
