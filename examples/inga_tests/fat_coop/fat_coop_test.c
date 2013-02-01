@@ -77,10 +77,10 @@ PROCESS_THREAD(hello_world_process, ev, data)
 	}
 
 	printf("Mounting device...");
-	fat_mount_device( info );
+	cfs_fat_mount_device( info );
 	printf("done\n\n");
 
-	get_fat_info( &fat );
+	cfs_fat_get_fat_info( &fat );
 	printf("FAT Info\n");
 	printf("\t type            = %u\n", fat.type);
 	printf("\t BPB_BytesPerSec = %u\n", fat.BPB_BytesPerSec);
@@ -229,7 +229,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 		cnt ++;
 	}
 
-	fat_umount_device();
+	cfs_fat_umount_device();
 
 	printf("PASS\n");
 	watchdog_stop();

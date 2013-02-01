@@ -26,7 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * Author: Wolf-Bastian Pšttner <poettner@ibr.cs.tu-bs.de>
+ * Author: Wolf-Bastian Poettner <poettner@ibr.cs.tu-bs.de>
  */
 
  /**
@@ -44,7 +44,7 @@
  * \file
  *		FAT driver Coop Additions definitions - Platform specific
  * \author
- *      Wolf-Bastian Pšttner <poettner@ibr.cs.tu-bs.de>
+ *      Wolf-Bastian Poettner <poettner@ibr.cs.tu-bs.de>
  */
 
 #ifndef FAT_COOP_ARCH_H

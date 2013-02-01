@@ -5,7 +5,7 @@
 #include "clock.h"
 
 #include "fat/diskio.h"           //tested
-#include "fat/fat.h"           //tested
+#include "fat/cfs-fat.h"           //tested
 
 #define FILE_SIZE 128
 #define LOOPS 1024
@@ -14,143 +14,149 @@
 PROCESS(hello_world_process, "Hello world process");
 AUTOSTART_PROCESSES(&hello_world_process);
 /*---------------------------------------------------------------------------*/
-void fail() {
-	printf("FAIL\n");
-	watchdog_stop();
-	while(1) ;
+void
+fail() {
+  printf("FAIL\n");
+  watchdog_stop();
+  while (1);
 }
 /*---------------------------------------------------------------------------*/
 static struct etimer timer;
 int cnt = 0;
-PROCESS_THREAD(hello_world_process, ev, data)
-{
-	uint8_t buffer[1024];
-	struct diskio_device_info *info = 0;
-	struct FAT_Info fat;
-	int fd;
-	int n;
-	int i;
-	int initialized = 0;
+PROCESS_THREAD(hello_world_process, ev, data) {
+  uint8_t buffer[1024];
+  struct diskio_device_info *info = 0;
+  struct FAT_Info fat;
+  int fd;
+  int n;
+  int i;
+  int initialized = 0;
 
-	PROCESS_BEGIN();
+  PROCESS_BEGIN();
 
-	etimer_set(&timer, CLOCK_SECOND * 2);
-	PROCESS_WAIT_UNTIL(etimer_expired(&timer));
+  etimer_set(&timer, CLOCK_SECOND * 2);
+  PROCESS_WAIT_UNTIL(etimer_expired(&timer));
 
-	while( !initialized ) {
-		printf("Detecting devices and partitions...");
-		while((i = diskio_detect_devices()) != DISKIO_SUCCESS) {
-			watchdog_periodic();
-		}
-		printf("done\n\n");
+  while (!initialized) {
+    printf("Detecting devices and partitions...");
+    while ((i = diskio_detect_devices()) != DISKIO_SUCCESS) {
+      watchdog_periodic();
+    }
+    printf("done\n\n");
 
-		info = diskio_devices();
-		for(i = 0; i < DISKIO_MAX_DEVICES; i++) {
-			print_device_info( info + i );
-			printf("\n");
+    info = diskio_devices();
+    for (i = 0; i < DISKIO_MAX_DEVICES; i++) {
+      print_device_info(info + i);
+      printf("\n");
 
-			if( (info + i)->type == (DISKIO_DEVICE_TYPE_SD_CARD | DISKIO_DEVICE_TYPE_PARTITION) ) {
-				info += i;
-				initialized = 1;
-				break;
-			}
-		}
-	}
+      if ((info + i)->type == (DISKIO_DEVICE_TYPE_SD_CARD | DISKIO_DEVICE_TYPE_PARTITION)) {
+        printf("MATCH\n");
+        info += i;
+        initialized = 1;
+        break;
+      }
+    }
+  }
 
-	printf("Mounting device...");
-	fat_mount_device( info );
-	printf("done\n\n");
+  printf("Mounting device...");
+  if (cfs_fat_mount_device(info) == 0) {
+    printf("done\n\n");
+  } else {
+    printf("failed\n\n");
+  }
 
-	get_fat_info( &fat );
-	printf("FAT Info\n");
-	printf("\t type            = %u\n", fat.type);
-	printf("\t BPB_BytesPerSec = %u\n", fat.BPB_BytesPerSec);
-	printf("\t BPB_SecPerClus  = %u\n", fat.BPB_SecPerClus);
-	printf("\t BPB_RsvdSecCnt  = %u\n", fat.BPB_RsvdSecCnt);
-	printf("\t BPB_NumFATs     = %u\n", fat.BPB_NumFATs);
-	printf("\t BPB_RootEntCnt  = %u\n", fat.BPB_RootEntCnt);
-	printf("\t BPB_TotSec      = %lu\n", fat.BPB_TotSec);
-	printf("\t BPB_Media       = %u\n", fat.BPB_Media);
-	printf("\t BPB_FATSz       = %lu\n", fat.BPB_FATSz);
-	printf("\t BPB_RootClus    = %lu\n", fat.BPB_RootClus);
-	printf("\n");
+  cfs_fat_get_fat_info(&fat);
+  printf("FAT Info\n");
+  printf("\t type            = %u\n", fat.type);
+  printf("\t BPB_BytesPerSec = %u\n", fat.BPB_BytesPerSec);
+  printf("\t BPB_SecPerClus  = %u\n", fat.BPB_SecPerClus);
+  printf("\t BPB_RsvdSecCnt  = %u\n", fat.BPB_RsvdSecCnt);
+  printf("\t BPB_NumFATs     = %u\n", fat.BPB_NumFATs);
+  printf("\t BPB_RootEntCnt  = %u\n", fat.BPB_RootEntCnt);
+  printf("\t BPB_TotSec      = %lu\n", fat.BPB_TotSec);
+  printf("\t BPB_Media       = %u\n", fat.BPB_Media);
+  printf("\t BPB_FATSz       = %lu\n", fat.BPB_FATSz);
+  printf("\t BPB_RootClus    = %lu\n", fat.BPB_RootClus);
+  printf("\n");
 
-	printf("Starting test...\n");
+  printf("Starting test...\n");
 
-	while(cnt < LOOPS) {
-		PROCESS_PAUSE();
+  diskio_set_default_device(info);
 
-		// Determine the filename
-		char b_file[8];
-		sprintf(b_file,"%u.bbb", cnt);
+  while (cnt < LOOPS) {
+    PROCESS_PAUSE();
 
-		// And open it
-		fd = cfs_open(b_file, CFS_WRITE);
+    // Determine the filename
+    char b_file[8];
+    sprintf(b_file, "%u.bbb", cnt);
 
-		// In case something goes wrong, we cannot save this file
-		if( fd == -1 ) {
-			printf("############# STORAGE: open for write failed\n");
-			fail();
-		}
+    // And open it
+    fd = cfs_open(b_file, CFS_WRITE);
 
-		for(i=0; i<FILE_SIZE; i++) {
-			buffer[i] = (cnt + i) % 0xFF;
-		}
-		// Open was successful, write has to be successful too since the size has been reserved
-		n = cfs_write(fd, buffer, FILE_SIZE);
-		cfs_close(fd);
+    // In case something goes wrong, we cannot save this file
+    if (fd == -1) {
+      printf("############# STORAGE: open for write failed\n");
+      fail();
+    }
 
-		if( n != FILE_SIZE ) {
-			printf("############# STORAGE: Only wrote %d bytes, wanted %d\n", n, FILE_SIZE);
-			fail();
-		}
+    for (i = 0; i < FILE_SIZE; i++) {
+      buffer[i] = (cnt + i) % 0xFF;
+    }
+    // Open was successful, write has to be successful too since the size has been reserved
+    n = cfs_write(fd, buffer, FILE_SIZE);
+    cfs_close(fd);
 
-		printf("\t%s written\n", b_file);
+    if (n != FILE_SIZE) {
+      printf("############# STORAGE: Only wrote %d bytes, wanted %d\n", n, FILE_SIZE);
+      fail();
+    }
 
-		// Determine the filename
-		sprintf(b_file,"%u.bbb", cnt);
+    printf("\t%s written\n", b_file);
 
-		// Open the bundle file
-		fd = cfs_open(b_file, CFS_READ);
-		if(fd == -1) {
-			// Could not open file
-			printf("############# STORAGE: could not open file %s\n", b_file);
-			fail();
-		}
+    // Determine the filename
+    sprintf(b_file, "%u.bbb", cnt);
 
-		memset(buffer, 0, FILE_SIZE);
+    // Open the bundle file
+    fd = cfs_open(b_file, CFS_READ);
+    if (fd == -1) {
+      // Could not open file
+      printf("############# STORAGE: could not open file %s\n", b_file);
+      fail();
+    }
 
-		// And now read the bundle back from flash
-		if (cfs_read(fd, buffer, FILE_SIZE) == -1){
-			printf("############# STORAGE: cfs_read error\n");
-			cfs_close(fd);
-			fail();
-		}
-		cfs_close(fd);
+    memset(buffer, 0, FILE_SIZE);
 
-		for(i=0; i<FILE_SIZE; i++) {
-			if( buffer[i] != (cnt + i) % 0xFF ) {
-				printf("############# STORAGE: verify error\n");
-				fail();
-			}
-		}
+    // And now read the bundle back from flash
+    if (cfs_read(fd, buffer, FILE_SIZE) == -1) {
+      printf("############# STORAGE: cfs_read error\n");
+      cfs_close(fd);
+      fail();
+    }
+    cfs_close(fd);
 
-		if( cfs_remove(b_file) == -1 ) {
-			printf("############# STORAGE: unable to remove %s\n", b_file);
-			fail();
-		}
+    for (i = 0; i < FILE_SIZE; i++) {
+      if (buffer[i] != (cnt + i) % 0xFF) {
+        printf("############# STORAGE: verify error\n");
+        fail();
+      }
+    }
 
-		printf("\t%s deleted\n", b_file);
+    if (cfs_remove(b_file) == -1) {
+      printf("############# STORAGE: unable to remove %s\n", b_file);
+      fail();
+    }
 
-		cnt ++;
-	}
+    printf("\t%s deleted\n", b_file);
 
-	fat_umount_device();
+    cnt++;
+  }
 
-	printf("PASS\n");
-	watchdog_stop();
-	while(1) ;
-                
-	PROCESS_END();
+  cfs_fat_umount_device();
+
+  printf("PASS\n");
+  watchdog_stop();
+  while (1);
+
+  PROCESS_END();
 }
 /*---------------------------------------------------------------------------*/
