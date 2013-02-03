@@ -22,11 +22,20 @@
 	#include "xmega_rtc.h"
 #endif
 
+
+#ifndef PLATFORM_CONF_RADIO
+	#define PLATFORM_RADIO 1
+#else
+	#define PLATFORM_RADIO PLATFORM_CONF_RADIO
+#endif
+
 // include drivers for this platform here because there are #ifdef's in the .h files that we need immedeately
 #include "xmega_clock.h"
 #include "xmega_interrupt.h"
 #include "xmega_powerreduction.h"
 #include "xmega_timer.h"
+#include "xmega_spi.h"
+// #include "xmega_adc.h"
 
 #define PLATFORM PLATFORM_AVR
 
@@ -174,7 +183,7 @@
 
 // RADIO_TX_POWER
 #ifndef RADIO_CONF_TX_POWER
-	#define RADIO_TX_POWER	255
+	#define RADIO_TX_POWER	0
 #else
 	#define RADIO_TX_POWER	RADIO_CONF_TX_POWER
 #endif
@@ -196,6 +205,12 @@
 	#define RADIO_PAN_ID	0xABCD
 #else
 	#define RADIO_PAN_ID	RADIO_CONF_TX_POWER
+#endif
+
+#ifndef RADIO_CONF_PRESCALER
+	#define RADIO_PRESCALER SPI_PRESCALER_DIV8_gc
+#else
+	#define RADIO_PRESCALER RADIO_CONF_PRESCALER
 #endif
 
 void platform_radio_init(void);

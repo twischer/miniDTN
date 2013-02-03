@@ -27,10 +27,8 @@
 #include <autostart.h>
 #include "rtimer-arch.h"
 
-// TESTING
 
-// Radioq
-
+// Radio
 #if RF230BB
 	#include "radio/rf230bb/rf230bb.h"
 	#include "net/mac/frame802154.h"
@@ -42,7 +40,6 @@
 
 #include "contiki-net.h"
 #include "contiki-lib.h"
-
 #include "net/rime.h"
 
 // NodeID
@@ -62,9 +59,11 @@ void platform_radio_init(void)
 	
 	uint8_t radio_tx_power = RADIO_TX_POWER;
 	uint8_t radio_channel = RADIO_CHANNEL;
-	uint8_t pan_id = RADIO_PAN_ID;
+	uint16_t pan_id = RADIO_PAN_ID;
 	uint16_t pan_addr = NODE_ID;
 	uint8_t ieee_addr[8] = {0,0,0,0,0,0,0,0};
+
+	printf("default_channel: %d\n", RADIO_CHANNEL);
 	
 	// Start radio and radio receive process
 	NETSTACK_RADIO.init();
@@ -99,19 +98,18 @@ void platform_radio_init(void)
 		printf("Radio Channel not in EEPROM - using default\n");
 	}
 	
-	
 	// IEEE ADDR
 	// if setting not set or invalid data - generate ieee_addr from node_id 
-	if(settings_check(SETTINGS_KEY_EUI64, 0) != true || settings_get(SETTINGS_KEY_EUI64, 0, &ieee_addr, (size_t*) sizeof(ieee_addr)) != SETTINGS_STATUS_OK)
+	if(settings_check(SETTINGS_KEY_EUI64, 0) != true || settings_get(SETTINGS_KEY_EUI64, 0, (void*)&ieee_addr, (size_t*) sizeof(ieee_addr)) != SETTINGS_STATUS_OK)
 	{
-		ieee_addr[0] = 0;
-		ieee_addr[1] = 0;
+		ieee_addr[0] = pan_addr & 0xFF;
+		ieee_addr[1] = (pan_addr >> 8) & 0xFF;
 		ieee_addr[2] = 0;
 		ieee_addr[3] = 0;
 		ieee_addr[4] = 0;
 		ieee_addr[5] = 0;
-		ieee_addr[6] = (pan_addr >> 8) & 0xFF;
-		ieee_addr[7] = pan_addr & 0xFF;
+		ieee_addr[6] = 0;
+		ieee_addr[7] = 0;
 		
 		printf("Radio IEEE Addr not in EEPROM - using default\n");
 	}
@@ -120,7 +118,7 @@ void platform_radio_init(void)
 	printf("node_id(pan_addr): 0x%X\n", pan_addr);
 	printf("radio_tx_power: 0x%X\n", radio_tx_power);
 	printf("radio_channel: 0x%X\n", radio_channel);
-	printf("ieee_addr: 0x%X\n", ieee_addr);
+	printf("ieee_addr: %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x\n", ieee_addr[0], ieee_addr[1], ieee_addr[2], ieee_addr[3], ieee_addr[4], ieee_addr[5], ieee_addr[6], ieee_addr[7]);
 	
 	rimeaddr_t addr = {{(pan_addr >> 8) & 0xFF, pan_addr & 0xFF}};
 	rimeaddr_set_node_addr(&addr);
@@ -133,6 +131,11 @@ void platform_radio_init(void)
 	
 	rf230_set_channel(radio_channel);
 	rf230_set_txpower(radio_tx_power);
+
+	// Copy NodeID to the link local address
+	#if UIP_CONF_IPV6
+	memcpy(&uip_lladdr.addr, &addr.u8, sizeof(rimeaddr_t));
+	#endif
 	
 	queuebuf_init();
 	NETSTACK_RDC.init();
@@ -192,7 +195,15 @@ void init(void)
 
 	ctimer_init();
 
+	//printf("RST.STATUS: %X\n", RST.STATUS);
+
+	#if PLATFORM_RADIO
+	// Disable Power Reduction for the SPI
+	PR.PRPC &= (~PR_SPI_bm);
+	// Init radio
 	platform_radio_init();
+	#endif
+	
 	// Enable Non Volatile Memory Power Reduction after we read from EEPROM
 	#if POWERREDUCTION_NVM
 	xmega_pr_nvm_enable();
@@ -211,7 +222,10 @@ void init(void)
 		process_start(&settings_delete_process, NULL);
 	#endif
 
-	// ....
+	#if UIP_CONF_IPV6
+	process_start(&tcpip_process, NULL);
+	#endif
+
 	
 	
 	

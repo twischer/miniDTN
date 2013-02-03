@@ -272,7 +272,7 @@ hal_init(void)
 	PORTC.DIR = (1 << SSPIN) | (1 << MOSIPIN) | (1 << SCKPIN) | (1 << RSTPIN) | (1 << SLPTRPIN); // configure output pins
 	PORTC.OUT |= (1 << SSPIN); // set !SS = 1
 	SPIC.INTCTRL = 0x2; /* set interrupt level to medium */
-	SPIC.CTRL |= SPI_CLK2X_bm | SPI_ENABLE_bm | SPI_MASTER_bm | SPI_MODE_0_gc | SPI_PRESCALER_DIV64_gc; /* Enable SPI module, master operation and double SPI Speed. */
+	SPIC.CTRL |= SPI_ENABLE_bm | SPI_MASTER_bm | SPI_MODE_0_gc | RADIO_PRESCALER; /* Enable SPI module, master operation and double SPI Speed. */
 	
 	/*TIMER1 Specific Initialization.*/
 	//TCCR1B = HAL_TCCR1B_CONFIG;       /* Set clock prescaler */
