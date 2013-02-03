@@ -137,9 +137,9 @@ static rs232_t rs232_ports[1] = {
   }
 };
 #elif defined (__AVR_ATxmega256A3__) || defined (__AVR_ATxmega256A3B__)
-// XMEGA has 3 UARTS Ports
+// XMEGA has multiple USARTs Ports
 
-static rs232_t rs232_ports[1] = {
+static rs232_t rs232_ports[RS232_COUNT] = {
   {   // UART0
     &USARTE0.DATA,	// udr
     &USARTE0.BAUDCTRLB,	// ubrrh
@@ -149,7 +149,18 @@ static rs232_t rs232_ports[1] = {
     &USARTE0.CTRLC,	// ucsrc
     0,		// txwait
     NULL,	// callback
-    &USARTE0.STATUS // ust
+    &USARTE0.STATUS, // ust
+  },
+  {   // UART0
+    &USARTF0.DATA,	// udr
+    &USARTF0.BAUDCTRLB,	// ubrrh
+    &USARTF0.BAUDCTRLA,	// ubrrl
+    &USARTF0.CTRLA,	// ucsra
+    &USARTF0.CTRLB,	// ucsrb	
+    &USARTF0.CTRLC,	// ucsrc
+    0,		// txwait
+    NULL,	// callback
+    &USARTF0.STATUS // ust
   }
 };
 
@@ -195,20 +206,38 @@ ISR(USART1_RX_vect)
 
 #elif defined(__AVR_XMEGA__)
 /*---------------------------------------------------------------------------*/
-ISR(USARTC0_TXC_vect)
+ISR(USARTE0_TXC_vect)
 {
-  rs232_ports[RS232_PORT_0].txwait = 0;
+  rs232_ports[RS232_USARTE0].txwait = 0;
 }
 
 /*---------------------------------------------------------------------------*/
-ISR(USARTC0_RXC_vect)
+ISR(USARTE0_RXC_vect)
 {
   unsigned char c;
 
-  c = *(rs232_ports[RS232_PORT_0].udr);
+  c = *(rs232_ports[RS232_USARTE0].udr);
 
-  if(rs232_ports[RS232_PORT_0].input_handler != NULL) {
-    rs232_ports[RS232_PORT_0].input_handler(c);
+  if(rs232_ports[RS232_USARTE0].input_handler != NULL) {
+    rs232_ports[RS232_USARTE0].input_handler(c);
+  }
+}
+
+/*---------------------------------------------------------------------------*/
+ISR(USARTF0_TXC_vect)
+{
+  rs232_ports[RS232_USARTF0].txwait = 0;
+}
+
+/*---------------------------------------------------------------------------*/
+ISR(USARTF0_RXC_vect)
+{
+  unsigned char c;
+
+  c = *(rs232_ports[RS232_USARTF0].udr);
+
+  if(rs232_ports[RS232_USARTF0].input_handler != NULL) {
+    rs232_ports[RS232_USARTF0].input_handler(c);
   }
 }
 
@@ -311,29 +340,30 @@ rs232_init(uint8_t port, uint16_t bd, uint8_t ffmt)
 		*(rs232_ports[port].ucsrc) = ffmt;
 		*(rs232_ports[port].ucsrb) = USART_RECEIVER_ENABLE | USART_TRANSMITTER_ENABLE;
 */
-	if(port == 0 || port == 1)
+	if(port == 0)
 	{
 		PORTE.OUTSET = PIN3_bm;
 		PORTE.DIRSET = PIN3_bm;
 	}
-	//USARTE0.BAUDCTRLB = 0x00;			// BSCALE = 0
-	//USARTE0.BAUDCTRLA = 12;
-	//USARTE0.BAUDCTRLB = 0xCC;			// BSCALE = 0
-	//USARTE0.BAUDCTRLA = 0xF5;
+	else if(port == 1)
+	{
+		PORTF.OUTSET = PIN3_bm;
+		PORTF.DIRSET = PIN3_bm;
+	}
 
-	// printf("High: %X Low: %X\n", (uint8_t) (bd>>8), (uint8_t) bd );
-
-	*(rs232_ports[port].ubrrh) = (uint8_t) (bd>>8);
+	*(rs232_ports[port].ubrrh) = (uint8_t) (bd >> 8);
 	*(rs232_ports[port].ubrrl) = (uint8_t) (bd & 0xFF);
 
-	USARTE0.CTRLA = 0;				// no interrupts please
-	USARTE0.CTRLC = 0x03;			// async, no parity, 8 bit data, 1 stop bit
-	USARTE0.CTRLB = USART_TXEN_bm;
+	//USARTE0.CTRLA = 0;				// no interrupts please
+	//USARTE0.CTRLC = 0x03;			// async, no parity, 8 bit data, 1 stop bit
+	//USARTE0.CTRLB = USART_TXEN_bm;
 
 	  //*(rs232_ports[port].ucsra) = 0x3C; // enable high level interrupt for RX and TX
-		//*(rs232_ports[port].ucsra) = 0; // disable interrupts
-		//*(rs232_ports[port].ucsrc) = ffmt;
-		//*(rs232_ports[port].ucsrb) = USART_RECEIVER_ENABLE | USART_TRANSMITTER_ENABLE;
+	*(rs232_ports[port].ucsra) = 0; // disable interrupts
+	*(rs232_ports[port].ucsrc) = 0x03;
+	*(rs232_ports[port].ucsrb) = /*USART_RECEIVER_ENABLE | */USART_TRANSMITTER_ENABLE;
+	rs232_ports[port].txwait = 0;
+	rs232_ports[port].input_handler = NULL;
 	
 	#else
 		*(rs232_ports[port].ubrrh) = (uint8_t)(bd>>8);
@@ -353,10 +383,6 @@ rs232_init(uint8_t port, uint16_t bd, uint8_t ffmt)
 
 	  rs232_ports[port].input_handler = NULL;
 	#endif
-
-  
-
-  
 }
 
 void
@@ -398,8 +424,9 @@ void
 rs232_send(uint8_t port, unsigned char c)
 {
   #ifdef __AVR_XMEGA__
-  while ( !( USARTE0.STATUS & USART_DREIF_bm) );
-  USARTE0.DATA = c;
+  while ( !( *(rs232_ports[port].ust) & USART_DREIF_bm) );
+  // USARTE0.DATA = c;
+	*(rs232_ports[port].udr) = c;
   #else
   	while (!(*(rs232_ports[port].ucsra) & (1 << UDRE1))) { }
 *(rs232_ports[port].udr) = c;
@@ -440,4 +467,10 @@ int rs232_stdout_putchar(char c, FILE *stream)
 void rs232_redirect_stdout (uint8_t port) {
   stdout_rs232_port = port;
   stdout = &rs232_stdout;
+}
+
+void rs232_set_baud(uint16_t bd)
+{
+	*(rs232_ports[stdout_rs232_port].ubrrh) = (uint8_t) (bd >> 8);
+	*(rs232_ports[stdout_rs232_port].ubrrl) = (uint8_t) (bd & 0xFF);
 }

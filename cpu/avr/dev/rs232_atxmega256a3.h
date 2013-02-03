@@ -51,18 +51,36 @@
 /******************************************************************************/
 
 #define RS232_0 USARTE0
+#define RS232_1 USARTF0
 
 #define RS232_USARTE0 0
+#define RS232_USARTF0 1
 
 #define RS232_PORT_0 0
+#define RS232_PORT_1 1
 
-#define RS232_COUNT 1
+#define RS232_COUNT 2
 
 /******************************************************************************/
 /***   Baud rates                                                             */
 /******************************************************************************/
 
-#if (F_CPU == 32000000UL)
+#if (F_CPU == 48000000UL)
+	#define USART_BAUD_2400 0x04E1
+	#define USART_BAUD_4800 0x0270
+	#define USART_BAUD_9600 0xD9BC
+	#define USART_BAUD_14400 0xCCF5
+	#define USART_BAUD_19200 0xC9B4
+	#define USART_BAUD_28800 0xBCE5
+	#define USART_BAUD_38400 0xB9A4
+	#define USART_BAUD_57600 0xACC5
+	#define USART_BAUD_76800 0xA984
+	#define USART_BAUD_115200 0x9C85
+	#define USART_BAUD_230400 0x9603
+	#define USART_BAUD_250000 0x000B
+	#define USART_BAUD_500000 0x0005
+	#define USART_BAUD_1000000 0x0002
+#elif (F_CPU == 32000000UL)
 /* Single speed operation (U2X = 0)*/
 	#define USART_BAUD_2400 0x0340
 	#define USART_BAUD_4800 0xDCFD
@@ -78,6 +96,36 @@
 	#define USART_BAUD_250000 0x0007
 	#define USART_BAUD_500000 0x0003
 	#define USART_BAUD_1000000 0x0001
+#elif (F_CPU == 18000000UL)
+	#define USART_BAUD_2400 0xDE9E
+	#define USART_BAUD_4800 0xCE96
+	#define USART_BAUD_9600 0xBE86
+	#define USART_BAUD_14400 0xB9A4
+	#define USART_BAUD_19200 0xAE66
+	#define USART_BAUD_28800 0xA984
+	#define USART_BAUD_38400 0x9E26
+	#define USART_BAUD_57600 0x9944
+	#define USART_BAUD_76800 0x96D3
+	#define USART_BAUD_115200 0x9462
+	#define USART_BAUD_230400 0x91F1
+	#define USART_BAUD_250000 0x91C0
+	#define USART_BAUD_500000 0x90A0
+	#define USART_BAUD_1000000 0x9010
+#elif (F_CPU == 20000000UL)
+	#define USART_BAUD_2400 0xE81F
+	#define USART_BAUD_4800 0xD81B
+	#define USART_BAUD_9600 0xC813
+	#define USART_BAUD_14400 0xBABA
+	#define USART_BAUD_19200 0xB803
+	#define USART_BAUD_28800 0xAA9A
+	#define USART_BAUD_38400 0x9FC7
+	#define USART_BAUD_57600 0x9A5A
+	#define USART_BAUD_76800 0x97A3
+	#define USART_BAUD_115200 0x94ED
+	#define USART_BAUD_230400 0x9236
+	#define USART_BAUD_250000 0x0004
+	#define USART_BAUD_500000 0x90C0
+	#define USART_BAUD_1000000 0x9020
 #elif (F_CPU == 16000000UL)
 /* Single speed operation (U2X = 0)*/
 	#define USART_BAUD_2400 0xDCFD
@@ -94,6 +142,21 @@
 	#define USART_BAUD_250000 0x0003
 	#define USART_BAUD_500000 0x0001
 	#define USART_BAUD_1000000 0x0001
+#elif (F_CPU == 12000000UL)
+	#define USART_BAUD_2400 0xD9BC
+	#define USART_BAUD_4800 0xC9B4
+	#define USART_BAUD_9600 0xB9A4
+	#define USART_BAUD_14400 0xACC5
+	#define USART_BAUD_19200 0xA984
+	#define USART_BAUD_28800 0x9C85
+	#define USART_BAUD_38400 0x9944
+	#define USART_BAUD_57600 0x9603
+	#define USART_BAUD_76800 0x9462
+	#define USART_BAUD_115200 0x92C1
+	#define USART_BAUD_230400 0x9121
+	#define USART_BAUD_250000 0x0002
+	#define USART_BAUD_500000 0x9040
+	#define USART_BAUD_1000000 0x9040
 #elif (F_CPU == 8000000UL)
 /* Single speed operation (U2X = 0)*/
 	#define USART_BAUD_2400 0xCCF5
@@ -110,6 +173,36 @@
 	#define USART_BAUD_250000 0x0001
 	#define USART_BAUD_500000 0x0001
 	#define USART_BAUD_1000000 0x0001
+#elif (F_CPU == 6000000UL)
+	#define USART_BAUD_2400 0xC9B4
+	#define USART_BAUD_4800 0xB9A4
+	#define USART_BAUD_9600 0xA984
+	#define USART_BAUD_14400 0x9C85
+	#define USART_BAUD_19200 0x9944
+	#define USART_BAUD_28800 0x9603
+	#define USART_BAUD_38400 0x9462
+	#define USART_BAUD_57600 0x92C1
+	#define USART_BAUD_76800 0x91F1
+	#define USART_BAUD_115200 0x9121
+	#define USART_BAUD_230400 0x9050
+	#define USART_BAUD_250000 0x9040
+	#define USART_BAUD_500000 0x9040
+	#define USART_BAUD_1000000 0x9040
+#elif (F_CPU == 4000000UL)
+	#define USART_BAUD_2400 0xBCE5
+	#define USART_BAUD_4800 0xACC5
+	#define USART_BAUD_9600 0x9C85
+	#define USART_BAUD_14400 0x982E
+	#define USART_BAUD_19200 0x9603
+	#define USART_BAUD_28800 0x93D7
+	#define USART_BAUD_38400 0x92C1
+	#define USART_BAUD_57600 0x91AC
+	#define USART_BAUD_76800 0x9121
+	#define USART_BAUD_115200 0x9096
+	#define USART_BAUD_230400 0x900B
+	#define USART_BAUD_250000 0x900B
+	#define USART_BAUD_500000 0x900B
+	#define USART_BAUD_1000000 0x900B
 #elif (F_CPU == 2000000UL)
 	#define USART_BAUD_2400 0xACC5
 	#define USART_BAUD_4800 0x9C85

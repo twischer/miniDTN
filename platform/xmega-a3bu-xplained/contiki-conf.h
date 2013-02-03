@@ -37,15 +37,7 @@
 #include "xmega_spi.h"
 // #include "xmega_adc.h"
 
-#define PLATFORM PLATFORM_AVR
-
-//#define __STDC_HOSTED__ 1
-
-#define CCIF
-#define CLIF
-
-// This is for serial line IP communication
-#define SLIP_PORT RS232_PORT_0
+/*************************************************************************/
 
 #define PLATFORM_HAS_LEDS	1
 
@@ -213,6 +205,20 @@
 	#define RADIO_PRESCALER RADIO_CONF_PRESCALER
 #endif
 
+/*************************************************************************/
+
+// #define RTIMER_ARCH_PRESCALER 1
+
 void platform_radio_init(void);
+void platform_enable_clockout(void);
+
+/*************************************************************************/
+
+#define PLATFORM PLATFORM_AVR
+#define CCIF
+#define CLIF
+
+// This is for serial line IP communication
+#define SLIP_PORT RS232_PORT_0
 
 #endif /* __CONTIKI_CONF_H__ */

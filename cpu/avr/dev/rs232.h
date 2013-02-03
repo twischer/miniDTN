@@ -172,4 +172,8 @@ rs232_send(uint8_t port, unsigned char c);
 void
 rs232_redirect_stdout (uint8_t port);
 
+void 
+
+s232_set_baud(uint16_t bd);
+
 #endif /* __RS232_H__ */

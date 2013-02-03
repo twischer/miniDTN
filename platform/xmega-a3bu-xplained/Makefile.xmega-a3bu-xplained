@@ -24,10 +24,10 @@ CONTIKI_PLAT_DEFS = -DF_CPU=48000000UL -DAUTO_CRC_PADDING=2 -DAUTOSTART_ENABLE -
 
 #CFLAGS += -std=c99
 
-AVRDUDE_OPTIONS=-V
+AVRDUDE_OPTIONS=-v
 
 login:
-	screen /dev/ttyUSB0 9600
+	screen /dev/ttyUSB0 115200
 
 %.upload: %.hex
 	avrdude $(AVRDUDE_OPTIONS) -p $(MCU) -P $(PORT) $(AVRDUDE_PROGRAMMER) -U flash:w:$<:a
