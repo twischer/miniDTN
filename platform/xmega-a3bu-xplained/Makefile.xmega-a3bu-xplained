@@ -17,9 +17,10 @@ PORT = usb
 CONTIKI_TARGET_DIRS = . dev/
 CONTIKI_MAIN=contiki-main
 CONTIKI_TARGET_MAIN = ${CONTIKI_CORE}.o
-CONTIKI_TARGET_SOURCEFILES += contiki-main.c rtimer-arch.c xmega_interrupt.c xmega_clock.c
-# PROG_TYPES_COMPAT because prog_char is deprecated 
-CONTIKI_PLAT_DEFS = -DF_CPU=8000000UL -DAUTO_CRC_PADDING=2 -DAUTOSTART_ENABLE -D__PROG_TYPES_COMPAT__=1
+CONTIKI_TARGET_SOURCEFILES += contiki-main.c rtimer-arch.c xmega_interrupt.c xmega_clock.c xmega_timer.c nodeid.c xmega_timer.c xmega_powerreduction.c xmega_rtc.c xmega_usart.c
+
+# PROG_TYPES_COMPAT because prog_char is deprecated in rs232 driver
+CONTIKI_PLAT_DEFS = -DF_CPU=48000000UL -DAUTO_CRC_PADDING=2 -DAUTOSTART_ENABLE -D__PROG_TYPES_COMPAT__=1
 
 #CFLAGS += -std=c99
 

@@ -145,6 +145,9 @@ void platform_radio_init(void)
 void init(void)
 {
 	cli();
+
+	// Init here because we might disable some PR afterwards
+	xmega_powerreduction_enable();
 	
 	// enable High, Med and Low interrupts
 	xmega_interrupt_enable(PMIC_HILVLEN_bm | PMIC_MEDLVLEN_bm | PMIC_LOLVLEN_bm);
@@ -156,9 +159,12 @@ void init(void)
 	clock_init();
 
 	// init RS232
-	rs232_init(RS232_PORT_0, USART_BAUD_9600, USART_PARITY_NONE | USART_STOP_BITS_1 | USART_DATA_BITS_8);
- 	rs232_redirect_stdout(RS232_PORT_0);
-
+	// Disable PR for Port first
+	// PORT0 = E, PORT1 = F
+	PR.PRPF &= (~PR_USART0_bm);
+	// actual init
+	rs232_init(RS232_PORT_1, USART_BAUD_115200, USART_PARITY_NONE | USART_STOP_BITS_1 | USART_DATA_BITS_8);
+	rs232_redirect_stdout(RS232_PORT_1);
 	// watchdog
 	watchdog_init();
 	watchdog_start();
@@ -175,6 +181,10 @@ void init(void)
 	ctimer_init();
 
 	platform_radio_init();
+	// Enable Non Volatile Memory Power Reduction after we read from EEPROM
+	#if POWERREDUCTION_NVM
+	xmega_pr_nvm_enable();
+	#endif
 
 	// printf("Welcome to Contiki.XMega | F_CPU = %d\n", (unsigned long) F_CPU);
 
