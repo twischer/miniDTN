@@ -47,7 +47,6 @@
 
 #include "sys/rtimer.h"
 #include "contiki.h"
-#include "avr/io.h"
 
 #define DEBUG 0
 #if DEBUG

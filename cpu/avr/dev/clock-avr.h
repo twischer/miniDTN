@@ -287,7 +287,16 @@
   TIMSK = _BV (OCIE2);
 #elif defined(__AVR_XMEGA__)
 
-#define AVR_OUTPUT_COMPARE_INT TCC0_OVF_vect
+#include "contiki-conf.h"
+#include "xmega_timer.h"
+
+// If XMEGA_TIMER_RTC is not defined, we use TCC0
+#if (!defined(XMEGA_TIMER_RTC) || XMEGA_TIMER_RTC == 1)
+	#define AVR_OUTPUT_COMPARE_INT TCC0_OVF_vect
+// Else we use RTC OVF only, if we are not using the event system
+#else
+	#define AVR_OUTPUT_COMPARE_INT RTC_COMP_vect
+#endif
 
 #define OCRSetup() \
 	TCC0.PER = TIMER_TOP;						\

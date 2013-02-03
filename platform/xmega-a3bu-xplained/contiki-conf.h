@@ -5,6 +5,23 @@
 #include <stdint.h>
 #include <avrdef.h>
 
+// Only when RTC is defined (--> On Battery Backups we still use the timer)
+#ifdef RTC
+	// Defining this constant will cause the RTC to be used instead of a HW timer
+	// Setting this constant to 0 will use the RTC compare interrupt directly
+	// Setting this constant to 1 will use an event channel for timer source
+	#define XMEGA_TIMER_RTC 0
+
+	// Enables Clock Output on PortD Pin7
+	#define PLATFORM_CLOCKOUT_D7 1
+	
+	// Force PowerReduction for the RTC to be off
+	#undef POWERREDUCTION_CONF_RTC
+	#define POWERREDUCTION_CONF_RTC 0
+
+	#include "xmega_rtc.h"
+#endif
+
 // include drivers for this platform here because there are #ifdef's in the .h files that we need immedeately
 #include "xmega_clock.h"
 #include "xmega_interrupt.h"

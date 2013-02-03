@@ -44,27 +44,34 @@
  * Timer1 is used if Timer3 is not available.
  */
 
-#ifndef RTIMER_ARCH_PRESCALER
-	#define RTIMER_ARCH_PRESCALER 1024UL
-#endif
-
-#if RTIMER_ARCH_PRESCALER
-	#define RTIMER_ARCH_SECOND (F_CPU/RTIMER_ARCH_PRESCALER)
-#else
-	#define RTIMER_ARCH_SECOND 0
-#endif
-
-
 #if defined (__AVR_ATxmega256A3U__) || defined (__AVR_ATxmega256A3__)
-	#define rtimer_arch_now() (RTC_CNT)
+	#include "xmega_rtc.h"
+	#define RTIMER_ARCH_PRESCALER 1
+	#define RTIMER_ARCH_SECOND 1023UL
+	#define rtimer_arch_now() (RTC.CNT)
 #elif defined(__AVR_ATxmega256A3B__) || defined(__AVR_ATxmega256A3BU__)
+	#include "xmega_rtc.h"
+	#define RTIMER_ARCH_PRESCALER 1
+	#define RTIMER_ARCH_SECOND 1023UL
 	#define rtimer_arch_now() (RTC32.CNT)
-#elif defined(TCNT3)
-	#define rtimer_arch_now() (TCNT3)
-#elif RTIMER_ARCH_PRESCALER
-	#define rtimer_arch_now() (TCNT1)
 #else
-	#define rtimer_arch_now() (0)
-#endif
+	#ifndef RTIMER_ARCH_PRESCALER
+		#define RTIMER_ARCH_PRESCALER 1024UL
+	#endif
+
+	#if RTIMER_ARCH_PRESCALER
+		#define RTIMER_ARCH_SECOND (F_CPU/RTIMER_ARCH_PRESCALER)
+	#else
+		#define RTIMER_ARCH_SECOND 0
+	#endif
+	
+	#if defined(TCNT3)
+		#define rtimer_arch_now() (TCNT3)
+	#elif RTIMER_ARCH_PRESCALER
+		#define rtimer_arch_now() (TCNT1)
+	#else
+		#define rtimer_arch_now() (0)
+	#endif
+#endif /* XMEGA */
 
 #endif /* __RTIMER_ARCH_H__ */

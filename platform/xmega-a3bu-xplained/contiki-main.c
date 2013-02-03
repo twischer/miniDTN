@@ -155,9 +155,6 @@ void init(void)
 	// init clock
 	xmega_clock_init();
 	
-	// init the timer
-	clock_init();
-
 	// init RS232
 	// Disable PR for Port first
 	// PORT0 = E, PORT1 = F
@@ -165,12 +162,27 @@ void init(void)
 	// actual init
 	rs232_init(RS232_PORT_1, USART_BAUD_115200, USART_PARITY_NONE | USART_STOP_BITS_1 | USART_DATA_BITS_8);
 	rs232_redirect_stdout(RS232_PORT_1);
+	
+	// init the timer only when we have a batterybackup system, else we use 1kHz from RTC
+	#ifdef RTC32
+	PR.PRPC &= (~PR_TC0_bm);
+	clock_init();
+	#endif
+	
 	// watchdog
 	watchdog_init();
 	watchdog_start();
 
-	// rtimer	
+	// rtimer (init only when RTC is available) if so we use it as etimer source
+	#ifdef RTC
 	rtimer_init();
+	#endif
+
+	// Event System used for Timer
+	#if defined(XMEGA_TIMER_RTC) && XMEGA_TIMER_RTC == 1
+	PR.PRGEN &= (~PR_EVSYS_bm);
+	EVSYS.CH0MUX = (1 << 3); // Use RTC overflow interrupt as Channel 0 Source
+	#endif
 	
 	// Initialize process subsystem
 	process_init();

@@ -88,8 +88,6 @@ extern uint8_t debugflowsize,debugflow[DEBUGFLOWSIZE];
 #endif
 
 /*---------------------------------------------------------------------------*/
-
-// This is XMega specific!!
 #if defined(__AVR_ATxmega256A3__) || defined(__AVR_ATxmega256A3U__)
 ISR(RTC_OVF_vect)
 {
@@ -144,49 +142,23 @@ rtimer_arch_init(void)
   cli ();
 
 #if defined(__AVR_ATxmega256A3__) || defined(__AVR_ATxmega256A3U__)
-	/*
-	OSC.CTRL |= OSC_RC32KEN_bm;
-	do {
-	// Wait for the 32kHz oscillator to stabilize.
-	} while ( ( OSC.STATUS & OSC_RC32KRDY_bm ) == 0);
-	// Set internal 32kHz oscillator as clock source for RTC. (scaled down to 1024)
-	CLK.RTCCTRL = CLK_RTCSRC_RCOSC_gc | CLK_RTCEN_bm;
+	xmega_rtc_rcosc_enable();
+	
+	xmega_rtc_wait_sync_busy();
 
-	// Write 1 to clear existing timer function flags
-	RTC.INTFLAGS |= 0x02;
-	RTC.INTCTRL   = 0x00;
-
-	//wait for CNT update and sync
-	RTC.CNT = 0x0000;
-	while (RTC.STATUS & RTC_SYNCBUSY_bm) {;}
-	// start the clock, no prescaler (was 1024) 
-	RTC.CTRL = RTC_PRESCALER_DIV1_gc;
-	*/
+	xmega_rtc_set_per(31);
+	xmega_rtc_set_comp(31);
+	xmega_rtc_set_cnt(0);
+	
+	// DIV256
+	xmega_rtc_set_prescaler(RTC_PRESCALER_DIV1_gc);
+	
+	// Use both interrupts here. Overflow interrupt will be used directly for rtimer - compare interrupt is used for contiki timer
+	xmega_rtc_set_interrupt_levels(RTC_OVFINTLVL_LO_gc, RTC_COMPINTLVL_LO_gc);
+	
+	xmega_rtc_wait_sync_busy();
 #elif defined(__AVR_ATxmega256A3BU__) || defined(__AVR_ATxmega256A3B__)
-	// enable internal 32KHz oscillator
-	OSC.CTRL |= OSC_RC32KEN_bm;
-	do {
-	// Wait for the 32kHz oscillator to stabilize.
-	} while ( ( OSC.STATUS & OSC_RC32KRDY_bm ) == 0);
-	
-	// Set internal 32kHz oscillator as clock source for RTC.
-	CLK.RTCCTRL = CLK_RTCSRC_TOSC32_gc | CLK_RTCEN_bm;
-
-
- 	// Clear Interrupts (p. 229)
-	RTC32.INTFLAGS |= 0x02;
-	// Set Interrupt Level (p. 229)
-	RTC32.INTCTRL   = RTC32_OVFINTLVL_LO_gc; // 01 = low, 10 = mid, 11 = high level
-
-	// wait for CNT update and sync
-	RTC32.CNT = 0x0000;
-	// Start synchronisation between CNRT
-	RTC32.SYNCCTRL |= 0x10;
-
-	while (RTC32.SYNCCTRL & 0x10);
-	
-	// start the clock, no prescaler (1024)
-	RTC32.CTRL |= RTC32_ENABLE_bm; // enable 32 Bit RTC
+	#warning RTC NOT IMPLEMENTED
 #elif defined(TCNT3)
 
   /* Disable all timer functions */
