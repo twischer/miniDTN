@@ -55,6 +55,9 @@
 #elif defined (__AVR_ATmega8__) || defined (__AVR_ATmega8515__) \
    || defined (__AVR_ATmega16__) || defined (__AVR_ATmega32__)
 #include "dev/rs232_atmega32.h"
+// This is MCU specific, no general XMega file here
+#elif defined (__AVR_ATxmega256A3__) || defined (__AVR_ATxmega256A3B__) 
+#include "dev/rs232_atxmega256a3.h"
 #else
 #error "Please implement a rs232 header for your MCU (or set the MCU type \
 in contiki-conf.h)."
@@ -76,7 +79,7 @@ in contiki-conf.h)."
  *             number of stop and data bits, ...
  */
 void
-rs232_init (uint8_t port, uint8_t bd, uint8_t ffmt);
+rs232_init (uint8_t port, uint16_t bd, uint8_t ffmt);
 
 /**
  * \brief      Set an input handler for incoming RS232 data
@@ -168,5 +171,9 @@ rs232_send(uint8_t port, unsigned char c);
  */
 void
 rs232_redirect_stdout (uint8_t port);
+
+void 
+
+s232_set_baud(uint16_t bd);
 
 #endif /* __RS232_H__ */

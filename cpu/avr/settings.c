@@ -259,6 +259,67 @@ settings_status_t
 settings_delete(settings_key_t key,uint8_t index) {
 	// Requires the settings store to be shifted. Currently unimplemented.
 	// TODO: Writeme!
+
+	settings_status_t ret = SETTINGS_STATUS_NOT_FOUND;
+	eeprom_addr_t current_item = SETTINGS_TOP_ADDR;
+	eeprom_addr_t tmp_addr;
+	uint8_t	tmp_data;
+	uint16_t tmp_offset;
+	uint8_t shift_amount = 0;
+
+	for(current_item=SETTINGS_TOP_ADDR;settings_is_item_valid_(current_item);current_item=settings_next_item_(current_item))
+	{
+		if(settings_get_key_(current_item)==key)
+		{
+			if(index) // skip as long as we did not reach the index
+			{
+				index--;
+				continue;
+			}
+
+			shift_amount = (current_item - settings_get_value_addr_(current_item) - 1) + settings_get_value_length_(current_item);
+
+			// printf("base address: %X, value address: %x, header length: %d\n", current_item, settings_get_value_addr_(current_item), );
+
+			//printf("index found, shift_count: %d, address: %X\n", shift_count, current_item - shift_count);
+
+			break;
+		}
+	}
+
+	if(shift_amount > 0)
+	{
+		printf("shift_amount: %d\n", shift_amount);
+
+		do
+		{
+			current_item = settings_next_item_(current_item);
+			
+			if(!settings_is_item_valid_(current_item))
+			{
+				break;
+			}
+
+			tmp_addr = current_item;
+			printf("found a valid item to shift at address %X\n", current_item);
+
+			for(tmp_offset = 0; tmp_offset < (current_item - settings_get_value_addr_(current_item)) + settings_get_value_length_(current_item); tmp_offset++)
+			{
+				eeprom_read(tmp_addr - tmp_offset, (const unsigned char *)&tmp_data, 1);
+				printf("data[%d]: %X", tmp_offset, tmp_data);
+				//eeprom_read(tmp_addr - tmp_offset + shift_amount, (const unsigned char*) &tmp_data, 1);
+				// printf("-> %X\n", tmp_data);
+				eeprom_write_byte(tmp_addr - tmp_offset + shift_amount, tmp_data);
+			}
+		}
+		while(1);
+
+		for(tmp_offset=1;tmp_offset<=shift_amount;tmp_offset++)
+		{
+			eeprom_write_byte(current_item + tmp_offset, 0xFF);
+		}
+	}
+
 	return SETTINGS_STATUS_UNIMPLEMENTED;
 }
 

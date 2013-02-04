@@ -69,7 +69,7 @@
 /** Constant PLL_ON for sub-register @ref SR_TRX_STATUS */
 #define PLL_ON                   (9)
 /** Constant SLEEP for sub-register @ref SR_TRX_STATUS */
-#define SLEEP                    (15)
+// #define SLEEP                    (15)
 /** Constant BUSY_RX_AACK for sub-register @ref SR_TRX_STATUS */
 #define BUSY_RX_AACK             (17)
 /** Constant BUSY_TX_ARET for sub-register @ref SR_TRX_STATUS */

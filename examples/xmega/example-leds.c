@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, Swedish Institute of Computer Science.
+ * Copyright (c) 2006, Swedish Institute of Computer Science.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,50 +28,51 @@
  *
  * This file is part of the Contiki operating system.
  *
- * $Id: rtimer-arch.h,v 1.5 2010/02/18 17:21:44 dak664 Exp $
+ * $Id: hello-world.c,v 1.1 2006/10/02 21:46:46 adamdunkels Exp $
  */
 
-#ifndef __RTIMER_ARCH_H__
-#define __RTIMER_ARCH_H__
-
-#include <avr/interrupt.h>
-
-/* Nominal ARCH_SECOND is F_CPU/prescaler, e.g. 8000000/1024 = 7812
- * Other prescaler values (1, 8, 64, 256) will give greater precision
- * with shorter maximum intervals.
- * Setting RTIMER_ARCH_PRESCALER to 0 will leave Timers alone.
- * rtimer_arch_now() will then return 0, likely hanging the cpu if used.
- * Timer1 is used if Timer3 is not available.
+/**
+ * \file
+ *         A very simple Contiki application showing how Contiki programs look
+ * \author
+ *         Adam Dunkels <adam@sics.se>
  */
 
-#if defined (__AVR_ATxmega256A3U__) || defined (__AVR_ATxmega256A3__)
-	#include "xmega_rtc.h"
-	#define RTIMER_ARCH_PRESCALER 1
-	#define RTIMER_ARCH_SECOND 1023UL
-	#define rtimer_arch_now() (RTC.CNT)
-#elif defined(__AVR_ATxmega256A3B__) || defined(__AVR_ATxmega256A3BU__)
-	#include "xmega_rtc.h"
-	#define RTIMER_ARCH_PRESCALER 1
-	#define RTIMER_ARCH_SECOND 1023UL
-	#define rtimer_arch_now() (RTC32.CNT)
-#else
-	#ifndef RTIMER_ARCH_PRESCALER
-		#define RTIMER_ARCH_PRESCALER 1024UL
-	#endif
+#include "contiki.h"
+#include "dev/leds.h"
 
-	#if RTIMER_ARCH_PRESCALER
-		#define RTIMER_ARCH_SECOND (F_CPU/RTIMER_ARCH_PRESCALER)
-	#else
-		#define RTIMER_ARCH_SECOND 0
-	#endif
+static int i = 0;
+
+#include <stdio.h> /* For printf() */
+/*---------------------------------------------------------------------------*/
+PROCESS(hello_world_process, "Hello world process");
+AUTOSTART_PROCESSES(&hello_world_process);
+/*---------------------------------------------------------------------------*/
+PROCESS_THREAD(hello_world_process, ev, data)
+{
+	PROCESS_BEGIN();
+
+	static struct etimer myTimer;
 	
-	#if defined(TCNT3)
-		#define rtimer_arch_now() (TCNT3)
-	#elif RTIMER_ARCH_PRESCALER
-		#define rtimer_arch_now() (TCNT1)
-	#else
-		#define rtimer_arch_now() (0)
-	#endif
-#endif /* XMEGA */
+	printf("Hello, world\n");
+	leds_init();
 
-#endif /* __RTIMER_ARCH_H__ */
+	//PORTR_OUT = 0x3;
+
+	etimer_set(&myTimer, CLOCK_SECOND);
+	
+	while(1)
+	{
+		PROCESS_WAIT_EVENT();
+		
+		// PORTR.OUTTGL = 0x3;
+		leds_toggle(0x3);
+		
+		printf("Toggle LED0 from process: %10d: %X\n", i++, leds_get());
+		etimer_restart(&myTimer);
+	}
+	
+  
+	PROCESS_END();
+}
+/*---------------------------------------------------------------------------*/
