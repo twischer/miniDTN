@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Institute of Operating Systems and Computer Networks (TU Brunswick).
+ * Copyright (c) 2012, Institute of Operating Systems and Computer Networks (TU Braunschweig).
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,39 +26,49 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * Author: Wolf-Bastian Pšttner <poettner@ibr.cs.tu-bs.de>
+ * Author: Wolf-Bastian Poettner <poettner@ibr.cs.tu-bs.de>
  */
 
 /**
  * \addtogroup Drivers
  * @{
- *
+ */
+
+/**
  * \defgroup fat_driver FAT Driver - Platform Specific
  *
- * <p></p>
  * @{
- *
  */
 
 /**
  * \file
  *		FAT driver definitions - Platform Specific
  * \author
- *      Wolf-Bastian Pšttner <poettner@ibr.cs.tu-bs.de>
+ *      Wolf-Bastian Poettner <poettner@ibr.cs.tu-bs.de>
  */
 
 #ifndef CFS_FAT_ARCH_H
 #define CFS_FAT_ARCH_H
 
-#include "interfaces/flash-microSD.h"
-#include "interfaces/flash-at45db.h"
+#include "dev/microSD.h"
+#include "dev/at45db.h"
 
-#define SD_READ_BLOCK(block_start_address, buffer)						microSD_read_block( block_start_address, buffer )
-#define SD_WRITE_BLOCK(block_start_address, buffer)						microSD_write_block( block_start_address, buffer )
-#define SD_INIT()														microSD_init()
+#define SD_READ_BLOCK(block_start_address, buffer) \
+        microSD_read_block( block_start_address, buffer )
+#define SD_WRITE_BLOCK(block_start_address, buffer) \
+				microSD_write_block( block_start_address, buffer )
+#define SD_INIT() \
+        microSD_init()
 
-#define FLASH_READ_BLOCK(block_start_address, offset, buffer, length)	at45db_read_page_bypassed( block_start_address, offset, buffer, length)
-#define FLASH_WRITE_BLOCK(block_start_address, offset, buffer, length)	{ at45db_write_buffer( offset, buffer, length ); at45db_buffer_to_page( block_start_address ); }
-#define FLASH_INIT()													at45db_init()
+#define FLASH_READ_BLOCK(block_start_address, offset, buffer, length) \
+        at45db_read_page_bypassed( block_start_address, offset, buffer, length)
+#define FLASH_WRITE_BLOCK(block_start_address, offset, buffer, length) \
+        at45db_write_buffer( offset, buffer, length ); \
+        at45db_buffer_to_page( block_start_address );
+#define FLASH_INIT() \
+        at45db_init()
 
 #endif /* CFS_FAT_ARCH_H */
+
+/** @} */
+/** @} */

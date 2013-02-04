@@ -6,8 +6,9 @@ CONTIKI_TARGET_SOURCEFILES += contiki-inga-main.c contiki-inga-default-init-net.
 #The avr cpu makefile will also add these files if COFFEE_FILES is specified.
 #CONTIKI_TARGET_SOURCEFILES += cfs-coffee.c cfs-coffee-arch.c
 #Needed for slip
-CONTIKI_TARGET_SOURCEFILES += button-sensor.c sensors.c slip_uart0.c slip.c adxl345.c gyro-sensor.c pressure-sensor.c radio-sensor.c
-CONTIKI_TARGET_SOURCEFILES += adc.c  i2c.c  mspi.c adxl345.c   microSD.c  bmp085.c at45db.c  l3g4200d.c  mpl115a.c
+CONTIKI_TARGET_SOURCEFILES += slip_uart0.c slip.c i2c.c  mspi.c microSD.c 
+CONTIKI_TARGET_SOURCEFILES += adc.c at45db.c adxl345.c bmp085.c l3g4200d.c mpl115a.c
+CONTIKI_TARGET_SOURCEFILES += sensors.c acc-sensor.c adc-sensor.c button-sensor.c gyro-sensor.c pressure-sensor.c radio-sensor.c
 
 CONTIKIAVR=$(CONTIKI)/cpu/avr
 CONTIKIBOARD=.
