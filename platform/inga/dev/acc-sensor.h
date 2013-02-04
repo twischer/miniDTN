@@ -61,9 +61,9 @@ extern const struct sensors_sensor acc_sensor;
 /**
  * \name Channels
  * @{ */
-#define ADXL345_X   0
-#define ADXL345_Y   1
-#define ADXL345_Z   2
+#define ACC_X   0
+#define ACC_Y   1
+#define ACC_Z   2
 /** @} */
 
 /**
@@ -71,13 +71,13 @@ extern const struct sensors_sensor acc_sensor;
  * \see ADXL345_SENSOR_SENSITIVITY
  * @{ */
 /// 2g acceleration
-#define ADXL345_2G  0x0
+#define ACC_2G  0x0
 /// 4g acceleration
-#define ADXL345_4G  0x1
+#define ACC_4G  0x1
 /// 8g acceleration
-#define ADXL345_8G  0x2
+#define ACC_8G  0x2
 /// 16g acceleration
-#define ADXL345_16G 0x2
+#define ACC_16G 0x2
 /** @} */
 
 /**
@@ -85,13 +85,13 @@ extern const struct sensors_sensor acc_sensor;
  * \see ADXL345_SENSOR_FIFOMODE
  * @{ */
 /// Bypass mode
-#define ADXL345_BYPASS  0x0
+#define ACC_BYPASS  0x0
 /// FIFO mode
-#define ADXL345_FIFO    0x1
+#define ACC_FIFO    0x1
 /// Stream mode
-#define ADXL345_STREAM  0x2
+#define ACC_STREAM  0x2
 /// Trigger mode
-#define ADXL345_TRIGGER 0x3
+#define ACC_TRIGGER 0x3
 /** @} */
 
 /**
@@ -99,9 +99,9 @@ extern const struct sensors_sensor acc_sensor;
  * \see ADXL345_SENSOR_POWERMODE
  * @{ */
 /// No sleep
-#define ADXL345_NOSLEEP   0
+#define ACC_NOSLEEP   0
 /// Auto sleep
-#define ADXL345_AUTOSLEEP 1
+#define ACC_AUTOSLEEP 1
 
 /** @} */
 
@@ -116,7 +116,7 @@ extern const struct sensors_sensor acc_sensor;
  - \ref ADXL345_8G   8g @64LSB/g
  - \ref ADXL345_16G 16g @32LSB/g
  */
-#define ADXL345_SENSOR_SENSITIVITY  10
+#define ACC_SENSOR_SENSITIVITY  10
 /**
  * FIFO mode configuration 
  * 
@@ -125,14 +125,14 @@ extern const struct sensors_sensor acc_sensor;
  * - \ref ADXL345_STREAM  - Stream mode
  * - \ref ADXL345_TRIGGER - Trigger mode
  */
-#define ADXL345_SENSOR_FIFOMODE     20
+#define ACC_SENSOR_FIFOMODE     20
 /**
  * Controls power / sleep mode
  * Value	Mode
  * - \ref ADXL345_NOSLEEP			No sleep
  * - \ref ADXL345_AUTOSLEEP			Autosleep
  */
-#define ADXL345_SENSOR_POWERMODE    30
+#define ACC_SENSOR_POWERMODE    30
 /** @} */
 
 /** @} */

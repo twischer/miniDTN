@@ -42,64 +42,66 @@
 #include "lib/sensors.h"
 #include "adxl345.h"
 #include "acc-sensor.h"
+
+#define FALSE 0
+#define TRUE  1
 const struct sensors_sensor acc_sensor;
-uint8_t acc_state=0;
+uint8_t acc_state = 0;
 /*---------------------------------------------------------------------------*/
 static int
-value(int type)
-{
-  switch(type) {
-  case ADXL345_X:
-    return adxl345_get_x_acceleration();
+value(int type) {
+  switch (type) {
+    case ACC_X:
+      return adxl345_get_x_acceleration();
 
-  case ADXL345_Y:
-    return adxl345_get_y_acceleration();
+    case ACC_Y:
+      return adxl345_get_y_acceleration();
 
-  case ADXL345_Z:
-    return adxl345_get_z_acceleration();
+    case ACC_Z:
+      return adxl345_get_z_acceleration();
   }
   return 0;
 }
 /*---------------------------------------------------------------------------*/
 static int
-status(int type)
-{
+status(int type) {
   switch (type) {
     case SENSORS_ACTIVE:
+      return 0; // TODO: do check
       break;
     case SENSORS_READY:
+      return adxl345_ready() == 0 ? TRUE : FALSE;
       break;
   }
   return acc_state;
 }
 /*---------------------------------------------------------------------------*/
 static int
-configure(int type, int c)
-{
+configure(int type, int c) {
   switch (type) {
     case SENSORS_ACTIVE:
       if (c) {
         if (!status(SENSORS_ACTIVE)) {
-          // TODO...
+          return adxl345_init();
         }
-        acc_state=1;// TODO: SENSORS_READY?
-        return adxl345_init();
+        return FALSE;
       } else {
         // deactivate
+        return FALSE;
       }
       break;
-    case ADXL345_SENSOR_SENSITIVITY:
+    case ACC_SENSOR_SENSITIVITY:
       // TODO: check if initialized?
       adxl345_set_g_range(c);
       break;
-    case ADXL345_SENSOR_FIFOMODE:
+    case ACC_SENSOR_FIFOMODE:
       adxl345_set_fifomode(c);
       break;
-    case ADXL345_SENSOR_POWERMODE:
+    case ACC_SENSOR_POWERMODE:
       adxl345_set_powermode(c);
       break;
     default:
-    break;
+      break;
   }
 }
 /*---------------------------------------------------------------------------*/
