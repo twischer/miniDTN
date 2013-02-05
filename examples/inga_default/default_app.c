@@ -25,6 +25,8 @@ extern uint8_t __bss_end;
 #define DEBUG                                   1
 
 #include <stdio.h> /* For printf() */
+#include <stdint.h>
+#include <avr/eeprom.h>
 
 #include "acc-sensor.h"
 #include "adc-sensor.h"
@@ -35,8 +37,13 @@ extern uint8_t __bss_end;
 
 #include "config_mapping.h"
 #include "ini_parser.h"
+#include "app_config.h"
+
+uint8_t eeData[1024] EEMEM;
+uint8_t ramData[1024];
 
 int8_t load_configuration();
+int8_t load_conf_from_microSD();
 /*---------------------------------------------------------------------------*/
 PROCESS(default_app_process, "Sensor update process");
 AUTOSTART_PROCESSES(&default_app_process);
@@ -47,28 +54,36 @@ PROCESS_THREAD(default_app_process, ev, data) {
 
   load_configuration();
   
+  print_config();
+
   SENSORS_ACTIVATE(acc_sensor);
   SENSORS_ACTIVATE(gyro_sensor);
   SENSORS_ACTIVATE(pressure_sensor);
 
   etimer_set(&timer, CLOCK_SECOND * 0.05);
-//  while (1) {
-//
-//    PROCESS_YIELD();
-//    etimer_set(&timer, CLOCK_SECOND * 0.05);
-//    printf("X_ACC=%d, Y_ACC=%d, Z_ACC=%d\n",
-//            acc_sensor.value(ACC_X),
-//            acc_sensor.value(ACC_Y),
-//            acc_sensor.value(ACC_Z));
-//    printf("X_AS=%d, Y_AS=%d, Z_AS=%d\n",
-//            gyro_sensor.value(X_AS),
-//            gyro_sensor.value(Y_AS),
-//            gyro_sensor.value(Z_AS));
-//    printf("PRESS=%u, TEMP=%d\n\n",
-//            pressure_sensor.value(PRESS),
-//            pressure_sensor.value(TEMP));
-//
-//  }
+
+  //  int idx;
+  //  for (idx = 0; idx < 1024; idx++) {
+  //    ramData[idx] = 0x42;
+  //  }
+  //  eeprom_write_block(&ramData, &eeData, sizeof (ramData));
+  //  while (1) {
+  //
+  //    PROCESS_YIELD();
+  //    etimer_set(&timer, CLOCK_SECOND * 0.05);
+  //    printf("X_ACC=%d, Y_ACC=%d, Z_ACC=%d\n",
+  //            acc_sensor.value(ACC_X),
+  //            acc_sensor.value(ACC_Y),
+  //            acc_sensor.value(ACC_Z));
+  //    printf("X_AS=%d, Y_AS=%d, Z_AS=%d\n",
+  //            gyro_sensor.value(X_AS),
+  //            gyro_sensor.value(Y_AS),
+  //            gyro_sensor.value(Z_AS));
+  //    printf("PRESS=%u, TEMP=%d\n\n",
+  //            pressure_sensor.value(PRESS),
+  //            pressure_sensor.value(TEMP));
+  //
+  //  }
 
   PROCESS_END();
 }
@@ -76,6 +91,29 @@ PROCESS_THREAD(default_app_process, ev, data) {
 /*---------------------------------------------------------------------------*/
 int8_t
 load_configuration() {
+  if (load_conf_from_microSD() == 0) {
+    printf("Loaded data from microSD card\n");
+    app_config_save();
+    printf("Stored to internal data\n");
+    return 0;
+  }
+
+  printf("Loading from microSD card failed\n");
+
+  if (app_config_load() == 0) {
+    printf("Loaded config from internal data\n");
+    return 0;
+  }
+
+  printf("Loading from internal data failed\n");
+
+  app_config_load_defaults();
+  printf("Defaults loaded\n");
+  return -1;
+}
+/*---------------------------------------------------------------------------*/
+int8_t
+load_conf_from_microSD() {
   struct diskio_device_info *info = 0;
   int fd;
   int i;
@@ -112,7 +150,7 @@ load_configuration() {
   }
 
   diskio_set_default_device(info);
-  
+
   // And open it
   fd = cfs_open("inga.cfg", CFS_READ);
 
@@ -131,14 +169,6 @@ load_configuration() {
 
   cfs_close(fd);
 
-
-  printf("\n\nOutput: \n");
-  printf("sdcard: %d\n", system_config.output.sdcard);
-  printf("usb: %d\n", system_config.output.usb);
-  printf("radio: %d\n", system_config.output.radio);
-  printf("block_size: %d\n", system_config.output.block_size);
-
-
-
+  return 0;
 }
 /*---------------------------------------------------------------------------*/

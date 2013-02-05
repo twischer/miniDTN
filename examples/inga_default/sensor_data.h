@@ -19,13 +19,12 @@
  * @{
  */
 
-#ifndef bool_t
-#define bool_t int
-#endif
+#include <stdbool.h>
+
 // pointer to processor function, first value is possible storage location
-typedef bool_t(*processor_p)(void*, vec3i_t*);
-//typedef bool_t(*processor_p)(sensor_data_t* sensor_data);
-//typedef bool_t(*processor_p)(void*, int*);
+typedef bool(*processor_p)(void*, vec3i_t*);
+//typedef bool(*processor_p)(sensor_data_t* sensor_data);
+//typedef bool(*processor_p)(void*, int*);
 
 typedef struct vec3i_s {
   int x;
@@ -34,7 +33,7 @@ typedef struct vec3i_s {
 } vec3i_t;
 
 typedef struct acc_data_s {
-  bool_t enabled;
+  bool enabled;
   // raw axis value
   vec3i_t raw;
   // processed axis values
@@ -56,7 +55,7 @@ typedef struct acc_data_s {
 /**
  */
 typedef struct gyro_data_s {
-  bool_t enabled;
+  bool enabled;
   vec3i_t raw;
   vec3i_t out;
 } gyro_data_t;
@@ -64,7 +63,7 @@ typedef struct gyro_data_s {
 /**
  */
 typedef struct pressure_data_s {
-  bool_t enabled;
+  bool enabled;
   int raw;
   int out;
 } pressure_data_t;
@@ -72,7 +71,7 @@ typedef struct pressure_data_s {
 /**
  */
 typedef struct temp_data_s {
-  bool_t enabled;
+  bool enabled;
   int raw;
   int out;
 } temp_data_t;
@@ -84,7 +83,7 @@ typedef struct sensor_data_s {
   gyro_data_t gyro;
   pressure_data_t pressure;
   temp_data_t temp;
-  bool_t updated;
+  bool updated;
 } sensor_data_t;
 
 void doit(void) {
@@ -96,27 +95,27 @@ void doit(void) {
 
 // standard processors (1 argument)
 
-bool_t proc_eq(int a, int b) {
+bool proc_eq(int a, int b) {
   return a == b;
 }
 
-bool_t proc_gt(int a, int b) {
+bool proc_gt(int a, int b) {
   return a > b;
 }
 
-bool_t proc_lt(int a, int b) {
+bool proc_lt(int a, int b) {
   return a < b;
 }
 
-bool_t proc_geq(int a, int b) {
+bool proc_geq(int a, int b) {
   return a >= b;
 }
 
-bool_t proc_leq(int a, int b) {
+bool proc_leq(int a, int b) {
   return a <= b;
 }
 
-bool_t proc_add(void* ret, int a, int b) {
+bool proc_add(void* ret, int a, int b) {
   (int*) ret = a + b;
 }
 

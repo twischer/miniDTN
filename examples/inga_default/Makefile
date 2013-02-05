@@ -9,7 +9,7 @@ endif
 FAT=1
 TARGET=inga
 CFLAGS += -DCONFIG_GROUPS=10
-CONTIKI_SOURCEFILES += ini_parser.c
+CONTIKI_SOURCEFILES += ini_parser.c app_config.c
 
 CONTIKI = ../..
 include $(CONTIKI)/Makefile.include

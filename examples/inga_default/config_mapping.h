@@ -9,16 +9,17 @@
 #define	CONFIG_MAPPING_H
 
 #include "ini_parser.h"
-#include "sys_config.h"
+#include "app_config.h"
 
 int handle_boolean(char* val, void* value_p);
 int handle_int(char* value, void* value_p);
+int handle_char(char* value, void* value_p);
 
 int handle_boolean(char* value, void* value_p) {
   if (strcmp(value, "true") == 0) {
-    *((bool_t*) value_p) = TRUE;
+    *((bool*) value_p) = TRUE;
   } else {
-    *((bool_t*) value_p) = FALSE;
+    *((bool*) value_p) = FALSE;
   }
   return 0;
 }
@@ -40,13 +41,13 @@ int handle_processor(char* value, void* value_p) {
 
 // operator types
 
-typedef enum processor_op_e {
+typedef enum {
   gt, lt, eq
 } processor_op;
 
 // processor definition
 
-typedef struct processor_s {
+typedef struct {
   char name[20];
   processor_op type;
   int value;
@@ -88,7 +89,7 @@ static const cfg_group acc_group = {
   {
     {"enabled", &handle_boolean, &system_config.acc.enabled},
     {"rate", &handle_int, &system_config.acc.rate},
-    {"g_range", &handle_int, &system_config.acc.dps},
+    {"g_range", &handle_int, &system_config.acc.g_range},
   }
 };
 // gyroscope sensor group mapping
