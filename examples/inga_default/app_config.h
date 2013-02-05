@@ -100,21 +100,16 @@ extern app_config_t ee_system_config EEMEM;
 #endif
 
 /**
- * Loads config data from EEPROM.
+ * Loads config data using the following order.
+ * - If a microSD card is present, configuration data is tried to load from
+ *   it and updated configuration is stored to internal storage
+ * - If no microSD is present or loading from it failed, configuration data
+ *   is tried to load from internal storage (EEPROM)
+ * - If also loading from internal storage fails, some default values are used.
  * 
  * @return 0 if loading succeeded, -1 if loading failed
  */
 int8_t app_config_load();
-
-/**
- * Stores config data to EEPROM.
- */
-void app_config_save();
-
-/**
- * Loads default config data as fallback.
- */
-void app_config_load_defaults();
 
 #ifdef APP_CONFIG_DEBUG
 /**
