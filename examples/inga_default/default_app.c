@@ -48,6 +48,7 @@ PROCESS_THREAD(default_app_process, ev, data) {
     SENSORS_ACTIVATE(gyro_sensor);
   }
   if (system_config.pressure.enabled || system_config.temp.enabled) {
+    log_i("Enabling pressure/temperature sensor\n");
     SENSORS_ACTIVATE(pressure_sensor);
   }
 

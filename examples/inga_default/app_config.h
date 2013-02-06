@@ -86,6 +86,8 @@ typedef struct {
  */
 typedef struct {
   uint16_t _check_sequence;
+  uint16_t _mod_date;
+  uint16_t _mod_time;
   cfg_node_t node;
   cfg_output_t output;
   cfg_acc_t acc;
@@ -109,6 +111,9 @@ extern process_event_t event_config;
  * - If no microSD is present or loading from it failed, configuration data
  *   is tried to load from internal storage (EEPROM)
  * - If also loading from internal storage fails, some default values are used.
+ * 
+ * @note \b IMPORTANT: Configuration from SDcard is only loaded if the configs file modification
+ * timestamp is younger than last time!!
  * 
  * @return 0 if loading succeeded, -1 if loading failed
  */
