@@ -10,37 +10,52 @@
 
 #define DEBUG                                   1
 
+// standard includes
 #include <stdio.h> /* For printf() */
 #include <stdint.h>
-
+// contiki includes
 #include "acc-sensor.h"
 #include "adc-sensor.h"
 #include "button-sensor.h"
 #include "gyro-sensor.h"
 #include "pressure-sensor.h"
 #include "radio-sensor.h"
-
+// app includes
 #include "ini_parser.h"
 #include "app_config.h"
+#include "logger.h"
+#include "sd_mount.h"
 
 /*---------------------------------------------------------------------------*/
 PROCESS(default_app_process, "Sensor update process");
-AUTOSTART_PROCESSES(&default_app_process);
+AUTOSTART_PROCESSES(&default_app_process, &logger_process, &config_process, &mount_process);//, &mount_process);
 /*---------------------------------------------------------------------------*/
 static struct etimer timer;
 PROCESS_THREAD(default_app_process, ev, data) {
   PROCESS_BEGIN();
-
-  app_config_load();
-
+  
+  PROCESS_WAIT_EVENT_UNTIL(ev == event_config);
+  
   print_config();
 
-  SENSORS_ACTIVATE(acc_sensor);
-  SENSORS_ACTIVATE(gyro_sensor);
-  SENSORS_ACTIVATE(pressure_sensor);
+  // sensor setup
+  if (system_config.acc.enabled) {
+    log_i("Enabling accelerometer\n");
+    SENSORS_ACTIVATE(acc_sensor);
+  }
+  if (system_config.gyro.enabled) {
+    log_i("Enabling gyroscope\n");
+    SENSORS_ACTIVATE(gyro_sensor);
+  }
+  if (system_config.pressure.enabled || system_config.temp.enabled) {
+    SENSORS_ACTIVATE(pressure_sensor);
+  }
+
+  //  system_config.pressure.
 
   etimer_set(&timer, CLOCK_SECOND * 0.05);
 
+  printf("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n");
   //  int idx;
   //  for (idx = 0; idx < 1024; idx++) {
   //    ramData[idx] = 0x42;

@@ -25,6 +25,7 @@
 #define APP_CONF_STORE_EEPROM 1
 
 #include <stdbool.h>
+#include "contiki.h"
 #if APP_CONF_STORE_EEPROM
 #include <avr/eeprom.h>
 #endif
@@ -99,6 +100,8 @@ extern app_config_t system_config;
 extern app_config_t ee_system_config EEMEM;
 #endif
 
+extern process_event_t event_config;
+
 /**
  * Loads config data using the following order.
  * - If a microSD card is present, configuration data is tried to load from
@@ -109,7 +112,7 @@ extern app_config_t ee_system_config EEMEM;
  * 
  * @return 0 if loading succeeded, -1 if loading failed
  */
-int8_t app_config_load();
+extern struct process config_process;
 
 #ifdef APP_CONFIG_DEBUG
 /**

@@ -3,6 +3,8 @@
 #include "cfs-fat.h"
 #include "watchdog.h"
 #include "config_mapping.h"
+#include "sd_mount.h"
+#include "logger.h"
 
 #ifdef APP_CONFIG_DEBUG
 #include <stdio.h>
@@ -17,11 +19,14 @@
 
 // configuration instance with default values
 app_config_t system_config;
-
+bool cfg_load_ok;
 
 #ifdef APP_CONF_STORE_EEPROM
 app_config_t ee_system_config EEMEM;
 #endif
+
+int8_t
+app_config_load(bool sd_mounted);
 
 static const app_config_t _default_system_config = {
   ._check_sequence = CHECK_SEQUENCE,
@@ -51,14 +56,13 @@ static const app_config_t _default_system_config = {
 static int8_t
 app_config_load_internal() {
 #if APP_CONF_STORE_EEPROM
-  PRINTF("Loading config from EEPROM...");
+  log_i("Loading config from EEPROM...\n");
   eeprom_read_block(&system_config, &ee_system_config, sizeof (system_config));
   // check if data is valid
   if (system_config._check_sequence != CHECK_SEQUENCE) {
-    PRINTF("failed.\n");
+    log_e("Loading config from EEPROM failed.\n");
     return -1;
   }
-  PRINTF("done.\n");
   return 0;
 #endif
 }
@@ -69,65 +73,29 @@ app_config_load_internal() {
 static void
 app_config_save_internal() {
 #if APP_CONF_STORE_EEPROM
-  PRINTF("Saving config to EEPROM...");
+  log_i("Saving config to EEPROM...\n");
   system_config._check_sequence = CHECK_SEQUENCE;
   eeprom_update_block(&system_config, &ee_system_config, sizeof (system_config));
-  PRINTF("done.\n");
 #endif
 }
 /*----------------------------------------------------------------------------*/
 static int8_t
 app_config_load_microSD() {
-  struct diskio_device_info *info = 0;
   int fd;
-  int i;
-  int initialized = 0;
-  printf("Detecting devices and partitions...");
-  while ((i = diskio_detect_devices()) != DISKIO_SUCCESS) {
-    watchdog_periodic();
-  }
-  printf("done\n\n");
-
-  info = diskio_devices();
-  for (i = 0; i < DISKIO_MAX_DEVICES; i++) {
-    print_device_info(info + i);
-    printf("\n");
-
-    // use first detected partition
-    if ((info + i)->type == (DISKIO_DEVICE_TYPE_SD_CARD | DISKIO_DEVICE_TYPE_PARTITION)) {
-      info += i;
-      initialized = 1;
-      break;
-    }
-  }
-
-  if (!initialized) {
-    printf("No SD card was found\n");
-    return -1;
-  }
-
-  printf("Mounting device...");
-  if (cfs_fat_mount_device(info) == 0) {
-    printf("done\n\n");
-  } else {
-    printf("failed\n\n");
-  }
-
-  diskio_set_default_device(info);
 
   // And open it
   fd = cfs_open("inga.cfg", CFS_READ);
 
   // In case something goes wrong, we cannot save this file
   if (fd == -1) {
-    printf("############# STORAGE: open for read failed\n");
+    log_i("############# STORAGE: open for read failed\n");
     return -1;
   }
 
   char buf[MAX_FILE_SIZE];
   int size = cfs_read(fd, buf, 511);
 
-  printf("actually read: %d\n", size);
+  log_v("actually read: %d\n", size);
 
   parse_ini(buf, size, &inga_conf_file);
 
@@ -143,47 +111,75 @@ static void
 app_config_load_defaults() {
   system_config = _default_system_config;
 }
+
+process_event_t event_config;
+/*----------------------------------------------------------------------------*/
+PROCESS(config_process, "Mount process");
+/*----------------------------------------------------------------------------*/
+PROCESS_THREAD(config_process, ev, data) {
+  PROCESS_BEGIN();
+  log_v("config_process: started\n");
+
+  event_config = process_alloc_event();
+
+  PROCESS_WAIT_EVENT_UNTIL(ev == event_mount);
+
+  if (app_config_load(*(bool*) data) == 0) {
+    cfg_load_ok = true;
+  } else {
+    cfg_load_ok = false;
+  }
+  process_post(PROCESS_BROADCAST, event_config, &cfg_load_ok);
+
+  PROCESS_END();
+}
 /*----------------------------------------------------------------------------*/
 int8_t
-app_config_load() {
-  if (app_config_load_microSD() == 0) {
-    printf("Loaded data from microSD card\n");
-    app_config_save_internal();
-    printf("Stored to internal data\n");
-    return 0;
+app_config_load(bool sd_mounted) {
+  if (sd_mounted) {
+    if (app_config_load_microSD() == 0) {
+      log_i("Loaded data from microSD card\n");
+      app_config_save_internal();
+      log_i("Stored to internal data\n");
+      process_post(PROCESS_BROADCAST, event_config, NULL);
+      return 0;
+    }
   }
 
-  printf("Loading from microSD card failed\n");
+  log_i("Loading from microSD card failed\n");
 
   if (app_config_load_internal() == 0) {
-    printf("Loaded config from internal data\n");
+    log_i("Loaded config from internal data\n");
+    process_post(PROCESS_BROADCAST, event_config, NULL);
     return 0;
   }
 
-  printf("Loading from internal data failed\n");
+  log_w("Loading from internal data failed\n");
 
   app_config_load_defaults();
-  printf("Defaults loaded\n");
+  log_i("Defaults loaded\n");
+
+  process_post(PROCESS_BROADCAST, event_config, NULL);
   return -1;
 }
 /*----------------------------------------------------------------------------*/
 #ifdef APP_CONFIG_DEBUG
 void
 print_config() {
-  printf("\n\nConfig: \n");
-  printf("_check_sequence:  %d\n", system_config._check_sequence);
-  printf("output.sdcard:    %d\n", system_config.output.sdcard);
-  printf("output.usb:       %d\n", system_config.output.usb);
-  printf("output.radio:     %d\n", system_config.output.radio);
-  printf("output.block_size:%d\n", system_config.output.block_size);
-  printf("acc.enabled:      %d\n", system_config.acc.enabled);
-  printf("acc.rate:         %d\n", system_config.acc.rate);
-  printf("acc.g_range:      %d\n", system_config.acc.g_range);
-  printf("gyro.enabled:     %d\n", system_config.gyro.enabled);
-  printf("gyro.rate:        %d\n", system_config.gyro.rate);
-  printf("gyro.dps:         %d\n", system_config.gyro.dps);
-  printf("pressure.enabled: %d\n", system_config.pressure.enabled);
-  printf("pressure.rate:    %d\n", system_config.pressure.rate);
+  log_v("\n\nConfig: \n");
+  log_v("_check_sequence:  %d\n", system_config._check_sequence);
+  log_v("output.sdcard:    %d\n", system_config.output.sdcard);
+  log_v("output.usb:       %d\n", system_config.output.usb);
+  log_v("output.radio:     %d\n", system_config.output.radio);
+  log_v("output.block_size:%d\n", system_config.output.block_size);
+  log_v("acc.enabled:      %d\n", system_config.acc.enabled);
+  log_v("acc.rate:         %d\n", system_config.acc.rate);
+  log_v("acc.g_range:      %d\n", system_config.acc.g_range);
+  log_v("gyro.enabled:     %d\n", system_config.gyro.enabled);
+  log_v("gyro.rate:        %d\n", system_config.gyro.rate);
+  log_v("gyro.dps:         %d\n", system_config.gyro.dps);
+  log_v("pressure.enabled: %d\n", system_config.pressure.enabled);
+  log_v("pressure.rate:    %d\n", system_config.pressure.rate);
 }
 #endif
 /*----------------------------------------------------------------------------*/

@@ -10,6 +10,7 @@
 
 #include "ini_parser.h"
 #include "app_config.h"
+#include "logger.h"
 
 int handle_boolean(char* val, void* value_p);
 int handle_int(char* value, void* value_p);
@@ -57,7 +58,7 @@ static int processor_count;
 
 void handle_new_processor(void) {
   processor_count++;
-  printf("Found new processor\n");
+  log_v("Found new processor\n");
 }
 
 // node group mapping

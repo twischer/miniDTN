@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "ini_parser.h"
+#include "logger.h"
 
 static int getKeyID(cfg_group* grp, char* key);
 static int processValue(cfg_group* grp, char* key, char* value);
@@ -48,11 +49,11 @@ getKeyID(cfg_group* grp, char* key) {
   for (idx = 0; idx < grp->entries; idx++) {
     // if match, return corresponding ID
     if (strcmp(grp->entry[idx].key, key) == 0) {
-      PRINTF("II: Key '%s' found at %d\n", key, idx);
+      log_v("Key '%s' found at %d\n", key, idx);
       return idx;
     }
   }
-  PRINTF("EE: Key '%s' not found\n", key);
+  log_w("Key '%s' not found\n", key);
   return -1;
 }
 /*----------------------------------------------------------------------------*/
@@ -69,7 +70,7 @@ getGroup(cfg_file* file, char* group) {
   for (idx = 0; idx < file->entries; idx++) {
     // if match, return corresponding group
     if (strcmp(file->keys[idx], group) == 0) {
-      PRINTF("II: Group '%s' found\n", group);
+      log_v("Group '%s' found\n", group);
       // call handler if available
       if (file->handle[idx] != NULL) {
         file->handle[idx]();
@@ -77,7 +78,7 @@ getGroup(cfg_file* file, char* group) {
       return file->groups[idx];
     }
   }
-  PRINTF("EE: Group '%s' not found\n", group);
+  log_w("Group '%s' not found\n", group);
   return NULL;
 }
 /*----------------------------------------------------------------------------*/
@@ -121,7 +122,7 @@ parse_ini(char* buf, int len, cfg_file* conf_file) {
           default:
             // if linebreak after non-empty non-mode data occured, it is an error
             if (rkv_pos > &rkv_buf[0]) {
-              PRINTF("EE: Parse error!\n");
+              log_e("Parse error!\n");
               return -1;
             }
             break;
@@ -152,7 +153,7 @@ parse_ini(char* buf, int len, cfg_file* conf_file) {
             }
             break;
           default:
-            PRINTF("EE: Parse error!\n");
+            log_e("Parse error!\n");
             break;
         }
         rkv_pos = &rkv_buf[0];
