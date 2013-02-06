@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Institute of Operating Systems and Computer Networks (TU Brunswick).
+ * Copyright (c) 2012, Institute of Operating Systems and Computer Networks (TU Braunschweig).
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,9 +30,11 @@
  */
 
 /**
- * \addtogroup Drivers
+ * \addtogroup cfs
  * @{
- *
+ */
+
+/**
  * \addtogroup fat_driver
  * @{
  */
@@ -106,17 +108,14 @@ extern uint16_t queue_start, queue_len;
 
 /* Declerations */
 static uint8_t is_EOC(uint32_t fat_entry);
-uint32_t get_free_cluster(uint32_t start_cluster);
+static uint32_t get_free_cluster(uint32_t start_cluster);
 static uint16_t _get_free_cluster_16();
 static uint16_t _get_free_cluster_32();
 static uint32_t find_nth_cluster(uint32_t start_cluster, uint32_t n);
 static void reset_cluster_chain(struct dir_entry *dir_ent);
 static void add_cluster_to_file(int fd);
-void print_current_sector();
-void print_dir_entry(struct dir_entry *dir_entry);
-void cfs_fat_get_fat_info(struct FAT_Info *info);
 static uint32_t read_fat_entry(uint32_t cluster_num);
-void write_fat_entry(uint32_t cluster_num, uint32_t value);
+static void write_fat_entry(uint32_t cluster_num, uint32_t value);
 static void calc_fat_block(uint32_t cur_cluster, uint32_t *fat_sec_num, uint32_t *ent_offset);
 static uint8_t _make_valid_name(const char *path, uint8_t start, uint8_t end, char *name);
 static void pr_reset(struct PathResolver *rsolv);
@@ -131,13 +130,14 @@ static void update_dir_entry(int fd);
 static void remove_dir_entry(uint32_t dir_entry_sector, uint16_t dir_entry_offset);
 static uint8_t load_next_sector_of_file(int fd, uint32_t clusters, uint8_t clus_offset, uint8_t write);
 static void make_readable_entry(struct dir_entry *dir, struct cfs_dirent *dirent);
-uint8_t is_a_power_of_2(uint32_t value);
-uint32_t round_down_to_power_of_2(uint32_t value);
+static uint8_t is_a_power_of_2(uint32_t value);
+static uint32_t round_down_to_power_of_2(uint32_t value);
 static uint8_t _is_file(struct dir_entry *dir_ent);
 static uint8_t _cfs_flags_ok(int flags, struct dir_entry *dir_ent);
 /*Cluster Chain Functions*/
 static uint8_t
-is_EOC(uint32_t fat_entry) {
+is_EOC(uint32_t fat_entry)
+{
   if (mounted.info.type == FAT16) {
     if (fat_entry >= 0xFFF8) {
       return 1;
@@ -157,8 +157,9 @@ is_EOC(uint32_t fat_entry) {
  * \TODO Check for end of FAT and no free clusters.
  * \return Returns the number of a free cluster.
  */
-uint32_t
-get_free_cluster(uint32_t start_cluster) {
+static uint32_t
+get_free_cluster(uint32_t start_cluster)
+{
   uint32_t fat_sec_num = 0;
   uint32_t ent_offset = 0;
   uint16_t i = 0;
@@ -187,7 +188,8 @@ get_free_cluster(uint32_t start_cluster) {
 }
 /*----------------------------------------------------------------------------*/
 static uint16_t
-_get_free_cluster_16() {
+_get_free_cluster_16()
+{
   uint16_t entry = 0;
   uint16_t i = 0;
 
@@ -202,7 +204,8 @@ _get_free_cluster_16() {
 }
 /*----------------------------------------------------------------------------*/
 static uint16_t
-_get_free_cluster_32() {
+_get_free_cluster_32()
+{
   uint32_t entry = 0;
   uint16_t i = 0;
 
@@ -217,7 +220,8 @@ _get_free_cluster_32() {
 }
 /*----------------------------------------------------------------------------*/
 static uint32_t
-find_nth_cluster(uint32_t start_cluster, uint32_t n) {
+find_nth_cluster(uint32_t start_cluster, uint32_t n)
+{
   uint32_t cluster = start_cluster,
           i = 0;
 
@@ -230,7 +234,8 @@ find_nth_cluster(uint32_t start_cluster, uint32_t n) {
 }
 /*----------------------------------------------------------------------------*/
 static void
-reset_cluster_chain(struct dir_entry *dir_ent) {
+reset_cluster_chain(struct dir_entry *dir_ent)
+{
   uint32_t cluster = (((uint32_t) dir_ent->DIR_FstClusHI) << 16) + dir_ent->DIR_FstClusLO;
   uint32_t next_cluster = read_fat_entry(cluster);
 
@@ -244,7 +249,8 @@ reset_cluster_chain(struct dir_entry *dir_ent) {
 }
 /*----------------------------------------------------------------------------*/
 static void
-add_cluster_to_file(int fd) {
+add_cluster_to_file(int fd)
+{
   uint32_t free_cluster = get_free_cluster(0);
   uint32_t cluster = fat_file_pool[fd].nth_cluster;
   uint32_t n = cluster;
@@ -279,7 +285,8 @@ add_cluster_to_file(int fd) {
 /*----------------------------------------------------------------------------*/
 /*Debug Functions*/
 void
-print_current_sector() {
+print_current_sector()
+{
   uint16_t i = 0;
 
   for (i = 0; i < 512; i++) {
@@ -294,7 +301,8 @@ print_current_sector() {
 }
 /*----------------------------------------------------------------------------*/
 void
-print_cluster_chain(int fd) {
+print_cluster_chain(int fd)
+{
   uint32_t cluster = fat_file_pool[fd].cluster;
   printf("\nClusterchain for fd = %d\n", fd);
   do {
@@ -304,7 +312,8 @@ print_cluster_chain(int fd) {
 }
 /*----------------------------------------------------------------------------*/
 void
-print_file_info(int fd) {
+cfs_fat_print_file_info(int fd)
+{
   printf("\nFile Info for fd = %d", fd);
   printf("\n\toffset = %lu", fat_fd_pool[fd].offset);
   printf("\n\tflags = %x", fat_fd_pool[fd].flags);
@@ -330,7 +339,8 @@ print_file_info(int fd) {
 }
 /*----------------------------------------------------------------------------*/
 void
-print_dir_entry(struct dir_entry *dir_entry) {
+cfs_fat_print_dir_entry(struct dir_entry *dir_entry)
+{
   printf("\nDirectory Entry");
   printf("\n\tDIR_Name = %c%c%c%c%c%c%c%c%c%c%c", dir_entry->DIR_Name[0], dir_entry->DIR_Name[1], dir_entry->DIR_Name[2], dir_entry->DIR_Name[3], dir_entry->DIR_Name[4], dir_entry->DIR_Name[5], dir_entry->DIR_Name[6], dir_entry->DIR_Name[7], dir_entry->DIR_Name[8], dir_entry->DIR_Name[9], dir_entry->DIR_Name[10]);
   printf("\n\tDIR_Attr = %x", dir_entry->DIR_Attr);
@@ -345,15 +355,41 @@ print_dir_entry(struct dir_entry *dir_entry) {
   printf("\n\tDIR_FstClusLO = %x", dir_entry->DIR_FstClusLO);
   printf("\n\tDIR_FileSize = %lu Bytes", dir_entry->DIR_FileSize);
 }
-/*----------------------------------------------------------------------------*/
+/*---------------------------------------------------------------------------*/
 void
-cfs_fat_get_fat_info(struct FAT_Info *info) {
+cfs_fat_get_fat_info(struct FAT_Info *info)
+{
   memcpy(info, &(mounted.info), sizeof (struct FAT_Info));
+}
+/*---------------------------------------------------------------------------*/
+uint16_t
+cfs_fat_get_last_date(int fd)
+{
+  return fat_file_pool[fd].dir_entry.DIR_WrtDate;
+}
+/*---------------------------------------------------------------------------*/
+uint16_t
+cfs_fat_get_last_time(int fd)
+{
+  return fat_file_pool[fd].dir_entry.DIR_WrtTime;
+}
+/*---------------------------------------------------------------------------*/
+uint16_t
+cfs_fat_get_create_date(int fd)
+{
+  return fat_file_pool[fd].dir_entry.DIR_CrtDate;
+}
+/*---------------------------------------------------------------------------*/
+uint16_t
+cfs_fat_get_create_time(int fd)
+{
+  return fat_file_pool[fd].dir_entry.DIR_CrtTime;
 }
 /*----------------------------------------------------------------------------*/
 /*FAT entry functions*/
 static uint32_t
-read_fat_entry(uint32_t cluster_num) {
+read_fat_entry(uint32_t cluster_num)
+{
   uint32_t fat_sec_num = 0,
           ent_offset = 0;
 
@@ -382,7 +418,8 @@ read_fat_entry(uint32_t cluster_num) {
 }
 /*----------------------------------------------------------------------------*/
 void
-write_fat_entry(uint32_t cluster_num, uint32_t value) {
+write_fat_entry(uint32_t cluster_num, uint32_t value)
+{
   uint32_t fat_sec_num = 0,
           ent_offset = 0;
 
@@ -404,7 +441,8 @@ write_fat_entry(uint32_t cluster_num, uint32_t value) {
 }
 /*----------------------------------------------------------------------------*/
 static void
-calc_fat_block(uint32_t cur_cluster, uint32_t *fat_sec_num, uint32_t *ent_offset) {
+calc_fat_block(uint32_t cur_cluster, uint32_t *fat_sec_num, uint32_t *ent_offset)
+{
   uint32_t N = cur_cluster;
 
   if (mounted.info.type == FAT16) {
@@ -420,7 +458,8 @@ calc_fat_block(uint32_t cur_cluster, uint32_t *fat_sec_num, uint32_t *ent_offset
 /*----------------------------------------------------------------------------*/
 /*Path Resolver Functions*/
 static uint8_t
-_make_valid_name(const char *path, uint8_t start, uint8_t end, char *name) {
+_make_valid_name(const char *path, uint8_t start, uint8_t end, char *name)
+{
   uint8_t i = 0,
           idx = 0,
           dot_found = 0;
@@ -460,7 +499,8 @@ _make_valid_name(const char *path, uint8_t start, uint8_t end, char *name) {
 }
 /*----------------------------------------------------------------------------*/
 static void
-pr_reset(struct PathResolver *rsolv) {
+pr_reset(struct PathResolver *rsolv)
+{
   rsolv->start = 0;
   rsolv->end = 0;
   rsolv->path = NULL;
@@ -468,7 +508,8 @@ pr_reset(struct PathResolver *rsolv) {
 }
 /*----------------------------------------------------------------------------*/
 static uint8_t
-pr_get_next_path_part(struct PathResolver *rsolv) {
+pr_get_next_path_part(struct PathResolver *rsolv)
+{
   uint16_t i = 0;
 
   if (rsolv->path == NULL) {
@@ -495,7 +536,8 @@ pr_get_next_path_part(struct PathResolver *rsolv) {
 }
 /*----------------------------------------------------------------------------*/
 static uint8_t
-pr_is_current_path_part_a_file(struct PathResolver *rsolv) {
+pr_is_current_path_part_a_file(struct PathResolver *rsolv)
+{
   if (rsolv->path[rsolv->end] == '/') {
     return 0;
   } else if (rsolv->path[rsolv->end] == '\0') {
@@ -510,7 +552,8 @@ pr_is_current_path_part_a_file(struct PathResolver *rsolv) {
  * Writes the current buffered block back to the disk if it was changed.
  */
 void
-cfs_fat_flush() {
+cfs_fat_flush()
+{
   if (sector_buffer_dirty) {
 #ifdef FAT_COOPERATIVE
     if (!coop_step_allowed) {
@@ -531,7 +574,8 @@ cfs_fat_flush() {
 }
 /*----------------------------------------------------------------------------*/
 static uint8_t
-fat_read_block(uint32_t sector_addr) {
+fat_read_block(uint32_t sector_addr)
+{
   if (sector_buffer_addr == sector_addr && sector_addr != 0) {
     return 0;
   }
@@ -554,7 +598,8 @@ fat_read_block(uint32_t sector_addr) {
 }
 /*----------------------------------------------------------------------------*/
 static uint8_t
-fat_next_block() {
+fat_next_block()
+{
   cfs_fat_flush();
 
   /* Are we on a Cluster edge? */
@@ -579,7 +624,8 @@ fat_next_block() {
  * Determines the type of the fat by using the BPB.
  */
 static uint8_t
-determine_fat_type(struct FAT_Info *info) {
+determine_fat_type(struct FAT_Info *info)
+{
   uint16_t RootDirSectors = ((info->BPB_RootEntCnt * 32) + (info->BPB_BytesPerSec - 1)) / info->BPB_BytesPerSec;
   uint32_t DataSec = info->BPB_TotSec - (info->BPB_RsvdSecCnt + (info->BPB_NumFATs * info->BPB_FATSz) + RootDirSectors);
   uint32_t CountofClusters = DataSec / info->BPB_SecPerClus;
@@ -614,7 +660,8 @@ determine_fat_type(struct FAT_Info *info) {
  *         More than one error flag may be set but return is 0 on no error.
  */
 static uint8_t
-parse_bootsector(uint8_t *buffer, struct FAT_Info *info) {
+parse_bootsector(uint8_t *buffer, struct FAT_Info *info)
+{
   int ret = 0;
 
   info->BPB_BytesPerSec = (((uint16_t) buffer[12]) << 8) + buffer[11];
@@ -676,7 +723,8 @@ parse_bootsector(uint8_t *buffer, struct FAT_Info *info) {
 }
 /*----------------------------------------------------------------------------*/
 uint8_t
-cfs_fat_mount_device(struct diskio_device_info *dev) {
+cfs_fat_mount_device(struct diskio_device_info *dev)
+{
   uint32_t RootDirSectors = 0;
 
   if (mounted.dev != 0) {
@@ -713,7 +761,8 @@ cfs_fat_mount_device(struct diskio_device_info *dev) {
 }
 /*----------------------------------------------------------------------------*/
 void
-cfs_fat_umount_device() {
+cfs_fat_umount_device()
+{
   uint8_t i = 0;
 
   // Write last buffer
@@ -733,7 +782,8 @@ cfs_fat_umount_device() {
 /*----------------------------------------------------------------------------*/
 /*CFS frontend functions*/
 int
-cfs_open(const char *name, int flags) {
+cfs_open(const char *name, int flags)
+{
   // get FileDescriptor
   int fd = -1;
   uint8_t i = 0;
@@ -794,7 +844,8 @@ cfs_open(const char *name, int flags) {
 }
 /*----------------------------------------------------------------------------*/
 void
-cfs_close(int fd) {
+cfs_close(int fd)
+{
   if (fd < 0 || fd >= FAT_FD_POOL_SIZE) {
     return;
   }
@@ -809,7 +860,8 @@ cfs_close(int fd) {
 }
 /*----------------------------------------------------------------------------*/
 int
-cfs_read(int fd, void *buf, unsigned int len) {
+cfs_read(int fd, void *buf, unsigned int len)
+{
   uint32_t offset = fat_fd_pool[fd].offset % mounted.info.BPB_BytesPerSec;
   uint32_t clusters = (fat_fd_pool[fd].offset / mounted.info.BPB_BytesPerSec) / mounted.info.BPB_SecPerClus;
   uint8_t clus_offset = (fat_fd_pool[fd].offset / mounted.info.BPB_BytesPerSec) % mounted.info.BPB_SecPerClus;
@@ -849,7 +901,8 @@ cfs_read(int fd, void *buf, unsigned int len) {
 }
 /*----------------------------------------------------------------------------*/
 int
-cfs_write(int fd, const void *buf, unsigned int len) {
+cfs_write(int fd, const void *buf, unsigned int len)
+{
   uint16_t offset = fat_fd_pool[fd].offset % (uint32_t) mounted.info.BPB_BytesPerSec;
   uint32_t clusters = (fat_fd_pool[fd].offset / mounted.info.BPB_BytesPerSec) / mounted.info.BPB_SecPerClus;
   uint8_t clus_offset = (fat_fd_pool[fd].offset / mounted.info.BPB_BytesPerSec) % mounted.info.BPB_SecPerClus;
@@ -887,7 +940,8 @@ cfs_write(int fd, const void *buf, unsigned int len) {
 }
 /*----------------------------------------------------------------------------*/
 cfs_offset_t
-cfs_seek(int fd, cfs_offset_t offset, int whence) {
+cfs_seek(int fd, cfs_offset_t offset, int whence)
+{
   if (fd < 0 || fd >= FAT_FD_POOL_SIZE) {
     return -1;
   }
@@ -918,7 +972,8 @@ cfs_seek(int fd, cfs_offset_t offset, int whence) {
 }
 /*----------------------------------------------------------------------------*/
 int
-cfs_remove(const char *name) {
+cfs_remove(const char *name)
+{
   struct dir_entry dir_ent;
   uint32_t sector;
   uint16_t offset;
@@ -938,7 +993,8 @@ cfs_remove(const char *name) {
 }
 /*----------------------------------------------------------------------------*/
 int
-cfs_opendir(struct cfs_dir *dirp, const char *name) {
+cfs_opendir(struct cfs_dir *dirp, const char *name)
+{
   struct dir_entry dir_ent;
   uint32_t sector;
   uint16_t offset;
@@ -955,7 +1011,8 @@ cfs_opendir(struct cfs_dir *dirp, const char *name) {
 }
 /*----------------------------------------------------------------------------*/
 int
-cfs_readdir(struct cfs_dir *dirp, struct cfs_dirent *dirent) {
+cfs_readdir(struct cfs_dir *dirp, struct cfs_dirent *dirent)
+{
   struct dir_entry *dir_ent = (struct dir_entry *) dirp;
   struct dir_entry entry;
 
@@ -983,13 +1040,15 @@ cfs_readdir(struct cfs_dir *dirp, struct cfs_dirent *dirent) {
 }
 /*----------------------------------------------------------------------------*/
 void
-cfs_closedir(struct cfs_dir *dirp) {
+cfs_closedir(struct cfs_dir *dirp)
+{
   cfs_readdir_offset = 0;
 }
 /*----------------------------------------------------------------------------*/
 /*Dir_entry Functions*/
 static uint8_t
-lookup(const char *name, struct dir_entry *dir_entry, uint32_t *dir_entry_sector, uint16_t *dir_entry_offset) {
+lookup(const char *name, struct dir_entry *dir_entry, uint32_t *dir_entry_sector, uint16_t *dir_entry_offset)
+{
   uint16_t i = 0;
   PRINTF("\nfat.c: BEGIN lookup( name = %c%c%c%c%c%c%c%c%c%c%c, dir_entry = %p, *dir_entry_sector = %lu, *dir_entry_offset = %u) = ?", name[0], name[1], name[2], name[3], name[4], name[5], name[6], name[7], name[8], name[9], name[10], dir_entry, *dir_entry_sector, *dir_entry_offset);
   for (;;) {
@@ -1023,7 +1082,8 @@ lookup(const char *name, struct dir_entry *dir_entry, uint32_t *dir_entry_sector
 }
 /*----------------------------------------------------------------------------*/
 static uint8_t
-get_dir_entry(const char *path, struct dir_entry *dir_ent, uint32_t *dir_entry_sector, uint16_t *dir_entry_offset, uint8_t create) {
+get_dir_entry(const char *path, struct dir_entry *dir_ent, uint32_t *dir_entry_sector, uint16_t *dir_entry_offset, uint8_t create)
+{
   uint32_t first_root_dir_sec_num = 0;
   uint32_t file_sector_num = 0;
   uint8_t i = 0;
@@ -1068,7 +1128,8 @@ get_dir_entry(const char *path, struct dir_entry *dir_ent, uint32_t *dir_entry_s
 }
 /*----------------------------------------------------------------------------*/
 static uint8_t
-add_directory_entry_to_current(struct dir_entry *dir_ent, uint32_t *dir_entry_sector, uint16_t *dir_entry_offset) {
+add_directory_entry_to_current(struct dir_entry *dir_ent, uint32_t *dir_entry_sector, uint16_t *dir_entry_offset)
+{
   uint16_t i = 0;
   uint8_t ret = 0;
 
@@ -1112,7 +1173,8 @@ add_directory_entry_to_current(struct dir_entry *dir_ent, uint32_t *dir_entry_se
 }
 /*----------------------------------------------------------------------------*/
 static void
-update_dir_entry(int fd) {
+update_dir_entry(int fd)
+{
   PRINTF("\nfat.c: update_dir_entry( fd = %d ) = void ", fd);
   if (fat_read_block(fat_file_pool[fd].dir_entry_sector) != 0) {
     PRINTF("\nfat.c: update_dir_entry(): error reading the sector containing the directory entry");
@@ -1124,7 +1186,8 @@ update_dir_entry(int fd) {
 }
 /*----------------------------------------------------------------------------*/
 static void
-remove_dir_entry(uint32_t dir_entry_sector, uint16_t dir_entry_offset) {
+remove_dir_entry(uint32_t dir_entry_sector, uint16_t dir_entry_offset)
+{
   PRINTF("\nfat.c: remove_dir_entry( dir_entry_sector = %lu, dir_entry_offset = %u ) = void ", dir_entry_sector, dir_entry_offset);
   if (fat_read_block(dir_entry_sector) != 0) {
     PRINTF("\nfat.c: remove_dir_entry(): error reading the sector containing the directory entry");
@@ -1138,7 +1201,8 @@ remove_dir_entry(uint32_t dir_entry_sector, uint16_t dir_entry_offset) {
 /*----------------------------------------------------------------------------*/
 /*FAT Implementation Functions*/
 static uint8_t
-load_next_sector_of_file(int fd, uint32_t clusters, uint8_t clus_offset, uint8_t write) {
+load_next_sector_of_file(int fd, uint32_t clusters, uint8_t clus_offset, uint8_t write)
+{
   uint32_t cluster = 0;
   PRINTF("\nfat.c: load_next_sector_of_file( fd = %d, clusters = %lu, clus_offset = %u, write = %u ) = ?", fd, clusters, clus_offset, write);
 
@@ -1178,7 +1242,8 @@ load_next_sector_of_file(int fd, uint32_t clusters, uint8_t clus_offset, uint8_t
 /*----------------------------------------------------------------------------*/
 /*FAT Interface Functions*/
 uint32_t
-cfs_fat_file_size(int fd) {
+cfs_fat_file_size(int fd)
+{
   if (fd < 0 || fd >= FAT_FD_POOL_SIZE) {
     return 0;
   }
@@ -1194,7 +1259,8 @@ cfs_fat_file_size(int fd) {
  * Syncs every FAT with the first.
  */
 void
-cfs_fat_sync_fats() {
+cfs_fat_sync_fats()
+{
   uint8_t fat_number;
   uint32_t fat_block;
 
@@ -1210,7 +1276,8 @@ cfs_fat_sync_fats() {
 /*----------------------------------------------------------------------------*/
 /*Helper Functions*/
 static void
-make_readable_entry(struct dir_entry *dir, struct cfs_dirent *dirent) {
+make_readable_entry(struct dir_entry *dir, struct cfs_dirent *dirent)
+{
   uint8_t i, j;
 
   for (i = 0, j = 0; i < 11; i++) {
@@ -1232,8 +1299,9 @@ make_readable_entry(struct dir_entry *dir, struct cfs_dirent *dirent) {
  * \param value Number which should be testet if it is a power of 2.
  * \return 1 on failure and 0 if value is a power of 2.
  */
-uint8_t
-is_a_power_of_2(uint32_t value) {
+static uint8_t
+is_a_power_of_2(uint32_t value)
+{
   uint32_t test = 1;
   uint8_t i = 0;
 
@@ -1257,8 +1325,9 @@ is_a_power_of_2(uint32_t value) {
  * \param value The number which should be rounded down.
  * \return the next lower number which is a power of 2
  */
-uint32_t
-round_down_to_power_of_2(uint32_t value) {
+static uint32_t
+round_down_to_power_of_2(uint32_t value)
+{
   uint32_t po2 = ((uint32_t) 1) << 31;
 
   while (value < po2) {
@@ -1269,7 +1338,8 @@ round_down_to_power_of_2(uint32_t value) {
 }
 /*----------------------------------------------------------------------------*/
 static uint8_t
-_is_file(struct dir_entry *dir_ent) {
+_is_file(struct dir_entry *dir_ent)
+{
   if (dir_ent->DIR_Attr & ATTR_DIRECTORY) {
     return 0;
   }
@@ -1282,10 +1352,14 @@ _is_file(struct dir_entry *dir_ent) {
 }
 /*----------------------------------------------------------------------------*/
 static uint8_t
-_cfs_flags_ok(int flags, struct dir_entry *dir_ent) {
+_cfs_flags_ok(int flags, struct dir_entry *dir_ent)
+{
   if (((flags & CFS_APPEND) || (flags & CFS_WRITE)) && (dir_ent->DIR_Attr & ATTR_READ_ONLY)) {
     return 0;
   }
 
   return 1;
 }
+
+/** @} */
+/** @} */

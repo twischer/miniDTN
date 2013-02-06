@@ -30,9 +30,10 @@
  */
 
 /**
- * \addtogroup Drivers
+ * \addtogroup cfs
  * @{
- *
+ */
+/**
  * \defgroup fat_driver FAT Driver
  *
  * Additional function for the FAT file system.
@@ -92,11 +93,16 @@ struct dir_entry {
   uint8_t DIR_Attr;
   uint8_t DIR_NTRes;
   uint8_t CrtTimeTenth;
+  /** Create time [15-11: hours, 10-5: minutes, 4-0: seconds/2] */
   uint16_t DIR_CrtTime;
+  /** Create date [15-9: year sine 1980, 8-5: month, 4-0: day] */
   uint16_t DIR_CrtDate;
+  /** Last access date [15-9: year sine 1980, 8-5: month, 4-0: day] */
   uint16_t DIR_LstAccessDate;
   uint16_t DIR_FstClusHI;
+  /** Last modified time [15-11: hours, 10-5: minutes, 4-0: seconds/2] */
   uint16_t DIR_WrtTime;
+  /** Create date [15-9: year sine 1980, 8-5: month, 4-0: day] */
   uint16_t DIR_WrtDate;
   uint16_t DIR_FstClusLO;
   uint32_t DIR_FileSize;
@@ -143,11 +149,44 @@ uint8_t cfs_fat_mount_device(struct diskio_device_info *dev);
 void cfs_fat_umount_device();
 
 /**
- * Populates the give FAT_Info with the mounted FAT_Info.
+ * Populates the given FAT_Info with the mounted FAT_Info.
  *
  * \param *info The FAT_Info struct which should be populated.
  */
 void cfs_fat_get_fat_info(struct FAT_Info *info);
+
+/**
+ * Returns the date of last modification.
+ * 
+ * Format: [15-9: year sine 1980, 8-5: month, 4-0: day]
+ * @param fd File descriptor
+ */
+
+uint16_t cfs_fat_get_last_date(int fd);
+
+/**
+ * Returns the time of last modification.
+ * 
+ * Format: [15-11: hours, 10-5: minutes, 4-0: seconds/2]
+ * @param fd File descriptor
+ */
+uint16_t cfs_fat_get_last_time(int fd);
+
+/**
+ * Returns the date of last modification.
+ * 
+ * Format: [15-9: year sine 1980, 8-5: month, 4-0: day]
+ * @param fd File descriptor
+ */
+uint16_t cfs_fat_get_create_date(int fd);
+
+/**
+ * Returns the time of last modification.
+ * 
+ * Format: [15-11: hours, 10-5: minutes, 4-0: seconds/2]
+ * @param fd File descriptor
+ */
+uint16_t cfs_fat_get_create_time(int fd);
 
 /**
  * Syncs every FAT with the first FAT. Can take much time.
@@ -170,13 +209,19 @@ uint32_t cfs_fat_file_size(int fd);
  * 
  * @param fd
  */
-void print_cluster_chain(int fd);
+void cfs_fat_print_cluster_chain(int fd);
 
 /**
  * 
  * @param fd
  */
-void print_file_info(int fd);
+void cfs_fat_print_file_info(int fd);
+
+/**
+ * 
+ * @param dir_entry
+ */
+void cfs_fat_print_dir_entry(struct dir_entry *dir_entry);
 
 #endif
 
