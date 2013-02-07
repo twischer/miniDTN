@@ -8,8 +8,8 @@ endif
 #INGA_BAUDRATE = 38400
 FAT=1
 TARGET=inga
-CFLAGS += -DCONFIG_GROUPS=10
-CONTIKI_SOURCEFILES += ini_parser.c app_config.c sd_mount.c logger.c uart_handler.c
+CFLAGS += -DCONFIG_GROUPS=10 -DMAX_KEY_SIZE=5
+CONTIKI_SOURCEFILES += ini_parser.c app_config.c sd_mount.c logger.c uart_handler.c sensor_fetch.c
 
 CONTIKI = ../..
 include $(CONTIKI)/Makefile.include

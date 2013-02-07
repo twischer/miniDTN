@@ -35,7 +35,7 @@ processValue(cfg_group* grp, char* key, char* value)
 static int
 processValueByID(cfg_group* grp, int key_id, char* value)
 {
-  grp->entry[key_id].handle(value, grp->entry[key_id].value_p);
+  return grp->entry[key_id].handle(value, grp->entry[key_id].value_p);
 }
 /*----------------------------------------------------------------------------*/
 /**
@@ -67,7 +67,7 @@ getKeyID(cfg_group* grp, char* key)
  * @return pointer to config group (cfg_group) struct
  */
 static cfg_group*
-getGroup(cfg_file* file, char* group)
+getGroup(const cfg_file* file, char* group)
 {
   // iterate over entry lists
   int idx;
@@ -98,7 +98,7 @@ getGroup(cfg_file* file, char* group)
  * @return 0 if succeeded, 1 if error occured
  */
 int
-parse_ini(char* buf, cfg_file* conf_file)
+parse_ini(char* buf, const cfg_file* conf_file)
 {
   int count = 0;
   char rkv_buf[MAX_GROUP_KEY_VALUE_SIZE];
@@ -107,8 +107,8 @@ parse_ini(char* buf, cfg_file* conf_file)
   int mode = START;
   cfg_group* current_group = NULL;
   int current_key_id = -1;
+
   // iterate over whole string
-  int i;
   while (*buf) {
     char c = *buf++;
     switch (c) {

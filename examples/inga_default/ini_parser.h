@@ -31,7 +31,7 @@
  */
 typedef struct cfg_entry_s {
   // key name
-  char* key;
+  const char* key;
   // pointer to processor function
   int (*handle)(char*, void*);
   // pointer to storage location
@@ -51,9 +51,9 @@ typedef struct cfg_group_s {
 typedef struct cfg_file_s {
   const char* name; // name of config file
   int entries; // number of groups
-  char* keys[CONFIG_GROUPS]; // keys of available groups
-  cfg_group * groups[CONFIG_GROUPS]; // availbale groups
-  void (*handle[CONFIG_GROUPS])(void);
+  const char* keys[CONFIG_GROUPS]; // keys of available groups
+  const cfg_group * groups[CONFIG_GROUPS]; // availbale groups
+  const void (*handle[CONFIG_GROUPS])(void);
 } cfg_file;
 
 #define FALSE 0
@@ -65,7 +65,7 @@ typedef struct cfg_file_s {
  * @param len size of char buffer
  * @return 0 if succeeded, otherwise 1
  */
-int parse_ini(char* buf, cfg_file* conf_file);
+int parse_ini(char* buf, const cfg_file* conf_file);
 
 /** @} */
 

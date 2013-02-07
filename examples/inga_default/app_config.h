@@ -52,8 +52,8 @@ typedef struct {
  */
 typedef struct {
   bool enabled;
-  int rate;
-  int g_range;
+  uint16_t rate;
+  uint8_t g_range;
 } cfg_acc_t;
 
 /**
@@ -61,7 +61,7 @@ typedef struct {
  */
 typedef struct {
   bool enabled;
-  int rate;
+  uint16_t rate;
   int dps;
 } cfg_gyro_t;
 
@@ -70,7 +70,7 @@ typedef struct {
  */
 typedef struct {
   bool enabled;
-  int rate;
+  uint16_t rate;
 } cfg_pressure_t;
 
 /**
@@ -78,7 +78,7 @@ typedef struct {
  */
 typedef struct {
   bool enabled;
-  int rate;
+  uint16_t rate;
 } cfg_temp_t;
 
 /**
@@ -104,8 +104,21 @@ extern app_config_t ee_system_config EEMEM;
 
 #define MAX_FILE_SIZE   1024
 
-/* Indicate new config data */
+/*
+ * Indicate new config data. Can be thrown by processes to notify about 
+ * new config file data.
+ */
 extern process_event_t event_config_update;
+
+extern char app_config_buffer[];
+
+
+/**
+ * Listens for \ref event_config_update events.
+ * 
+ * Parses config file, sets config datat struct and puts into internal storage
+ */
+PROCESS_NAME(config_process);
 
 /**
  * Loads config data using the following order.
@@ -120,16 +133,7 @@ extern process_event_t event_config_update;
  * 
  * @return 0 if loading succeeded, -1 if loading failed
  */
-PROCESS_NAME(config_process);
-
-/**
- * 
- * @param sd_mounted
- * @return 
- */
 int8_t app_config_init(bool sd_mounted);
-
-extern char app_config_buffer[];
 
 #ifdef APP_CONFIG_DEBUG
 /**

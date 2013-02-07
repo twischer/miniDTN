@@ -5,9 +5,7 @@
 #include "app_config.h"
 
 #define ST_AWAIT_CMD  0
-#define ST_AWAIT_SIZE_H 1
-#define ST_AWAIT_SIZE_L 1
-#define ST_AWAIT_DATA 2
+#define ST_AWAIT_DATA 1
 
 #define CMD_CONFIG 0x11
 
@@ -16,10 +14,9 @@
 process_event_t event_uart;
 
 static volatile uint8_t state = ST_AWAIT_CMD;
-static volatile uint16_t size;
-static volatile uint16_t size_cnt;
-//unsigned char buf[1024];
-unsigned char *buf_ptr;
+
+char *buf_ptr;
+
 static int uart_handler(unsigned char ch);
 /*----------------------------------------------------------------------------*/
 void
@@ -50,8 +47,9 @@ uart_handler(unsigned char ch)
       } else {
         *(buf_ptr++) = ch;
       }
-
       break;
   }
+
+  return 0;
 }
 /*----------------------------------------------------------------------------*/

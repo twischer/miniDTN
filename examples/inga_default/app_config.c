@@ -20,7 +20,9 @@
 #define CHECK_SEQUENCE  0x4242
 
 // configuration instance with default values
-app_config_t system_config;
+app_config_t system_config = {
+  {0}
+};
 bool cfg_load_ok;
 
 #ifdef APP_CONF_STORE_EEPROM
@@ -28,31 +30,6 @@ app_config_t ee_system_config EEMEM;
 #endif
 
 char app_config_buffer[MAX_FILE_SIZE];
-
-static const app_config_t _default_system_config = {
-  ._check_sequence = CHECK_SEQUENCE,
-  // node defaults
-  .node.id = 42,
-  // output defaults
-  .output.sdcard = false,
-  .output.usb = false,
-  .output.radio = false,
-  .output.block_size = 0,
-  // accelerometer defaults
-  .acc.enabled = true,
-  .acc.rate = 0,
-  .acc.g_range = 0,
-  // gyroscope defaults
-  .gyro.enabled = true,
-  .gyro.rate = 0,
-  .gyro.dps = 0,
-  // pressure defaults
-  .pressure.enabled = true,
-  .pressure.rate = 0,
-  // temperature defaults
-  .temp.enabled = true,
-  .temp.rate = 0
-};
 /*----------------------------------------------------------------------------*/
 static int8_t
 app_config_load_internal()
@@ -130,7 +107,28 @@ app_config_load_microSD()
 static void
 app_config_load_defaults()
 {
-  system_config = _default_system_config;
+  system_config._check_sequence = CHECK_SEQUENCE;
+  // node defaults
+  system_config.node.id = 42;
+  // output defaults
+  system_config.output.sdcard = false;
+  system_config.output.usb = false;
+  system_config.output.radio = false;
+  system_config.output.block_size = 0;
+  // accelerometer defaults
+  system_config.acc.enabled = true;
+  system_config.acc.rate = 0;
+  system_config.acc.g_range = 0;
+  // gyroscope defaults
+  system_config.gyro.enabled = true;
+  system_config.gyro.rate = 0;
+  system_config.gyro.dps = 0;
+  // pressure defaults
+  system_config.pressure.enabled = true;
+  system_config.pressure.rate = 0;
+  // temperature defaults
+  system_config.temp.enabled = true;
+  system_config.temp.rate = 0;
 }
 
 process_event_t event_config_update;
@@ -153,6 +151,9 @@ PROCESS_THREAD(config_process, ev, data)
     app_config_save_internal();
     log_i("Stored to internal data\n");
 
+    print_config();
+
+    init_sensors();
   }
 
   PROCESS_END();
@@ -161,6 +162,8 @@ PROCESS_THREAD(config_process, ev, data)
 int8_t
 app_config_init(bool sd_mounted)
 {
+  // initialize struct to zero
+  memset(&system_config, 0, sizeof (app_config_t));
 
   if (app_config_load_internal() == 0) {
     log_i("Loaded config from internal data\n");
@@ -201,6 +204,8 @@ print_config()
   log_v("gyro.dps:         %d\n", system_config.gyro.dps);
   log_v("pressure.enabled: %d\n", system_config.pressure.enabled);
   log_v("pressure.rate:    %d\n", system_config.pressure.rate);
+  log_v("temp.enabled:     %d\n", system_config.temp.enabled);
+  log_v("temp.rate:        %d\n", system_config.temp.rate);
 }
 #endif
 /*----------------------------------------------------------------------------*/

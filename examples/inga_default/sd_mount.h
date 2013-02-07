@@ -8,6 +8,17 @@
 #ifndef SD_MOUNT_H
 #define	SD_MOUNT_H
 
+/**
+ * @addtogroup default_app
+ * @{
+ */
+
+/**
+ * \defgroup sd_mount SD card Mounting
+ * @{
+ */
+
+
 #include "contiki.h"
 
 /**
@@ -22,9 +33,12 @@ extern process_event_t event_mount;
  * Mount process.
  * 
  * Tries to find and mount a probably inserted microSD card.
- * Broadcasts event \link event_mount.
+ * Broadcasts event \link event_mount if mounting is done.
  */
 PROCESS_NAME(mount_process);
+
+/** @} */
+/** @} */
 
 #endif	/* SD_MOUNT_H */
 

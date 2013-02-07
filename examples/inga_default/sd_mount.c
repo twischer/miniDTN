@@ -13,12 +13,9 @@ static bool mounted;
 static int8_t sd_mount();
 
 PROCESS(mount_process, "Mount process");
-AUTOSTART_PROCESSES(&mount_process);
 /*----------------------------------------------------------------------------*/
-PROCESS_THREAD(mount_process, ev, data) {
-  //PT_THREAD(process_thread_mount_process(struct pt *process_pt,	\
-//				       process_event_t ev,	\
-//				       process_data_t data)) {
+PROCESS_THREAD(mount_process, ev, data)
+{
   PROCESS_BEGIN();
   log_v("mount_process: started\n");
 
@@ -34,8 +31,9 @@ PROCESS_THREAD(mount_process, ev, data) {
   PROCESS_END();
 }
 /*----------------------------------------------------------------------------*/
-int8_t
-sd_mount() {
+static int8_t
+sd_mount()
+{
   struct diskio_device_info *info = 0;
   int i;
   int initialized = 0;
@@ -46,7 +44,7 @@ sd_mount() {
 
   info = diskio_devices();
   for (i = 0; i < DISKIO_MAX_DEVICES; i++) {
-    log_i("");
+    log_i(" ");
     print_device_info(info + i);
 
     // use first detected partition

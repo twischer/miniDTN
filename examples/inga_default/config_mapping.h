@@ -8,6 +8,7 @@
 #ifndef CONFIG_MAPPING_H
 #define	CONFIG_MAPPING_H
 
+#include <stdlib.h>
 #include "ini_parser.h"
 #include "app_config.h"
 #include "logger.h"
@@ -31,7 +32,7 @@ int handle_int(char* value, void* value_p) {
 }
 
 int handle_char(char* value, void* value_p) {
-  *((char*) value_p) = value;
+  *((char*) value_p) = *value;
   return 0;
 }
 
@@ -121,7 +122,7 @@ static const cfg_group temp_group = {
   .entry =
   {
     {"enabled", &handle_boolean, &system_config.temp.enabled},
-    {"rate", &handle_int, &system_config.temp.enabled},
+    {"rate", &handle_int, &system_config.temp.rate},
   }
 };
 // processor group mapping
