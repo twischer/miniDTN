@@ -416,6 +416,11 @@ class Testsuite(object):
 	def __init__(self, suitecfg, devcfg, testcfg):
 		self.config = suitecfg
 
+		# Set PATH to contain inga_tool and profile-neat.py
+		path_inga_tool_dir = os.path.join(self.config['contikibase'], "tools", "inga", "inga_tool")
+		path_profile_neat_py_dir = os.path.join(self.config['contikibase'], "tools", "profiling")
+		os.environ['PATH'] += ':%s:%s' % (path_inga_tool_dir, path_profile_neat_py_dir)
+
 		if 'contikiscm' in self.config:
 			if self.config['contikiscm'] == 'git':
 				self.contikiversion = subprocess.check_output(["git", "describe", "--tags", "--always", "--dirty", "--long"], stderr=subprocess.STDOUT, cwd=self.config['contikibase']).rstrip()
@@ -442,12 +447,18 @@ class Testsuite(object):
 			self.devices[devicecfg['name']] = deviceinst
 
 		self.tests = {}
+		self.build_inga_tool = False
 		for testcfg in testcfg:
 			testcfg['logbase'] = self.logdir
 			testcfg['contikibase'] = self.config['contikibase']
 			if testcfg['name'] in self.config['testcases']:
 				testcase = Testcase(testcfg, self.devices, testcfg['devices'])
 				self.tests[testcfg['name']] = testcase
+				# Check if we need to build inga_tool
+				if not self.build_inga_tool:
+					for dev in testcfg['devices']:
+						if self.devices[dev['name']].platform == 'inga':
+							self.build_inga_tool = True
 
 		# Set up logging to file
 		filehandler = logging.FileHandler(os.path.join(self.logdir, "build.log"))
@@ -481,6 +492,21 @@ class Testsuite(object):
 
 
 	def run(self):
+		# Build inga_tool
+		if self.build_inga_tool:
+			self.inga_tool_dir = os.path.join(self.config['contikibase'], "tools", "inga", "inga_tool")
+			logging.info("Building inga_tool %s", self.inga_tool_dir)
+			if not os.path.exists(self.inga_tool_dir):
+				logging.error("Could not find %s", self.inga_tool_dir)
+				raise Exception
+			try:
+				output = subprocess.check_output(["make", "-C", self.inga_tool_dir], stderr=subprocess.STDOUT)
+				logging.debug(output)
+			except subprocess.CalledProcessError as err:
+				logging.error(err)
+				logging.error(err.output)
+				raise
+
 		failure = []
 		success = []
 		for testname in self.config['testcases']:
@@ -534,8 +560,18 @@ class Testsuite(object):
 
 				xmlfile.write('</testsuite>\n')
 
-		return len(failure)
+		# make clean inga_tool_dir
+		if self.build_inga_tool:
+			logging.info("Cleaning inga_tool sourcedir %s", self.inga_tool_dir)
+			try:
+				output = subprocess.check_output(["make", "-C", self.inga_tool_dir, "clean"], stderr=subprocess.STDOUT)
+				logging.debug(output)
+			except subprocess.CalledProcessError as err:
+				logging.error(err)
+				logging.error(err.output)
+				raise
 
+		return len(failure)
 
 # Create a logger for the console
 logging.basicConfig(level=logging.DEBUG,
