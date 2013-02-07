@@ -25,23 +25,39 @@
 #include "app_config.h"
 #include "logger.h"
 #include "sd_mount.h"
+#include "uart_handler.h"
 
 /*---------------------------------------------------------------------------*/
 PROCESS(default_app_process, "Sensor update process");
-AUTOSTART_PROCESSES(&default_app_process, &logger_process, &config_process, &mount_process);//, &mount_process);
+AUTOSTART_PROCESSES(&default_app_process, &logger_process, &config_process, &mount_process); //, &mount_process);
 /*---------------------------------------------------------------------------*/
 static struct etimer timer;
-PROCESS_THREAD(default_app_process, ev, data) {
+PROCESS_THREAD(default_app_process, ev, data)
+{
   PROCESS_BEGIN();
-  
-  PROCESS_WAIT_EVENT_UNTIL(ev == event_config);
-  
+
+  uart_handler_init();
+
+  // we wait until mounted, before loading config
+  PROCESS_WAIT_EVENT_UNTIL(ev == event_mount);
+
+  if (app_config_init(*(bool*) data) != 0) {
+    log_e("Loading config failed!\n");
+  }
+
   print_config();
 
   // sensor setup
   if (system_config.acc.enabled) {
     log_i("Enabling accelerometer\n");
     SENSORS_ACTIVATE(acc_sensor);
+    // set range
+    if (!acc_sensor.configure(ACC_CONF_SENSITIVITY, system_config.acc.g_range)) {
+      log_e("Failed setting g range\n");
+    }
+    if (!acc_sensor.configure(ACC_CONF_DATA_RATE, system_config.acc.rate)) {
+      log_e("Failed setting data rate\n");
+    }
   }
   if (system_config.gyro.enabled) {
     log_i("Enabling gyroscope\n");
@@ -56,7 +72,7 @@ PROCESS_THREAD(default_app_process, ev, data) {
 
   etimer_set(&timer, CLOCK_SECOND * 0.05);
 
-  printf("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n");
+//  printf("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n");
   //  int idx;
   //  for (idx = 0; idx < 1024; idx++) {
   //    ramData[idx] = 0x42;

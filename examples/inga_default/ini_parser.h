@@ -65,7 +65,7 @@ typedef struct cfg_file_s {
  * @param len size of char buffer
  * @return 0 if succeeded, otherwise 1
  */
-int parse_ini(char* buf, int len, cfg_file* conf_file);
+int parse_ini(char* buf, cfg_file* conf_file);
 
 /** @} */
 

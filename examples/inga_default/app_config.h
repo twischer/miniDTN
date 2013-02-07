@@ -102,7 +102,10 @@ extern app_config_t system_config;
 extern app_config_t ee_system_config EEMEM;
 #endif
 
-extern process_event_t event_config;
+#define MAX_FILE_SIZE   1024
+
+/* Indicate new config data */
+extern process_event_t event_config_update;
 
 /**
  * Loads config data using the following order.
@@ -117,7 +120,16 @@ extern process_event_t event_config;
  * 
  * @return 0 if loading succeeded, -1 if loading failed
  */
-extern struct process config_process;
+PROCESS_NAME(config_process);
+
+/**
+ * 
+ * @param sd_mounted
+ * @return 
+ */
+int8_t app_config_init(bool sd_mounted);
+
+extern char app_config_buffer[];
 
 #ifdef APP_CONFIG_DEBUG
 /**

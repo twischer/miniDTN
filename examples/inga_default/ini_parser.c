@@ -19,7 +19,8 @@ static int processValueByID(cfg_group* grp, int key_id, char* value);
 #endif
 /*----------------------------------------------------------------------------*/
 static int
-processValue(cfg_group* grp, char* key, char* value) {
+processValue(cfg_group* grp, char* key, char* value)
+{
   return processValueByID(grp, getKeyID(grp, key), value);
 }
 /*----------------------------------------------------------------------------*/
@@ -32,7 +33,8 @@ processValue(cfg_group* grp, char* key, char* value) {
  * @return 
  */
 static int
-processValueByID(cfg_group* grp, int key_id, char* value) {
+processValueByID(cfg_group* grp, int key_id, char* value)
+{
   grp->entry[key_id].handle(value, grp->entry[key_id].value_p);
 }
 /*----------------------------------------------------------------------------*/
@@ -43,7 +45,8 @@ processValueByID(cfg_group* grp, int key_id, char* value) {
  * @return id of grp in the struct array
  */
 static int
-getKeyID(cfg_group* grp, char* key) {
+getKeyID(cfg_group* grp, char* key)
+{
   // iterate over entry lists
   int idx;
   for (idx = 0; idx < grp->entries; idx++) {
@@ -64,7 +67,8 @@ getKeyID(cfg_group* grp, char* key) {
  * @return pointer to config group (cfg_group) struct
  */
 static cfg_group*
-getGroup(cfg_file* file, char* group) {
+getGroup(cfg_file* file, char* group)
+{
   // iterate over entry lists
   int idx;
   for (idx = 0; idx < file->entries; idx++) {
@@ -94,7 +98,8 @@ getGroup(cfg_file* file, char* group) {
  * @return 0 if succeeded, 1 if error occured
  */
 int
-parse_ini(char* buf, int len, cfg_file* conf_file) {
+parse_ini(char* buf, cfg_file* conf_file)
+{
   int count = 0;
   char rkv_buf[MAX_GROUP_KEY_VALUE_SIZE];
   char *rkv_pos;
@@ -104,8 +109,8 @@ parse_ini(char* buf, int len, cfg_file* conf_file) {
   int current_key_id = -1;
   // iterate over whole string
   int i;
-  for (i = 0; i < len; i++) {
-    char c = buf[count];
+  while (*buf) {
+    char c = *buf++;
     switch (c) {
         // newline
       case '\n':
@@ -169,7 +174,7 @@ parse_ini(char* buf, int len, cfg_file* conf_file) {
         break;
     }
     count++;
-  }; // while (buf[count] != NULL);
+  };
   return 0;
 }
 

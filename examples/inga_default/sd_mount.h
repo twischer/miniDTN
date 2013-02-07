@@ -24,6 +24,7 @@ extern process_event_t event_mount;
  * Tries to find and mount a probably inserted microSD card.
  * Broadcasts event \link event_mount.
  */
-extern struct process mount_process;
+PROCESS_NAME(mount_process);
+
 #endif	/* SD_MOUNT_H */
 
