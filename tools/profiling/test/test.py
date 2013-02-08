@@ -101,18 +101,9 @@ class Device(object):
 		raise Exception('Unimplemented')
 	def reset(self):
 		raise Exception('Unimplemented')
-	def create_graph(self, name, log):
-		basename = os.path.join(self.logdir, self.name)
-		svgname = "%s-%s.svg"%(basename, name)
-		pdfname = "%s-%s.pdf"%(basename, name)
-
-		profile = subprocess.Popen(["profile-neat.py", "-p", self.prefix, "-g", svgname, self.binary,  "-"], stdin=subprocess.PIPE, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
-		(output, tmp) = profile.communicate(log)
-		logging.info(output)
-		output = subprocess.check_output(["inkscape", "-A", pdfname, svgname])
 	def reset_occurred(self):
 		self.abort_by_reset = True
-	def recordlog(self, queue, controlqueue):
+	def recordlog(self, callgraphqueue, queue, controlqueue):
 		logfile = os.path.join(self.logdir, "%s.log"%(self.name))
 
 		self.logger.info("Recording device log to %s", logfile)
@@ -162,7 +153,8 @@ class Device(object):
 					profiledata += "\n"
 					profilelines -= 1
 				if profilelines == 0:
-					self.create_graph(profilename, profiledata)
+					workitem = (profilename, profiledata, self.logdir, self.prefix, self.binary)
+					callgraphqueue.put(workitem)
 					profilelines = -1
 
 				if line.startswith("TEST"):
@@ -200,7 +192,6 @@ class Device(object):
 		ser.close()
 		self.logger.removeHandler(handler)
 		self.logger.info("Finished logging")
-
 
 class Sky(Device):
 	"""TMote Sky"""
@@ -299,6 +290,17 @@ class Testcase(object):
 	def timeout_occured(self):
 		self.timedout = True
 
+	def create_graph(self, name, log, logdir, prefix, binary):
+		basename = os.path.join(logdir, self.name)
+		svgname = "%s-%s.svg"%(basename, name)
+		pdfname = "%s-%s.pdf"%(basename, name)
+
+		self.logger.info("Writing Call Graph to %s and %s", svgname, pdfname)
+		profile = subprocess.Popen(["profile-neat.py", "-p", prefix, "-g", svgname, binary,  "-"], stdin=subprocess.PIPE, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+		(output, tmp) = profile.communicate(log)
+		logging.info(output)
+		output = subprocess.check_output(["inkscape", "-A", pdfname, svgname])
+
 	def run(self):
 		logfile = os.path.join(self.logbase, "test.log")
 		handler = logging.FileHandler(logfile)
@@ -312,6 +314,9 @@ class Testcase(object):
 		timeouttimer.daemon = True
 		self.timedout = False
 		self.result = []
+
+		# Initialize call graph worker queue
+		self.callgraphqueue = Queue.Queue()
 
 		try:
 			self.logger.info("Starting test %s", self.name)
@@ -337,7 +342,7 @@ class Testcase(object):
 
 				for device in self.devices:
 					control = Queue.Queue()
-					thread = threading.Thread(target=device.recordlog, args=(queue,control))
+					thread = threading.Thread(target=device.recordlog, args=(self.callgraphqueue,queue,control))
 					threads[device.name] = (thread, control)
 					thread.start()
 
@@ -411,6 +416,13 @@ class Testcase(object):
 
 		self.logger.removeHandler(resulthandler)
 		self.logger.removeHandler(handler)
+
+		# Create all call graphs
+		self.logger.info("Creating call graphs...")
+		while self.callgraphqueue.qsize() > 0:
+			workitem = self.callgraphqueue.get()
+			self.create_graph(workitem[0], workitem[1], workitem[2], workitem[3], workitem[4])
+			self.callgraphqueue.task_done()
 
 class Testsuite(object):
 	def __init__(self, suitecfg, devcfg, testcfg):
