@@ -131,7 +131,7 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 		PROCESS_WAIT_EVENT();
 
 		/* Check for timeout */
-		if (clock_seconds()-(time_start/CLOCK_SECOND) > 5400) {
+		if (clock_seconds()-(time_start/CLOCK_SECOND) > 18000) {
 			profiling_stop();
 			watchdog_stop();
 			profiling_report("timeout", 0);
