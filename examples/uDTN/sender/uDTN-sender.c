@@ -60,6 +60,16 @@
 #error "I need a destination node - set CONF_SEND_TO_NODE"
 #endif
 
+#ifdef CONF_BUNDLES
+#define BUNDLES CONF_BUNDLES
+#else
+#define BUNDLES 1000
+#endif
+
+#ifdef CONF_REPORT
+#define REPORT 1
+#endif
+
 /*---------------------------------------------------------------------------*/
 PROCESS(udtn_sender_process, "uDTN Sender process");
 AUTOSTART_PROCESSES(&udtn_sender_process);
@@ -143,10 +153,10 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 
 			profiling_stop();
 			watchdog_stop();
-			profiling_report("send-1000", 0);
+			profiling_report("send-bundles", 0);
 			watchdog_start();
 
-			TEST_REPORT("throughput", 1000*CLOCK_SECOND, time_stop-time_start, "bundles/s");
+			TEST_REPORT("throughput", BUNDLES*CLOCK_SECOND, time_stop-time_start, "bundles/s");
 			TEST_PASS();
 
 			PROCESS_EXIT();
@@ -170,9 +180,9 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 			continue;
 		}
 
-		/* Stop profiling if we've sent 1000 bundles. We still need to send
+		/* Stop profiling if we've sent BUNDLES bundles. We still need to send
 		 * more since some might have been lost on the way */
-		if (bundles_sent == 1000) {
+		if (bundles_sent == BUNDLES) {
 			profiling_stop();
 			/* Note down the time of the last bundle */
 			time_stop = test_precise_timestamp(NULL);
@@ -194,6 +204,10 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 
 		/* Bundle flags */
 		tmp=BUNDLE_FLAG_SINGLETON;
+#if REPORT
+		/* Enable bundle delivery report */
+		tmp |= BUNDLE_FLAG_REP_DELIV;
+#endif
 		bundle_set_attr(bundle_outgoing, FLAGS, &tmp);
 
 		/* Bundle lifetime */
