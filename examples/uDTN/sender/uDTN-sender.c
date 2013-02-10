@@ -74,8 +74,6 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 	static uint32_t time_start, time_stop;
 	uint8_t userdata[80];
 	uint32_t tmp;
-	clock_time_t now;
-	unsigned short now_fine;
 	static struct mmem * bundle_outgoing;
 
 	PROCESS_BEGIN();
@@ -112,14 +110,11 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 	profiling_init();
 	profiling_start();
 
-	do {
-		now_fine = clock_time();
-		now = clock_seconds();
-	} while (now_fine != clock_time());
-	time_start = ((unsigned long)now)*CLOCK_SECOND + now_fine%CLOCK_SECOND;
-
 	/* Send ourselves the initial event */
 	process_post(&udtn_sender_process, PROCESS_EVENT_CONTINUE, NULL);
+
+	/* Note down the starting time */
+	time_start = test_precise_timestamp(NULL);
 
 	while(1) {
 		/* Wait for the next incoming event */
@@ -179,11 +174,8 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 		 * more since some might have been lost on the way */
 		if (bundles_sent == 1000) {
 			profiling_stop();
-			do {
-				now_fine = clock_time();
-				now = clock_seconds();
-			} while (now_fine != clock_time());
-			time_stop = ((unsigned long)now)*CLOCK_SECOND + now_fine%CLOCK_SECOND;
+			/* Note down the time of the last bundle */
+			time_stop = test_precise_timestamp(NULL);
 		}
 
 		/* Allocate memory for the outgoing bundle */

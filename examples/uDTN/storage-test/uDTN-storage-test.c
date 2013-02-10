@@ -189,8 +189,6 @@ PROCESS_THREAD(test_process, ev, data)
 	static struct storage_entry_t * list_entry = NULL;
 	static int ok = 0;
 	static uint32_t time_start, time_stop;
-	clock_time_t now;
-	unsigned short now_fine;
 
 	PROCESS_BEGIN();
 
@@ -218,11 +216,7 @@ PROCESS_THREAD(test_process, ev, data)
 	profiling_start();
 
 	// Measure the current time
-	do {
-		now_fine = clock_time();
-		now = clock_seconds();
-	} while (now_fine != clock_time());
-	time_start = ((unsigned long)now)*CLOCK_SECOND + now_fine%CLOCK_SECOND;
+	time_start = test_precise_timestamp(NULL);
 
 	printf("Create, Read and Delete in sequence\n");
 	for(i=0; i<TEST_BUNDLES; i++) {
@@ -472,11 +466,7 @@ PROCESS_THREAD(test_process, ev, data)
 		}
 	}
 
-	do {
-		now_fine = clock_time();
-		now = clock_seconds();
-	} while (now_fine != clock_time());
-	time_stop = ((unsigned long)now)*CLOCK_SECOND + now_fine%CLOCK_SECOND;
+	time_stop = test_precise_timestamp(NULL);
 
 	if( BUNDLE_STORAGE.get_bundles() != NULL ) {
 		printf("Bundle list is not empty\n");

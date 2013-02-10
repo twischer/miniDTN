@@ -202,8 +202,6 @@ PROCESS_THREAD(test_process, ev, data)
 	static int errors = 0;
 	static struct etimer timer;
 	static uint32_t time_start, time_stop;
-	clock_time_t now;
-	unsigned short now_fine;
 	uint8_t buffer[128];
 	int bundle_length;
 	struct mmem * bundle_original = NULL;
@@ -234,11 +232,7 @@ PROCESS_THREAD(test_process, ev, data)
 	profiling_start();
 
 	// Measure the current time
-	do {
-		now_fine = clock_time();
-		now = clock_seconds();
-	} while (now_fine != clock_time());
-	time_start = ((unsigned long)now)*CLOCK_SECOND + now_fine%CLOCK_SECOND;
+	time_start = test_precise_timestamp(NULL);
 
 	for(i=0; i<=1; i++) {
 		struct mmem bla;
@@ -380,11 +374,7 @@ PROCESS_THREAD(test_process, ev, data)
 		bundle_spare = NULL;
 	}
 
-	do {
-		now_fine = clock_time();
-		now = clock_seconds();
-	} while (now_fine != clock_time());
-	time_stop = ((unsigned long)now)*CLOCK_SECOND + now_fine%CLOCK_SECOND;
+	time_stop = test_precise_timestamp(NULL);
 
 	watchdog_stop();
 	profiling_report("serializer", 0);

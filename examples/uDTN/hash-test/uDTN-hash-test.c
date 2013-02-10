@@ -70,8 +70,6 @@ PROCESS_THREAD(test_process, ev, data)
 	uint32_t output_ptr;
 	uint32_t output_copy;
 	static uint32_t time_start, time_stop;
-	clock_time_t now;
-	unsigned short now_fine;
 	uint32_t one;
 	uint32_t two;
 	uint32_t three;
@@ -186,11 +184,7 @@ PROCESS_THREAD(test_process, ev, data)
 
 	printf("Testing performance...\n");
 
-	do {
-		now_fine = clock_time();
-		now = clock_seconds();
-	} while (now_fine != clock_time());
-	time_start = ((unsigned long)now)*CLOCK_SECOND + now_fine%CLOCK_SECOND;
+	time_start = test_precise_timestamp(NULL);
 
 	for(mode=0; mode<10000; mode++) {
 		one = mode;
@@ -206,11 +200,7 @@ PROCESS_THREAD(test_process, ev, data)
 		output_copy = HASH.hash_convenience(one, two, three, four, five);
 	}
 
-	do {
-		now_fine = clock_time();
-		now = clock_seconds();
-	} while (now_fine != clock_time());
-	time_stop = ((unsigned long)now)*CLOCK_SECOND + now_fine%CLOCK_SECOND;
+	time_stop = test_precise_timestamp(NULL);
 
 	profiling_stop();
 	watchdog_stop();
