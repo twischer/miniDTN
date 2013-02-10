@@ -71,8 +71,6 @@ PROCESS_THREAD(udtn_sink_process, ev, data)
 	static uint8_t userdata[2];
 	uint32_t tmp;
 	static uint32_t seqno;
-	clock_time_t now;
-	unsigned short now_fine;
 	struct mmem * bundle_incoming;
 	static struct mmem * bundle_outgoing;
 
@@ -167,11 +165,7 @@ PROCESS_THREAD(udtn_sink_process, ev, data)
 
 		/* Start counting time after the first bundle arrived */
 		if (bundles_recv == 1) {
-			do {
-				now_fine = clock_time();
-				now = clock_seconds();
-			} while (now_fine != clock_time());
-			time_start = ((unsigned long)now)*CLOCK_SECOND + now_fine%CLOCK_SECOND;
+			time_start = test_precise_timestamp(NULL);
 		}
 
 		if (bundles_recv%50 == 0)
@@ -182,12 +176,7 @@ PROCESS_THREAD(udtn_sink_process, ev, data)
 		if (bundles_recv==1000) {
 			leds_off(1);
 			profiling_stop();
-
-			do {
-				now_fine = clock_time();
-				now = clock_seconds();
-			} while (now_fine != clock_time());
-			time_stop = ((unsigned long)now)*CLOCK_SECOND + now_fine%CLOCK_SECOND;
+			time_stop = test_precise_timestamp(NULL);
 
 			bundle_outgoing = bundle_create_bundle();
 
