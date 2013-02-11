@@ -40,7 +40,7 @@ void discovery_ipnd_refresh_neighbour(rimeaddr_t * neighbour);
 void discovery_ipnd_save_neighbour(rimeaddr_t * neighbour);
 
 #define DISCOVERY_NEIGHBOUR_CACHE	3
-#define DISCOVERY_CYCLE				1
+#define DISCOVERY_CYCLE			5	
 #define DISCOVERY_NEIGHBOUR_TIMEOUT	(5*DISCOVERY_CYCLE)
 #define DISCOVERY_IPND_SERVICE		"lowpancl"
 #define DISCOVERY_IPND_BUFFER_LEN 	60
