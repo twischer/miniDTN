@@ -5,7 +5,7 @@
 uint32_t test_precise_timestamp(uint8_t * is_valid) {
 	clock_time_t now;
 	unsigned short now_fine;
-	int cnt = 0;
+	uint16_t cnt = 0;
 
 	do {
 		now_fine = clock_time();
@@ -18,14 +18,14 @@ uint32_t test_precise_timestamp(uint8_t * is_valid) {
 		if( cnt % 500 ) {
 			watchdog_periodic();
 		}
-	} while (now_fine != clock_time() && cnt < 65535);
+	} while (now_fine != clock_time() && cnt < 65000);
 
 	if( is_valid != NULL ) {
 		*is_valid = 1;
 	}
 
 	/* It may happen, that the loop was aborted due to the counter */
-	if( cnt >= 65535 && is_valid != NULL ) {
+	if( cnt >= 65000 && is_valid != NULL ) {
 		*is_valid = 0;
 	}
 
