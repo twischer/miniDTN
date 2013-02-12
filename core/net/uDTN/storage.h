@@ -46,11 +46,6 @@
 #endif
 
 /**
- * How do we call the bundle list representation file (if applicable)
- */
-#define BUNDLE_STORAGE_FILE_NAME "list_file"
-
-/**
  * Should storage go into an initial safe state when starting up?
  * Otherwise, some storages may try to reconstruct the last start before powering down
  */
