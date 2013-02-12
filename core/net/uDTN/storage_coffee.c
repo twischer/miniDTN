@@ -43,11 +43,6 @@
 #define STORAGE_FILE_NAME_LENGTH 	15
 
 /**
- * How often should we save a bundle overview file to flash? [in seconds]
- */
-#define STORAGE_WRITE_INTERVAL		120
-
-/**
  * Internal representation of a bundle
  *
  * The layout is quite fixed - the next pointer and the bundle_num have to go first because this struct
@@ -76,9 +71,6 @@ static uint16_t bundles_in_storage;
 /** Is used to periodically traverse all bundles and delete those that are expired */
 static struct ctimer g_store_timer;
 
-/** Is used to periodically write the list of bundles to flash */
-static struct ctimer g_store_write_timer;
-
 /** Flag to indicate whether the bundle list has changed since last writing the list file */
 static uint8_t bundle_list_changed = 0;
 
@@ -96,12 +88,10 @@ static uint8_t bundle_list_changed = 0;
 /**
  * "Internal" functions
  */
-void storage_coffee_save_list_on_change();
 void storage_coffee_prune();
 uint16_t storage_coffee_delete_bundle(uint32_t bundle_number, uint8_t reason);
 struct mmem * storage_coffee_read_bundle(uint32_t bundle_number);
-void storage_coffee_read_list();
-void storage_coffee_save_list();
+void storage_coffee_read_bundles();
 
 /**
  * \brief called by agent at startup
@@ -126,151 +116,118 @@ void storage_coffee_init(void)
 	RADIO_SAFE_STATE_OFF();
 #else
 	// Try to restore our bundle list from the file system
-	storage_coffee_read_list();
+	storage_coffee_read_bundles();
 #endif
 
 	// Set the timer to regularly prune expired bundles
 	ctimer_set(&g_store_timer, CLOCK_SECOND*5, storage_coffee_prune, NULL);
-
-	// Set the timer to regularly write the list of bundles to flash
-	ctimer_set(&g_store_write_timer, CLOCK_SECOND * STORAGE_WRITE_INTERVAL, storage_coffee_save_list_on_change, NULL);
 }
 
 /**
- * \brief Check whether the bundle list has been changed and if so, write to COFFEE
+ * \brief Restore bundles stored in CFS
  */
-void storage_coffee_save_list_on_change()
+void storage_coffee_read_bundles()
 {
-	LOG(LOGD_DTN, LOG_STORE, LOGL_DBG, "g_store_save_list_on_change()");
-
-	// In case the bundle list has changed, write the changes to the bundle list file
-	if( bundle_list_changed ) {
-		RADIO_SAFE_STATE_ON();
-
-		// Remove the old list file
-		cfs_remove(BUNDLE_STORAGE_FILE_NAME);
-
-		RADIO_SAFE_STATE_OFF();
-
-		// And create a new one
-		storage_coffee_save_list();
-
-		bundle_list_changed = 0;
-	}
-
-	// Restart the timer
-	ctimer_restart(&g_store_write_timer);
-}
-
-/**
- * \brief Store the current bundle list into a file
- * FIXME: This function is actually not necessary, we could also list the directory on startup and restore bundles that way
- */
-void storage_coffee_save_list()
-{
-	int fd_write;
 	int n;
 	struct file_list_entry_t * entry = NULL;
+	struct cfs_dir directory_iterator;
+	struct cfs_dirent directory_entry;
+	char * delimeter = NULL;
+	uint32_t bundle_number = 0;
+	struct mmem * bundleptr = NULL;
+	struct bundle_t * bundle = NULL;
+	uint8_t found = 0;
 
 	RADIO_SAFE_STATE_ON();
 
-	// Reserve memory for our list
-	cfs_coffee_reserve(BUNDLE_STORAGE_FILE_NAME, sizeof(struct file_list_entry_t) * bundles_in_storage);
-
-	// Open the file for writing
-	fd_write = cfs_open(BUNDLE_STORAGE_FILE_NAME, CFS_WRITE);
-	if( fd_write == -1 ) {
-		// Unable to open file, abort here
-		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to open file %s, cannot save bundle list", BUNDLE_STORAGE_FILE_NAME);
+	n = cfs_opendir(&directory_iterator, "/");
+	if( n == -1 ) {
+		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to list directory /");
+		RADIO_SAFE_STATE_OFF();
 		return;
 	}
 
-	// Delete expired bundles from storage
-	for(entry = list_head(bundle_list);
+	while( cfs_readdir(&directory_iterator, &directory_entry) != -1 ) {
+		/* Check if there is a . in the filename */
+		delimeter = strchr(directory_entry.name, '.');
+
+		if( delimeter == NULL ) {
+			/* filename is invalid */
+			LOG(LOGD_DTN, LOG_STORE, LOGL_WRN, "filename %s is invalid, skipping", directory_entry.name);
+			continue;
+		}
+
+		/* Check if the extension is b */
+		if( *(delimeter+1) != 'b' ) {
+			/* filename is invalid */
+			LOG(LOGD_DTN, LOG_STORE, LOGL_WRN, "filename %s is invalid, skipping", directory_entry.name);
+			continue;
+		}
+
+		/* Get the bundle number from the filename */
+		delimeter = '\0';
+		bundle_number = atol(directory_entry.name);
+
+		/* Check if this bundle is in storage already */
+		found = 0;
+		for(entry = list_head(bundle_list);
 			entry != NULL;
 			entry = list_item_next(entry)) {
-		n = cfs_write(fd_write, entry, sizeof(struct file_list_entry_t));
 
-		if( n != sizeof(struct file_list_entry_t) ) {
-			LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to append %u bytes to bundle list file, aborting", sizeof(struct file_list_entry_t));
-			cfs_close(fd_write);
-			cfs_remove(BUNDLE_STORAGE_FILE_NAME);
-			return;
+			if( entry->bundle_num == bundle_number ) {
+				found = 1;
+				break;
+			}
 		}
-	}
 
-	cfs_close(fd_write);
+		if( found == 1 ) {
+			continue;
+		}
 
-	RADIO_SAFE_STATE_OFF();
-}
-
-/**
- * \brief Restore the bundle list from a file
- */
-void storage_coffee_read_list()
-{
-	int fd_read;
-	int n;
-	struct file_list_entry_t * entry = NULL;
-	int eof = 0;
-
-	RADIO_SAFE_STATE_ON();
-
-	// Open the file for reading
-	fd_read = cfs_open(BUNDLE_STORAGE_FILE_NAME, CFS_READ);
-	if( fd_read == -1 ) {
-		// Unable to open file, abort here
-		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to open file %s, cannot read bundle list", BUNDLE_STORAGE_FILE_NAME);
-		RADIO_SAFE_STATE_OFF();
-		return;
-	}
-
-	while( !eof ) {
+		/* Allocate a directory entry for the bundle */
 		entry = memb_alloc(&bundle_mem);
 		if( entry == NULL ) {
 			LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to allocate struct, cannot restore bundle list");
-			cfs_close(fd_read);
-			RADIO_SAFE_STATE_OFF();
-			return;
+			continue;
 		}
 
-		// Read the struct
-		n = cfs_read(fd_read, entry, sizeof(struct file_list_entry_t));
+		/* Fill in the entry */
+		entry->bundle_num = bundle_number;
+		entry->file_size = directory_entry.size;
 
-		if( n == 0 ) {
-			// End of file reached
-			memb_free(&bundle_mem, entry);
-			RADIO_SAFE_STATE_OFF();
-			break;
-		}
-
-		if( n != sizeof(struct file_list_entry_t) ) {
-			LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to read %u bytes from bundle list file", sizeof(struct file_list_entry_t));
-			cfs_close(fd_read);
-			memb_free(&bundle_mem, entry);
-			RADIO_SAFE_STATE_OFF();
-			return;
-		}
-
-		// Add bundle to the list
+		/* Add bundle to the list */
 		list_add(bundle_list, entry);
-
 		bundles_in_storage ++;
 
-		// Now that we have the index entry, we have to try to read the bundle
-		struct mmem * testbundle = NULL;
-		testbundle = storage_coffee_read_bundle(entry->bundle_num);
-		if( testbundle == NULL ) {
+		/* Now read bundle from storage to update the rest of the entry */
+		RADIO_SAFE_STATE_OFF();
+		bundleptr = storage_coffee_read_bundle(entry->bundle_num);
+		RADIO_SAFE_STATE_ON();
+
+		if( bundleptr == NULL ) {
 			LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to restore bundle %lu", entry->bundle_num);
 			list_remove(bundle_list, entry);
 			memb_free(&bundle_mem, entry);
 			continue;
 		}
 
-		bundle_decrement(testbundle);
+		/* Get bundle struct */
+		bundle = (struct bundle_t *) MMEM_PTR(bundleptr);
+
+		/* Copy everything we need from the bundle */
+		entry->rec_time = bundle->rec_time;
+		entry->lifetime = bundle->lifetime;
+		entry->file_size = bundleptr->size;
+		entry->bundle_num = bundle->bundle_num;
+
+		/* Deallocate memory */
+		bundle_decrement(bundleptr);
 	}
 
-	cfs_close(fd_read);
+	LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "Restored %u bundles from CFS", bundles_in_storage);
+
+	/* Close directory handle */
+	cfs_closedir(&directory_iterator);
 
 	RADIO_SAFE_STATE_OFF();
 }
@@ -315,13 +272,6 @@ void storage_coffee_reinit(void)
 
 		storage_coffee_delete_bundle(entry->bundle_num, REASON_DEPLETED_STORAGE);
 	}
-
-	RADIO_SAFE_STATE_ON();
-
-	// Delete the bundle list file
-	cfs_remove(BUNDLE_STORAGE_FILE_NAME);
-
-	RADIO_SAFE_STATE_OFF();
 
 	// And reset our counters
 	bundles_in_storage = 0;
