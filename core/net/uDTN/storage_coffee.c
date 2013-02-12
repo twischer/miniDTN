@@ -118,8 +118,12 @@ void storage_coffee_init(void)
 	bundle_list_changed = 0;
 
 #if BUNDLE_STORAGE_INIT
+	RADIO_SAFE_STATE_ON();
+
 	LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "Formatting flash");
 	cfs_coffee_format();
+
+	RADIO_SAFE_STATE_OFF();
 #else
 	// Try to restore our bundle list from the file system
 	storage_coffee_read_list();
