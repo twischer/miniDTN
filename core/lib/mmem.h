@@ -73,7 +73,7 @@
  *
  * \hideinitializer
  */
-#define MMEM_PTR(m) (struct mmem *)(m)->ptr
+#define MMEM_PTR(m) (m)->ptr
 
 struct mmem {
   struct mmem *next;
