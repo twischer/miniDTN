@@ -149,12 +149,6 @@ int convergence_layer_free_transmit_ticket(struct transmit_ticket_t * ticket)
 
 	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Freeing ticket %p", ticket);
 
-	list_remove(transmission_ticket_list, ticket);
-
-	memset(ticket, 0, sizeof(struct transmit_ticket_t));
-
-	memb_free(&transmission_ticket_mem, ticket);
-
 	/* Only dequeue bundles that have been in the queue */
 	if( (ticket->flags & CONVERGENCE_LAYER_QUEUE_ACTIVE) || (ticket->flags & CONVERGENCE_LAYER_QUEUE_DONE) || (ticket->flags & CONVERGENCE_LAYER_QUEUE_FAIL) ) {
 		convergence_layer_queue--;
@@ -162,6 +156,11 @@ int convergence_layer_free_transmit_ticket(struct transmit_ticket_t * ticket)
 
 	/* Count the used slots */
 	convergence_layer_slots--;
+
+	/* Remove ticket from list and free memory */
+	list_remove(transmission_ticket_list, ticket);
+	memset(ticket, 0, sizeof(struct transmit_ticket_t));
+	memb_free(&transmission_ticket_mem, ticket);
 
 	return 1;
 }
