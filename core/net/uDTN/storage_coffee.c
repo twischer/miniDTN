@@ -91,7 +91,7 @@ static uint8_t bundle_list_changed = 0;
 void storage_coffee_prune();
 uint16_t storage_coffee_delete_bundle(uint32_t bundle_number, uint8_t reason);
 struct mmem * storage_coffee_read_bundle(uint32_t bundle_number);
-void storage_coffee_read_bundles();
+void storage_coffee_reconstruct_bundles();
 
 /**
  * \brief called by agent at startup
@@ -116,7 +116,7 @@ void storage_coffee_init(void)
 	RADIO_SAFE_STATE_OFF();
 #else
 	// Try to restore our bundle list from the file system
-	storage_coffee_read_bundles();
+	storage_coffee_reconstruct_bundles();
 #endif
 
 	// Set the timer to regularly prune expired bundles
@@ -126,7 +126,7 @@ void storage_coffee_init(void)
 /**
  * \brief Restore bundles stored in CFS
  */
-void storage_coffee_read_bundles()
+void storage_coffee_reconstruct_bundles()
 {
 	int n;
 	struct file_list_entry_t * entry = NULL;
@@ -187,7 +187,7 @@ void storage_coffee_read_bundles()
 		/* Allocate a directory entry for the bundle */
 		entry = memb_alloc(&bundle_mem);
 		if( entry == NULL ) {
-			LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to allocate struct, cannot restore bundle list");
+			LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to allocate struct, cannot restore bundle");
 			continue;
 		}
 
@@ -208,6 +208,7 @@ void storage_coffee_read_bundles()
 			LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to restore bundle %lu", entry->bundle_num);
 			list_remove(bundle_list, entry);
 			memb_free(&bundle_mem, entry);
+			bundles_in_storage--;
 			continue;
 		}
 
@@ -222,12 +223,15 @@ void storage_coffee_read_bundles()
 
 		/* Deallocate memory */
 		bundle_decrement(bundleptr);
+		bundle = NULL;
+		bundleptr = NULL;
+		entry = NULL;
 	}
-
-	LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "Restored %u bundles from CFS", bundles_in_storage);
 
 	/* Close directory handle */
 	cfs_closedir(&directory_iterator);
+
+	LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "Restored %u bundles from CFS", bundles_in_storage);
 
 	RADIO_SAFE_STATE_OFF();
 }
@@ -625,6 +629,9 @@ struct mmem * storage_coffee_read_bundle(uint32_t bundle_number)
 	cfs_close(fd_read);
 
 	RADIO_SAFE_STATE_OFF();
+
+	/* Get the bundle pointer */
+	bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 
 	/* How long did this bundle rot in our storage? */
 	uint32_t elapsed_time = clock_seconds() - bundle->rec_time;
