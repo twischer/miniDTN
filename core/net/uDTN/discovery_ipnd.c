@@ -452,7 +452,7 @@ PROCESS_THREAD(discovery_process, ev, data)
 				}
 			}
 
-			etimer_reset(&discovery_timeout_timer);
+			etimer_restart(&discovery_timeout_timer);
 		}
 
 		/**
@@ -460,7 +460,7 @@ PROCESS_THREAD(discovery_process, ev, data)
 		 */
 		if( etimer_expired(&discovery_cycle_timer) ) {
 			discovery_ipnd_send();
-			etimer_reset(&discovery_cycle_timer);
+			etimer_restart(&discovery_cycle_timer);
 		}
 	}
 

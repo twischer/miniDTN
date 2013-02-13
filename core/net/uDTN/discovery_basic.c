@@ -372,7 +372,7 @@ PROCESS_THREAD(discovery_process, ev, data)
 				}
 			}
 
-			etimer_reset(&discovery_timeout_timer);
+			etimer_restart(&discovery_timeout_timer);
 		}
 
 		/**
@@ -385,7 +385,7 @@ PROCESS_THREAD(discovery_process, ev, data)
 			if( discovery_pending > (DISCOVERY_TRIES + 1)) {
 				discovery_basic_stop_pending();
 			} else {
-				etimer_reset(&discovery_pending_timer);
+				etimer_restart(&discovery_pending_timer);
 			}
 		}
 

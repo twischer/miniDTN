@@ -855,7 +855,7 @@ PROCESS_THREAD(convergence_layer_process, ev, data)
 
 		if( etimer_expired(&stale_timer) ) {
 			check_blocked_neighbours();
-			etimer_reset(&stale_timer);
+			etimer_restart(&stale_timer);
 		}
 
 		if( ev == PROCESS_EVENT_POLL || ev == PROCESS_EVENT_CONTINUE ) {
