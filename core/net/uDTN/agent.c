@@ -134,6 +134,7 @@ PROCESS_THREAD(agent_process, ev, data)
 			uint8_t n = 0;
 			struct bundle_t * bundle = NULL;
 			struct process * source_process = NULL;
+			uint32_t bundle_flags = 0;
 
 			bundleptr = (struct mmem *) data;
 			if( bundleptr == NULL ) {
@@ -167,6 +168,24 @@ PROCESS_THREAD(agent_process, ev, data)
 
 			/* Set the source node */
 			bundle_set_attr(bundleptr, SRC_NODE, &dtn_node_id);
+
+			/* Check for report-to and set node and service accordingly */
+			bundle_get_attr(bundleptr, FLAGS, &bundle_flags);
+			if( bundle_flags & BUNDLE_FLAG_REPORT ) {
+				uint32_t report_to_node = 0;
+				bundle_get_attr(bundleptr, REP_NODE, &report_to_node);
+
+				if( report_to_node == 0 ) {
+					bundle_set_attr(bundleptr, REP_NODE, &dtn_node_id);
+				}
+
+				uint32_t report_to_service = 0;
+				bundle_get_attr(bundleptr, REP_SERV, &report_to_service);
+
+				if( report_to_service ) {
+					bundle_set_attr(bundleptr, REP_SERV, &app_id);
+				}
+			}
 
 			LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "dtn_send_bundle_event(%p) with seqNo %lu", bundleptr, dtn_seq_nr);
 
