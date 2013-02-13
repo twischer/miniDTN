@@ -25,7 +25,6 @@
 #include "clock.h"
 #include "net/mac/frame802154.h" // for IEEE802154_PANID
 #include "logging.h"
-#include "random.h"
 
 #include "dtn_network.h"
 #include "agent.h"
@@ -447,7 +446,7 @@ PROCESS_THREAD(discovery_process, ev, data)
 			for(entry = list_head(neighbour_list);
 					entry != NULL;
 					entry = entry->next) {
-				if( entry->active && (clock_seconds() - entry->timestamp_last) > (DISCOVERY_NEIGHBOUR_TIMEOUT + 1) ) {
+				if( entry->active && (clock_seconds() - entry->timestamp_last) > DISCOVERY_NEIGHBOUR_TIMEOUT ) {
 					LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "Neighbour %u.%u timed out: %lu vs. %lu = %lu", entry->neighbour.u8[0], entry->neighbour.u8[1], clock_time(), entry->timestamp_last, clock_time() - entry->timestamp_last);
 					discovery_ipnd_delete_neighbour(&entry->neighbour);
 				}
@@ -461,20 +460,7 @@ PROCESS_THREAD(discovery_process, ev, data)
 		 */
 		if( etimer_expired(&discovery_cycle_timer) ) {
 			discovery_ipnd_send();
-	
-			/**
-			 * Slight variance in the discovery interval to ensure, that even two nodes in a 
-			 * simulator that have been started simentanously will find each other one day
-			 */
-			unsigned short random = random_rand();
-
-			if( random < 0.15 * RANDOM_RAND_MAX ) {
-				etimer_set(&discovery_cycle_timer, (DISCOVERY_CYCLE - 1) * CLOCK_SECOND);
-			} else if( random > 0.7 * RANDOM_RAND_MAX ) {
-				etimer_set(&discovery_cycle_timer, (DISCOVERY_CYCLE + 1) * CLOCK_SECOND);
-			} else {
-				etimer_restart(&discovery_cycle_timer);
-			}
+			etimer_reset(&discovery_cycle_timer);
 		}
 	}
 
