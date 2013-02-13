@@ -215,6 +215,12 @@ uint8_t statusreport_basic_send(struct mmem * bundlemem, uint8_t status, uint8_t
 	bundle_get_attr(bundlemem, REP_NODE, &report_node_id);
 	bundle_get_attr(bundlemem, REP_SERV, &report_service_id);
 
+	// Check for a proper destination node
+	if( report_node_id == 0 ) {
+		LOG(LOGD_DTN, LOG_AGENT, LOGL_WRN, "Cannot send status report, destination node is %lu", report_node_id);
+		return 0;
+	}
+
 	// Allocate memory for our bundle
 	report_bundle = bundle_create_bundle();
 
