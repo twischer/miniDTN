@@ -690,6 +690,7 @@ void routing_flooding_bundle_sent(struct transmit_ticket_t * ticket, uint8_t sta
 
 	routing_flooding_blacklist_delete(&ticket->neighbour);
 
+#ifndef TEST_DO_NOT_DELETE_ON_DIRECT_DELIVERY
 	rimeaddr_t dest_n = convert_eid_to_rime(entry->destination_node);
 	if (rimeaddr_cmp(&ticket->neighbour, &dest_n)) {
 		LOG(LOGD_DTN, LOG_ROUTE, LOGL_DBG, "bundle sent to destination node");
@@ -704,9 +705,11 @@ void routing_flooding_bundle_sent(struct transmit_ticket_t * ticket, uint8_t sta
 		routing_flooding_check_keep_bundle(bundle_number);
 
 		return;
-	} else {
-		LOG(LOGD_DTN, LOG_ROUTE, LOGL_DBG, "bundle for %u.%u delivered to %u.%u", dest_n.u8[0], dest_n.u8[1], ticket->neighbour.u8[0], ticket->neighbour.u8[1]);
 	}
+
+	LOG(LOGD_DTN, LOG_ROUTE, LOGL_DBG, "bundle for %u.%u delivered to %u.%u", dest_n.u8[0], dest_n.u8[1], ticket->neighbour.u8[0], ticket->neighbour.u8[1]);
+#endif
+
 
 	if (entry->send_to < ROUTING_NEI_MEM) {
 		rimeaddr_copy(&entry->neighbours[entry->send_to], &ticket->neighbour);
