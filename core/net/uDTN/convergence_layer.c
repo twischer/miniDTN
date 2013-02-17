@@ -88,6 +88,12 @@ int convergence_layer_queue;
  */
 uint8_t outgoing_sequence_number;
 
+/**
+ * Indicate when a continue event or poll to ourselves is pending to avoid
+ * exceeding the event queue size 
+ */
+uint8_t convergence_layer_pending;
+
 int convergence_layer_init(void)
 {
 	// Start CL process
@@ -590,12 +596,16 @@ int convergence_layer_status(void * pointer, uint8_t outcome)
 	convergence_layer_transmitting = 0;
 
 	/* Notify the process to commence transmitting outgoing bundles */
-	if( outcome == CONVERGENCE_LAYER_STATUS_NOSEND ) {
-		/* Send event to slow the stuff down */
-		process_post(&convergence_layer_process, PROCESS_EVENT_CONTINUE, NULL);
-	} else {
-		/* Poll to make it faster */
-		process_poll(&convergence_layer_process);
+	if( convergence_layer_pending == 0 ) {
+		if( outcome == CONVERGENCE_LAYER_STATUS_NOSEND ) {
+			/* Send event to slow the stuff down */
+			process_post(&convergence_layer_process, PROCESS_EVENT_CONTINUE, NULL);
+		} else {
+			/* Poll to make it faster */
+			process_poll(&convergence_layer_process);
+		}
+
+		convergence_layer_pending = 1;
 	}
 
 	if( pointer == NULL ) {
@@ -845,6 +855,7 @@ PROCESS_THREAD(convergence_layer_process, ev, data)
 	convergence_layer_transmitting = 0;
 	outgoing_sequence_number = 0;
 	convergence_layer_queue = 0;
+	convergence_layer_pending = 0;
 
 	/* Set timer */
 	etimer_set(&stale_timer, CLOCK_SECOND);
@@ -858,6 +869,8 @@ PROCESS_THREAD(convergence_layer_process, ev, data)
 		}
 
 		if( ev == PROCESS_EVENT_POLL || ev == PROCESS_EVENT_CONTINUE ) {
+			convergence_layer_pending = 0;
+
 			/* If we are currently transmitting, we cannot send another bundle */
 			if( convergence_layer_transmitting ) {
 				/* We will get polled again when the MAC layers calls us back,
