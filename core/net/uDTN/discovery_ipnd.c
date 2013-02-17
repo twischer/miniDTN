@@ -122,7 +122,7 @@ uint8_t discovery_ipnd_is_neighbour(rimeaddr_t * dest)
 			entry != NULL;
 			entry = entry->next) {
 		if( entry->active &&
-				rimeaddr_cmp(&(entry->neighbour), dest) ) {
+				rimeaddr_cmp(&entry->neighbour, dest) ) {
 			return 1;
 		}
 	}
@@ -325,7 +325,7 @@ void discovery_ipnd_refresh_neighbour(rimeaddr_t * neighbour)
 			entry != NULL;
 			entry = entry->next) {
 		if( entry->active &&
-				rimeaddr_cmp(&(entry->neighbour), neighbour) ) {
+				rimeaddr_cmp(&entry->neighbour, neighbour) ) {
 			entry->timestamp_last = clock_seconds();
 			return;
 		}
@@ -353,7 +353,7 @@ void discovery_ipnd_delete_neighbour(rimeaddr_t * neighbour)
 			entry != NULL;
 			entry = entry->next) {
 		if( entry->active &&
-				rimeaddr_cmp(&(entry->neighbour), neighbour) ) {
+				rimeaddr_cmp(&entry->neighbour, neighbour) ) {
 
 			// Notify the statistics module
 			statistics_contacts_down(&entry->neighbour, entry->timestamp_last - entry->timestamp_discovered);
@@ -396,7 +396,7 @@ void discovery_ipnd_save_neighbour(rimeaddr_t * neighbour)
 	memset(entry, 0, sizeof(struct discovery_basic_neighbour_list_entry));
 
 	entry->active = 1;
-	rimeaddr_copy(&(entry->neighbour), neighbour);
+	rimeaddr_copy(&entry->neighbour, neighbour);
 	entry->timestamp_last = clock_seconds();
 	entry->timestamp_discovered = clock_seconds();
 
@@ -406,7 +406,7 @@ void discovery_ipnd_save_neighbour(rimeaddr_t * neighbour)
 	list_add(neighbour_list, entry);
 
 	// We have found a new neighbour, now go and notify the agent
-	process_post(&agent_process, dtn_beacon_event, neighbour);
+	process_post(&agent_process, dtn_beacon_event, &entry->neighbour);
 }
 
 /**
