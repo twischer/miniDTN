@@ -57,121 +57,77 @@
  */
 #define ADXL345_CS 					2
 
-/*!
- * ADXL Data Format Register
+/**
+ * \name Device Registers
+ * \{
  */
-#define ADXL345_DATA_FORMAT_REG		0x31
+/** Device ID Register */
+#define ADXL345_DEVICE_ID_REG     0x00
 /*!
- * ADXL Data Format Register Data:
- *<table border="1">
- * <tr>
- * <th> D7 </th>
- * <th> D6 </th>
- * <th> D5 </th>
- * <th> D4 </th>
- * <th> D3 </th>
- * <th> D2 </th>
- * <th> D1 </th>
- * <th> D0 </th>
- * </tr>
- * <tr>
- * <td> SELF_TEST </td>
- * <td> SPI </td>
- * <td> INT_INVERT </td>
- * <td> 0 </td>
- * <td> FULL_RES </td>
- * <td> Justify </td>
- * <td> Range </td>
- * <td> Range </td>
- * </tr>
- * </table>
- * \note For further information use the ADXL345 Datasheet
- * \note Default value: 0x00
- */
-#define ADXL345_DATA_FORMAT_DATA	0x00
-
-/*!
- * ADXL Power Control Register
- */
-#define ADXL345_POWER_CTL_REG		0x2D
-/*!
- * ADXL Power Control Register Data:
- *<table border="1">
- * <tr>
- * <th> D7 </th>
- * <th> D6 </th>
- * <th> D5 </th>
- * <th> D4 </th>
- * <th> D3 </th>
- * <th> D2 </th>
- * <th> D1 </th>
- * <th> D0 </th>
- * </tr>
- * <tr>
- * <td> 0 </td>
- * <td> 0 </td>
- * <td> Link </td>
- * <td> Auto Sleep </td>
- * <td> Measure </td>
- * <td> Sleep </td>
- * <td> Wakeup </td>
- * <td> Wakeup </td>
- * </tr>
- * </table>
- * \note For further information use the ADXL345 Datasheet
- * \note Default value: 0x00
- */
-#define ADXL345_POWER_CTL_DATA		0x08
-
-
-#define ADXL345_FIFO_CTL_REG		0x38
-
-
-/*!
- * ADXL Data Rate and Power Mode Control Register
- *<table border="1">
- * <tr>
- * <th> D7 </th>
- * <th> D6 </th>
- * <th> D5 </th>
- * <th> D4 </th>
- * <th> D3 </th>
- * <th> D2 </th>
- * <th> D1 </th>
- * <th> D0 </th>
- * </tr>
- * <tr>
- * <td> 0 </td>
- * <td> 0 </td>
- * <td> 0 </td>
- * <td> LOW_POWER </td>
- * <td> Rate_3 </td>
- * <td> Rate_2 </td>
- * <td> Rate_1 </td>
- * <td> Rate_0 </td>
- * </tr>
- * </table>
+ * \brief ADXL Data Rate and Power Mode Control Register.
+ * 
+ * - \b D7 - 0
+ * - \b D6 - 0
+ * - \b D5 - 0
+ * - \b D4 - LOW_POWER
+ * - \b D3 - Rate (high)
+ * - \b D2 - Rate ..
+ * - \b D1 - Rate ..
+ * - \b D0 - Rate (low)
+ *
  * \note For further information use the ADXL345 Datasheet
  * \note Default value: 0x0A */
 #define ADXL345_BW_RATE_REG       0x2C
 /*!
- * ADXL Data Rate and Power Mode Control Register Data:
+ * \brief ADXL Power Control Register.
+ * 
+ * - \b D7 - 0
+ * - \b D6 - 0
+ * - \b D5 - Link
+ * - \b D4 - Auto Sleep
+ * - \b D3 - Measure
+ * - \b D2 - Sleep
+ * - \b D1 - Wakeup
+ * - \b D0 - Wakeup
+ * 
+ * \note For further information use the ADXL345 Datasheet
+ * \note Default value: 0x00
  */
-#define ADXL345_BW_RATE_DATA      0x0A
-
-/*Device ID Register and value*/
-#define ADXL345_DEVICE_ID_REG     0x00
-#define ADXL345_DEVICE_ID_DATA		0xE5
-/*Acceleration Data register (high/low)*/
+#define ADXL345_POWER_CTL_REG     0x2D
+/*!
+ * \brief ADXL Data Format Register Register.
+ * 
+ * - \b D7 - SELF_TEST
+ * - \b D6 - SPI
+ * - \b D5 - INT_INVERT
+ * - \b D4 - ---
+ * - \b D3 - FULL_RES
+ * - \b D2 - Justify
+ * - \b D1 - Range (H)
+ * - \b D0 - Range (L)
+ * 
+ * \note For further information use the ADXL345 Datasheet
+ * \note Default value: 0x00
+ */
+#define ADXL345_DATA_FORMAT_REG		0x31
+/** x Acceleration Data register (high) */
 #define ADXL345_OUTX_LOW_REG      0x32
+/** x Acceleration Data register (low) */
 #define ADXL345_OUTX_HIGH_REG  		0x33
+/** y Acceleration Data register (high) */
 #define ADXL345_OUTY_LOW_REG      0x34
+/** y Acceleration Data register (low) */
 #define ADXL345_OUTY_HIGH_REG     0x35
+/** z Acceleration Data register (high) */
 #define ADXL345_OUTZ_LOW_REG      0x36
+/** z Acceleration Data register (low) */
 #define ADXL345_OUTZ_HIGH_REG     0x37
-
+/** FIFO control register */
 #define ADXL345_FIFO_CTL_REG      0x38
+/** FIFO status register */
 #define ADXL345_FIFO_STATUS_REG		0x39
+/** \} */
+
 
 // BW_RATE
 #define ADXL345_LOW_POWER     4
@@ -197,80 +153,89 @@
 
 #define ADXL345_RANGE_L       0
 
-
+/**
+ * \name g range settings
+ * \{
+ */
+/** +/- 2g, 256 LSB/g */
 #define ADXL345_MODE_2G				(0x0 << ADXL345_RANGE_L)
+/** +/- 4g, 128 LSB/g */
 #define ADXL345_MODE_4G				(0x1 << ADXL345_RANGE_L)
+/** +/- 8g, 64 LSB/g */
 #define ADXL345_MODE_8G				(0x2 << ADXL345_RANGE_L)
+/** +/- 16g, 32 LSB/g */
 #define ADXL345_MODE_16G			(0x3 << ADXL345_RANGE_L)
+/** \} */
 
+/**
+ * \name fifo mode settings
+ * \{
+ */
 #define ADXL345_MODE_BYPASS		(0x0 << ADXL345_FIFO_MODE_L)
 #define ADXL345_MODE_FIFO			(0x1 << ADXL345_FIFO_MODE_L)
 #define ADXL345_MODE_STREAM		(0x2 << ADXL345_FIFO_MODE_L)
 #define ADXL345_MODE_TRIGGER	(0x3 << ADXL345_FIFO_MODE_L)
+/** \} */
 
 /**
  * \name Values for output data rate
  * \see ADXL345_BW_RATE_REG
  * \{
  */
-/// ODR: 0.1 Hz, bandwith: 0.05Hz, I_DD: 23 µA
+/* ODR: 0.1 Hz, bandwith: 0.05Hz, I_DD: 23 µA */
 #define ADXL345_ODR_0HZ10			(0x0 << ADXL345_RATE_L)
-/// ODR: 0.2 Hz, bandwith: 0.1Hz, I_DD: 23 µA
+/* ODR: 0.2 Hz, bandwith: 0.1Hz, I_DD: 23 µA */
 #define ADXL345_ODR_0HZ20			(0x1 << ADXL345_RATE_L)
-/// ODR: 0.39 Hz, bandwith: 0.2Hz, I_DD: 23 µA
+/* ODR: 0.39 Hz, bandwith: 0.2Hz, I_DD: 23 µA */
 #define ADXL345_ODR_0HZ39			(0x2 << ADXL345_RATE_L)
-/// ODR: 0.78 Hz, bandwith: 0.39Hz, I_DD: 23 µA
+/* ODR: 0.78 Hz, bandwith: 0.39Hz, I_DD: 23 µA */
 #define ADXL345_ODR_0HZ78			(0x3 << ADXL345_RATE_L)
-/// ODR: 1.56 Hz, bandwith: x.xxHz, I_DD: xx µA
+/* ODR: 1.56 Hz, bandwith: x.xxHz, I_DD: 34 µA */
 #define ADXL345_ODR_1HZ56			(0x4 << ADXL345_RATE_L)
-/// ODR: 3.13 Hz, bandwith: x.xxHz, I_DD: xx µA
+/* ODR: 3.13 Hz, bandwith: x.xxHz, I_DD: 40 µA */
 #define ADXL345_ODR_3HZ13			(0x5 << ADXL345_RATE_L)
-/// ODR: 6.25 Hz, bandwith: x.xxHz, I_DD: xx µA
+/* ODR: 6.25 Hz, bandwith: x.xxHz, I_DD: 45 µA */
 #define ADXL345_ODR_6HZ25			(0x6 << ADXL345_RATE_L)
-/// ODR: 12.5 Hz, bandwith: x.xxHz, I_DD: xx µA
+/* ODR: 12.5 Hz, bandwith: x.xxHz, I_DD: 50 µA */
 #define ADXL345_ODR_12HZ5			(0x7 << ADXL345_RATE_L)
-/// ODR: 25 Hz, bandwith: x.xxHz, I_DD: xx µA
+/* ODR: 25 Hz, bandwith: x.xxHz, I_DD: 60 µA */
 #define ADXL345_ODR_25HZ			(0x8 << ADXL345_RATE_L)
-/// ODR: 50 Hz, bandwith: x.xxHz, I_DD: xx µA
+/* ODR: 50 Hz, bandwith: x.xxHz, I_DD: 90 µA */
 #define ADXL345_ODR_50HZ			(0x9 << ADXL345_RATE_L)
-/// ODR: 100 Hz, bandwith: x.xxHz, I_DD: xx µA
+/* ODR: 100 Hz, bandwith: x.xxHz, I_DD: 140 µA */
 #define ADXL345_ODR_100HZ			(0xA << ADXL345_RATE_L)
-/// ODR: 200 Hz, bandwith: x.xxHz, I_DD: xx µA
+/* ODR: 200 Hz, bandwith: x.xxHz, I_DD: 140 µA */
 #define ADXL345_ODR_200HZ			(0xB << ADXL345_RATE_L)
-/// ODR: 400 Hz, bandwith: x.xxHz, I_DD: xx µA
+/* ODR: 400 Hz, bandwith: x.xxHz, I_DD: 140 µA */
 #define ADXL345_ODR_400HZ			(0xC << ADXL345_RATE_L)
-/// ODR: 800 Hz, bandwith: x.xxHz, I_DD: xx µA
+/* ODR: 800 Hz, bandwith: x.xxHz, I_DD: 140 µA */
 #define ADXL345_ODR_800HZ			(0xD << ADXL345_RATE_L)
-/// ODR: 1600 Hz, bandwith: x.xxHz, I_DD: xx µA
+/* ODR: 1600 Hz, bandwith: x.xxHz, I_DD: 90 µA */
 #define ADXL345_ODR_1600HZ		(0xE << ADXL345_RATE_L)
-/// ODR: 3200 Hz, bandwith: x.xxHz, I_DD: xx µA
+/* ODR: 3200 Hz, bandwith: x.xxHz, I_DD: 140 µA */
 #define ADXL345_ODR_3200HZ		(0xF << ADXL345_RATE_L)
+
 /** \} */
 
 typedef struct {
-  int16_t acc_x_value;
-  int16_t acc_y_value;
-  int16_t acc_z_value;
+  int16_t x;
+  int16_t y;
+  int16_t z;
 } acc_data_t;
 
 /**
- * \brief Initialize the ADXL345 Acceleration Sensor
+ * \brief Initialize the ADXL345 accelerometer
+ * 
+ * Default settings are: TODO
  *
- * The specific sensor settings are provided by
- * <ul>
- *  <li> ADXL345_DATA_FORMAT_DATA
- *  <li> ADXL345_POWER_CTL_DATA
- *  <li> ADXL345_BW_RATE_DATA
- * </ul>
- * \return 	<ul>
- *  		<li> 0 ADXL345 available
- *  		<li> -1 ADXL345 not available
- * 		 	</ul>
+ * \retval 0 Initialization succeeded
+ * \retval -1 Initialization failed
  */
 int8_t adxl345_init(void);
 /**
  * Checks whether the device is ready or not by reading the ID.
- * @return 0 if ready, otherwise -1
+ * \retval 1 ready
+ * \retval 0 not ready
  */
 int8_t adxl345_ready(void);
 /**
@@ -313,7 +278,6 @@ int16_t adxl345_get_y_acceleration(void);
  * \return current z-axis acceleration value
  */
 int16_t adxl345_get_z_acceleration(void);
-
 
 /**
  * \brief This function returns the current measured acceleration
