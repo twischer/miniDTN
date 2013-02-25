@@ -24,6 +24,7 @@
 #include "mmem.h"
 #include "net/rime/rimeaddr.h"
 #include "process.h"
+#include "packetbuf.h"
 
 #ifndef __BUNDLE_H__
 #define __BUNDLE_H__
@@ -140,6 +141,7 @@ struct bundle_t{
 	uint32_t frag_offs;
 	uint32_t app_len;
 
+	packetbuf_attr_t rssi;
 	struct process * source_process;
 	rimeaddr_t msrc;
 #if DEBUG_H
