@@ -64,6 +64,15 @@
 #undef FAT_COOPERATIVE
 #endif
 
+/** Allows to enable synchronization of FATs when unmounting device.
+ * This may allow to restore a corrupted primary FAT but
+ * note that this will lead to poor performance and decreases flash life because
+ * of a remarkable number of additional write cycles.
+ */
+#ifndef FAT_SYNC
+#define FAT_SYNC 0
+#endif
+
 #define FAT_COOP_QUEUE_SIZE 15
 
 #define FAT12 0
@@ -75,6 +84,7 @@
 
 #define FAT_FD_POOL_SIZE 5
 
+/** Holds boot sector information. */
 struct FAT_Info {
   uint8_t type; /** Either FAT16, FAT32 or FAT_INVALID */
   uint16_t BPB_BytesPerSec;
@@ -83,8 +93,8 @@ struct FAT_Info {
   uint8_t BPB_NumFATs;
   uint16_t BPB_RootEntCnt;
   uint32_t BPB_TotSec;
-  uint8_t BPB_Media;
-  uint32_t BPB_FATSz;
+  uint8_t BPB_Media; /*! obsolete */
+  uint32_t BPB_FATSz; /*! Number of sectors per FAT, i.e. size of FAT */
   uint32_t BPB_RootClus; /** only valid for FAT32 */
 };
 
@@ -144,7 +154,7 @@ uint8_t cfs_fat_mount_device(struct diskio_device_info *dev);
 
 /**
  * Umounts the mounted device. Invalidates all file descriptors.
- * Syncs all FATs and flushes cached data.
+ * (Syncs all FATs (only if FAT_SYNC is set)) and flushes cached data.
  */
 void cfs_fat_umount_device();
 

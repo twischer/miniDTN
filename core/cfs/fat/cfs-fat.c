@@ -577,6 +577,7 @@ static uint8_t
 fat_read_block(uint32_t sector_addr)
 {
   if (sector_buffer_addr == sector_addr && sector_addr != 0) {
+    PRINTF("\nfat.c: fat_read_block( sector_addr = %lu ) = 0", sector_addr);
     return 0;
   }
 
@@ -768,16 +769,19 @@ cfs_fat_umount_device()
   // Write last buffer
   cfs_fat_flush();
 
+#if FAT_SYNC
   // Write second FAT
   cfs_fat_sync_fats();
+#endif
 
   // invalidate file-descriptors
   for (i = 0; i < FAT_FD_POOL_SIZE; i++) {
     fat_fd_pool[i].file = 0;
   }
 
-  // Reset the device pointer
+  // Reset the device pointer and sector buffer
   mounted.dev = 0;
+  sector_buffer_addr = 0;
 }
 /*----------------------------------------------------------------------------*/
 /*CFS frontend functions*/
