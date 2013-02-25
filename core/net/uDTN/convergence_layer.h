@@ -142,7 +142,7 @@ int convergence_layer_free_transmit_ticket(struct transmit_ticket_t * ticket);
 int convergence_layer_enqueue_bundle(struct transmit_ticket_t * ticket);
 int convergence_layer_send_discovery(uint8_t * payload, uint8_t length, rimeaddr_t * neighbour);
 
-int convergence_layer_incoming_frame(rimeaddr_t * source, uint8_t * payload, uint8_t length);
+int convergence_layer_incoming_frame(rimeaddr_t * source, uint8_t * payload, uint8_t length, packetbuf_attr_t rssi);
 int convergence_layer_status(void * pointer, uint8_t status);
 
 int convergence_layer_delete_bundle(uint32_t bundle_number);

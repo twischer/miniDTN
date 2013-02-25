@@ -407,7 +407,7 @@ int convergence_layer_resend_ack(struct transmit_ticket_t * ticket)
 	return 1;
 }
 
-int convergence_layer_parse_dataframe(rimeaddr_t * source, uint8_t * payload, uint8_t length, uint8_t flags, uint8_t sequence_number)
+int convergence_layer_parse_dataframe(rimeaddr_t * source, uint8_t * payload, uint8_t length, uint8_t flags, uint8_t sequence_number, packetbuf_attr_t rssi)
 {
 	struct mmem * bundlemem = NULL;
 	struct bundle_t * bundle = NULL;
@@ -437,6 +437,9 @@ int convergence_layer_parse_dataframe(rimeaddr_t * source, uint8_t * payload, ui
 
 	/* Store the node from which we received the bundle */
 	rimeaddr_copy(&bundle->msrc, source);
+
+	/* Store the RSSI for this packet */
+	bundle->rssi = rssi;
 
 	/* Notify the discovery module, that we have seen a peer */
 	DISCOVERY.alive(source);
@@ -515,7 +518,7 @@ int convergence_layer_parse_ackframe(rimeaddr_t * source, uint8_t * payload, uin
 	return 1;
 }
 
-int convergence_layer_incoming_frame(rimeaddr_t * source, uint8_t * payload, uint8_t length)
+int convergence_layer_incoming_frame(rimeaddr_t * source, uint8_t * payload, uint8_t length, packetbuf_attr_t rssi)
 {
 	uint8_t * data_pointer = NULL;
 	uint8_t data_length = 0;
@@ -543,7 +546,7 @@ int convergence_layer_incoming_frame(rimeaddr_t * source, uint8_t * payload, uin
 
 		LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Incoming data frame from %u.%u with SeqNo %u", source->u8[0], source->u8[1], sequence_number);
 
-		convergence_layer_parse_dataframe(source, data_pointer, data_length, flags, sequence_number);
+		convergence_layer_parse_dataframe(source, data_pointer, data_length, flags, sequence_number, rssi);
 
 		return 1;
 	}

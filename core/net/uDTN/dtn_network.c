@@ -61,6 +61,7 @@ static void dtn_network_input(void)
 	rimeaddr_t source;
 	uint8_t * buffer = NULL;
 	uint8_t length = 0;
+	packetbuf_attr_t rssi = 0;
 
 	leds_on(LEDS_ALL);
 
@@ -68,8 +69,9 @@ static void dtn_network_input(void)
 	rimeaddr_copy(&source, packetbuf_addr(PACKETBUF_ADDR_SENDER));
 	buffer = packetbuf_dataptr();
 	length = packetbuf_datalen();
+	rssi = packetbuf_attr(PACKETBUF_ATTR_RSSI);
 
-	convergence_layer_incoming_frame(&source, buffer, length);
+	convergence_layer_incoming_frame(&source, buffer, length, rssi);
 
 	leds_off(LEDS_ALL);
 }
