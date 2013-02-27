@@ -32,12 +32,10 @@
  *      Accelerometer sensor implementation
  * \author
  *      Ulf Kulau <kulau@ibr.cs.tu-bs.de>
+ *      Georg von Zengen
+ *      Enrico Jörns <e.joerns@tu-bs.de>
  */
 
-/* Acceleration sensor interface 
- * Author  : Georg von Zengen
- * Created : 2011/10/17
- */
 #include "contiki.h"
 #include "lib/sensors.h"
 #include "adxl345.h"
@@ -48,12 +46,15 @@
 #define TRUE  1
 
 const struct sensors_sensor acc_sensor;
-uint8_t acc_state = 0;
 bool interrupt_mode = false; // TODO: needed for possible later implementations with interrupts/events
-static uint8_t prescaler;
 static bool acc_active = false;
-#define raw_to_mg(raw) (raw * 63) / prescaler;
 static acc_data_t acc_data;
+
+typedef struct {
+  uint8_t active;
+  uint8_t state;
+} acc_sensor_t;
+acc_sensor_t acc_sensor_data;
 /*---------------------------------------------------------------------------*/
 static int
 cond_update_acc_data(int ch)
@@ -76,29 +77,37 @@ static int
 value(int type)
 {
   switch (type) {
+    case ACC_X_RAW:
+      cond_update_acc_data(ACC_X_RAW);
+      return acc_data.x;
+
+    case ACC_Y_RAW:
+      cond_update_acc_data(ACC_Y_RAW);
+      return acc_data.y;
+
+    case ACC_Z_RAW:
+      cond_update_acc_data(ACC_Z_RAW);
+      return acc_data.z;
+
     case ACC_X:
       cond_update_acc_data(ACC_X);
-      return acc_data.x;
+      return adxl345_raw_to_mg(acc_data.x);
 
     case ACC_Y:
       cond_update_acc_data(ACC_Y);
-      return acc_data.y;
+      return adxl345_raw_to_mg(acc_data.y);
 
     case ACC_Z:
       cond_update_acc_data(ACC_Z);
-      return acc_data.z;
+      return adxl345_raw_to_mg(acc_data.z);
 
-    case ACC_X_MG:
-      cond_update_acc_data(ACC_X_MG);
-      return raw_to_mg(acc_data.x);
-
-    case ACC_Y_MG:
-      cond_update_acc_data(ACC_Y_MG);
-      return raw_to_mg(acc_data.y);
-
-    case ACC_Z_MG:
-      cond_update_acc_data(ACC_Z_MG);
-      return raw_to_mg(acc_data.z);
+      //    case ACC_LENGTH:
+      //      acc_data_t mg;
+      //      cond_update_acc_data(ACC_LENGTH);
+      //      mg.x = raw_to_mg(acc_data.x);
+      //      mg.y = raw_to_mg(acc_data.y);
+      //      mg.z = raw_to_mg(acc_data.z);
+      //      return (mg.x * mg.x + mg.y * mg.y + mg.z * mg.z);
   }
   return 0;
 }
@@ -113,8 +122,11 @@ status(int type)
     case SENSORS_READY:
       return adxl345_ready();
       break;
+    case ACC_STATUS_BUFFER_LEVEL:
+      return adxl345_get_fifo_level();
+      break;
   }
-  return acc_state;
+  return acc_sensor_data.state;
 }
 /*---------------------------------------------------------------------------*/
 static int
@@ -126,9 +138,11 @@ configure(int type, int c)
     case SENSORS_ACTIVE:
       if (c) {
         if (!status(SENSORS_ACTIVE)) {
-          prescaler = 16;
           return acc_active = (adxl345_init() == 0) ? 1 : 0;
         }
+      } else {
+        adxl345_deinit();
+        return 1;
       }
       break;
 
@@ -136,23 +150,19 @@ configure(int type, int c)
       // map to register settings
       switch (c) {
         case ACC_2G:
-          prescaler = 16;
           value = ADXL345_MODE_2G;
           break;
         case ACC_4G:
-          prescaler = 8;
           value = ADXL345_MODE_4G;
           break;
         case ACC_8G:
-          prescaler = 4;
           value = ADXL345_MODE_8G;
           break;
         case ACC_16G:
-          prescaler = 2;
           value = ADXL345_MODE_16G;
           break;
         default:
-          return FALSE;
+          return 0;
           break;
       }
       adxl345_set_g_range(value);
@@ -162,20 +172,17 @@ configure(int type, int c)
     case ACC_CONF_FIFOMODE:
       // map to register settings
       switch (c) {
-        case ACC_BYPASS:
+        case ACC_MODE_BYPASS:
           value = ADXL345_MODE_BYPASS;
           break;
-        case ACC_FIFO:
+        case ACC_MODE_FIFO:
           value = ADXL345_MODE_FIFO;
           break;
-        case ACC_STREAM:
+        case ACC_MODE_STREAM:
           value = ADXL345_MODE_STREAM;
           break;
-        case ACC_TRIGGER:
-          value = ADXL345_MODE_TRIGGER;
-          break;
         default:
-          return FALSE;
+          return 0;
           break;
       }
       adxl345_set_fifomode(value);
@@ -184,13 +191,10 @@ configure(int type, int c)
 
     case ACC_CONF_POWERMODE:
       // TODO: implementation needed
-      return FALSE;
+      return 0;
       break;
 
     case ACC_CONF_DATA_RATE:
-      if (!interrupt_mode) {
-        c *= 2; // remember nyquist.
-      }
       if (c <= ACC_0HZ10) {
         value = ADXL345_ODR_0HZ10;
       } else if (c <= ACC_0HZ20) {
@@ -224,10 +228,10 @@ configure(int type, int c)
       } else if (c <= ACC_3200HZ) {
         value = ADXL345_ODR_3200HZ;
       } else {
-        return FALSE;
+        return 0;
       }
       adxl345_set_data_rate(value);
-      return TRUE;
+      return 1;
       break;
 
   }

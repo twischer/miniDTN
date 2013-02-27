@@ -1,25 +1,30 @@
-/* Copyright (c) 2010, Ulf Kulau
+/*
+ * Copyright (c) 2012, TU Braunschweig.
+ * All rights reserved.
  *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation
- * files (the "Software"), to deal in the Software without
- * restriction, including without limitation the rights to use,
- * copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the
- * Software is furnished to do so, subject to the following
- * conditions:
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. Neither the name of the Institute nor the names of its contributors
+ *    may be used to endorse or promote products derived from this software
+ *    without specific prior written permission.
  *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
- * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
- * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
- * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
- * OTHER DEALINGS IN THE SOFTWARE.
+ * THIS SOFTWARE IS PROVIDED BY THE INSTITUTE AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE INSTITUTE OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
  */
 
 /**
@@ -36,9 +41,6 @@
  */
 
 #include "adxl345.h"
-#define ADXL345_BW_RATE_DEFAULT_DATA      0x0A
-#define ADXL345_POWER_CTL_DEFAULT_DATA		0x08
-#define ADXL345_DATA_FORMAT_DEFAULT_DATA  0x00
 #define ADXL345_DEVICE_ID_DATA            0xE5
 /*----------------------------------------------------------------------------*/
 int8_t
@@ -47,18 +49,26 @@ adxl345_init(void)
   mspi_chip_release(ADXL345_CS);
   mspi_init(ADXL345_CS, MSPI_MODE_3, MSPI_BAUD_MAX);
 
-  adxl345_write(ADXL345_DATA_FORMAT_REG, ADXL345_DATA_FORMAT_DEFAULT_DATA);
-  adxl345_write(ADXL345_POWER_CTL_REG, ADXL345_POWER_CTL_DEFAULT_DATA);
-  adxl345_write(ADXL345_BW_RATE_REG, ADXL345_BW_RATE_DEFAULT_DATA);
+  // full resolution, 2g range
+  adxl345_write(ADXL345_DATA_FORMAT_REG, (1 << ADXL345_FULL_RES));
+  // measuring enabled
+  adxl345_write(ADXL345_POWER_CTL_REG, (1 << ADXL345_MEASURE));
+  // output data rate: 100Hz
+  adxl345_write(ADXL345_BW_RATE_REG, ADXL345_ODR_100HZ);
 
   return adxl345_ready() ? 0 : -1;
+}
+/*----------------------------------------------------------------------------*/
+void
+adxl345_deinit(void)
+{
+  adxl345_set_powermode(ADXL345_PMODE_STANDBY);
 }
 /*----------------------------------------------------------------------------*/
 int8_t
 adxl345_ready(void)
 {
   uint8_t i = 0;
-  printf("adxl345_ready: %u\n", adxl345_read(ADXL345_DEVICE_ID_REG));
   while (adxl345_read(ADXL345_DEVICE_ID_REG) != ADXL345_DEVICE_ID_DATA) {
     _delay_ms(10);
     if (i++ > 10) {
@@ -93,7 +103,28 @@ void
 adxl345_set_powermode(uint8_t mode)
 {
   uint8_t tmp_reg = adxl345_read(ADXL345_POWER_CTL_REG);
-  //  adxl345_write(ADXL345_POWER_CTL_REG, (tmp_reg & 0x??) | (mode & 0x??));
+  switch (mode) {
+      // sleep mode with 1Hz readings
+    case ADXL345_PMODE_SLEEP:
+      tmp_reg &= 0xF8;
+      tmp_reg |= (1 << ADXL345_SLEEP) | (0x3 << ADXL345_WAKEUP_L);
+      break;
+    case ADXL345_PMODE_WAKEUP:
+      tmp_reg &= 0xF9;
+      tmp_reg |= (1 << ADXL345_MEASURE);
+      tmp_reg &= ~(1 << ADXL345_SLEEP);
+      break;
+    case ADXL345_PMODE_STANDBY:
+      tmp_reg &= ~(1 << ADXL345_MEASURE);
+      break;
+  }
+  adxl345_write(ADXL345_POWER_CTL_REG, tmp_reg);
+}
+/*----------------------------------------------------------------------------*/
+uint8_t
+adxl345_get_fifo_level()
+{
+  return adxl345_read(ADXL345_FIFO_STATUS_REG);
 }
 /*----------------------------------------------------------------------------*/
 int16_t

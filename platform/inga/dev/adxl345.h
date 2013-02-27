@@ -32,6 +32,7 @@
  *		ADXL345 Accelerometer interface definitions
  * \author
  *      Ulf Kulau <kulau@ibr.cs.tu-bs.de>
+ *      Enrico Jörns <joerns@ibr.cs.tu-bs.de>
  */
 
 /**
@@ -41,6 +42,15 @@
 
 /**
  * \defgroup adxl345_interface ADXL345 Accelerometer Interface
+ * 
+ * \section Registers and Bits
+ * 
+ * All registers are named \c ADXL345_name_REG where \em name is the name
+ * of the register as described in the sensors datasheet.
+ * 
+ * All bit positions are named \c ADXL345_name for single bit entries
+ * and ADXL345_name_L for multiple bit entries, where the position always
+ * means the entries LSB.
  * @{
  */
 
@@ -52,64 +62,81 @@
 #include <util/delay.h>
 
 /*!
- * SPI device order. The chip select number where the
+ * SPI device order.
+ * The chip select number where the
  * ADXL345 is connected to the BCD-decimal decoder
  */
 #define ADXL345_CS 					2
 
-/**
- * \name Device Registers
- * \{
- */
 /** Device ID Register */
 #define ADXL345_DEVICE_ID_REG     0x00
-/*!
- * \brief ADXL Data Rate and Power Mode Control Register.
- * 
- * - \b D7 - 0
- * - \b D6 - 0
- * - \b D5 - 0
- * - \b D4 - LOW_POWER
- * - \b D3 - Rate (high)
- * - \b D2 - Rate ..
- * - \b D1 - Rate ..
- * - \b D0 - Rate (low)
- *
- * \note For further information use the ADXL345 Datasheet
- * \note Default value: 0x0A */
+
+/** \name BW_RATE register/bits
+ * \{ */
+/** ADXL Data Rate and Power Mode Control Register. */
 #define ADXL345_BW_RATE_REG       0x2C
-/*!
- * \brief ADXL Power Control Register.
- * 
- * - \b D7 - 0
- * - \b D6 - 0
- * - \b D5 - Link
- * - \b D4 - Auto Sleep
- * - \b D3 - Measure
- * - \b D2 - Sleep
- * - \b D1 - Wakeup
- * - \b D0 - Wakeup
- * 
- * \note For further information use the ADXL345 Datasheet
- * \note Default value: 0x00
- */
+/** Low power bit pos. */
+#define ADXL345_LOW_POWER     4
+/** Rate bits [4] pos. */
+#define ADXL345_RATE_L        0
+/** \} */
+
+/** \name POWER_CTL register/bits
+ * \{ */
+/** ADXL Power Control Register. */
 #define ADXL345_POWER_CTL_REG     0x2D
-/*!
- * \brief ADXL Data Format Register Register.
- * 
- * - \b D7 - SELF_TEST
- * - \b D6 - SPI
- * - \b D5 - INT_INVERT
- * - \b D4 - ---
- * - \b D3 - FULL_RES
- * - \b D2 - Justify
- * - \b D1 - Range (H)
- * - \b D0 - Range (L)
- * 
- * \note For further information use the ADXL345 Datasheet
- * \note Default value: 0x00
- */
+/** Link bit pos.*/
+#define ADXL345_LINK          5
+/** AUTO_SLEEP bit pos.*/
+#define ADXL345_AUTO_SLEEP    4
+/** Measure bit pos.*/
+#define ADXL345_MEASURE       3
+/** Sleep bit pos.*/
+#define ADXL345_SLEEP         2
+/** Wakeup bits [2] LSB pos. */
+#define ADXL345_WAKEUP_L      0
+/** \} */
+
+/** \name DATA_FORMAT register/bits
+ * \{ */
+/** ADXL Data Format Register Register. */
 #define ADXL345_DATA_FORMAT_REG		0x31
+/** SELF_TEST bit pos. */
+#define ADXL345_SELF_TEST     7
+/** SPI bit pos. */
+#define ADXL345_SPI           6
+/** INT_INVERT bit pos. */
+#define ADXL345_INT_INVERT		5
+/** FULL_RES bit pos. */
+#define ADXL345_FULL_RES      3
+/** Justify bit pos. */
+#define ADXL345_JUSTIFY       2
+/** Range bits [2] LSB pos. */
+#define ADXL345_RANGE_L       0
+/** \} */
+
+/** \name FIFO_CTL register/bits
+ * \{ */
+/** FIFO control register */
+#define ADXL345_FIFO_CTL_REG      0x38
+/** FIFO_MODE bits [2] LSB pos. */
+#define ADXL345_FIFO_MODE_L		6
+/** Trigger bit pos. */
+#define ADXL345_TRIGGER       5
+/** Samples bits [5] LSB pos. */
+#define ADXL345_SAMPLES_L     0
+/** \} */
+
+/** \name FIFO_STATUS register/bits
+ * \{ */
+/** FIFO status register */
+#define ADXL345_FIFO_STATUS_REG		0x39
+/** FIFO_TRIG bit pos. */
+#define ADXL345_FIFO_TRIG     7
+/** Entries bits [6] LSB pos. */
+#define ADXL345_ENTRIES_L     0
+/** \} */
+
 /** x Acceleration Data register (high) */
 #define ADXL345_OUTX_LOW_REG      0x32
 /** x Acceleration Data register (low) */
@@ -122,36 +149,7 @@
 #define ADXL345_OUTZ_LOW_REG      0x36
 /** z Acceleration Data register (low) */
 #define ADXL345_OUTZ_HIGH_REG     0x37
-/** FIFO control register */
-#define ADXL345_FIFO_CTL_REG      0x38
-/** FIFO status register */
-#define ADXL345_FIFO_STATUS_REG		0x39
-/** \} */
 
-
-// BW_RATE
-#define ADXL345_LOW_POWER     4
-#define ADXL345_RATE_L        0
-
-// DATA_FORMAT
-#define ADXL345_SELF_TEST     7
-#define ADXL345_SPI           6
-#define ADXL345_INT_INVERT		5
-#define ADXL345_FULL_RES      3
-#define ADXL345_JUSTIFY       2
-#define ADXL345_RANGE_H       1
-#define ADXL345_RANGE_L       0
-
-// FIFO_CTL
-#define ADXL345_FIFO_MODE_L		6
-#define ADXL345_TRIGGER       5
-#define ADXL345_SAMPLES_L     0
-
-// FIFO_STATUS
-#define ADXL345_FIFO_TRIG     7
-#define ADXL345_ENTRIES_L     0
-
-#define ADXL345_RANGE_L       0
 
 /**
  * \name g range settings
@@ -168,13 +166,21 @@
 /** \} */
 
 /**
- * \name fifo mode settings
+ * \name FIFO mode settings
  * \{
  */
 #define ADXL345_MODE_BYPASS		(0x0 << ADXL345_FIFO_MODE_L)
 #define ADXL345_MODE_FIFO			(0x1 << ADXL345_FIFO_MODE_L)
 #define ADXL345_MODE_STREAM		(0x2 << ADXL345_FIFO_MODE_L)
 #define ADXL345_MODE_TRIGGER	(0x3 << ADXL345_FIFO_MODE_L)
+/** \} */
+
+/**
+ * \name Power mode settings
+ * \{ */
+#define ADXL345_PMODE_SLEEP       1
+#define ADXL345_PMODE_WAKEUP      3
+#define ADXL345_PMODE_STANDBY     4
 /** \} */
 
 /**
@@ -232,28 +238,45 @@ typedef struct {
  * \retval -1 Initialization failed
  */
 int8_t adxl345_init(void);
+
+/**
+ * Deinitilizes the ADX345 accelerometer.
+ * 
+ * I.e. sets it in standby mode.
+ */
+void adxl345_deinit(void);
+
+
 /**
  * Checks whether the device is ready or not by reading the ID.
  * \retval 1 ready
  * \retval 0 not ready
  */
 int8_t adxl345_ready(void);
+
 /**
  * 
  * @param range
  */
 inline void adxl345_set_g_range(uint8_t range);
+
 /**
  * 
- * @param mode
+ * @param mode One of ADXL345_MODE_BYPASS, ADXL345_MODE_FIFO, ADXL345_MODE_STREAM, ADXL345_MODE_TRIGGER
  */
 void adxl345_set_fifomode(uint8_t mode);
+
 /**
  * 
- * @param mode
- * @todo unimplemented
+ * @param mode One of ADXL345_PMODE_SLEEP, ADXL345_PMODE_WAKEUP, ADXL345_PMODE_STANDBY
  */
 void adxl345_set_powermode(uint8_t mode);
+
+/**
+ * Returns the current fill level of the internal FIFO (when operating in FIFO/Stream mode).
+ * @return Fill level [0 - 33]
+ */
+uint8_t adxl345_get_fifo_level();
 
 /**
  * \brief This function returns the current measured acceleration
@@ -287,6 +310,10 @@ int16_t adxl345_get_z_acceleration(void);
  * \return current acceleration value of all axis
  */
 acc_data_t adxl345_get_acceleration(void);
+
+/** Convert raw value to mg value */
+#define adxl345_raw_to_mg(raw) (raw * 62) / 16; // approx 3.9 scale factor
+
 
 /**
  * \brief This function writes data to the given register
