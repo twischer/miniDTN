@@ -55,7 +55,7 @@ struct blacklist_entry_t {
 
 	rimeaddr_t node;
 	uint8_t counter;
-	uint16_t timestamp;
+	clock_time_t timestamp;
 };
 
 struct routing_list_entry_t {
