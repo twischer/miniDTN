@@ -12,14 +12,12 @@ aptitude install python-setuptools
 easy_install pydot
 
 4.
-Read/Write for /dev/ttyUSB* (e.g. via udev-rule)
+Read/Write for INGA-Devices (/dev/ttyUSB*, e.g. via udev-rule)
 
 5.
-Correct Values for "logbase", "contikibase" and correct device-configuration in config.yaml
-Compiled inga-tool in $PATH and at "../../inga/inga_tool/" , see: ../../inga/inga_tool/README , (aptitude install libftdi-dev libusb-dev libudev-dev libpopt-dev)
-../profile-neat.py must be in $PATH
-all paths have to be absolute
+Correct Values for "logbase", "contikibase" and correct device-configuration in config.yaml (all paths have to be absolute)
 
-Example:
-
-test.py_wrapper_inga.sh
+6.
+test.py attempts to build inga-tool , see: <contikibase>tools/inga/inga_tool/README , (aptitude install libftdi-dev libusb-dev libudev-dev libpopt-dev)
+inga-tool sources are expected to be at: <contikibase>tools/inga/inga_tool/
+profile-neat.py is expected to be at: <contikibase>tools/profiling/
