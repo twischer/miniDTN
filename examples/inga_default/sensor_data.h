@@ -54,7 +54,7 @@ typedef struct acc_data_s {
 
 /**
  */
-typedef struct gyro_data_s {
+typedef struct {
   bool enabled;
   vec3i_t raw;
   vec3i_t out;
@@ -62,7 +62,7 @@ typedef struct gyro_data_s {
 
 /**
  */
-typedef struct pressure_data_s {
+typedef struct {
   bool enabled;
   int raw;
   int out;

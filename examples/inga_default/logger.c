@@ -25,21 +25,21 @@ PROCESS_THREAD(logger_process, ev, data) {
     PROCESS_WAIT_EVENT_UNTIL(ev == event_log_data || ev == event_mount);
 
     if ((ev == event_mount) && (*(bool*) data == true)) {
-      fd = cfs_open(LOG_FILENAME, CFS_WRITE);
-      if (fd == 0) {
-        file_opened = true;
-        log_i("Logfile opened\n");
-      } else {
-        log_e("Failed opening logfile\n");
-      }
+//      fd = cfs_open(LOG_FILENAME, CFS_WRITE);
+//      if (fd == 0) {
+//        file_opened = true;
+//        log_i("Logfile opened\n");
+//      } else {
+//        log_e("Failed opening logfile\n");
+//      }
     } else {
 
       // printf it
       printf(log_buffer); //printf(data);
       // file it
-      if (file_opened) {
-        cfs_write(fd, log_buffer, sizeof (log_buffer));
-      }
+//      if (file_opened) {
+//        cfs_write(fd, log_buffer, sizeof (log_buffer));
+//      }
     }
   }
 

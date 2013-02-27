@@ -6,6 +6,7 @@
 #include "sd_mount.h"
 #include "logger.h"
 #include "uart_handler.h"
+#include "microSD.h"
 
 #ifdef APP_CONFIG_DEBUG
 #include <stdio.h>
@@ -73,10 +74,10 @@ app_config_load_microSD()
     return -1;
   }
 
-  log_i("Checking config file timestamp...\n");
 
   // do nothing if modification timestamp of file is older/equal than stored
 #if CONF_FILE_TIMESTAMP_CHECK
+  log_i("Checking config file timestamp...\n");
   if ((cfs_fat_get_last_date(fd) <= system_config._mod_date)
           && (cfs_fat_get_last_time(fd) <= system_config._mod_time)) {
     log_i("Config file is older than stored config, will not be loaded\n");
@@ -93,10 +94,14 @@ app_config_load_microSD()
   int size = cfs_read(fd, app_config_buffer, MAX_FILE_SIZE);
   app_config_buffer[size] = '\0'; // string null terminator
   log_v("actually read: %d\n", size);
+  log_i("Loaded data from microSD card\n");
 
   process_post(&config_process, event_config_update, NULL);
 
   cfs_close(fd);
+
+  // needed to unblock SPI at INGA V1.4
+  microSD_switchoff();
 
   return 0;
 }
@@ -149,7 +154,6 @@ PROCESS_THREAD(config_process, ev, data)
     // reconfigure
     parse_ini(app_config_buffer, &inga_conf_file);
     app_config_save_internal();
-    log_i("Stored to internal data\n");
 
     print_config();
 
@@ -173,15 +177,10 @@ app_config_init(bool sd_mounted)
     log_i("Defaults loaded\n");
   }
 
-  if (!sd_mounted) {
-    return 0;
+  if ((!sd_mounted) || (app_config_load_microSD() != 0)) {
+    process_post(&config_process, event_config_update, NULL);
   }
 
-  if (app_config_load_microSD() != 0) {
-    return 0;
-  }
-
-  log_i("Loaded data from microSD card\n");
   return 0;
 }
 

@@ -23,13 +23,18 @@
 
 /*---------------------------------------------------------------------------*/
 PROCESS(default_app_process, "Sensor update process");
-AUTOSTART_PROCESSES(&default_app_process, &logger_process, &config_process, &mount_process);
+AUTOSTART_PROCESSES(
+        &default_app_process,
+        &logger_process,
+        &config_process,
+        &mount_process);
 /*---------------------------------------------------------------------------*/
 PROCESS_THREAD(default_app_process, ev, data)
 {
   PROCESS_BEGIN();
 
   uart_handler_init();
+  clock_init();
 
   // we wait until mounted, before loading config
   PROCESS_WAIT_EVENT_UNTIL(ev == event_mount);
@@ -41,7 +46,7 @@ PROCESS_THREAD(default_app_process, ev, data)
   // start sensor process
   process_start(&sensor_update, NULL);
 
-  printf("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n");
+//    printf("xxxxxxxxsxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n");
 
   PROCESS_END();
 }

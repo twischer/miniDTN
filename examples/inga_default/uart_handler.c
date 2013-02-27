@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include "rs232.h"
 #include "app_config.h"
+#include "logger.h"
 
 #define ST_AWAIT_CMD  0
 #define ST_AWAIT_DATA 1
@@ -22,7 +23,7 @@ static int uart_handler(unsigned char ch);
 void
 uart_handler_init()
 {
-  buf_ptr = app_config_buffer;
+  buf_ptr = &app_config_buffer[0];
   event_uart = process_alloc_event();
   rs232_set_input(0, uart_handler);
 }
@@ -38,6 +39,7 @@ uart_handler(unsigned char ch)
 
     case ST_AWAIT_DATA:
       if (ch == ASCII_EOT) {
+        log_i("UART: Received new configuration\n");
         *buf_ptr = '\0';
 
         process_post(&config_process, event_config_update, 0);

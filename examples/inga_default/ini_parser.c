@@ -175,6 +175,7 @@ parse_ini(char* buf, const cfg_file* conf_file)
     }
     count++;
   };
+  log_i("Parsing ini done\n");
   return 0;
 }
 
