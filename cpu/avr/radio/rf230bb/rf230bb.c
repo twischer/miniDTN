@@ -65,13 +65,6 @@
 
 #include "sys/timetable.h"
 
-//#include "contiki-conf.h"
-
-#if IBR_COMP
-#include "node-id.h"
-#endif
-
-
 #define WITH_SEND_CCA 0
 
 /* Timestamps have not been tested */
@@ -899,13 +892,7 @@ rf230_transmit(unsigned short payload_len)
     set_txpower(packetbuf_attr(PACKETBUF_ATTR_RADIO_TXPOWER) - 1);
   }
 
-#if IBR_COMP
-  total_len = payload_len +2+ AUX_LEN;
-  buffer[payload_len]=node_id&0xff;
-  buffer[payload_len+1]=node_id>>8;
-#else
-  total_len = payload_len +AUX_LEN;
-#endif
+  total_len = payload_len + AUX_LEN;
 
 #if RF230_CONF_TIMESTAMPS
   rtimer_clock_t txtime = timesynch_time();
@@ -1036,8 +1023,6 @@ rf230_prepare(const void *payload, unsigned short payload_len)
   GET_LOCK();
   DEBUGFLOW('p');
 
-  
-  
 //  PRINTF("rf230: sending %d bytes\n", payload_len);
 //  PRINTSHORT("s%d ",payload_len);
 
