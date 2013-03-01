@@ -56,8 +56,10 @@
  * sensor nodes), the tiny version "microSD" would be the best choice. Both, the
  * "big" SD-Cards and the microSD-Cards can be interfaced by SPI and use the same
  * Instruction set, so this interface can be used for both SD-Card types.</p>
- * @{
+ * 
+ * \author
  *		Christoph Peltz <peltz@ibr.cs.tu-bs.de>
+ * @{
  */
 
 #ifndef FLASH_MICROSD_H_
@@ -76,6 +78,15 @@
 #define MICRO_SD_PWR_PORT				PORTA
 #define MICRO_SD_PWR_PORT_DDR			DDRA
 #define MICRO_SD_PWR_PIN				PORTA4
+
+/**
+ * Powers the microSD card on.
+ */
+#define microSD_switchon() MICRO_SD_PWR_PORT |= (1 << MICRO_SD_PWR_PIN)
+/**
+ * Powers the microSD card off.
+ */
+#define microSD_switchoff() MICRO_SD_PWR_PORT &= ~(1 << MICRO_SD_PWR_PIN)
 
 /**
  * \brief Powers on and initialize the microSD / SD-Card
@@ -103,7 +114,7 @@ uint8_t microSD_init(void);
  *  		<li> 1 : CMD9 failure!
  * 		   </ul>
  */
-uint8_t microSD_read_csd( uint8_t *buffer );
+uint8_t microSD_read_csd(uint8_t *buffer);
 
 /**
  * \brief This function returns the number of bytes in one block.
@@ -125,8 +136,6 @@ uint16_t microSD_get_block_size();
  * \return Not 0 if the card is SDSC and 0 if SDHC/SDXC
  */
 uint8_t microSD_is_SDSC();
-
-uint8_t microSD_deinit(void);
 
 /**
  * \brief This function will read one block (512, 1024, 2048 or 4096Byte) of the SD-Card.
@@ -163,9 +172,9 @@ uint8_t microSD_write_block(uint32_t addr, uint8_t *buffer);
  *
  * \return R1 response byte or 0xFF in case of read/write timeout
  */
-uint8_t microSD_write_cmd(uint8_t *cmd, uint8_t *resp );
-uint16_t microSD_data_crc( uint8_t *data );
-uint8_t microSD_set_CRC( uint8_t enable );
+uint8_t microSD_write_cmd(uint8_t *cmd, uint8_t *resp);
+uint16_t microSD_data_crc(uint8_t *data);
+uint8_t microSD_set_CRC(uint8_t enable);
 uint64_t microSD_get_card_size();
 uint32_t microSD_get_block_num();
 /** @} */ // l3g4200d_interface
