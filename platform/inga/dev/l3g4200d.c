@@ -32,6 +32,8 @@
  *      ST L3G4200D 3-axis Gyroscope interface implementation
  * \author
  *      Ulf Kulau <kulau@ibr.cs.tu-bs.de>
+ *      Enrico Jörns <e.joerns@tu-bs.de>
+ * 
  */
 
 /**
@@ -43,15 +45,13 @@
 
 #define L3G4200D_DPSDIV_250G	35
 #define L3G4200D_DPSDIV_500G	70
-#define L3G4200D_DPSDIV_1000G	280
+#define L3G4200D_DPSDIV_2000G	280
 
-struct l3g4200d_cfg_t {
-  uint8_t dpsdiv;
-  uint8_t data_rate;
-} l3g4200d_cfg;
+uint16_t l3g4200d_dps_scale;
 /*----------------------------------------------------------------------------*/
 int8_t
-l3g4200d_init(void) {
+l3g4200d_init(void)
+{
   uint8_t i = 0;
 
   i2c_init();
@@ -65,40 +65,62 @@ l3g4200d_init(void) {
   return 0;
 }
 /*----------------------------------------------------------------------------*/
-void
-l3g4200d_set_dps(uint8_t set) {
+uint8_t
+l3g4200d_set_dps(uint8_t set)
+{
   uint8_t tmpref = l3g4200d_read8bit(L3G4200D_CTRL_REG4);
   l3g4200d_write8bit(L3G4200D_CTRL_REG4, (tmpref & 0xCF) | set);
   // set dpsdiv to 4*(datasheet_value)
   switch (set) {
     case L3G4200D_250DPS:
-      l3g4200d_cfg.dpsdiv = L3G4200D_DPSDIV_250G;
+      l3g4200d_dps_scale = L3G4200D_DPSDIV_250G;
       break;
     case L3G4200D_500DPS:
-      l3g4200d_cfg.dpsdiv = L3G4200D_DPSDIV_500G;
+      l3g4200d_dps_scale = L3G4200D_DPSDIV_500G;
       break;
     case L3G4200D_2000DPS:
-      l3g4200d_cfg.dpsdiv = L3G4200D_DPSDIV_1000G;
+      l3g4200d_dps_scale = L3G4200D_DPSDIV_2000G;
       break;
   }
+  // verify
+  tmpref = l3g4200d_read8bit(L3G4200D_CTRL_REG4);
+  return (tmpref & 0x30) ^ (set);
+}
+/*----------------------------------------------------------------------------*/
+uint8_t
+l3g4200d_set_data_rate(uint8_t set)
+{
+  // read
+  uint8_t tmpref = l3g4200d_read8bit(L3G4200D_CTRL_REG1);
+  // write
+  l3g4200d_write8bit(L3G4200D_CTRL_REG1, (tmpref & 0x3F) | set);
+  // verify
+  tmpref = l3g4200d_read8bit(L3G4200D_CTRL_REG1);
+  return (tmpref & 0xC0) ^ (set);
 }
 /*----------------------------------------------------------------------------*/
 inline void
-l3g4200d_set_fifomode(uint8_t set) {
+l3g4200d_set_fifomode(uint8_t set)
+{
   uint8_t tmpref = l3g4200d_read8bit(L3G4200D_FIFO_CTRL_REG);
   l3g4200d_write8bit(L3G4200D_FIFO_CTRL_REG, (tmpref & 0x1F) | set);
 }
+/*----------------------------------------------------------------------------*/
 inline void
-l3g4200d_fifo_enable() {
+l3g4200d_fifo_enable()
+{
   l3g4200d_write8bit(L3G4200D_CTRL_REG5, (1 << L3G4200D_FIFO_EN));
 }
+/*----------------------------------------------------------------------------*/
 int8_t
-l3g4200d_fifo_overrun(void) {
+l3g4200d_fifo_overrun(void)
+{
   return (l3g4200d_read8bit(L3G4200D_FIFO_SRC_REG) & (1 << L3G4200D_OVRN));
 }
 /*----------------------------------------------------------------------------*/
 angle_data_t
-l3g4200d_get_angle(void) {
+l3g4200d_get_angle(void)
+{
   angle_data_t ret_data;
   uint8_t lsb = 0, msb = 0;
   i2c_start(L3G4200D_DEV_ADDR_W);
@@ -106,19 +128,20 @@ l3g4200d_get_angle(void) {
   i2c_rep_start(L3G4200D_DEV_ADDR_R);
   i2c_read_ack(&lsb);
   i2c_read_ack(&msb);
-  ret_data.angle_x_value = (uint16_t) ((msb << 8) + lsb);
+  ret_data.x = (uint16_t) ((msb << 8) + lsb);
   i2c_read_ack(&lsb);
   i2c_read_ack(&msb);
-  ret_data.angle_y_value = (uint16_t) ((msb << 8) + lsb);
+  ret_data.y = (uint16_t) ((msb << 8) + lsb);
   i2c_read_ack(&lsb);
   i2c_read_nack(&msb);
-  ret_data.angle_z_value = (uint16_t) ((msb << 8) + lsb);
+  ret_data.z = (uint16_t) ((msb << 8) + lsb);
   i2c_stop();
   return ret_data;
 }
 /*----------------------------------------------------------------------------*/
 int8_t
-l3g4200d_get_angle_fifo(angle_data_t* ret) {
+l3g4200d_get_angle_fifo(angle_data_t* ret)
+{
   uint8_t idx = 0;
   uint8_t fifolevel = l3g4200d_read8bit(L3G4200D_FIFO_SRC_REG) & 0x1F;
 
@@ -130,27 +153,32 @@ l3g4200d_get_angle_fifo(angle_data_t* ret) {
 }
 /*----------------------------------------------------------------------------*/
 int16_t
-l3g4200d_get_x_angle(void) {
+l3g4200d_get_x_angle(void)
+{
   return l3g4200d_read16bit(L3G4200D_OUT_X_L);
 }
 /*----------------------------------------------------------------------------*/
 int16_t
-l3g4200d_get_y_angle(void) {
+l3g4200d_get_y_angle(void)
+{
   return l3g4200d_read16bit(L3G4200D_OUT_Y_L);
 }
 /*----------------------------------------------------------------------------*/
 int16_t
-l3g4200d_get_z_angle(void) {
+l3g4200d_get_z_angle(void)
+{
   return l3g4200d_read16bit(L3G4200D_OUT_Z_L);
 }
 /*----------------------------------------------------------------------------*/
 uint8_t
-l3g4200d_get_temp(void) {
+l3g4200d_get_temp(void)
+{
   return l3g4200d_read8bit(L3G4200D_OUT_TEMP);
 }
 /*----------------------------------------------------------------------------*/
 uint8_t
-l3g4200d_read8bit(uint8_t addr) {
+l3g4200d_read8bit(uint8_t addr)
+{
   uint8_t lsb = 0;
   i2c_start(L3G4200D_DEV_ADDR_W);
   i2c_write(addr);
@@ -161,7 +189,8 @@ l3g4200d_read8bit(uint8_t addr) {
 }
 /*----------------------------------------------------------------------------*/
 uint16_t
-l3g4200d_read16bit(uint8_t addr) {
+l3g4200d_read16bit(uint8_t addr)
+{
   uint8_t lsb = 0, msb = 0;
   i2c_start(L3G4200D_DEV_ADDR_W);
   i2c_write((addr | 0x80));
@@ -173,7 +202,8 @@ l3g4200d_read16bit(uint8_t addr) {
 }
 /*----------------------------------------------------------------------------*/
 void
-l3g4200d_write8bit(uint8_t addr, uint8_t data) {
+l3g4200d_write8bit(uint8_t addr, uint8_t data)
+{
   i2c_start(L3G4200D_DEV_ADDR_W);
   i2c_write(addr);
   i2c_write(data);

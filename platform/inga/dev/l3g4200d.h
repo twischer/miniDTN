@@ -32,6 +32,7 @@
  *      ST L3G4200D 3-axis Gyroscope interface definitions
  * \author
  *      Ulf Kulau <kulau@ibr.cs.tu-bs.de>
+ *      Enrico Jörns <e.joerns@tu-bs.de>
  */
 
 /**
@@ -49,6 +50,14 @@
 #include "../dev/i2c.h"
 #include <util/delay.h>
 
+#define L3G4200D_DPSDIV_250G	35
+#define L3G4200D_DPSDIV_500G	70
+#define L3G4200D_DPSDIV_2000G	280
+
+extern uint16_t l3g4200d_dps_scale;
+/** Convert raw values to dps */
+#define l3g4200d_raw_to_dps(raw) (int16_t) (((int32_t) raw * l3g4200d_dps_scale) / 4000)
+
 /* Gyroscope device address*/
 #define L3G4200D_DEV_ADDR_R		0xD3
 #define L3G4200D_DEV_ADDR_W		0xD2
@@ -59,8 +68,7 @@
  * 
  * Naming convention of the datasheet with prefix L3G4200D_ is used.
  * 
- * @{
- */
+ * @{ */
 /// Device identification register
 #define L3G4200D_WHO_I_AM_REG 0x0F
 /// Control register 1
@@ -98,8 +106,7 @@
 /** @} */
 
 /** \name Bit addresses for CTRL_REG1
- * @{
- */
+ * @{ */
 /// Output Data Rate selection (higher)
 #define L3G4200D_DR1        7
 /// Output Data Rate selection (lower)
@@ -119,8 +126,7 @@
 /** @} */
 
 /** \name Bit addresses for CTRL_REG2.
- * @{
- */
+ * @{ */
 /// High Pass filter Mode Selection (higher)
 #define L3G4200D_HPM1       5
 /// High Pass filter Mode Selection (lower)
@@ -136,8 +142,7 @@
 /** @} */
 
 /** \name Bit addresses for CTRL_REG3.
- * @{
- */
+ * @{ */
 /// Interrupt enable on INT1 pin
 #define L3G4200D_I1_INT1    7
 /// Boot status available on INT1
@@ -157,8 +162,7 @@
 /** @} */
 
 /** \name Bit addresses for CTRL_REG4.
- * @{
- */
+ * @{ */
 /// Block Data Update
 #define L3G4200D_BDU        7
 /// Big/Little Endian Data Selection
@@ -176,8 +180,7 @@
 /** @} */
 
 /** \name Bit addresses for CTRL_REG5.
- * @{
- */
+ * @{ */
 /// Reboot memory content
 #define L3G4200D_BOOT       7
 /// FIFO enable
@@ -195,8 +198,7 @@
 /** @} */
 
 /** \name Bit addresses for STATUS_REG.
- * @{
- */
+ * @{ */
 /// X, Y, Z-axis data overrun
 #define L3G4200D_ZYXOR      7
 /// Z axis data overrun
@@ -216,8 +218,7 @@
 /** @} */
 
 /** \name Bit addresses for FIFO_CTRL_REG.
- * @{
- */
+ * @{ */
 /// FIFO mode selection
 #define L3G4200D_FM2        7
 /// FIFO mode selection
@@ -237,8 +238,7 @@
 /** @} */
 
 /** \name Bit addresses for FIFO_SRC_REG.
- * @{
- */
+ * @{ */
 /// Watermark status
 #define L3G4200D_WTM        7
 /// Overrun bit status
@@ -259,25 +259,26 @@
 
 
 /** \name Resolution Settings.
- * @{
- */
+ * @{ */
 #define L3G4200D_250DPS           (0x00 << L3G4200D_FS0)
 #define L3G4200D_500DPS           (0x01 << L3G4200D_FS0)
 #define L3G4200D_2000DPS          (0x02 << L3G4200D_FS0)
 /** @} */
 
 /** \name Data rate Settings.
- * @{
- */
-#define L3G4200D_100HZ      (0x0 << L3G4200D_DR0)
-#define L3G4200D_200HZ      (0x1 << L3G4200D_DR0)
-#define L3G4200D_400HZ      (0x2 << L3G4200D_DR0)
-#define L3G4200D_800HZ      (0x3 << L3G4200D_DR0)
+ * @{ */
+/** ODR: 100Hz */
+#define L3G4200D_ODR_100HZ      (0x0 << L3G4200D_DR0)
+/** ODR: 200Hz */
+#define L3G4200D_ODR_200HZ      (0x1 << L3G4200D_DR0)
+/** ODR: 400Hz */
+#define L3G4200D_ODR_400HZ      (0x2 << L3G4200D_DR0)
+/** ODR: 800Hz */
+#define L3G4200D_ODR_800HZ      (0x3 << L3G4200D_DR0)
 /** @} */
 
 /** \name Mode Settings.
- * @{
- */
+ * @{ */
 #define L3G4200D_BYPASS           (0x00 << L3G4200D_FM0)
 #define L3G4200D_FIFO             (0x01 << L3G4200D_FM0)
 #define L3G4200D_STREAM           (0x02 << L3G4200D_FM0)
@@ -290,15 +291,9 @@
 
 /** Angle data type. */
 typedef struct {
-#ifdef L3G4200D_FLOAT_EN
-  float angle_x_value;
-  float angle_y_value;
-  float angle_z_value;
-#else
-  int16_t angle_x_value;
-  int16_t angle_y_value;
-  int16_t angle_z_value;
-#endif
+  int16_t x;
+  int16_t y;
+  int16_t z;
 } angle_data_t;
 
 
@@ -312,8 +307,15 @@ int8_t l3g4200d_init(void);
  * 
  * @param set One of L3G4200D_250DPS, L3G4200D_500DPS or L3G4200D_2000DBS
  */
-extern inline void l3g4200d_set_dps(uint8_t set);
+extern inline uint8_t l3g4200d_set_dps(uint8_t set);
 
+/**
+ * Sets the data rate [Hz]
+ * 
+ * @param set One of L3G4200D_ODR_100HZ, L3G4200D_ODR_200HZ, L3G4200D_ODR_400HZ, L3G4200D_ODR_800HZ
+ * @return 
+ */
+extern inline uint8_t l3g4200d_set_data_rate(uint8_t set);
 
 /** Sets the fifo mode.
  * 
@@ -344,9 +346,6 @@ extern inline int8_t l3g4200d_fifo_overrun(void);
  */
 angle_data_t l3g4200d_get_angle(void);
 
-/** Same as l3g4200d_get_angle() but returns data in deci dps l*/
-angle_data_t l3g4200d_get_angle_ddps(void);
-angle_data_t l3g4200d_get_dps(void);
 
 /** Reads angle values from fifo.
  *
@@ -362,20 +361,17 @@ int8_t l3g4200d_get_angle_fifo(angle_data_t* ret);
  * @return x angle value
  */
 int16_t l3g4200d_get_x_angle(void);
-int16_t l3g4200d_get_x_angle_ddps(void);
 
 /** Reads y angle value
  * @return y angle value
  */
 int16_t l3g4200d_get_y_angle(void);
-int16_t l3g4200d_get_y_angle_ddps(void);
 
 
 /** Reads z angle value
  * @return z angle value
  */
 int16_t l3g4200d_get_z_angle(void);
-int16_t l3g4200d_get_z_angle_ddps(void);
 
 
 /** Reads temperature value
