@@ -199,46 +199,46 @@ extern uint8_t default_server_name[16];
 extern uint8_t default_domain_name[30];
 #else
 #ifdef MAC_ADDRESS
-uint8_t default_mac_address[8] PROGMEM = MAC_ADDRESS;
+const uint8_t default_mac_address[8] PROGMEM = MAC_ADDRESS;
 #else
-uint8_t default_mac_address[8] PROGMEM = {0x02, 0x11, 0x22, 0xff, 0xfe, 0x33, 0x44, 0x55};
+const uint8_t default_mac_address[8] PROGMEM = {0x02, 0x11, 0x22, 0xff, 0xfe, 0x33, 0x44, 0x55};
 #endif
 #ifdef SERVER_NAME
-uint8_t default_server_name[16] PROGMEM = SERVER_NAME;
+const uint8_t default_server_name[16] PROGMEM = SERVER_NAME;
 #else
-uint8_t default_server_name[16] PROGMEM = "Raven_webserver";
+const uint8_t default_server_name[16] PROGMEM = "Raven_webserver";
 #endif
 #ifdef DOMAIN_NAME
-uint8_t default_domain_name[30] PROGMEM = DOMAIN_NAME
+const uint8_t default_domain_name[30] PROGMEM = DOMAIN_NAME
 #else
-uint8_t default_domain_name[30] PROGMEM = "localhost";
+const uint8_t default_domain_name[30] PROGMEM = "localhost";
 #endif
 #endif /* AVR_WEBSERVER */
 
 #ifdef NODE_ID
-uint16_t default_nodeid PROGMEM = NODEID;
+const uint16_t default_nodeid PROGMEM = NODEID;
 #else
-uint16_t default_nodeid PROGMEM = 0;
+const uint16_t default_nodeid PROGMEM = 0;
 #endif
 #ifdef CHANNEL_802_15_4
-uint8_t default_channel PROGMEM = CHANNEL_802_15_4;
+const uint8_t default_channel PROGMEM = CHANNEL_802_15_4;
 #else
-uint8_t default_channel PROGMEM = 26;
+const uint8_t default_channel PROGMEM = 26;
 #endif
 #ifdef IEEE802154_PANID
-uint16_t default_panid PROGMEM = IEEE802154_PANID;
+const uint16_t default_panid PROGMEM = IEEE802154_PANID;
 #else
-uint16_t default_panid PROGMEM = 0xABCD;
+const uint16_t default_panid PROGMEM = 0xABCD;
 #endif
 #ifdef IEEE802154_PANADDR
-uint16_t default_panaddr PROGMEM = IEEE802154_PANID;
+const uint16_t default_panaddr PROGMEM = IEEE802154_PANID;
 #else
-uint16_t default_panaddr PROGMEM = 0;
+const uint16_t default_panaddr PROGMEM = 0;
 #endif
 #ifdef RF230_MAX_TX_POWER
-uint8_t default_txpower PROGMEM = RF230_MAX_TX_POWER;
+const uint8_t default_txpower PROGMEM = RF230_MAX_TX_POWER;
 #else
-uint8_t default_txpower PROGMEM = 0;
+const uint8_t default_txpower PROGMEM = 0;
 #endif
 /** Get a pseudo random number using the ADC */
 static uint8_t
