@@ -48,10 +48,12 @@ class Device(object):
 	"""Represents the actual device (Sky, INGA, ...) partaking in the test"""
 	startpattern = "*******Booting Contiki"
 	profilepattern = ["PROF", "SPROF"]
-	def __init__(self, config):
+	def __init__(self, config,devcfg):
 		self.name = config['name']
 		self.id = config['id']
 		self.path = config['path']
+		self.devcfg=devcfg
+		
 	def configure(self, config, testname):
 		self.logger = logging.getLogger("test.%s.%s"%(testname, self.name))
 		self.logdir = config['logbase']
@@ -72,6 +74,7 @@ class Device(object):
 			raise
 
 		try:
+			os.environ[self.name.upper()] = str(self.id)
 			if not options.dirty:
 				self.logger.info("Cleaning %s", self.programdir)
 				output = subprocess.check_output(["make", "TARGET=%s"%(self.platform), "clean"], stderr=subprocess.STDOUT)
@@ -80,6 +83,8 @@ class Device(object):
 			self.logger.info("Building %s", os.path.join(self.programdir, self.program))
 			myenv = os.environ.copy()
 			myenv['CFLAGS'] = self.cflags
+			for dev in self.devcfg:
+				myenv['CFLAGS']=myenv['CFLAGS'].replace(str("-DCONF_DEST_NODE=$"+dev['name'].upper()),str("-DCONF_DEST_NODE="+str(dev['id'])))
 			output = subprocess.check_output(["make", "TARGET=%s"%(self.platform), self.program], stderr=subprocess.STDOUT, env=myenv)
 			self.logger.debug(output)
 			time.sleep(2)
@@ -93,6 +98,8 @@ class Device(object):
 				self.logger.info("Building instrumentation for %s", os.path.join(self.programdir, self.program))
 				myenv = os.environ.copy()
 				myenv['CFLAGS'] = '-finstrument-functions %s'%(self.cflags)
+				for dev in self.devcfg:
+					myenv['CFLAGS']=myenv['CFLAGS'].replace(str("-DCONF_DEST_NODE=$"+dev['name'].upper()),str("-DCONF_DEST_NODE="+str(dev['id'])))
 				output = subprocess.check_output(["make", "TARGET=%s"%(self.platform), self.program], stderr=subprocess.STDOUT, env=myenv)
 				self.logger.debug(output)
 		except subprocess.CalledProcessError as err:
@@ -265,7 +272,7 @@ class INGA(Device):
 
 class Testcase(object):
 	"""Contiki testcase"""
-	def __init__(self, config, devicelist, devicecfg):
+	def __init__(self, config, devicelist, devicecfg, devcfg):
 		self.name = config['name']
 		self.logger = logging.getLogger('test.%s'%(self.name))
 		self.logbase = os.path.join(config['logbase'], self.name)
@@ -429,7 +436,7 @@ class Testcase(object):
 class Testsuite(object):
 	def __init__(self, suitecfg, devcfg, testcfg):
 		self.config = suitecfg
-
+		self.devcfg=devcfg
 		# Set PATH to contain inga_tool and profile-neat.py
 		path_inga_tool_dir = os.path.join(self.config['contikibase'], "tools", "inga", "inga_tool")
 		path_profile_neat_py_dir = os.path.join(self.config['contikibase'], "tools", "profiling")
@@ -457,7 +464,7 @@ class Testsuite(object):
 		self.devices = {}
 		for devicecfg in devcfg:
 			deviceclass = globals()[devicecfg['class']]
-			deviceinst = deviceclass(devicecfg)
+			deviceinst = deviceclass(devicecfg,devcfg)
 			self.devices[devicecfg['name']] = deviceinst
 
 		self.tests = {}
@@ -466,7 +473,7 @@ class Testsuite(object):
 			testcfg['logbase'] = self.logdir
 			testcfg['contikibase'] = self.config['contikibase']
 			if testcfg['name'] in self.config['testcases']:
-				testcase = Testcase(testcfg, self.devices, testcfg['devices'])
+				testcase = Testcase(testcfg, self.devices, testcfg['devices'],devcfg)
 				self.tests[testcfg['name']] = testcase
 				# Check if we need to build inga_tool
 				if not self.build_inga_tool:
