@@ -111,6 +111,8 @@ class Device(object):
 		raise Exception('Unimplemented')
 	def reset(self):
 		raise Exception('Unimplemented')
+	def dummy(self,testname):
+		raise Exception('Unimplemented')
 	def reset_occurred(self):
 		self.abort_by_reset = True
 	def recordlog(self, callgraphqueue, queue, controlqueue):
@@ -269,6 +271,16 @@ class INGA(Device):
 			self.logger.error(err)
 			self.logger.error(err.output)
 			raise
+	def dummy(self,testname):
+		self.logger = logging.getLogger("test.%s.%s"%(testname, self.name))
+		self.reset()
+		try:
+			self.logger.info( "Uploading DUMMY to %s"%(self.name))
+			output = subprocess.check_output(["avrdude", "-b","230400", "-P", self.path, "-c", "avr109" ,"-p","atmega1284p","-e" ], stderr=subprocess.STDOUT)
+		except subprocess.CalledProcessError as err:
+			self.logger.error(err)
+			self.logger.error(err.output)
+			raise
 
 
 class Testcase(object):
@@ -280,9 +292,25 @@ class Testcase(object):
 		self.contikibase = config['contikibase']
 		self.timeout = int(config.setdefault('timeout', "300"))
 		self.devices = []
+		self.unused_devices = []
 		self.timedout = False
 		self.result = []
+		print "OOOOOOOOOOOOOOOOOOOOOOOOOO"
+		#print devicelist
+		#print self.name
+		
 
+		for unused in devcfg:
+			found=0
+			for dev in devicecfg:
+				if unused['name'] == dev['name']:
+					found=1
+			if found==0 :
+				device = devicelist[unused['name']]
+				device = copy.copy(device)
+				self.unused_devices.append(device)
+				device.dummy(self.name)
+		print self.unused_devices
 		mkdir_p(self.logbase)
 		for cfgdevice in devicecfg:
 			try:
@@ -296,7 +324,7 @@ class Testcase(object):
 			cfgdevice['contikibase'] = self.contikibase
 			device.configure(cfgdevice, self.name)
 			self.devices.append(device)
-
+		print "OOOOOOOOOOOOOOOOOOOOOOOOOO"
 	def timeout_occured(self):
 		self.timedout = True
 
