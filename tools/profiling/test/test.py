@@ -74,7 +74,6 @@ class Device(object):
 			raise
 
 		try:
-			os.environ[self.name.upper()] = str(self.id)
 			if not options.dirty:
 				self.logger.info("Cleaning %s", self.programdir)
 				output = subprocess.check_output(["make", "TARGET=%s"%(self.platform), "clean"], stderr=subprocess.STDOUT)
@@ -85,6 +84,7 @@ class Device(object):
 			myenv['CFLAGS'] = self.cflags
 			for dev in self.devcfg:
 				myenv['CFLAGS']=myenv['CFLAGS'].replace(str("-DCONF_DEST_NODE=$"+dev['name'].upper()),str("-DCONF_DEST_NODE="+str(dev['id'])))
+				myenv['CFLAGS']=myenv['CFLAGS'].replace(str("-DCONF_SEND_TO_NODE=$"+dev['name'].upper()),str("-DCONF_SEND_TO_NODE="+str(dev['id'])))
 			output = subprocess.check_output(["make", "TARGET=%s"%(self.platform), self.program], stderr=subprocess.STDOUT, env=myenv)
 			self.logger.debug(output)
 			time.sleep(2)
@@ -100,6 +100,7 @@ class Device(object):
 				myenv['CFLAGS'] = '-finstrument-functions %s'%(self.cflags)
 				for dev in self.devcfg:
 					myenv['CFLAGS']=myenv['CFLAGS'].replace(str("-DCONF_DEST_NODE=$"+dev['name'].upper()),str("-DCONF_DEST_NODE="+str(dev['id'])))
+					myenv['CFLAGS']=myenv['CFLAGS'].replace(str("-DCONF_SEND_TO_NODE=$"+dev['name'].upper()),str("-DCONF_SEND_TO_NODE="+str(dev['id'])))
 				output = subprocess.check_output(["make", "TARGET=%s"%(self.platform), self.program], stderr=subprocess.STDOUT, env=myenv)
 				self.logger.debug(output)
 		except subprocess.CalledProcessError as err:

@@ -1,7 +1,7 @@
 suite:
-    logbase:   ./log 
+    logbase:   /sample/logbase
     logpattern: date-tag
-    contikibase: /home/oni/hiwi/contiki
+    contikibase: /sample/contikibase 
     contikiscm: git # Here only git and none are supported at the moment
     testcases:
         - generate-bundles-20
