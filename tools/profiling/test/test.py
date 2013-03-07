@@ -295,11 +295,6 @@ class Testcase(object):
 		self.unused_devices = []
 		self.timedout = False
 		self.result = []
-		print "OOOOOOOOOOOOOOOOOOOOOOOOOO"
-		#print devicelist
-		#print self.name
-		
-
 		for unused in devcfg:
 			found=0
 			for dev in devicecfg:
@@ -310,7 +305,6 @@ class Testcase(object):
 				device = copy.copy(device)
 				self.unused_devices.append(device)
 				device.dummy(self.name)
-		print self.unused_devices
 		mkdir_p(self.logbase)
 		for cfgdevice in devicecfg:
 			try:
@@ -324,7 +318,6 @@ class Testcase(object):
 			cfgdevice['contikibase'] = self.contikibase
 			device.configure(cfgdevice, self.name)
 			self.devices.append(device)
-		print "OOOOOOOOOOOOOOOOOOOOOOOOOO"
 	def timeout_occured(self):
 		self.timedout = True
 
