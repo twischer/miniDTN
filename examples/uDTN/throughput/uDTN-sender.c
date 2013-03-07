@@ -66,6 +66,12 @@
 #define BUNDLES 1000
 #endif
 
+#ifdef CONF_REPORTING_INTERVAL
+#define REPORTING_INTERVAL CONF_REPORTING_INTERVAL
+#else
+#define REPORTING_INTERVAL 50
+#endif
+
 #ifdef CONF_REPORT
 #define REPORT 1
 #endif
@@ -228,8 +234,8 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 		process_post(&agent_process, dtn_send_bundle_event, (void *) bundle_outgoing);
 
 		bundles_sent++;
-		/* Show progress every 50 bundles */
-		if (bundles_sent%50 == 0)
+		/* Show progress every REPORTING_INTERVAL bundles */
+		if (bundles_sent % REPORTING_INTERVAL == 0)
 			printf("%i\n", bundles_sent);
 	}
 	PROCESS_END();

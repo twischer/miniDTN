@@ -62,6 +62,12 @@
 #define BUNDLES 1000
 #endif
 
+#ifdef CONF_REPORTING_INTERVAL
+#define REPORTING_INTERVAL CONF_REPORTING_INTERVAL
+#else
+#define REPORTING_INTERVAL 50
+#endif
+
 /*---------------------------------------------------------------------------*/
 PROCESS(udtn_sink_process, "uDTN Sink process");
 AUTOSTART_PROCESSES(&udtn_sink_process);
@@ -174,7 +180,7 @@ PROCESS_THREAD(udtn_sink_process, ev, data)
 			time_start = test_precise_timestamp(NULL);
 		}
 
-		if (bundles_recv%50 == 0)
+		if (bundles_recv % REPORTING_INTERVAL == 0)
 			printf("%u\n", bundles_recv);
 
 		/* Report profiling data after receiving BUNDLES bundles
