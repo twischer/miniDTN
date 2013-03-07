@@ -1,0 +1,106 @@
+tests:
+### uDTN default Storage test
+  - name: storage-default
+    timeout: 1200
+    devices:
+      - name: sender
+        programdir: examples/uDTN/storage-test
+        program: uDTN-storage-test
+        instrument: [examples/uDTN/storage-test/uDTN-storage-test.c,platform/inga/*.c,core/net/uDTN/*.c]
+        debug: []
+        cflags: "-fno-inline -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30"
+        graph_options: ""
+      - name: receiver
+        programdir: examples/uDTN/storage-test
+        program: uDTN-storage-test
+        instrument: [examples/uDTN/storage-test/uDTN-storage-test.c,platform/inga/*.c,core/net/uDTN/*.c]
+        debug: []
+        cflags: "-fno-inline -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30"
+        graph_options: ""
+  - name: storage-default-uninstr
+    timeout: 1200
+    devices:
+      - name: sender
+        programdir: examples/uDTN/storage-test
+        program: uDTN-storage-test
+        instrument: []
+        debug: []
+        cflags: "-fno-inline"
+        graph_options: ""
+      - name: receiver
+        programdir: examples/uDTN/storage-test
+        program: uDTN-storage-test
+        instrument: []
+        debug: []
+        cflags: "-fno-inline"
+        graph_options: ""
+### uDTN coffee Storage test
+  - name: storage-coffee
+    timeout: 2400
+    devices:
+      - name: sender
+        programdir: examples/uDTN/storage-test
+        program: uDTN-storage-test
+        instrument: [examples/uDTN/storage-test/uDTN-storage-test.c,platform/inga/*.c,core/net/uDTN/*.c]
+        debug: []
+        cflags: "-DBUNDLE_CONF_STORAGE_INIT=1 -fno-inline -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30 -DBUNDLE_CONF_STORAGE=storage_coffee"
+        graph_options: ""
+      - name: receiver
+        programdir: examples/uDTN/storage-test
+        program: uDTN-storage-test
+        instrument: [examples/uDTN/storage-test/uDTN-storage-test.c,platform/inga/*.c,core/net/uDTN/*.c]
+        debug: []
+        cflags: "-DBUNDLE_CONF_STORAGE_INIT=1 -fno-inline -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30 -DBUNDLE_CONF_STORAGE=storage_coffee"
+        graph_options: ""
+  - name: storage-coffee-uninstr
+    timeout: 2400
+    devices:
+      - name: sender
+        programdir: examples/uDTN/storage-test
+        program: uDTN-storage-test
+        instrument: []
+        debug: []
+        cflags: "-DBUNDLE_CONF_STORAGE_INIT=1 -fno-inline -DBUNDLE_CONF_STORAGE=storage_coffee"
+        graph_options: ""
+      - name: receiver
+        programdir: examples/uDTN/storage-test
+        program: uDTN-storage-test
+        instrument: []
+        debug: []
+        cflags: "-DBUNDLE_CONF_STORAGE_INIT=1 -fno-inline -DBUNDLE_CONF_STORAGE=storage_coffee"
+        graph_options: ""
+### uDTN persistent Storage test
+  - name: persistent-storage-coffee
+    timeout: 2400
+    devices:
+      - name: sender
+        programdir: examples/uDTN/storage-test
+        program: uDTN-persistent-storage-test
+        instrument: [examples/uDTN/storage-test/uDTN-persistent-storage-test.c,platform/inga/*.c,core/net/uDTN/*.c]
+        debug: []
+        cflags: "-fno-inline -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30 -DBUNDLE_CONF_STORAGE=storage_coffee"
+        graph_options: ""
+      - name: receiver
+        programdir: examples/uDTN/storage-test
+        program: uDTN-persistent-storage-test
+        instrument: [examples/uDTN/storage-test/uDTN-persistent-storage-test.c,platform/inga/*.c,core/net/uDTN/*.c]
+        debug: []
+        cflags: "-fno-inline -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30 -DBUNDLE_CONF_STORAGE=storage_coffee"
+        graph_options: ""
+  - name: persistent-storage-coffee-uninstr
+    timeout: 2400
+    devices:
+      - name: sender
+        programdir: examples/uDTN/storage-test
+        program: uDTN-persistent-storage-test
+        instrument: []
+        debug: []
+        cflags: "-fno-inline -DBUNDLE_CONF_STORAGE=storage_coffee"
+        graph_options: ""
+      - name: receiver
+        programdir: examples/uDTN/storage-test
+        program: uDTN-persistent-storage-test
+        instrument: []
+        debug: []
+        cflags: "-fno-inline -DBUNDLE_CONF_STORAGE=storage_coffee"
+        graph_options: ""
