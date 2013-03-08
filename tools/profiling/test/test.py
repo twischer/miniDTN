@@ -61,6 +61,7 @@ class Device(object):
 		self.programdir = os.path.join(self.contikibase, config['programdir'])
 		self.program = config['program']
 		self.instrument = config['instrument']
+		self.debug = config['debug']
 		self.cflags = config.setdefault('cflags', "")
 		self.graph_options = config.setdefault('graph_options', "")
 
@@ -79,6 +80,11 @@ class Device(object):
 				output = subprocess.check_output(["make", "TARGET=%s"%(self.platform), "clean"], stderr=subprocess.STDOUT)
 				self.logger.debug(output)
 
+			self.logger.info("Gernerat lists")
+			just_instrument= list(set(self.instrument) - set(self.debug))
+			just_debug= list(set(self.debug) - set(self.instrument))
+			instrument_and_debug= list(set(self.debug) & set(self.instrument))
+			#self.logger.info("inst:\n %s \n debug:\n %s \n both: %s",str(just_instrument), str(just_debug), str(instrument_and_debug))
 			self.logger.info("Building %s", os.path.join(self.programdir, self.program))
 			myenv = os.environ.copy()
 			myenv['CFLAGS'] = self.cflags
@@ -88,9 +94,9 @@ class Device(object):
 			output = subprocess.check_output(["make", "TARGET=%s"%(self.platform), self.program], stderr=subprocess.STDOUT, env=myenv)
 			self.logger.debug(output)
 			time.sleep(2)
-			if len(self.instrument) > 0:
+			if len(just_instrument) > 0: #build file with just instrumentation again
 				touchcall = ["touch"]
-				touchcall.extend([os.path.join(self.contikibase, instrpat) for instrpat in self.instrument])
+				touchcall.extend([os.path.join(self.contikibase, instrpat) for instrpat in just_instrument])
 				self.logger.debug(' '.join(touchcall))
 				## XXX:Danger, Will Robinson! Do not use shell with user input
 				output = subprocess.check_output(' '.join(touchcall), stderr=subprocess.STDOUT, shell=True)
@@ -98,6 +104,40 @@ class Device(object):
 				self.logger.info("Building instrumentation for %s", os.path.join(self.programdir, self.program))
 				myenv = os.environ.copy()
 				myenv['CFLAGS'] = '-finstrument-functions %s'%(self.cflags)
+				for dev in self.devcfg:
+					myenv['CFLAGS']=myenv['CFLAGS'].replace(str("-DCONF_DEST_NODE=$"+dev['name'].upper()),str("-DCONF_DEST_NODE="+str(dev['id'])))
+					myenv['CFLAGS']=myenv['CFLAGS'].replace(str("-DCONF_SEND_TO_NODE=$"+dev['name'].upper()),str("-DCONF_SEND_TO_NODE="+str(dev['id'])))
+				output = subprocess.check_output(["make", "TARGET=%s"%(self.platform), self.program], stderr=subprocess.STDOUT, env=myenv)
+				self.logger.debug(output)
+
+
+			if len(just_debug) > 0: #build file witch just debug again
+				touchcall = ["touch"]
+				touchcall.extend([os.path.join(self.contikibase, instrpat) for instrpat in just_debug])
+				self.logger.debug(' '.join(touchcall))
+				## XXX:Danger, Will Robinson! Do not use shell with user input
+				output = subprocess.check_output(' '.join(touchcall), stderr=subprocess.STDOUT, shell=True)
+				self.logger.debug(output)
+				self.logger.info("Building logging for %s", os.path.join(self.programdir, self.program))
+				myenv = os.environ.copy()
+				myenv['CFLAGS'] = '-DENABLE_LOGGING %s'%(self.cflags)
+				for dev in self.devcfg:
+					myenv['CFLAGS']=myenv['CFLAGS'].replace(str("-DCONF_DEST_NODE=$"+dev['name'].upper()),str("-DCONF_DEST_NODE="+str(dev['id'])))
+					myenv['CFLAGS']=myenv['CFLAGS'].replace(str("-DCONF_SEND_TO_NODE=$"+dev['name'].upper()),str("-DCONF_SEND_TO_NODE="+str(dev['id'])))
+				output = subprocess.check_output(["make", "TARGET=%s"%(self.platform), self.program], stderr=subprocess.STDOUT, env=myenv)
+				self.logger.debug(output)
+
+
+			if len(instrument_and_debug) > 0: #build file with instrumentation and debug
+				touchcall = ["touch"]
+				touchcall.extend([os.path.join(self.contikibase, instrpat) for instrpat in instrument_and_debug])
+				self.logger.debug(' '.join(touchcall))
+				## XXX:Danger, Will Robinson! Do not use shell with user input
+				output = subprocess.check_output(' '.join(touchcall), stderr=subprocess.STDOUT, shell=True)
+				self.logger.debug(output)
+				self.logger.info("Building instrumentation and logging for %s", os.path.join(self.programdir, self.program))
+				myenv = os.environ.copy()
+				myenv['CFLAGS'] = '-finstrument-functions -DENABLE_LOGGING %s'%(self.cflags)
 				for dev in self.devcfg:
 					myenv['CFLAGS']=myenv['CFLAGS'].replace(str("-DCONF_DEST_NODE=$"+dev['name'].upper()),str("-DCONF_DEST_NODE="+str(dev['id'])))
 					myenv['CFLAGS']=myenv['CFLAGS'].replace(str("-DCONF_SEND_TO_NODE=$"+dev['name'].upper()),str("-DCONF_SEND_TO_NODE="+str(dev['id'])))
@@ -489,20 +529,6 @@ class Testsuite(object):
 			deviceinst = deviceclass(devicecfg,devcfg)
 			self.devices[devicecfg['name']] = deviceinst
 
-		self.tests = {}
-		self.build_inga_tool = False
-		for testcfg in testcfg:
-			testcfg['logbase'] = self.logdir
-			testcfg['contikibase'] = self.config['contikibase']
-			if testcfg['name'] in self.config['testcases']:
-				testcase = Testcase(testcfg, self.devices, testcfg['devices'],devcfg)
-				self.tests[testcfg['name']] = testcase
-				# Check if we need to build inga_tool
-				if not self.build_inga_tool:
-					for dev in testcfg['devices']:
-						if self.devices[dev['name']].platform == 'inga':
-							self.build_inga_tool = True
-
 		# Set up logging to file
 		filehandler = logging.FileHandler(os.path.join(self.logdir, "build.log"))
 		filehandler.setLevel(logging.DEBUG)
@@ -516,6 +542,38 @@ class Testsuite(object):
 			verfile.write('\n')
 
 		shutil.copyfile(options.node_configfile, os.path.join(self.logdir, 'config.yaml'))
+		
+		# Check if we need to build inga_tool
+		self.tests = {}
+		self.build_inga_tool = False
+		for t_testcfg in testcfg:
+			if not self.build_inga_tool:
+				for dev in t_testcfg['devices']:
+					if self.devices[dev['name']].platform == 'inga':
+						self.build_inga_tool = True
+
+		# Build inga_tool
+		if self.build_inga_tool:
+			self.inga_tool_dir = os.path.join(self.config['contikibase'], "tools", "inga", "inga_tool")
+			logging.info("Building inga_tool %s", self.inga_tool_dir)
+			if not os.path.exists(self.inga_tool_dir):
+				logging.error("Could not find %s", self.inga_tool_dir)
+				raise Exception
+			try:
+				output = subprocess.check_output(["make", "-C", self.inga_tool_dir], stderr=subprocess.STDOUT)
+				logging.debug(output)
+			except subprocess.CalledProcessError as err:
+				logging.error(err)
+				logging.error(err.output)
+				raise
+
+		for testcfg in testcfg:
+			testcfg['logbase'] = self.logdir
+			testcfg['contikibase'] = self.config['contikibase']
+			if testcfg['name'] in self.config['testcases']:
+				testcase = Testcase(testcfg, self.devices, testcfg['devices'],devcfg)
+				self.tests[testcfg['name']] = testcase
+
 
 		# Info
 		logging.info("Profiling suite - initialized")
@@ -535,20 +593,6 @@ class Testsuite(object):
 
 
 	def run(self):
-		# Build inga_tool
-		if self.build_inga_tool:
-			self.inga_tool_dir = os.path.join(self.config['contikibase'], "tools", "inga", "inga_tool")
-			logging.info("Building inga_tool %s", self.inga_tool_dir)
-			if not os.path.exists(self.inga_tool_dir):
-				logging.error("Could not find %s", self.inga_tool_dir)
-				raise Exception
-			try:
-				output = subprocess.check_output(["make", "-C", self.inga_tool_dir], stderr=subprocess.STDOUT)
-				logging.debug(output)
-			except subprocess.CalledProcessError as err:
-				logging.error(err)
-				logging.error(err.output)
-				raise
 
 		failure = []
 		success = []

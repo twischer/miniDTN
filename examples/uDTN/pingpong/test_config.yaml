@@ -7,12 +7,14 @@ tests:
         programdir: examples/uDTN/pingpong
         program: uDTN-pingpong
         instrument: [examples/uDTN/pingpong/uDTN-pingpongr.c,platform/inga/*.c,core/net/uDTN/*.c]
+        debug: []
         cflags: "-fno-inline  -DCONF_MODE=1 -DCONF_DEST_NODE=$RECEIVER -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30"
         graph_options: ""
       - name: receiver
         programdir: examples/uDTN/pingpong
         program: uDTN-pingpong
         instrument: [examples/uDTN/pingpong/uDTN-pingpong.c,platform/inga/*.c,core/net/uDTN/*.c]
+        debug: []
         cflags: "-fno-inline -DCONF_MODE=0 -DCONF_DEST_NODE=$SENDER -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30"
         graph_options: ""
   - name: pingpong-uninstr
@@ -22,12 +24,14 @@ tests:
         programdir: examples/uDTN/pingpong
         program: uDTN-pingpong
         instrument: []
+        debug: []
         cflags: "-fno-inline -DCONF_MODE=1 -DCONF_DEST_NODE=$RECEIVER"
         graph_options: ""
       - name: receiver
         programdir: examples/uDTN/pingpong
         program: uDTN-pingpong
         instrument: []
+        debug: []
         cflags: "-fno-inline -DCONF_MODE=0 -DCONF_DEST_NODE=$SENDER"
         graph_options: ""
 ### Test latency loopback
@@ -38,12 +42,14 @@ tests:
         programdir: examples/uDTN/pingpong
         program: uDTN-pingpong
         instrument: [examples/uDTN/pingpong/uDTN-pingpong.c,platform/inga/*.c,core/net/uDTN/*.c]
+        debug: []
         cflags: "-fno-inline -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30"
         graph_options: ""
       - name: receiver
         programdir: examples/uDTN/pingpong
         program: uDTN-pingpong
         instrument: [examples/uDTN/pingpong/uDTN-pingpong.c,platform/inga/*.c,core/net/uDTN/*.c]
+        debug: []
         cflags: "-fno-inline -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30"
         graph_options: ""
   - name: pingpong-loopback-uninstr
@@ -53,11 +59,13 @@ tests:
         programdir: examples/uDTN/pingpong
         program: uDTN-pingpong
         instrument: []
+        debug: []
         cflags: "-fno-inline"
         graph_options: ""
       - name: receiver
         programdir: examples/uDTN/pingpong
         program: uDTN-pingpong
         instrument: []
+        debug: []
         cflags: "-fno-inline"
         graph_options: ""
