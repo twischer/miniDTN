@@ -448,9 +448,19 @@ class Testsuite(object):
 		else: # Date based is the default
 			logdir = time.strftime('%Y%m%d%H%M%S')
 
+		# create logdir
 		self.logdir = os.path.join(self.config['logbase'], logdir)
-
 		mkdir_p(self.logdir)
+
+		# create symlink to logdir
+		try:
+			self.logdir_last = os.path.join(self.config['logbase'], "lastlog")
+			if os.path.islink(self.logdir_last):
+				os.unlink(self.logdir_last)
+			os.symlink(self.logdir, self.logdir_last)
+		#FIXME be more specific...
+		except Exception:
+			self.logdir_last = "FAILED"
 
 		self.devices = {}
 		for devicecfg in devcfg:
@@ -489,6 +499,8 @@ class Testsuite(object):
 		# Info
 		logging.info("Profiling suite - initialized")
 		logging.info("Logs are located under %s", self.logdir)
+		if self.logdir_last != "FAILED":
+			logging.info("Symlink to Logs under %s", self.logdir_last)
 		logging.info("Contiki base path is %s", self.config['contikibase'])
 		logging.info("Contiki version is %s", self.contikiversion)
 		logging.info("The following devices are defined:")
