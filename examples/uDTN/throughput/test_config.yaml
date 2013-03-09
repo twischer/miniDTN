@@ -14,6 +14,8 @@ tests:
         programdir: examples/uDTN/throughput
         program: uDTN-sink
         instrument: [examples/uDTN/throughput/uDTN-sink.c,platform/inga/*.c,core/net/uDTN/*.c]
+        debug: []
+        cflags: "-fno-inline -DCONF_SEND_TO_NODE=$RECEIVER -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30"
         cflags: "-fno-inline -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30"
         graph_options: ""
   - name: throughput-uninstr
@@ -30,6 +32,8 @@ tests:
         programdir: examples/uDTN/throughput
         program: uDTN-sink
         instrument: []
+        debug: []
+        cflags: "-fno-inline -DCONF_SEND_TO_NODE=$RECEIVER -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30"
         cflags: ""
         graph_options: ""
 ### Test delivery-reports
