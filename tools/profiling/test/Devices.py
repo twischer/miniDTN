@@ -12,6 +12,7 @@ import os,sys
 import traceback
 import argparse
 
+
 class Device(object):
 	"""Represents the actual device (Sky, INGA, ...) partaking in the test"""
 	startpattern = "*******Booting Contiki"
@@ -33,7 +34,7 @@ class Device(object):
 		self.cflags = config.setdefault('cflags', "")
 		self.graph_options = config.setdefault('graph_options', "")
 
-	def build(self):
+	def build(self,options):
 		ser = serial.Serial(port=self.path, baudrate=1200, timeout=0.5)
 		ser.close()
 		try:

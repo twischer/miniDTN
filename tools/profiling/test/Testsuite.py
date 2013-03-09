@@ -14,12 +14,8 @@ import argparse
 
 from Devices import *
 from Testcase import *
-def mkdir_p(path):
-	try:
-		os.makedirs(path)
-	except OSError as err:
-		if err.errno == errno.EEXIST:
-			logging.error("Directory %s already exists, aborting", path)
+from helper import *
+
 
 class Testsuite(object):
 	def __init__(self, suitecfg, devcfg, testcfg,options):
@@ -30,6 +26,7 @@ class Testsuite(object):
 		path_profile_neat_py_dir = os.path.join(self.config['contikibase'], "tools", "profiling")
 		os.environ['PATH'] += ':%s:%s' % (path_inga_tool_dir, path_profile_neat_py_dir)
 
+		self.options = options
 		if 'contikiscm' in self.config:
 			if self.config['contikiscm'] == 'git':
 				self.contikiversion = subprocess.check_output(["git", "describe", "--tags", "--always", "--dirty", "--long"], stderr=subprocess.STDOUT, cwd=self.config['contikibase']).rstrip()
@@ -97,7 +94,7 @@ class Testsuite(object):
 			testcfg['logbase'] = self.logdir
 			testcfg['contikibase'] = self.config['contikibase']
 			if testcfg['name'] in self.config['testcases']:
-				testcase = Testcase(testcfg, self.devices, testcfg['devices'],devcfg)
+				testcase = Testcase(testcfg, self.devices, testcfg['devices'],devcfg,options)
 				self.tests[testcfg['name']] = testcase
 
 
@@ -150,8 +147,8 @@ class Testsuite(object):
 			logging.info("%s [ERR]", test.name)
 			logging.info(" -> %s", test.failure)
 
-		if options.xmlreport:
-			with open(os.path.join(options.xmlreport, 'build.xml'), 'w') as xmlfile:
+		if self.options.xmlreport:
+			with open(os.path.join(self.options.xmlreport, 'build.xml'), 'w') as xmlfile:
 				xmlfile.write('<testsuite errors="0" failures="%d" name="" tests="%d" time="0">\n'
 						%(len(failure), len(failure)+len(success)))
 				for test in success:

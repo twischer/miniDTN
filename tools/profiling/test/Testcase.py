@@ -14,10 +14,11 @@ import traceback
 import argparse
 
 from Devices import *
-from Testsuite import *
+from helper import *
+
 class Testcase(object):
 	"""Contiki testcase"""
-	def __init__(self, config, devicelist, devicecfg, devcfg):
+	def __init__(self, config, devicelist, devicecfg, devcfg,options):
 		self.name = config['name']
 		self.logger = logging.getLogger('test.%s'%(self.name))
 		self.logbase = os.path.join(config['logbase'], self.name)
@@ -27,6 +28,7 @@ class Testcase(object):
 		self.unused_devices = []
 		self.timedout = False
 		self.result = []
+		self.options= options
 		for unused in devcfg:
 			found=0
 			for dev in devicecfg:
@@ -86,7 +88,7 @@ class Testcase(object):
 			for device in self.devices:
 				try:
 					self.logger.info("Setting up %s for device %s", device.programdir, device.name)
-					device.build()
+					device.build(self.options)
 					device.upload()
 				except Exception as err:
 					self.logger.error("Test could not complete")
