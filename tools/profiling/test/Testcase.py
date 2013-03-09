@@ -14,6 +14,7 @@ import traceback
 import argparse
 
 from Devices import *
+from Testsuite import *
 class Testcase(object):
 	"""Contiki testcase"""
 	def __init__(self, config, devicelist, devicecfg, devcfg):
