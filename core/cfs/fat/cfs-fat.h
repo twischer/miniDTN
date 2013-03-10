@@ -147,12 +147,8 @@ struct file_desc {
   uint8_t flags;
 };
 
-/**
- * 
- * @param 
- * @return 
- */
-int cfs_fat_rmdir(char *);
+//int cfs_fat_rmdir(char *);
+//int cfs_fat_mkdir(char *);
 
 /**
  * Tries to mount the defined device.
@@ -194,7 +190,7 @@ uint16_t cfs_fat_get_last_date(int fd);
 uint16_t cfs_fat_get_last_time(int fd);
 
 /**
- * Returns the date of last modification.
+ * Returns the date of creation.
  * 
  * Format: [15-9: year sine 1980, 8-5: month, 4-0: day]
  * @param fd File descriptor
@@ -202,7 +198,7 @@ uint16_t cfs_fat_get_last_time(int fd);
 uint16_t cfs_fat_get_create_date(int fd);
 
 /**
- * Returns the time of last modification.
+ * Returns the time of creation.
  * 
  * Format: [15-11: hours, 10-5: minutes, 4-0: seconds/2]
  * @param fd File descriptor
@@ -215,11 +211,12 @@ uint16_t cfs_fat_get_create_time(int fd);
 void cfs_fat_sync_fats();
 
 /**
- * 
+ * Writes the current buffered block back to the disk if it was changed.
  */
 void cfs_fat_flush();
 
 /**
+ * Returns the file size of the associated file
  * 
  * @param fd
  * @return 

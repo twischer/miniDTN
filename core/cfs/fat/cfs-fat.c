@@ -79,7 +79,7 @@ struct file_system {
   struct diskio_device_info *dev;
   struct FAT_Info info;
   uint32_t first_data_sector;
-} mounted;
+} mounted; // TODO: volume?
 
 #define CLUSTER_TO_SECTOR(cluster_num) (((cluster_num - 2) * mounted.info.BPB_SecPerClus) + mounted.first_data_sector)
 #define SECTOR_TO_CLUSTER(sector_num) (((sector_num - mounted.first_data_sector) / mounted.info.BPB_SecPerClus) + 2)
@@ -818,7 +818,7 @@ cfs_open(const char *name, int flags)
   if (flags & CFS_WRITE) {
     cfs_remove(name);
   }
-  
+
   // find file on Disk
   if (!get_dir_entry(name, &dir_ent, &fat_file_pool[fd].dir_entry_sector, &fat_file_pool[fd].dir_entry_offset, (flags & CFS_WRITE) || (flags & CFS_APPEND))) {
     PRINTF("\nfat.c: cfs_open(): Could not fetch the directory entry!");
@@ -874,23 +874,28 @@ cfs_close(int fd)
 int
 cfs_read(int fd, void *buf, unsigned int len)
 {
+
+  /* validate file pointer and read flag */
+  if ((fd < 0 || fd >= FAT_FD_POOL_SIZE) || (!(fat_fd_pool[fd].flags & CFS_READ))) {
+    return -1;
+  }
+
+  /* offset within sector [bytes] */
   uint32_t offset = fat_fd_pool[fd].offset % mounted.info.BPB_BytesPerSec;
   uint32_t clusters = (fat_fd_pool[fd].offset / mounted.info.BPB_BytesPerSec) / mounted.info.BPB_SecPerClus;
   uint8_t clus_offset = (fat_fd_pool[fd].offset / mounted.info.BPB_BytesPerSec) % mounted.info.BPB_SecPerClus;
+  uint32_t size_left = fat_file_pool[fd].dir_entry.DIR_FileSize - fat_fd_pool[fd].offset;
   uint16_t i, j = 0;
   uint8_t *buffer = (uint8_t *) buf;
 
-  if (fd < 0 || fd >= FAT_FD_POOL_SIZE) {
-    return -1;
+  /* limit len to remaining file length */
+  if (size_left < len) {
+    len = size_left;
   }
 
-  /*Special case of empty file, cluster is zero, no data*/
-  if (fat_file_pool[fd].cluster == 0) {
+  /* Special case of empty file (cluster is zero) or zero length to read */
+  if ((fat_file_pool[fd].cluster == 0) || (len == 0)) {
     return 0;
-  }
-
-  if (!(fat_fd_pool[fd].flags & CFS_READ)) {
-    return -1;
   }
 
   while (load_next_sector_of_file(fd, clusters, clus_offset, 0) == 0) {
@@ -909,6 +914,7 @@ cfs_read(int fd, void *buf, unsigned int len)
       break;
     }
   }
+
   return (int) j;
 }
 /*----------------------------------------------------------------------------*/
