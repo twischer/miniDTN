@@ -60,21 +60,12 @@
 #define WATCHDOG_CONF_BALANCE 0
 #endif
 
-/*
-#include "dev/watchdog.h"
-#include <avr/wdt.h>
-#include <avr/interrupt.h>
-*/
-
-// This is needed because AVR libc does not support WDT yet
-
-#include <contiki-conf.h>
-#include <avrdef.h>
 #include <avr/io.h>
 #include <avr/wdt.h>
 #include <avr/interrupt.h>
 #include <dev/watchdog.h>
 
+// This is needed because AVR libc does not support WDT yet
 #ifdef __AVR_XMEGA__
 #ifndef wdt_disable
 #define wdt_disable() \
