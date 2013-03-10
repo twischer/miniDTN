@@ -51,17 +51,19 @@
 #ifndef _FAT_H_
 #define _FAT_H_
 
-#include "diskio.h"
 #include <string.h>
 #include <stdio.h>
 #include <ctype.h>
 #include <stdint.h>
-#include "cfs/cfs.h"
 
 /** Seek type is 32 bit for FAT files. */
 #ifndef CFS_CONF_OFFSET_TYPE
 #define CFS_CONF_OFFSET_TYPE uint32_t
 #endif
+
+#include "diskio.h"
+#include "cfs/cfs.h"
+
 
 #ifdef FAT_CONF_COOPERATIVE
 #define FAT_COOPERATIVE FAT_CONF_COOPERATIVE
