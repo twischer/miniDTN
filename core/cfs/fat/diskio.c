@@ -65,7 +65,8 @@ static struct diskio_device_info devices[DISKIO_MAX_DEVICES];
 int diskio_rw_op(struct diskio_device_info *dev, uint32_t block_start_address, uint8_t num_blocks, uint8_t *buffer, uint8_t op);
 /*----------------------------------------------------------------------------*/
 void
-print_device_info(struct diskio_device_info *dev) {
+print_device_info(struct diskio_device_info *dev)
+{
   printf("DiskIO Device Info\n");
 
   printf("\ttype = ");
@@ -94,27 +95,32 @@ print_device_info(struct diskio_device_info *dev) {
 }
 /*----------------------------------------------------------------------------*/
 int
-diskio_read_block(struct diskio_device_info *dev, uint32_t block_address, uint8_t *buffer) {
+diskio_read_block(struct diskio_device_info *dev, uint32_t block_address, uint8_t *buffer)
+{
   return diskio_rw_op(dev, block_address, 1, buffer, DISKIO_OP_READ_BLOCK);
 }
 /*----------------------------------------------------------------------------*/
 int
-diskio_read_blocks(struct diskio_device_info *dev, uint32_t block_start_address, uint8_t num_blocks, uint8_t *buffer) {
+diskio_read_blocks(struct diskio_device_info *dev, uint32_t block_start_address, uint8_t num_blocks, uint8_t *buffer)
+{
   return diskio_rw_op(dev, block_start_address, num_blocks, buffer, DISKIO_OP_READ_BLOCKS);
 }
 /*----------------------------------------------------------------------------*/
 int
-diskio_write_block(struct diskio_device_info *dev, uint32_t block_address, uint8_t *buffer) {
+diskio_write_block(struct diskio_device_info *dev, uint32_t block_address, uint8_t *buffer)
+{
   return diskio_rw_op(dev, block_address, 1, buffer, DISKIO_OP_WRITE_BLOCK);
 }
 /*----------------------------------------------------------------------------*/
 int
-diskio_write_blocks(struct diskio_device_info *dev, uint32_t block_start_address, uint8_t num_blocks, uint8_t *buffer) {
+diskio_write_blocks(struct diskio_device_info *dev, uint32_t block_start_address, uint8_t num_blocks, uint8_t *buffer)
+{
   return diskio_rw_op(dev, block_start_address, num_blocks, buffer, DISKIO_OP_WRITE_BLOCKS);
 }
 /*----------------------------------------------------------------------------*/
 int
-diskio_rw_op(struct diskio_device_info *dev, uint32_t block_start_address, uint8_t num_blocks, uint8_t *buffer, uint8_t op) {
+diskio_rw_op(struct diskio_device_info *dev, uint32_t block_start_address, uint8_t num_blocks, uint8_t *buffer, uint8_t op)
+{
   if (dev == NULL) {
     if (default_device == 0) {
       PRINTF("\nNo default device");
@@ -138,6 +144,8 @@ diskio_rw_op(struct diskio_device_info *dev, uint32_t block_start_address, uint8
             ret_code = SD_READ_BLOCK(block_start_address, buffer);
             if (ret_code == 0) {
               return DISKIO_SUCCESS;
+            } else {
+              PRINTF("\nret_code: %u", ret_code);
             }
             _delay_ms(1);
 
@@ -224,17 +232,20 @@ diskio_rw_op(struct diskio_device_info *dev, uint32_t block_start_address, uint8
 }
 /*----------------------------------------------------------------------------*/
 void
-diskio_set_default_device(struct diskio_device_info *dev) {
+diskio_set_default_device(struct diskio_device_info *dev)
+{
   default_device = dev;
 }
 /*----------------------------------------------------------------------------*/
 struct diskio_device_info *
-diskio_devices() {
+diskio_devices()
+{
   return devices;
 }
 /*----------------------------------------------------------------------------*/
 int
-diskio_detect_devices() {
+diskio_detect_devices()
+{
   struct mbr mbr;
   int dev_num = 0;
   int i = 0, index = 0;

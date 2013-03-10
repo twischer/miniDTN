@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Institute of Operating Systems and Computer Networks (TU Brunswick).
+ * Copyright (c) 2012, (TU Braunschweig).
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -58,6 +58,11 @@
 #include <stdint.h>
 #include "cfs/cfs.h"
 
+/** Seek type is 32 bit for FAT files. */
+#ifndef CFS_CONF_OFFSET_TYPE
+#define CFS_CONF_OFFSET_TYPE uint32_t
+#endif
+
 #ifdef FAT_CONF_COOPERATIVE
 #define FAT_COOPERATIVE FAT_CONF_COOPERATIVE
 #else
@@ -82,7 +87,10 @@
 
 #define EOC 0x0FFFFFFF
 
+/* Maximum number of files that can be opened simulatneously */
+#ifndef FAT_FD_POOL_SIZE
 #define FAT_FD_POOL_SIZE 5
+#endif
 
 /** Holds boot sector information. */
 struct FAT_Info {
@@ -97,7 +105,7 @@ struct FAT_Info {
   uint32_t BPB_FATSz; /*! Number of sectors per FAT, i.e. size of FAT */
   uint32_t BPB_RootClus; /** only valid for FAT32 */
 };
-
+/** Fat table entry for file */
 struct dir_entry {
   uint8_t DIR_Name[11];
   uint8_t DIR_Attr;
@@ -115,6 +123,7 @@ struct dir_entry {
   /** Create date [15-9: year sine 1980, 8-5: month, 4-0: day] */
   uint16_t DIR_WrtDate;
   uint16_t DIR_FstClusLO;
+  /** Size of file in [byte] */
   uint32_t DIR_FileSize;
 };
 

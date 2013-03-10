@@ -66,6 +66,9 @@
 #define ATTR_ARCHIVE   0x20
 #define ATTR_LONG_NAME (ATTR_READ_ONLY | ATTR_HIDDEN | ATTR_SYSTEM | ATTR_VOLUME_ID)
 
+#define FAT_FLAG_FREE     0x00
+#define FAT_FLAG_DELETED  0xE5
+
 uint8_t sector_buffer[512];
 uint32_t sector_buffer_addr = 0;
 uint8_t sector_buffer_dirty = 0;
@@ -811,6 +814,11 @@ cfs_open(const char *name, int flags)
   fd = queue[queue_start].ret_value;
 #endif
 
+  /* Reset entry for overwriting */
+  if (flags & CFS_WRITE) {
+    cfs_remove(name);
+  }
+  
   // find file on Disk
   if (!get_dir_entry(name, &dir_ent, &fat_file_pool[fd].dir_entry_sector, &fat_file_pool[fd].dir_entry_offset, (flags & CFS_WRITE) || (flags & CFS_APPEND))) {
     PRINTF("\nfat.c: cfs_open(): Could not fetch the directory entry!");
@@ -1068,7 +1076,7 @@ lookup(const char *name, struct dir_entry *dir_entry, uint32_t *dir_entry_sector
       }
 
       // There are no more entries in this directory
-      if (sector_buffer[i] == 0x00) {
+      if (sector_buffer[i] == FAT_FLAG_FREE) {
         PRINTF("\nfat.c: lookup(): No more directory entries");
         PRINTF("\nfat.c: END lookup( name = %c%c%c%c%c%c%c%c%c%c%c, dir_entry = %p, *dir_entry_sector = %lu, *dir_entry_offset = %u) = 1", name[0], name[1], name[2], name[3], name[4], name[5], name[6], name[7], name[8], name[9], name[10], dir_entry, *dir_entry_sector, *dir_entry_offset);
         return 1;
@@ -1140,7 +1148,7 @@ add_directory_entry_to_current(struct dir_entry *dir_ent, uint32_t *dir_entry_se
   PRINTF("\nfat.c: add_directory_entry_to_current( dir_ent = %p, *dir_entry_sector = %lu, *dir_entry_offset = %u ) = ?", dir_ent, *dir_entry_sector, *dir_entry_offset);
   for (;;) {
     for (i = 0; i < 512; i += 32) {
-      if (sector_buffer[i] == 0x00 || sector_buffer[i] == 0xE5) {
+      if (sector_buffer[i] == FAT_FLAG_FREE || sector_buffer[i] == FAT_FLAG_DELETED) {
         memcpy(&(sector_buffer[i]), dir_ent, sizeof (struct dir_entry));
         sector_buffer_dirty = 1;
         *dir_entry_sector = sector_buffer_addr;
@@ -1199,7 +1207,7 @@ remove_dir_entry(uint32_t dir_entry_sector, uint16_t dir_entry_offset)
   }
 
   memset(&(sector_buffer[dir_entry_offset]), 0, sizeof (struct dir_entry));
-  sector_buffer[dir_entry_offset] = 0xE5;
+  sector_buffer[dir_entry_offset] = FAT_FLAG_DELETED;
   sector_buffer_dirty = 1;
 }
 /*----------------------------------------------------------------------------*/
