@@ -1,0 +1,22 @@
+tests:
+### Coffee testing
+  - name: coffee-test
+    timeout: 900
+    devices:
+      - name: sender
+        programdir: examples/inga_tests/coffee
+        program: coffee-test
+        instrument: [examples/inga_tests/coffee/coffee-test.c,core/cfs/cfs-coffee.c]
+        debug: []
+        cflags: "-fno-inline -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30"
+        graph_options: ""
+  - name: coffee-test-uninstr
+    timeout: 900
+    devices:
+      - name: receiver
+        programdir: examples/inga_tests/coffee
+        program: coffee-test
+        instrument: []
+        debug: []
+        cflags: ""
+        graph_options: ""
