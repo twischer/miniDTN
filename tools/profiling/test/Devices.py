@@ -49,7 +49,7 @@ class Device(object):
 				output = subprocess.check_output(["make", "TARGET=%s"%(self.platform), "clean"], stderr=subprocess.STDOUT)
 				self.logger.debug(output)
 
-			self.logger.info("Gernerat lists")
+			self.logger.info("Generating file lists")
 			just_instrument= list(set(self.instrument) - set(self.debug))
 			just_debug= list(set(self.debug) - set(self.instrument))
 			instrument_and_debug= list(set(self.debug) & set(self.instrument))
