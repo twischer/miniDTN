@@ -214,11 +214,11 @@ class Device(object):
 		self.logger.removeHandler(handler)
 		self.logger.info("Finished logging")
 
-class Sky(Device):
+class SKY(Device):
 	"""TMote Sky"""
 	prefix="msp430"
 	platform="sky"
-	baudrate=""
+	baudrate="115200"
 
 	def upload(self):
 		try:
@@ -245,8 +245,18 @@ class Sky(Device):
 			self.logger.error(err)
 			self.logger.error(err.output)
 			raise
+	def dummy(self,testname):
+		self.logger = logging.getLogger("test.%s.%s"%(testname, self.name))
+		output = subprocess.check_output(["msp430-bsl-linux", "--telosb","-c", self.path, "-r"], stderr=subprocess.STDOUT)
+		try:
+			self.logger.info( "Uploading DUMMY to %s"%(self.name))
+			output = subprocess.check_output(["msp430-bsl-linux", "--telosb","-c", self.path, "-e"], stderr=subprocess.STDOUT)
+		except subprocess.CalledProcessError as err:
+			self.logger.error(err)
+			self.logger.error(err.output)
+			raise
 
-class SkyMonitor(Sky):
+class SkyMonitor(SKY):
 	pass
 
 class INGA(Device):
