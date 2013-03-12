@@ -38,13 +38,6 @@ tests:
   - name: pingpong-loopback
     timeout: 900
     devices:
-      - name: sender
-        programdir: examples/uDTN/pingpong
-        program: uDTN-pingpong
-        instrument: [examples/uDTN/pingpong/uDTN-pingpong.c,platform/inga/*.c,core/net/uDTN/*.c]
-        debug: []
-        cflags: "-fno-inline -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30"
-        graph_options: ""
       - name: receiver
         programdir: examples/uDTN/pingpong
         program: uDTN-pingpong
@@ -55,13 +48,6 @@ tests:
   - name: pingpong-loopback-uninstr
     timeout: 900
     devices:
-      - name: sender
-        programdir: examples/uDTN/pingpong
-        program: uDTN-pingpong
-        instrument: []
-        debug: []
-        cflags: "-fno-inline"
-        graph_options: ""
       - name: receiver
         programdir: examples/uDTN/pingpong
         program: uDTN-pingpong

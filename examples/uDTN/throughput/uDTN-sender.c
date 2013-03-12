@@ -130,7 +130,7 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 	process_post(&udtn_sender_process, PROCESS_EVENT_CONTINUE, NULL);
 
 	/* Note down the starting time */
-	time_start = test_precise_timestamp(NULL);
+	time_start = test_precise_timestamp();
 
 	while(1) {
 		/* Wait for the next incoming event */
@@ -191,7 +191,7 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 		if (bundles_sent == BUNDLES) {
 			profiling_stop();
 			/* Note down the time of the last bundle */
-			time_stop = test_precise_timestamp(NULL);
+			time_stop = test_precise_timestamp();
 		}
 
 		/* Allocate memory for the outgoing bundle */

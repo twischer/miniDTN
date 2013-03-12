@@ -232,7 +232,7 @@ PROCESS_THREAD(test_process, ev, data)
 	profiling_start();
 
 	// Measure the current time
-	time_start = test_precise_timestamp(NULL);
+	time_start = test_precise_timestamp();
 
 	for(i=0; i<=1; i++) {
 		struct mmem bla;
@@ -374,7 +374,7 @@ PROCESS_THREAD(test_process, ev, data)
 		bundle_spare = NULL;
 	}
 
-	time_stop = test_precise_timestamp(NULL);
+	time_stop = test_precise_timestamp();
 
 	watchdog_stop();
 	profiling_report("serializer", 0);

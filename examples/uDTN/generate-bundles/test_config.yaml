@@ -3,7 +3,7 @@ tests:
   - name: generate-bundles-20
     timeout: 60
     devices:
-      - name: sender
+      - name: receiver
         programdir: examples/uDTN/generate-bundles
         program: uDTN-generate-bundles
         instrument: [examples/uDTN/generate-bundles/uDTN-generate-bundles.c,core/net/uDTN/bundle.c,core/net/uDTN/sdnv.c]
@@ -13,7 +13,7 @@ tests:
   - name: generate-bundles-80
     timeout: 60
     devices:
-      - name: sender
+      - name: receiver
         programdir: examples/uDTN/generate-bundles
         program: uDTN-generate-bundles
         instrument: [examples/uDTN/generate-bundles/uDTN-generate-bundles.c,core/net/uDTN/bundle.c,core/net/uDTN/sdnv.c]
@@ -23,7 +23,7 @@ tests:
   - name: generate-bundles-20-uninstr
     timeout: 60
     devices:
-      - name: sender
+      - name: receiver
         programdir: examples/uDTN/generate-bundles
         program: uDTN-generate-bundles
         instrument: []
@@ -33,7 +33,7 @@ tests:
   - name: generate-bundles-80-uninstr
     timeout: 60
     devices:
-      - name: sender
+      - name: receiver
         programdir: examples/uDTN/generate-bundles
         program: uDTN-generate-bundles
         debug: []

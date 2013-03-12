@@ -177,7 +177,7 @@ PROCESS_THREAD(udtn_sink_process, ev, data)
 
 		/* Start counting time after the first bundle arrived */
 		if (bundles_recv == 1) {
-			time_start = test_precise_timestamp(NULL);
+			time_start = test_precise_timestamp();
 		}
 
 		if (bundles_recv % REPORTING_INTERVAL == 0)
@@ -188,7 +188,7 @@ PROCESS_THREAD(udtn_sink_process, ev, data)
 		if (bundles_recv==BUNDLES) {
 			leds_off(1);
 			profiling_stop();
-			time_stop = test_precise_timestamp(NULL);
+			time_stop = test_precise_timestamp();
 
 			bundle_outgoing = bundle_create_bundle();
 
