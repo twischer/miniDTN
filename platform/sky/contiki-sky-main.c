@@ -272,6 +272,7 @@ main(int argc, char **argv)
   }
   cc2420_set_channel(RF_CHANNEL);
 
+  printf("\n*******Booting***********\n");
   printf(CONTIKI_VERSION_STRING " started. ");
   if(node_id > 0) {
     printf("Node id is set to %u.\n", node_id);
