@@ -193,7 +193,7 @@ PROCESS_THREAD(test_process, ev, data)
 		four = mode;
 		five = mode;
 
-		if( mode % 1000 == 0 ) {
+		if( mode % 100 == 0 ) {
 			watchdog_periodic();
 		}
 
