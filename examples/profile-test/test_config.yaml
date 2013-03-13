@@ -3,7 +3,7 @@ tests:
   - name: profile-test
     timeout: 160
     devices:
-      - name: sender
+      - name: receiver
         programdir: examples/profile-test
         program: profile-test
         instrument: [examples/profile-test/profile-test.c,core/dev/leds.c,cpu/avr/leds-arch.c]
