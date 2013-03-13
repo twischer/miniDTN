@@ -16,172 +16,166 @@
 // #define CHUNKS			125 // 16K
 #define LOOPS 		1
 
+#define DEBUG 0
+#if DEBUG
+#define PRINTD(...) printf(__VA_ARGS__)
+#else
+#define PRINTD(...)
+#endif
+
 static int write_test_bytes(const char* name, uint32_t size, uint8_t fill_offset);
 static int read_test_bytes(const char* name, uint32_t size, uint8_t fill_offset);
 static unsigned long get_file_size(const char* name);
 
-/*---------------------------------------------------------------------------*/
-PROCESS(hello_world_process, "Hello world process");
-AUTOSTART_PROCESSES(&hello_world_process);
-/*---------------------------------------------------------------------------*/
-void
-fail()
-{
-  printf("FAIL\n");
-  watchdog_stop();
-  while (1);
-}
-/*---------------------------------------------------------------------------*/
-void
-success()
-{
-  printf("SUCCESS\n");
-}
-/*---------------------------------------------------------------------------*/
-#define ASSERT(cond) printf("%s\t", #cond); if (cond) { success();} else { fail(); }
-/*---------------------------------------------------------------------------*/
+static char * test_sdinit_mount();
+static char * test_cfs_read_size();
+static char * test_cfs_write_small();
+static char * test_cfs_write_large();
+static char * test_cfs_remove();
+static char * test_cfs_overwrite();
+static char * fat_tests();
+
+#define ASSERT(message, test) do { if (!(test)) return message; } while (0)
+#define RUN_TEST(test) do { char *message = test(); tests_run++; \
+                                if (message) return message; } while (0)
+
 static struct etimer timer;
 int cnt = 0;
-PROCESS_THREAD(hello_world_process, ev, data)
+int tests_run = 0;
+uint8_t buffer[1024];
+/*---------------------------------------------------------------------------*/
+PROCESS(fat_test_process, "Hello world process");
+AUTOSTART_PROCESSES(&fat_test_process);
+/*---------------------------------------------------------------------------*/
+PROCESS_THREAD(fat_test_process, ev, data)
 {
-  uint8_t buffer[1024];
-  struct diskio_device_info *info = 0;
-  struct FAT_Info fat;
-  int fd;
-  int n;
-  int i;
-  int h;
-  uint32_t size;
-  int initialized = 0;
-
   PROCESS_BEGIN();
 
-  etimer_set(&timer, CLOCK_SECOND * 2);
+  // Wait a second...
+  etimer_set(&timer, CLOCK_SECOND);
   PROCESS_WAIT_UNTIL(etimer_expired(&timer));
 
-  //	while( !initialized ) {
-  printf("Detecting devices and partitions...");
-  while ((i = diskio_detect_devices()) != DISKIO_SUCCESS) {
-    watchdog_periodic();
-  }
-  printf("done\n\n");
+  PRINTD("Starting test...\n");
 
+  // Run tests...
+  char *result = fat_tests();
+  if (result != 0) {
+    printf("%s\n", result);
+  } else {
+    printf("ALL TESTS PASSED\n");
+  }
+  printf("Tests run: %d\n", tests_run);
+
+  return result != 0;
+
+  cfs_fat_umount_device();
+
+  //  printf("########################################################\n");
+
+  //  watchdog_stop();
+  while (1);
+
+  PROCESS_END();
+}
+/*---------------------------------------------------------------------------*/
+static char *
+test_sdinit_mount()
+{
+  struct diskio_device_info *info = 0;
+  int initialized = 0, i;
+
+  printf("test_sdinit_mount...\n");
+  //--- Detecting devices and partitions
+  ASSERT("device detect failed", diskio_detect_devices() == DISKIO_SUCCESS);
   info = diskio_devices();
   for (i = 0; i < DISKIO_MAX_DEVICES; i++) {
-    print_device_info(info + i);
-    printf("\n");
-
     if ((info + i)->type == (DISKIO_DEVICE_TYPE_SD_CARD | DISKIO_DEVICE_TYPE_PARTITION)) {
       info += i;
       initialized = 1;
       break;
     }
   }
-  //	}
+  ASSERT("device initialization failed", initialized == 1);
 
-  printf("Mounting device...");
-  cfs_fat_mount_device(info);
-  printf("done\n\n");
-
-  cfs_fat_get_fat_info(&fat);
-  printf("FAT Info\n");
-  printf("\t type            = %u\n", fat.type);
-  printf("\t BPB_BytesPerSec = %u\n", fat.BPB_BytesPerSec);
-  printf("\t BPB_SecPerClus  = %u\n", fat.BPB_SecPerClus);
-  printf("\t BPB_RsvdSecCnt  = %u\n", fat.BPB_RsvdSecCnt);
-  printf("\t BPB_NumFATs     = %u\n", fat.BPB_NumFATs);
-  printf("\t BPB_RootEntCnt  = %u\n", fat.BPB_RootEntCnt);
-  printf("\t BPB_TotSec      = %lu\n", fat.BPB_TotSec);
-  printf("\t BPB_Media       = %u\n", fat.BPB_Media);
-  printf("\t BPB_FATSz       = %lu\n", fat.BPB_FATSz);
-  printf("\t BPB_RootClus    = %lu\n", fat.BPB_RootClus);
-  printf("\n");
-
-  printf("Starting test...\n");
-
-  //  while (cnt < LOOPS) {
-  PROCESS_PAUSE();
-
+  //--- Test mounting volume
+  ASSERT("mount failed", cfs_fat_mount_device(info) == 0);
+  return 0;
+}
+/*---------------------------------------------------------------------------*/
+static char *
+test_cfs_read_size()
+{
+  int fd;
+  printf("test_cfs_read_size...\n");
+  //--- Tests for correct return value of cfs_read
+  ASSERT("writing 1042 test bytes failed", write_test_bytes("test01.tst", 1042UL, 0) == 0);
+  ASSERT("failed to open", cfs_open("test01.tst", CFS_READ) == 0);
+  ASSERT("cfs_read() != 1024", cfs_read(fd, buffer, 1024) == 1024);
+  ASSERT("cfs_read() != 18", cfs_read(fd, buffer, 1024) == 18);
+  ASSERT("cfs_read() != 0", cfs_read(fd, buffer, 1024) == 0);
+  cfs_close(fd);
+  return 0;
+}
+/*---------------------------------------------------------------------------*/
+static char *
+test_cfs_write_small()
+{
+  printf("test_cfs_write_small...\n");
+  //--- Tests for 16 bit size limits 
+  ASSERT("writing 12345 bytes failed", write_test_bytes("test02.tst", 12345UL, 0) == 0);
+  ASSERT("read file size != 12345", get_file_size("test02.tst") == 12345UL);
+  ASSERT("file verification error", read_test_bytes("test02.tst", 12345UL, 0) == 0);
+  return 0;
+}
+/*---------------------------------------------------------------------------*/
+static char *
+test_cfs_write_large()
+{
+  printf("test_cfs_write_large...\n");
+  //--- Tests for 16 bit size limits 
+  ASSERT("writing 80808 bytes failed", write_test_bytes("test03.tst", 80808UL, 0) == 0);
+  ASSERT("read file size != 80808", get_file_size("test03.tst") == 80808UL);
+  ASSERT("file verification error", read_test_bytes("test03.tst", 80808UL, 0) == 0);
+  return 0;
+}
+/*---------------------------------------------------------------------------*/
+static char *
+test_cfs_remove()
+{
+  printf("test_cfs_remove...\n");
+  //---
+  ASSERT("writing 4711 bytes failed", write_test_bytes("test04.tst", 4711UL, 0) == 0);
+  ASSERT("remove failed", cfs_remove("test04.tst") == 0);
+  ASSERT("still existent", cfs_open("test04.tst", CFS_READ) != 0);
+  return 0;
+}
+/*---------------------------------------------------------------------------*/
+static char *
+test_cfs_overwrite()
+{
+  printf("test_cfs_overwrite...\n");
   //--- Tests simple file write
-  ASSERT(write_test_bytes("test01.tst", 12345UL, 0) == 0);
-  ASSERT(get_file_size("test01.tst") == 12345UL);
-  ASSERT(read_test_bytes("test01.tst", 12345UL, 0) == 0);
+  ASSERT("writing 12345 bytes failed", write_test_bytes("test05.tst", 12345UL, 0) == 0);
+  ASSERT("", get_file_size("test05.tst") == 12345UL);
+  ASSERT("", read_test_bytes("test05.tst", 12345UL, 0) == 0);
 
   //--- Tests overwriting of existent file with smaller file
-  write_test_bytes("test01.tst", 4242UL, 42);
-  ASSERT(get_file_size("test01.tst") == 4242UL);
-  ASSERT(read_test_bytes("test01.tst", 4242UL, 42) == 0);
-
-  //--- Tests for 16 bit size limits 
-  write_test_bytes("test02.tst", 80808UL, 0);
-  ASSERT(get_file_size("test02.tst") == 80808UL);
-  ASSERT(read_test_bytes("test02.tst", 80808UL, 0) == 0);
-
-  //--- Tests for correct return value of cfs_read
-//  write_test_bytes("test03.tst", 1042UL, 0);
-//  ASSERT(cfs_open("test03.tst", CFS_READ) != -1);
-//  ASSERT(cfs_read(fd, buffer, 1024) == 1024);
-//  ASSERT(cfs_read(fd, buffer, 1024) == 18);
-//  ASSERT(cfs_read(fd, buffer, 1024) == 0);
-//  cfs_close(fd);
-
-
-
-  cfs_fat_umount_device();
+  ASSERT("writing 4242 bytes failed", write_test_bytes("test05.tst", 4242UL, 42) == 0);
+  ASSERT("", get_file_size("test05.tst") == 4242UL);
+  ASSERT("", read_test_bytes("test05.tst", 4242UL, 42) == 0);
   return 0;
-
-
-  //    printf("Reading back %s...", b_file);
-
-  //  size = 0;
-  //  for (h = 0; h < CHUNKS; h++) {
-  //    memset(buffer, 0, CHUNK_SIZE);
-  //
-  //    // And now read the bundle back from flash
-  //    n = cfs_read(fd, buffer, CHUNK_SIZE);
-  //    if (n == -1) {
-  //      printf("############# STORAGE: cfs_read error\n");
-  //      cfs_close(fd);
-  //      fail();
-  //    }
-  //
-  //    for (i = 0; i < CHUNK_SIZE; i++) {
-  //      if (buffer[i] != (cnt + i + h) % 0xFF) {
-  //        printf("############# STORAGE: verify error at %ld: %02X != %02X\n", (size + i), buffer[i], (cnt + i + h) % 0xFF);
-  //        fail();
-  //      }
-  //    }
-  //
-  //    size += n;
-  //
-  //    if (h % 100 == 0) {
-  //      printf("%ld b...", size);
-  //    }
-  //  }
-  //  cfs_close(fd);
-
-  //		if( cfs_remove(b_file) == -1 ) {
-  //			printf("############# STORAGE: unable to remove %s\n", b_file);
-  //			fail();
-  //		}
-  //
-  //		printf("\n\t%s deleted\n", b_file);
-
-  //    cnt++;
-  //  }
-
-  cfs_fat_umount_device();
-
-  printf("PASS\n");
-//    printf("########################################################\n");
-  //  printf("########################################################\n");
-  //  printf("########################################################\n");
-
-
-  watchdog_stop();
-  while (1);
-
-  PROCESS_END();
+}
+/*---------------------------------------------------------------------------*/
+static char *
+fat_tests()
+{
+  RUN_TEST(test_sdinit_mount);
+  RUN_TEST(test_cfs_read_size);
+  RUN_TEST(test_cfs_write_small);
+  RUN_TEST(test_cfs_write_large);
+  RUN_TEST(test_cfs_remove);
+  RUN_TEST(test_cfs_overwrite);
+  return 0;
 }
 /*---------------------------------------------------------------------------*/
 /* Writes exactly size bytes of data to file. */
@@ -196,11 +190,11 @@ write_test_bytes(const char* name, uint32_t size, uint8_t fill_offset)
 
   fd = cfs_open(name, CFS_WRITE);
   if (fd == -1) {
-    printf("############# STORAGE: open for write failed\n");
+    PRINTD("############# STORAGE: open for write failed\n");
     return -1;
   }
 
-  printf("Starting to write %ld bytes of data\n", to_write);
+  PRINTD("Starting to write %ld bytes of data\n", to_write);
 
   do {
     // fill write buffer
@@ -221,16 +215,17 @@ write_test_bytes(const char* name, uint32_t size, uint8_t fill_offset)
 
     // check
     if (n != buffer_size) {
-      printf("############# STORAGE: Only wrote %d bytes, wanted %d\n", n, buffer_size);
+      PRINTD("############# STORAGE: Only wrote %d bytes, wanted %d\n", n, buffer_size);
       return -1;
     }
 
     wsize += n;
 
-    printf("%ld left\n", to_write);
+    //    printf(".");
+    PRINTD("%ld left\n", to_write);
   } while (to_write > 0);
 
-  printf("Wrote %ld bytes of data\n", wsize);
+  PRINTD("Wrote %ld bytes of data\n", wsize);
 
   cfs_close(fd);
   return 0;
@@ -242,12 +237,12 @@ get_file_size(const char* name)
   // And open it
   int fd = cfs_open(name, CFS_READ);
   if (fd == -1) {
-    printf("############# STORAGE: open for write failed\n");
+    PRINTD("############# STORAGE: open for write failed\n");
     fail();
   }
   // check file size
   unsigned long read_size = cfs_seek(fd, 0L, CFS_SEEK_END) + 1;
-  printf("Size of seek is %lu\n", read_size);
+  PRINTD("Size of seek is %lu\n", read_size);
   cfs_close(fd);
 
   return read_size;
@@ -264,14 +259,14 @@ read_test_bytes(const char* name, uint32_t size, uint8_t fill_offset)
 
   fd = cfs_open(name, CFS_READ);
   if (fd == -1) {
-    printf("############# STORAGE: open for read failed\n");
+    PRINTD("############# STORAGE: open for read failed\n");
     return -1;
   }
 
-  printf("Starting to read %ld bytes of data\n", to_read);
+  PRINTD("Starting to read %ld bytes of data\n", to_read);
 
   buffer_size = KBYTE;
-  
+
   do {
     // fill write buffer
     if (to_read / KBYTE > 0) {
@@ -293,10 +288,11 @@ read_test_bytes(const char* name, uint32_t size, uint8_t fill_offset)
 
     wsize += n;
 
-    printf("%ld left\n", to_read);
+    //    printf(".");
+    PRINTD("%ld left\n", to_read);
   } while (n == buffer_size);
 
-  printf("Read %ld bytes of data\n", wsize);
+  PRINTD("Read %ld bytes of data\n", wsize);
 
   cfs_close(fd);
 
