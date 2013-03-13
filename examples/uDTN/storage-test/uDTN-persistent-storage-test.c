@@ -202,7 +202,7 @@ PROCESS_THREAD(test_process, ev, data)
 	profiling_start();
 
 	// Measure the current time
-	time_start = test_precise_timestamp(NULL);
+	time_start = test_precise_timestamp();
 
 	printf("Create and Verify bundles in sequence\n");
 	for(i=0; i<TEST_BUNDLES; i++) {
@@ -247,7 +247,7 @@ PROCESS_THREAD(test_process, ev, data)
 		}
 	}
 
-	time_stop = test_precise_timestamp(NULL);
+	time_stop = test_precise_timestamp();
 
 	watchdog_stop();
 	profiling_report("persistent-storage", 0);

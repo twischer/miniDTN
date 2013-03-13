@@ -184,7 +184,7 @@ PROCESS_THREAD(test_process, ev, data)
 
 	printf("Testing performance...\n");
 
-	time_start = test_precise_timestamp(NULL);
+	time_start = test_precise_timestamp();
 
 	for(mode=0; mode<10000; mode++) {
 		one = mode;
@@ -193,14 +193,14 @@ PROCESS_THREAD(test_process, ev, data)
 		four = mode;
 		five = mode;
 
-		if( mode % 1000 == 0 ) {
+		if( mode % 100 == 0 ) {
 			watchdog_periodic();
 		}
 
 		output_copy = HASH.hash_convenience(one, two, three, four, five);
 	}
 
-	time_stop = test_precise_timestamp(NULL);
+	time_stop = test_precise_timestamp();
 
 	profiling_stop();
 	watchdog_stop();

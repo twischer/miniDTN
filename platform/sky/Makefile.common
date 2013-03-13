@@ -32,7 +32,7 @@ CFLAGS += -DWITH_DTN=1
 endif
 
 
-MCU=msp430x1611
+MCU=msp430f1611
 include $(CONTIKI)/cpu/msp430/Makefile.msp430
 
 contiki-$(TARGET).a: ${addprefix $(OBJECTDIR)/,symbols.o}
