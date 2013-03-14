@@ -42,15 +42,9 @@ class Testsuite(object):
 		else: # Date based is the default
 			logdir = time.strftime('%Y%m%d%H%M%S')
 
+		# create logdir
 		self.logdir = os.path.join(self.config['logbase'], logdir)
-
 		mkdir_p(self.logdir)
-
-		self.devices = {}
-		for devicecfg in devcfg:
-			deviceclass = globals()[devicecfg['class']]
-			deviceinst = deviceclass(devicecfg,devcfg)
-			self.devices[devicecfg['name']] = deviceinst
 
 		# Set up logging to file
 		filehandler = logging.FileHandler(os.path.join(self.logdir, "build.log"))
@@ -60,36 +54,49 @@ class Testsuite(object):
 		filehandler.setFormatter(fileformat)
 		logging.getLogger('').addHandler(filehandler)
 
+		logging.info("Logs are located under %s", self.logdir)
+
 		with open(os.path.join(self.logdir, 'contikiversion'), 'w') as verfile:
 			verfile.write(self.contikiversion)
 			verfile.write('\n')
 
 		shutil.copyfile(options.node_configfile, os.path.join(self.logdir, 'config.yaml'))
-		
-		# Check if we need to build inga_tool
-		self.tests = {}
+
+		# create symlink to logdir
+		try:
+			self.logdir_last = os.path.join(self.config['logbase'], "lastlog")
+			if os.path.islink(self.logdir_last):
+				os.unlink(self.logdir_last)
+			os.symlink(self.logdir, self.logdir_last)
+			logging.info("Symlink to Logs under %s", self.logdir_last)
+		#FIXME be more specific...
+		except Exception:
+			self.logdir_last = "FAILED"
+
+		self.devices = {}
 		self.build_inga_tool = False
-		for t_testcfg in testcfg:
+		for devicecfg in devcfg:
+			# Build inga_tool if needed
 			if not self.build_inga_tool:
-				for dev in t_testcfg['devices']:
-					if self.devices[dev['name']].platform == 'inga':
-						self.build_inga_tool = True
+				if devicecfg['class'] == 'INGA':
+					self.build_inga_tool = True
+					self.inga_tool_dir = os.path.join(self.config['contikibase'], "tools", "inga", "inga_tool")
+					logging.info("Building inga_tool %s", self.inga_tool_dir)
+					if not os.path.exists(self.inga_tool_dir):
+						logging.error("Could not find %s", self.inga_tool_dir)
+						raise Exception
+					try:
+						output = subprocess.check_output(["make", "-C", self.inga_tool_dir], stderr=subprocess.STDOUT)
+						logging.debug(output)
+					except subprocess.CalledProcessError as err:
+						logging.error(err)
+						logging.error(err.output)
+						raise
+			deviceclass = globals()[devicecfg['class']]
+			deviceinst = deviceclass(devicecfg,devcfg)
+			self.devices[devicecfg['name']] = deviceinst
 
-		# Build inga_tool
-		if self.build_inga_tool:
-			self.inga_tool_dir = os.path.join(self.config['contikibase'], "tools", "inga", "inga_tool")
-			logging.info("Building inga_tool %s", self.inga_tool_dir)
-			if not os.path.exists(self.inga_tool_dir):
-				logging.error("Could not find %s", self.inga_tool_dir)
-				raise Exception
-			try:
-				output = subprocess.check_output(["make", "-C", self.inga_tool_dir], stderr=subprocess.STDOUT)
-				logging.debug(output)
-			except subprocess.CalledProcessError as err:
-				logging.error(err)
-				logging.error(err.output)
-				raise
-
+		self.tests = {}
 		for testcfg in testcfg:
 			testcfg['logbase'] = self.logdir
 			testcfg['contikibase'] = self.config['contikibase']
@@ -100,7 +107,6 @@ class Testsuite(object):
 
 		# Info
 		logging.info("Profiling suite - initialized")
-		logging.info("Logs are located under %s", self.logdir)
 		logging.info("Contiki base path is %s", self.config['contikibase'])
 		logging.info("Contiki version is %s", self.contikiversion)
 		logging.info("The following devices are defined:")
