@@ -14,7 +14,7 @@ CONTIKI_CPU=$(CONTIKI)/cpu/msp430
 CONTIKI_CPU_DIRS = . dev
 
 MSP430     = msp430.c flash.c clock.c leds.c leds-arch.c \
-             watchdog.c lpm.c mtarch.c rtimer-arch.c
+             watchdog.c lpm.c mtarch.c rtimer-arch.c test_arch.c 
 UIPDRIVERS = me.c me_tabs.c slip.c crc16.c
 ELFLOADER  = elfloader.c elfloader-msp430.c symtab.c
 
@@ -73,7 +73,7 @@ NM       = msp430-nm
 OBJCOPY  = msp430-objcopy
 STRIP    = msp430-strip
 BSL      = msp430-bsl
-CFLAGSNO = -Wall -mmcu=$(MCU) -g $(CFLAGSWERROR)
+CFLAGSNO = -Wall -mmcu=$(MCU) $(CFLAGSWERROR)
 CFLAGS  += $(CFLAGSNO) -Os -fno-strict-aliasing
 LDFLAGS += -mmcu=$(MCU) -Wl,-Map=contiki-$(TARGET).map
 endif

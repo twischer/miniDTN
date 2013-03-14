@@ -1,0 +1,22 @@
+tests:
+### uDTN hash test
+  - name: hash
+    timeout: 900
+    devices:
+      - name: receiver
+        programdir: examples/uDTN/hash-test
+        program: uDTN-hash-test
+        instrument: [examples/uDTN/hash-test/uDTN-hash-test.c,platform/inga/*.c,core/net/uDTN/*.c]
+        debug: []
+        cflags: "-fno-inline -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30"
+        graph_options: ""
+  - name: hash-uninstr
+    timeout: 900
+    devices:
+      - name: receiver
+        programdir: examples/uDTN/hash-test
+        program: uDTN-hash-test
+        instrument: []
+        debug: []
+        cflags: "-fno-inline"
+        graph_options: ""

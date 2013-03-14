@@ -1,0 +1,12 @@
+tests:
+### Basic test to verify profiling infrastructure
+  - name: profile-test
+    timeout: 160
+    devices:
+      - name: receiver
+        programdir: examples/profile-test
+        program: profile-test
+        instrument: [examples/profile-test/profile-test.c,core/dev/leds.c,cpu/avr/leds-arch.c]
+        debug: []
+        cflags: "-fno-inline -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30"
+        graph_options: ""

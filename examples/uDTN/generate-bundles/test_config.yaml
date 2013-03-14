@@ -1,0 +1,42 @@
+tests:
+### Bundle generation tests with 20 and 80 bytes
+  - name: generate-bundles-20
+    timeout: 60
+    devices:
+      - name: receiver
+        programdir: examples/uDTN/generate-bundles
+        program: uDTN-generate-bundles
+        instrument: [examples/uDTN/generate-bundles/uDTN-generate-bundles.c,core/net/uDTN/bundle.c,core/net/uDTN/sdnv.c]
+        debug: []
+        cflags: "-fno-inline -DDATASIZE=20 -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30"
+        graph_options: ""
+  - name: generate-bundles-80
+    timeout: 60
+    devices:
+      - name: receiver
+        programdir: examples/uDTN/generate-bundles
+        program: uDTN-generate-bundles
+        instrument: [examples/uDTN/generate-bundles/uDTN-generate-bundles.c,core/net/uDTN/bundle.c,core/net/uDTN/sdnv.c]
+        debug: []
+        cflags: "-fno-inline -DDATASIZE=80 -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30"
+        graph_options: ""
+  - name: generate-bundles-20-uninstr
+    timeout: 60
+    devices:
+      - name: receiver
+        programdir: examples/uDTN/generate-bundles
+        program: uDTN-generate-bundles
+        instrument: []
+        debug: []
+        cflags: "-DDATASIZE=20"
+        graph_options: ""
+  - name: generate-bundles-80-uninstr
+    timeout: 60
+    devices:
+      - name: receiver
+        programdir: examples/uDTN/generate-bundles
+        program: uDTN-generate-bundles
+        debug: []
+        instrument: []
+        cflags: "-DDATASIZE=80"
+        graph_options: ""

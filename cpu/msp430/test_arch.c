@@ -4,8 +4,7 @@
 
 uint32_t test_precise_timestamp() {
 	clock_time_t now;
-	unsigned short now_fine;
-
+	clock_time_t now_fine;
 	do {
 		now_fine = clock_time();
 		now = clock_seconds();
