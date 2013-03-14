@@ -60,6 +60,7 @@ class Device(object):
 			for dev in self.devcfg:
 				myenv['CFLAGS']=myenv['CFLAGS'].replace(str("-DCONF_DEST_NODE=$"+dev['name'].upper()),str("-DCONF_DEST_NODE="+str(dev['id'])))
 				myenv['CFLAGS']=myenv['CFLAGS'].replace(str("-DCONF_SEND_TO_NODE=$"+dev['name'].upper()),str("-DCONF_SEND_TO_NODE="+str(dev['id'])))
+			self.myenv = myenv
 			output = subprocess.check_output(["make", "TARGET=%s"%(self.platform), self.program], stderr=subprocess.STDOUT, env=myenv)
 			self.logger.debug(output)
 			time.sleep(2)
@@ -229,7 +230,7 @@ class SKY(Device):
 
 		try:
 			self.logger.info("Uploading %s", os.path.join(self.programdir, self.program))
-			output = subprocess.check_output(["make", "TARGET=sky", "MOTES=%s"%(self.path), "%s.upload"%(self.program)], stderr=subprocess.STDOUT)
+			output = subprocess.check_output(["make", "TARGET=sky", "MOTES=%s"%(self.path), "%s.upload"%(self.program)], stderr=subprocess.STDOUT,env=self.myenv)
 			self.binary = os.path.join(self.logdir, "%s-%s"%(self.name, self.program))
 			shutil.copyfile("%s.sky"%(self.program), self.binary)
 			self.logger.debug(output)
