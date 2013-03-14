@@ -104,7 +104,7 @@ tests:
         program: uDTN-sink
         instrument: []
         debug: []
-        cflags: "-DCONF_BUNDLES=100 -DBUNDLE_CONF_STORAGE_INIT=1 -DBUNDLE_CONF_STORAGE=storage_coffee"
+        cflags: "-DCONF_REPORTING_INTERVAL=1 -DCONF_BUNDLES=100 -DBUNDLE_CONF_STORAGE_INIT=1 -DBUNDLE_CONF_STORAGE=storage_coffee"
         graph_options: ""
 ### Basically the throughput test with the contiki network stack instrumented
   - name: contiki-net
