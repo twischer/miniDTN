@@ -10,6 +10,7 @@
 
 char * acc_tests();
 char * gyro_tests();
+char * battery_tests();
 
 #endif	/* SENSOR_TESTS_H */
 

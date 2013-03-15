@@ -1,7 +1,7 @@
 CONTIKI_PROJECT = run-tests
 all: $(CONTIKI_PROJECT)
 
-PROJECT_SOURCEFILES += fat-test.c acc-test.c gyro-test.c 
+PROJECT_SOURCEFILES += fat-test.c acc-test.c gyro-test.c battery-test.c
 
 TARGET=inga
 FAT=1

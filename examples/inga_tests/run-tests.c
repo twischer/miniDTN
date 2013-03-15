@@ -51,8 +51,9 @@ PROCESS_THREAD(test_process, ev, data)
 static char *
 run_tests()
 {
-  RUN_TEST(fat_tests);
   RUN_TEST(acc_tests);
   RUN_TEST(gyro_tests);
+  RUN_TEST(battery_tests);
+  RUN_TEST(fat_tests);
   return 0;
 }
