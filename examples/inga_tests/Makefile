@@ -1,7 +1,11 @@
-CONTIKI_PROJECT = onboard-flash
+CONTIKI_PROJECT = run-tests
 all: $(CONTIKI_PROJECT)
 
-COFFEE_FILES=5
+PROJECT_SOURCEFILES += fat-test.c acc-test.c gyro-test.c 
+
+TARGET=inga
+FAT=1
+#COFFEE_FILES=5
 
 CONTIKI = ../..
 include $(CONTIKI)/Makefile.include
