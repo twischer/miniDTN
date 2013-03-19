@@ -93,9 +93,9 @@ class Testsuite(object):
 		for testcfg in testcfg:
 			testcfg['logbase'] = self.logdir
 			testcfg['contikibase'] = self.config['contikibase']
-			if testcfg['name'] in self.config['testcases']:
-				testcase = Testcase(testcfg, self.devices, testcfg['devices'],devcfg,options)
-				self.tests[testcfg['name']] = testcase
+			#if testcfg['name'] in self.config['testcases']:
+			testcase = Testcase(testcfg, self.devices, testcfg['devices'],devcfg,options)
+			self.tests[testcfg['name']] = testcase
 
 
 		# Info
