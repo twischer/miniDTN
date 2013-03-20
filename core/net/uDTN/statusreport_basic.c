@@ -256,7 +256,7 @@ uint8_t statusreport_basic_send(struct mmem * bundlemem, uint8_t status, uint8_t
 	if( ret < 0 ) {
 		// Free memory
 		bundle_decrement(report_bundle);
-		return -1;
+		return 0;
 	}
 
 	// Add status report to bundle
@@ -264,7 +264,7 @@ uint8_t statusreport_basic_send(struct mmem * bundlemem, uint8_t status, uint8_t
 	if( ret < 0 ) {
 		// Free memory
 		bundle_decrement(report_bundle);
-		return -1;
+		return 0;
 	}
 
 	// Send out the report
