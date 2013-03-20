@@ -224,6 +224,11 @@ uint8_t statusreport_basic_send(struct mmem * bundlemem, uint8_t status, uint8_t
 	// Allocate memory for our bundle
 	report_bundle = bundle_create_bundle();
 
+	if( report_bundle == NULL ) {
+		LOG(LOGD_DTN, LOG_AGENT, LOGL_ERR, "Unable to allocate report bundle, storage has %u bundles left", BUNDLE_STORAGE.free_space(NULL));
+		return 0;
+	}
+
 	// "Fake" the source of the bundle to be the agent
 	// Otherwise we cannot send bundles, because we do not have an endpoint registration
 	bundle = (struct bundle_t *) MMEM_PTR(report_bundle);
@@ -248,13 +253,19 @@ uint8_t statusreport_basic_send(struct mmem * bundlemem, uint8_t status, uint8_t
 
 	// Encode status report
 	ret = statusreport_encode(&report, buffer, BUFFER_LENGTH);
-	if( ret < 0 )
+	if( ret < 0 ) {
+		// Free memory
+		bundle_decrement(report_bundle);
 		return -1;
+	}
 
 	// Add status report to bundle
 	ret = bundle_add_block(report_bundle, BUNDLE_BLOCK_TYPE_PAYLOAD, BUNDLE_BLOCK_FLAG_NULL, buffer, ret);
-	if( ret < 0 )
+	if( ret < 0 ) {
+		// Free memory
+		bundle_decrement(report_bundle);
 		return -1;
+	}
 
 	// Send out the report
 	process_post(&agent_process, dtn_send_bundle_event, report_bundle);
