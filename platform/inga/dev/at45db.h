@@ -291,7 +291,7 @@ void at45db_page_to_buf(uint16_t addr);
  *        be read to the local byte buffer
  *
  */
-void at45db_read_buffer(uint8_t b_addr, uint8_t *buffer, uint16_t bytes);
+void at45db_read_buffer(uint16_t b_addr, uint8_t *buffer, uint16_t bytes);
 
 /**
  * \brief The command word of the AT45DBxx1 normally consists of 4 bytes.

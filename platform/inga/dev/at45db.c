@@ -230,7 +230,7 @@ at45db_page_to_buf(uint16_t addr) {
 }
 /*----------------------------------------------------------------------------*/
 void
-at45db_read_buffer(uint8_t b_addr, uint8_t *buffer, uint16_t bytes) {
+at45db_read_buffer(uint16_t b_addr, uint8_t *buffer, uint16_t bytes) {
   uint16_t i;
   if (!initialized) return;
   uint8_t cmd[4] = {AT45DB_READ_BUFFER, 0x00, (uint8_t) (b_addr >> 8),
