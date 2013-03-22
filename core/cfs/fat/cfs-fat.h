@@ -151,6 +151,14 @@ struct file_desc {
 //int cfs_fat_mkdir(char *);
 
 /**
+ * Formats the specified device as FAT16/32
+ * 
+ * @param dev device to format
+ * @return 
+ */
+int cfs_fat_mkfs(struct diskio_device_info *dev);
+
+/**
  * Tries to mount the defined device.
  *
  * \param dev The device on which a FAT-FS should be mounted.
