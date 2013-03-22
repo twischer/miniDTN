@@ -46,7 +46,7 @@
 
 #include "cfs-fat.h"
 
-#define DEBUG 0
+#define DEBUG 1
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)
@@ -55,27 +55,45 @@
 #endif
 
 
-void mkfs_write_root_directory(uint8_t *buffer, struct diskio_device_info *dev, struct FAT_Info *fi);
 int cfs_fat_mkfs(struct diskio_device_info *dev);
+void mkfs_write_root_directory(uint8_t *buffer, struct diskio_device_info *dev, struct FAT_Info *fi);
 uint8_t SPC(uint16_t sec_size, uint16_t bytes);
 uint16_t mkfs_determine_fat_type_and_SPC(uint32_t total_sec_count, uint16_t bytes_per_sec);
 uint32_t mkfs_compute_fat_size(struct FAT_Info *fi);
 int mkfs_write_boot_sector(uint8_t *buffer, struct diskio_device_info *dev, struct FAT_Info *fi);
 void mkfs_write_fats(uint8_t *buffer, struct diskio_device_info *dev, struct FAT_Info *fi);
 void mkfs_write_fsinfo(uint8_t *buffer, struct diskio_device_info *dev, struct FAT_Info *fi);
+void
+mkfs_write_root_directory(uint8_t *buffer, struct diskio_device_info *dev, struct FAT_Info *fi)
+{
+  int i;
+  uint32_t firstDataSector = fi->BPB_RsvdSecCnt + (fi->BPB_NumFATs * fi->BPB_FATSz);
+  /// todo...
+  cfs_fat_get_fat_info(fi);
+  printf("FAT Info\n");
+  printf("\t type            = %u\n", fi->type);
+  printf("\t BPB_BytesPerSec = %u\n", fi->BPB_BytesPerSec);
+  printf("\t BPB_SecPerClus  = %u\n", fi->BPB_SecPerClus);
+  printf("\t BPB_RsvdSecCnt  = %u\n", fi->BPB_RsvdSecCnt);
+  printf("\t BPB_NumFATs     = %u\n", fi->BPB_NumFATs);
+  printf("\t BPB_RootEntCnt  = %u\n", fi->BPB_RootEntCnt);
+  printf("\t BPB_TotSec      = %lu\n", fi->BPB_TotSec);
+  printf("\t BPB_Media       = %u\n", fi->BPB_Media);
+  printf("\t BPB_FATSz       = %lu\n", fi->BPB_FATSz);
+  printf("\t BPB_RootClus    = %lu\n", fi->BPB_RootClus);
+  printf("\n");
+  printf("\nrootDirSecNum %ld, %lu", firstDataSector, 2UL * fi->BPB_SecPerClus * fi->BPB_BytesPerSec);
 
-/*Defined in fat.c*/
-uint32_t get_free_cluster(uint32_t start_cluster);
-void write_fat_entry(uint32_t cluster_num, uint32_t value);
-uint8_t is_a_power_of_2(uint32_t value);
-uint32_t round_down_to_power_of_2(uint32_t value);
-//void
-//mkfs_write_root_directory(uint8_t *buffer, struct diskio_device_info *dev, struct FAT_Info *fi) {
-  // uint32_t FirstRootDirSecNum = fi->BPB_RsvdSecCnt + (fi->BPB_NumFATs * fi->BPB_FATSz);
-//}
+  memset(buffer, 0x00, 512);
+  diskio_write_block(dev, firstDataSector + 0, buffer);
+  diskio_write_block(dev, firstDataSector + 1, buffer);
+  diskio_write_block(dev, firstDataSector + 2, buffer);
+  diskio_write_block(dev, firstDataSector + 3, buffer);
+}
 /*----------------------------------------------------------------------------*/
 int
-cfs_fat_mkfs(struct diskio_device_info *dev) {
+cfs_fat_mkfs(struct diskio_device_info *dev)
+{
   uint8_t buffer[512];
   struct FAT_Info fi;
   int ret = 0;
@@ -117,7 +135,8 @@ cfs_fat_mkfs(struct diskio_device_info *dev) {
  * \return 1,2,4,8,16,32,64,128 depending on the number of sectors per cluster
  */
 uint8_t
-SPC(uint16_t sec_size, uint16_t bytes) {
+SPC(uint16_t sec_size, uint16_t bytes)
+{
   uint8_t SecPerCluster = 0;
 
   SecPerCluster = (uint8_t) (bytes / sec_size);
@@ -149,7 +168,8 @@ SPC(uint16_t sec_size, uint16_t bytes) {
  * \return in the upper two bits is the fat type, either FAT12, FAT16, FAT32 or FAT_INVALID. In the lower 8 bits is the number of sectors per cluster.
  */
 uint16_t
-mkfs_determine_fat_type_and_SPC(uint32_t total_sec_count, uint16_t bytes_per_sec) {
+mkfs_determine_fat_type_and_SPC(uint32_t total_sec_count, uint16_t bytes_per_sec)
+{
   uint64_t vol_size = (total_sec_count * bytes_per_sec) / 512;
 
   if (vol_size < ((uint32_t) 8400)) {
@@ -188,29 +208,43 @@ mkfs_determine_fat_type_and_SPC(uint32_t total_sec_count, uint16_t bytes_per_sec
  * \return the Size of one FAT for this FS.
  */
 uint32_t
-mkfs_compute_fat_size(struct FAT_Info *fi) {
+mkfs_compute_fat_size(struct FAT_Info *fi)
+{
   uint16_t RootDirSectors = ((fi->BPB_RootEntCnt * 32) + (fi->BPB_BytesPerSec - 1)) / fi->BPB_BytesPerSec;
-  uint32_t TmpVal1 = fi->BPB_TotSec - (fi->BPB_RsvdSecCnt + RootDirSectors);
-  uint32_t TmpVal2 = (256 * fi->BPB_BytesPerSec) + fi->BPB_NumFATs;
+  // all sectors but reserved and root dir
+  uint32_t remSects = fi->BPB_TotSec - (fi->BPB_RsvdSecCnt + RootDirSectors);
+  printf("\nremSects: %lu", remSects);
+  uint32_t TmpVal2 = (256UL * fi->BPB_SecPerClus) + fi->BPB_NumFATs;
   uint32_t FATSz = 0;
 
+  uint32_t fatNybls;
   if (fi->type == FAT32) {
+    fatNybls = 8;
     TmpVal2 /= 2;
-  }
-
-  FATSz = (TmpVal1 + (TmpVal2 - 1)) / TmpVal2;
-  if (FATSz % 512 != 0) {
-    FATSz /= 512;
-    FATSz += 1;
+    printf("\nType: FAT32");
   } else {
-    FATSz /= 512;
+    fatNybls = 4;
   }
+  printf("\ntmVal2: %lu", TmpVal2);
 
+//  FATSz = (remSects + (TmpVal2 - 1)) / TmpVal2;
+    FATSz = remSects / TmpVal2;
+  // http://www.gnu.org/software/mtools/manual/fat_size_calculation.pdf
+//  FATSz = ((remSects + 2UL * fi->BPB_SecPerClus) * fatNybls) / (2UL * fi->BPB_SecPerClus * fi->BPB_BytesPerSec + fi->BPB_NumFATs * fatNybls);
+//  if (FATSz % 512 != 0) {
+//    FATSz /= 512;
+//    FATSz += 1;
+//  } else {
+//    FATSz /= 512;
+//  }
+
+  printf("\nFat size: %ld", FATSz);
   return FATSz;
 }
 /*----------------------------------------------------------------------------*/
 int
-mkfs_write_boot_sector(uint8_t *buffer, struct diskio_device_info *dev, struct FAT_Info *fi) {
+mkfs_write_boot_sector(uint8_t *buffer, struct diskio_device_info *dev, struct FAT_Info *fi)
+{
   // Test if we can make FAT16 or FAT32
   uint16_t type_SPC = mkfs_determine_fat_type_and_SPC(dev->num_sectors, dev->sector_size);
   uint8_t sectors_per_cluster = (uint8_t) type_SPC;
@@ -219,7 +253,7 @@ mkfs_write_boot_sector(uint8_t *buffer, struct diskio_device_info *dev, struct F
   fi->BPB_FATSz = 0;
   fi->type = (uint8_t) (type_SPC >> 8);
 
-  printf("A: SPC = %u; type = %u; dev->num_sectors = %lu", sectors_per_cluster, fi->type, dev->num_sectors);
+  printf("\nA: SPC = %u; type = %u; dev->num_sectors = %lu", sectors_per_cluster, fi->type, dev->num_sectors);
   if (fi->type == FAT12 || fi->type == FAT_INVALID) {
     return -1;
   }
@@ -230,7 +264,7 @@ mkfs_write_boot_sector(uint8_t *buffer, struct diskio_device_info *dev, struct F
   buffer[2] = 0x00;
 
   // BS_OEMName
-  memcpy(&(buffer[3]), "MSWIN4.1", 8);
+  memcpy(&(buffer[3]), "cfs-mkfs", 8);
 
   // BPB_BytesPerSec
   buffer[11] = (uint8_t) dev->sector_size;
@@ -278,13 +312,8 @@ mkfs_write_boot_sector(uint8_t *buffer, struct diskio_device_info *dev, struct F
   fi->BPB_TotSec = dev->num_sectors;
 
   // BPB_Media
-  if (dev->type & DISKIO_DEVICE_TYPE_SD_CARD) {
-    buffer[21] = 0xF0;
-    fi->BPB_Media = 0xF0;
-  } else {
-    buffer[21] = 0xF8;
-    fi->BPB_Media = 0xF8;
-  }
+  buffer[21] = 0xF8;
+  fi->BPB_Media = 0xF8;
 
   // BPB_FATSz16
   fi->BPB_FATSz = mkfs_compute_fat_size(fi);
@@ -296,6 +325,7 @@ mkfs_write_boot_sector(uint8_t *buffer, struct diskio_device_info *dev, struct F
     printf("B: FATSz = %lu", fi->BPB_FATSz);
     return -1;
   } else {
+    // unused in FAT32 -> see offset 24h
     buffer[22] = 0;
     buffer[23] = 0;
   }
@@ -407,16 +437,18 @@ mkfs_write_boot_sector(uint8_t *buffer, struct diskio_device_info *dev, struct F
   buffer[511] = 0xAA;
 
   diskio_write_block(dev, 0, buffer);
-  for (j = 0; j < 512; j++) {
-    printf("%02x", buffer[j]);
-    if (((j + 1) % 2) == 0) {
-      printf(" ");
-    }
 
-    if (((j + 1) % 32) == 0) {
-      printf("\n");
-    }
-  }
+//  printf("\n");
+//  for (j = 0; j < 512; j++) {
+//    printf("%02x", buffer[j]);
+//    if (((j + 1) % 2) == 0) {
+//      printf(" ");
+//    }
+//
+//    if (((j + 1) % 32) == 0) {
+//      printf("\n");
+//    }
+//  }
 
   return 0;
 }
@@ -428,43 +460,56 @@ mkfs_write_boot_sector(uint8_t *buffer, struct diskio_device_info *dev, struct F
  * \param dev the Device where the FATs are written to
  */
 void
-mkfs_write_fats(uint8_t *buffer, struct diskio_device_info *dev, struct FAT_Info *fi) {
+mkfs_write_fats(uint8_t *buffer, struct diskio_device_info *dev, struct FAT_Info *fi)
+{
   uint32_t *fat32_buf = (uint32_t *) buffer;
   uint16_t *fat16_buf = (uint16_t *) buffer;
-  uint32_t j = 0;
+  uint32_t i, j = 0;
 
   if (fi->type == FAT32) {
     // BPB_Media Copy
     fat32_buf[0] = 0x0FFFFF00 + fi->BPB_Media;
-
-    // End of Clusterchain marker
+    // End of Clusterchain marker 
     fat32_buf[1] = 0x0FFFFFF8;
+    // End of Clusterchain marker for root directory at cluster 2
+    fat32_buf[2] = 0x0FFFFFF8;
   } else {
     // BPB_Media Copy
     fat16_buf[0] = 0xFF00 + fi->BPB_Media;
-
     // End of Clusterchain marker
     fat16_buf[1] = 0xFFF8;
   }
 
   // Write first sector of the FATs
-  for (j = 0; j < fi->BPB_NumFATs; ++j) {
+  diskio_write_block(dev, fi->BPB_RsvdSecCnt, buffer);
+#if FAT_SYNC
+  // Write first sector of the secondary FAT(s)
+  for (j = 1; j < fi->BPB_NumFATs; ++j) {
     diskio_write_block(dev, fi->BPB_RsvdSecCnt + fi->BPB_FATSz * j, buffer);
   }
+#endif
 
   // Reset first 64 bits = 8 Bytes of the buffer
-  //memset( buffer, 0, 8 );
+  memset(buffer, 0x00, 8);
 
-  //for(i = 1; i < fi->BPB_FATSz; ++i) {
   // Write additional Sectors of the FATs
-  //	for( j = 0; j < fi->BPB_NumFATs; ++j ) {
-  //		diskio_write_block( dev, fi->BPB_RsvdSecCnt + fi->BPB_FATSz * j, buffer );
-  //	}
-  //}
+  //  for (i = 1; i < fi->BPB_FATSz; ++i) {
+  for (i = 1; i < 128; ++i) {// only reset the first 128 sectors
+    diskio_write_block(dev, fi->BPB_RsvdSecCnt + i, buffer);
+  }
+#if FAT_SYNC
+  // Write additional Sectors of the secondary FAT(s)
+  for (j = 1; j < fi->BPB_NumFATs; ++j) {
+    for (i = 1; i < fi->BPB_FATSz; ++i) {
+      diskio_write_block(dev, fi->BPB_RsvdSecCnt + i + fi->BPB_FATSz * j, buffer);
+    }
+  }
+#endif
 }
 /*----------------------------------------------------------------------------*/
 void
-mkfs_write_fsinfo(uint8_t *buffer, struct diskio_device_info *dev, struct FAT_Info *fi) {
+mkfs_write_fsinfo(uint8_t *buffer, struct diskio_device_info *dev, struct FAT_Info *fi)
+{
   uint32_t fsi_free_count = 0;
   uint32_t fsi_nxt_free = 0;
 

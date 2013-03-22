@@ -124,8 +124,8 @@ static uint8_t _make_valid_name(const char *path, uint8_t start, uint8_t end, ch
 static void pr_reset(struct PathResolver *rsolv);
 static uint8_t pr_get_next_path_part(struct PathResolver *rsolv);
 static uint8_t pr_is_current_path_part_a_file(struct PathResolver *rsolv);
-static uint8_t fat_read_block(uint32_t sector_addr);
-static uint8_t fat_next_block();
+static uint8_t fat_read_sector(uint32_t sector_addr);
+static uint8_t fat_next_sector();
 static uint8_t lookup(const char *name, struct dir_entry *dir_entry, uint32_t *dir_entry_sector, uint16_t *dir_entry_offset);
 static uint8_t get_dir_entry(const char *path, struct dir_entry *dir_ent, uint32_t *dir_entry_sector, uint16_t *dir_entry_offset, uint8_t create);
 static uint8_t add_directory_entry_to_current(struct dir_entry *dir_ent, uint32_t *dir_entry_sector, uint16_t *dir_entry_offset);
@@ -133,10 +133,9 @@ static void update_dir_entry(int fd);
 static void remove_dir_entry(uint32_t dir_entry_sector, uint16_t dir_entry_offset);
 static uint8_t load_next_sector_of_file(int fd, uint32_t clusters, uint8_t clus_offset, uint8_t write);
 static void make_readable_entry(struct dir_entry *dir, struct cfs_dirent *dirent);
-static uint8_t is_a_power_of_2(uint32_t value);
-static uint32_t round_down_to_power_of_2(uint32_t value);
 static uint8_t _is_file(struct dir_entry *dir_ent);
 static uint8_t _cfs_flags_ok(int flags, struct dir_entry *dir_ent);
+
 /*Cluster Chain Functions*/
 static uint8_t
 is_EOC(uint32_t fat_entry)
@@ -170,7 +169,7 @@ get_free_cluster(uint32_t start_cluster)
   calc_fat_block(start_cluster, &fat_sec_num, &ent_offset);
 
   do {
-    fat_read_block(fat_sec_num);
+    fat_read_sector(fat_sec_num);
     if (mounted.info.type == FAT16) {
       i = _get_free_cluster_16();
     } else if (mounted.info.type == FAT32) {
@@ -211,7 +210,7 @@ _get_free_cluster_32()
 {
   uint32_t entry = 0;
   uint16_t i = 0;
-
+  
   for (i = 0; i < 512; i += 4) {
     entry = (((uint32_t) sector_buffer[i + 3]) << 24) + (((uint32_t) sector_buffer[i + 2]) << 16) + (((uint32_t) sector_buffer[i + 1]) << 8) + ((uint32_t) sector_buffer[i]);
     if ((entry & 0x0FFFFFFF) == 0) {
@@ -259,6 +258,7 @@ add_cluster_to_file(int fd)
   uint32_t n = cluster;
   PRINTF("\nfat.c: add_cluster_to_file( fd = %d ) = void", fd);
 
+  // if file has no cluster yet, add first
   if (fat_file_pool[fd].cluster == 0) {
     write_fat_entry(free_cluster, EOC);
     fat_file_pool[fd].dir_entry.DIR_FstClusHI = (uint16_t) (free_cluster >> 16);
@@ -397,7 +397,7 @@ read_fat_entry(uint32_t cluster_num)
           ent_offset = 0;
 
   calc_fat_block(cluster_num, &fat_sec_num, &ent_offset);
-  fat_read_block(fat_sec_num);
+  fat_read_sector(fat_sec_num);
 
   if (mounted.info.type == FAT16) {
     PRINTF("\nfat.c: read_fat_entry( cluster_num = %lu ) = %lu", cluster_num, (uint32_t) (((uint16_t) sector_buffer[ent_offset + 1]) << 8) + ((uint16_t) sector_buffer[ent_offset]));
@@ -427,9 +427,10 @@ write_fat_entry(uint32_t cluster_num, uint32_t value)
           ent_offset = 0;
 
   calc_fat_block(cluster_num, &fat_sec_num, &ent_offset);
-  fat_read_block(fat_sec_num);
+  fat_read_sector(fat_sec_num);
   PRINTF("\nfat.c: write_fat_entry( cluster_num = %lu, value = %lu ) = void", cluster_num, value);
 
+  /* Write value to sector buffer and set dirty flag */
   if (mounted.info.type == FAT16) {
     sector_buffer[ent_offset + 1] = (uint8_t) (value >> 8);
     sector_buffer[ent_offset] = (uint8_t) (value);
@@ -577,7 +578,7 @@ cfs_fat_flush()
 }
 /*----------------------------------------------------------------------------*/
 static uint8_t
-fat_read_block(uint32_t sector_addr)
+fat_read_sector(uint32_t sector_addr)
 {
   if (sector_buffer_addr == sector_addr && sector_addr != 0) {
     PRINTF("\nfat.c: fat_read_block( sector_addr = %lu ) = 0", sector_addr);
@@ -597,12 +598,12 @@ fat_read_block(uint32_t sector_addr)
   }
 #endif
 
-  PRINTF("\nfat.c: fat_read_block( sector_addr = %lu ) = ?", sector_addr);
+  PRINTF("\nfat.c: fat_read_sector( sector_addr = %lu ) = ?", sector_addr);
   return diskio_read_block(mounted.dev, sector_addr, sector_buffer);
 }
 /*----------------------------------------------------------------------------*/
 static uint8_t
-fat_next_block()
+fat_next_sector()
 {
   cfs_fat_flush();
 
@@ -616,10 +617,10 @@ fat_next_block()
     }
 
     /* The entry is valid and we calculate the first sector number of this new cluster and read it */
-    return fat_read_block(CLUSTER_TO_SECTOR(entry));
+    return fat_read_sector(CLUSTER_TO_SECTOR(entry));
   } else {
     /* We are still inside a cluster, so we only need to read the next sector */
-    return fat_read_block(sector_buffer_addr + 1);
+    return fat_read_sector(sector_buffer_addr + 1);
   }
 }
 /*----------------------------------------------------------------------------*/
@@ -895,6 +896,7 @@ cfs_read(int fd, void *buf, unsigned int len)
 
   /* Special case of empty file (cluster is zero) or zero length to read */
   if ((fat_file_pool[fd].cluster == 0) || (len == 0)) {
+    PRINTF("\nEmpty cluster or file size set to 0");
     return 0;
   }
 
@@ -1044,7 +1046,7 @@ cfs_readdir(struct cfs_dir *dirp, struct cfs_dirent *dirent)
       return -1;
     }
 
-    if (fat_read_block(CLUSTER_TO_SECTOR(cluster) + dir_off / mounted.info.BPB_BytesPerSec) != 0) {
+    if (fat_read_sector(CLUSTER_TO_SECTOR(cluster) + dir_off / mounted.info.BPB_BytesPerSec) != 0) {
       return -1;
     }
 
@@ -1089,7 +1091,7 @@ lookup(const char *name, struct dir_entry *dir_entry, uint32_t *dir_entry_sector
       }
     }
 
-    if (fat_next_block() != 0) {
+    if (fat_next_sector() != 0) {
       PRINTF("\nfat.c: END lookup( name = %c%c%c%c%c%c%c%c%c%c%c, dir_entry = %p, *dir_entry_sector = %lu, *dir_entry_offset = %u) = 2", name[0], name[1], name[2], name[3], name[4], name[5], name[6], name[7], name[8], name[9], name[10], dir_entry, *dir_entry_sector, *dir_entry_offset);
       return 2;
     }
@@ -1122,7 +1124,7 @@ get_dir_entry(const char *path, struct dir_entry *dir_ent, uint32_t *dir_entry_s
 
   file_sector_num = first_root_dir_sec_num;
   for (i = 0; pr_get_next_path_part(&pr) == 0 && i < 255; i++) {
-    fat_read_block(file_sector_num);
+    fat_read_sector(file_sector_num);///@lasttodo: here reading goes wrong!?....
     if (lookup(pr.name, dir_ent, dir_entry_sector, dir_entry_offset) != 0) {
       PRINTF("\nfat.c: get_dir_entry(): Current path part doesn't exist!");
       if (pr_is_current_path_part_a_file(&pr) && create) {
@@ -1165,7 +1167,7 @@ add_directory_entry_to_current(struct dir_entry *dir_ent, uint32_t *dir_entry_se
     }
 
     PRINTF("\nfat.c: add_directory_entry_to_current(): No free entry in current sector (sector_buffer_addr = %lu) reading next sector!", sector_buffer_addr);
-    if ((ret = fat_next_block()) != 0) {
+    if ((ret = fat_next_sector()) != 0) {
       if (ret == 128) {
         uint32_t free_cluster = get_free_cluster(SECTOR_TO_CLUSTER(sector_buffer_addr));
         PRINTF("\nfat.c: add_directory_entry_to_current(): The directory cluster chain is too short, we need to add another cluster!");
@@ -1174,7 +1176,7 @@ add_directory_entry_to_current(struct dir_entry *dir_ent, uint32_t *dir_entry_se
         write_fat_entry(free_cluster, EOC);
         PRINTF("\nfat.c: add_directory_entry_to_current(): cluster %lu added to chain of sector_buffer_addr cluster %lu", free_cluster, SECTOR_TO_CLUSTER(sector_buffer_addr));
 
-        if (fat_read_block(CLUSTER_TO_SECTOR(free_cluster)) == 0) {
+        if (fat_read_sector(CLUSTER_TO_SECTOR(free_cluster)) == 0) {
           memcpy(&(sector_buffer[0]), dir_ent, sizeof (struct dir_entry));
           sector_buffer_dirty = 1;
           *dir_entry_sector = sector_buffer_addr;
@@ -1194,7 +1196,7 @@ static void
 update_dir_entry(int fd)
 {
   PRINTF("\nfat.c: update_dir_entry( fd = %d ) = void ", fd);
-  if (fat_read_block(fat_file_pool[fd].dir_entry_sector) != 0) {
+  if (fat_read_sector(fat_file_pool[fd].dir_entry_sector) != 0) {
     PRINTF("\nfat.c: update_dir_entry(): error reading the sector containing the directory entry");
     return;
   }
@@ -1207,7 +1209,7 @@ static void
 remove_dir_entry(uint32_t dir_entry_sector, uint16_t dir_entry_offset)
 {
   PRINTF("\nfat.c: remove_dir_entry( dir_entry_sector = %lu, dir_entry_offset = %u ) = void ", dir_entry_sector, dir_entry_offset);
-  if (fat_read_block(dir_entry_sector) != 0) {
+  if (fat_read_sector(dir_entry_sector) != 0) {
     PRINTF("\nfat.c: remove_dir_entry(): error reading the sector containing the directory entry");
     return;
   }
@@ -1255,7 +1257,7 @@ load_next_sector_of_file(int fd, uint32_t clusters, uint8_t clus_offset, uint8_t
     fat_file_pool[fd].n = clusters;
   }
 
-  return fat_read_block(CLUSTER_TO_SECTOR(cluster) + clus_offset);
+  return fat_read_sector(CLUSTER_TO_SECTOR(cluster) + clus_offset);
 }
 /*----------------------------------------------------------------------------*/
 /*FAT Interface Functions*/
@@ -1317,7 +1319,7 @@ make_readable_entry(struct dir_entry *dir, struct cfs_dirent *dirent)
  * \param value Number which should be testet if it is a power of 2.
  * \return 1 on failure and 0 if value is a power of 2.
  */
-static uint8_t
+uint8_t
 is_a_power_of_2(uint32_t value)
 {
   uint32_t test = 1;
@@ -1343,7 +1345,7 @@ is_a_power_of_2(uint32_t value)
  * \param value The number which should be rounded down.
  * \return the next lower number which is a power of 2
  */
-static uint32_t
+uint32_t
 round_down_to_power_of_2(uint32_t value)
 {
   uint32_t po2 = ((uint32_t) 1) << 31;

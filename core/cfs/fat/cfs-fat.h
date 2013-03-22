@@ -241,6 +241,10 @@ void cfs_fat_print_file_info(int fd);
  */
 void cfs_fat_print_dir_entry(struct dir_entry *dir_entry);
 
+
+uint8_t is_a_power_of_2(uint32_t value);
+uint32_t round_down_to_power_of_2(uint32_t value);
+
 #endif
 
 /** @} */
