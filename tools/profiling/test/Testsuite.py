@@ -60,7 +60,8 @@ class Testsuite(object):
 			verfile.write(self.contikiversion)
 			verfile.write('\n')
 
-		shutil.copyfile(options.node_configfile, os.path.join(self.logdir, 'config.yaml'))
+		shutil.copyfile(options.node_configfile, os.path.join(self.logdir, 'node_config.yaml'))
+		shutil.copyfile(options.test_configfile, os.path.join(self.logdir, 'test_config.yaml'))
 
 		# create symlink to logdir
 		try:
