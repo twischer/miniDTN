@@ -1,6 +1,7 @@
 #include "contiki.h"
 #include <stdlib.h>
-#include <stdio.h> /* For printf() */
+#include <stdio.h>
+#include <util/delay.h> /* For printf() */
 #include "dev/watchdog.h"
 #include "clock.h"
 
@@ -15,7 +16,8 @@ PROCESS(hello_world_process, "Hello world process");
 AUTOSTART_PROCESSES(&hello_world_process);
 /*---------------------------------------------------------------------------*/
 void
-fail() {
+fail()
+{
   printf("FAIL\n");
   watchdog_stop();
   while (1);
@@ -23,7 +25,8 @@ fail() {
 /*---------------------------------------------------------------------------*/
 static struct etimer timer;
 int cnt = 0;
-PROCESS_THREAD(hello_world_process, ev, data) {
+PROCESS_THREAD(hello_world_process, ev, data)
+{
   uint8_t buffer[1024];
   struct diskio_device_info *info = 0;
   struct FAT_Info fat;
@@ -57,6 +60,10 @@ PROCESS_THREAD(hello_world_process, ev, data) {
       }
     }
   }
+
+  printf("Formatting device...");
+  cfs_fat_mkfs(info);
+  printf("done\n\n");
 
   printf("Mounting device...");
   if (cfs_fat_mount_device(info) == 0) {
@@ -141,12 +148,12 @@ PROCESS_THREAD(hello_world_process, ev, data) {
       }
     }
 
-    if (cfs_remove(b_file) == -1) {
-      printf("############# STORAGE: unable to remove %s\n", b_file);
-      fail();
-    }
-
-    printf("\t%s deleted\n", b_file);
+    //    if (cfs_remove(b_file) == -1) {
+    //      printf("############# STORAGE: unable to remove %s\n", b_file);
+    //      fail();
+    //    }
+    //
+    //    printf("\t%s deleted\n", b_file);
 
     cnt++;
   }
