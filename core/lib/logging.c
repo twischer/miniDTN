@@ -50,15 +50,9 @@
 #include "contiki-conf.h"
 #include <string.h>
 
-#define SUBDOMS 5
 #ifndef LOGL_DEFAULT
 #define LOGL_DEFAULT LOGL_WRN
 #endif
-
-struct log_cfg {
-	uint8_t subl[SUBDOMS];
-	uint8_t subdom_next;
-};
 
 static char *logdomains[LOGD_NUM] = {
 	[LOGD_CORE] = "COR",   /* Contiki core */
@@ -76,7 +70,6 @@ static char *loglevels[LOGL_NUM] = {
 	[LOGL_CRI] = "CRI",
 };
 
-static struct log_cfg log_d[LOGD_NUM];
 static uint8_t inited = 0;
 
 /*---------------------------------------------------------------------------*/
