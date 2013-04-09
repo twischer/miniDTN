@@ -52,7 +52,6 @@ static acc_data_t acc_data;
 
 typedef struct {
   uint8_t active;
-  uint8_t state;
 } acc_sensor_t;
 acc_sensor_t acc_sensor_data;
 /*---------------------------------------------------------------------------*/
@@ -126,7 +125,7 @@ status(int type)
       return adxl345_get_fifo_level();
       break;
   }
-  return acc_sensor_data.state;
+  return 0;
 }
 /*---------------------------------------------------------------------------*/
 static int
@@ -137,9 +136,7 @@ configure(int type, int c)
 
     case SENSORS_ACTIVE:
       if (c) {
-        if (!status(SENSORS_ACTIVE)) {
-          return acc_active = (adxl345_init() == 0) ? 1 : 0;
-        }
+        return acc_active = (adxl345_init() == 0) ? 1 : 0;
       } else {
         adxl345_deinit();
         return 1;
