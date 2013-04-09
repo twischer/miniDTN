@@ -7,6 +7,8 @@
 #include "logger.h"
 #include "uart_handler.h"
 #include "microSD.h"
+#include "default_app.h"
+#include "ini_parser.h"
 
 #ifdef APP_CONFIG_DEBUG
 #include <stdio.h>
@@ -21,10 +23,7 @@
 #define CHECK_SEQUENCE  0x4242
 
 // configuration instance with default values
-app_config_t system_config = {
-  {0}
-};
-bool cfg_load_ok;
+app_config_t system_config = {0};
 
 #ifdef APP_CONF_STORE_EEPROM
 app_config_t ee_system_config EEMEM;
@@ -33,7 +32,7 @@ app_config_t ee_system_config EEMEM;
 char app_config_buffer[MAX_FILE_SIZE];
 /*----------------------------------------------------------------------------*/
 static int8_t
-app_config_load_internal()
+_app_config_load_internal()
 {
 #if APP_CONF_STORE_EEPROM
   log_i("Loading config from EEPROM...\n");
@@ -43,6 +42,13 @@ app_config_load_internal()
     log_e("Loading config from EEPROM failed.\n");
     return -1;
   }
+
+  // debug output
+  print_config();
+
+  // reconfigure sensors
+  configure_sensors();
+
   return 0;
 #endif
 }
@@ -51,7 +57,7 @@ app_config_load_internal()
  * Stores config data to EEPROM.
  */
 static void
-app_config_save_internal()
+_app_config_save_internal()
 {
 #if APP_CONF_STORE_EEPROM
   log_i("Saving config to EEPROM...\n");
@@ -60,8 +66,9 @@ app_config_save_internal()
 #endif
 }
 /*----------------------------------------------------------------------------*/
+/** Loads configuration string in app_config_buffer. */
 static int8_t
-app_config_load_microSD()
+_app_config_load_microSD()
 {
   int fd;
 
@@ -96,21 +103,33 @@ app_config_load_microSD()
   log_v("actually read: %d\n", size);
   log_i("Loaded data from microSD card\n");
 
-  process_post(&config_process, event_config_update, NULL);
-
   cfs_close(fd);
 
-  // needed to unblock SPI at INGA V1.4
-  microSD_switchoff();
+  parse_ini(app_config_buffer, &inga_conf_file);
+
+  app_config_update();
 
   return 0;
+}
+/*----------------------------------------------------------------------------*/
+void
+app_config_update()
+{
+  // save new values (unverified!)
+  _app_config_save_internal();
+
+  // debug output
+  print_config();
+
+  // reconfigure sensors
+  configure_sensors();
 }
 /*----------------------------------------------------------------------------*/
 /**
  * Loads default config data as fallback.
  */
 static void
-app_config_load_defaults()
+_app_config_load_defaults()
 {
   system_config._check_sequence = CHECK_SEQUENCE;
   // node defaults
@@ -134,54 +153,60 @@ app_config_load_defaults()
   // temperature defaults
   system_config.temp.enabled = true;
   system_config.temp.rate = 0;
+
+  app_config_update();
 }
 
-process_event_t event_config_update;
-/*----------------------------------------------------------------------------*/
-PROCESS(config_process, "Config process");
-/*----------------------------------------------------------------------------*/
-PROCESS_THREAD(config_process, ev, data)
-{
-  PROCESS_BEGIN();
-  log_v("config_process: started\n");
-
-  event_config_update = process_alloc_event();
-
-  while (1) {
-
-    PROCESS_WAIT_EVENT_UNTIL(ev == event_config_update);
-
-    // reconfigure
-    parse_ini(app_config_buffer, &inga_conf_file);
-    app_config_save_internal();
-
-    print_config();
-
-    init_sensors();
-  }
-
-  PROCESS_END();
-}
+//process_event_t event_config_update;
+///*----------------------------------------------------------------------------*/
+//PROCESS(config_process, "Config process");
+///*----------------------------------------------------------------------------*/
+//PROCESS_THREAD(config_process, ev, data)
+//{
+//  PROCESS_BEGIN();
+//  log_v("config_process: started\n");
+//
+//  event_config_update = process_alloc_event();
+//
+//  while (1) {
+//
+//    PROCESS_WAIT_EVENT_UNTIL(ev == event_config_update);
+//
+//    // reconfigure
+//    //    parse_ini(app_config_buffer, &inga_conf_file);
+//    //    _app_config_save_internal();
+//
+//    print_config();
+//
+//    configure_sensors();
+//  }
+//
+//  PROCESS_END();
+//}
 /*----------------------------------------------------------------------------*/
 int8_t
-app_config_init(bool sd_mounted)
+app_config_init()
 {
   // initialize struct to zero
   memset(&system_config, 0, sizeof (app_config_t));
 
-  if (app_config_load_internal() == 0) {
+  // first try loading form micro SD if someone was so kind to insert one
+  if ((sysflag_get(SYS_SD_MOUNTED)) && (_app_config_load_microSD() == 0)) {
+    return 0;
+  }
+
+  // load from internal memory
+  if (_app_config_load_internal() == 0) {
     log_i("Loaded config from internal data\n");
-  } else {
-    log_w("Loading from internal data failed\n");
-    app_config_load_defaults();
-    log_i("Defaults loaded\n");
+    return 0;
   }
 
-  if ((!sd_mounted) || (app_config_load_microSD() != 0)) {
-    process_post(&config_process, event_config_update, NULL);
-  }
+  // we had no success in loading, lets use boring defaults as fallback
+  log_w("Loading from internal data failed\n");
+  _app_config_load_defaults();
+  log_i("Defaults loaded\n");
 
-  return 0;
+  return 1;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -195,6 +220,8 @@ print_config()
   log_v("output.usb:       %d\n", system_config.output.usb);
   log_v("output.radio:     %d\n", system_config.output.radio);
   log_v("output.block_size:%d\n", system_config.output.block_size);
+  log_v("battery.enabled:  %d\n", system_config.battery.enabled);
+  log_v("battery.rate:     %d\n", system_config.battery.rate);
   log_v("acc.enabled:      %d\n", system_config.acc.enabled);
   log_v("acc.rate:         %d\n", system_config.acc.rate);
   log_v("acc.g_range:      %d\n", system_config.acc.g_range);
@@ -206,5 +233,7 @@ print_config()
   log_v("temp.enabled:     %d\n", system_config.temp.enabled);
   log_v("temp.rate:        %d\n", system_config.temp.rate);
 }
+#else
+#define print_config()
 #endif
 /*----------------------------------------------------------------------------*/

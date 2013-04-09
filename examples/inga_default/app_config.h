@@ -47,6 +47,11 @@ typedef struct {
   uint8_t block_size;
 } cfg_output_t;
 
+typedef struct {
+  bool enabled;
+  uint16_t rate;
+} cfg_battery_t;
+
 /** 
  * accelerometer seetings
  */
@@ -82,7 +87,7 @@ typedef struct {
 } cfg_temp_t;
 
 /**
- * global main config struct
+ * main config struct
  */
 typedef struct {
   uint16_t _check_sequence;
@@ -90,12 +95,16 @@ typedef struct {
   uint16_t _mod_time;
   cfg_node_t node;
   cfg_output_t output;
+  cfg_battery_t battery;
   cfg_acc_t acc;
   cfg_gyro_t gyro;
   cfg_pressure_t pressure;
   cfg_temp_t temp;
 } app_config_t;
 
+/**
+ * global main config struct
+ */
 extern app_config_t system_config;
 
 #ifdef APP_CONF_STORE_EEPROM
@@ -105,7 +114,7 @@ extern app_config_t ee_system_config EEMEM;
 #define MAX_FILE_SIZE   1024
 
 /*
- * Indicate new config data. Can be thrown by processes to notify about 
+ * Indicates new config data. Can be thrown by processes to notify about 
  * new config file data.
  */
 extern process_event_t event_config_update;
@@ -133,7 +142,12 @@ PROCESS_NAME(config_process);
  * 
  * @return 0 if loading succeeded, -1 if loading failed
  */
-int8_t app_config_init(bool sd_mounted);
+int8_t app_config_init();
+
+/** Applies config data in app_config_buffer.
+ * @todo Data Verification?
+ */
+void app_config_update();
 
 #ifdef APP_CONFIG_DEBUG
 /**
