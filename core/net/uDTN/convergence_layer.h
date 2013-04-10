@@ -111,7 +111,7 @@
 /**
  * Maximum payload length of one outgoing frame
  */
-#define CONVERGENCE_LAYER_MAX_LENGTH 116
+#define CONVERGENCE_LAYER_MAX_LENGTH 115
 
 /**
  * Convergence Layer Process
