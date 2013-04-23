@@ -450,7 +450,7 @@ int convergence_layer_parse_dataframe(rimeaddr_t * source, uint8_t * payload, ui
 
 	if( n ) {
 		/* Send out the ACK */
-		convergence_layer_create_send_ack(source, sequence_number, CONVERGENCE_LAYER_TYPE_ACK);
+		convergence_layer_create_send_ack(source, sequence_number + 1, CONVERGENCE_LAYER_TYPE_ACK);
 	} else {
 		/* Send out NACK */
 		convergence_layer_create_send_ack(source, sequence_number, CONVERGENCE_LAYER_TYPE_NACK);
