@@ -486,7 +486,7 @@ int convergence_layer_parse_ackframe(rimeaddr_t * source, uint8_t * payload, uin
 	}
 
 	/* Does the originator need forward notification? */
-	if( ticket->bundle != NULL ) {
+	if( type == CONVERGENCE_LAYER_TYPE_ACK && ticket->bundle != NULL ) {
 		bundle = (struct bundle_t *) MMEM_PTR(ticket->bundle);
 
 		/* Is the forward report flag set? */
