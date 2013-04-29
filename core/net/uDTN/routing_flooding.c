@@ -647,6 +647,9 @@ void routing_flooding_bundle_sent(struct transmit_ticket_t * ticket, uint8_t sta
 	}
 
 	if( n == NULL ) {
+		/* Free up the ticket */
+		convergence_layer_free_transmit_ticket(ticket);
+
 		LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "Bundle not in storage");
 		return;
 	}
