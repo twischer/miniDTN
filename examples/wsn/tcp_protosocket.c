@@ -4,6 +4,8 @@
 #include "contiki-net.h"
 
 #include "dev/leds.h"
+#include "uip-ds6.h"
+#include "uip.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -20,8 +22,29 @@ static struct psock ps;
  * We must have somewhere to put incoming data, and we use a 50 byte
  * buffer for this purpose.
  */
-static char buffer[50];
+static unsigned char buffer[50];
 
+/*---------------------------------------------------------------------------*/
+#define PRINTF(...) printf(__VA_ARGS__)
+#define PRINT6ADDR(addr) PRINTF(" %02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x ", ((u8_t *)addr)[0], ((u8_t *)addr)[1], ((u8_t *)addr)[2], ((u8_t *)addr)[3], ((u8_t *)addr)[4], ((u8_t *)addr)[5], ((u8_t *)addr)[6], ((u8_t *)addr)[7], ((u8_t *)addr)[8], ((u8_t *)addr)[9], ((u8_t *)addr)[10], ((u8_t *)addr)[11], ((u8_t *)addr)[12], ((u8_t *)addr)[13], ((u8_t *)addr)[14], ((u8_t *)addr)[15])
+#define PRINTLLADDR(lladdr) PRINTF(" %02x:%02x:%02x:%02x:%02x:%02x ",lladdr->addr[0], lladdr->addr[1], lladdr->addr[2], lladdr->addr[3],lladdr->addr[4], lladdr->addr[5])
+/*---------------------------------------------------------------------------*/
+static void
+print_local_addresses(void)
+{
+  int i;
+  uint8_t state;
+
+  PRINTF("IPv6 addresses: ");
+  for(i = 0; i < UIP_DS6_ADDR_NB; i++) {
+    state = uip_ds6_if.addr_list[i].state;
+    if(uip_ds6_if.addr_list[i].isused &&
+       (state == ADDR_TENTATIVE || state == ADDR_PREFERRED)) {
+      PRINT6ADDR(&uip_ds6_if.addr_list[i].ipaddr);
+      PRINTF("\n");
+    }
+  }
+}
 /*---------------------------------------------------------------------------*/
 /*
  * A protosocket always requires a protothread. The protothread
@@ -96,12 +119,14 @@ PROCESS_THREAD(example_psock_server_process, ev, data)
    */
   PROCESS_BEGIN();
 
+  print_local_addresses();
+
   /*
    * We start with setting up a listening TCP port. Note how we're
    * using the HTONS() macro to convert the port number (1234) to
    * network byte order as required by the tcp_listen() function.
    */
-  tcp_listen(HTONS(12345));
+  tcp_listen(UIP_HTONS(12345));
 	printf("open port 12345\n");
 
   /*
