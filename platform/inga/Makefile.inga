@@ -1,4 +1,4 @@
-CONTIKI_TARGET_DIRS = . dev apps
+CONTIKI_TARGET_DIRS = . dev
 
 CONTIKI_CORE=contiki-inga-main
 CONTIKI_TARGET_MAIN = ${CONTIKI_CORE}.o
@@ -15,8 +15,6 @@ CONTIKIAVR=$(CONTIKI)/cpu/avr
 CONTIKIBOARD=.
 
 CONTIKI_PLAT_DEFS = -DF_CPU=8000000UL -DAUTO_CRC_PADDING=2
-
-include $(CONTIKI)/platform/inga/apps/Makefile.settings
 
 MCU=atmega1284p
 #AVRDUDE_PROGRAMMER=jtag2

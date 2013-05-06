@@ -1,10 +1,4 @@
-CONTIKI_TARGET_SOURCEFILES += settings_set.c settings_delete.c
-
-ifdef SETTINGS_DELETE
- $(info [APP.settings_delete] loaded)
- CFLAGS+=-DAPP_SETTINGS_DELETE=1
-endif
-
+settings_set_src = settings_set.c
 
 # NODEID
 ifdef NODE_ID

@@ -134,9 +134,9 @@ uint8_t debugflowsize, debugflow[DEBUGFLOWSIZE];
 
 // Apps 
 #if defined(APP_SETTINGS_DELETE)
-#include "apps/settings_delete/settings_delete.h"
+#include "settings_delete.h"
 #elif defined(APP_SETTINGS_SET)
-#include "apps/settings_set.h"
+#include "settings_set.h"
 #endif
 
 /* Get periodic prints from idle loop, from clock seconds or rtimer interrupts */

@@ -1,0 +1,6 @@
+settings_delete_src = settings_delete.c
+
+ifdef SETTINGS_DELETE
+ $(info [APP.settings_delete] loaded)
+ CFLAGS+=-DAPP_SETTINGS_DELETE=1
+endif
