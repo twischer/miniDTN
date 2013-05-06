@@ -1,4 +1,4 @@
-CONTIKI_TARGET_DIRS = . dev
+CONTIKI_TARGET_DIRS = . dev apps
 
 CONTIKI_CORE=contiki-inga-main
 CONTIKI_TARGET_MAIN = ${CONTIKI_CORE}.o
@@ -7,13 +7,16 @@ CONTIKI_TARGET_SOURCEFILES += contiki-inga-main.c contiki-inga-default-init-net.
 #CONTIKI_TARGET_SOURCEFILES += cfs-coffee.c cfs-coffee-arch.c
 #Needed for slip
 CONTIKI_TARGET_SOURCEFILES += slip_uart0.c slip.c i2c.c  mspi.c microSD.c 
-CONTIKI_TARGET_SOURCEFILES += adc.c at45db.c adxl345.c bmp085.c l3g4200d.c mpl115a.c
-CONTIKI_TARGET_SOURCEFILES += sensors.c acc-sensor.c adc-sensor.c battery-sensor.c button-sensor.c gyro-sensor.c pressure-sensor.c radio-sensor.c
+DRIVERS = adc.c at45db.c adxl345.c bmp085.c l3g4200d.c mpl115a.c
+SENSORS = sensors.c acc-sensor.c adc-sensor.c battery-sensor.c button-sensor.c gyro-sensor.c pressure-sensor.c radio-sensor.c
+CONTIKI_TARGET_SOURCEFILES += $(DRIVERS) $(SENSORS)
 
 CONTIKIAVR=$(CONTIKI)/cpu/avr
 CONTIKIBOARD=.
 
 CONTIKI_PLAT_DEFS = -DF_CPU=8000000UL -DAUTO_CRC_PADDING=2
+
+include $(CONTIKI)/platform/inga/apps/Makefile.settings
 
 MCU=atmega1284p
 #AVRDUDE_PROGRAMMER=jtag2

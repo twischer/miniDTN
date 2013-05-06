@@ -60,6 +60,12 @@ unsigned long clock_seconds(void);
 /* Maximum timer interval for 16 bit clock_time_t */
 #define INFINITE_TIME 0xffff
 
+#ifndef PLATFORM_CONF_RADIO
+	#define PLATFORM_RADIO 1
+#else
+	#define PLATFORM_RADIO PLATFORM_CONF_RADIO
+#endif
+
 /* Maximum tick interval is 0xffff/128 = 511 seconds */
 #define RIME_CONF_BROADCAST_ANNOUNCEMENT_MAX_TIME INFINITE_TIME/CLOCK_CONF_SECOND /* Default uses 600 */
 #define COLLECT_CONF_BROADCAST_ANNOUNCEMENT_MAX_TIME INFINITE_TIME/CLOCK_CONF_SECOND /* Default uses 600 */
@@ -74,14 +80,14 @@ unsigned long clock_seconds(void);
 /* 0 will disable the Rtimer code */
 //#define RTIMER_ARCH_PRESCALER 256UL /*0, 1, 8, 64, 256, 1024 */
 
-/* COM port to be used for SLIP connection. Not tested on Raven */
+/* COM port to be used for SLIP connection. */
 #define SLIP_PORT RS232_PORT_0
 
 /* Pre-allocated memory for loadable modules heap space (in bytes)*/
-/* Default is 4096. Currently used only when elfloader is present. Not tested on Raven */
+/* Default is 4096. Currently used only when elfloader is present. Not tested on Inga */
 //#define MMEM_CONF_SIZE 256
 
-/* Starting address for code received via the codeprop facility. Not tested on Raven */
+/* Starting address for code received via the codeprop facility. Not tested on Inga */
 //#define EEPROMFS_ADDR_CODEPROP 0x8000
 
 /* RADIO_CONF_CALIBRATE_INTERVAL is used in rf230bb and clock.c. If nonzero a 256 second interval is used */
@@ -94,16 +100,17 @@ unsigned long clock_seconds(void);
 /* More extensive stats */
 #define ENERGEST_CONF_ON          0
 
-/* Use settings manager to save configuration in EEPROM */
-/* Adds ~1700 bytes to progmem */
-#define CONTIKI_CONF_SETTINGS_MANAGER 1
-
 /* Possible watchdog timeouts depend on mcu. Default is WDTO_2S. -1 Disables the watchdog. */
 /* AVR Studio simulator tends to reboot due to clocking the WD 8 times too fast */
 //#define WATCHDOG_CONF_TIMEOUT -1
 
 /* Debugflow macro, useful for tracing path through mac and radio interrupts */
 //#define DEBUGFLOWSIZE 128
+
+
+/* ************************************************************************** */
+/* Network setup                                                              */
+/* ************************************************************************** */
 
 /* Network setup. The new NETSTACK interface requires RF230BB (as does ip4) */
 #if RF230BB
@@ -112,28 +119,27 @@ unsigned long clock_seconds(void);
 #define PACKETBUF_CONF_HDR_SIZE    0            //RF230 combined driver/mac handles headers internally
 #endif /*RF230BB */
 
+
 #if UIP_CONF_IPV6
+#define NETSTACK_CONF_NETWORK     sicslowpan_driver
 #define RIMEADDR_CONF_SIZE        8
 #define UIP_CONF_ICMP6            1
 #define UIP_CONF_UDP              1
 #define UIP_CONF_TCP              1
-//#define UIP_CONF_IPV6_RPL         0
-#define NETSTACK_CONF_NETWORK       sicslowpan_driver
+//#define UIP_CONF_IPV6_RPL       0
 #define SICSLOWPAN_CONF_COMPRESSION SICSLOWPAN_COMPRESSION_HC06
 
-
-
 #elif WITH_DTN
-#define NETSTACK_CONF_NETWORK dtn_network_driver
+#define NETSTACK_CONF_NETWORK     dtn_network_driver
 #define RIMEADDR_CONF_SIZE        2
-
-
 
 #else
 /* ip4 should build but is largely untested */
-#define RIMEADDR_CONF_SIZE        2
 #define NETSTACK_CONF_NETWORK     rime_driver
+#define RIMEADDR_CONF_SIZE        2
+
 #endif /* UIP_CONF_IPV6 */
+
 
 /* See uip-ds6.h */
 #define UIP_CONF_DS6_NBR_NBU      20
@@ -190,19 +196,19 @@ unsigned long clock_seconds(void);
 
 #if WITH_DTN
 #define CHANNEL_802_15_4          26
-#define NETSTACK_CONF_MAC	  csma_driver
-#define NETSTACK_CONF_RDC    	  nullrdc_driver 
+#define NETSTACK_CONF_MAC         csma_driver
+#define NETSTACK_CONF_RDC         nullrdc_driver 
 #define NETSTACK_CONF_FRAMER      framer_802154
 #define NETSTACK_CONF_RADIO       rf230_driver
 #define RF230_CONF_AUTOACK        1
 #define SICSLOWPAN_CONF_ACK_ALL   0
 #define RF230_CONF_AUTORETRIES    2
 #ifndef QUEUEBUF_CONF_NUM
-#define QUEUEBUF_CONF_NUM                16
-
+#define QUEUEBUF_CONF_NUM         16
 #endif
 
-#elif 1 /* No radio cycling */
+#else /* No radio cycling */
+
 #define NETSTACK_CONF_MAC         nullmac_driver
 #define NETSTACK_CONF_RDC         nullrdc_driver
 #define NETSTACK_CONF_FRAMER      framer_802154
@@ -227,55 +233,46 @@ unsigned long clock_seconds(void);
 /* How long to wait before terminating an idle TCP connection. Smaller to allow faster sleep. Default is 120 seconds */
 #define UIP_CONF_WAIT_TIMEOUT     5
 
-#elif 1  /* Contiki-mac radio cycling */
-#define NETSTACK_CONF_MAC         nullmac_driver
-//#define NETSTACK_CONF_MAC         csma_driver
-#define NETSTACK_CONF_RDC         nullrdc_driver
-#define NETSTACK_CONF_FRAMER      framer_802154
-#define NETSTACK_CONF_RADIO       rf230_driver
-#define CHANNEL_802_15_4          26
-/* The radio needs to interrupt during an rtimer interrupt */
-#define RTIMER_CONF_NESTED_INTERRUPTS 1
-#define RF230_CONF_AUTOACK        1
-#define RF230_CONF_AUTORETRIES    1
-#define RF230_CONF_CSMARETRIES    1
-#define CONTIKIMAC_CONF_RADIO_ALWAYS_ON  0
-#define SICSLOWPAN_CONF_FRAG      1
-#define SICSLOWPAN_CONF_MAXAGE    3
-#define NETSTACK_CONF_RDC_CHANNEL_CHECK_RATE 8
-
-#elif 1  /* cx-mac radio cycling */
-/* RF230 does clear-channel assessment in extended mode (autoretries>0) */
-#define RF230_CONF_AUTORETRIES    1
-#if RF230_CONF_AUTORETRIES
-#define NETSTACK_CONF_MAC         nullmac_driver
+// RADIO_CHANNEL
+#ifndef RADIO_CONF_CHANNEL
+	#define RADIO_CHANNEL	26
 #else
-#define NETSTACK_CONF_MAC         csma_driver
+	#define RADIO_CHANNEL	RADIO_CONF_CHANNEL
 #endif
-#define NETSTACK_CONF_RDC         cxmac_driver
-#define NETSTACK_CONF_FRAMER      framer_802154
-#define NETSTACK_CONF_RADIO       rf230_driver
-#define CHANNEL_802_15_4          26
-#define RF230_CONF_AUTOACK        1
-#define SICSLOWPAN_CONF_FRAG      1
-#define SICSLOWPAN_CONF_MAXAGE    3
-#define CXMAC_CONF_ANNOUNCEMENTS  0
-#define NETSTACK_CONF_RDC_CHANNEL_CHECK_RATE 8
 
-//Below gives 10% duty cycle, undef for default 5%
-//#define CXMAC_CONF_ON_TIME (RTIMER_ARCH_SECOND / 80)
-//Below gives 50% duty cycle
-//#define CXMAC_CONF_ON_TIME (RTIMER_ARCH_SECOND / 16)
-
+// RADIO_TX_POWER
+#ifndef RADIO_CONF_TX_POWER
+	#define RADIO_TX_POWER	0
 #else
-#error Network configuration not specified!
+	#define RADIO_TX_POWER	RADIO_CONF_TX_POWER
+#endif
+
+// NODE_ID
+#ifdef NODE_ID
+	#undef NODE_ID
+	#warning Use NODE_CONF_ID to define your NodeId
+#endif
+
+#ifndef NODE_CONF_ID
+	#define NODE_ID	0
+#else
+	#define NODE_ID	NODE_CONF_ID
+#endif
+
+// RADIO_PAN_ID
+#ifndef RADIO_CONF_PAN_ID
+	#define RADIO_PAN_ID	0xABCD
+#else
+	#define RADIO_PAN_ID	RADIO_CONF_TX_POWER
+#endif
+
 #endif   /* Network setup */
 
 /* Logging adds 200 bytes to program size */
 #define LOG_CONF_ENABLED         1
 
 /* ************************************************************************** */
-//#pragma mark RPL Settings
+/* RPL Settings                                                               */
 /* ************************************************************************** */
 #if UIP_CONF_IPV6_RPL
 
@@ -306,10 +303,13 @@ unsigned long clock_seconds(void);
 #define UIP_CONF_PINGADDRCONF    0
 #define UIP_CONF_LOGGING         0
 
-#endif /* RPL */
+#endif /* UIP_CONF_IPV6_RPL */
 
+/** Contiki Core Interface (has no function here)*/
 #define CCIF
+/** Contiki Loadable Interface (has no function here) */
 #define CLIF
+
 
 /* include the project config */
 /* PROJECT_CONF_H might be defined in the project Makefile */

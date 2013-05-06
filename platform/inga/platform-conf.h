@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, Swedish Institute of Computer Science.
+ * Copyright (c) 2013, TU Braunschweig
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -31,6 +31,7 @@
  * \file
  *         Plattform config for INGA
  * \author
+ *        Enrico Joerns <e.joerns@tu-bs.de>
  */
 
 #ifndef __PLATFORM_CONF_H__
@@ -40,12 +41,30 @@
  * Definitions below are dictated by the hardware and not really
  * changeable!
  */
-/** Set default INGA revision if nothing else set */
-#ifndef INGA_REVISION
-#define INGA_REVISION INGA_12
+
+/** Inga revision 1.2  */
+#define INGA_V12  12
+/** Inga revision 1.5  */
+#define INGA_V15  15
+/** Inga revision 2.0  */
+#define INGA_V20  20
+
+/** Set default INGA revision if nothing else set 
+ * Possible values are INGA_V12, INGA_V15, INGA_V20
+ */
+#ifndef INGA_CONF_REVISION
+#define INGA_REVISION INGA_V12
+#else
+#define INGA_REVISION INGA_CONF_REVISION
 #endif
 
 #define PLATFORM       PLATFORM_AVR
+
+#if INGA_REVISION == INGA_V12
+#define RF230_HAL = INGA_12
+#else
+#error INGA revision not supported
+#endif
 
 #define PLATFORM_HAS_LEDS   1
 #define PLATFORM_HAS_BUTTON 1
