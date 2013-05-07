@@ -8,6 +8,14 @@ ifdef NODE_ID
  endif
 endif
 
+# PANID
+ifdef PAN_ID
+ CFLAGS += -DRADIO_CONF_PAN_ID=$(PAN_ID)
+ ifndef settings_set_load
+  settings_set_load=1
+ endif
+endif
+
 # RADIO CHANNEL
 ifdef RADIO_CHANNEL
  CFLAGS += -DRADIO_CONF_CHANNEL=$(RADIO_CHANNEL)
