@@ -116,7 +116,7 @@ unsigned long clock_seconds(void);
 #if RF230BB
 #undef PACKETBUF_CONF_HDR_SIZE                  //Use the packetbuf default for header size
 #else
-#define PACKETBUF_CONF_HDR_SIZE    0            //RF230 combined driver/mac handles headers internally
+#define PACKETBUF_CONF_HDR_SIZE   0            //RF230 combined driver/mac handles headers internally
 #endif /*RF230BB */
 
 
@@ -150,8 +150,13 @@ unsigned long clock_seconds(void);
 #define UIP_CONF_DS6_MADDR_NBU    0
 #define UIP_CONF_DS6_AADDR_NBU    0
 
-#define UIP_CONF_LL_802154       1
-#define UIP_CONF_LLH_LEN         0
+/* uip uses 802.15.2 adresses */
+#define UIP_CONF_LL_802154        1
+/* no link level header */
+#define UIP_CONF_LLH_LEN          0
+
+/* Replace lower 2 bytes of MAC with node ID  */
+#define EUI64_BY_NODE_ID          1
 
 /* 10 bytes per stateful address context - see sicslowpan.c */
 /* Default is 1 context with prefix aaaa::/64 */
@@ -163,7 +168,6 @@ unsigned long clock_seconds(void);
 
 /* 211 bytes per queue buffer */
 #define QUEUEBUF_CONF_NUM         8
-
 /* 54 bytes per queue ref buffer */
 #define QUEUEBUF_CONF_REF_NUM     2
 
@@ -174,24 +178,24 @@ unsigned long clock_seconds(void);
 /* 30 bytes per TCP connection */
 /* 6LoWPAN does not do well with concurrent TCP streams, as new browser GETs collide with packets coming */
 /* from previous GETs, causing decreased throughput, retransmissions, and timeouts. Increase to study this. */
-#define UIP_CONF_MAX_CONNECTIONS 1
+#define UIP_CONF_MAX_CONNECTIONS  1
 
 /* 2 bytes per TCP listening port */
-#define UIP_CONF_MAX_LISTENPORTS 1
+#define UIP_CONF_MAX_LISTENPORTS  1
 
 /* 25 bytes per UDP connection */
-#define UIP_CONF_UDP_CONNS      10
+#define UIP_CONF_UDP_CONNS        10
 
-#define UIP_CONF_IP_FORWARD      0
-#define UIP_CONF_FWCACHE_SIZE    0
+#define UIP_CONF_IP_FORWARD       0
+#define UIP_CONF_FWCACHE_SIZE     0
 
-#define UIP_CONF_IPV6_CHECKS     1
-#define UIP_CONF_IPV6_QUEUE_PKT  1
-#define UIP_CONF_IPV6_REASSEMBLY 0
+#define UIP_CONF_IPV6_CHECKS      1
+#define UIP_CONF_IPV6_QUEUE_PKT   1
+#define UIP_CONF_IPV6_REASSEMBLY  0
 
-#define UIP_CONF_UDP_CHECKSUMS   1
-#define UIP_CONF_TCP_SPLIT       1
-#define UIP_CONF_DHCP_LIGHT      1
+#define UIP_CONF_UDP_CHECKSUMS    1
+#define UIP_CONF_TCP_SPLIT        1
+#define UIP_CONF_DHCP_LIGHT       1
 
 
 #if WITH_DTN
@@ -233,6 +237,26 @@ unsigned long clock_seconds(void);
 /* How long to wait before terminating an idle TCP connection. Smaller to allow faster sleep. Default is 120 seconds */
 #define UIP_CONF_WAIT_TIMEOUT     5
 
+// RADIO_PAN_ID
+#ifndef RADIO_CONF_PAN_ID
+	#define RADIO_PAN_ID	IEEE802154_PANID
+#else
+	#define RADIO_PAN_ID	RADIO_CONF_PAN_ID
+#endif
+
+/* Assure NODE_ID is not set manually */
+#ifdef NODE_ID
+	#undef NODE_ID
+	#warning Use NODE_CONF_ID to define your NodeId
+#endif
+
+// NODE_ID
+#ifndef NODE_CONF_ID
+	#define NODE_ID	0
+#else
+	#define NODE_ID	NODE_CONF_ID
+#endif
+
 // RADIO_CHANNEL
 #ifndef RADIO_CONF_CHANNEL
 	#define RADIO_CHANNEL	26
@@ -245,25 +269,6 @@ unsigned long clock_seconds(void);
 	#define RADIO_TX_POWER	0
 #else
 	#define RADIO_TX_POWER	RADIO_CONF_TX_POWER
-#endif
-
-// NODE_ID
-#ifdef NODE_ID
-	#undef NODE_ID
-	#warning Use NODE_CONF_ID to define your NodeId
-#endif
-
-#ifndef NODE_CONF_ID
-	#define NODE_ID	0
-#else
-	#define NODE_ID	NODE_CONF_ID
-#endif
-
-// RADIO_PAN_ID
-#ifndef RADIO_CONF_PAN_ID
-	#define RADIO_PAN_ID	0xABCD
-#else
-	#define RADIO_PAN_ID	RADIO_CONF_TX_POWER
 #endif
 
 #endif   /* Network setup */
@@ -290,7 +295,7 @@ unsigned long clock_seconds(void);
  */
 
 #define UIP_CONF_ROUTER                 1
-#define UIP_CONF_ND6_SEND_RA		    0
+#define UIP_CONF_ND6_SEND_RA            0
 #define UIP_CONF_ND6_REACHABLE_TIME     600000
 #define UIP_CONF_ND6_RETRANS_TIMER      10000
 
@@ -311,8 +316,8 @@ unsigned long clock_seconds(void);
 #define CLIF
 
 
-/* include the project config */
-/* PROJECT_CONF_H might be defined in the project Makefile */
+/* include the project config.
+ * PROJECT_CONF_H might be defined in the project Makefile */
 #ifdef PROJECT_CONF_H
 #include PROJECT_CONF_H
 #endif /* PROJECT_CONF_H */

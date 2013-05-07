@@ -245,10 +245,10 @@ generate_new_eui64(uint8_t eui64[8])
   eui64[7] = rng_get_uint8();
 }
 #endif /* CONTIKI_CONF_RANDOM_MAC */
+/*----------------------------------------------------------------------------*/
 void
 platform_radio_init(void)
 {
-#if RF230BB
 
   // Using default or project value as default value
   // NOTE: These variables will always be overwritten when having an eeprom value
@@ -256,13 +256,15 @@ platform_radio_init(void)
   uint8_t radio_channel = RADIO_CHANNEL;
   uint16_t pan_id = RADIO_PAN_ID;
   uint16_t pan_addr = NODE_ID;
-  uint8_t ieee_addr[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+  uint8_t eui64_addr[8] = {0, 0, 0, 0, 0, 0, 0, 0};
   //rimeaddr_t addr;
 
-  /* Start radio and radio receive process */
-  NETSTACK_RADIO.init();
 
-  // NODE_ID
+  /*******************************************************************************
+   * Load settings from EEPROM
+   ******************************************************************************/
+
+  // PAN_ID
   if (settings_check(SETTINGS_KEY_PAN_ID, 0) == true) {
     pan_id = settings_get_uint16(SETTINGS_KEY_PAN_ID, 0);
   } else {
@@ -291,68 +293,73 @@ platform_radio_init(void)
     printf("Radio Channel not in EEPROM - using default\n");
   }
 
-  // IEEE ADDR
+  // EUI64 ADDR
   // if setting not set or invalid data - generate ieee_addr from node_id 
-  if (settings_check(SETTINGS_KEY_EUI64, 0) != true || settings_get(SETTINGS_KEY_EUI64, 0, (void*) &ieee_addr, (size_t*) sizeof (ieee_addr)) != SETTINGS_STATUS_OK) {
+  if (settings_check(SETTINGS_KEY_EUI64, 0) != true || settings_get(SETTINGS_KEY_EUI64, 0, (void*) &eui64_addr, (size_t*) sizeof (eui64_addr)) != SETTINGS_STATUS_OK) {
 #if CONTIKI_CONF_RANDOM_MAC
-    generate_new_eui64(ieee_addr);
+    generate_new_eui64(eui64_addr);
     printf("Radio IEEE Addr not in EEPROM - generated random\n");
 #else /* CONTIKI_CONF_RANDOM_MAC */
-    ieee_addr[0] = pan_addr & 0xFF;
-    ieee_addr[1] = (pan_addr >> 8) & 0xFF;
-    ieee_addr[2] = 0;
-    ieee_addr[3] = 0;
-    ieee_addr[4] = 0;
-    ieee_addr[5] = 0;
-    ieee_addr[6] = 0;
-    ieee_addr[7] = 0;
-
+    eui64_addr[0] = pan_addr & 0xFF;
+    eui64_addr[1] = (pan_addr >> 8) & 0xFF;
+    eui64_addr[2] = 0;
+    eui64_addr[3] = 0;
+    eui64_addr[4] = 0;
+    eui64_addr[5] = 0;
+    eui64_addr[6] = 0;
+    eui64_addr[7] = 0;
     printf("Radio IEEE Addr not in EEPROM - using default\n");
 #endif /* CONTIKI_CONF_RANDOM_MAC */
+    if (settings_set(SETTINGS_KEY_EUI64, eui64_addr, sizeof (eui64_addr)) == SETTINGS_STATUS_OK) {
+      PRINTD("Wrote new IEEE Addr to EEPROM.\n");
+    }
   }
 
-  PRINTA("network_id(pan_id): 0x%X\n", pan_id);
-  PRINTA("node_id(pan_addr): 0x%X\n", pan_addr);
-  PRINTA("radio_tx_power: 0x%X\n", radio_tx_power);
-  PRINTA("radio_channel: 0x%X\n", radio_channel);
+#if EUI64_BY_NODE_ID
+  /* Replace lower 2 bytes with node ID  */
+  eui64_addr[0] = pan_addr & 0xFF;
+  eui64_addr[1] = (pan_addr >> 8) & 0xFF;
+#endif
 
-  rimeaddr_t addr = {
-    {(pan_addr >> 8) & 0xFF, pan_addr & 0xFF}
-  };
+  PRINTA("Network ID (pan_id): 0x%X\n", pan_id);
+  PRINTA("Node ID (pan_addr): 0x%X\n", pan_addr);
+  PRINTA("Radio TX power: 0x%X\n", radio_tx_power);
+  PRINTA("Radio channel: 0x%X\n", radio_channel);
+  //#if UIP_CONF_IPV6
+  PRINTA("MAC(EUI64) address %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x\n\r",
+          eui64_addr[0],
+          eui64_addr[1],
+          eui64_addr[2],
+          eui64_addr[3],
+          eui64_addr[4],
+          eui64_addr[5],
+          eui64_addr[6],
+          eui64_addr[7]);
+
+#if RF230BB
+
+  /* Start radio and radio receive process */
+  NETSTACK_RADIO.init();
+
+  //--- Set Rime address
+
+  rimeaddr_t addr;
+  memcpy(addr.u8, eui64_addr, sizeof (rimeaddr_t));
+
   rimeaddr_set_node_addr(&addr);
 
+  //--- Radio settings
+
+  /* change order of bytes for rf23x */
+  uint16_t inv_node_id = ((pan_addr >> 8) & 0xff) + ((pan_addr & 0xff) << 8);
   rf230_set_pan_addr(
           pan_id, // Network address 2 byte
-          pan_addr, // PAN ADD 2 Byte
-          (uint8_t *) & ieee_addr // MAC ADDRESS 8 byte
+          inv_node_id, // PAN ADD 2 Byte
+          (uint8_t *) eui64_addr // MAC ADDRESS 8 byte
           );
 
   rf230_set_channel(radio_channel);
   rf230_set_txpower(radio_tx_power);
-
-  // Copy NodeID to the link local address
-#if UIP_CONF_IPV6
-  memcpy(&uip_lladdr.addr, &addr.u8, sizeof (rimeaddr_t));
-#endif
-
-#if UIP_CONF_IPV6
-  PRINTA("MAC address %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x\n\r",
-          ieee_addr[0],
-          ieee_addr[1],
-          ieee_addr[2],
-          ieee_addr[3],
-          ieee_addr[4],
-          ieee_addr[5],
-          ieee_addr[6],
-          ieee_addr[7]);
-#else
-  PRINTA("MAC address ");
-  uint8_t i;
-  for (i = sizeof (rimeaddr_t); i > 0; i--) {
-    PRINTA("%02x:", addr.u8[i - 1]);
-  }
-  PRINTA("\n");
-#endif
 
   /* Initialize stack protocols */
   queuebuf_init();
@@ -360,11 +367,41 @@ platform_radio_init(void)
   NETSTACK_MAC.init();
   NETSTACK_NETWORK.init();
 
+  printf("%s %s, channel check rate %lu Hz, radio channel %u, power %u\n",
+          NETSTACK_MAC.name, NETSTACK_RDC.name,
+          CLOCK_SECOND / (NETSTACK_RDC.channel_check_interval() == 0 ? 1 :
+          NETSTACK_RDC.channel_check_interval()),
+          rf230_get_channel(),
+          rf230_get_txpower());
+
 #else /* RF230BB */
 
   /* Original RF230 combined mac/radio driver */
   /* mac process must be started before tcpip process! */
   process_start(&mac_process, NULL);
+#endif
+
+  // Copy NodeID to the link local address
+#if UIP_CONF_IPV6
+  memcpy(&uip_lladdr.addr, &eui64_addr, sizeof (eui64_addr));
+  uip_lladdr.addr[0] ^= 0x02; // invert 'u' bit (IEEE conform)
+
+  process_start(&tcpip_process, NULL);
+  process_start(&uip_fw_process, NULL);
+  process_start(&slip_process, NULL);
+
+  printf("Tentative link-local IPv6 address ");
+  {
+    uip_ds6_addr_t *lladdr;
+    int i;
+    lladdr = uip_ds6_get_link_local(-1);
+    for (i = 0; i < 7; ++i) {
+      printf("%02x%02x:", lladdr->ipaddr.u8[i * 2],
+              lladdr->ipaddr.u8[i * 2 + 1]);
+    }
+    printf("%02x%02x\n", lladdr->ipaddr.u8[14], lladdr->ipaddr.u8[15]);
+  }
+
 #endif
 }
 
@@ -380,7 +417,6 @@ init(void)
 
   /* Save the address where the watchdog occurred */
   void *wdt_addr = watchdog_return_addr;
-
   /* Save the reset reason for later */
   reason = MCUSR;
   MCUSR = 0;
@@ -392,6 +428,28 @@ init(void)
   rs232_init(RS232_PORT_0, USART_BAUD_INGA, USART_PARITY_NONE | USART_STOP_BITS_1 | USART_DATA_BITS_8);
   /* Redirect stdout to second port */
   rs232_redirect_stdout(RS232_PORT_0);
+
+  PRINTA("\n*******Booting %s*******\nReset reason: ", CONTIKI_VERSION_STRING);
+  /* Print out reset reason */
+  if (reason & _BV(JTRF))
+    PRINTA("JTAG ");
+  if (reason & _BV(WDRF))
+    PRINTA("Watchdog ");
+  if (reason & _BV(BORF))
+    PRINTA("Brown-out ");
+  if (reason & _BV(EXTRF))
+    PRINTA("External ");
+  if (reason & _BV(PORF))
+    PRINTA("Power-on ");
+  PRINTA("\n");
+  if (reason & _BV(WDRF))
+    PRINTA("Watchdog possibly occured at address %p\n", wdt_addr);
+
+#if WITH_UIP
+  slip_arch_init(BAUD2UBR(38400));
+#endif /* WITH_UIP */
+
+
   clock_init();
 
 #if STACKMONITOR
@@ -419,21 +477,6 @@ init(void)
   random_init(rng_get_uint8());
 #endif
 
-  PRINTA("\n*******Booting %s*******\nReset reason: ", CONTIKI_VERSION_STRING);
-  /* Print out reset reason */
-  if (reason & _BV(JTRF))
-    PRINTA("JTAG ");
-  if (reason & _BV(WDRF))
-    PRINTA("Watchdog ");
-  if (reason & _BV(BORF))
-    PRINTA("Brown-out ");
-  if (reason & _BV(EXTRF))
-    PRINTA("External ");
-  if (reason & _BV(PORF))
-    PRINTA("Power-on ");
-  PRINTA("\n");
-  if (reason & _BV(WDRF))
-    PRINTA("Watchdog possibly occured at address %p\n", wdt_addr);
 
   /* Flash initialization */
   at45db_init();
@@ -448,6 +491,15 @@ init(void)
   process_start(&etimer_process, NULL);
 
   ctimer_init();
+
+#if defined(APP_SETTINGS_SET)
+  printf("STARTING APP_SETTINGS_SET PROCESS...\n");
+  process_start(&settings_set_process, NULL);
+#endif
+
+#if defined(APP_SETTINGS_DELETE)
+  process_start(&settings_delete_process, NULL);
+#endif    
 
 #if PLATFORM_RADIO
   // Init radio
@@ -476,19 +528,10 @@ init(void)
   // rime_init(rime_udp_init(NULL));
   // uip_router_register(&rimeroute);
 
-  process_start(&tcpip_process, NULL);
+  //  process_start(&tcpip_process, NULL);
 
   /* Autostart other processes */
   autostart_start(autostart_processes);
-
-#if defined(APP_SETTINGS_SET)
-  printf("STARTING APP_SETTINGS_SET PROCESS...\n");
-  process_start(&settings_set_process, NULL);
-#endif
-
-#if defined(APP_SETTINGS_DELETE)
-  process_start(&settings_delete_process, NULL);
-#endif  
 
   /*---If using coffee file system create initial web content if necessary---*/
 #if COFFEE_FILES
@@ -513,37 +556,37 @@ init(void)
 #if ANNOUNCE_BOOT
   {
 #if AVR_WEBSERVER
-    uint8_t i;
-    char buf[80];
-    unsigned int size;
-
-    for (i = 0; i < UIP_DS6_ADDR_NB; i++) {
-      if (uip_ds6_if.addr_list[i].isused) {
-        httpd_cgi_sprint_ip6(uip_ds6_if.addr_list[i].ipaddr, buf);
-        PRINTA("IPv6 Address: %s\n", buf);
-      }
-    }
-    cli();
-    eeprom_read_block(buf, eemem_server_name, sizeof (eemem_server_name));
-    sei();
-    buf[sizeof (eemem_server_name)] = 0;
-    PRINTA("%s", buf);
-    cli();
-    eeprom_read_block(buf, eemem_domain_name, sizeof (eemem_domain_name));
-    sei();
-    buf[sizeof (eemem_domain_name)] = 0;
-    size = httpd_fs_get_size();
-#ifndef COFFEE_FILES
-    PRINTA(".%s online with fixed %u byte web content\n", buf, size);
-#elif COFFEE_FILES==1
-    PRINTA(".%s online with static %u byte EEPROM file system\n", buf, size);
-#elif COFFEE_FILES==2
-    PRINTA(".%s online with dynamic %u KB EEPROM file system\n", buf, size >> 10);
-#elif COFFEE_FILES==3
-    PRINTA(".%s online with static %u byte program memory file system\n", buf, size);
-#elif COFFEE_FILES==4
-    PRINTA(".%s online with dynamic %u KB program memory file system\n", buf, size >> 10);
-#endif /* COFFEE_FILES */
+    //    uint8_t i;
+    //    char buf[80];
+    //    unsigned int size;
+    //
+    //    for (i = 0; i < UIP_DS6_ADDR_NB; i++) {
+    //      if (uip_ds6_if.addr_list[i].isused) {
+    //        httpd_cgi_sprint_ip6(uip_ds6_if.addr_list[i].ipaddr, buf);
+    //        PRINTA("IPv6 Address: %s\n", buf);
+    //      }
+    //    }
+    //    cli();
+    //    eeprom_read_block(buf, eemem_server_name, sizeof (eemem_server_name));
+    //    sei();
+    //    buf[sizeof (eemem_server_name)] = 0;
+    //    PRINTA("%s", buf);
+    //    cli();
+    //    eeprom_read_block(buf, eemem_domain_name, sizeof (eemem_domain_name));
+    //    sei();
+    //    buf[sizeof (eemem_domain_name)] = 0;
+    //    size = httpd_fs_get_size();
+    //#ifndef COFFEE_FILES
+    //    PRINTA(".%s online with fixed %u byte web content\n", buf, size);
+    //#elif COFFEE_FILES==1
+    //    PRINTA(".%s online with static %u byte EEPROM file system\n", buf, size);
+    //#elif COFFEE_FILES==2
+    //    PRINTA(".%s online with dynamic %u KB EEPROM file system\n", buf, size >> 10);
+    //#elif COFFEE_FILES==3
+    //    PRINTA(".%s online with static %u byte program memory file system\n", buf, size);
+    //#elif COFFEE_FILES==4
+    //    PRINTA(".%s online with dynamic %u KB program memory file system\n", buf, size >> 10);
+    //#endif /* COFFEE_FILES */
 
 #else
     PRINTA("Online\n");
@@ -569,7 +612,7 @@ ipaddr_add(const uip_ipaddr_t *addr)
       } else if (i > 0) {
         PRINTF(":");
       }
-      PRINTF("%x", a);
+      PRINTF("%04x", a);
     }
   }
 }
