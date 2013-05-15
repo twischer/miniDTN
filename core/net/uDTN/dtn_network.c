@@ -8,13 +8,13 @@
  *
  * \author Georg von Zengen <vonzeng@ibr.cs.tu-bs.de>
  * \author Daniel Willmann <daniel@totalueberwachung.de>
- * \author Wolf-Bastian Pšttner <poettner@ibr.cs.tu-bs.de>
+ * \author Wolf-Bastian Pï¿½ttner <poettner@ibr.cs.tu-bs.de>
  */
 
 #ifdef CONF_LOGLEVEL
 #define LOGLEVEL CONF_LOGLEVEL
 #else
-#define LOGLEVEL LOGL_INF
+#define LOGLEVEL LOGL_DBG
 #endif
 
 #include "netstack.h"
@@ -42,6 +42,7 @@ static void dtn_network_init(void)
 	logging_domain_level_set(LOGD_DTN, LOG_SLOTS, LOGLEVEL);
 	logging_domain_level_set(LOGD_DTN, LOG_AGENT, LOGLEVEL);
 	logging_domain_level_set(LOGD_DTN, LOG_CL, LOGLEVEL);
+	logging_domain_level_set(LOGD_DTN, LOG_DISCOVERY, LOGLEVEL);
 
 	/* Clear the packet buffer */
 	packetbuf_clear();

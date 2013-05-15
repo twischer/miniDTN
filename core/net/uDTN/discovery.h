@@ -28,8 +28,10 @@
 #ifdef CONF_DISCOVERY
 #define DISCOVERY CONF_DISCOVERY
 #else
-#define DISCOVERY discovery_ipnd
+#define DISCOVERY discovery_simple
 #endif
+
+
 
 PROCESS_NAME(discovery_process);
 
@@ -93,6 +95,21 @@ struct discovery_driver {
 	 * Stops pending discoveries
 	 */
 	void (* stop_pending)();
+
+	/**
+         * Start discovery phase, called by discovery scheduler
+         */
+        void (* start)();
+
+        /**
+         * Stop discovery phase, called by discovery scheduler
+         */
+        void (* stop)();
+
+        /**
+         * Clear the list of currently known neighbours
+         */
+        void (* clear)();
 };
 
 extern const struct discovery_driver DISCOVERY;

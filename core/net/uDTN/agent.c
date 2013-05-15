@@ -33,6 +33,7 @@
 #include "dtn_network.h"
 #include "custody.h"
 #include "discovery.h"
+#include "discovery_scheduler.h"
 #include "statistics.h"
 #include "convergence_layer.h"
 #include "hash.h"
@@ -76,6 +77,7 @@ PROCESS_THREAD(agent_process, ev, data)
 	REDUNDANCE.init();
 	CUSTODY.init();
 	ROUTING.init();
+	DISCOVERY_SCHEDULER.init();
 	DISCOVERY.init();
 	registration_init();
 
