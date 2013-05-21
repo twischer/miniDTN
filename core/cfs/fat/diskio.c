@@ -147,7 +147,17 @@ diskio_rw_op(struct diskio_device_info *dev, uint32_t block_start_address, uint8
             } else {
               PRINTF("\nret_code: %u", ret_code);
             }
+
+#ifdef FAT_COOPERATIVE
+			if (!coop_step_allowed) {
+			  next_step_type = READ;
+			  coop_switch_sp();
+			} else {
+			  coop_step_allowed = 0;
+			}
+#else
             _delay_ms(1);
+#endif
 
             if (reinit == 0 && tries == 49) {
               tries = 0;
@@ -174,7 +184,18 @@ diskio_rw_op(struct diskio_device_info *dev, uint32_t block_start_address, uint8
             if (ret_code == 0) {
               return DISKIO_SUCCESS;
             }
+
+#ifdef FAT_COOPERATIVE
+			if (!coop_step_allowed) {
+			  next_step_type = WRITE;
+			  coop_switch_sp();
+			} else {
+			  coop_step_allowed = 0;
+			}
+#else
             _delay_ms(1);
+#endif
+
             if (reinit == 0 && tries == 49) {
               tries = 0;
               reinit = 1;
