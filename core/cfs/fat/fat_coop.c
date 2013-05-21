@@ -97,11 +97,13 @@ void coop_switch_sp();
 QueueEntry* queue_current_entry();
 void perform_next_step(QueueEntry *entry);
 void finish_operation(QueueEntry *entry);
-uint8_t time_left_for_step(QueueEntry *entry, uint32_t start_time);
+uint8_t time_left_for_step(uint8_t step_type);
 uint8_t try_internal_operation();
 uint8_t queue_rm_top_entry();
 uint8_t queue_add_entry(QueueEntry *entry);
 void pop_from_buffer(uint16_t length);
+uint32_t time_left();
+uint8_t time_for_step(uint8_t step_type);
 
 PROCESS(fsp, "FileSystemProcess");
 /*----------------------------------------------------------------------------*/
@@ -199,7 +201,7 @@ operation(void *data)
       break;
     case COOP_CFS_WRITE:
       PRINTF("FSP: write to file\n");
-      /** FIXME: Ring Buffer functionality does not work, because cfs_write does not know, that the buffer may wrap arround */
+      /** FIXME: Ring Buffer functionality does not work, because cfs_write does not know, that the buffer may wrap around */
       entry->ret_value = cfs_write(entry->parameters.generic.fd, entry->parameters.generic.buffer,
               entry->parameters.generic.length);
       pop_from_buffer(entry->parameters.generic.length);
@@ -236,42 +238,36 @@ operation(void *data)
 /*----------------------------------------------------------------------------*/
 PROCESS_THREAD(fsp, ev, data)
 {
-  PROCESS_BEGIN();
+	static uint32_t deadline = 0;
+	static QueueEntry *entry;
+	static uint16_t operations = 0;
 
-  while (1) {
-    PROCESS_WAIT_EVENT();
+	PROCESS_BEGIN();
 
-    PRINTF("FSP: active\n");
+	while (1) {
+		PROCESS_WAIT_EVENT();
 
-    static uint32_t start_time = 0, p_time = 0;
-    static QueueEntry *entry;
-    entry = queue_current_entry();
-    start_time = RTIMER_NOW();
+		// How long is time for processing?
+		deadline = RTIMER_NOW() + time_left();
 
-    while (entry != NULL && time_left_for_step(entry, start_time)) {
-      PRINTF("FSP: Processing...\n");
-      watchdog_periodic();
-      perform_next_step(entry);
-      if (entry->state == STATUS_DONE) {
-        PRINTF("FSP: Operation finished\n");
-        finish_operation(entry);
-        entry = queue_current_entry();
-      }
-    }
+		entry = queue_current_entry();
 
-    p_time = RTIMER_NOW();
-    if (queue_len == 0) {
-      PRINTF("FSP: queue is empty\n");
-      if (!try_internal_operation()) {
-        break;
-      }
+		while (entry != NULL && deadline > RTIMER_NOW()) {
+			uint32_t my_end = RTIMER_NOW() + time_for_step(next_step_type);
 
-    } else {
-      process_post(&fsp, PROCESS_EVENT_CONTINUE, NULL);
-    }
-  }
+			watchdog_periodic();
+			perform_next_step(entry);
 
-  PROCESS_END();
+			if (entry->state == STATUS_DONE) {
+				PRINTF("FSP: Operation finished\n");
+				finish_operation(entry);
+				entry = queue_current_entry();
+				operations ++;
+			}
+		}
+	}
+
+	PROCESS_END();
 }
 /*----------------------------------------------------------------------------*/
 uint8_t
@@ -308,39 +304,59 @@ finish_operation(QueueEntry *entry)
   }
 }
 /*----------------------------------------------------------------------------*/
-uint8_t
-time_left_for_step(QueueEntry *entry, uint32_t start_time)
+uint32_t time_left()
 {
-  uint8_t step_type = 0;
-  uint32_t time_left = RTIMER_NOW();
+	  uint32_t time_left = 0;
 
-  step_type = next_step_type;
-  time_left = RTIMER_NOW() - start_time;
+	  // We have time for maximum one step
+	  time_left = FAT_COOP_SLOT_SIZE_TICKS;
 
-  if (FAT_COOP_SLOT_SIZE_TICKS < time_left) {
-    return 0;
-  }
+	  // If we do have a timer, maximum time may also be shorter
+	  if( etimer_next_expiration_time() != 0 ) {
+		  uint32_t time_left_etimer = (((uint32_t) (etimer_next_expiration_time() - clock_time())) * ((uint32_t) RTIMER_ARCH_SECOND)) / CLOCK_SECOND;
 
-  if (step_type == INTERNAL) {
-    return 1;
-  }
+		  // Safety margin
+		  time_left_etimer -= 5;
 
-  time_left = FAT_COOP_SLOT_SIZE_TICKS - time_left;
-  if (step_type == READ) {
-    if (time_left > FAT_COOP_TIME_READ_BLOCK_TICKS) {
-      return 1;
-    }
-    return 0;
-  }
+		  if( time_left_etimer < time_left ) {
+			  time_left = time_left_etimer;
+		  }
+	  }
 
-  if (step_type == WRITE) {
-    if (time_left > FAT_COOP_TIME_WRITE_BLOCK_TICKS) {
-      return 1;
-    }
-    return 0;
-  }
+	  return time_left;
+}
+/*----------------------------------------------------------------------------*/
+uint8_t
+time_for_step(uint8_t step_type)
+{
+	uint8_t result = 0;
 
-  return 0;
+	if (step_type == INTERNAL ) {
+		result = 0;
+	}
+
+	if (step_type == READ ) {
+		result = FAT_COOP_TIME_READ_BLOCK_TICKS;
+	}
+
+	if (step_type == WRITE ) {
+		result = FAT_COOP_TIME_WRITE_BLOCK_TICKS;
+	}
+
+	// Add a 5 tick safety margin
+	result += 5;
+
+	return result;
+}
+/*----------------------------------------------------------------------------*/
+uint8_t
+time_left_for_step(uint8_t step_type)
+{
+	if( time_left() > time_for_step(step_type) ) {
+		return 1;
+	}
+
+	return 0;
 }
 /*----------------------------------------------------------------------------*/
 QueueEntry*
@@ -552,6 +568,8 @@ int8_t
 ccfs_write(int fd, uint8_t *buf, uint16_t length, uint8_t *token)
 {
   QueueEntry entry;
+
+  memset(&entry, 0, sizeof(QueueEntry));
 
   if (queue_len == FAT_COOP_QUEUE_SIZE) {
     PRINTF("ccfs_write: Buffer full\n");
