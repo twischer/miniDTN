@@ -114,11 +114,9 @@ configure(int type, int c)
 
     case SENSORS_ACTIVE:
       if (c) {
-        if (!status(SENSORS_ACTIVE)) {
-          if (l3g4200d_init() == 0) {
-            initialized = 1;
-            return 1;
-          }
+        if (l3g4200d_init() == 0) {
+          initialized = 1;
+          return 1;
         }
       }
       break;

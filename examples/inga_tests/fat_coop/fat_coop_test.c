@@ -8,7 +8,7 @@
  *	to set node_id, give NODE_ID=<x> with make
  *
  */
-	
+
 #include "contiki.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -27,10 +27,12 @@
 PROCESS(hello_world_process, "Hello world process");
 AUTOSTART_PROCESSES(&hello_world_process);
 /*---------------------------------------------------------------------------*/
-void fail() {
-	printf("FAIL\n");
-	watchdog_stop();
-	while(1) ;
+void
+fail()
+{
+  printf("FAIL\n");
+  watchdog_stop();
+  while (1);
 }
 /*---------------------------------------------------------------------------*/
 static struct etimer timer;
@@ -44,197 +46,203 @@ Event_OperationFinished * event;
 /*---------------------------------------------------------------------------*/
 PROCESS_THREAD(hello_world_process, ev, data)
 {
-	struct diskio_device_info *info = 0;
-	struct FAT_Info fat;
-	int n;
-	int i;
-	int initialized = 0;
+  struct diskio_device_info *info = 0;
+  struct FAT_Info fat;
+  int n;
+  int i;
+  int initialized = 0;
 
 
-	PROCESS_BEGIN();
+  PROCESS_BEGIN();
 
-	etimer_set(&timer, CLOCK_SECOND * 2);
-	PROCESS_WAIT_UNTIL(etimer_expired(&timer));
+  etimer_set(&timer, CLOCK_SECOND * 2);
+  PROCESS_WAIT_UNTIL(etimer_expired(&timer));
 
-	while( !initialized ) {
-		printf("Detecting devices and partitions...");
-		while((i = diskio_detect_devices()) != DISKIO_SUCCESS) {
-			watchdog_periodic();
-		}
-		printf("done\n\n");
+  while (!initialized) {
+    printf("Detecting devices and partitions...");
+    while ((i = diskio_detect_devices()) != DISKIO_SUCCESS) {
+      watchdog_periodic();
+    }
+    printf("done\n\n");
 
-		info = diskio_devices();
-		for(i = 0; i < DISKIO_MAX_DEVICES; i++) {
-			print_device_info( info + i );
-			printf("\n");
+    info = diskio_devices();
+    for (i = 0; i < DISKIO_MAX_DEVICES; i++) {
+      print_device_info(info + i);
+      printf("\n");
 
-			if( (info + i)->type == (DISKIO_DEVICE_TYPE_SD_CARD | DISKIO_DEVICE_TYPE_PARTITION) ) {
-				info += i;
-				initialized = 1;
-				break;
-			}
-		}
-	}
+      if ((info + i)->type == (DISKIO_DEVICE_TYPE_SD_CARD | DISKIO_DEVICE_TYPE_PARTITION)) {
+        info += i;
+        initialized = 1;
+        break;
+      }
+    }
+  }
 
-	printf("Mounting device...");
-	cfs_fat_mount_device( info );
-	printf("done\n\n");
+  printf("Formatting device...");
+  cfs_fat_mkfs(info);
+  printf("done\n\n");
+  
+  printf("Mounting device...");
+  cfs_fat_mount_device(info);
+  printf("done\n\n");
 
-	cfs_fat_get_fat_info( &fat );
-	printf("FAT Info\n");
-	printf("\t type            = %u\n", fat.type);
-	printf("\t BPB_BytesPerSec = %u\n", fat.BPB_BytesPerSec);
-	printf("\t BPB_SecPerClus  = %u\n", fat.BPB_SecPerClus);
-	printf("\t BPB_RsvdSecCnt  = %u\n", fat.BPB_RsvdSecCnt);
-	printf("\t BPB_NumFATs     = %u\n", fat.BPB_NumFATs);
-	printf("\t BPB_RootEntCnt  = %u\n", fat.BPB_RootEntCnt);
-	printf("\t BPB_TotSec      = %lu\n", fat.BPB_TotSec);
-	printf("\t BPB_Media       = %u\n", fat.BPB_Media);
-	printf("\t BPB_FATSz       = %lu\n", fat.BPB_FATSz);
-	printf("\t BPB_RootClus    = %lu\n", fat.BPB_RootClus);
-	printf("\n");
+  cfs_fat_get_fat_info(&fat);
+  printf("FAT Info\n");
+  printf("\t type            = %u\n", fat.type);
+  printf("\t BPB_BytesPerSec = %u\n", fat.BPB_BytesPerSec);
+  printf("\t BPB_SecPerClus  = %u\n", fat.BPB_SecPerClus);
+  printf("\t BPB_RsvdSecCnt  = %u\n", fat.BPB_RsvdSecCnt);
+  printf("\t BPB_NumFATs     = %u\n", fat.BPB_NumFATs);
+  printf("\t BPB_RootEntCnt  = %u\n", fat.BPB_RootEntCnt);
+  printf("\t BPB_TotSec      = %lu\n", fat.BPB_TotSec);
+  printf("\t BPB_Media       = %u\n", fat.BPB_Media);
+  printf("\t BPB_FATSz       = %lu\n", fat.BPB_FATSz);
+  printf("\t BPB_RootClus    = %lu\n", fat.BPB_RootClus);
+  printf("\n");
 
-	printf("Starting test...\n");
+  printf("Starting test...\n");
+  
+  while (cnt < LOOPS) {
+    PROCESS_PAUSE();
 
-	while(cnt < LOOPS) {
-		PROCESS_PAUSE();
+    // Determine the filename
+    sprintf(b_file, "%05u.b", cnt);
 
-		// Determine the filename
-		sprintf(b_file,"%05u.b", cnt);
+    // Open the file descriptor
+    fd = ccfs_open(b_file, CFS_WRITE, &token);
+    // In case something goes wrong, we cannot save this file
+    if (fd != 0) {
+      printf("############# STORAGE: ccfs_open for write failed\n");
+      fail();
+    }
 
-		// Open the file descriptor
-		fd = ccfs_open(b_file, CFS_WRITE, &token);
-		// In case something goes wrong, we cannot save this file
-		if( fd != 0 ) {
-			printf("############# STORAGE: ccfs_open for write failed\n");
-			fail();
-		}
+    // Wait until the file is open
+    coop_event = get_coop_event_id();
+    PROCESS_WAIT_UNTIL(ev == coop_event && ((Event_OperationFinished *) data)->token == token);
+    event = (Event_OperationFinished *) data;
 
-		// Wait until the file is open
-		coop_event = get_coop_event_id();
-		PROCESS_WAIT_UNTIL(ev == coop_event && ((Event_OperationFinished *) data)->token == token);
-		event = (Event_OperationFinished *) data;
+    // In case something goes wrong, we cannot save this file
+    if (event->ret_value == -1) {
+      printf("############# STORAGE: open for write failed\n");
+      fail();
+    }
 
-		// In case something goes wrong, we cannot save this file
-		if( event->ret_value == -1 ) {
-			printf("############# STORAGE: open for write failed\n");
-			fail();
-		}
+    // Fill the buffer
+    for (i = 0; i < FILE_SIZE; i++) {
+      buffer[i] = (cnt + i) % 0xFF;
+    }
 
-		// Fill the buffer
-		for(i=0; i<FILE_SIZE; i++) {
-			buffer[i] = (cnt + i) % 0xFF;
-		}
+    // Write to file
+    n = ccfs_write(fd, buffer, FILE_SIZE, &token);
 
-		// Write to file
-		n = ccfs_write(fd, buffer, FILE_SIZE, &token);
+    if (n != 0) {
+      printf("############# STORAGE: Write failed\n");
+      fail();
+    }
 
-		if( n != 0 ) {
-			printf("############# STORAGE: Write failed\n");
-			fail();
-		}
+    // Wait until write is finished
+    PROCESS_WAIT_UNTIL(ev == coop_event && ((Event_OperationFinished *) data)->token == token);
+    event = (Event_OperationFinished *) data;
 
-		// Wait until write is finished
-		PROCESS_WAIT_UNTIL(ev == coop_event && ((Event_OperationFinished *) data)->token == token);
-		event = (Event_OperationFinished *) data;
+    if (event->ret_value != FILE_SIZE) {
+      printf("############# STORAGE: Write failed and returned %d\n", event->ret_value);
+      fail();
+    }
 
-		if( event->ret_value != FILE_SIZE ) {
-			printf("############# STORAGE: Write failed and returned %d\n", event->ret_value);
-			fail();
-		}
+    // Close the file
+    n = ccfs_close(fd, &token);
+    if (n != 0) {
+      printf("############# STORAGE: Close failed\n");
 
-		// Close the file
-		n = ccfs_close(fd, &token);
-		if( n != 0 ) {
-			printf("############# STORAGE: Close failed\n");
+    }
 
-		}
+    // Wait until close is finished
+    PROCESS_WAIT_UNTIL(ev == coop_event && ((Event_OperationFinished *) data)->token == token);
+    event = (Event_OperationFinished *) data;
 
-		// Wait until close is finished
-		PROCESS_WAIT_UNTIL(ev == coop_event && ((Event_OperationFinished *) data)->token == token);
-		event = (Event_OperationFinished *) data;
+    printf("\n\t%s written\n", b_file);
 
-		printf("\t%s written\n", b_file);
+    // Open the file for reading
+    fd = ccfs_open(b_file, CFS_READ, &token);
+    // In case something goes wrong, we cannot save this file
+    if (fd != 0) {
+      printf("############# STORAGE: open for read failed\n");
+      fail();
+    }
 
-		// Open the file for reading
-		fd = ccfs_open(b_file, CFS_READ, &token);
-		// In case something goes wrong, we cannot save this file
-		if( fd != 0 ) {
-			printf("############# STORAGE: open for read failed\n");
-			fail();
-		}
+    // Wait until finished
+    PROCESS_WAIT_UNTIL(ev == coop_event && ((Event_OperationFinished *) data)->token == token);
+    event = (Event_OperationFinished *) data;
 
-		// Wait until finished
-		PROCESS_WAIT_UNTIL(ev == coop_event && ((Event_OperationFinished *) data)->token == token);
-		event = (Event_OperationFinished *) data;
+    // In case something goes wrong, we cannot save this file
+    if (event->ret_value == -1) {
+      printf("############# STORAGE: open for read failed\n");
+      cfs_fat_print_file_info(fd);
+      fail();
+    }
 
-		// In case something goes wrong, we cannot save this file
-		if( event->ret_value == -1 ) {
-			printf("############# STORAGE: open for write failed\n");
-			fail();
-		}
+    memset(buffer, 0, FILE_SIZE);
 
-		memset(buffer, 0, FILE_SIZE);
+    // And now read the bundle back from flash
+    n = ccfs_read(fd, buffer, FILE_SIZE, &token);
 
-		// And now read the bundle back from flash
-		n = ccfs_read(fd, buffer, FILE_SIZE, &token);
+    if (n != 0) {
+      printf("############# STORAGE: ccfs_read error\n");
+      fail();
+    }
 
-		if (n != 0){
-			printf("############# STORAGE: ccfs_read error\n");
-			fail();
-		}
+    // Wait until read is finished
+    PROCESS_WAIT_UNTIL(ev == coop_event && ((Event_OperationFinished *) data)->token == token);
+    event = (Event_OperationFinished *) data;
 
-		// Wait until read is finished
-		PROCESS_WAIT_UNTIL(ev == coop_event && ((Event_OperationFinished *) data)->token == token);
-		event = (Event_OperationFinished *) data;
+    if (event->ret_value != FILE_SIZE) {
+      printf("############# STORAGE: read failed and returned %d\n", event->ret_value);
+      fail();
+    }
 
-		if( event->ret_value != FILE_SIZE ) {
-			printf("############# STORAGE: read failed and returned %d\n", event->ret_value);
-			fail();
-		}
+    // Close file
+    n = ccfs_close(fd, &token);
+    if (n != 0) {
+      printf("############# STORAGE: Close failed\n");
 
-		// Close file
-		n = ccfs_close(fd, &token);
-		if( n != 0 ) {
-			printf("############# STORAGE: Close failed\n");
+    }
 
-		}
+    // Wait
+    PROCESS_WAIT_UNTIL(ev == coop_event && ((Event_OperationFinished *) data)->token == token);
+    event = (Event_OperationFinished *) data;
 
-		// Wait
-		PROCESS_WAIT_UNTIL(ev == coop_event && ((Event_OperationFinished *) data)->token == token);
-		event = (Event_OperationFinished *) data;
+    // Verify contents
+    for (i = 0; i < FILE_SIZE; i++) {
+      if (buffer[i] != (cnt + i) % 0xFF) {
+        printf("############# STORAGE: verify error at %d: %02X != %02X\n", i, buffer[i], (cnt + i) % 0xFF);
+        fail();
+      }
+    }
 
-		// Verify contents
-		for(i=0; i<FILE_SIZE; i++) {
-			if( buffer[i] != (cnt + i) % 0xFF ) {
-				printf("############# STORAGE: verify error at %d: %02X != %02X\n", i, buffer[i], (cnt + i) % 0xFF);
-				fail();
-			}
-		}
+    //		n = ccfs_remove(b_file, &token);
+    //
+    //		if( n != 0 ) {
+    //			printf("############# STORAGE: unable to remove %s\n", b_file);
+    //			fail();
+    //		}
+    //
+    //		PROCESS_WAIT_UNTIL(ev == coop_event && ((Event_OperationFinished *) data)->token == token);
+    //		event = (Event_OperationFinished *) data;
+    //
+    //		printf("\t%s deleted\n", b_file);
 
-		n = ccfs_remove(b_file, &token);
+    printf("\n");
 
-		if( n != 0 ) {
-			printf("############# STORAGE: unable to remove %s\n", b_file);
-			fail();
-		}
+    cnt++;
+  }
 
-		PROCESS_WAIT_UNTIL(ev == coop_event && ((Event_OperationFinished *) data)->token == token);
-		event = (Event_OperationFinished *) data;
+  cfs_fat_umount_device();
 
-		printf("\t%s deleted\n", b_file);
+  printf("PASS\n");
 
-		printf("\n");
+  watchdog_stop();
+  while (1);
 
-		cnt ++;
-	}
-
-	cfs_fat_umount_device();
-
-	printf("PASS\n");
-	watchdog_stop();
-	while(1) ;
-
-	PROCESS_END();
+  PROCESS_END();
 }
 /*---------------------------------------------------------------------------*/

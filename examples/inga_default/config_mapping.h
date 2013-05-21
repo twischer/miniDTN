@@ -16,30 +16,8 @@
 int handle_boolean(char* val, void* value_p);
 int handle_int(char* value, void* value_p);
 int handle_char(char* value, void* value_p);
-
-int handle_boolean(char* value, void* value_p) {
-  if (strcmp(value, "true") == 0) {
-    *((bool*) value_p) = TRUE;
-  } else {
-    *((bool*) value_p) = FALSE;
-  }
-  return 0;
-}
-
-int handle_int(char* value, void* value_p) {
-  *((int*) value_p) = atoi(value);
-  return 0;
-}
-
-int handle_char(char* value, void* value_p) {
-  *((char*) value_p) = *value;
-  return 0;
-}
-
-int handle_processor(char* value, void* value_p) {
-  // TODO: implementation
-  return 0;
-}
+int handle_processor(char* value, void* value_p);
+void handle_new_processor(void);
 
 // operator types
 
@@ -57,10 +35,6 @@ typedef struct {
 
 static int processor_count;
 
-void handle_new_processor(void) {
-  processor_count++;
-  log_v("Found new processor\n");
-}
 
 // node group mapping
 static const cfg_group node_group = {
@@ -81,6 +55,16 @@ static const cfg_group output_group = {
     {"usb", &handle_boolean, &system_config.output.usb},
     {"radio", &handle_boolean, &system_config.output.radio},
     {"block_size", &handle_int, &system_config.output.block_size}
+  }
+};
+// battery sensor group mapping
+static const cfg_group battery_group = {
+  .name = "battery",
+  .entries = 2,
+  .entry =
+  {
+    {"enabled", &handle_boolean, &system_config.battery.enabled},
+    {"rate", &handle_int, &system_config.battery.rate}
   }
 };
 // accelerometer sensor group mapping
@@ -139,19 +123,8 @@ static const cfg_group processor_group = {
     {"value", &handle_processor, NULL},
   }
 };
-//
-// file mapping
-//
-static const cfg_file inga_conf_file = {
-  .name = "inga.conf",
-  .entries = 7,
-  .keys =
-  {"node", "output", "acc", "gyro", "pressure", "temp", "processor"},
-  .groups =
-  {&node_group, &output_group, &acc_group, &gyro_group, &pressure_group, &temp_group, &processor_group},
-  .handle =
-  {NULL, NULL, NULL, NULL, NULL, NULL, &handle_new_processor}
-};
+
+extern const cfg_file inga_conf_file;
 
 #endif	/* CONFIG_MAPPING_H */
 

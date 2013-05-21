@@ -5,10 +5,9 @@
 #include "cfs-fat.h"
 #include "watchdog.h"
 #include <stdbool.h>
+#include "default_app.h"
 
 process_event_t event_mount;
-
-static bool mounted;
 
 static int8_t sd_mount();
 
@@ -22,11 +21,13 @@ PROCESS_THREAD(mount_process, ev, data)
   event_mount = process_alloc_event();
 
   if (sd_mount() == 0) {
-    mounted = true;
+    // mark sd as mounted (system wide)
+    sysflag_set_en(SYS_SD_MOUNTED);
   } else {
-    mounted = false;
+    // mark sd as not mounted (system wide)
+    sysflag_set_dis(SYS_SD_MOUNTED);
   }
-  process_post(PROCESS_BROADCAST, event_mount, &mounted);
+  process_post(PROCESS_BROADCAST, event_mount, NULL);
 
   PROCESS_END();
 }

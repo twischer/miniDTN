@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include "rs232.h"
 #include "app_config.h"
+#include "config_mapping.h"
 #include "logger.h"
 
 #define ST_AWAIT_CMD  0
@@ -42,7 +43,9 @@ uart_handler(unsigned char ch)
         log_i("UART: Received new configuration\n");
         *buf_ptr = '\0';
 
-        process_post(&config_process, event_config_update, 0);
+        parse_ini(app_config_buffer, &inga_conf_file);
+
+        app_config_update();
 
         buf_ptr = app_config_buffer;
         state = ST_AWAIT_CMD;
