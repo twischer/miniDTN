@@ -144,4 +144,5 @@ uint8_t get_item_from_buffer( uint8_t *start, uint16_t index);
 
 void operation(void *data);
 
+PROCESS_NAME(fsp);
 #endif

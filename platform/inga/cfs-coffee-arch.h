@@ -230,7 +230,7 @@ void external_flash_erase(coffee_page_t sector);
 #ifndef COFFEE_ADDRESS
 #define COFFEE_ADDRESS            0x0
 #endif
-#define COFFEE_PAGES              70UL
+#define COFFEE_PAGES              500UL
 #define COFFEE_START              (COFFEE_ADDRESS)
 #define COFFEE_SIZE               (COFFEE_PAGES * COFFEE_PAGE_SIZE)
 
@@ -257,21 +257,19 @@ void external_flash_erase(coffee_page_t sector);
 #define CFS_CONF_OFFSET_TYPE uint32_t
 
 #define COFFEE_WRITE(buf, size, offset) \
-		external_flash_write(offset, (uint8_t *) buf, size)
+		sd_write(offset, (uint8_t *) buf, size)
 
 #define COFFEE_READ(buf, size, offset) \
-		external_flash_read(offset, (uint8_t *) buf, size)
+		sd_read(offset, (uint8_t *) buf, size)
 
 #define COFFEE_ERASE(sector) \
-		external_flash_erase(sector)
+		sd_erase(sector)
 
-void external_flash_write_page(coffee_page_t page, CFS_CONF_OFFSET_TYPE offset, uint8_t * buf, CFS_CONF_OFFSET_TYPE size);
+void sd_write(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE size);
 
-void external_flash_write(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE size);
+void sd_read(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE size);
 
-void external_flash_read(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE size);
-
-void external_flash_erase(coffee_page_t sector);
+void sd_erase(coffee_page_t sector);
 
 #endif /* COFFEE_AVR_SDCARD */
 

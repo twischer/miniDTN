@@ -902,12 +902,12 @@ void external_flash_erase(coffee_page_t sector) {
 #endif /* COFFEE_AVR_EXTERNAL */
 
 #ifdef COFFEE_AVR_SDCARD
-#include "drv/fat/diskio.h"
+#include "cfs/fat/diskio.h"
 static uint8_t cfs_buffer[512];
 struct diskio_device_info *cfs_info = 0;
 
-void external_flash_write_page(coffee_page_t page, CFS_CONF_OFFSET_TYPE offset, uint8_t * buf, CFS_CONF_OFFSET_TYPE size) {
-	PRINTF("external_flash_write_page(page %lu, offset %lu, buf %p, size %lu) \n", page, offset, buf, size);
+void sd_write_page(coffee_page_t page, CFS_CONF_OFFSET_TYPE offset, uint8_t * buf, CFS_CONF_OFFSET_TYPE size) {
+	PRINTF("sd_write_page(page %lu, offset %lu, buf %p, size %lu) \n", page, offset, buf, size);
 
 	if( size < 1 ) {
 		return;
@@ -933,8 +933,8 @@ void external_flash_write_page(coffee_page_t page, CFS_CONF_OFFSET_TYPE offset, 
 	PRINTF("Page %lu programmed with %lu bytes (%lu new)\n", page, COFFEE_PAGE_SIZE, size);
 }
 
-void external_flash_write(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE size) {
-	PRINTF(">>>>> external_flash_write(addr %lu, buf %p, size %lu)\n", addr, buf, size);
+void sd_write(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE size) {
+	PRINTF(">>>>> sd_write(addr %lu, buf %p, size %lu)\n", addr, buf, size);
 
 	if( addr > COFFEE_SIZE ) {
 		return;
@@ -960,7 +960,7 @@ void external_flash_write(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFS
 			length = COFFEE_PAGE_SIZE - offset;
 		}
 
-		external_flash_write_page(current_page, offset, buf + written, length);
+		sd_write_page(current_page, offset, buf + written, length);
 		written += length;
 		current_page++;
 	}
@@ -975,8 +975,8 @@ void external_flash_write(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFS
 #endif
 }
 
-void external_flash_read_page(coffee_page_t page, CFS_CONF_OFFSET_TYPE offset, uint8_t *buf, CFS_CONF_OFFSET_TYPE size) {
-	PRINTF("external_flash_read_page(page %lu, offset %lu, buf %p, size %lu)\n", page, offset, buf, size );
+void sd_read_page(coffee_page_t page, CFS_CONF_OFFSET_TYPE offset, uint8_t *buf, CFS_CONF_OFFSET_TYPE size) {
+	PRINTF("sd_read_page(page %lu, offset %lu, buf %p, size %lu)\n", page, offset, buf, size );
 
 	if( page > COFFEE_PAGES ) {
 		return;
@@ -996,8 +996,8 @@ void external_flash_read_page(coffee_page_t page, CFS_CONF_OFFSET_TYPE offset, u
 
 }
 
-void external_flash_read(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE size) {
-	PRINTF(">>>>> external_flash_read(addr %lu, buf %p, size %lu)\n", addr, buf, size );
+void sd_read(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE size) {
+	PRINTF(">>>>> sd_read(addr %lu, buf %p, size %lu)\n", addr, buf, size );
 
 	if( size < 1 ) {
 		return;
@@ -1027,7 +1027,7 @@ void external_flash_read(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSE
 			length = (COFFEE_PAGE_SIZE - offset);
 		}
 
-		external_flash_read_page(current_page, offset, buf + read, length);
+		sd_read_page(current_page, offset, buf + read, length);
 
 		PRINTF("Page %lu read with %lu bytes (offset %lu)\n", current_page, length, offset);
 
@@ -1045,39 +1045,16 @@ void external_flash_read(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSE
 #endif
 }
 
-void external_flash_erase(coffee_page_t page) {
+void sd_erase(coffee_page_t page) {
 	if( page > COFFEE_PAGES ) {
 		return;
 	}
 
-	PRINTF("external_flash_erase(page %lu)\n", page);
+	PRINTF("sd_erase(page %lu)\n", page);
 	memset(cfs_buffer, 0, 512);
 
 	diskio_write_block( cfs_info, page, cfs_buffer );
 	watchdog_periodic();
 }
-
-/*
-void external_flash_erase(coffee_page_t sector) {
-	if( sector > COFFEE_SECTORS ) {
-		return;
-	}
-
-	// This has to erase the contents of a whole sector
-	// AT45DB cannot directly delete a sector, we have to do it manually
-	PRINTF("external_flash_erase(sector %u)\n", sector);
-	CFS_CONF_OFFSET_TYPE h;
-
-	coffee_page_t start = sector * COFFEE_BLOCKS_PER_SECTOR;
-	coffee_page_t end = start + COFFEE_BLOCKS_PER_SECTOR;
-
-	for(h=start; h<end; h++) {
-		PRINTF("Deleting block %u\n", h);
-
-		at45db_erase_block(h);
-		watchdog_periodic();
-	}
-}
-*/
 
 #endif /* COFFEE_AVR_SDCARD */
