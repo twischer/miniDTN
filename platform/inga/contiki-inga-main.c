@@ -75,6 +75,7 @@ uint8_t debugflowsize, debugflow[DEBUGFLOWSIZE];
 #include <util/delay.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <string.h>
 
 #include "dev/watchdog.h"
 
@@ -352,7 +353,6 @@ platform_radio_init(void)
   {
     /* change order of bytes for rf23x */
     uint16_t inv_node_id = ((pan_addr >> 8) & 0xff) + ((pan_addr & 0xff) << 8);
-    printf("address is: %u", eui64_addr);
     rf230_set_pan_addr(
             pan_id, // Network address 2 byte
             inv_node_id, // PAN ADD 2 Byte
@@ -388,8 +388,6 @@ platform_radio_init(void)
   memcpy(&uip_lladdr.addr, &eui64_addr, sizeof (uip_lladdr.addr));
 
   process_start(&tcpip_process, NULL);
-  //  process_start(&uip_fw_process, NULL);
-  //  process_start(&slip_process, NULL);
 
   printf("Tentative link-local IPv6 address ");
   {
@@ -403,7 +401,7 @@ platform_radio_init(void)
     printf("%02x%02x\n", lladdr->ipaddr.u8[14], lladdr->ipaddr.u8[15]);
   }
 
-#endif
+#endif /* UIP_CONF_IPV6 */
 }
 
 /*-------------------------Low level initialization------------------------*/
@@ -445,11 +443,6 @@ init(void)
   PRINTA("\n");
   if (reason & _BV(WDRF))
     PRINTA("Watchdog possibly occured at address %p\n", wdt_addr);
-
-#if WITH_UIP
-  slip_arch_init(BAUD2UBR(38400));
-#endif /* WITH_UIP */
-
 
   clock_init();
 
@@ -614,6 +607,7 @@ ipaddr_add(const uip_ipaddr_t *addr)
 }
 #endif
 /*---------------------------------------------------------------------------*/
+#if PERIODICPRINTS
 static void
 periodic_prints()
 {
@@ -704,6 +698,7 @@ periodic_prints()
 #endif
   }
 }
+#endif
 /*-------------------------------------------------------------------------*/
 /*------------------------- Main Scheduler loop----------------------------*/
 /*-------------------------------------------------------------------------*/

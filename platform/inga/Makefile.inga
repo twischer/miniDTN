@@ -2,11 +2,10 @@ CONTIKI_TARGET_DIRS = . dev
 
 CONTIKI_CORE=contiki-inga-main
 CONTIKI_TARGET_MAIN = ${CONTIKI_CORE}.o
-CONTIKI_TARGET_SOURCEFILES += contiki-inga-main.c contiki-inga-default-init-net.c
+CONTIKI_TARGET_SOURCEFILES += contiki-inga-main.c
+CONTIKI_TARGET_SOURCEFILES += i2c.c  mspi.c microSD.c 
 #The avr cpu makefile will also add these files if COFFEE_FILES is specified.
 #CONTIKI_TARGET_SOURCEFILES += cfs-coffee.c cfs-coffee-arch.c
-#Needed for slip
-CONTIKI_TARGET_SOURCEFILES += slip_uart0.c slip.c i2c.c  mspi.c microSD.c 
 DRIVERS = adc.c at45db.c adxl345.c bmp085.c l3g4200d.c mpl115a.c
 SENSORS = sensors.c acc-sensor.c adc-sensor.c battery-sensor.c button-sensor.c gyro-sensor.c pressure-sensor.c radio-sensor.c
 CONTIKI_TARGET_SOURCEFILES += $(DRIVERS) $(SENSORS)
@@ -33,6 +32,13 @@ AVRDUDE_PROGRAMMER=avr109
 # Verify off
 #AVRDUDE_OPTIONS=-V
 AVRDUDE_OPTIONS=-b 230400
+
+# TODO: not implemented
+ifdef WITH_SLIP
+CONTIKI_TARGET_SOURCEFILES += slip_uart0.c slip.c slip-bridge.c
+CFLAGS += -DINGA_CONF_WITH_SLIP=1
+endif
+
 ifdef CONF_DTN
   CFLAGS += -DWITH_DTN=1
 endif

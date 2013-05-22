@@ -199,11 +199,11 @@ unsigned long clock_seconds(void);
 
 
 #if WITH_DTN
-#define CHANNEL_802_15_4          26
 #define NETSTACK_CONF_MAC         csma_driver
 #define NETSTACK_CONF_RDC         nullrdc_driver 
 #define NETSTACK_CONF_FRAMER      framer_802154
 #define NETSTACK_CONF_RADIO       rf230_driver
+#define CHANNEL_802_15_4          26
 #define RF230_CONF_AUTOACK        1
 #define SICSLOWPAN_CONF_ACK_ALL   0
 #define RF230_CONF_AUTORETRIES    2
@@ -219,22 +219,28 @@ unsigned long clock_seconds(void);
 #define NETSTACK_CONF_RADIO       rf230_driver
 #define CHANNEL_802_15_4          26
 #define RADIO_CONF_CALIBRATE_INTERVAL 256
-/* AUTOACK receive mode gives better rssi measurements, even if ACK is never requested */
+/* AUTOACK receive mode gives better rssi measurements,
+ * even if ACK is never requested */
 #define RF230_CONF_AUTOACK        1
-/* Request 802.15.4 ACK on all packets sent (else autoretry). This is primarily for testing. */
+/* Request 802.15.4 ACK on all packets sent (else autoretry).
+ * This is primarily for testing. */
 #define SICSLOWPAN_CONF_ACK_ALL   0
-/* Number of auto retry attempts+1, 1-16. Set zero to disable extended TX_ARET_ON mode with CCA) */
+/* Number of auto retry attempts+1, 1-16.
+ * Set zero to disable extended TX_ARET_ON mode with CCA) */
 #define RF230_CONF_AUTORETRIES    3
 /* Number of CSMA attempts 0-7. 802.15.4 2003 standard max is 5. */
 #define RF230_CONF_CSMARETRIES    5
-/* CCA theshold energy -91 to -61 dBm (default -77). Set this smaller than the expected minimum rssi to avoid packet collisions */
+/* CCA theshold energy -91 to -61 dBm (default -77).
+ * Set this smaller than the expected minimum rssi to avoid packet collisions */
 /* The Jackdaw menu 'm' command is helpful for determining the smallest ever received rssi */
 #define RF230_CONF_CCA_THRES    -85
 /* Allow 6lowpan fragments (needed for large TCP maximum segment size) */
 #define SICSLOWPAN_CONF_FRAG      1
-/* Most browsers reissue GETs after 3 seconds which stops fragment reassembly so a longer MAXAGE does no good */
+/* Most browsers reissue GETs after 3 seconds which stops fragment reassembly
+ * so a longer MAXAGE does no good */
 #define SICSLOWPAN_CONF_MAXAGE    3
-/* How long to wait before terminating an idle TCP connection. Smaller to allow faster sleep. Default is 120 seconds */
+/* How long to wait before terminating an idle TCP connection.
+ * Smaller to allow faster sleep. Default is 120 seconds */
 #define UIP_CONF_WAIT_TIMEOUT     5
 
 // RADIO_PAN_ID

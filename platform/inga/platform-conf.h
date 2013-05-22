@@ -29,7 +29,7 @@
 
 /**
  * \file
- *         Plattform config for INGA
+ *        Plattform config for INGA
  * \author
  *        Enrico Joerns <e.joerns@tu-bs.de>
  */
@@ -78,8 +78,6 @@
 #ifndef CLOCK_CONF_SECOND
 #define CLOCK_CONF_SECOND 128UL
 #endif
-
-//#define BAUD2UBR(baud) ((F_CPU/baud)) /** @todo: needed? */
 
 /* Types for clocks and uip_stats */
 typedef unsigned short uip_stats_t;
