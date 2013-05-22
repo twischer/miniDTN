@@ -74,16 +74,6 @@ typedef struct {
 	uint16_t dev_baud;
 	uint8_t checksum;
 }spi_dev;
-/*!
- * SPI Device Table: Holds the information about the SPI devices.
- * \note Index contains Chip Select information
- */
-static spi_dev spi_bus_config[MAX_SPI_DEVICES];
-
-/*!
- * Holds the current SPI-Bus configuration
- */
-static uint8_t spi_current_config = 0xFF;
 
 /**
  * \brief This function add a device to the SPI device table
@@ -96,7 +86,7 @@ static uint8_t spi_current_config = 0xFF;
  *        to reduce the SCK. Use MSPI_BAUD_MAX in common case.
  *
  */
-void add_to_spi_mgr(uint8_t cs, uint8_t mode, uint16_t baud);
+void mspi_mgr_add(uint8_t cs, uint8_t mode, uint16_t baud);
 
 /**
  * \brief This function changes the SPI configuration
@@ -104,7 +94,7 @@ void add_to_spi_mgr(uint8_t cs, uint8_t mode, uint16_t baud);
  * \param spi_dev The specified entry of the SPI Device Table
  *
  */
-void change_spi_mode(spi_dev new_config);
+void mspi_mgr_change_mode(spi_dev new_config);
 
 
 

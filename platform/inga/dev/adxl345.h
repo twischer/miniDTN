@@ -262,6 +262,12 @@ inline void adxl345_set_g_range(uint8_t range);
 
 /**
  * 
+ * @param rate
+ */
+void adxl345_set_data_rate(uint8_t rate);
+
+/**
+ * 
  * @param mode One of ADXL345_MODE_BYPASS, ADXL345_MODE_FIFO, ADXL345_MODE_STREAM, ADXL345_MODE_TRIGGER
  */
 void adxl345_set_fifomode(uint8_t mode);

@@ -167,13 +167,6 @@ typedef struct{
 	volatile uint8_t page_program[2];
 }bufmgr_t;
 
-/*!
- * Buffer manager allows it to improve write times, by switching
- * the dual buffer and parallelize flash write operations. (e.g. Write
- * to buffer 1 while buffer 2 is transfered to flash EEPROM)
- */
-static bufmgr_t buffer_mgr;
-
 /**
  * \brief Initialize the AT45DBxx1 Flash EEPROM
  *

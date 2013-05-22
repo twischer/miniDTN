@@ -162,10 +162,9 @@
 #define	ADC_REF_2560MV_INT   	((1 << REFS1)| (1 << REFS0))
 
 
-/*
- * ADMUX - ADC Multiplexer Selection Register
- */
-
+/**
+ * \name ADMUX - ADC Multiplexer Selection Register
+ * \{ */
 #define ADC_CHANNEL_0			0x00
 #define ADC_CHANNEL_1			0x01
 #define ADC_CHANNEL_2			0x02
@@ -196,7 +195,7 @@
 #define ADC_DIFF_ADC2_ADC2_1X	0x1A
 #define ADC_DIFF_ADC3_ADC2_1X	0x1B
 #define ADC_DIFF_ADC4_ADC2_1X	0x1C
-
+/** \} */
 
 /*
  * ADCSRA - ADC control and status register A

@@ -47,7 +47,8 @@
 
 #include "adc.h"
 void
-adc_init(uint8_t mode, uint8_t ref) {
+adc_init(uint8_t mode, uint8_t ref)
+{
   ADCSRA = ((ADC_ENABLE) | (ADC_PRESCALE_64));
   ADCSRB = 0x00;
   ADMUX = ref;
@@ -57,8 +58,10 @@ adc_init(uint8_t mode, uint8_t ref) {
     ADCSRA |= ((ADC_TRIGGER_ENABLE) | (ADC_INTERRUPT_ENABLE));
   }
 }
+/*----------------------------------------------------------------------------*/
 void
-adc_set_mux(uint8_t mux) {
+adc_set_mux(uint8_t mux)
+{
   static uint8_t used_adcs = 0;
   /*save energy by disabling the i/o input buffer*/
   if (mux < 8) {
@@ -69,8 +72,10 @@ adc_set_mux(uint8_t mux) {
   ADMUX |= mux;
   ADCSRA |= ADC_START;
 }
+/*----------------------------------------------------------------------------*/
 uint16_t
-adc_get_value(void) {
+adc_get_value(void)
+{
   if (ADCSRA & ADC_TRIGGER_ENABLE) {
     /*just read the ADC data register*/
     return ADCW;
@@ -82,14 +87,19 @@ adc_get_value(void) {
     return ADCW;
   }
 }
+/*----------------------------------------------------------------------------*/
 uint16_t
-adc_get_value_from(uint8_t chn) {
+adc_get_value_from(uint8_t chn)
+{
   adc_set_mux(chn);
   return adc_get_value();
 }
+/*----------------------------------------------------------------------------*/
 void
-adc_deinit(void) {
+adc_deinit(void)
+{
   ADCSRA = ADC_STOP;
   ADCSRB = ADC_STOP;
   ADMUX = ADC_STOP;
 }
+/*----------------------------------------------------------------------------*/

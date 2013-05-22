@@ -55,7 +55,7 @@ typedef struct {
 } acc_sensor_t;
 acc_sensor_t acc_sensor_data;
 /*---------------------------------------------------------------------------*/
-static int
+static void
 cond_update_acc_data(int ch)
 {
   /* bit positions set to one indicate that data is obsolete and a new readout will

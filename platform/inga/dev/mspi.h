@@ -62,7 +62,10 @@
  *
  * \note The...
  */
+#ifndef MSPI_BUS_MANAGER
 #define MSPI_BUS_MANAGER	1
+#endif 
+
 #if MSPI_BUS_MANAGER
 #include "mspi-mgr.h"
 #endif
@@ -82,30 +85,6 @@
 #define MSPI_CS_PIN_0		PORTA5
 #define MSPI_CS_PIN_1		PORTA6
 #define MSPI_CS_PIN_2		PORTA7
-
-/*!
- * This array holds the BCD for the 8 possible SPI devices, because the few amount
- * of port-pins made it necessary to use a BCD-Decimal-Encoder. The first item
- * (chip_select[0]) disables chip select. The other (chip_select[1] ...
- * chip_select[7]) holds the MSPI_SC_PORT information for the specific SPI device.
- *
- * \note This is a special solution for the raven based ibr sensor node. If you want
- * to use this driver for other applications, feel free to change the chip select
- * management
- */
-static uint8_t cs_bcd[8] = {
-		/*Chip Select Disable*/
-		(0xFF & (0 << MSPI_CS_PIN_0) & (0 << MSPI_CS_PIN_1) & (0 << MSPI_CS_PIN_2)),
-		/*Chip Select Enable for specific SPI device (1...7)*/
-		(0x00 | (1 << MSPI_CS_PIN_0) | (0 << MSPI_CS_PIN_1) | (0 << MSPI_CS_PIN_2)), //1
-		(0x00 | (0 << MSPI_CS_PIN_0) | (1 << MSPI_CS_PIN_1) | (0 << MSPI_CS_PIN_2)), //2
-		(0x00 | (1 << MSPI_CS_PIN_0) | (1 << MSPI_CS_PIN_1) | (0 << MSPI_CS_PIN_2)), //3
-		(0x00 | (0 << MSPI_CS_PIN_0) | (0 << MSPI_CS_PIN_1) | (1 << MSPI_CS_PIN_2)), //4
-		(0x00 | (1 << MSPI_CS_PIN_0) | (0 << MSPI_CS_PIN_1) | (1 << MSPI_CS_PIN_2)), //5
-		(0x00 | (0 << MSPI_CS_PIN_0) | (1 << MSPI_CS_PIN_1) | (1 << MSPI_CS_PIN_2)), //6
-		(0x00 | (1 << MSPI_CS_PIN_0) | (1 << MSPI_CS_PIN_1) | (1 << MSPI_CS_PIN_2))  //7
-
-};
 
 /********************************************************************
  * MSPI mode:
@@ -164,59 +143,36 @@ static uint8_t cs_bcd[8] = {
  */
 #define MSPI_BAUD_1MBPS		(0x03)
 
-
 typedef struct {
- /*!
-  * MSPI Baud Rate Register (USART0/USART1)
-  */
+  /*!
+   * MSPI Baud Rate Register (USART0/USART1)
+   */
   volatile uint16_t * UBRRn;
- /*!
-  * MSPI Serial Clock Pin Data Direction Register (USART0/USART1)
-  */
+  /*!
+   * MSPI Serial Clock Pin Data Direction Register (USART0/USART1)
+   */
   volatile uint8_t * XCKn_DDR; //Uart0 = DDRB //Uart1 = DDRD
- /*!
-  * MSPI Serial Clock Pin (USART0/USART1)
-  */
+  /*!
+   * MSPI Serial Clock Pin (USART0/USART1)
+   */
   volatile uint8_t XCKn; //Uart0 = PORTB0 //Uart1 = PORTD4
- /*!
-  * MSPIM Control and Status Register A (USART0/USART1)
-  */
+  /*!
+   * MSPIM Control and Status Register A (USART0/USART1)
+   */
   volatile uint8_t * UCSRnA;
- /*!
-  * MSPIM Control and Status Register B (USART0/USART1)
-  */
+  /*!
+   * MSPIM Control and Status Register B (USART0/USART1)
+   */
   volatile uint8_t * UCSRnB;
- /*!
-  * MSPIM Control and Status Register C (USART0/USART1)
-  */
+  /*!
+   * MSPIM Control and Status Register C (USART0/USART1)
+   */
   volatile uint8_t * UCSRnC;
   /*!
    * MSPI I/O Data Register (USART0/USART1)
    */
   volatile uint8_t * UDRn;
 } usart_t;
-
-static usart_t usart_ports[2] = {
-  {   // MSPI UART0
-    &UBRR0,
-    &DDRB,
-     PORTB0,
-    &UCSR0A,
-    &UCSR0B,
-    &UCSR0C,
-    &UDR0
-  },
-
-  {  // MSPI UART1
-	&UBRR1,
-	&DDRD,
-	 PORTD4,
-	&UCSR1A,
-	&UCSR1B,
-	&UCSR1C,
-	&UDR1
-  }
-};
 
 /**
  * \brief Initialize the selected USART in the MSPI mode

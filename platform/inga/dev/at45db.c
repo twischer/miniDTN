@@ -45,6 +45,14 @@
  */
 
 #include "at45db.h"
+
+/*!
+ * Buffer manager allows it to improve write times, by switching
+ * the dual buffer and parallelize flash write operations. (e.g. Write
+ * to buffer 1 while buffer 2 is transfered to flash EEPROM)
+ */
+static bufmgr_t buffer_mgr;
+
 int8_t
 at45db_init(void) {
   uint8_t i = 0, id = 0;
@@ -235,9 +243,13 @@ at45db_write_cmd(uint8_t *cmd) {
 /*----------------------------------------------------------------------------*/
 void
 at45db_busy_wait(void) {
+  uint16_t i = 0;
   mspi_chip_select(AT45DB_CS);
   mspi_transceive(AT45DB_STATUS_REG);
   while ((mspi_transceive(MSPI_DUMMY_BYTE) >> 7) != 0x01) {
+    if (i++ > 500) {
+      return;
+    }
   }
   mspi_chip_release(AT45DB_CS);
 }

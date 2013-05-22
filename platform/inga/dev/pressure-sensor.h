@@ -39,7 +39,7 @@
  * @{
  */
 
-/** \defgroup inga_pressure_driver Pressure Sensor
+/** \defgroup inga_pressure_driver Pressure and Temperature Sensor
  * @{
  */
 
@@ -48,9 +48,11 @@
 
 #include "lib/sensors.h"
 
-extern const struct sensors_sensor  pressure_sensor;
+extern const struct sensors_sensor pressure_sensor;
 
+/* Returns Temperature */
 #define  TEMP 0
+/* Returns Pressure */
 #define  PRESS 1
 
 /** @} */

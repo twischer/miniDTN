@@ -156,9 +156,10 @@ static uint16_t bmp085_read16bit_data(uint8_t addr);
 static void bmp085_read_calib_data(void);
 static int32_t bmp085_read_uncomp_pressure(uint8_t mode);
 static int32_t bmp085_read_uncomp_temperature(void);
-
+/*---------------------------------------------------------------------------*/
 int8_t
-bmp085_init(void) {
+bmp085_init(void)
+{
   uint8_t i = 0;
   i2c_init();
   while (bmp085_read16bit_data(BMP085_AC1_ADDR) == 0x00) {
@@ -170,10 +171,10 @@ bmp085_init(void) {
   bmp085_read_calib_data();
   return 0;
 }
-
 /*---------------------------------------------------------------------------*/
 static int32_t
-bmp085_read_uncomp_temperature(void) {
+bmp085_read_uncomp_temperature(void)
+{
   i2c_start(BMP085_DEV_ADDR_W);
   i2c_write(BMP085_CTRL_REG_ADDR);
   i2c_write(BMP085_CTRL_REG_TEMP);
@@ -181,10 +182,10 @@ bmp085_read_uncomp_temperature(void) {
   _delay_ms(5);
   return (int32_t) (bmp085_read16bit_data(BMP085_DATA_REG_N));
 }
-
 /*---------------------------------------------------------------------------*/
 static int32_t
-bmp085_read_uncomp_pressure(uint8_t mode) {
+bmp085_read_uncomp_pressure(uint8_t mode)
+{
   int32_t pressure;
   i2c_start(BMP085_DEV_ADDR_W);
   i2c_write(BMP085_CTRL_REG_ADDR);
@@ -215,10 +216,10 @@ bmp085_read_uncomp_pressure(uint8_t mode) {
   pressure += bmp085_read8bit_data(BMP085_DATA_REG_X);
   return (pressure >> (8 - mode));
 }
-
 /*---------------------------------------------------------------------------*/
 int32_t
-bmp085_read_temperature(void) {
+bmp085_read_temperature(void)
+{
   int32_t ut = 0, compt = 0;
 
   int32_t x1, x2, b5;
@@ -233,10 +234,10 @@ bmp085_read_temperature(void) {
 
   return compt;
 }
-
 /*---------------------------------------------------------------------------*/
 int32_t
-bmp085_read_pressure(uint8_t mode) {
+bmp085_read_pressure(uint8_t mode)
+{
   int32_t ut = 0, compt = 0;
   int32_t up = 0, compp = 0;
 
@@ -275,10 +276,10 @@ bmp085_read_pressure(uint8_t mode) {
   compp = p + ((x1 + x2 + 3791) >> 4);
   return compp;
 }
-
 /*---------------------------------------------------------------------------*/
 static void
-bmp085_read_calib_data(void) {
+bmp085_read_calib_data(void)
+{
   bmp085_coeff.ac1 = bmp085_read16bit_data(BMP085_AC1_ADDR);
   bmp085_coeff.ac2 = bmp085_read16bit_data(BMP085_AC2_ADDR);
   bmp085_coeff.ac3 = bmp085_read16bit_data(BMP085_AC3_ADDR);
@@ -291,10 +292,10 @@ bmp085_read_calib_data(void) {
   bmp085_coeff.mc = bmp085_read16bit_data(BMP085_MC_ADDR);
   bmp085_coeff.md = bmp085_read16bit_data(BMP085_MD_ADDR);
 }
-
 /*---------------------------------------------------------------------------*/
 static uint16_t
-bmp085_read16bit_data(uint8_t addr) {
+bmp085_read16bit_data(uint8_t addr)
+{
   uint8_t msb = 0, lsb = 0;
   i2c_start(BMP085_DEV_ADDR_W);
   i2c_write(addr);
@@ -304,10 +305,10 @@ bmp085_read16bit_data(uint8_t addr) {
   i2c_stop();
   return (uint16_t) ((msb << 8) | lsb);
 }
-
 /*---------------------------------------------------------------------------*/
 static uint8_t
-bmp085_read8bit_data(uint8_t addr) {
+bmp085_read8bit_data(uint8_t addr)
+{
   uint8_t lsb = 0;
   i2c_start(BMP085_DEV_ADDR_W);
   i2c_write(addr);

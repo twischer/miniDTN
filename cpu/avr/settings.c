@@ -342,16 +342,16 @@ settings_delete(settings_key_t key, uint8_t index)
       printf("found a valid item to shift at address %X\n", current_item);
 
       for (tmp_offset = 0; tmp_offset < (current_item - settings_get_value_addr_(current_item)) + settings_get_value_length_(current_item); tmp_offset++) {
-        eeprom_read(tmp_addr - tmp_offset, (const unsigned char *) &tmp_data, 1);
+        eeprom_read(tmp_addr - tmp_offset, (unsigned char *) &tmp_data, 1);
         printf("data[%d]: %X", tmp_offset, tmp_data);
         //eeprom_read(tmp_addr - tmp_offset + shift_amount, (const unsigned char*) &tmp_data, 1);
         // printf("-> %X\n", tmp_data);
-        eeprom_write_byte(tmp_addr - tmp_offset + shift_amount, tmp_data);
+        eeprom_write_byte((uint8_t*) (tmp_addr - tmp_offset + shift_amount), tmp_data);
       }
     } while (1);
 
     for (tmp_offset = 1; tmp_offset <= shift_amount; tmp_offset++) {
-      eeprom_write_byte(current_item + tmp_offset, 0xFF);
+      eeprom_write_byte((uint8_t*) (current_item + tmp_offset), 0xFF);
     }
   }
 

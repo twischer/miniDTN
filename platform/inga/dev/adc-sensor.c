@@ -78,6 +78,7 @@ configure(int type, int c)
     default:
     break;
   }
+  return 0;
 }
 /*---------------------------------------------------------------------------*/
 SENSORS_SENSOR(adc_sensor, "ADC", value, configure, status);

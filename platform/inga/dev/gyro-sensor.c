@@ -44,7 +44,7 @@ static uint8_t initialized = 0;
 #define raw_to_dps(raw) TODO
 static angle_data_t gyro_data;
 /*---------------------------------------------------------------------------*/
-static int16_t
+static void
 cond_update_gyro_data(int ch)
 {
   /* bit positions set to one indicate that data is obsolete and a new readout will
