@@ -172,9 +172,14 @@ settings_get(settings_key_t key, uint8_t index, unsigned char* value, size_t* va
 
   for (current_item = SETTINGS_TOP_ADDR; settings_is_item_valid_(current_item); current_item = settings_next_item_(current_item)) {
     if (settings_get_key_(current_item) == key) {
-      if (!index) {
+      if (index == 0) {
         // We found it!
-        *value_size = MIN(*value_size, settings_get_value_length_(current_item));
+
+        if (*value_size == 0) {
+          *value_size = settings_get_value_length_(current_item);
+        } else {
+          *value_size = MIN(*value_size, settings_get_value_length_(current_item));
+        }
         eeprom_read(
                 settings_get_value_addr_(current_item),
                 value,
@@ -261,12 +266,14 @@ settings_set(settings_key_t key, const unsigned char* value, size_t value_size)
   settings_status_t ret = SETTINGS_STATUS_FAILURE;
   eeprom_addr_t current_item = SETTINGS_TOP_ADDR;
 
+  /* Iterates over settings items. */
   for (current_item = SETTINGS_TOP_ADDR; settings_is_item_valid_(current_item); current_item = settings_next_item_(current_item)) {
     if (settings_get_key_(current_item) == key) {
       break;
     }
   }
 
+  /* Create new item if not existig or invalid */
   if ((current_item == EEPROM_NULL) || !settings_is_item_valid_(current_item)) {
     ret = settings_add(key, value, value_size);
     goto bail;

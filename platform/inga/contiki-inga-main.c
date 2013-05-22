@@ -91,6 +91,9 @@ uint8_t debugflowsize, debugflow[DEBUGFLOWSIZE];
 #include "loader/symbols-def.h"
 #include "loader/symtab.h"
 
+//#include "net/uip-fw-drv.h"
+#include "uip.h"
+
 #if RF230BB        //radio driver using contiki core mac
 #include "radio/rf230bb/rf230bb.h"
 #include "net/mac/frame802154.h"
@@ -247,6 +250,12 @@ generate_new_eui64(uint8_t eui64[8])
 #endif /* CONTIKI_CONF_RANDOM_MAC */
 /*----------------------------------------------------------------------------*/
 void
+uip_log(char *msg)
+{
+  printf("%s\n", msg);
+}
+/*----------------------------------------------------------------------------*/
+void
 platform_radio_init(void)
 {
 
@@ -295,7 +304,8 @@ platform_radio_init(void)
 
   // EUI64 ADDR
   // if setting not set or invalid data - generate ieee_addr from node_id 
-  if (settings_check(SETTINGS_KEY_EUI64, 0) != true || settings_get(SETTINGS_KEY_EUI64, 0, (void*) &eui64_addr, (size_t*) sizeof (eui64_addr)) != SETTINGS_STATUS_OK) {
+  size_t eui64_size = sizeof (eui64_addr);
+  if (settings_check(SETTINGS_KEY_EUI64, 0) != true || settings_get(SETTINGS_KEY_EUI64, 0, (void*) &eui64_addr, &eui64_size) != SETTINGS_STATUS_OK) {
 #if CONTIKI_CONF_RANDOM_MAC
     generate_new_eui64(eui64_addr);
     printf("Radio IEEE Addr not in EEPROM - generated random\n");
@@ -321,10 +331,10 @@ platform_radio_init(void)
   eui64_addr[1] = (pan_addr >> 8) & 0xFF;
 #endif
 
-  PRINTA("Network ID (pan_id): 0x%X\n", pan_id);
-  PRINTA("Node ID (pan_addr): 0x%X\n", pan_addr);
-  PRINTA("Radio TX power: 0x%X\n", radio_tx_power);
-  PRINTA("Radio channel: 0x%X\n", radio_channel);
+  PRINTA("Network ID (pan_id): 0x%04X\n", pan_id);
+  PRINTA("Node ID (pan_addr): 0x%04X\n", pan_addr);
+  PRINTA("Radio TX power: 0x%02X\n", radio_tx_power);
+  PRINTA("Radio channel: 0x%02X\n", radio_channel);
   //#if UIP_CONF_IPV6
   PRINTA("MAC(EUI64) address %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x\n\r",
           eui64_addr[0],
@@ -341,25 +351,34 @@ platform_radio_init(void)
   /* Start radio and radio receive process */
   NETSTACK_RADIO.init();
 
-  //--- Set Rime address
+  //--- Set Rime address based on eui64
+  {
+    rimeaddr_t addr;
+    memcpy(addr.u8, eui64_addr, sizeof (rimeaddr_t));
+    PRINTF("rime address: ");
+    int i;
+    for (i = 0; i < sizeof (rimeaddr_t); i++) {
+      PRINTF("%02x.", addr.u8[i]);
+    }
+    PRINTF("\n");
 
-  rimeaddr_t addr;
-  memcpy(addr.u8, eui64_addr, sizeof (rimeaddr_t));
+    rimeaddr_set_node_addr(&addr);
+  }
 
-  rimeaddr_set_node_addr(&addr);
+  //--- Radio address settings
+  {
+    /* change order of bytes for rf23x */
+    uint16_t inv_node_id = ((pan_addr >> 8) & 0xff) + ((pan_addr & 0xff) << 8);
+    printf("address is: %u", eui64_addr);
+    rf230_set_pan_addr(
+            pan_id, // Network address 2 byte
+            inv_node_id, // PAN ADD 2 Byte
+            eui64_addr // MAC ADDRESS 8 byte
+            );
 
-  //--- Radio settings
-
-  /* change order of bytes for rf23x */
-  uint16_t inv_node_id = ((pan_addr >> 8) & 0xff) + ((pan_addr & 0xff) << 8);
-  rf230_set_pan_addr(
-          pan_id, // Network address 2 byte
-          inv_node_id, // PAN ADD 2 Byte
-          (uint8_t *) eui64_addr // MAC ADDRESS 8 byte
-          );
-
-  rf230_set_channel(radio_channel);
-  rf230_set_txpower(radio_tx_power);
+    rf230_set_channel(radio_channel);
+    rf230_set_txpower(radio_tx_power);
+  }
 
   /* Initialize stack protocols */
   queuebuf_init();
@@ -383,12 +402,11 @@ platform_radio_init(void)
 
   // Copy NodeID to the link local address
 #if UIP_CONF_IPV6
-  memcpy(&uip_lladdr.addr, &eui64_addr, sizeof (eui64_addr));
-  uip_lladdr.addr[0] ^= 0x02; // invert 'u' bit (IEEE conform)
+  memcpy(&uip_lladdr.addr, &eui64_addr, sizeof (uip_lladdr.addr));
 
   process_start(&tcpip_process, NULL);
-  process_start(&uip_fw_process, NULL);
-  process_start(&slip_process, NULL);
+  //  process_start(&uip_fw_process, NULL);
+  //  process_start(&slip_process, NULL);
 
   printf("Tentative link-local IPv6 address ");
   {
