@@ -37,8 +37,6 @@
  *      Enrico Joerns <e.joerns@tu-bs.de>
  */
 
-#include <util/delay.h>
-
 #define PRINTF(FORMAT,args...) printf_P(PSTR(FORMAT),##args)
 
 /* If defined 1, prints boot screen informations.
@@ -73,13 +71,12 @@ uint8_t debugflowsize, debugflow[DEBUGFLOWSIZE];
 #define DEBUGFLOW(c)
 #endif
 
-#include <avr/pgmspace.h>
-#include <avr/fuse.h>
-#include <avr/eeprom.h>
+#include <avr/io.h>
+#include <util/delay.h>
 #include <stdio.h>
-#include <string.h>
-#include <dev/watchdog.h>
 #include <stdbool.h>
+
+#include "dev/watchdog.h"
 
 // settings manager
 #include "settings.h"
@@ -88,10 +85,6 @@ uint8_t debugflowsize, debugflow[DEBUGFLOWSIZE];
 #include "dev/button-sensor.h"
 #include "dev/at45db.h"
 
-#include "loader/symbols-def.h"
-#include "loader/symtab.h"
-
-//#include "net/uip-fw-drv.h"
 #include "uip.h"
 
 #if RF230BB        //radio driver using contiki core mac
@@ -110,8 +103,6 @@ uint8_t debugflowsize, debugflow[DEBUGFLOWSIZE];
 #include "contiki.h"
 #include "contiki-net.h"
 #include "contiki-lib.h"
-/** @todo not really used! */
-#include "node-id.h"
 
 #include "dev/rs232.h"
 #include "dev/serial-line.h"
@@ -125,12 +116,6 @@ uint8_t debugflowsize, debugflow[DEBUGFLOWSIZE];
 #ifdef COFFEE_FILES
 #include "cfs/cfs.h"
 #include "cfs/cfs-coffee.h"
-#endif
-
-//@ todo
-#if UIP_CONF_ROUTER&&0
-#include "net/routing/rimeroute.h"
-#include "net/rime/rime-udp.h"
 #endif
 
 #include "net/rime.h"
@@ -280,13 +265,12 @@ platform_radio_init(void)
     printf("PanId not in EEPROM - using default\n");
   }
 
-  // NODE_ID
+  // PAN_ADDR/NODE_ID
   if (settings_check(SETTINGS_KEY_PAN_ADDR, 0) == true) {
     pan_addr = settings_get_uint16(SETTINGS_KEY_PAN_ADDR, 0);
   } else {
     printf("NodeID/PanAddr not in EEPROM - using default\n");
   }
-
 
   // TX_POWER
   if (settings_check(SETTINGS_KEY_TXPOWER, 0) == true) {
@@ -335,7 +319,6 @@ platform_radio_init(void)
   PRINTA("Node ID (pan_addr): 0x%04X\n", pan_addr);
   PRINTA("Radio TX power: 0x%02X\n", radio_tx_power);
   PRINTA("Radio channel: 0x%02X\n", radio_channel);
-  //#if UIP_CONF_IPV6
   PRINTA("MAC(EUI64) address %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x\n\r",
           eui64_addr[0],
           eui64_addr[1],
@@ -400,8 +383,8 @@ platform_radio_init(void)
   process_start(&mac_process, NULL);
 #endif
 
-  // Copy NodeID to the link local address
 #if UIP_CONF_IPV6
+  // Copy EUI64 to the link local address
   memcpy(&uip_lladdr.addr, &eui64_addr, sizeof (uip_lladdr.addr));
 
   process_start(&tcpip_process, NULL);
@@ -543,11 +526,6 @@ init(void)
 
 #endif /* ANNOUNCE_BOOT */
 
-  // rime_init(rime_udp_init(NULL));
-  // uip_router_register(&rimeroute);
-
-  //  process_start(&tcpip_process, NULL);
-
   /* Autostart other processes */
   autostart_start(autostart_processes);
 
@@ -614,7 +592,7 @@ init(void)
   }
 }
 
-#if ROUTES
+#if PER_ROUTES
 static void
 ipaddr_add(const uip_ipaddr_t *addr)
 {
@@ -639,7 +617,7 @@ ipaddr_add(const uip_ipaddr_t *addr)
 static void
 periodic_prints()
 {
-  uint32_t clocktime;
+  static uint32_t clocktime;
 
   if (clocktime != clock_seconds()) {
     clocktime = clock_seconds();
@@ -659,7 +637,7 @@ periodic_prints()
     }
 #endif
 
-#if PER_PINGS
+#if PER_PINGS&&0
     extern void raven_ping6(void);
     if ((clocktime % PER_PINGS) == 1) {
       PRINTF("**Ping\n");
