@@ -33,7 +33,8 @@
 
 /**
  * \file
- *         A RDC implementation that is aware of uDTN-Discovery.
+ *         A RDC implementation that is aware of uDTN-Discovery. 
+ *         Based on 'nullrdc'
  * \author
  *         André Frambach <frambach@ibr.cs.tu-bs.de>
  */
