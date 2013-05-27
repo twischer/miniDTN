@@ -230,6 +230,7 @@ int routing_flooding_send_bundle(uint32_t bundle_number, rimeaddr_t * neighbour)
 int routing_flooding_send_to_local(struct routing_entry_t * entry)
 {
 	struct mmem * bundlemem = NULL;
+	int ret = 0;
 
 	// Should this bundle be delivered locally?
 	if( (entry->flags & ROUTING_FLAG_LOCAL) && !(entry->flags & ROUTING_FLAG_IN_DELIVERY) ) {
@@ -239,8 +240,18 @@ int routing_flooding_send_to_local(struct routing_entry_t * entry)
 			return FLOOD_ROUTE_RETURN_CONTINUE;
 		}
 
-		if( delivery_deliver_bundle(bundlemem) ) {
+		ret = delivery_deliver_bundle(bundlemem);
+		if( ret == DELIVERY_STATE_WAIT_FOR_APP ) {
 			entry->flags |= ROUTING_FLAG_IN_DELIVERY;
+		} else if( ret == DELIVERY_STATE_DELETE ) {
+			// Bundle can be deleted right away
+			entry->flags &= ~ROUTING_FLAG_LOCAL;
+
+			// Reschedule ourselves
+			routing_flooding_schedule_resubmission();
+
+			// And remove bundle if applicable
+			routing_flooding_check_keep_bundle(entry->bundle_number);
 		}
 	}
 
