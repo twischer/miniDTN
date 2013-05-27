@@ -16,6 +16,10 @@
 #include "contiki.h"
 #include "mmem.h"
 
+#define DELIVERY_STATE_ERROR -1
+#define DELIVERY_STATE_WAIT_FOR_APP 1
+#define DELIVERY_STATE_DELETE 2
+
 /**
  * \brief unblocks a service that was previously delivering a bundle
  * \param bundlemem Pointer to MMEM structure

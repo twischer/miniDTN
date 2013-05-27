@@ -78,20 +78,23 @@ int delivery_deliver_bundle(struct mmem *bundlemem) {
 
 	if( bundlemem == NULL ) {
 		LOG(LOGD_DTN, LOG_BUNDLE, LOGL_ERR, "invalid MMEM pointer");
-		return -1;
+		return DELIVERY_STATE_ERROR;
 	}
 
 	bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 	if( bundle == NULL ) {
 		LOG(LOGD_DTN, LOG_BUNDLE, LOGL_ERR, "invalid bundle");
 		bundle_decrement(bundlemem);
-		return -1;
+		return DELIVERY_STATE_ERROR;
 	}
 
 	// Check if the bundle has been delivered before
 	if( REDUNDANCE.check(bundlemem) ) {
 		bundle_decrement(bundlemem);
-		return -1;
+
+		// If the bundle is redundant, we have to pretend that it has been delivered
+		// This ensures that the bundle will be deleted by the routing module
+		return DELIVERY_STATE_DELETE;
 	}
 
 	// Let's see, what service registrations we have
@@ -127,7 +130,7 @@ int delivery_deliver_bundle(struct mmem *bundlemem) {
 		bundle_decrement(bundlemem);
 
 		// Return error code
-		return -1;
+		return DELIVERY_STATE_ERROR;
 	}
 
 	// Notify statistics
@@ -152,6 +155,6 @@ int delivery_deliver_bundle(struct mmem *bundlemem) {
 	LOG(LOGD_DTN, LOG_BUNDLE, LOGL_DBG, "time needed to process bundle for Delivery: %i", time);
 #endif
 
-	return 1;
+	return DELIVERY_STATE_WAIT_FOR_APP;
 }
 /** @} */
