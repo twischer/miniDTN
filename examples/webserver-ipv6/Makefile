@@ -1,6 +1,7 @@
 CONTIKI_PROJECT=webserver6
 all: $(CONTIKI_PROJECT) $(WITH_WEBSERVER)
 
+CFLAGS += -DPROJECT_CONF_H=\"project-conf.h\"
 ifeq ($(WITH_WEBSERVER),)
 #
 #Set default webserver for different platforms
