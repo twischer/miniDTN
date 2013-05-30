@@ -117,10 +117,10 @@ void avr_eeprom_erase(uint16_t sector);
 #ifndef COFFEE_ADDRESS            //Make can pass starting address with COFFEE_ADDRESS=0xnnnnnnnn, default is 64KB for webserver
 #define COFFEE_ADDRESS            0x10000
 #endif
-#define COFFEE_PAGES              (512-(COFFEE_ADDRESS/COFFEE_PAGE_SIZE)-32)
+#define COFFEE_PAGES              (512-(COFFEE_ADDRESS/COFFEE_PAGE_SIZE)-32) /* COFFEE_ADDRESS undefined */
 #define COFFEE_START              (COFFEE_ADDRESS & ~(COFFEE_PAGE_SIZE-1))
 //#define COFFEE_START            (COFFEE_PAGE_SIZE*COFFEE_PAGES) 
-#define COFFEE_SIZE               (COFFEE_PAGES*COFFEE_PAGE_SIZE)
+#define COFFEE_SIZE               (COFFEE_PAGES*COFFEE_PAGE_SIZE) /* XXX */
 
 /* These must agree with the parameters passed to makefsdata */
 #define COFFEE_SECTOR_SIZE        (COFFEE_PAGE_SIZE*1)
@@ -163,12 +163,7 @@ void avr_flash_erase(coffee_page_t sector);
 void avr_flash_read (CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE size);
 void avr_flash_write(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE size);
 
-#define avr_httpd_fs_cpy(dest,addr,size) avr_flash_read((CFS_CONF_OFFSET_TYPE) addr, (uint8_t *)dest, (CFS_CONF_OFFSET_TYPE) size)
-char    avr_httpd_fs_getchar(char *addr);
-char *  avr_httpd_fs_strchr (char *ram, int character);
-int     avr_httpd_fs_strcmp (char *addr,char *ram);
-
-
+1
 #endif /* COFFEE_AVR_FLASH */
 
 

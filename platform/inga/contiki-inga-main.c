@@ -132,7 +132,7 @@ uint8_t debugflowsize, debugflow[DEBUGFLOWSIZE];
 /* Use of rtimer will conflict with other rtimer interrupts such as contikimac radio cycling */
 /* STAMPS will print ENERGEST outputs if that is enabled. */
 #ifndef PERIODIC_ENABLE
-#define PERIODICPRINTS 0
+#define PERIODICPRINTS 1
 #else
 #define PERIODICPRINTS PERIODIC_ENABLE
 #endif
@@ -163,7 +163,7 @@ uint8_t debugflowsize, debugflow[DEBUGFLOWSIZE];
 #endif
 /** Activates stack monitor with given interval [seconds] */
 #ifndef STACKMONITOR
-#define STACKMONITOR 600
+#define STACKMONITOR 60
 #endif
 
 
@@ -514,7 +514,7 @@ init(void)
   PRINTA("RPL Enabled\n");
 #endif
 #if UIP_CONF_ROUTER
-  PRINTA("Routing Enabled\n");
+  PRINTA("Routing Enabled, TCP_MSS: %u\n", UIP_TCP_MSS);
 #endif
 
 #endif /* ANNOUNCE_BOOT */
@@ -530,12 +530,14 @@ init(void)
     PRINTA("Formatting FLASH file system for coffee...");
     cfs_coffee_format();
     PRINTA("Done!\n");
-    /*fa = cfs_open( "/index.html", CFS_WRITE);
+    fa = cfs_open("/index.html", CFS_WRITE);
     int r = cfs_write(fa, &"It works!", 9);
-    if (r<0) printf("Can''t create /index.html!\n");
-    cfs_close(fa);*/
-    //  fa = cfs_open("upload.html"), CFW_WRITE);
-    // <html><body><form action="upload.html" enctype="multipart/form-data" method="post"><input name="userfile" type="file" size="50" /><input value="Upload" type="submit" /></form></body></html>
+    if (r < 0) printf("Can''t create /index.html!\n");
+    cfs_close(fa);
+    fa = cfs_open("/upload.html", CFS_WRITE);
+    r = cfs_write(fa, &"<html><body><form action=\"upload.html\" enctype=\"multipart/form-data\" method=\"post\"><input name=\"userfile\" type=\"file\" size=\"50\" /><input value=\"Upload\" type=\"submit\" /></form></body></html>  ", 188);
+    if (r < 0) printf("Can''t create /index.html!\n");
+    cfs_close(fa);
   } else {
     PRINTF("index.html found\n");
   }
@@ -546,8 +548,8 @@ init(void)
   {
 #if AVR_WEBSERVER
     //    uint8_t i;
-    //    char buf[80];
-    //    unsigned int size;
+    char buf[80] = "dummy";
+    unsigned int size = 4711;
     //
     //    for (i = 0; i < UIP_DS6_ADDR_NB; i++) {
     //      if (uip_ds6_if.addr_list[i].isused) {
@@ -565,17 +567,18 @@ init(void)
     //    sei();
     //    buf[sizeof (eemem_domain_name)] = 0;
     //    size = httpd_fs_get_size();
-    //#ifndef COFFEE_FILES
-    //    PRINTA(".%s online with fixed %u byte web content\n", buf, size);
-    //#elif COFFEE_FILES==1
-    //    PRINTA(".%s online with static %u byte EEPROM file system\n", buf, size);
-    //#elif COFFEE_FILES==2
-    //    PRINTA(".%s online with dynamic %u KB EEPROM file system\n", buf, size >> 10);
-    //#elif COFFEE_FILES==3
-    //    PRINTA(".%s online with static %u byte program memory file system\n", buf, size);
-    //#elif COFFEE_FILES==4
-    //    PRINTA(".%s online with dynamic %u KB program memory file system\n", buf, size >> 10);
-    //#endif /* COFFEE_FILES */
+
+#ifndef COFFEE_FILES
+    PRINTA(".%s online with fixed %u byte web content\n", buf, size);
+#elif COFFEE_FILES==1
+    PRINTA(".%s online with static %u byte EEPROM file system\n", buf, size);
+#elif COFFEE_FILES==2
+    PRINTA(".%s online with dynamic %u KB EEPROM file system\n", buf, size >> 10);
+#elif COFFEE_FILES==3
+    PRINTA(".%s online with static %u byte program memory file system\n", buf, size);
+#elif COFFEE_FILES==4
+    PRINTA(".%s online with dynamic %u KB program memory file system\n", buf, size >> 10);
+#endif /* COFFEE_FILES */
 
 #else
     PRINTA("Online\n");

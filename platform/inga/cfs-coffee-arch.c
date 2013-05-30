@@ -32,11 +32,12 @@
 
 /**
  * \file
- *  Coffee architecture-dependent functionality for the AVR-Raven 1284p platform.
+ *  Coffee architecture-dependent functionality for INGA.
  * \author
  *  Nicolas Tsiftes <nvt@sics.se>
  *  Frederic Thepaut <frederic.thepaut@inooi.com>
  *  David Kopf <dak664@embarqmail.com>
+ *  Enrico Joerns <e.joerns@tu-bs.de>
  */
 
 #include <avr/boot.h>
@@ -46,356 +47,16 @@
 #include "dev/watchdog.h"
 
 #include "cfs-coffee-arch.h"
+#include "httpd-fs-arch.h"
 
 #define DEBUG 0
+/* Note: Debuglevel > 1 will also printout data read. */
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(FORMAT,args...) printf_P(PSTR(FORMAT),##args)
 #else
 #define PRINTF(...)
 #endif
-
-#define TESTCOFFEE 1
-#define DEBUG_CFS 1
-#if TESTCOFFEE
-#if DEBUG_CFS
-#include <stdio.h>
-#define PRINTF_CFS(FORMAT,args...) printf_P(PSTR(FORMAT),##args)
-#else
-#define PRINTF_CFS(...)
-#endif
-
-#include "cfs/cfs.h"
-#include "cfs/cfs-coffee.h"
-#include "lib/crc16.h"
-#include "lib/random.h"
-#include <stdio.h>
-
-#define FAIL(x) error = (x); goto end;
-
-#define FILE_SIZE 512
-
-int
-coffee_file_test(void)
-{
-  int error;
-  int wfd, rfd, afd;
-  unsigned char buf[256], buf2[11];
-  int32_t r, i, j, total_read;
-  CFS_CONF_OFFSET_TYPE offset;
-
-  cfs_remove("T1");
-  cfs_remove("T2");
-  cfs_remove("T3");
-  cfs_remove("T4");
-  cfs_remove("T5");
-
-  wfd = rfd = afd = -1;
-
-  for(r = 0; r < sizeof(buf); r++) {
-    buf[r] = r;
-  }
-
-  /* Test 1: Open for writing. */
-  wfd = cfs_open("T1", CFS_WRITE);
-  if(wfd < 0) {
-    FAIL(-1);
-  }
-
-  /* Test 2: Write buffer. */
-  r = cfs_write(wfd, buf, sizeof(buf));
-  if(r < 0) {
-    FAIL(-2);
-  } else if(r < sizeof(buf)) {
-    FAIL(-3);
-  }
-
-  /* Test 3: Deny reading. */
-  r = cfs_read(wfd, buf, sizeof(buf));
-  if(r >= 0) {
-    FAIL(-4);
-  }
-
-  /* Test 4: Open for reading. */
-  rfd = cfs_open("T1", CFS_READ);
-  if(rfd < 0) {
-    FAIL(-5);
-  }
-
-  /* Test 5: Write to read-only file. */
-  r = cfs_write(rfd, buf, sizeof(buf));
-  if(r >= 0) {
-    FAIL(-6);
-  }
-
-  /* Test 7: Read the buffer written in Test 2. */
-  memset(buf, 0, sizeof(buf));
-  r = cfs_read(rfd, buf, sizeof(buf));
-  if(r < 0) {
-    FAIL(-8);
-  } else if(r < sizeof(buf)) {
-    PRINTF_CFS("r=%d\n", r);
-    FAIL(-9);
-  }
-
-  /* Test 8: Verify that the buffer is correct. */
-  for(r = 0; r < sizeof(buf); r++) {
-    if(buf[r] != r) {
-      PRINTF_CFS("r=%d. buf[r]=%d\n", r, buf[r]);
-      FAIL(-10);
-    }
-  }
-
-  /* Test 9: Seek to beginning. */
-  if(cfs_seek(wfd, 0, CFS_SEEK_SET) != 0) {
-    FAIL(-11);
-  }
-
-  /* Test 10: Write to the log. */
-  r = cfs_write(wfd, buf, sizeof(buf));
-  if(r < 0) {
-    FAIL(-12);
-  } else if(r < sizeof(buf)) {
-    FAIL(-13);
-  }
-
-  /* Test 11: Read the data from the log. */
-  cfs_seek(rfd, 0, CFS_SEEK_SET);
-  memset(buf, 0, sizeof(buf));
-  r = cfs_read(rfd, buf, sizeof(buf));
-  if(r < 0) {
-    FAIL(-14);
-  } else if(r < sizeof(buf)) {
-    FAIL(-15);
-  }
-
-  /* Test 12: Verify that the data is correct. */
-  for(r = 0; r < sizeof(buf); r++) {
-    if(buf[r] != r) {
-      FAIL(-16);
-    }
-  }
-
-  /* Test 13: Write a reversed buffer to the file. */
-  for(r = 0; r < sizeof(buf); r++) {
-    buf[r] = sizeof(buf) - r - 1;
-  }
-  if(cfs_seek(wfd, 0, CFS_SEEK_SET) != 0) {
-    FAIL(-17);
-  }
-  r = cfs_write(wfd, buf, sizeof(buf));
-  if(r < 0) {
-    FAIL(-18);
-  } else if(r < sizeof(buf)) {
-    FAIL(-19);
-  }
-  if(cfs_seek(rfd, 0, CFS_SEEK_SET) != 0) {
-    FAIL(-20);
-  }
-
-  /* Test 14: Read the reversed buffer. */
-  cfs_seek(rfd, 0, CFS_SEEK_SET);
-  memset(buf, 0, sizeof(buf));
-  r = cfs_read(rfd, buf, sizeof(buf));
-  if(r < 0) {
-    FAIL(-21);
-  } else if(r < sizeof(buf)) {
-    PRINTF_CFS("r = %d\n", r);
-    FAIL(-22);
-  }
-
-  /* Test 15: Verify that the data is correct. */
-  for(r = 0; r < sizeof(buf); r++) {
-    if(buf[r] != sizeof(buf) - r - 1) {
-      FAIL(-23);
-    }
-  }
-
-  cfs_close(rfd);
-  cfs_close(wfd);
-
-  if(cfs_coffee_reserve("T2", FILE_SIZE) < 0) {
-    FAIL(-24);
-  }
-
-  /* Test 16: Test multiple writes at random offset. */
-  for(r = 0; r < 100; r++) {
-    wfd = cfs_open("T2", CFS_WRITE | CFS_READ);
-    if(wfd < 0) {
-      FAIL(-25);
-    }
-
-    offset = random_rand() % FILE_SIZE;
-
-    for(r = 0; r < sizeof(buf); r++) {
-      buf[r] = r;
-    }
-
-    if(cfs_seek(wfd, offset, CFS_SEEK_SET) != offset) {
-      FAIL(-26);
-    }
-
-    if(cfs_write(wfd, buf, sizeof(buf)) != sizeof(buf)) {
-      FAIL(-27);
-    }
-
-    if(cfs_seek(wfd, offset, CFS_SEEK_SET) != offset) {
-      FAIL(-28);
-    }
-
-    memset(buf, 0, sizeof(buf));
-    if(cfs_read(wfd, buf, sizeof(buf)) != sizeof(buf)) {
-      FAIL(-29);
-    }
-
-    for(i = 0; i < sizeof(buf); i++) {
-      if(buf[i] != i) {
-        PRINTF_CFS("buf[%d] != %d\n", i, buf[i]);
-        FAIL(-30);
-      }
-    }
-  }
-  /* Test 17: Append data to the same file many times. */
-#define APPEND_BYTES 3000
-#define BULK_SIZE 10
-  for (i = 0; i < APPEND_BYTES; i += BULK_SIZE) {
-		afd = cfs_open("T3", CFS_WRITE | CFS_APPEND);
-		if (afd < 0) {
-			FAIL(-31);
-		}
-		for (j = 0; j < BULK_SIZE; j++) {
-			buf[j] = 1 + ((i + j) & 0x7f);
-		}
-		if ((r = cfs_write(afd, buf, BULK_SIZE)) != BULK_SIZE) {
-			PRINTF_CFS("Count:%d, r=%d\n", i, r);
-			FAIL(-32);
-		}
-		cfs_close(afd);
-	}
-
-  /* Test 18: Read back the data written in Test 17 and verify that it
-     is correct. */
-  afd = cfs_open("T3", CFS_READ);
-  if(afd < 0) {
-    FAIL(-33);
-  }
-  total_read = 0;
-  while((r = cfs_read(afd, buf2, sizeof(buf2))) > 0) {
-    for(j = 0; j < r; j++) {
-      if(buf2[j] != 1 + ((total_read + j) & 0x7f)) {
-  FAIL(-34);
-      }
-    }
-    total_read += r;
-  }
-  if(r < 0) {
-	  PRINTF_CFS("FAIL:-35 r=%d\n",r);
-    FAIL(-35);
-  }
-  if(total_read != APPEND_BYTES) {
-	  PRINTF_CFS("FAIL:-35 total_read=%d\n",total_read);
-    FAIL(-35);
-  }
-  cfs_close(afd);
-
-/***************T4********************/
-/* file T4 and T5 writing forces to use garbage collector in greedy mode
- * this test is designed for 10kb of file system
- * */
-#define APPEND_BYTES_1 2000
-#define BULK_SIZE_1 10
-  for (i = 0; i < APPEND_BYTES_1; i += BULK_SIZE_1) {
-		afd = cfs_open("T4", CFS_WRITE | CFS_APPEND);
-		if (afd < 0) {
-			FAIL(-36);
-		}
-		for (j = 0; j < BULK_SIZE_1; j++) {
-			buf[j] = 1 + ((i + j) & 0x7f);
-		}
-
-
-		if ((r = cfs_write(afd, buf, BULK_SIZE_1)) != BULK_SIZE_1) {
-			PRINTF_CFS("Count:%d, r=%d\n", i, r);
-			FAIL(-37);
-		}
-		cfs_close(afd);
-	}
-
-  afd = cfs_open("T4", CFS_READ);
-  if(afd < 0) {
-    FAIL(-38);
-  }
-  total_read = 0;
-  while((r = cfs_read(afd, buf2, sizeof(buf2))) > 0) {
-    for(j = 0; j < r; j++) {
-      if(buf2[j] != 1 + ((total_read + j) & 0x7f)) {
-    	  PRINTF_CFS("FAIL:-39, total_read=%d r=%d\n",total_read,r);
-  FAIL(-39);
-      }
-    }
-    total_read += r;
-  }
-  if(r < 0) {
-	  PRINTF_CFS("FAIL:-40 r=%d\n",r);
-    FAIL(-40);
-  }
-  if(total_read != APPEND_BYTES_1) {
-	  PRINTF_CFS("FAIL:-41 total_read=%d\n",total_read);
-    FAIL(-41);
-  }
-  cfs_close(afd);
-  /***************T5********************/
-#define APPEND_BYTES_2 1000
-#define BULK_SIZE_2 10
-    for (i = 0; i < APPEND_BYTES_2; i += BULK_SIZE_2) {
-  		afd = cfs_open("T5", CFS_WRITE | CFS_APPEND);
-  		if (afd < 0) {
-  			FAIL(-42);
-  		}
-  		for (j = 0; j < BULK_SIZE_2; j++) {
-  			buf[j] = 1 + ((i + j) & 0x7f);
-  		}
-
-  		if ((r = cfs_write(afd, buf, BULK_SIZE_2)) != BULK_SIZE_2) {
-  			PRINTF_CFS("Count:%d, r=%d\n", i, r);
-  			FAIL(-43);
-  		}
-
-  		cfs_close(afd);
-  	}
-
-    afd = cfs_open("T5", CFS_READ);
-    if(afd < 0) {
-      FAIL(-44);
-    }
-    total_read = 0;
-    while((r = cfs_read(afd, buf2, sizeof(buf2))) > 0) {
-      for(j = 0; j < r; j++) {
-        if(buf2[j] != 1 + ((total_read + j) & 0x7f)) {
-      	  PRINTF_CFS("FAIL:-45, total_read=%d r=%d\n",total_read,r);
-    FAIL(-45);
-        }
-      }
-      total_read += r;
-    }
-    if(r < 0) {
-  	  PRINTF_CFS("FAIL:-46 r=%d\n",r);
-      FAIL(-46);
-    }
-    if(total_read != APPEND_BYTES_2) {
-  	  PRINTF_CFS("FAIL:-47 total_read=%d\n",total_read);
-      FAIL(-47);
-    }
-    cfs_close(afd);
-
-  error = 0;
-end:
-  cfs_close(wfd); cfs_close(rfd); cfs_close(afd);
-
-  return error;
-}
-#endif /* TESTCOFFEE */
-
 /*---------------------------------------------------------------------------*/
 /*---------------------------EEPROM ROUTINES---------------------------------*/
 /*---------------------------------------------------------------------------*/
@@ -412,13 +73,13 @@ void
 avr_eeprom_erase(uint16_t sector)
 {
   eeprom_write(COFFEE_START + sector * COFFEE_SECTOR_SIZE,
-                 (unsigned char *)nullb, sizeof(nullb));
+          (unsigned char *) nullb, sizeof (nullb));
 }
 #endif /* COFFEE_AVR_EEPROM */
 
 #ifdef COFFEE_AVR_FLASH
 /*---------------------------------------------------------------------------*/
-/*---------------------------FLASH ROUTINES----------------------------------*/
+/*-----------------------Internal FLASH ROUTINES-----------------------------*/
 /*---------------------------------------------------------------------------*/
 /*
  * Read from flash info buf. addr contains starting flash byte address
@@ -426,54 +87,54 @@ avr_eeprom_erase(uint16_t sector)
 void
 avr_flash_read(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE size)
 {
-  uint32_t addr32=COFFEE_START+addr;
-  uint16_t isize=size;
+  uint32_t addr32 = COFFEE_START + addr;
+  uint16_t isize = size;
 #if DEBUG
-  unsigned char *bufo=(unsigned char *)buf;
+  unsigned char *bufo = (unsigned char *) buf;
   uint8_t i;
-  uint16_t w=addr32>>1;   //Show progmem word address for debug
-  PRINTF("r0x%04x(%u) ",w,size);
+  uint16_t w = addr32 >> 1; //Show progmem word address for debug
+  PRINTF("r0x%04x(%u) ", w, size);
 #endif
 #ifndef FLASH_WORD_READS
-  for (;isize>0;isize--) {
+  for (; isize > 0; isize--) {
 #if FLASH_COMPLEMENT_DATA
-    *buf++=~(uint8_t)pgm_read_byte_far(addr32++);
+    *buf++ = ~(uint8_t) pgm_read_byte_far(addr32++);
 #else
-    *buf++=(uint8_t)pgm_read_byte_far(addr32++);
+    *buf++ = (uint8_t) pgm_read_byte_far(addr32++);
 #endif /*FLASH_COMPLEMENT_DATA*/
   }
 #else
-/* 130 bytes more PROGMEM, but faster */
-  if (isize&0x01) {       //handle first odd byte
+  /* 130 bytes more PROGMEM, but faster */
+  if (isize & 0x01) { //handle first odd byte
 #if FLASH_COMPLEMENT_DATA
-    *buf++=~(uint8_t)pgm_read_byte_far(addr32++);
+    *buf++ = ~(uint8_t) pgm_read_byte_far(addr32++);
 #else
-    *buf++=(uint8_t)pgm_read_byte_far(addr32++);
+    *buf++ = (uint8_t) pgm_read_byte_far(addr32++);
 #endif /*FLASH_COMPLEMENT_DATA*/
-     isize--;
+    isize--;
   }
-  for (;isize>1;isize-=2) {//read words from flash
+  for (; isize > 1; isize -= 2) {//read words from flash
 #if FLASH_COMPLEMENT_DATA
-   *(uint16_t *)buf=~(uint16_t)pgm_read_word_far(addr32);
+    *(uint16_t *) buf = ~(uint16_t) pgm_read_word_far(addr32);
 #else
-   *(uint16_t *)buf=(uint16_t)pgm_read_word_far(addr32);
+    *(uint16_t *) buf = (uint16_t) pgm_read_word_far(addr32);
 #endif /*FLASH_COMPLEMENT_DATA*/
-    buf+=2;
-    addr32+=2;
+    buf += 2;
+    addr32 += 2;
   }
-  if (isize) {            //handle last odd byte
+  if (isize) { //handle last odd byte
 #if FLASH_COMPLEMENT_DATA
-    *buf++=~(uint8_t)pgm_read_byte_far(addr32);
+    *buf++ = ~(uint8_t) pgm_read_byte_far(addr32);
 #else
-    *buf++=(uint8_t)pgm_read_byte_far(addr32);
+    *buf++ = (uint8_t) pgm_read_byte_far(addr32);
 #endif /*FLASH_COMPLEMENT_DATA*/
   }
 #endif /* FLASH_WORD_READS */
 
 #if DEBUG>1
   PRINTF("\nbuf=");
-//  PRINTF("%s",bufo);
-// for (i=0;i<16;i++) PRINTF("%2x ",*bufo++);
+  //  PRINTF("%s",bufo);
+  // for (i=0;i<16;i++) PRINTF("%2x ",*bufo++);
 #endif
 }
 /*---------------------------------------------------------------------------*/
@@ -483,96 +144,38 @@ avr_flash_read(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE siz
  within each page of the sector (we choose the first byte).
  */
 BOOTLOADER_SECTION
-void avr_flash_erase(coffee_page_t sector) {
-	coffee_page_t i;
+void
+avr_flash_erase(coffee_page_t sector)
+{
+  coffee_page_t i;
 
 #if FLASH_COMPLEMENT_DATA
-	uint32_t addr32;
-	volatile uint8_t sreg;
+  uint32_t addr32;
+  volatile uint8_t sreg;
 
-	// Disable interrupts.
-	sreg = SREG;
-	cli();
+  // Disable interrupts.
+  sreg = SREG;
+  cli();
 
-	for (i = 0; i < COFFEE_SECTOR_SIZE / COFFEE_PAGE_SIZE; i++) {
-		for (addr32 = COFFEE_START + (((sector + i) * COFFEE_PAGE_SIZE)
-				& ~(COFFEE_PAGE_SIZE - 1)); addr32 < (COFFEE_START + (((sector
-				+ i + 1) * COFFEE_PAGE_SIZE) & ~(COFFEE_PAGE_SIZE - 1))); addr32
-				+= SPM_PAGESIZE) {
-			boot_page_erase(addr32);
-			boot_spm_busy_wait();
+  for (i = 0; i < COFFEE_SECTOR_SIZE / COFFEE_PAGE_SIZE; i++) {
+    for (addr32 = COFFEE_START + (((sector + i) * COFFEE_PAGE_SIZE)
+            & ~(COFFEE_PAGE_SIZE - 1)); addr32 < (COFFEE_START + (((sector
+            + i + 1) * COFFEE_PAGE_SIZE) & ~(COFFEE_PAGE_SIZE - 1))); addr32
+            += SPM_PAGESIZE) {
+      boot_page_erase(addr32);
+      boot_spm_busy_wait();
 
-		}
-	}
-	//RE-enable interrupts
-	boot_rww_enable();
-	SREG = sreg;
-#else
-	for (i=0;i<COFFEE_SECTOR_SIZE/COFFEE_PAGE_SIZE;i++) {
-		avr_flash_write((sector+i)*COFFEE_PAGE_SIZE,0,0);
-	}
-#endif
-
-#if 0
-#if TESTCOFFEE
-/* Defining TESTCOFFEE is a convenient way of testing a new configuration.
- * It is triggered by an erase of the last sector.
- * Note this routine will be reentered during the test!                     */
-
-  if ((sector+i)==COFFEE_PAGES-1) {
-    int j=(int)(COFFEE_START>>1),k=(int)((COFFEE_START>>1)+(COFFEE_SIZE>>1)),l=(int)(COFFEE_SIZE/1024UL);
-    printf_P(PSTR("\nTesting coffee filesystem [0x%08x -> 0x%08x (%uKb)] ..."),j,k,l);
-    int r= coffee_file_test();
-    if (r<0) {
-      printf_P(PSTR("\nFailed with return %d! :-(\n"),r);
-    } else {
-      printf_P(PSTR("Passed! :-)\n"));
     }
   }
-#endif /* TESTCOFFEE */
+  //RE-enable interrupts
+  boot_rww_enable();
+  SREG = sreg;
+#else
+  for (i = 0; i < COFFEE_SECTOR_SIZE / COFFEE_PAGE_SIZE; i++) {
+    avr_flash_write((sector + i) * COFFEE_PAGE_SIZE, 0, 0);
+  }
 #endif
 }
-
-/*httpd-fs routines
-  getchar is straigtforward.
-  strcmp only needs to handle file names for fs_open. Note filename in buf will not be zero terminated
-    if it fills the coffee name field, so a pseudo strcmp is done here.
-  strchr searches for script starts so must handle arbitrarily large strings
- */
-char avr_httpd_fs_getchar(char *addr) {
-  char r;
-  avr_flash_read((CFS_CONF_OFFSET_TYPE) addr, (uint8_t*) &r, 1);
-  return r;
-}
-int avr_httpd_fs_strcmp (char *ram, char *addr) {
-  uint8_t i,*in,buf[32];
-  avr_flash_read((CFS_CONF_OFFSET_TYPE)addr, buf, sizeof(buf));
-//return strcmp(ram, (char *)buf);
-  in=(uint8_t *)ram;
-  for (i=0;i<32;i++) {
-    if (buf[i]==0) return(0);
-    if (buf[i]!=*in) break;
-    in++;
-  }
-/* A proper strcmp would return a + or minus number based on the last comparison*/
-//if (buf[i]>*in) return(i); else return(-i);
-  return(i);
-}
-char * avr_httpd_fs_strchr (char *addr, int character) {
-  char buf[129],*pptr;
-  buf[128]=character;
-  while (1) {
-    avr_flash_read((CFS_CONF_OFFSET_TYPE)addr, (uint8_t *) buf, 128);
-    pptr=strchr(buf, character);
-    if (pptr!=&buf[128]) {
-      if (pptr==0) return 0;
-      return (addr+(pptr-buf));
-   }
-    addr+=128;
-  }
-
-}
-
 /*---------------------------------------------------------------------------*/
 /*
  * Transfer buf[size] from RAM to flash, starting at addr.
@@ -586,8 +189,8 @@ avr_flash_write(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE si
 {
   uint32_t addr32;
   uint16_t w;
-  uint8_t  bb,ba,sreg;
- 
+  uint8_t bb, ba, sreg;
+
   /* Disable interrupts, make sure no eeprom write in progress */
   sreg = SREG;
   cli();
@@ -597,112 +200,112 @@ avr_flash_write(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE si
     modified (will be on a page boundary) and the number of
     unaltered bytes before and after the data to be written.          */
 #if 0    //this is 8 bytes longer
-  uint16_t startpage=addr/COFFEE_PAGE_SIZE;
-  addr32=COFFEE_START+startpage*COFFEE_PAGE_SIZE;
+  uint16_t startpage = addr / COFFEE_PAGE_SIZE;
+  addr32 = COFFEE_START + startpage*COFFEE_PAGE_SIZE;
 #else
-  addr32=(COFFEE_ADDRESS&~(SPM_PAGESIZE-1))+(addr&~(SPM_PAGESIZE-1));
+  addr32 = (COFFEE_ADDRESS&~(SPM_PAGESIZE - 1))+(addr&~(SPM_PAGESIZE - 1));
 #endif
-  bb=addr & (SPM_PAGESIZE-1);
-  ba=COFFEE_PAGE_SIZE-((addr+size)&0xff);
+  bb = addr & (SPM_PAGESIZE - 1);
+  ba = COFFEE_PAGE_SIZE - ((addr + size)&0xff);
 
 #if DEBUG
-  uint16_t startpage=addr/COFFEE_PAGE_SIZE;
-  w=addr32>>1;   //Show progmem word address for debug
+  uint16_t startpage = addr / COFFEE_PAGE_SIZE;
+  w = addr32 >> 1; //Show progmem word address for debug
   if (buf) {
-    PRINTF("w0x%04x %u %u %u",w,size,bb,ba);
+    PRINTF("w0x%04x %u %u %u", w, size, bb, ba);
   } else {
-    PRINTF("e0x%04x %u ",w,startpage);
+    PRINTF("e0x%04x %u ", w, startpage);
   }
 #endif
 
   /* If buf not null, modify the page(s) */
   if (buf) {
-    if (size==0) return;            //nothing to write
+    if (size == 0) return; //nothing to write
     /*Copy the first part of the existing page into the write buffer */
-    while (bb>1) {
-      w=pgm_read_word_far(addr32);
-      boot_page_fill(addr32,w);
-      addr32+=2;
-      bb-=2;
+    while (bb > 1) {
+      w = pgm_read_word_far(addr32);
+      boot_page_fill(addr32, w);
+      addr32 += 2;
+      bb -= 2;
     }
     /* Transfer the bytes to be modified */
-    while (size>1) {
-      if (bb) {                     //handle odd byte boundary
-        w=pgm_read_word_far(addr32);
+    while (size > 1) {
+      if (bb) { //handle odd byte boundary
+        w = pgm_read_word_far(addr32);
 #if FLASH_COMPLEMENT_DATA
-        w  = ~w;
+        w = ~w;
 #endif /*FLASH_COMPLEMENT_DATA*/
         w &= 0xff;
-        bb=0;
+        bb = 0;
         size++;
       } else {
-        w  = *buf++;
+        w = *buf++;
       }
       w += (*buf++) << 8;
 #if FLASH_COMPLEMENT_DATA
-      w  = ~w;
+      w = ~w;
 #endif /*FLASH_COMPLEMENT_DATA*/
       boot_page_fill(addr32, w);
-      size-=2;
-/* Below ought to work but writing to 0xnnnnnnfe modifies the NEXT flash page
-   for some reason, at least in the AVR Studio simulator.
-      if ((addr32&0x000000ff)==0x000000fe) { //handle page boundary
+      size -= 2;
+      /* Below ought to work but writing to 0xnnnnnnfe modifies the NEXT flash page
+         for some reason, at least in the AVR Studio simulator.
+            if ((addr32&0x000000ff)==0x000000fe) { //handle page boundary
+              if (size) {
+                boot_page_erase(addr32);
+                boot_spm_busy_wait();
+                boot_page_write(addr32);
+                boot_spm_busy_wait();
+              }
+            }
+             addr32+=2;
+       */
+
+      /* This works...*/
+      addr32 += 2;
+      if ((addr32 & 0x000000ff) == 0) { //handle page boundary
         if (size) {
+          addr32 -= 0x42; //get an address within the page
           boot_page_erase(addr32);
           boot_spm_busy_wait();
           boot_page_write(addr32);
           boot_spm_busy_wait();
-        }
-      }
-       addr32+=2;
-*/
-       
-/* This works...*/
-      addr32+=2;
-      if ((addr32&0x000000ff)==0) {    //handle page boundary
-        if (size) {
-          addr32-=0x42;                //get an address within the page
-          boot_page_erase(addr32);
-          boot_spm_busy_wait();
-          boot_page_write(addr32);
-          boot_spm_busy_wait();
-          addr32+=0x42;
+          addr32 += 0x42;
         }
       }
     }
     /* Copy the remainder of the existing page */
-    while (ba>1) {
-      w=pgm_read_word_far(addr32);
-      if (size) {                     //handle odd byte boundary
+    while (ba > 1) {
+      w = pgm_read_word_far(addr32);
+      if (size) { //handle odd byte boundary
         w &= 0xff00;
 #if FLASH_COMPLEMENT_DATA
-        w +=~(*buf);
+        w += ~(*buf);
 #else
-        w +=*buf;
+        w += *buf;
 #endif /*FLASH_COMPLEMENT_DATA*/
-        size=0;
+        size = 0;
       }
-      boot_page_fill(addr32,w);
-      addr32+=2;
-      ba-=2;
+      boot_page_fill(addr32, w);
+      addr32 += 2;
+      ba -= 2;
     }
-  /* If buf is null, erase the page to zero */
+    /* If buf is null, erase the page to zero */
   } else {
 #if FLASH_COMPLEMENT_DATA
-    addr32+=2*SPM_PAGESIZE;
+    addr32 += 2 * SPM_PAGESIZE;
 #else
-    for (w=0;w<SPM_PAGESIZE;w++) {
+    for (w = 0; w < SPM_PAGESIZE; w++) {
       boot_page_fill(addr32, 0);
-      addr32+=2;
+      addr32 += 2;
     }
 #endif /*FLASH_COMPLEMENT_DATA*/
   }
-/* Write the last (or only) page */
-  addr32-=0x42; //get an address within the page
+  /* Write the last (or only) page */
+  addr32 -= 0x42; //get an address within the page
   boot_page_erase(addr32);
   boot_spm_busy_wait();
 #if FLASH_COMPLEMENT_DATA
-  if (buf) {                      //don't write zeroes to erased page
+  if (buf) { //don't write zeroes to erased page
     boot_page_write(addr32);
     boot_spm_busy_wait();
   }
@@ -721,183 +324,195 @@ avr_flash_write(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE si
 #endif /* COFFEE_AVR_FLASH */
 
 
+/*---------------------------------------------------------------------------*/
+/*-----------------------External FLASH ROUTINES-----------------------------*/
+/*---------------------------------------------------------------------------*/
 #ifdef COFFEE_AVR_EXTERNAL
 
-#include "interfaces/at45db.h"
+#include "dev/at45db.h"
+void
+external_flash_write_page(coffee_page_t page, CFS_CONF_OFFSET_TYPE offset, uint8_t * buf, CFS_CONF_OFFSET_TYPE size)
+{
+  PRINTF("external_flash_write_page(page %u, offset %u, buf %p, size %u) \n", page, offset, buf, size);
 
-void external_flash_write_page(coffee_page_t page, CFS_CONF_OFFSET_TYPE offset, uint8_t * buf, CFS_CONF_OFFSET_TYPE size) {
-	PRINTF("external_flash_write_page(page %u, offset %u, buf %p, size %u) \n", page, offset, buf, size);
+  if (size < 1) {
+    return;
+  }
 
-	if( size < 1 ) {
-		return;
-	}
+  if (page > COFFEE_PAGES) {
+    return;
+  }
 
-	if( page > COFFEE_PAGES ) {
-		return;
-	}
+  unsigned char buffer[COFFEE_PAGE_SIZE];
 
-	unsigned char buffer[COFFEE_PAGE_SIZE];
+  // Now read the current content of that page
+  at45db_read_page_bypassed(page, 0, buffer, COFFEE_PAGE_SIZE);
 
-	// Now read the current content of that page
-	at45db_read_page_bypassed(page, 0, buffer, COFFEE_PAGE_SIZE);
+  watchdog_periodic();
 
-	watchdog_periodic();
+  // Copy over the new content
+  memcpy(buffer + offset, buf, size);
 
-	// Copy over the new content
-	memcpy(buffer + offset, buf, size);
+  // And write the page again
+  at45db_write_page(page, 0, buffer, COFFEE_PAGE_SIZE);
 
-	// And write the page again
-	at45db_write_page(page, 0, buffer, COFFEE_PAGE_SIZE);
+  watchdog_periodic();
 
-	watchdog_periodic();
-
-	PRINTF("Page %u programmed with %u bytes (%u new)\n", page, COFFEE_PAGE_SIZE, size);
+  PRINTF("Page %u programmed with %u bytes (%u new)\n", page, COFFEE_PAGE_SIZE, size);
 }
+/*----------------------------------------------------------------------------*/
+void
+external_flash_write(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE size)
+{
+  PRINTF(">>>>> external_flash_write(addr %u, buf %p, size %u)\n", addr, buf, size);
 
-void external_flash_write(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE size) {
-	PRINTF(">>>>> external_flash_write(addr %u, buf %p, size %u)\n", addr, buf, size);
+  if (addr > COFFEE_SIZE) {
+    return;
+  }
 
-	if( addr > COFFEE_SIZE ) {
-		return;
-	}
+  // Which is the first page we will be programming
+  coffee_page_t current_page = addr / COFFEE_PAGE_SIZE;
+  CFS_CONF_OFFSET_TYPE written = 0;
 
-	// Which is the first page we will be programming
-	coffee_page_t current_page = addr / COFFEE_PAGE_SIZE;
-	CFS_CONF_OFFSET_TYPE written = 0;
+  while (written < size) {
+    // get the start address of the current page
+    CFS_CONF_OFFSET_TYPE page_start = current_page * COFFEE_PAGE_SIZE;
+    CFS_CONF_OFFSET_TYPE offset = 0;
 
-	while(written < size) {
-		// get the start address of the current page
-		CFS_CONF_OFFSET_TYPE page_start = current_page * COFFEE_PAGE_SIZE;
-		CFS_CONF_OFFSET_TYPE offset = 0;
+    if (addr > page_start) {
+      // Frist page offset
+      offset = addr - page_start;
+    }
 
-		if( addr > page_start ) {
-			// Frist page offset
-			offset = addr - page_start;
-		}
+    CFS_CONF_OFFSET_TYPE length = size - written;
 
-		CFS_CONF_OFFSET_TYPE length = size - written;
+    if (length > (COFFEE_PAGE_SIZE - offset)) {
+      length = COFFEE_PAGE_SIZE - offset;
+    }
 
-		if( length > (COFFEE_PAGE_SIZE - offset) ) {
-			length = COFFEE_PAGE_SIZE - offset;
-		}
-
-		external_flash_write_page(current_page, offset, buf + written, length);
-		written += length;
-		current_page++;
-	}
+    external_flash_write_page(current_page, offset, buf + written, length);
+    written += length;
+    current_page++;
+  }
 
 #if DEBUG
-	int g;
-	printf("WROTE: ");
-	for(g=0; g<size; g++) {
-		printf("%02X %c ", buf[g] & 0xFF, buf[g] & 0xFF);
-	}
-	printf("\n");
+  int g;
+  printf("WROTE: ");
+  for (g = 0; g < size; g++) {
+    printf("%02X %c ", buf[g] & 0xFF, buf[g] & 0xFF);
+  }
+  printf("\n");
 #endif
 }
+/*----------------------------------------------------------------------------*/
+void
+external_flash_read_page(coffee_page_t page, CFS_CONF_OFFSET_TYPE offset, uint8_t *buf, CFS_CONF_OFFSET_TYPE size)
+{
+  PRINTF("external_flash_read_page(page %u, offset %u, buf %p, size %u)\n", page, offset, buf, size);
 
-void external_flash_read_page(coffee_page_t page, CFS_CONF_OFFSET_TYPE offset, uint8_t *buf, CFS_CONF_OFFSET_TYPE size) {
-	PRINTF("external_flash_read_page(page %u, offset %u, buf %p, size %u)\n", page, offset, buf, size );
+  if (page > COFFEE_PAGES) {
+    return;
+  }
 
-	if( page > COFFEE_PAGES ) {
-		return;
-	}
+  at45db_read_page_bypassed(page, offset, buf, size);
+  watchdog_periodic();
 
-	at45db_read_page_bypassed(page, offset, buf, size);
-	watchdog_periodic();
-
-#if DEBUG
-	int g;
-	printf("READ: ");
-	for(g=0; g<size; g++) {
-		printf("%02X %c ", buf[g] & 0xFF, buf[g] & 0xFF);
-	}
-	printf("\n");
+#if DEBUG > 1
+  int g;
+  printf("READ: ");
+  for (g = 0; g < size; g++) {
+    printf("%02X %c ", buf[g] & 0xFF, buf[g] & 0xFF);
+  }
+  printf("\n");
 #endif
 }
+/*----------------------------------------------------------------------------*/
+void
+external_flash_read(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE size)
+{
+  PRINTF(">>>>> external_flash_read(addr %u, buf %p, size %u)\n", addr, buf, size);
 
-void external_flash_read(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE size) {
-	PRINTF(">>>>> external_flash_read(addr %u, buf %p, size %u)\n", addr, buf, size );
+  if (size < 1) {
+    return;
+  }
 
-	if( size < 1 ) {
-		return;
-	}
+  if (addr > COFFEE_SIZE) {
+    return;
+  }
 
-	if( addr > COFFEE_SIZE ) {
-		return;
-	}
+  // First of all: find out what the number of the page is
+  coffee_page_t current_page = addr / COFFEE_PAGE_SIZE;
+  CFS_CONF_OFFSET_TYPE read = 0;
 
-	// First of all: find out what the number of the page is
-	coffee_page_t current_page = addr / COFFEE_PAGE_SIZE;
-	CFS_CONF_OFFSET_TYPE read = 0;
+  while (read < size) {
+    // get the start address of the current page
+    CFS_CONF_OFFSET_TYPE page_start = current_page * COFFEE_PAGE_SIZE;
+    CFS_CONF_OFFSET_TYPE offset = 0;
 
-	while( read < size ) {
-		// get the start address of the current page
-		CFS_CONF_OFFSET_TYPE page_start = current_page * COFFEE_PAGE_SIZE;
-		CFS_CONF_OFFSET_TYPE offset = 0;
+    if (addr > page_start) {
+      // Frist page offset
+      offset = addr - page_start;
+    }
 
-		if( addr > page_start ) {
-			// Frist page offset
-			offset = addr - page_start;
-		}
+    CFS_CONF_OFFSET_TYPE length = size - read;
 
-		CFS_CONF_OFFSET_TYPE length = size - read;
+    if (length > (COFFEE_PAGE_SIZE - offset)) {
+      length = (COFFEE_PAGE_SIZE - offset);
+    }
 
-		if( length > (COFFEE_PAGE_SIZE - offset) ) {
-			length = (COFFEE_PAGE_SIZE - offset);
-		}
+    external_flash_read_page(current_page, offset, buf + read, length);
 
-		external_flash_read_page(current_page, offset, buf + read, length);
+//    PRINTF("Page %u read with %u bytes (offset %u)\n", h, length, offset);
 
-		PRINTF("Page %u read with %u bytes (offset %u)\n", h, length, offset);
+    read += length;
+    current_page++;
+  }
 
-		read += length;
-		current_page++;
-	}
-
-#if DEBUG
-	int g;
-	printf("READ: ");
-	for(g=0; g<size; g++) {
-		printf("%02X %c ", buf[g] & 0xFF, buf[g] & 0xFF);
-	}
-	printf("\n");
+#if DEBUG > 1
+  int g;
+  printf("READ: ");
+  for (g = 0; g < size; g++) {
+    printf("%02X %c ", buf[g] & 0xFF, buf[g] & 0xFF);
+  }
+  printf("\n");
 #endif
 }
+/*----------------------------------------------------------------------------*/
+void
+external_flash_erase(coffee_page_t page)
+{
+  if (page > COFFEE_PAGES) {
+    return;
+  }
 
-void external_flash_erase(coffee_page_t page) {
-	if( page > COFFEE_PAGES ) {
-		return;
-	}
+  PRINTF("external_flash_erase(page %u)\n", page);
 
-	PRINTF("external_flash_erase(page %u)\n", page);
-
-	at45db_erase_page(page);
-	watchdog_periodic();
+  at45db_erase_page(page);
+  watchdog_periodic();
 }
 
 /*
 void external_flash_erase(coffee_page_t sector) {
-	if( sector > COFFEE_SECTORS ) {
-		return;
-	}
+  if( sector > COFFEE_SECTORS ) {
+    return;
+  }
 
-	// This has to erase the contents of a whole sector
-	// AT45DB cannot directly delete a sector, we have to do it manually
-	PRINTF("external_flash_erase(sector %u)\n", sector);
-	CFS_CONF_OFFSET_TYPE h;
+  // This has to erase the contents of a whole sector
+  // AT45DB cannot directly delete a sector, we have to do it manually
+  PRINTF("external_flash_erase(sector %u)\n", sector);
+  CFS_CONF_OFFSET_TYPE h;
 
-	coffee_page_t start = sector * COFFEE_BLOCKS_PER_SECTOR;
-	coffee_page_t end = start + COFFEE_BLOCKS_PER_SECTOR;
+  coffee_page_t start = sector * COFFEE_BLOCKS_PER_SECTOR;
+  coffee_page_t end = start + COFFEE_BLOCKS_PER_SECTOR;
 
-	for(h=start; h<end; h++) {
-		PRINTF("Deleting block %u\n", h);
+  for(h=start; h<end; h++) {
+    PRINTF("Deleting block %u\n", h);
 
-		at45db_erase_block(h);
-		watchdog_periodic();
-	}
+    at45db_erase_block(h);
+    watchdog_periodic();
+  }
 }
-*/
+ */
 
 #endif /* COFFEE_AVR_EXTERNAL */
 
@@ -905,156 +520,220 @@ void external_flash_erase(coffee_page_t sector) {
 #include "cfs/fat/diskio.h"
 static uint8_t cfs_buffer[512];
 struct diskio_device_info *cfs_info = 0;
+void
+sd_write_page(coffee_page_t page, CFS_CONF_OFFSET_TYPE offset, uint8_t * buf, CFS_CONF_OFFSET_TYPE size)
+{
+  PRINTF("sd_write_page(page %lu, offset %lu, buf %p, size %lu) \n", page, offset, buf, size);
 
-void sd_write_page(coffee_page_t page, CFS_CONF_OFFSET_TYPE offset, uint8_t * buf, CFS_CONF_OFFSET_TYPE size) {
-	PRINTF("sd_write_page(page %lu, offset %lu, buf %p, size %lu) \n", page, offset, buf, size);
+  if (size < 1) {
+    return;
+  }
 
-	if( size < 1 ) {
-		return;
-	}
+  if (page > COFFEE_PAGES) {
+    return;
+  }
 
-	if( page > COFFEE_PAGES ) {
-		return;
-	}
+  // Now read the current content of that page
+  diskio_read_block(cfs_info, page, cfs_buffer);
 
-	// Now read the current content of that page
-	diskio_read_block( cfs_info, page, cfs_buffer );
+  watchdog_periodic();
 
-	watchdog_periodic();
+  // Copy over the new content
+  memcpy(cfs_buffer + offset, buf, size);
 
-	// Copy over the new content
-	memcpy(cfs_buffer + offset, buf, size);
+  // And write the page again
+  diskio_write_block(cfs_info, page, cfs_buffer);
 
-	// And write the page again
-	diskio_write_block( cfs_info, page, cfs_buffer );
+  watchdog_periodic();
 
-	watchdog_periodic();
-
-	PRINTF("Page %lu programmed with %lu bytes (%lu new)\n", page, COFFEE_PAGE_SIZE, size);
+  PRINTF("Page %lu programmed with %lu bytes (%lu new)\n", page, COFFEE_PAGE_SIZE, size);
 }
+/*----------------------------------------------------------------------------*/
+void
+sd_write(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE size)
+{
+  PRINTF(">>>>> sd_write(addr %lu, buf %p, size %lu)\n", addr, buf, size);
 
-void sd_write(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE size) {
-	PRINTF(">>>>> sd_write(addr %lu, buf %p, size %lu)\n", addr, buf, size);
+  if (addr > COFFEE_SIZE) {
+    return;
+  }
 
-	if( addr > COFFEE_SIZE ) {
-		return;
-	}
+  // Which is the first page we will be programming
+  coffee_page_t current_page = addr / COFFEE_PAGE_SIZE;
+  CFS_CONF_OFFSET_TYPE written = 0;
 
-	// Which is the first page we will be programming
-	coffee_page_t current_page = addr / COFFEE_PAGE_SIZE;
-	CFS_CONF_OFFSET_TYPE written = 0;
+  while (written < size) {
+    // get the start address of the current page
+    CFS_CONF_OFFSET_TYPE page_start = current_page * COFFEE_PAGE_SIZE;
+    CFS_CONF_OFFSET_TYPE offset = 0;
 
-	while(written < size) {
-		// get the start address of the current page
-		CFS_CONF_OFFSET_TYPE page_start = current_page * COFFEE_PAGE_SIZE;
-		CFS_CONF_OFFSET_TYPE offset = 0;
+    if (addr > page_start) {
+      // Frist page offset
+      offset = addr - page_start;
+    }
 
-		if( addr > page_start ) {
-			// Frist page offset
-			offset = addr - page_start;
-		}
+    CFS_CONF_OFFSET_TYPE length = size - written;
 
-		CFS_CONF_OFFSET_TYPE length = size - written;
+    if (length > (COFFEE_PAGE_SIZE - offset)) {
+      length = COFFEE_PAGE_SIZE - offset;
+    }
 
-		if( length > (COFFEE_PAGE_SIZE - offset) ) {
-			length = COFFEE_PAGE_SIZE - offset;
-		}
-
-		sd_write_page(current_page, offset, buf + written, length);
-		written += length;
-		current_page++;
-	}
+    sd_write_page(current_page, offset, buf + written, length);
+    written += length;
+    current_page++;
+  }
 
 #if DEBUG
-	int g;
-	printf("WROTE: ");
-	for(g=0; g<size; g++) {
-		printf("%02X ", buf[g] & 0xFF, buf[g] & 0xFF);
-	}
-	printf("\n");
+  int g;
+  printf("WROTE: ");
+  for (g = 0; g < size; g++) {
+    printf("%02X ", buf[g] & 0xFF, buf[g] & 0xFF);
+  }
+  printf("\n");
 #endif
 }
+/*----------------------------------------------------------------------------*/
+void
+sd_read_page(coffee_page_t page, CFS_CONF_OFFSET_TYPE offset, uint8_t *buf, CFS_CONF_OFFSET_TYPE size)
+{
+  PRINTF("sd_read_page(page %lu, offset %lu, buf %p, size %lu)\n", page, offset, buf, size);
 
-void sd_read_page(coffee_page_t page, CFS_CONF_OFFSET_TYPE offset, uint8_t *buf, CFS_CONF_OFFSET_TYPE size) {
-	PRINTF("sd_read_page(page %lu, offset %lu, buf %p, size %lu)\n", page, offset, buf, size );
+  if (page > COFFEE_PAGES) {
+    return;
+  }
 
-	if( page > COFFEE_PAGES ) {
-		return;
-	}
-
-	diskio_read_block( cfs_info, page, cfs_buffer );
-	memcpy(buf, cfs_buffer + offset, size);
+  diskio_read_block(cfs_info, page, cfs_buffer);
+  memcpy(buf, cfs_buffer + offset, size);
 
 #if DEBUG
-	int g;
-	printf("READ: ");
-	for(g=0; g<size; g++) {
-		printf("%02X ", buf[g] & 0xFF, buf[g] & 0xFF);
-	}
-	printf("\n");
+  int g;
+  printf("READ: ");
+  for (g = 0; g < size; g++) {
+    printf("%02X ", buf[g] & 0xFF, buf[g] & 0xFF);
+  }
+  printf("\n");
 #endif
 
 }
+/*----------------------------------------------------------------------------*/
+void
+sd_read(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE size)
+{
+  PRINTF(">>>>> sd_read(addr %lu, buf %p, size %lu)\n", addr, buf, size);
 
-void sd_read(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE size) {
-	PRINTF(">>>>> sd_read(addr %lu, buf %p, size %lu)\n", addr, buf, size );
+  if (size < 1) {
+    return;
+  }
 
-	if( size < 1 ) {
-		return;
-	}
+  if (addr > COFFEE_SIZE) {
+    return;
+  }
 
-	if( addr > COFFEE_SIZE ) {
-		return;
-	}
+  // First of all: find out what the number of the page is
+  coffee_page_t current_page = addr / COFFEE_PAGE_SIZE;
+  CFS_CONF_OFFSET_TYPE read = 0;
 
-	// First of all: find out what the number of the page is
-	coffee_page_t current_page = addr / COFFEE_PAGE_SIZE;
-	CFS_CONF_OFFSET_TYPE read = 0;
+  while (read < size) {
+    // get the start address of the current page
+    CFS_CONF_OFFSET_TYPE page_start = current_page * COFFEE_PAGE_SIZE;
+    CFS_CONF_OFFSET_TYPE offset = 0;
 
-	while( read < size ) {
-		// get the start address of the current page
-		CFS_CONF_OFFSET_TYPE page_start = current_page * COFFEE_PAGE_SIZE;
-		CFS_CONF_OFFSET_TYPE offset = 0;
+    if (addr > page_start) {
+      // Frist page offset
+      offset = addr - page_start;
+    }
 
-		if( addr > page_start ) {
-			// Frist page offset
-			offset = addr - page_start;
-		}
+    CFS_CONF_OFFSET_TYPE length = size - read;
 
-		CFS_CONF_OFFSET_TYPE length = size - read;
+    if (length > (COFFEE_PAGE_SIZE - offset)) {
+      length = (COFFEE_PAGE_SIZE - offset);
+    }
 
-		if( length > (COFFEE_PAGE_SIZE - offset) ) {
-			length = (COFFEE_PAGE_SIZE - offset);
-		}
+    sd_read_page(current_page, offset, buf + read, length);
 
-		sd_read_page(current_page, offset, buf + read, length);
+    PRINTF("Page %lu read with %lu bytes (offset %lu)\n", current_page, length, offset);
 
-		PRINTF("Page %lu read with %lu bytes (offset %lu)\n", current_page, length, offset);
+    read += length;
+    current_page++;
+  }
 
-		read += length;
-		current_page++;
-	}
-
-#if DEBUG
-	int g;
-	printf("READ: ");
-	for(g=0; g<size; g++) {
-		printf("%02X ", buf[g] & 0xFF, buf[g] & 0xFF);
-	}
-	printf("\n");
+#if DEBUG > 1
+  int g;
+  printf("READ: ");
+  for (g = 0; g < size; g++) {
+    printf("%02X ", buf[g] & 0xFF, buf[g] & 0xFF);
+  }
+  printf("\n");
 #endif
 }
+/*----------------------------------------------------------------------------*/
+void
+sd_erase(coffee_page_t page)
+{
+  if (page > COFFEE_PAGES) {
+    return;
+  }
 
-void sd_erase(coffee_page_t page) {
-	if( page > COFFEE_PAGES ) {
-		return;
-	}
+  PRINTF("sd_erase(page %lu)\n", page);
+  memset(cfs_buffer, 0, 512);
 
-	PRINTF("sd_erase(page %lu)\n", page);
-	memset(cfs_buffer, 0, 512);
-
-	diskio_write_block( cfs_info, page, cfs_buffer );
-	watchdog_periodic();
+  diskio_write_block(cfs_info, page, cfs_buffer);
+  watchdog_periodic();
 }
 
 #endif /* COFFEE_AVR_SDCARD */
+
+
+/*---------------------------------------------------------------------------*/
+/*---------------------------http fs routines--------------------------------*/
+/*---------------------------------------------------------------------------*/
+
+/* @todo: move this to a seperate file? */
+/*httpd-fs routines
+  getchar is straigtforward.
+  strcmp only needs to handle file names for fs_open. Note filename in buf will not be zero terminated
+    if it fills the coffee name field, so a pseudo strcmp is done here.
+  strchr searches for script starts so must handle arbitrarily large strings
+ */
+char
+avr_httpd_fs_getchar(char *addr)
+{
+  char r;
+  http_fs_read((CFS_CONF_OFFSET_TYPE)(intptr_t) addr, (uint8_t*) & r, 1);
+  return r;
+}
+/*----------------------------------------------------------------------------*/
+int
+avr_httpd_fs_strcmp(char *ram, char *addr)
+{
+  uint8_t i, *in, buf[32];
+  http_fs_read((CFS_CONF_OFFSET_TYPE)(intptr_t) addr, buf, sizeof (buf));
+  //return strcmp(ram, (char *)buf);
+  in = (uint8_t *) ram;
+  for (i = 0; i < 32; i++) {
+    if (buf[i] == 0) return (0);
+    if (buf[i] != *in) break;
+    in++;
+  }
+  /* A proper strcmp would return a + or minus number based on the last comparison*/
+  //if (buf[i]>*in) return(i); else return(-i);
+  return (i);
+}
+/*----------------------------------------------------------------------------*/
+char *
+avr_httpd_fs_strchr(char *addr, int character)
+{
+  char buf[129], *pptr;
+  buf[128] = character;
+  while (1) {
+    http_fs_read((CFS_CONF_OFFSET_TYPE)(intptr_t) addr, (uint8_t *) buf, 128);
+    pptr = strchr(buf, character);
+    if (pptr != &buf[128]) {
+      if (pptr == 0) return 0;
+      return (addr + (pptr - buf));
+    }
+    addr += 128;
+  }
+
+}
+
