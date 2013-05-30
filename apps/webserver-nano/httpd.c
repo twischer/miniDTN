@@ -94,7 +94,6 @@ static
 PT_THREAD(send_file(struct httpd_state *s))
 {
   PSOCK_BEGIN(&s->sout);
-  
   do {
     PSOCK_GENERATOR_SEND(&s->sout, generate, s);
     s->file.len  -= s->len;
@@ -184,7 +183,7 @@ PT_THREAD(handle_script(struct httpd_state *s))
   while(s->file.len > 0) {
     /* Sanity check */
     if (s->file.len > filelength) break;
-    
+
     /* Check if we should start executing a script, flagged by %! */
     if(httpd_fs_getchar(s->file.data) == ISO_percent &&
        httpd_fs_getchar(s->file.data + 1) == ISO_bang) {
@@ -435,6 +434,9 @@ PT_THREAD(handle_input(struct httpd_state *s))
   webserver_log_file(&uip_conn->ripaddr, s->filename);
 //  webserver_log(httpd_query);
 #endif
+#if WEBSERVER_CONF_LOADTIME
+    s->pagetime = clock_time();
+#endif
   s->state = STATE_OUTPUT;
   while(1) {
     PSOCK_READTO(&s->sin, ISO_nl);
@@ -487,11 +489,18 @@ httpd_appcall(void *state)
     PT_INIT(&s->outputpt);
     s->state = STATE_WAITING;
     s->timer = 0;
+#if WEBSERVER_CONF_AJAX
+    s->ajax_timeout = WEBSERVER_CONF_TIMEOUT;
+#endif
     handle_connection(s);
   } else if(s != NULL) {
     if(uip_poll()) {
       ++s->timer;
-      if(s->timer >= 20) {
+#if WEBSERVER_CONF_AJAX
+      if(s->timer >= s->ajax_timeout) {
+#else
+      if(s->timer >= WEBSERVER_CONF_TIMEOUT) {
+#endif
         uip_abort();
         memb_free(&conns, s);
       }
@@ -507,6 +516,7 @@ httpd_appcall(void *state)
 void
 httpd_init(void)
 {
+  printf("--------------------------------------------------------------");
   tcp_listen(UIP_HTONS(80));
   memb_init(&conns);
   PRINTD(" sizof(struct httpd_state) = %d\n",sizeof(struct httpd_state));
