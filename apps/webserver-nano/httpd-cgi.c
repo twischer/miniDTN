@@ -225,9 +225,15 @@ generate_header(void *arg)
   numprinted+=httpd_snprintf((char *)uip_appdata+numprinted, uip_mss()-numprinted, httpd_cgi_headerme);
 #endif /* WEBSERVER_CONF_MENU */
 
-#if UIP_RECEIVE_WINDOW < _MSS1+_MSS2+_MSS3_+MSS4_+MSS5_MSS6+_MSS7+_MSS8
+#if UIP_RECEIVE_WINDOW < _MSS1+_MSS2+_MSS3+_MSS4+_MSS5+_MSS6+_MSS7+_MSS8
 #warning ************************************************************
 #warning UIP_RECEIVE_WINDOW not large enough for header cgi output.
+#warning Web pages will not render properly!
+#warning ************************************************************
+#endif
+#if UIP_CONF_BUFFER_SIZE < _MSS1+_MSS2+_MSS3+_MSS4+_MSS5+_MSS6+_MSS7+_MSS8
+#warning ************************************************************
+#warning UIP_CONF_BUFFER_SIZE not large enough for header cgi output.
 #warning Web pages will not render properly!
 #warning ************************************************************
 #endif

@@ -184,7 +184,7 @@ PT_THREAD(handle_script(struct httpd_state *s))
   while(s->file.len > 0) {
     /* Sanity check */
     if (s->file.len > filelength) break;
-
+    
     /* Check if we should start executing a script, flagged by %! */
     if(httpd_fs_getchar(s->file.data) == ISO_percent &&
        httpd_fs_getchar(s->file.data + 1) == ISO_bang) {
@@ -197,6 +197,8 @@ PT_THREAD(handle_script(struct httpd_state *s))
 #if WEBSERVER_CONF_INCLUDE
          if (httpd_fs_open(&scriptname[1], &s->file)) {
            PT_WAIT_THREAD(&s->scriptpt, send_file(s));
+         } else {
+           PRINTD("failed opening %s\n", scriptname);
          }
 		 /*TODO dont print anything if file not found */
 #endif
@@ -243,7 +245,7 @@ PT_THREAD(handle_script(struct httpd_state *s))
 #endif /* WEBSERVER_CONF_INCLUDE || WEBSERVER_CONF_CGI */
 /*---------------------------------------------------------------------------*/
 const char httpd_http[]     HTTPD_STRING_ATTR = "HTTP/1.0 ";
-const char httpd_server[]   HTTPD_STRING_ATTR = "\r\nServer: Contiki/2.0 http://www.sics.se/contiki/\r\nConnection: close\r\n";
+const char httpd_server[]   HTTPD_STRING_ATTR = "\r\nServer: Contiki2.5\r\nConnection: close\r\n";
 static unsigned short
 generate_status(void *sstr)
 {
@@ -378,7 +380,7 @@ sendfile:
       PT_WAIT_THREAD(&s->outputpt, handle_script(s));
     } else {
 #else
-    if (1)
+    if (1) {
 #endif
       PT_WAIT_THREAD(&s->outputpt, send_file(s));
     }
