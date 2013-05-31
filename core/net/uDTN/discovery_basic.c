@@ -382,6 +382,9 @@ PROCESS_THREAD(discovery_process, ev, data)
 				if( entry->active && (clock_time() - entry->timestamp) > (DISCOVERY_NEIGHBOUR_TIMEOUT * CLOCK_SECOND) ) {
 					LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_INF, "Neighbour %u.%u timed out: %lu vs. %lu = %lu", entry->neighbour.u8[0], entry->neighbour.u8[1], clock_time(), entry->timestamp, clock_time() - entry->timestamp);
 
+					// Tell the CL that this neighbour has disappeared
+					convergence_layer_neighbour_down(&entry->neighbour);
+
 					memb_free(&neighbour_mem, entry);
 					list_remove(neighbour_list, entry);
 				}
