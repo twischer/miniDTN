@@ -349,6 +349,9 @@ void discovery_ipnd_delete_neighbour(rimeaddr_t * neighbour)
 
 	LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_INF, "Neighbour %u.%u disappeared", neighbour->u8[0], neighbour->u8[1]);
 
+	// Tell the CL that this neighbour has disappeared
+	convergence_layer_neighbour_down(neighbour);
+
 	for(entry = list_head(neighbour_list);
 			entry != NULL;
 			entry = entry->next) {

@@ -147,6 +147,8 @@ int convergence_layer_status(void * pointer, uint8_t status);
 
 int convergence_layer_delete_bundle(uint32_t bundle_number);
 
+int convergence_layer_neighbour_down(rimeaddr_t * neighbour);
+
 #endif /* CONVERGENCE_LAYER */
 
 /** @} */

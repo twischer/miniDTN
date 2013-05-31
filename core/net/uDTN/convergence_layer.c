@@ -836,6 +836,33 @@ void check_blocked_neighbours() {
 	process_poll(&convergence_layer_process);
 }
 
+int convergence_layer_neighbour_down(rimeaddr_t * neighbour) {
+	struct transmit_ticket_t * ticket = NULL;
+	int changed = 1;
+
+	if( neighbour == NULL ) {
+		return -1;
+	}
+
+	while( changed ) {
+		changed = 0;
+
+		/* Go and look for a ticket for this neighbour */
+		for(ticket = list_head(transmission_ticket_list);
+			ticket != NULL;
+			ticket = list_item_next(ticket) ) {
+
+			if( rimeaddr_cmp(neighbour, &ticket->neighbour) ) {
+				changed = 1;
+				convergence_layer_free_transmit_ticket(ticket);
+				break;
+			}
+		}
+	}
+
+	return 1;
+}
+
 PROCESS_THREAD(convergence_layer_process, ev, data)
 {
 	struct transmit_ticket_t * ticket = NULL;
