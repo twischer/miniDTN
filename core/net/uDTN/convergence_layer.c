@@ -688,9 +688,11 @@ int convergence_layer_status(void * pointer, uint8_t outcome)
 	/* Bundle did not get an ACK, increase try counter */
 	if( outcome == CONVERGENCE_LAYER_STATUS_NOACK ) {
 		ticket->tries ++;
+	} else if( outcome == CONVERGENCE_LAYER_STATUS_NOSEND ) {
+		ticket->failed_tries ++;
 	}
 
-	if( ticket->tries >= CONVERGENCE_LAYER_RETRIES ) {
+	if( ticket->tries >= CONVERGENCE_LAYER_RETRIES || ticket->failed_tries >= CONVERGENCE_LAYER_FAILED_RETRIES ) {
 		/* Bundle fails over and over again, notify routing */
 		ticket->flags = CONVERGENCE_LAYER_QUEUE_FAIL;
 

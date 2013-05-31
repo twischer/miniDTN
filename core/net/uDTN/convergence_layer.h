@@ -40,6 +40,11 @@
 #define CONVERGENCE_LAYER_RETRIES				3
 
 /**
+ * How often shell we retry to transmit, if it has not been transmitted at all?
+ */
+#define CONVERGENCE_LAYER_FAILED_RETRIES		10
+
+/**
  * How long shall we wait for an app-layer ACK or NACK? [in seconds]
  */
 #define CONVERGENCE_LAYER_TIMEOUT			5
@@ -126,6 +131,7 @@ struct transmit_ticket_t {
 
 	uint8_t flags;
 	uint8_t tries;
+	uint8_t failed_tries;
 	rimeaddr_t neighbour;
 	uint32_t bundle_number;
 	uint8_t sequence_number;
