@@ -28,7 +28,7 @@
  *
  * This file is part of the Contiki operating system.
  *
- * $Id: pdsrdc.c,v 1.4 2010/11/23 18:11:00 nifi Exp $
+ * $Id: discovery_aware_rdc.c,v 1.4 2010/11/23 18:11:00 nifi Exp $
  */
 
 /**

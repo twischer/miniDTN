@@ -18,6 +18,7 @@
 #include "logging.h"
 #include "agent.h"
 #include "discovery_scheduler.h"
+#include "discovery_scheduler_events.h"
 #include "discovery.h"
 
 #include "net/netstack.h"
@@ -102,12 +103,12 @@ PROCESS_THREAD(discovery_scheduler_pds_process, ev, data)
 		if (sched_state) {
 			LOG(LOGD_DTN, LOG_DISCOVERY_SCHEDULER, LOGL_DBG, "DISCOVERY SCHEDULER PDS: begin of discovery phase");
 			//process_post(PROCESS_BROADCAST, 0xA2, 0);
-			process_post(&discovery_aware_rdc_process, 0xA2, 0);
+			process_post(&discovery_aware_rdc_process,dtn_disco_start_event , 0);
 			DISCOVERY.start();
 		} else {
 			LOG(LOGD_DTN, LOG_DISCOVERY_SCHEDULER, LOGL_DBG, "DISCOVERY SCHEDULER PDS: end of discovery phase");
 			//process_post(PROCESS_BROADCAST, 0xA3, 0);
-			process_post(&discovery_aware_rdc_process, 0xA3, 0);
+			process_post(&discovery_aware_rdc_process, dtn_disco_stop_event, 0);
 			DISCOVERY.stop();
 		}
 

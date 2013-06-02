@@ -4,7 +4,7 @@
  */
 
 /**
- * \defgroup discovery_pds PDS discovery module
+ * \defgroup discovery_simple Simple discovery module
  *
  * @{
  */
@@ -15,6 +15,8 @@
  *
  * \author André Frambach <frambach@ibr.cs.tu-bs.de>
  */
+#include <string.h>
+
 #include "logging.h"
 
 #include "dtn_network.h"
