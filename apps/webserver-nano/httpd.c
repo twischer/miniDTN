@@ -30,7 +30,13 @@
  *
  */
 
- /* Configurable Contiki Webserver - see httpd.h */
+/**
+ * \file Configurable Contiki Webserver
+ * 
+ * \author
+ *  Adam Dunkels
+ *  Enrico Jörns
+ */
 
 #include <string.h>
 #include <stdio.h>
@@ -80,54 +86,62 @@ static unsigned short
 generate(void *state)
 {
   struct httpd_state *s = (struct httpd_state *)state;
-
-  if(s->file.len > uip_mss()) {
-    s->len = uip_mss();
-  } else {
-    s->len = s->file.len;
+  
+  if (s->sendlen > uip_mss()) {
+    PRINTD("httpd: Send length too large to be sent.\n");
   }
-  httpd_fs_cpy(uip_appdata, s->file.data, s->len);
-  return s->len;
+
+  return httpd_fs_read(s->fd, uip_appdata, s->sendlen);
 }
 /*---------------------------------------------------------------------------*/
+/** 
+ * Sends file in blocks of max. uip_mss() size each
+ */
 static
 PT_THREAD(send_file(struct httpd_state *s))
 {
   PSOCK_BEGIN(&s->sout);
+  s->sendlen = uip_mss();
+  
   do {
+
     PSOCK_GENERATOR_SEND(&s->sout, generate, s);
-    s->file.len  -= s->len;
-    s->file.data += s->len;
-  } while(s->file.len > 0);
+
+  } while (httpd_fs_seek(s->fd, s->sendlen, HTTPD_SEEK_CUR) != s->sendlen - 1); // seek until EOF
 
   PSOCK_END(&s->sout);
 }
 /*---------------------------------------------------------------------------*/
 #if WEBSERVER_CONF_INCLUDE || WEBSERVER_CONF_CGI
+/* Sends s->len bytes of file. */
 static
 PT_THREAD(send_part_of_file(struct httpd_state *s))
 {
   PSOCK_BEGIN(&s->sout);
 
-  static int oldfilelen, oldlen;
-  static char * olddata;
+  static int tosend = s->sendlen;
 
-  //Store stuff that gets clobbered...
-  oldfilelen = s->file.len;
-  oldlen = s->len;
-  olddata = s->file.data;
+  do {
 
-  s->file.len = s->len;
-  do { 
-    PSOCK_GENERATOR_SEND(&s->sout, generate, s);
-    s->file.len -= s->len;
-    s->file.data += s->len;
-  } while(s->file.len > 0);
+    /* determine size of next packat to send */
+    s->sendlen = tosend > uip_mss() ? uip_mss() : tosend;
 
-  s->len = oldlen;
-  s->file.len = oldfilelen;
-  s->file.data = olddata;
-  
+    PSOCK_GENERATOR_SEND(&s->sout, generate, s); // sends up to uip_mss() bytes
+
+    /* Seek and check for end of file */
+    if (httpd_fs_seek(s->fd, s->sendlen, HTTPD_SEEK_CUR) == s->sendlen - 1) {
+      PRINTD("httpd: Reached EOF while sending\n");
+      tosend = 0;
+    }
+
+    if (tosend > s->sendlen) {
+      tosend -= s->sendlen;
+    } else {
+      tosend = 0;
+    }
+
+  } while (tosend > 0);
+
   PSOCK_END(&s->sout);
 }
 /*---------------------------------------------------------------------------*/
@@ -135,7 +149,7 @@ static void
 next_scriptstate(struct httpd_state *s)
 {
   char *p;
-/* Skip over any script parameters to the beginning of the next line */
+  /* Skip over any script parameters to the beginning of the next line */
   if((p = (char *)httpd_fs_strchr(s->scriptptr, ISO_nl)) != NULL) {
     p += 1;
     s->scriptlen -= (unsigned short)(p - s->scriptptr);
@@ -179,27 +193,29 @@ PT_THREAD(handle_script(struct httpd_state *s))
 
   PT_BEGIN(&s->scriptpt);
 
-  filelength=s->file.len;
-  while(s->file.len > 0) {
+  file length=files[s->fd].len;
+  while(files[s->fd].len > 0) {
     /* Sanity check */
-    if (s->file.len > filelength) break;
+    if (files[s->fd].len > filelength) break;
 
     /* Check if we should start executing a script, flagged by %! */
-    if(httpd_fs_getchar(s->file.data) == ISO_percent &&
-       httpd_fs_getchar(s->file.data + 1) == ISO_bang) {
+    if(httpd_fs_getchar(files[s->fd].data) == ISO_percent &&
+       httpd_fs_getchar(files[s->fd].data + 1) == ISO_bang) {
 
        /* Extract name, if starts with colon include file else call cgi */
-       s->scriptptr=get_scriptname(scriptname,s->file.data+2);
-       s->scriptlen=s->file.len-(s->scriptptr-s->file.data);
+       s->scriptptr=get_scriptname(scriptname,files[s->fd].data+2);
+       s->scriptlen=files[s->fd].len-(s->scriptptr-files[s->fd].data);
        PRINTD("httpd: Handle script named %s\n",scriptname);
        if(scriptname[0] == ISO_colon) {
 #if WEBSERVER_CONF_INCLUDE
-         if (httpd_fs_open(&scriptname[1], &s->file)) {
-           PT_WAIT_THREAD(&s->scriptpt, send_file(s));
-         } else {
-           PRINTD("failed opening %s\n", scriptname);
-         }
-		 /*TODO dont print anything if file not found */
+        s->fd = httpd_fs_open(&scriptname[1], HTTPD_FS_READ);
+        if (s->fd == -1) {
+          PRINTD("failed opening %s\n", scriptname);
+          /* TODO: handle */
+        }
+        PT_WAIT_THREAD(&s->scriptpt, send_file(s));
+        httpd_fs_close(s->fd);
+        /*TODO dont print anything if file not found */
 #endif
        } else {
 #if WEBSERVER_CONF_CGI
@@ -209,33 +225,34 @@ PT_THREAD(handle_script(struct httpd_state *s))
        next_scriptstate(s);
       
       /* Reset the pointers and continue sending the current file. */
-      s->file.data = s->scriptptr;
-      s->file.len  = s->scriptlen;
+      files[s->fd].data = s->scriptptr;
+      files[s->fd].len  = s->scriptlen;
     } else {
 
-     /* Send file up to the next potential script */
-      if(s->file.len > uip_mss()) {
-        s->len = uip_mss();
+      /* Send file up to the next potential script */
+      if(files[s->fd].len > uip_mss()) {
+        s->sendlen = uip_mss();
       } else {
-        s->len = s->file.len;
+        s->sendlen = files[s->fd].len;
       }
 
-      if(httpd_fs_getchar(s->file.data) == ISO_percent) {
-        pptr = (char *) httpd_fs_strchr(s->file.data + 1, ISO_percent);
+      /* get position of next percent character */
+      if(httpd_fs_getchar(files[s->fd].data) == ISO_percent) {
+        pptr = (char *) httpd_fs_strchr(files[s->fd].data + 1, ISO_percent);
       } else {
-        pptr = (char *) httpd_fs_strchr(s->file.data, ISO_percent);
+        pptr = (char *) httpd_fs_strchr(files[s->fd].data, ISO_percent);
       }
 
-      if(pptr != NULL && pptr != s->file.data) {
-        s->len = (int)(pptr - s->file.data);
+      /* calc new length to send */
+      if(pptr != NULL && pptr != files[s->fd].data) {
+        s->len = (int)(pptr - files[s->fd].data);
         if(s->len >= uip_mss()) {
           s->len = uip_mss();
         }
       }
-      PRINTD("httpd: Sending %u bytes from 0x%04x\n",s->file.len,(unsigned int)s->file.data);
+      PRINTD("httpd: Sending %u bytes from 0x%04x\n",files[s->fd].len,(unsigned int)files[s->fd].data);
       PT_WAIT_THREAD(&s->scriptpt, send_part_of_file(s));
-      s->file.data += s->len;
-      s->file.len  -= s->len;
+      httpd_fs_seek(s->fd, s->sendlen, HTTPD_SEEK_CUR);
     }
   }
 
@@ -244,7 +261,7 @@ PT_THREAD(handle_script(struct httpd_state *s))
 #endif /* WEBSERVER_CONF_INCLUDE || WEBSERVER_CONF_CGI */
 /*---------------------------------------------------------------------------*/
 const char httpd_http[]     HTTPD_STRING_ATTR = "HTTP/1.0 ";
-const char httpd_server[]   HTTPD_STRING_ATTR = "\r\nServer: Contiki2.5\r\nConnection: close\r\n";
+const char httpd_server[]   HTTPD_STRING_ATTR = "\r\nServer: Contiki2.6\r\nConnection: close\r\n";
 static unsigned short
 generate_status(void *sstr)
 {
@@ -356,25 +373,38 @@ PT_THREAD(handle_output(struct httpd_state *s))
   char *ptr;
   
   PT_BEGIN(&s->outputpt);
+  
 #if DEBUGLOGIC
-   httpd_strcpy(s->filename,httpd_indexfn);
+  httpd_strcpy(s->filename, httpd_indexfn);
 #endif
-  if(!httpd_fs_open(s->filename, &s->file)) {
+
+  s->fd = httpd_fs_open(s->filename, HTTPD_FS_READ);
+  if (s->fd == -1) {  // Opening file failed.
+
+    /* TODO: try index.htm ? */
 #if WEBSERVER_CONF_INCLUDE || WEBSERVER_CONF_CGI
     /* If index.html not found try index.shtml */
-    if (httpd_strcmp(s->filename,httpd_indexfn)==0) httpd_strcpy(s->filename,httpd_indexsfn);
-	if (httpd_fs_open(s->filename, &s->file)) goto sendfile;
+    if (httpd_strcmp(s->filename, httpd_indexfn) == 0) {
+      httpd_strcpy(s->filename, httpd_indexsfn);
+    }
+    s->fd = httpd_fs_open(s->filename, HTTPD_FS_READ);
+    if (s->fd != -1) goto sendfile;
 #endif
+    /* If nothing was found, send 404 page */
     httpd_strcpy(s->filename, httpd_404fn);
-    httpd_fs_open(s->filename, &s->file);
+    s->fd = httpd_fs_open(s->filename, HTTPD_FS_READ);
     PT_WAIT_THREAD(&s->outputpt, send_headers(s, httpd_404notf));
     PT_WAIT_THREAD(&s->outputpt, send_file(s));
-  } else {
+    
+  } else {  // Opening file succeeded.
+
 sendfile:
     PT_WAIT_THREAD(&s->outputpt, send_headers(s, httpd_200ok));
 #if WEBSERVER_CONF_INCLUDE || WEBSERVER_CONF_CGI
+    /* If filename ends with .shtml, scan file for script includes or cgi */
     ptr = strchr(s->filename, ISO_period);
-    if((ptr != NULL && httpd_strncmp(ptr, httpd_shtml, 6) == 0) || httpd_strcmp(s->filename,httpd_indexfn)==0) {
+    if ((ptr != NULL && httpd_strncmp(ptr, httpd_shtml, 6) == 0)
+            || httpd_strcmp(s->filename, httpd_indexfn) == 0) {
       PT_INIT(&s->scriptpt);
       PT_WAIT_THREAD(&s->outputpt, handle_script(s));
     } else {
@@ -382,9 +412,10 @@ sendfile:
     if (1) {
 #endif
       PT_WAIT_THREAD(&s->outputpt, send_file(s));
+      httpd_fs_close(s->fd);
     }
   }
-  PSOCK_CLOSE(&s->sout);
+  PSOCK_CLOSE(<y &s->sout);
   PT_END(&s->outputpt);
 }
 /*---------------------------------------------------------------------------*/
@@ -474,6 +505,10 @@ httpd_appcall(void *state)
   struct httpd_state *s = (struct httpd_state *)state;
   if(uip_closed() || uip_aborted() || uip_timedout()) {
     if(s != NULL) {
+      if(s->fd >= 0) {
+        httpd_fs_close(s->fd);
+        s->fd = -1;
+      }
       memb_free(&conns, s);
     }
   } else if(uip_connected()) {
@@ -499,9 +534,13 @@ httpd_appcall(void *state)
 #if WEBSERVER_CONF_AJAX
       if(s->timer >= s->ajax_timeout) {
 #else
-      if(s->timer >= WEBSERVER_CONF_TIMEOUT) {
+      if (s->timer >= WEBSERVER_CONF_TIMEOUT) {
 #endif
         uip_abort();
+        if (s->fd >= 0) {
+          httpd_fs_close(s->fd);
+          s->fd = -1;
+        }
         memb_free(&conns, s);
       }
     } else {
@@ -516,7 +555,7 @@ httpd_appcall(void *state)
 void
 httpd_init(void)
 {
-  printf("--------------------------------------------------------------");
+//  printf("--------------------------------------------------------------\n");
   tcp_listen(UIP_HTONS(80));
   memb_init(&conns);
   PRINTD(" sizof(struct httpd_state) = %d\n",sizeof(struct httpd_state));

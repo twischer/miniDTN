@@ -64,7 +64,7 @@
 #ifndef WEBSERVER_CONF_NANO
 #if CONTIKI_TARGET_SKY || CONTIKI_TARGET_STK500
 #define WEBSERVER_CONF_NANO 1
-#elif CONTIKI_TARGET_REDBEE_ECONOTAG || CONTIKI_TARGET_AVR_RAVEN || CONTIKI_TARGET_AVR_ATMEGA128RFA1
+#elif CONTIKI_TARGET_REDBEE_ECONOTAG || CONTIKI_TARGET_AVR_RAVEN || CONTIKI_TARGET_AVR_ATMEGA128RFA1 || CONTIKI_TARGET_INGA
 #define WEBSERVER_CONF_NANO 2
 #else
 #define WEBSERVER_CONF_NANO 3
@@ -233,7 +233,14 @@ uint8_t httpd_cgi_sprint_ip6(uip_ip6addr_t addr, char * result);
 #endif
 
 #include "contiki-net.h"
-#include "httpd-fs.h"
+//#include "httpd-fs.h"
+/* True means that a contiki file system is used */
+#ifndef HTTPD_CONF_CFS
+#define HTTPD_CONF_CFS 0
+#else
+#define HTTPD_CFS HTTPD_CONF_CFS
+#endif
+
 
 #if defined(__AVR__)
 /* When using non-ram storage httpd-fsdata.c must be generated with the HTTPD_STRING_ATTR, eg
@@ -279,8 +286,8 @@ struct httpd_state {
   char inputbuf[WEBSERVER_CONF_BUFSIZE];
   char filename[WEBSERVER_CONF_NAMESIZE];
   char state;
-  struct httpd_fs_file file;  
-  int len;
+  int fd; // file descriptor of http file
+  int sendlen;// length to send?
 #if WEBSERVER_CONF_INCLUDE || WEBSERVER_CONF_CGI
   char *scriptptr;
   int scriptlen;

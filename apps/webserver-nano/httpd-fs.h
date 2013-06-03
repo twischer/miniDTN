@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2001, Swedish Institute of Computer Science.
+ * Copyright (c) 2013, TU Braunschweig
  * All rights reserved. 
  *
  * Redistribution and use in source and binary forms, with or without 
@@ -31,17 +31,56 @@
 #ifndef __HTTPD_FS_H__
 #define __HTTPD_FS_H__
 
+/**
+ * \file File handling interface for webserver-nano
+ * 
+ * Provides a partly cfs compatible interface for file system access
+ * to webserver-nano.
+ * Calls are either handeled by the httpd fake file system or by one
+ * of the available cfs implementations such as cfs-coffee or cfs-fat.
+ * 
+ * Makro WEBSERVER_CONF_FILESTATS enables file statistics.
+ * 
+ * \author Enrico Joerns <e.joerns@tu-bs.de>
+ */
+
 #include "contiki-net.h"
 #include "httpd.h"
 
+#include "cfs.h"
+
 struct httpd_fs_file {
-  char *data;
-  int len;
+  char *start;// pointer to first byte of file
+  char *pos;  // pointer to current position in file
+  int len;    // length of file
 };
+
+extern struct httpd_fs_file* files;
 
 /* file must be allocated by caller and will be filled in
    by the function. */
+
+#define HTTPD_SEEK_SET CFS_SEEK_SET
+#define HTTPD_SEEK_CUR CFS_SEEK_CUR
+#define HTTPD_SEEK_END CFS_SEEK_END
+
+#define HTTPD_FS_READ  CFS_READ
+
+/* Wrapper function for (pseudo)file system calls. */
+#if HTTPD_CFS
+#define httpd_fs_open cfs_open
+#define httpd_fs_close cfs_close
+#define httpd_cf_read cfs_read
+#define httpd_fs_seek cfs_seek
+#define httpd_fs_filesize(fd) // TODO....
+#endif
+#else
 uint16_t httpd_fs_open(const char *name, struct httpd_fs_file *file);
+void httpd_fs_close(int fd);
+int httpd_fs_read(int fd, void* buf, unsigned int len);
+cfs_offset_t httpd_fs_seek(int fd, cfs_offset_t offset, int whence);
+cfs_offset_t httpd_fs_filesize(int fd);
+#endif
 
 #if WEBSERVER_CONF_FILESTATS
 extern uint16_t httpd_filecount[];
