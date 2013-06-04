@@ -119,7 +119,8 @@ PT_THREAD(send_part_of_file(struct httpd_state *s))
 {
   PSOCK_BEGIN(&s->sout);
 
-  static int tosend = s->sendlen;
+  static int tosend;
+  tosend = s->sendlen;
 
   do {
 
@@ -146,11 +147,11 @@ PT_THREAD(send_part_of_file(struct httpd_state *s))
 }
 /*---------------------------------------------------------------------------*/
 static void
-next_scriptstate(struct httpd_state *s)
+skip_scriptline(struct httpd_state *s)
 {
   char *p;
   /* Skip over any script parameters to the beginning of the next line */
-  if((p = (char *)httpd_fs_strchr(s->scriptptr, ISO_nl)) != NULL) {
+  if((p = (char *)strchr(s->scriptptr, ISO_nl)) != NULL) {
     p += 1;
     s->scriptlen -= (unsigned short)(p - s->scriptptr);
     s->scriptptr  = p;
@@ -167,7 +168,7 @@ get_scriptname(char *dest, char *fromfile)
   /* Extract a file or cgi name, trim leading spaces and replace termination with zero */
   /* Returns number of characters processed up to the next non-tab or space */
   do {
-    dest[i]=httpd_fs_getchar(fromfile++);
+    dest[i]=*(fromfile++);
     if (dest[i]==ISO_colon) {if (!skip) break;}                 //allow leading colons
     else if (dest[i]==ISO_tab  ) {if (skip) continue;else break;}//skip leading tabs
     else if (dest[i]==ISO_space) {if (skip) continue;else break;}//skip leading spaces
@@ -178,81 +179,102 @@ get_scriptname(char *dest, char *fromfile)
     i++;
   } while (i<(MAX_SCRIPT_NAME_LENGTH+1));
   fromfile--;
-  while ((dest[i]==ISO_space) || (dest[i]==ISO_tab)) dest[i]=httpd_fs_getchar(++fromfile);
+  while ((dest[i]==ISO_space) || (dest[i]==ISO_tab)) dest[i]=*(++fromfile);
   dest[i]=0;
   return (fromfile);
 }
 /*---------------------------------------------------------------------------*/
-
+#define HTTPD_FILE_CACHESIZE  128
+char file_cache[HTTPD_FILE_CACHESIZE + 1] = {0};// alawys 0-terminated
 static
 PT_THREAD(handle_script(struct httpd_state *s))
 {
   /* Note script includes will attach a leading : to the filename and a trailing zero */
   static char scriptname[MAX_SCRIPT_NAME_LENGTH+1],*pptr;
-  static uint16_t filelength;
+//  static uint16_t filelength;
+  static int done;
 
   PT_BEGIN(&s->scriptpt);
+  done = 0;
 
-  file length=files[s->fd].len;
-  while(files[s->fd].len > 0) {
-    /* Sanity check */
-    if (files[s->fd].len > filelength) break;
+  while(!done) {
+    
+    /* read cache bytes from file and seek back */
+    int readsize = httpd_fs_read(s->fd, file_cache, HTTPD_FILE_CACHESIZE);
+    httpd_fs_seek(s->fd, -readsize, HTTPD_SEEK_CUR);
+    
 
     /* Check if we should start executing a script, flagged by %! */
-    if(httpd_fs_getchar(files[s->fd].data) == ISO_percent &&
-       httpd_fs_getchar(files[s->fd].data + 1) == ISO_bang) {
+    if(file_cache[0] == ISO_percent &&
+       file_cache[1] == ISO_bang) {
 
-       /* Extract name, if starts with colon include file else call cgi */
-       s->scriptptr=get_scriptname(scriptname,files[s->fd].data+2);
-       s->scriptlen=files[s->fd].len-(s->scriptptr-files[s->fd].data);
-       PRINTD("httpd: Handle script named %s\n",scriptname);
+      /* Extract name, if starts with colon include file else call cgi */
+      s->scriptptr = get_scriptname(scriptname, &file_cache[2]);
+//      s->scriptlen = files[s->fd].len - (s->scriptptr - file_cache[0]);
+      PRINTD("httpd: Handle script named %s\n", scriptname);
+      
+       /* Include scripts prefixed with ':' */
        if(scriptname[0] == ISO_colon) {
+         
 #if WEBSERVER_CONF_INCLUDE
-        s->fd = httpd_fs_open(&scriptname[1], HTTPD_FS_READ);
-        if (s->fd == -1) {
+        s->scriptfd = httpd_fs_open(&scriptname[1], HTTPD_FS_READ);
+        /* Send script if open succeeded. */
+        if (s->scriptfd != -1) {
+          s->sendfd = s->scriptfd;
+          PT_WAIT_THREAD(&s->scriptpt, send_file(s));
+        } else {
           PRINTD("failed opening %s\n", scriptname);
-          /* TODO: handle */
         }
-        PT_WAIT_THREAD(&s->scriptpt, send_file(s));
-        httpd_fs_close(s->fd);
+        
+        httpd_fs_close(s->scriptfd);
         /*TODO dont print anything if file not found */
 #endif
-       } else {
+       /* Execute unprefixed scripts. */
+      } else {
 #if WEBSERVER_CONF_CGI
-         PT_WAIT_THREAD(&s->scriptpt,httpd_cgi(scriptname)(s, s->scriptptr));
+        PT_WAIT_THREAD(&s->scriptpt, httpd_cgi(scriptname)(s, s->scriptptr));
 #endif
-       }
-       next_scriptstate(s);
+      }
+
+      skip_scriptline(s);
+      int toseek = (int)&file_cache[0] - (int)&(s->scriptptr);
+      if (httpd_fs_seek(s->fd, toseek, HTTPD_SEEK_CUR) == toseek - 1) {
+        done = 1;
+      }
       
-      /* Reset the pointers and continue sending the current file. */
-      files[s->fd].data = s->scriptptr;
-      files[s->fd].len  = s->scriptlen;
     } else {
 
       /* Send file up to the next potential script */
-      if(files[s->fd].len > uip_mss()) {
-        s->sendlen = uip_mss();
-      } else {
-        s->sendlen = files[s->fd].len;
-      }
+//      if(files[s->fd].len > uip_mss()) {
+//        s->sendlen = uip_mss();
+//      } else {
+//        s->sendlen = files[s->fd].len;
+//      }
 
       /* get position of next percent character */
-      if(httpd_fs_getchar(files[s->fd].data) == ISO_percent) {
-        pptr = (char *) httpd_fs_strchr(files[s->fd].data + 1, ISO_percent);
+      if(file_cache[0] == ISO_percent) {
+        pptr = (char *) strchr(&file_cache[1], ISO_percent);
       } else {
-        pptr = (char *) httpd_fs_strchr(files[s->fd].data, ISO_percent);
+        pptr = (char *) strchr(&file_cache[0], ISO_percent);
       }
 
       /* calc new length to send */
-      if(pptr != NULL && pptr != files[s->fd].data) {
-        s->len = (int)(pptr - files[s->fd].data);
-        if(s->len >= uip_mss()) {
-          s->len = uip_mss();
-        }
+      if (pptr == NULL) {
+        s->sendlen = HTTPD_FILE_CACHESIZE;
+      } else {
+        s->sendlen = (int) ((int)pptr - (int)&file_cache[0]);
       }
-      PRINTD("httpd: Sending %u bytes from 0x%04x\n",files[s->fd].len,(unsigned int)files[s->fd].data);
+      if (s->sendlen >= uip_mss()) {
+        s->sendlen = uip_mss();
+      }
+      
+      PRINTD("httpd: Sending %u bytes from 0x%04x\n", s->sendlen, (unsigned int) pptr);
+      s->sendfd = s->fd;
       PT_WAIT_THREAD(&s->scriptpt, send_part_of_file(s));
-      httpd_fs_seek(s->fd, s->sendlen, HTTPD_SEEK_CUR);
+      
+      if (httpd_fs_seek(s->fd, s->sendlen, HTTPD_SEEK_CUR) == s->sendlen -1) {
+        done = 1;
+      }
     }
   }
 

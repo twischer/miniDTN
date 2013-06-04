@@ -41,7 +41,8 @@
 #include "httpd-fs.h"
 #include "httpd-fsdata.h"
 
-#include <string.h> /* for memcpy */
+#include <string.h>
+#include <limits.h> /* for memcpy */
 
 /* httpd-fsdata.c contains the web content.
  * It is generated using the PERL script /tools/makefsdata 
@@ -49,7 +50,7 @@
 #include "httpd-fsdata.c"
 
 /* Here we hold our 'files' */
-struct httpd_fs_file files[HTTPD_FS_NUMFILES] = {0};
+struct httpd_fs_file files[HTTPD_FS_NUMFILES] = {{0}};
 
 #if WEBSERVER_CONF_FILESTATS==1
 uint16_t httpd_filecount[HTTPD_FS_NUMFILES];
@@ -63,6 +64,7 @@ static int get_free_fd() {
       return idx;
     }
   }
+  return INT_MAX;
 }
 /*----------------------------------------------------------------------------*/
 void *
@@ -84,6 +86,8 @@ httpd_fs_open(const char *name, int mode)
   uint16_t i = 0;
 #endif
   struct httpd_fsdata_file_noconst *f, fram;
+  
+  int fd = get_free_fd();
 
   for (f = (struct httpd_fsdata_file_noconst *) HTTPD_FS_ROOT;
           f != NULL;
@@ -95,23 +99,19 @@ httpd_fs_open(const char *name, int mode)
     /*Compare name passed in RAM with name in whatever flash the file is in */
     /*makefsdata no longer adds an extra zero byte at the end of the file */
     if (httpd_fs_strcmp((char *) name, fram.name) == 0) {
-      if (file) {
-        files[fd].start = files[fd].pos = fram.data;
-        files[fd].len = fram.len;
+      files[fd].start = files[fd].pos = fram.data;
+      files[fd].len = fram.len;
 #if WEBSERVER_CONF_FILESTATS==2         //increment count in linked list field if it is in RAM
-        f->count++;
-      }
+      f->count++;
       return f->count;
     }
     ++i
 #elif WEBSERVER_CONF_FILESTATS==1       //increment count in RAM array when linked list is in flash
-        ++httpd_filecount[i];
-      }
+      ++httpd_filecount[i];
       return httpd_filecount[i];
     }
     ++i;
 #else                              //no file statistics
-      }
       return 1;
     }
 #endif /* WEBSERVER_CONF_FILESTATS */
@@ -132,7 +132,8 @@ httpd_fs_read(int fd, void* buf, unsigned int len)
   if (files[fd].len < len) {
     len = files[fd].len;
   }
-  httpd_fs_cpy(buf, files[fd].data, s->len);
+  httpd_fs_cpy(buf, files[fd].pos, len);
+  return len; // TODO: actual length?
 }
 /*----------------------------------------------------------------------------*/
 /* Seek to a specified position in an open file. */
@@ -156,7 +157,7 @@ httpd_fs_seek(int fd, cfs_offset_t offset, int whence)
   files[fd].pos += offset;
 
   /* To be compatible with cfs_seek, we return offset-1 if we reached EOF. */
-  return (files[fd].pos > files[fd].start + files[fd].len) ? offset - 1 : files[fd].pos;
+  return (files[fd].pos > files[fd].start + files[fd].len) ? offset - 1 : (int) files[fd].pos;
 }
 /*----------------------------------------------------------------------------*/
 void

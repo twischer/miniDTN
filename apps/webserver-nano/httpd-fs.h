@@ -55,7 +55,6 @@ struct httpd_fs_file {
   int len;    // length of file
 };
 
-extern struct httpd_fs_file* files;
 
 /* file must be allocated by caller and will be filled in
    by the function. */
@@ -72,14 +71,11 @@ extern struct httpd_fs_file* files;
 #define httpd_fs_close cfs_close
 #define httpd_cf_read cfs_read
 #define httpd_fs_seek cfs_seek
-#define httpd_fs_filesize(fd) // TODO....
-#endif
 #else
-uint16_t httpd_fs_open(const char *name, struct httpd_fs_file *file);
+uint16_t httpd_fs_open(const char *name, int mode);
 void httpd_fs_close(int fd);
 int httpd_fs_read(int fd, void* buf, unsigned int len);
 cfs_offset_t httpd_fs_seek(int fd, cfs_offset_t offset, int whence);
-cfs_offset_t httpd_fs_filesize(int fd);
 #endif
 
 #if WEBSERVER_CONF_FILESTATS

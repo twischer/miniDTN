@@ -287,10 +287,13 @@ struct httpd_state {
   char filename[WEBSERVER_CONF_NAMESIZE];
   char state;
   int fd; // file descriptor of http file
-  int sendlen;// length to send?
+  
+  int sendfd; // fd of file to send
+  int sendlen;// length to send
 #if WEBSERVER_CONF_INCLUDE || WEBSERVER_CONF_CGI
   char *scriptptr;
   int scriptlen;
+  int scriptfd;
 #endif
 #if WEBSERVER_CONF_LOADTIME
   clock_time_t pagetime;
