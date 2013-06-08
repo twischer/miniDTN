@@ -99,7 +99,7 @@ struct discovery_driver {
 	/**
 	 * Start discovery phase, called by discovery scheduler
 	 */
-	void (* start)(clock_time_t duration);
+	void (* start)(clock_time_t duration, uint8_t index);
 
 	/**
 	 * Stop discovery phase, called by discovery scheduler

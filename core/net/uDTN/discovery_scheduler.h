@@ -25,6 +25,7 @@
 /** interface for discovery scheduler modules **/
 struct discovery_scheduler_driver {
 	void (* init)();
+	void (* set_schedule_index)(uint8_t index);
 };
 
 extern const struct discovery_scheduler_driver DISCOVERY_SCHEDULER;

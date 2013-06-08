@@ -150,7 +150,7 @@ void discovery_simple_stop_pending() {
   LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "Stop pending.");
 }
 
-void discovery_simple_start(clock_time_t duration) {
+void discovery_simple_start(clock_time_t duration, uint8_t index) {
   LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "Start of discovery phase.");
   discovery_simple_enabled = 1;
   discovery_simple_send_discover();

@@ -73,7 +73,7 @@ PROCESS_THREAD(discovery_scheduler_pds_process, ev, data)
   int schedule_length = 18;
 #elif PDS_SCHED == PDS_SCHED_7_2
 	/* pds7^2={...} schedule, length 2451, dutycycle ~2% */
-	static int sched[] = { 2, 5, 1, 41, 1, 120, 1, 52, 1, 43, 1, 75, 1, 4, 1, 33, 1, 108, 1, 16, 1, 179, 1, 61, 1, 77, 1, 57, 1, 7, 1, 82, 1, 8, 1, 2, 1, 115, 1, 17, 1, 53, 1, 12, 1, 109, 1, 3, 1, 51, 1, 204, 1, 72, 1, 81, 1, 27, 1, 2, 1, 27, 1, 73, 1, 19, 1, 22, 1, 44, 1, 62, 1, 20, 1, 79, 1, 37, 1, 31, 1, 36, 1, 60, 1, 76, 1, 18, 1, 35, 1, 9, 1, 13, 1, 10, 1, 14 };
+	staticintsched[] = {2,5,1,41,1,120,1,52,1,43,1,75,1,4,1,33,1,108,1,16,1,179,1,61,1,77,1,57,1,7,1,82,1,8,1,2,1,115,1,17,1,53,1,12,1,109,1,3,1,51,1,204,1,72,1,81,1,27,1,2,1,27,1,73,1,19,1,22,1,44,1,62,1,20,1,79,1,37,1,31,1,36,1,60,1,76,1,18,1,35,1,9,1,13,1,10,1,14};
 	int schedule_length = 98;
 #elif PDS_SCHED == PDS_SCHED_DUMMY
 	static int sched[] = {320,1};
@@ -111,7 +111,7 @@ PROCESS_THREAD(discovery_scheduler_pds_process, ev, data)
 			LOG(LOGD_DTN, LOG_DISCOVERY_SCHEDULER, LOGL_DBG, "DISCOVERY SCHEDULER PDS: begin of discovery phase");
 			//process_post(PROCESS_BROADCAST, 0xA2, 0);
 			process_post_synch(&discovery_aware_rdc_process, dtn_disco_start_event , 0);
-			DISCOVERY.start(newTimeout);
+			DISCOVERY.start(newTimeout, schedule_index);
 		} else {
 			LOG(LOGD_DTN, LOG_DISCOVERY_SCHEDULER, LOGL_DBG, "DISCOVERY SCHEDULER PDS: end of discovery phase");
 			//process_post(PROCESS_BROADCAST, 0xA3, 0);

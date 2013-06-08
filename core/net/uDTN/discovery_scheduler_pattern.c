@@ -44,6 +44,7 @@
 
 
 static struct ctimer dst;
+static uint8_t schedule_index = 0;
 
 void discovery_scheduler_pattern_func(void * ptr);
 
@@ -54,7 +55,7 @@ void discovery_scheduler_pattern_init() {
 void discovery_scheduler_pattern_func(void * ptr)
 {
 	static uint8_t schedule[] = DTN_DISCO_PATTERN;
-	static uint8_t schedule_index = 0;
+
 	static uint8_t schedule_length = sizeof(schedule) / sizeof(schedule[0]);
 
 	/* schedule always starts with discovery on. state is switched at beginning
@@ -77,7 +78,7 @@ void discovery_scheduler_pattern_func(void * ptr)
 	if (sched_state) {
 		LOG(LOGD_DTN, LOG_DISCOVERY_SCHEDULER, LOGL_DBG, "PATTERN DISCOVERY SCHEDULER: begin of discovery phase");
 		process_post(&discovery_aware_rdc_process, dtn_disco_start_event, 0);
-		DISCOVERY.start(newTimeout);
+		DISCOVERY.start(newTimeout, schedule_index);
 	} else {
 		LOG(LOGD_DTN, LOG_DISCOVERY_SCHEDULER, LOGL_DBG, "PATTERN DISCOVERY SCHEDULER: end of discovery phase");
 		DISCOVERY.stop();
@@ -86,8 +87,16 @@ void discovery_scheduler_pattern_func(void * ptr)
 
 }
 
+void discovery_scheduler_pattern_set_schedule_index(uint8_t index) {
+  if (index != schedule_index) {
+    printf("Schedule index WAS: %u      IS: %u\n", schedule_index, index);
+    schedule_index = index;
+  }
+}
+
 const struct discovery_scheduler_driver discovery_scheduler_pattern = {
 		.init = discovery_scheduler_pattern_init,
+		.set_schedule_index = discovery_scheduler_pattern_set_schedule_index,
 };
 
 /** @} */

@@ -16,7 +16,6 @@
  * \author André Frambach <frambach@ibr.cs.tu-bs.de>
  */
 #include "rtimer.h"
-#define ENABLE_LOGGING 1
 #include "logging.h"
 #include "agent.h"
 #include "discovery_scheduler.h"
@@ -71,8 +70,8 @@ void rt_discovery_scheduler_pattern_func(struct rtimer *t, void *ptr)
 
   /* calculate new timeout */
   uint16_t newTimeout =  RTIMER_ARCH_SECOND * 1.0 * (schedule[schedule_index] * DTN_DISCO_TIMESLOT_LENGTH);
-  printf("PATTERN DISCOVERY SCHEDULER: Timeout   schedule[schedule_index]: %u\n", schedule[schedule_index]);
-  printf("PATTERN DISCOVERY SCHEDULER: ARCH SECOND Timeout: %u\n", RTIMER_ARCH_SECOND);
+  //printf("PATTERN DISCOVERY SCHEDULER: Timeout   schedule[schedule_index]: %u\n", schedule[schedule_index]);
+  //printf("PATTERN DISCOVERY SCHEDULER: ARCH SECOND Timeout: %u\n", RTIMER_ARCH_SECOND);
   schedule_index++;
 
   /* wrap schedule if appropriate */
@@ -84,7 +83,7 @@ void rt_discovery_scheduler_pattern_func(struct rtimer *t, void *ptr)
   if (sched_state) {
     LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "PATTERN DISCOVERY SCHEDULER: begin of discovery phase");
     process_post_synch(&discovery_aware_rdc_process, dtn_disco_start_event, 0);
-    DISCOVERY.start(newTimeout);
+    DISCOVERY.start(newTimeout, schedule_index);
   } else {
     LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "PATTERN DISCOVERY SCHEDULER: end of discovery phase");
     DISCOVERY.stop();
@@ -96,14 +95,14 @@ void rt_discovery_scheduler_pattern_func(struct rtimer *t, void *ptr)
   /* reschedule outself */
   //etimer_set(&discovery_scheduler_timer, newTimeout);
 
-  printf("PATTERN DISCOVERY SCHEDULER: New Timeout: %d\n", newTimeout);
+  //printf("PATTERN DISCOVERY SCHEDULER: New Timeout: %d\n", newTimeout);
   uint16_t to = RTIMER_NOW() + newTimeout;
   int r = rtimer_set(t, to, 1, rt_discovery_scheduler_pattern_func, NULL);
   if(r != RTIMER_OK) {
        printf("PATTERN DISCOVERY SCHEDULER: could not set rtimer\n");
   }
 
-  printf("PATTERN DISCOVERY SCHEDULER: Timeout: %d\n", to);
+  //printf("PATTERN DISCOVERY SCHEDULER: Timeout: %d\n", to);
 }
 
 

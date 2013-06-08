@@ -23,6 +23,7 @@
 #include "agent.h"
 
 #include "discovery.h"
+#include "discovery_scheduler.h"
 
 #define DISCOVERY_PROMPT_RESPOND
 #define DISCOVERY_NEIGHBOUR_CACHE	3
@@ -31,6 +32,7 @@ LIST(neighbour_list);
 MEMB(neighbour_mem, struct discovery_neighbour_list_entry, DISCOVERY_NEIGHBOUR_CACHE);
 
 static uint8_t discovery_simple_active_enabled = 0;
+static uint8_t sched_index = 0;
 
 void discovery_simple_active_send_discover();
 
@@ -86,6 +88,13 @@ void discovery_simple_active_receive(rimeaddr_t * source, uint8_t * payload, uin
     rimeaddr_copy(&(entry->neighbour), source);
     list_add(neighbour_list, entry);
 
+
+    uint32_t * neigh_id = (uint32_t *) payload;
+    printf("Schedule Index of neighbour %lu: %u      I AM %lu\n", *neigh_id, payload[4], dtn_node_id);
+    if (*neigh_id > dtn_node_id) {
+      DISCOVERY_SCHEDULER.set_schedule_index(payload[4]);
+    }
+
 #ifdef DISCOVERY_PROMPT_RESPOND
     // Respond with discovery packet
     LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "Responding to neighbour %u.%u", source->u8[0], source->u8[1]);
@@ -121,7 +130,11 @@ void discovery_simple_active_send_discover() {
     rimeaddr_t br_dest = { { 0, 0 } };
     LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "send discover..");
 
-    convergence_layer_send_discovery((uint8_t *) "DTN_DISCOVERY", 13, &br_dest);
+    //convergence_layer_send_discovery((uint8_t *) "DTN_DISCOVERY", 13, &br_dest);
+
+    uint8_t payload[5] = {0, 0, 0, 0, sched_index};
+    memcpy(payload, &dtn_node_id, 4);
+    convergence_layer_send_discovery(payload, 5, &br_dest);
 
     //static uint32_t c = 0;
     //printf("D %lu\n", c++);
@@ -156,7 +169,8 @@ void discovery_simple_active__send_helper(void * ptr) {
   discovery_simple_active_send_discover();
 }
 
-void discovery_simple_active_start(clock_time_t duration) {
+void discovery_simple_active_start(clock_time_t duration, uint8_t index) {
+  sched_index = index;
   LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "Start of discovery phase.");
   discovery_simple_active_enabled = 1;
   discovery_simple_active_send_discover();
