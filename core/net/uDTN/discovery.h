@@ -28,7 +28,7 @@
 #ifdef CONF_DISCOVERY
 #define DISCOVERY CONF_DISCOVERY
 #else
-#define DISCOVERY discovery_simple
+#define DISCOVERY discovery_simple_active
 #endif
 
 
@@ -97,19 +97,19 @@ struct discovery_driver {
 	void (* stop_pending)();
 
 	/**
-         * Start discovery phase, called by discovery scheduler
-         */
-        void (* start)();
+	 * Start discovery phase, called by discovery scheduler
+	 */
+	void (* start)(clock_time_t duration);
 
-        /**
-         * Stop discovery phase, called by discovery scheduler
-         */
-        void (* stop)();
+	/**
+	 * Stop discovery phase, called by discovery scheduler
+	 */
+void (* stop)();
 
-        /**
-         * Clear the list of currently known neighbours
-         */
-        void (* clear)();
+/**
+ * Clear the list of currently known neighbours
+ */
+void (* clear)();
 };
 
 extern const struct discovery_driver DISCOVERY;

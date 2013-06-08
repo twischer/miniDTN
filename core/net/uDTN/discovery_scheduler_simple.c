@@ -54,7 +54,7 @@ PROCESS_THREAD(discovery_scheduler_simple_process, ev, data)
 			if (sched_state) {
 				LOG(LOGD_DTN, LOG_DISCOVERY_SCHEDULER, LOGL_DBG, "DISCOVERY SCHEDULER SIMPLE: begin of discovery phase");
 				process_post(PROCESS_BROADCAST, 0xA2, 0);
-				DISCOVERY.start();
+				DISCOVERY.start(DISCOVERY_SIMPLE_PERIOD * CLOCK_SECOND);
 			} else {
 				LOG(LOGD_DTN, LOG_DISCOVERY_SCHEDULER, LOGL_DBG, "DISCOVERY SCHEDULER SIMPLE: end of discovery phase");
 				process_post(PROCESS_BROADCAST, 0xA3, 0);

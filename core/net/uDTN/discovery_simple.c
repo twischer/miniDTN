@@ -66,7 +66,7 @@ void discovery_simple_disable() {
 }
 
 void discovery_simple_receive(rimeaddr_t * source, uint8_t * payload, uint8_t length) {
-  if (discovery_simple_enabled) {
+  //if (discovery_simple_enabled) {
     LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "received from %u:%u", source->u8[1], source->u8[0]);
 
     if (!discovery_simple_is_neighbour(source)) {
@@ -91,9 +91,9 @@ void discovery_simple_receive(rimeaddr_t * source, uint8_t * payload, uint8_t le
 
     // We have found a new neighbour, now go and notify the agent
     process_post(&agent_process, dtn_beacon_event, source);
-  } else {
+  /*} else {
     LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "received from %u:%u but disabled", source->u8[1], source->u8[0]);
-  }
+  }*/
 }
 
 void discovery_simple_alive(rimeaddr_t * neighbour) {
@@ -122,8 +122,8 @@ void discovery_simple_send_discover() {
 
     convergence_layer_send_discovery((uint8_t *) "DTN_DISCOVERY", 13, &br_dest);
 
-    static uint32_t c = 0;
-    printf("D %lu\n", c++);
+    //static uint32_t c = 0;
+    //printf("D %lu\n", c++);
   } else {
     LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "send discover.. but disabled");
   }
@@ -150,7 +150,7 @@ void discovery_simple_stop_pending() {
   LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "Stop pending.");
 }
 
-void discovery_simple_start() {
+void discovery_simple_start(clock_time_t duration) {
   LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "Start of discovery phase.");
   discovery_simple_enabled = 1;
   discovery_simple_send_discover();

@@ -51,9 +51,7 @@
 #include "net/uDTN/discovery.h"
 #include "net/uDTN/discovery_scheduler_events.h"
 
-
 #if DEBUG
-#include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)
 #else
 #define PRINTF(...)
@@ -126,8 +124,8 @@ static struct etimer radio_off_timeout_timer;
 process_event_t dtn_send_event = 0xA1;
 process_event_t dtn_rec_event = 0xA2;
 static uint8_t radio_status;
-static uint8_t send_lock=0;
-static uint8_t rec_lock=0;
+static volatile uint8_t send_lock=0;
+static volatile uint8_t rec_lock=0;
 
 static int on(void);
 static int off(int);
@@ -333,7 +331,7 @@ PROCESS_THREAD(discovery_aware_rdc_process, ev, data)
 {
   PROCESS_BEGIN();
 
-  etimer_set(&radio_off_timeout_timer, RADIO_OFF_SEND_TIMEOUT * CLOCK_SECOND);
+
 
   while(1) {
     PROCESS_WAIT_EVENT();
@@ -345,47 +343,42 @@ PROCESS_THREAD(discovery_aware_rdc_process, ev, data)
     }
 
     if (dtn_disco_stop_event == ev) {
-      PRINTF("RDC: received START event\n");
+      PRINTF("RDC: received STOP event\n");
       radio_may_be_turned_off = 1;
+      etimer_set(&radio_off_timeout_timer, RADIO_OFF_SEND_TIMEOUT * CLOCK_SECOND);
       continue;
     }
 
-    if (dtn_send_event == ev) {
+    if (dtn_send_event == ev && radio_may_be_turned_off) {
       PRINTF("RDC: Restarting radio timeout timer [send].\n");
       send_lock = 0;
       etimer_set(&radio_off_timeout_timer, RADIO_OFF_SEND_TIMEOUT * CLOCK_SECOND);
       continue;
     }
 
-    if (dtn_rec_event == ev) {
+    if (dtn_rec_event == ev && radio_may_be_turned_off) {
       PRINTF("RDC: Restarting radio timeout timer [rec].\n");
       rec_lock = 0;
       etimer_set(&radio_off_timeout_timer, RADIO_OFF_REC_TIMEOUT * CLOCK_SECOND);
       continue;
     }
 
-    if (etimer_expired(&radio_off_timeout_timer)) {
+    if (etimer_expired(&radio_off_timeout_timer) && radio_may_be_turned_off) {
       PRINTF("RDC: RADIO OFF TIMEOUT REACHED!\n");
       if (radio_status) {
-        if (!radio_may_be_turned_off) {
-          PRINTF("RDC: NOT Turning radio OFF because of we must not.\n");
+        if (NETSTACK_RADIO.pending_packet() || NETSTACK_RADIO.receiving_packet() || !NETSTACK_RADIO.channel_clear()) {
+          PRINTF("RDC: NOT Turning radio OFF because of pending packet.\n");
           etimer_set(&radio_off_timeout_timer, RADIO_OFF_SEND_TIMEOUT * CLOCK_SECOND);
-
         } else {
-          if (NETSTACK_RADIO.pending_packet() || NETSTACK_RADIO.receiving_packet() || !NETSTACK_RADIO.channel_clear()) {
-            PRINTF("RDC: NOT Turning radio OFF because of pending packet.\n");
-            etimer_set(&radio_off_timeout_timer, RADIO_OFF_SEND_TIMEOUT * CLOCK_SECOND);
-          } else {
-            PRINTF("RDC: Turning radio OFF.\n");
-            radio_status = 0;
-            NETSTACK_RADIO.off();
+          PRINTF("RDC: Turning radio OFF.\n");
+          radio_status = 0;
+          NETSTACK_RADIO.off();
 
 #ifdef DISCOVERY_AWARE_RDC_CLEAR_NEIGHBOURS
-            // empty neightbour list to prevent routing from senseless activity
-            PRINTF("Clearing neighbours after radio off\n.");
-            DISCOVERY.clear();
+          // empty neightbour list to prevent routing from senseless activity
+          PRINTF("Clearing neighbours after radio off\n.");
+          DISCOVERY.clear();
 #endif /* DISCOVERY_AWARE_RDC_CLEAR_NEIGHBOURS */
-          }
         }
       } else {
         PRINTF("RDC: NOT Turning radio off because it is already.\n");

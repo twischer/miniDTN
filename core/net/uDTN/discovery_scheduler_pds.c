@@ -97,27 +97,29 @@ PROCESS_THREAD(discovery_scheduler_pds_process, ev, data)
 	while(1) {
 		PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&discovery_scheduler_timer));
 
-		/* switch discovery state */
-		sched_state = ~sched_state;
-
-		if (sched_state) {
-			LOG(LOGD_DTN, LOG_DISCOVERY_SCHEDULER, LOGL_DBG, "DISCOVERY SCHEDULER PDS: begin of discovery phase");
-			//process_post(PROCESS_BROADCAST, 0xA2, 0);
-			process_post(&discovery_aware_rdc_process,dtn_disco_start_event , 0);
-			DISCOVERY.start();
-		} else {
-			LOG(LOGD_DTN, LOG_DISCOVERY_SCHEDULER, LOGL_DBG, "DISCOVERY SCHEDULER PDS: end of discovery phase");
-			//process_post(PROCESS_BROADCAST, 0xA3, 0);
-			process_post(&discovery_aware_rdc_process, dtn_disco_stop_event, 0);
-			DISCOVERY.stop();
-		}
-
 		/* calculate new timeout */
 		int newTimeout = sched[schedule_index] * DISCOVERY_TIMESLOT_LENGTH * CLOCK_SECOND;
 		schedule_index++;
 
 		/* wrap schedule if appropriate */
 		schedule_index = schedule_index % schedule_length;
+
+		/* switch discovery state */
+		sched_state = ~sched_state;
+
+		if (sched_state) {
+			LOG(LOGD_DTN, LOG_DISCOVERY_SCHEDULER, LOGL_DBG, "DISCOVERY SCHEDULER PDS: begin of discovery phase");
+			//process_post(PROCESS_BROADCAST, 0xA2, 0);
+			process_post_synch(&discovery_aware_rdc_process, dtn_disco_start_event , 0);
+			DISCOVERY.start(newTimeout);
+		} else {
+			LOG(LOGD_DTN, LOG_DISCOVERY_SCHEDULER, LOGL_DBG, "DISCOVERY SCHEDULER PDS: end of discovery phase");
+			//process_post(PROCESS_BROADCAST, 0xA3, 0);
+			process_post_synch(&discovery_aware_rdc_process, dtn_disco_stop_event, 0);
+			DISCOVERY.stop();
+		}
+
+
 
 		/* set timer */
 		etimer_set(&discovery_scheduler_timer, newTimeout);
