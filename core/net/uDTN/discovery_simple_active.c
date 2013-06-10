@@ -76,7 +76,7 @@ void discovery_simple_active_receive(rimeaddr_t * source, uint8_t * payload, uin
 
 #ifdef DTN_DISCO_EVAL
     static uint32_t c = 0;
-    printf("R %lu\n", c++);
+    printf("R %lu %lu\n", c++, clock_seconds());
 #endif
 
     struct discovery_neighbour_list_entry * entry;
@@ -90,7 +90,7 @@ void discovery_simple_active_receive(rimeaddr_t * source, uint8_t * payload, uin
 
 
     uint32_t * neigh_id = (uint32_t *) payload;
-    printf("Schedule Index of neighbour %lu: %u      I AM %lu\n", *neigh_id, payload[4], dtn_node_id);
+    //printf("Schedule Index of neighbour %lu: %u      I AM %lu\n", *neigh_id, payload[4], dtn_node_id);
     if (*neigh_id > dtn_node_id) {
       DISCOVERY_SCHEDULER.set_schedule_index(payload[4]);
     }
