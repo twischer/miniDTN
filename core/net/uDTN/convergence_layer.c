@@ -427,6 +427,7 @@ int convergence_layer_parse_dataframe(rimeaddr_t * source, uint8_t * payload, ui
 	bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 	if( !bundle ) {
 		LOG(LOGD_DTN, LOG_CL, LOGL_WRN, "Invalid bundle pointer");
+		bundle_decrement(bundlemem);
 		return -1;
 	}
 
