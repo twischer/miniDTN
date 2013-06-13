@@ -255,6 +255,8 @@ struct mmem *bundle_recover_bundle(uint8_t *buffer, int size)
 	uint8_t offs = 0;
 	struct mmem *bundlemem;
 	struct bundle_t *bundle;
+	uint8_t ret = 0;
+
 	bundlemem = bundle_create_bundle();
 	if (!bundlemem)
 		return NULL;
@@ -327,7 +329,14 @@ struct mmem *bundle_recover_bundle(uint8_t *buffer, int size)
 
 	/* FIXME: Loop around and decode all blocks - does this work? */
 	while (size-offs > 1) {
-		offs += bundle_decode_block(bundlemem, &buffer[offs], size-offs);
+		ret = bundle_decode_block(bundlemem, &buffer[offs], size-offs);
+
+		/* If block decode failed, we are out of memory and have to abort */
+		if( ret < 1 ) {
+			goto err;
+		}
+
+		offs += ret;
 	}
 
 	return bundlemem;
