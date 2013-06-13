@@ -101,6 +101,7 @@ MEMB(routing_mem, struct routing_list_entry_t, BUNDLE_STORAGE_SIZE);
 LIST(routing_list);
 
 void routing_flooding_send_to_known_neighbours(void);
+void routing_flooding_check_keep_bundle(uint32_t bundle_number);
 
 /**
  * \brief Adds (or refreshes) the entry of 'neighbour' on the blacklist
