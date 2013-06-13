@@ -524,6 +524,7 @@ int convergence_layer_incoming_frame(rimeaddr_t * source, uint8_t * payload, uin
 	uint8_t * data_pointer = NULL;
 	uint8_t data_length = 0;
 	uint8_t header;
+	int ret = 0;
 
 	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Incoming frame from %u.%u", source->u8[0], source->u8[1]);
 
@@ -547,7 +548,13 @@ int convergence_layer_incoming_frame(rimeaddr_t * source, uint8_t * payload, uin
 
 		LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Incoming data frame from %u.%u with SeqNo %u", source->u8[0], source->u8[1], sequence_number);
 
-		convergence_layer_parse_dataframe(source, data_pointer, data_length, flags, sequence_number, rssi);
+		/* Parse the incoming data frame */
+		ret = convergence_layer_parse_dataframe(source, data_pointer, data_length, flags, sequence_number, rssi);
+
+		/* Send out NACK if parsing fails */
+		if( ret < 0 ) {
+			convergence_layer_create_send_ack(source, sequence_number, CONVERGENCE_LAYER_TYPE_NACK);
+		}
 
 		return 1;
 	}
