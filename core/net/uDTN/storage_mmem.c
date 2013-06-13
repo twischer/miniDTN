@@ -228,6 +228,7 @@ uint8_t storage_mmem_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_num
 
 	if( bundle == NULL ) {
 		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "storage_mmem_save_bundle with invalid MMEM structure");
+		bundle_decrement(bundlemem);
 		return 0;
 	}
 
@@ -250,6 +251,10 @@ uint8_t storage_mmem_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_num
 
 	if( !storage_mmem_make_room(bundlemem) ) {
 		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "Cannot store bundle, no room");
+
+		/* Throw away bundle to not take up RAM */
+		bundle_decrement(bundlemem);
+
 		return 0;
 	}
 
