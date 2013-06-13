@@ -65,7 +65,7 @@ PROCESS_THREAD(discovery_scheduler_pds_process, ev, data)
 	int schedule_length = 16;
 #elif PDS_SCHED == PDS_SCHED_2_4
 	/* pds2^4={...} schedule, length 273, dutycycle ~6% */
-	static int sched[] = { 2, 1, 1, 3, 1, 7, 1, 15, 1, 31, 1, 26, 1, 25, 1, 10, 1, 8, 1, 44, 1, 12, 1, 9, 1, 28, 1, 4, 1, 16, 1, 17 };
+	static int sched[] = {2,1,1,3,1,7,1,15,1,31,1,26,1,25,1,10,1,8,1,44,1,12,1,9,1,28,1,4,1,16,1,17};
 	int schedule_length = 32;
 #elif PDS_SCHED == PDS_SCHED_3_2
   /* pds3^2={...} schedule, length 91, dutycycle ~10% */
