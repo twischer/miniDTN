@@ -357,6 +357,7 @@ uint8_t storage_coffee_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_n
 
 	if( bundle == NULL ) {
 		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "save_bundle with invalid MMEM structure");
+		bundle_decrement(bundlemem);
 		return 0;
 	}
 
@@ -378,6 +379,10 @@ uint8_t storage_coffee_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_n
 
 	if( !storage_coffee_make_room(bundlemem) ) {
 		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "Cannot store bundle, no room");
+
+		/* Throw away bundle to not take up RAM */
+		bundle_decrement(bundlemem);
+
 		return 0;
 	}
 
