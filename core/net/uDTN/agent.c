@@ -249,15 +249,33 @@ PROCESS_THREAD(agent_process, ev, data)
 
 			continue;
 		}
-		
-	    if(ev == dtn_processing_finished) {
-	    	// data should contain the bundlemem ptr
-	    	struct mmem * bundlemem = (struct mmem *) data;
 
-	    	// Notify routing, that service has finished processing a bundle
-	    	ROUTING.locally_delivered(bundlemem);
-	    }
+		if(ev == dtn_processing_finished) {
+			// data should contain the bundlemem ptr
+			struct mmem * bundlemem = NULL;
+			struct bundle_t * bundle = NULL;
+
+			bundlemem = (struct mmem *) data;
+			if( bundlemem == NULL ) {
+				LOG(LOGD_DTN, LOG_AGENT, LOGL_ERR, "dtn_processing_finished with invalid pointer");
+				continue;
+			}
+
+			bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
+			if( bundle == NULL ) {
+				LOG(LOGD_DTN, LOG_AGENT, LOGL_ERR, "dtn_send_bundle_event with invalid MMEM structure");
+				continue;
+			}
+
+			LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "service has processed bundle %lu", bundle->bundle_num);
+
+			// Notify routing, that service has finished processing a bundle
+			ROUTING.locally_delivered(bundlemem);
+
+			continue;
+		}
 	}
+
 	PROCESS_END();
 }
 
