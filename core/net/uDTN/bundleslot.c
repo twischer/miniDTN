@@ -37,6 +37,7 @@
 
 static uint8_t inited = 0;
 static struct bundle_slot_t bundleslots[BUNDLE_NUM];
+static uint8_t slots_in_use = 0;
 
 /* Returns a pointer to a newly allocated bundle */
 struct bundle_slot_t *bundleslot_get_free()
@@ -50,6 +51,7 @@ struct bundle_slot_t *bundleslot_get_free()
 
 			bundleslots[i].ref++;
 			bundleslots[i].type = 0;
+			slots_in_use ++;
 
 			return &bundleslots[i];
 		}
@@ -66,8 +68,9 @@ void bundleslot_free(struct bundle_slot_t *bs)
 	}
 
 	bs->ref = 0;
+	slots_in_use --;
 
-	LOG(LOGD_DTN, LOG_SLOTS, LOGL_DBG, "bundleslot_free(%p)", bs);
+	LOG(LOGD_DTN, LOG_SLOTS, LOGL_DBG, "bundleslot_free(%p) %u", bs, slots_in_use);
 
 	// Zeroify all freed memory
 	memset(bs->bundle.ptr, 0, sizeof(struct bundle_t));
