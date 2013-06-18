@@ -156,7 +156,7 @@ class Device(object):
 				break
 			if (line.endswith('\n') or line.endswith('\r')):
 				line = line.strip()
-				self.logger.debug(line)
+				self.logger.debug("%s %s"%(self.name, line))
 
 				if line.startswith(self.startpattern):
 					resetseen += 1
