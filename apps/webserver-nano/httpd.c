@@ -80,11 +80,26 @@ MEMB(conns, struct httpd_state, WEBSERVER_CONF_CONNS);
 #define ISO_colon   0x3a
 #define ISO_qmark   0x3f
 
-#define HTTPD_FILE_CACHESIZE  300
+#define HTTPD_FILE_CACHESIZE  128
+
 /* Holds cached file data */
 char file_cache_array[HTTPD_FILE_CACHESIZE + 1] = {0}; // alawys 0-terminated
 char* file_cache_ptr = file_cache_array;
 static int cache_len;
+/*---------------------------------------------------------------------------*/
+static unsigned short
+file_generate(void *state)
+{
+  struct httpd_state *s = (struct httpd_state *) state;
+
+  if (s->sendlen > uip_mss()) {
+    PRINTD("httpd: Send length too large to be sent.\n");
+  }
+
+  memcpy(uip_appdata, file_cache_ptr, s->sendlen);
+
+  return httpd_fs_read(s->fd, uip_appdata, s->sendlen);
+}
 /*---------------------------------------------------------------------------*/
 static unsigned short
 generate(void *state)
@@ -112,12 +127,19 @@ PT_THREAD(send_file(struct httpd_state *s))
 
   printf("PT_THREAD: send_file\n");
   s->sendlen = uip_mss();
+  
+  static int fend;
+  fend = httpd_fs_seek(s->fd, 0, HTTPD_SEEK_END);
+  static int sent;
+  sent = 0;
+  httpd_fs_seek(s->fd, 0, HTTPD_SEEK_SET);
 
   do {
 
-    PSOCK_GENERATOR_SEND(&s->sout, generate, s);
+    PSOCK_GENERATOR_SEND(&s->sout, file_generate, s);
+    sent += httpd_fs_seek(s->fd, s->sendlen, HTTPD_SEEK_CUR);
 
-  } while (httpd_fs_seek(s->fd, s->sendlen, HTTPD_SEEK_CUR) != s->sendlen - 1); // seek until EOF
+  } while (sent < fend); // seek until EOF
 
   PSOCK_END(&s->sout);
 }
@@ -125,10 +147,10 @@ PT_THREAD(send_file(struct httpd_state *s))
 #if WEBSERVER_CONF_INCLUDE || WEBSERVER_CONF_CGI
 /* Sends s->sendlen bytes of file. */
 static
-PT_THREAD(send_part_of_file(struct httpd_state *s))
+PT_THREAD(send_part_of_cache(struct httpd_state *s))
 {
   PSOCK_BEGIN(&s->sout);
-  printf("PT_THREAD: send_part_of_file\n");
+  printf("PT_THREAD: send_part_of_cache\n");
 
   static int tosend;
   tosend = s->sendlen;
@@ -161,14 +183,14 @@ PT_THREAD(send_part_of_file(struct httpd_state *s))
 }
 /*---------------------------------------------------------------------------*/
 /**
- * 
- * @param s
+ * Skips over any script parameters to the beginning of the next line.
+ * Sets scritptr to next line.
  */
 static void
 skip_scriptline(struct httpd_state *s)
 {
   char *p;
-  /* Skip over any script parameters to the beginning of the next line */
+  
   if ((p = (char *) strchr(s->scriptptr, ISO_nl)) != NULL) {
     p += 1;
     s->scriptlen -= (unsigned short) (p - s->scriptptr);
@@ -178,46 +200,61 @@ skip_scriptline(struct httpd_state *s)
   }
 }
 /*---------------------------------------------------------------------------*/
+/**
+ * Extracts a file or cgi name, trim leading spaces and replace termination with zero.
+ * 
+ * @param destination the extracted scriptname is written to
+ * @param input buffer the name is extracted from
+ * @return pointer to end of scriptname (incl. trailing spaces),
+ *         i.e. start of parameters
+ */
 char *
-get_scriptname(char *dest, char *fromfile)
+get_scriptname(char *dest, char *readbuf)
 {
   uint8_t i = 0, skip = 1;
-  /* Extract a file or cgi name, trim leading spaces and replace termination with zero */
-  /* Returns number of characters processed up to the next non-tab or space */
   do {
-    dest[i] = *(fromfile++);
+    dest[i] = *(readbuf++);
+    //allow leading colons
     if (dest[i] == ISO_colon) {
       if (!skip) break;
-    }//allow leading colons
+    }
+    //skip leading tabs
     else if (dest[i] == ISO_tab) {
       if (skip) continue;
       else break;
-    }//skip leading tabs
+    }
+    //skip leading spaces
     else if (dest[i] == ISO_space) {
       if (skip) continue;
       else break;
-    }//skip leading spaces
+    }
     else if (dest[i] == ISO_nl) break; //nl is preferred delimiter
     else if (dest[i] == ISO_cr) break; //some editors insert cr
-    else if (dest[i] == 0) break; //files are terminated with null
+    else if (dest[i] == '\0') break; //files are terminated with null
     else skip = 0;
     i++;
   } while (i < (MAX_SCRIPT_NAME_LENGTH + 1));
-  fromfile--;
-  while ((dest[i] == ISO_space) || (dest[i] == ISO_tab)) dest[i] = *(++fromfile);
-  dest[i] = 0;
-  return (fromfile);
+  readbuf--;
+  /* Skip trailing spaces/tabs */
+  while ((dest[i] == ISO_space) || (dest[i] == ISO_tab)) dest[i] = *(++readbuf);
+  dest[i] = '\0';
+  return (readbuf);
 }
 /*---------------------------------------------------------------------------*/
-/** Reads next data to cache (null-terminated)
+/** 
+ * Loads data from file to cache starting at current file position.
+ * @note Position in file will not be changed!
  * 
+ * @param httpd_state with fd of file to read from
  * @return -1 if file is done
  */
 static int
-next_cache(struct httpd_state *s)
-{
+load_cache(struct httpd_state *s)
+{ 
+  // set cache pointer to start of cache and load data
   file_cache_ptr = file_cache_array;
   cache_len = httpd_fs_read(s->fd, file_cache_ptr, HTTPD_FILE_CACHESIZE);
+  httpd_fs_seek(s->fd, -cache_len, HTTPD_SEEK_CUR);
   *(file_cache_ptr + cache_len) = '\0';
   printf("::: cache_len: %d\n", cache_len);
   
@@ -226,6 +263,23 @@ next_cache(struct httpd_state *s)
   } else {
     return cache_len;
   }
+}
+/** 
+ * Loads data from file to cache starting with data under current cache pointer.
+ * i.e. seeks in file number of bytes between cache start and current cache pointer.
+ * 
+ * @param httpd_state with fd of file to read from
+ * @return -1 if file is done
+ */
+static int
+reload_cache(struct httpd_state *s)
+{
+  printf("reload_cache()\n");
+  // calculate bytes to seek in file
+  int toseek = file_cache_ptr - file_cache_array;
+  httpd_fs_seek(s->fd, toseek, HTTPD_SEEK_CUR);
+
+  load_cache(s);
 }
 /*---------------------------------------------------------------------------*/
 /**
@@ -241,20 +295,25 @@ PT_THREAD(handle_scripts(struct httpd_state *s))
   /* Note script includes will attach a leading : to the filename and a trailing zero */
   static char scriptname[MAX_SCRIPT_NAME_LENGTH + 1], *pptr;
   //  static uint16_t filelength;
-  static int done;
+  static int done, eof, eoc;
 
   PT_BEGIN(&s->scriptpt);
   printf("PT_THREAD: handle_script\n");
-  done = 0;
+  eoc = eof = done = 0;
 
   /* Init cache (null-terminated)*/
-  next_cache(s);
+  load_cache(s);
 
   while (!done) {
 
     /* Check if we should start executing a script, flagged by %! */
     if (file_cache_ptr[0] == ISO_percent &&
             file_cache_ptr[1] == ISO_bang) {
+      
+      /* Test if a whole line is in cache, otherwise reload cache. */
+      if (strchr(&file_cache_ptr[2], ISO_nl) == NULL) {
+        reload_cache(s);
+      }
 
       /* Extract name, if starts with colon include file else call cgi */
       s->scriptptr = get_scriptname(scriptname, &file_cache_ptr[2]);
@@ -300,34 +359,34 @@ PT_THREAD(handle_scripts(struct httpd_state *s))
       }
 
       /* calc new length to send */
-      if (pptr == NULL) { // no further percent found
-//        s->sendlen = HTTPD_FILE_CACHESIZE;
+      if (pptr == NULL) {
+        /* no further percent sign found in cache. */
+
         /* Send to end of cache */
         s->sendlen = cache_len - (&file_cache_ptr[0] - &file_cache_array[0]);
-//        printf("ptr: %d\n", &file_cache_ptr[0]);
-//        printf("len: %d\n", s->sendlen);
-//        printf("cch: %d\n", &file_cache_array[0]);
-//        printf("cln: %d\n", cache_len);
+        eoc = 1;// inidcates thate we need new cache
 
-        if (s->sendlen == 0) {
-          s->sendlen = 1;
-          printf("*** End of cache\n");
-          //          done = 1;
-          if (next_cache(s) == -1) {
-            printf("*** End of file\n");
-            done = 1;
-          }
-        }
       } else {
         s->sendlen = (int) ((int) pptr - (int) &file_cache_ptr[0]);
       }
-      if (s->sendlen >= uip_mss()) {
-        s->sendlen = uip_mss();
+
+      if (s->sendlen > 0) {
+        PRINTD("httpd: Sending %u bytes from 0x%04x\n", s->sendlen, (unsigned int) pptr);
+        s->sendfd = s->fd;
+        PT_WAIT_THREAD(&s->scriptpt, send_part_of_cache(s));
       }
 
-      PRINTD("httpd: Sending %u bytes from 0x%04x\n", s->sendlen, (unsigned int) pptr);
-      s->sendfd = s->fd;
-      PT_WAIT_THREAD(&s->scriptpt, send_part_of_file(s));
+      /* If cache was consumed, reload it or terminate if eof marker was set. */
+      if (eoc) {
+        eoc = 0;
+        if (eof) {
+          done = 1;
+        }
+        else if (reload_cache(s) == -1) {
+          PRINTD("*** End of file\n");
+          eof = 1;
+        }
+      }
 
     }
   }
