@@ -80,7 +80,7 @@ MEMB(conns, struct httpd_state, WEBSERVER_CONF_CONNS);
 #define ISO_colon   0x3a
 #define ISO_qmark   0x3f
 
-#define HTTPD_FILE_CACHESIZE  128
+#define HTTPD_FILE_CACHESIZE  51
 
 /* Holds cached file data */
 char file_cache_array[HTTPD_FILE_CACHESIZE + 1] = {0}; // alawys 0-terminated
@@ -279,7 +279,11 @@ reload_cache(struct httpd_state *s)
   int toseek = file_cache_ptr - file_cache_array;
   httpd_fs_seek(s->fd, toseek, HTTPD_SEEK_CUR);
 
-  load_cache(s);
+  return load_cache(s);
+}
+static int
+cache_size() {
+  return cache_len - (file_cache_ptr - file_cache_array);
 }
 /*---------------------------------------------------------------------------*/
 /**
@@ -305,6 +309,12 @@ PT_THREAD(handle_scripts(struct httpd_state *s))
   load_cache(s);
 
   while (!done) {
+    
+//    printf("***cache_size is: %d\n", cache_size());
+//    if (cache_size() < 2) {
+//      reload_cache(s);
+//      printf("***cache_size now is: %d\n", cache_size());
+//    }
 
     /* Check if we should start executing a script, flagged by %! */
     if (file_cache_ptr[0] == ISO_percent &&
@@ -349,6 +359,15 @@ PT_THREAD(handle_scripts(struct httpd_state *s))
 
       file_cache_ptr = s->scriptptr;
 
+      printf("***cache_size is: %d\n", cache_size());
+      if (cache_size() < 2) {
+        reload_cache(s);
+        printf("***cache_size now is: %d\n", cache_size());
+      }
+      if (cache_size() == 0) {
+        done = 1;
+      }
+
     } else { // no script
 
       /* get position of next percent character */
@@ -377,15 +396,27 @@ PT_THREAD(handle_scripts(struct httpd_state *s))
       }
 
       /* If cache was consumed, reload it or terminate if eof marker was set. */
+//      if (eoc) {
+//        eoc = 0;
+//        if (eof) {
+//          done = 1;
+//        }
+//        else if (reload_cache(s) == -1) {
+//          PRINTD("*** End of file\n");
+//          printf("*** reloaded cache_size is: %d\n", cache_size());
+//          eof = 1;
+//          /*  */
+//          if (cache_size() == 0) {
+//            done = 1;
+//          }
+//        }
+//      }
+      
       if (eoc) {
-        eoc = 0;
-        if (eof) {
-          done = 1;
-        }
-        else if (reload_cache(s) == -1) {
-          PRINTD("*** End of file\n");
-          eof = 1;
-        }
+        reload_cache(s);
+      }
+      if (cache_size() == 0) {
+        done = 1;
       }
 
     }
