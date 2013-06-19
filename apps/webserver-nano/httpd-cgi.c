@@ -169,10 +169,12 @@ httpd_cgifunction
 httpd_cgi(char *name)
 {
   struct httpd_cgi_call *f;
+  printf("httpd_cgi(%s)\n", name);
 
   /* Find the matching name in the table, return the function. */
   for(f = calls; f != NULL; f = f->next) {
     if(httpd_strncmp(name, f->name, httpd_strlen(f->name)) == 0) {
+      printf("found function at %d\n", f->function);
       return f->function;
     }
   }
@@ -275,6 +277,7 @@ PT_THREAD(header(struct httpd_state *s, char *ptr))
 {
 
   PSOCK_BEGIN(&s->sout);
+  printf("PT_THREAD: header\n");
 
   PSOCK_GENERATOR_SEND(&s->sout, generate_header, (void *) ptr);
   
@@ -680,11 +683,16 @@ generate_sensor_readings(void *arg)
   uint16_t days,h,m,s;
   unsigned long seconds=clock_seconds();
   static const char httpd_cgi_sensor0[] HTTPD_STRING_ATTR = "[Updated %d seconds ago]\n";
-  static const char httpd_cgi_sensor1[] HTTPD_STRING_ATTR = "<em>Temperature:</em> %s\n";
-  static const char httpd_cgi_sensor2[] HTTPD_STRING_ATTR = "<em>Battery    :</em> %s\n";
-  static const char httpd_cgi_sensor3[] HTTPD_STRING_ATTR = "<em>Uptime     :</em> %02d:%02d:%02d\n";
-  static const char httpd_cgi_sensor3d[] HTTPD_STRING_ATTR = "<em>Uptime    :</em> %u days %02u:%02u:%02u\n";
+  static const char httpd_cgi_sensor1[] HTTPD_STRING_ATTR = "<em>Temperature:</em> %s<br>\n";
+  static const char httpd_cgi_sensor2[] HTTPD_STRING_ATTR = "<em>Battery    :</em> %s<br>\n";
+  static const char httpd_cgi_sensor3[] HTTPD_STRING_ATTR = "<em>Uptime     :</em> %02d:%02d:%02d<br>\n";
+  static const char httpd_cgi_sensor3d[] HTTPD_STRING_ATTR = "<em>Uptime    :</em> %u days %02u:%02u:%02u<br>\n";
 
+  /*
+   * @todo:
+   * IMHO it is better to put this where it belongs, either in the example section or
+   * in the platform.
+   */
   /* Generate temperature and voltage strings for each platform */
 #if CONTIKI_TARGET_AVR_ATMEGA128RFA1  
 {uint8_t i;
@@ -871,8 +879,8 @@ generate_stats(void *arg)
 
 #if RADIOSTATS
   /* From RF230 statistics */
-  static const char httpd_cgi_sensor10[] HTTPD_STRING_ATTR = "<em>Radio on  (RF230BB)  :</em> %02d:%02d:%02d (%d.%02d%%)\n";
-  static const char httpd_cgi_sensor11[] HTTPD_STRING_ATTR = "<em>Packets:  (RF230BB)  :</em> Tx=%5d Rx=%5d  TxL=%5d RxL=%5d RSSI=%2ddBm\n";
+  static const char httpd_cgi_sensor10[] HTTPD_STRING_ATTR = "<em>Radio on  (RF230BB)  :</em> %02d:%02d:%02d (%d.%02d%%)<br>\n";
+  static const char httpd_cgi_sensor11[] HTTPD_STRING_ATTR = "<em>Packets:  (RF230BB)  :</em> Tx=%5d Rx=%5d  TxL=%5d RxL=%5d RSSI=%2ddBm<br>\n";
 
   s=(10000UL*savedradioontime)/seconds;
   p1=s/100;

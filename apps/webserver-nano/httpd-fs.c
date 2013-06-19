@@ -49,8 +49,15 @@
  */
 #include "httpd-fsdata.c"
 
+#define DEBUG 1
+#if DEBUG
+#define PRINTD PRINTA
+#else
+#define PRINTD(...)
+#endif
+
 /* Here we hold our 'files' */
-struct httpd_fs_file files[HTTPD_FS_NUMFILES] = {{0}};
+struct httpd_fs_file_desc files_desc[HTTPD_FS_NUMFILES] = {{0}};
 
 #if WEBSERVER_CONF_FILESTATS==1
 uint16_t httpd_filecount[HTTPD_FS_NUMFILES];
@@ -60,7 +67,7 @@ uint16_t httpd_filecount[HTTPD_FS_NUMFILES];
 static int get_free_fd() {
   int idx;
   for (idx = 0; idx < HTTPD_FS_NUMFILES; idx++) {
-    if (files[idx].start == NULL) {
+    if (files_desc[idx].file == NULL) {
       return idx;
     }
   }
@@ -79,16 +86,17 @@ httpd_fs_get_size()
   return HTTPD_FS_SIZE;
 }
 /*----------------------------------------------------------------------------*/
-uint16_t
+int
 httpd_fs_open(const char *name, int mode)
 {
 #if WEBSERVER_CONF_FILESTATS
   uint16_t i = 0;
 #endif
-  struct httpd_fsdata_file_noconst *f, fram;
+  static struct httpd_fsdata_file_noconst *f, fram;
   
   int fd = get_free_fd();
 
+  /* Iterate over linked list of files and search for filename. */
   for (f = (struct httpd_fsdata_file_noconst *) HTTPD_FS_ROOT;
           f != NULL;
           f = (struct httpd_fsdata_file_noconst *) fram.next) {
@@ -99,8 +107,8 @@ httpd_fs_open(const char *name, int mode)
     /*Compare name passed in RAM with name in whatever flash the file is in */
     /*makefsdata no longer adds an extra zero byte at the end of the file */
     if (httpd_fs_strcmp((char *) name, fram.name) == 0) {
-      files[fd].start = files[fd].pos = fram.data;
-      files[fd].len = fram.len;
+      files_desc[fd].file = &fram;
+      files_desc[fd].offset = 0;
 #if WEBSERVER_CONF_FILESTATS==2         //increment count in linked list field if it is in RAM
       f->count++;
       return f->count;
@@ -108,7 +116,12 @@ httpd_fs_open(const char *name, int mode)
     ++i
 #elif WEBSERVER_CONF_FILESTATS==1       //increment count in RAM array when linked list is in flash
       ++httpd_filecount[i];
-      return httpd_filecount[i];
+
+//      printf("name: %s\n", files_desc[fd].file->name);
+//      printf("file: %d\n", files_desc[fd].file);
+//      printf("len : %d\n", files_desc[fd].file->len);
+
+      return fd;
     }
     ++i;
 #else                              //no file statistics
@@ -116,48 +129,91 @@ httpd_fs_open(const char *name, int mode)
     }
 #endif /* WEBSERVER_CONF_FILESTATS */
   }
-  return 0;
+  PRINTD("httpd-fs.c: Failed opening %s\n", name);
+  return -1;
 }
 /*----------------------------------------------------------------------------*/
 void
 httpd_fs_close(int fd)
 {
-  files[fd].start = NULL;
+  files_desc[fd].file = NULL;
+}
+/*----------------------------------------------------------------------------*/
+/**
+ * Reads next line of file and stores it in lbuf
+ * 
+ * @param fd Descriptor of file to read from
+ * @param lbuf Buffer to write line data to
+ * @return Number of read bytes or -1 for EOF
+ */
+int
+httpd_fs_readline(int fd, void* lbuf)
+{
+  
 }
 /*----------------------------------------------------------------------------*/
 int
 httpd_fs_read(int fd, void* buf, unsigned int len)
 {
+  struct httpd_fs_file_desc *fdp;
+  struct httpd_fsdata_file *file;
+
+  fdp = &files_desc[fd];
+  file = fdp->file;
+  
+//  printf("fd: %d\n", fd);
+//  printf("file: %d\n", files_desc[fd].file);
+//  printf("name: %s\n", files_desc[fd].file->name);
+//  printf("fdp->offset1: %d\n", fdp->offset);
+//  printf("fdp->file->len: %d\n", files_desc[fd].file->len);
+
   /* read only available data. */
-  if (files[fd].len < len) {
-    len = files[fd].len;
+  if (fdp->offset + len > fdp->file->len) {
+    len = fdp->file->len - fdp->offset;
   }
-  httpd_fs_cpy(buf, files[fd].pos, len);
-  return len; // TODO: actual length?
+
+  httpd_fs_cpy(buf, fdp->file->data + fdp->offset, len);
+  fdp->offset += len;
+//  printf("fdp->offset2: %d\n", fdp->offset);
+  printf("read offset: %d\n", fdp->offset);
+
+  return len;
 }
 /*----------------------------------------------------------------------------*/
 /* Seek to a specified position in an open file. */
 cfs_offset_t
 httpd_fs_seek(int fd, cfs_offset_t offset, int whence)
 {
+  struct httpd_fs_file_desc *fdp;
+  struct httpd_fs_file *file;
+  cfs_offset_t new_offset;
+
+  fdp = &files_desc[fd];
+  file = fdp->file;
+  
+  printf("httpd_fs_seek(%d, %d, %d)\n", fd, offset, whence);
   
   switch (whence) {
     case HTTPD_SEEK_SET:
-      files[fd].pos =  files[fd].start;
+      new_offset = offset;
       break;
     case HTTPD_SEEK_CUR:
-      // nothing
+      new_offset = fdp->offset + offset;
       break;
     case HTTPD_SEEK_END:
-      files[fd].pos = files[fd].start + files[fd].len;
+      new_offset = fdp->file->len + offset;
+      break;
+    default:
+      return (cfs_offset_t)-1;
       break;
   }
   
-//  files[fd].len -= offset;
-  files[fd].pos += offset;
+  printf("seek offset: %d\n", new_offset);
+
+  return fdp->offset = new_offset;  
 
   /* To be compatible with cfs_seek, we return offset-1 if we reached EOF. */
-  return (files[fd].pos > files[fd].start + files[fd].len) ? offset - 1 : (int) files[fd].pos;
+//  return (files_desc[fd].pos > files_desc[fd].start + files_desc[fd].len) ? offset - 1 : (int) files_desc[fd].pos;
 }
 /*----------------------------------------------------------------------------*/
 void

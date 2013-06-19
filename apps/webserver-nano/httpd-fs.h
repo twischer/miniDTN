@@ -49,12 +49,11 @@
 
 #include "cfs.h"
 
-struct httpd_fs_file {
-  char *start;// pointer to first byte of file
-  char *pos;  // pointer to current position in file
-  int len;    // length of file
+struct httpd_fs_file_desc {
+  struct httpd_fsdata_file *file;
+  cfs_offset_t offset;
+  uint8_t flags;
 };
-
 
 /* file must be allocated by caller and will be filled in
    by the function. */
@@ -72,7 +71,7 @@ struct httpd_fs_file {
 #define httpd_cf_read cfs_read
 #define httpd_fs_seek cfs_seek
 #else
-uint16_t httpd_fs_open(const char *name, int mode);
+int httpd_fs_open(const char *name, int mode);
 void httpd_fs_close(int fd);
 int httpd_fs_read(int fd, void* buf, unsigned int len);
 cfs_offset_t httpd_fs_seek(int fd, cfs_offset_t offset, int whence);

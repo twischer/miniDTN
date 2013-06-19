@@ -39,9 +39,9 @@
 
 #ifndef WEBSERVER_CONF_CFS_PATHLEN
 #define HTTPD_PATHLEN 80
-#else /* WEBSERVER_CONF_CFS_CONNS */
+#else /* WEBSERVER_CONF_CFS_PATHLEN */
 #define HTTPD_PATHLEN WEBSERVER_CONF_CFS_PATHLEN
-#endif /* WEBSERVER_CONF_CFS_CONNS */
+#endif /* WEBSERVER_CONF_CFS_PATHLEN */
 
 struct httpd_state {
   struct timer timer;

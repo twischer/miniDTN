@@ -242,7 +242,7 @@ uint8_t httpd_cgi_sprint_ip6(uip_ip6addr_t addr, char * result);
 #endif
 
 
-#if defined(__AVR__)
+#if !defined(__AVR__)
 /* When using non-ram storage httpd-fsdata.c must be generated with the HTTPD_STRING_ATTR, eg
  *        ../../tools/makefsdata -A HTTPD_STRING_ATTR
  */
