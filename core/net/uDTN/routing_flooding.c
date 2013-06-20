@@ -234,29 +234,32 @@ int routing_flooding_send_to_local(struct routing_entry_t * entry)
 	int ret = 0;
 
 	// Should this bundle be delivered locally?
-	if( (entry->flags & ROUTING_FLAG_LOCAL) && !(entry->flags & ROUTING_FLAG_IN_DELIVERY) ) {
-		bundlemem = BUNDLE_STORAGE.read_bundle(entry->bundle_number);
-		if( bundlemem == NULL ) {
-			LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "cannot read bundle %lu", entry->bundle_number);
-			return FLOOD_ROUTE_RETURN_CONTINUE;
-		}
-
-		ret = delivery_deliver_bundle(bundlemem);
-		if( ret == DELIVERY_STATE_WAIT_FOR_APP ) {
-			entry->flags |= ROUTING_FLAG_IN_DELIVERY;
-		} else if( ret == DELIVERY_STATE_DELETE ) {
-			// Bundle can be deleted right away
-			entry->flags &= ~ROUTING_FLAG_LOCAL;
-
-			// Reschedule ourselves
-			routing_flooding_schedule_resubmission();
-
-			// And remove bundle if applicable
-			routing_flooding_check_keep_bundle(entry->bundle_number);
-		}
+	if( !(entry->flags & ROUTING_FLAG_LOCAL) || (entry->flags & ROUTING_FLAG_IN_DELIVERY) ) {
+		return FLOOD_ROUTE_RETURN_CONTINUE;
 	}
 
-	return FLOOD_ROUTE_RETURN_OK;
+	bundlemem = BUNDLE_STORAGE.read_bundle(entry->bundle_number);
+	if( bundlemem == NULL ) {
+		LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "cannot read bundle %lu", entry->bundle_number);
+		return FLOOD_ROUTE_RETURN_CONTINUE;
+	}
+
+	ret = delivery_deliver_bundle(bundlemem);
+	if( ret == DELIVERY_STATE_WAIT_FOR_APP ) {
+		entry->flags |= ROUTING_FLAG_IN_DELIVERY;
+		return FLOOD_ROUTE_RETURN_OK;
+	} else if( ret == DELIVERY_STATE_DELETE ) {
+		// Bundle can be deleted right away
+		entry->flags &= ~ROUTING_FLAG_LOCAL;
+
+		// Reschedule ourselves
+		routing_flooding_schedule_resubmission();
+
+		// And remove bundle if applicable
+		routing_flooding_check_keep_bundle(entry->bundle_number);
+	}
+
+	return FLOOD_ROUTE_RETURN_CONTINUE;
 }
 
 /**
@@ -384,6 +387,7 @@ void routing_flooding_send_to_known_neighbours(void)
 	struct routing_list_entry_t * n = NULL;
 	struct routing_entry_t * entry = NULL;
 	int try_to_forward = 1;
+	int try_local = 1;
 	int h = 0;
 
 	LOG(LOGD_DTN, LOG_ROUTE, LOGL_DBG, "send to known neighbours");
@@ -400,9 +404,15 @@ void routing_flooding_send_to_known_neighbours(void)
 			LOG(LOGD_DTN, LOG_ROUTE, LOGL_WRN, "Bundle with invalid MMEM structure");
 		}
 
-		/* Is the bundle for local? */
-		h = routing_flooding_send_to_local(entry);
-		/* We do not care about the return value, because we would continue anyway */
+		if( try_local ) {
+			/* Is the bundle for local? */
+			h = routing_flooding_send_to_local(entry);
+
+			/* We can only deliver only bundle at a time to local processes to speed up the whole thing */
+			if( h == FLOOD_ROUTE_RETURN_OK ) {
+				try_local = 0;
+			}
+		}
 
 		/* Skip this bundle, if it is not queued for forwarding */
 		if( !(entry->flags & ROUTING_FLAG_FORWARD) || (entry->flags & ROUTING_FLAG_IN_TRANSIT) || !try_to_forward ) {
