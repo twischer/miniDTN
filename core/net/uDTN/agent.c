@@ -9,7 +9,7 @@
  * \author Daniel Willmann <daniel@totalueberwachung.de>
  * \author Wolf-Bastian Poettner <poettner@ibr.cs.tu-bs.de>
  */
- 
+
 #include <stdlib.h>
 #include <string.h>
 
@@ -38,8 +38,6 @@
 
 #include "agent.h"
 
-static struct mmem * bundleptr;
-
 uint32_t dtn_node_id;
 uint32_t dtn_seq_nr;
 PROCESS(agent_process, "AGENT process");
@@ -62,11 +60,11 @@ PROCESS_THREAD(agent_process, ev, data)
 	struct registration_api * reg;
 
 	PROCESS_BEGIN();
-	
+
 	/* We obtain our dtn_node_id from the RIME address of the node */
 	dtn_node_id = convert_rime_to_eid(&rimeaddr_node_addr);
 	dtn_seq_nr = 0;
-	
+
 	/* We are initialized quite early - give Contiki some time to do its stuff */
 	process_poll(&agent_process);
 	PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL);
@@ -92,10 +90,10 @@ PROCESS_THREAD(agent_process, ev, data)
 	dtn_send_bundle_to_node_event = process_alloc_event();
 	dtn_processing_finished = process_alloc_event();
 	dtn_bundle_stored = process_alloc_event();
-	
+
 	// We use printf here, to make this message visible in every case!
 	printf("Starting DTN Bundle Protocol Agent with EID ipn:%lu\n", dtn_node_id);
-		
+
 	while(1) {
 		PROCESS_WAIT_EVENT_UNTIL(ev);
 
@@ -106,7 +104,7 @@ PROCESS_THREAD(agent_process, ev, data)
 			LOG(LOGD_DTN, LOG_AGENT, LOGL_INF, "New Service registration for endpoint %lu", reg->app_id);
 			continue;
 		}
-					
+
 		if(ev == dtn_application_status_event) {
 			int status;
 			reg = (struct registration_api *) data;
@@ -115,25 +113,26 @@ PROCESS_THREAD(agent_process, ev, data)
 				status = registration_set_active(reg->app_id, reg->node_id);
 			else if(reg->status == APP_PASSIVE)
 				status = registration_set_passive(reg->app_id, reg->node_id);
-			
+
 			if(status == -1) {
 				LOG(LOGD_DTN, LOG_AGENT, LOGL_ERR, "no registration found to switch");
 			}
 
 			continue;
 		}
-		
+
 		if(ev == dtn_application_remove_event) {
 			reg = (struct registration_api *) data;
 			LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "Unregistering service for endpoint %lu", reg->app_id);
 			registration_remove_application(reg->app_id, reg->node_id);
 			continue;
 		}
-		
+
 		if(ev == dtn_send_bundle_event) {
 			uint8_t n = 0;
 			struct bundle_t * bundle = NULL;
 			struct process * source_process = NULL;
+			struct mmem * bundleptr;
 			uint32_t bundle_flags = 0;
 
 			bundleptr = (struct mmem *) data;
@@ -222,9 +221,11 @@ PROCESS_THREAD(agent_process, ev, data)
 			if( n ) {
 				data = (void *) bundle_number_ptr;
 				ev = dtn_bundle_in_storage_event;
+			} else {
+				continue;
 			}
 		}
-		
+
 		if(ev == dtn_send_admin_record_event) {
 			LOG(LOGD_DTN, LOG_AGENT, LOGL_ERR, "Send admin record currently not implemented");
 			continue;
