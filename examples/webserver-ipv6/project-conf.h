@@ -31,22 +31,21 @@
 
 #ifndef __PROJECT_ROUTER_CONF_H__
 #define __PROJECT_ROUTER_CONF_H__
-/*
-#ifndef UIP_FALLBACK_INTERFACE
-#define UIP_FALLBACK_INTERFACE rpl_interface
-#endif
-*/
 
 #ifndef QUEUEBUF_CONF_NUM
 #define QUEUEBUF_CONF_NUM          4
 #endif
 
+/* Note: Must be set to max size of CGI generated header + TCP/IP-header (60 Bytes)
+ * If no MSS is set, MSS will be (UIP_CONF_BUFFER_SIZE - 60)
+ * Note that also a possible router has to support this MSS!
+ */
 #ifndef UIP_CONF_BUFFER_SIZE
-#define UIP_CONF_BUFFER_SIZE    140
+#define UIP_CONF_BUFFER_SIZE    500
 #endif
 
 #ifndef UIP_CONF_RECEIVE_WINDOW
-#define UIP_CONF_RECEIVE_WINDOW  60
+#define UIP_CONF_RECEIVE_WINDOW  300
 #endif
 
 #ifndef WEBSERVER_CONF_CFS_CONNS

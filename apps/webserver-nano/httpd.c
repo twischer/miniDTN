@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2004, Adam Dunkels.
+ * Copyright (c) 2013, Adam Dunkels, Enrico Joerns
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -94,9 +94,8 @@ file_generate(void *state)
 
   if (s->sendlen > uip_mss()) {
     PRINTD("httpd: Send length too large to be sent.\n");
+    s->sendlen = uip_mss();
   }
-
-  memcpy(uip_appdata, file_cache_ptr, s->sendlen);
 
   return httpd_fs_read(s->fd, uip_appdata, s->sendlen);
 }
@@ -240,7 +239,7 @@ get_scriptname(char *dest, char *readbuf)
   dest[i] = '\0';
   return (readbuf);
 }
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 /** 
  * Loads data from file to cache starting at current file position.
  * @note Position in file will not be changed!
@@ -264,6 +263,7 @@ load_cache(struct httpd_state *s)
     return cache_len;
   }
 }
+/*----------------------------------------------------------------------------*/
 /** 
  * Loads data from file to cache starting with data under current cache pointer.
  * i.e. seeks in file number of bytes between cache start and current cache pointer.
@@ -296,6 +296,7 @@ cache_size() {
 static
 PT_THREAD(handle_scripts(struct httpd_state *s))
 {
+  printf("uip_appdata: %d -- %d (%d)\n", (char*) uip_appdata, ((char*) uip_appdata) + uip_mss(), uip_mss());
   /* Note script includes will attach a leading : to the filename and a trailing zero */
   static char scriptname[MAX_SCRIPT_NAME_LENGTH + 1], *pptr;
   //  static uint16_t filelength;
@@ -310,10 +311,9 @@ PT_THREAD(handle_scripts(struct httpd_state *s))
 
   while (!done) {
     
-//    printf("***cache_size is: %d\n", cache_size());
+    /* Assure we can read at least a '%!' sequence. */
 //    if (cache_size() < 2) {
 //      reload_cache(s);
-//      printf("***cache_size now is: %d\n", cache_size());
 //    }
 
     /* Check if we should start executing a script, flagged by %! */
@@ -353,6 +353,7 @@ PT_THREAD(handle_scripts(struct httpd_state *s))
 #if WEBSERVER_CONF_CGI
         PT_WAIT_THREAD(&s->scriptpt, httpd_cgi(scriptname)(s, s->scriptptr));
 #endif
+        printf("CGI done\n");
       }
 
       skip_scriptline(s);
@@ -395,26 +396,11 @@ PT_THREAD(handle_scripts(struct httpd_state *s))
         PT_WAIT_THREAD(&s->scriptpt, send_part_of_cache(s));
       }
 
-      /* If cache was consumed, reload it or terminate if eof marker was set. */
-//      if (eoc) {
-//        eoc = 0;
-//        if (eof) {
-//          done = 1;
-//        }
-//        else if (reload_cache(s) == -1) {
-//          PRINTD("*** End of file\n");
-//          printf("*** reloaded cache_size is: %d\n", cache_size());
-//          eof = 1;
-//          /*  */
-//          if (cache_size() == 0) {
-//            done = 1;
-//          }
-//        }
-//      }
-      
+      /* Reload cache if it was marked as empty. */
       if (eoc) {
         reload_cache(s);
       }
+      /* If (reloaded) cache empty, stop sending */
       if (cache_size() == 0) {
         done = 1;
       }
@@ -475,6 +461,7 @@ const char httpd_mime_bin[] HTTPD_STRING_ATTR = "application/octet-stream";
 #if WEBSERVER_CONF_INCLUDE || WEBSERVER_CONF_CGI
 const char httpd_shtml [] HTTPD_STRING_ATTR = ".shtml";
 #endif
+/*---------------------------------------------------------------------------*/
 static
 PT_THREAD(send_headers(struct httpd_state *s, const char *statushdr))
 {
@@ -723,7 +710,7 @@ httpd_init(void)
   //  printf("--------------------------------------------------------------\n");
   tcp_listen(UIP_HTONS(80));
   memb_init(&conns);
-  //  PRINTD(" sizof(struct httpd_state) = %d\n",sizeof(struct httpd_state));
+    PRINTD(" sizof(struct httpd_state) = %d\n",sizeof(struct httpd_state));
   PRINTA(" %d bytes used for httpd state storage\n", conns.size * conns.num);
 
   char printbuf[129] = {

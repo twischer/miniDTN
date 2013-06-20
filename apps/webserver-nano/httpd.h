@@ -84,24 +84,7 @@
 #define WEBSERVER_CONF_CGI       1
 /* MAX_SCRIPT_NAME_LENGTH should be at least the maximum file name length+2 for %!: includes */
 #define MAX_SCRIPT_NAME_LENGTH   WEBSERVER_CONF_NAMESIZE+2
-/* Enable specific cgi's */
-#define WEBSERVER_CONF_HEADER    1
-//#define WEBSERVER_CONF_HEADER_W3C  1 //Proper header
-#define WEBSERVER_CONF_HEADER_MENU 1 //with links to other pages
-//#define WEBSERVER_CONF_HEADER_ICON 1 //with favicon
-#define WEBSERVER_CONF_LOADTIME  0  //show load time in filestats
-#define WEBSERVER_CONF_FILESTATS 1
-#define WEBSERVER_CONF_TCPSTATS  0
-#define WEBSERVER_CONF_PROCESSES 0
-#define WEBSERVER_CONF_ADDRESSES 1
-#define WEBSERVER_CONF_NEIGHBORS 1
-#define WEBSERVER_CONF_NEIGHBOR_STATUS 0
-#define WEBSERVER_CONF_ROUTES    0
-#define WEBSERVER_CONF_ROUTE_LINKS  0
-#define WEBSERVER_CONF_SENSORS   0
-#define WEBSERVER_CONF_STATISTICS   0
-#define WEBSERVER_CONF_TICTACTOE 0   //Needs passquery of at least 10 chars 
-#define WEBSERVER_CONF_AJAX      0
+#define WEBSERVER_CONF_LOADTIME  1
 //#define WEBSERVER_CONF_PASSQUERY 10
 #if WEBSERVER_CONF_PASSQUERY
 extern char httpd_query[WEBSERVER_CONF_PASSQUERY];
@@ -131,23 +114,7 @@ extern char httpd_query[WEBSERVER_CONF_PASSQUERY];
 #define WEBSERVER_CONF_CGI       1
 /* MAX_SCRIPT_NAME_LENGTH should be at least the maximum file name length+2 for %!: includes */
 #define MAX_SCRIPT_NAME_LENGTH   WEBSERVER_CONF_NAMESIZE+2
-/* Enable specific cgi's */
-#define WEBSERVER_CONF_HEADER    1
-//#define WEBSERVER_CONF_HEADER_W3C  1 //Proper header
-#define WEBSERVER_CONF_HEADER_MENU 1 //with links to other pages
-//#define WEBSERVER_CONF_HEADER_ICON 1 //with favicon
 #define WEBSERVER_CONF_LOADTIME  1
-#define WEBSERVER_CONF_FILESTATS 1
-#define WEBSERVER_CONF_TCPSTATS  1
-#define WEBSERVER_CONF_PROCESSES 1
-#define WEBSERVER_CONF_ADDRESSES 1
-#define WEBSERVER_CONF_NEIGHBORS 1
-#define WEBSERVER_CONF_NEIGHBOR_STATUS 1
-#define WEBSERVER_CONF_ROUTES    1
-#define WEBSERVER_CONF_ROUTE_LINKS  1
-#define WEBSERVER_CONF_SENSORS   1
-#define WEBSERVER_CONF_STATISTICS   1
-//#define WEBSERVER_CONF_TICTACTOE 1   //Needs passquery of at least 10 chars 
 #define WEBSERVER_CONF_AJAX      1
 #define WEBSERVER_CONF_SHOW_ROOM 0
 #define WEBSERVER_CONF_PASSQUERY 10
@@ -180,25 +147,7 @@ extern char httpd_query[WEBSERVER_CONF_PASSQUERY];
 #define WEBSERVER_CONF_CGI       1
 /* MAX_SCRIPT_NAME_LENGTH should be at least the maximum file name length+2 for %!: includes */
 #define MAX_SCRIPT_NAME_LENGTH   WEBSERVER_CONF_NAMESIZE+2
-/* Enable specific cgi's */
-#define WEBSERVER_CONF_HEADER    1
-//#define WEBSERVER_CONF_HEADER_W3C  1 //Proper header
-#define WEBSERVER_CONF_HEADER_MENU 1 //with links to other pages
-//#define WEBSERVER_CONF_HEADER_ICON 1 //with favicon
 #define WEBSERVER_CONF_LOADTIME  1
-#define WEBSERVER_CONF_FILESTATS 1
-#define WEBSERVER_CONF_TCPSTATS  1
-#define WEBSERVER_CONF_PROCESSES 1
-#define WEBSERVER_CONF_ADDRESSES 1
-#define WEBSERVER_CONF_NEIGHBORS 1
-#define WEBSERVER_CONF_ROUTES    1
-#define WEBSERVER_CONF_NEIGHBORS 1
-#define WEBSERVER_CONF_NEIGHBOR_STATUS 1
-#define WEBSERVER_CONF_ROUTES    1
-#define WEBSERVER_CONF_ROUTE_LINKS  1
-#define WEBSERVER_CONF_SENSORS   1
-#define WEBSERVER_CONF_STATISTICS   1
-#define WEBSERVER_CONF_TICTACTOE 1   //Needs passquery of at least 10 chars 
 #define WEBSERVER_CONF_AJAX      1
 #define WEBSERVER_CONF_PASSQUERY 10
 #if WEBSERVER_CONF_PASSQUERY
@@ -301,9 +250,9 @@ struct httpd_state {
 #if WEBSERVER_CONF_AJAX
   uint16_t ajax_timeout;
 #endif
-#if WEBSERVER_CONF_NEIGHBORS || WEBSERVER_CONF_ROUTES
+//#if WEBSERVER_CONF_NEIGHBORS || WEBSERVER_CONF_ROUTES
   uint8_t starti,savei,startj,savej;
-#endif
+//#endif
 #if WEBSERVER_CONF_CGI
   union {
     unsigned short count;

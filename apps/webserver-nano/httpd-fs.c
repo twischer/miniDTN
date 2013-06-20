@@ -93,7 +93,7 @@ httpd_fs_open(const char *name, int mode)
   uint16_t i = 0;
 #endif
   static struct httpd_fsdata_file_noconst *f, fram;
-  
+
   int fd = get_free_fd();
 
   /* Iterate over linked list of files and search for filename. */
@@ -109,25 +109,11 @@ httpd_fs_open(const char *name, int mode)
     if (httpd_fs_strcmp((char *) name, fram.name) == 0) {
       files_desc[fd].file = &fram;
       files_desc[fd].offset = 0;
-#if WEBSERVER_CONF_FILESTATS==2         //increment count in linked list field if it is in RAM
-      f->count++;
-      return f->count;
-    }
-    ++i
-#elif WEBSERVER_CONF_FILESTATS==1       //increment count in RAM array when linked list is in flash
-      ++httpd_filecount[i];
-
-//      printf("name: %s\n", files_desc[fd].file->name);
-//      printf("file: %d\n", files_desc[fd].file);
-//      printf("len : %d\n", files_desc[fd].file->len);
-
+#if WEBSERVER_CONF_FILESTATS
+      // TODO :)
+#endif /* WEBSERVER_CONF_FILESTATS */
       return fd;
     }
-    ++i;
-#else                              //no file statistics
-      return 1;
-    }
-#endif /* WEBSERVER_CONF_FILESTATS */
   }
   PRINTD("httpd-fs.c: Failed opening %s\n", name);
   return -1;
