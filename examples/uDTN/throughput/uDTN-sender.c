@@ -181,7 +181,7 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 		}
 
 		/* Only proceed, when we have enough storage left */
-		if( BUNDLE_STORAGE.free_space(NULL) < 1 ) {
+		if( BUNDLE_STORAGE.free_space(NULL) < 3 ) {
 			process_post(&udtn_sender_process, PROCESS_EVENT_CONTINUE, NULL);
 			continue;
 		}
