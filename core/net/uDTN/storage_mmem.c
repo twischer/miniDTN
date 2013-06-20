@@ -54,9 +54,17 @@ struct bundle_list_entry_t {
 	 */
 	uint32_t bundle_num;
 
+	/** Flags */
+	uint8_t flags;
+
 	/** pointer to the actual bundle stored in MMEM */
 	struct mmem *bundle;
 };
+
+/**
+ * Flags for the storage
+ */
+#define STORAGE_MMEM_FLAGS_LOCKED 	0x1
 
 // List and memory blocks for the bundles
 LIST(bundle_list);
@@ -183,6 +191,11 @@ uint8_t storage_mmem_make_room(struct mmem * bundlemem)
 			 entry != NULL;
 			 entry = list_item_next(entry) ) {
 			bundle_old = (struct bundle_t *) MMEM_PTR(entry->bundle);
+
+			/* Never delete locked bundles */
+			if( entry->flags & STORAGE_MMEM_FLAGS_LOCKED ) {
+				continue;
+			}
 
 			/* If the new bundle has a longer lifetime than the bundle in our storage,
 			 * delete the bundle from storage to make room
@@ -436,6 +449,58 @@ struct storage_entry_t * storage_mmem_get_bundles(void)
 	return (struct storage_entry_t *) list_head(bundle_list);
 }
 
+/**
+ * \brief Mark a bundle as locked so that it will not be deleted even if we are running out of space
+ *
+ * \param bundle_num Bundle number
+ * \return 1 on success or 0 on error
+ */
+uint8_t storage_mmem_lock_bundle(uint32_t bundle_num)
+{
+	struct bundle_list_entry_t * entry = NULL;
+
+	// Look for the bundle we are talking about
+	for(entry = list_head(bundle_list);
+			entry != NULL;
+			entry = list_item_next(entry)) {
+		if( entry->bundle_num == bundle_num ) {
+			break;
+		}
+	}
+
+	if( entry == NULL ) {
+		return 0;
+	}
+
+	entry->flags |= STORAGE_MMEM_FLAGS_LOCKED;
+
+	return 1;
+}
+
+/**
+ * \brief Mark a bundle as unlocked after being locked previously
+ */
+void storage_mmem_unlock_bundle(uint32_t bundle_num)
+{
+	struct bundle_list_entry_t * entry = NULL;
+
+	// Look for the bundle we are talking about
+	for(entry = list_head(bundle_list);
+			entry != NULL;
+			entry = list_item_next(entry)) {
+		if( entry->bundle_num == bundle_num ) {
+			break;
+		}
+	}
+
+	if( entry == NULL ) {
+		return;
+	}
+
+	entry->flags &= ~STORAGE_MMEM_FLAGS_LOCKED;
+}
+
+
 const struct storage_driver storage_mmem = {
 	"STORAGE_MMEM",
 	storage_mmem_init,
@@ -443,6 +508,8 @@ const struct storage_driver storage_mmem = {
 	storage_mmem_save_bundle,
 	storage_mmem_delete_bundle,
 	storage_mmem_read_bundle,
+	storage_mmem_lock_bundle,
+	storage_mmem_unlock_bundle,
 	storage_mmem_get_free_space,
 	storage_mmem_get_bundle_numbers,
 	storage_mmem_get_bundles,
