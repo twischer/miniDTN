@@ -79,6 +79,7 @@ int delivery_deliver_bundle(struct mmem *bundlemem) {
 	struct registration * n = NULL;
 	struct bundle_t * bundle = NULL;
 	int delivered = 0;
+	int busy = 0;
 
 	if( bundlemem == NULL ) {
 		LOG(LOGD_DTN, LOG_BUNDLE, LOGL_ERR, "invalid MMEM pointer");
@@ -125,11 +126,20 @@ int delivery_deliver_bundle(struct mmem *bundlemem) {
 
 					// We deliver only to the first service in line - multiple registrations are not supported
 					break;
-				} else
+				} else {
 					LOG(LOGD_DTN, LOG_BUNDLE, LOGL_DBG, "Service is busy");
+					busy = 1;
+				}
 			} else
 				LOG(LOGD_DTN, LOG_BUNDLE, LOGL_DBG, "Service is inactive");
 		}
+	}
+
+	if( !delivered && busy ) {
+		// if we did not find a registration, deallocate the memory
+		bundle_decrement(bundlemem);
+		// Return error code
+		return DELIVERY_STATE_BUSY;
 	}
 
 	if( !delivered ) {

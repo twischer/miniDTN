@@ -19,6 +19,7 @@
 #define DELIVERY_STATE_ERROR -1
 #define DELIVERY_STATE_WAIT_FOR_APP 1
 #define DELIVERY_STATE_DELETE 2
+#define DELIVERY_STATE_BUSY 3
 
 /**
  * \brief unblocks a service that was previously delivering a bundle
