@@ -257,6 +257,8 @@ int routing_flooding_send_to_local(struct routing_entry_t * entry)
 
 		// And remove bundle if applicable
 		routing_flooding_check_keep_bundle(entry->bundle_number);
+	} else if( ret == DELIVERY_STATE_BUSY ) {
+		return FLOOD_ROUTE_RETURN_OK;
 	}
 
 	return FLOOD_ROUTE_RETURN_CONTINUE;
