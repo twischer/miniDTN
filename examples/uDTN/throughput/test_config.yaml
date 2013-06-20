@@ -43,14 +43,14 @@ tests:
         program: uDTN-sender
         instrument: [examples/uDTN/throughput/uDTN-sender.c,platform/inga/*.c,core/net/uDTN/*.c]
         debug: []
-        cflags: "-DCONF_REPORTING_INTERVAL=1 -fno-inline -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30 -DCONF_REPORT=1 -DCONF_BUNDLES=40 -DTEST_DO_NOT_DELETE_ON_DIRECT_DELIVERY=1 -DCONF_SEND_TO_NODE=$RECEIVER"
+        cflags: "-DBUNDLE_CONF_STORAGE_BEHAVIOUR=BUNDLE_STORAGE_BEHAVIOUR_DO_NOT_DELETE -DCONF_REPORTING_INTERVAL=1 -fno-inline -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30 -DCONF_REPORT=1 -DCONF_BUNDLES=40 -DTEST_DO_NOT_DELETE_ON_DIRECT_DELIVERY=1 -DCONF_SEND_TO_NODE=$RECEIVER"
         graph_options: ""
       - name: receiver
         programdir: examples/uDTN/throughput
         program: uDTN-sink
         instrument: [examples/uDTN/throughput/uDTN-sink.c,platform/inga/*.c,core/net/uDTN/*.c]
         debug: []
-        cflags: "-DCONF_REPORTING_INTERVAL=1 -fno-inline -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30 -DCONF_REPORT=1 -DCONF_BUNDLES=40 "
+        cflags: "-DBUNDLE_CONF_STORAGE_BEHAVIOUR=BUNDLE_STORAGE_BEHAVIOUR_DO_NOT_DELETE -DCONF_REPORTING_INTERVAL=1 -fno-inline -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30 -DCONF_REPORT=1 -DCONF_BUNDLES=40 "
         graph_options: ""
   - name: delivery-reports-uninstr
     timeout: 900
@@ -60,14 +60,14 @@ tests:
         program: uDTN-sender
         instrument: []
         debug: []
-        cflags: "-DCONF_REPORTING_INTERVAL=1 -fno-inline -DCONF_REPORT=1 -DCONF_BUNDLES=40 -DTEST_DO_NOT_DELETE_ON_DIRECT_DELIVERY=1 -DCONF_SEND_TO_NODE=$RECEIVER"
+        cflags: "-DBUNDLE_CONF_STORAGE_BEHAVIOUR=BUNDLE_STORAGE_BEHAVIOUR_DO_NOT_DELETE -DCONF_REPORTING_INTERVAL=1 -fno-inline -DCONF_REPORT=1 -DCONF_BUNDLES=40 -DTEST_DO_NOT_DELETE_ON_DIRECT_DELIVERY=1 -DCONF_SEND_TO_NODE=$RECEIVER"
         graph_options: ""
       - name: receiver
         programdir: examples/uDTN/throughput
         program: uDTN-sink
         instrument: []
         debug: []
-        cflags: "-DCONF_REPORTING_INTERVAL=1 -fno-inline -DCONF_REPORT=1 -DCONF_BUNDLES=40 "
+        cflags: "-DBUNDLE_CONF_STORAGE_BEHAVIOUR=BUNDLE_STORAGE_BEHAVIOUR_DO_NOT_DELETE -DCONF_REPORTING_INTERVAL=1 -fno-inline -DCONF_REPORT=1 -DCONF_BUNDLES=40 "
         graph_options: ""
 ### Test throughput COFFEE
   - name: throughput-coffee
