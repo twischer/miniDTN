@@ -243,7 +243,8 @@ send_packet(mac_callback_t sent, void *ptr)
           &&  ret == MAC_TX_OK) {
     send_flag = 1;
 #ifdef DISCOVERY_AWARE_RDC_CONF_DYNAMIC_TIMEOUT
-    to_modifier<<=1;
+    //to_modifier++;
+    to_modifier <<= 1;
 #endif /* DISCOVERY_AWARE_RDC_CONF_DYNAMIC_TIMEOUT */
   }
 
@@ -289,9 +290,8 @@ packet_input(void)
 
 #ifdef DISCOVERY_AWARE_RDC_CONF_DYNAMIC_TIMEOUT
     if (!rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_RECEIVER), &rimeaddr_null)) {
+      //to_modifier++;
       to_modifier <<= 1;
-    } else {
-      to_modifier++;
     }
 #endif /* DISCOVERY_AWARE_RDC_CONF_DYNAMIC_TIMEOUT */
 
@@ -355,8 +355,13 @@ PROCESS_THREAD(discovery_aware_rdc_process, ev, data)
 
     if (dtn_disco_stop_event == ev) {
       PRINTF("RDC: received STOP event\n");
-      radio_may_be_turned_off = 1;
-      etimer_set(&radio_off_timeout_timer, RADIO_OFF_SEND_TIMEOUT * to_modifier * CLOCK_SECOND);
+      if (radio_may_be_turned_off == 0 ) {
+        etimer_set(&radio_off_timeout_timer, RADIO_OFF_SEND_TIMEOUT * to_modifier * CLOCK_SECOND);
+#ifdef DISCOVERY_AWARE_RDC_CONF_DYNAMIC_TIMEOUT
+        to_modifier = 1;
+#endif /* DISCOVERY_AWARE_RDC_CONF_DYNAMIC_TIMEOUT */
+        radio_may_be_turned_off = 1;
+      }
       continue;
     }
 
@@ -372,6 +377,9 @@ PROCESS_THREAD(discovery_aware_rdc_process, ev, data)
           send_flag = 0;
           rec_flag = 0;
           etimer_set(&radio_off_timeout_timer, RADIO_OFF_SEND_TIMEOUT * to_modifier * CLOCK_SECOND);
+#ifdef DISCOVERY_AWARE_RDC_CONF_DYNAMIC_TIMEOUT
+          to_modifier = 1;
+#endif /* DISCOVERY_AWARE_RDC_CONF_DYNAMIC_TIMEOUT */
         } else {
           PRINTF("RDC: Turning radio OFF.\n");
           radio_status = 0;
