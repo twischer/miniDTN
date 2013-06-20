@@ -28,6 +28,7 @@
 #include "custody.h"
 #include "redundancy.h"
 #include "statistics.h"
+#include "storage.h"
 
 #include "delivery.h"
 
@@ -46,6 +47,9 @@ void delivery_unblock_service(struct mmem * bundlemem) {
 		bundle_decrement(bundlemem);
 		return;
 	}
+
+	// Unlock the bundle so that it can be deleted
+	BUNDLE_STORAGE.unlock_bundle(bundle->bundle_num);
 
 	// Let's see, what service registrations we have
 	for(n = list_head(reg_list);
@@ -110,6 +114,9 @@ int delivery_deliver_bundle(struct mmem *bundlemem) {
 
 					// Mark service as busy to prevent further bundle deliveries
 					n->busy = 1;
+
+					// Lock the bundle so it will not be deleted in the meantime
+					BUNDLE_STORAGE.lock_bundle(bundle->bundle_num);
 
 					// Post the event to the respective service
 					process_post(n->application_process, submit_data_to_application_event, bundlemem);

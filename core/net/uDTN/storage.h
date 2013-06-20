@@ -78,6 +78,10 @@ struct storage_driver {
 	uint16_t (* del_bundle)(uint32_t bundle_num, uint8_t reason);
 	/** reads a bundle */
 	struct mmem *(* read_bundle)(uint32_t bundle_num);
+	/** Marks a bundle as locked so it will not be deleted until it is unlocked */
+	uint8_t (* lock_bundle)(uint32_t bundle_num);
+	/** Unlocks a bundle so it can be deleted again */
+	void (* unlock_bundle)(uint32_t bundle_num);
 	/** checks if there is space for a bundle */
 	uint16_t (* free_space)(struct mmem *bundlemem);
 	/** returns the number of saved bundles */
