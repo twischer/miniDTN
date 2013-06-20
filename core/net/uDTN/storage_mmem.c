@@ -167,8 +167,6 @@ void storage_mmem_reinit(void)
  */
 uint8_t storage_mmem_make_room(struct mmem * bundlemem)
 {
-	struct bundle_list_entry_t * entry = NULL;
-
 	/* Now delete expired bundles */
 	storage_mmem_prune();
 
@@ -184,6 +182,7 @@ uint8_t storage_mmem_make_room(struct mmem * bundlemem)
 	}
 #elif (BUNDLE_STORAGE_BEHAVIOUR == BUNDLE_STORAGE_BEHAVIOUR_DELETE_OLDEST || BUNDLE_STORAGE_BEHAVIOUR == BUNDLE_STORAGE_BEHAVIOUR_DELETE_YOUNGEST )
 	struct bundle_t * bundle = NULL;
+	struct bundle_list_entry_t * entry = NULL;
 
 	/* Keep deleting bundles until we have enough slots */
 	while( bundles_in_storage >= BUNDLE_STORAGE_SIZE) {
@@ -223,9 +222,10 @@ uint8_t storage_mmem_make_room(struct mmem * bundlemem)
 		/* Delete Bundle */
 		storage_mmem_delete_bundle(entry->bundle_num, REASON_DEPLETED_STORAGE);
 	}
-#else
+#elif (BUNDLE_STORAGE_BEHAVIOUR == BUNDLE_STORAGE_BEHAVIOUR_DELETE_OLDER || BUNDLE_STORAGE_BEHAVIOUR == BUNDLE_STORAGE_BEHAVIOUR_DELETE_YOUNGER )
 	struct bundle_t * bundle_new = NULL;
 	struct bundle_t * bundle_old = NULL;
+	struct bundle_list_entry_t * entry = NULL;
 
 	/* Keep deleting bundles until we have enough slots */
 	while( bundles_in_storage >= BUNDLE_STORAGE_SIZE) {
@@ -269,6 +269,8 @@ uint8_t storage_mmem_make_room(struct mmem * bundlemem)
 		/* Delete Bundle */
 		storage_mmem_delete_bundle(entry->bundle_num, REASON_DEPLETED_STORAGE);
 	}
+#else
+#error No Bundle Deletion Strategy defined
 #endif
 
 	return 1;
