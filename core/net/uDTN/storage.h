@@ -56,6 +56,22 @@
 #endif
 
 /**
+ * Should the storage run out if space, what shall we do?
+ */
+// Options
+#define BUNDLE_STORAGE_BEHAVIOUR_DELETE_OLDER 1
+#define BUNDLE_STORAGE_BEHAVIOUR_DELETE_YOUNGER 2
+#define BUNDLE_STORAGE_BEHAVIOUR_DO_NOT_DELETE 3
+#define BUNDLE_STORAGE_BEHAVIOUR_DELETE_OLDEST 4
+#define BUNDLE_STORAGE_BEHAVIOUR_DELETE_YOUNGEST 5
+// Selection
+#ifdef BUNDLE_CONF_STORAGE_BEHAVIOUR
+#define BUNDLE_STORAGE_BEHAVIOUR BUNDLE_CONF_STORAGE_BEHAVIOUR
+#else
+#define BUNDLE_STORAGE_BEHAVIOUR BUNDLE_STORAGE_BEHAVIOUR_DELETE_OLDER
+#endif
+
+/**
  * Representation of a bundle as returned by the "get_bundles" call to the storage module
  */
 struct storage_entry_t {

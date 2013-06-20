@@ -168,8 +168,6 @@ void storage_mmem_reinit(void)
 uint8_t storage_mmem_make_room(struct mmem * bundlemem)
 {
 	struct bundle_list_entry_t * entry = NULL;
-	struct bundle_t * bundle_new = NULL;
-	struct bundle_t * bundle_old = NULL;
 
 	/* Now delete expired bundles */
 	storage_mmem_prune();
@@ -178,6 +176,56 @@ uint8_t storage_mmem_make_room(struct mmem * bundlemem)
 	if( bundlemem == NULL ) {
 		return 0;
 	}
+
+#if BUNDLE_STORAGE_BEHAVIOUR == BUNDLE_STORAGE_BEHAVIOUR_DO_NOT_DELETE
+	/* We do not delete at all. If storage is used up, we sit there and wait */
+	if( bundles_in_storage >= BUNDLE_STORAGE_SIZE ) {
+		return 0;
+	}
+#elif (BUNDLE_STORAGE_BEHAVIOUR == BUNDLE_STORAGE_BEHAVIOUR_DELETE_OLDEST || BUNDLE_STORAGE_BEHAVIOUR == BUNDLE_STORAGE_BEHAVIOUR_DELETE_YOUNGEST )
+	struct bundle_t * bundle = NULL;
+
+	/* Keep deleting bundles until we have enough slots */
+	while( bundles_in_storage >= BUNDLE_STORAGE_SIZE) {
+		unsigned long comparator = 0;
+		struct bundle_list_entry_t * deletor = NULL;
+
+		for( entry = list_head(bundle_list);
+			 entry != NULL;
+			 entry = list_item_next(entry) ) {
+
+			bundle = (struct bundle_t *) MMEM_PTR(entry->bundle);
+
+			/* Never delete locked bundles */
+			if( entry->flags & STORAGE_MMEM_FLAGS_LOCKED ) {
+				continue;
+			}
+
+#if BUNDLE_STORAGE_BEHAVIOUR == BUNDLE_STORAGE_BEHAVIOUR_DELETE_OLDEST
+			if( (clock_seconds() - bundle->rec_time) > comparator || comparator == 0) {
+				comparator = clock_seconds() - bundle->rec_time;
+				deletor = entry;
+			}
+#elif BUNDLE_STORAGE_BEHAVIOUR == BUNDLE_STORAGE_BEHAVIOUR_DELETE_YOUNGEST
+			if( (clock_seconds() - bundle->rec_time) < comparator || comparator == 0) {
+				comparator = clock_seconds() - bundle->rec_time;
+				deletor = entry;
+			}
+#endif
+		}
+
+		/* Either the for loop did nothing or did not break */
+		if( entry == NULL ) {
+			/* We do not have deletable bundles in storage, stop deleting them */
+			return 0;
+		}
+
+		/* Delete Bundle */
+		storage_mmem_delete_bundle(entry->bundle_num, REASON_DEPLETED_STORAGE);
+	}
+#else
+	struct bundle_t * bundle_new = NULL;
+	struct bundle_t * bundle_old = NULL;
 
 	/* Keep deleting bundles until we have enough slots */
 	while( bundles_in_storage >= BUNDLE_STORAGE_SIZE) {
@@ -197,12 +245,19 @@ uint8_t storage_mmem_make_room(struct mmem * bundlemem)
 				continue;
 			}
 
+#if BUNDLE_STORAGE_BEHAVIOUR == BUNDLE_STORAGE_BEHAVIOUR_DELETE_OLDER
 			/* If the new bundle has a longer lifetime than the bundle in our storage,
 			 * delete the bundle from storage to make room
 			 */
 			if( bundle_new->lifetime - (clock_seconds() - bundle_new->rec_time) >= bundle_old->lifetime - (clock_seconds() - bundle_old->rec_time) ) {
 				break;
 			}
+#elif BUNDLE_STORAGE_BEHAVIOUR == BUNDLE_STORAGE_BEHAVIOUR_DELETE_YOUNGER
+			/* Delete youngest bundle in storage */
+			if( bundle_new->lifetime - (clock_seconds() - bundle_new->rec_time) >= bundle_old->lifetime - (clock_seconds() - bundle_old->rec_time) ) {
+				break;
+			}
+#endif
 		}
 
 		/* Either the for loop did nothing or did not break */
@@ -214,6 +269,7 @@ uint8_t storage_mmem_make_room(struct mmem * bundlemem)
 		/* Delete Bundle */
 		storage_mmem_delete_bundle(entry->bundle_num, REASON_DEPLETED_STORAGE);
 	}
+#endif
 
 	return 1;
 }
