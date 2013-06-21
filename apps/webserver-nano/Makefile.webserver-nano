@@ -2,20 +2,29 @@ webserver-nano_src = webserver-nogui.c httpd.c psock.c memb.c httpd-cgi.c
 webserver-nano_dsc = webserver-dsc.c
 
 
+###
 # HTTPD-CFS=1 activates usage of currently enabled file sytem.
-ifeq ($(HTTPD-CFS),1)
-  $(info Using file system)
-  CFLAGS += -DHTTPD_CONF_CFS
-  ifndef COFFEE_FILES
-  ifndef FAT
-    $(error No file system enabled, please use either 'COFFEE_FILES=n' or 'FAT=1')
-  endif
-  endif
-else
-  $(info Using no file system)
+# Otherwise a fake file system is used (requires httpds-fsdata.c)
+###
+ifeq ($(HTTPD-CFS),)
+  $(info Webserver using internal file system)
   webserver-nano_src += httpd-fs.c
+else
+  CFLAGS += -DHTTPD_CONF_CFS
+  ifdef FAT
+    $(info Webserver using FAT file system)
+    CFLAGS += -DHTTPD_FS_FAT
+  else ifdef COFFEE_FILES
+    $(info Webserver using COFFEE file system)
+    CFLAGS += -DHTTPD_FS_COFFEE
+  else 
+    $(error You must specify a file system type)
+  endif
 endif
 
+###
+# HTTPD-NANO can be used to configure webserver features
+###
 ifdef HTTPD-NANO
   CFLAGS += -DWEBSERVER_CONF_NANO=$(HTTPD-NANO)
 endif

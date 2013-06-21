@@ -125,19 +125,6 @@ httpd_fs_close(int fd)
   files_desc[fd].file = NULL;
 }
 /*----------------------------------------------------------------------------*/
-/**
- * Reads next line of file and stores it in lbuf
- * 
- * @param fd Descriptor of file to read from
- * @param lbuf Buffer to write line data to
- * @return Number of read bytes or -1 for EOF
- */
-int
-httpd_fs_readline(int fd, void* lbuf)
-{
-  
-}
-/*----------------------------------------------------------------------------*/
 int
 httpd_fs_read(int fd, void* buf, unsigned int len)
 {
@@ -147,12 +134,6 @@ httpd_fs_read(int fd, void* buf, unsigned int len)
   fdp = &files_desc[fd];
   file = fdp->file;
   
-//  printf("fd: %d\n", fd);
-//  printf("file: %d\n", files_desc[fd].file);
-//  printf("name: %s\n", files_desc[fd].file->name);
-//  printf("fdp->offset1: %d\n", fdp->offset);
-//  printf("fdp->file->len: %d\n", files_desc[fd].file->len);
-
   /* read only available data. */
   if (fdp->offset + len > fdp->file->len) {
     len = fdp->file->len - fdp->offset;
@@ -160,8 +141,6 @@ httpd_fs_read(int fd, void* buf, unsigned int len)
 
   httpd_fs_cpy(buf, fdp->file->data + fdp->offset, len);
   fdp->offset += len;
-//  printf("fdp->offset2: %d\n", fdp->offset);
-  printf("read offset: %d\n", fdp->offset);
 
   return len;
 }
@@ -197,9 +176,6 @@ httpd_fs_seek(int fd, cfs_offset_t offset, int whence)
   printf("seek offset: %d\n", new_offset);
 
   return fdp->offset = new_offset;  
-
-  /* To be compatible with cfs_seek, we return offset-1 if we reached EOF. */
-//  return (files_desc[fd].pos > files_desc[fd].start + files_desc[fd].len) ? offset - 1 : (int) files_desc[fd].pos;
 }
 /*----------------------------------------------------------------------------*/
 void

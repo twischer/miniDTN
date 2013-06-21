@@ -48,7 +48,6 @@
 #include "httpd.h"
 #include "httpd-cgi.h"
 #include "httpd-fs.h"
-#include "httpd-fsdata.h"
 
 #include "sensors.h"
 

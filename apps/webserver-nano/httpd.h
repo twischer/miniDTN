@@ -191,12 +191,13 @@ uint8_t httpd_cgi_sprint_ip6(uip_ip6addr_t addr, char * result);
 #endif
 
 
-#if !defined(__AVR__)
+/** @TODO: fix RAM/PROGMEM handling */
+#if defined(__AVR__)
 /* When using non-ram storage httpd-fsdata.c must be generated with the HTTPD_STRING_ATTR, eg
  *        ../../tools/makefsdata -A HTTPD_STRING_ATTR
  */
 #include <avr/pgmspace.h>
-#define HTTPD_STRING_ATTR PROGMEM
+//#define HTTPD_STRING_ATTR PROGMEM
 #define PRINTA(FORMAT,args...) printf_P(PSTR(FORMAT),##args)
 /* These will fail if the server strings are above 64K in program flash */
 #define httpd_memcpy         memcpy_P
@@ -205,24 +206,16 @@ uint8_t httpd_cgi_sprint_ip6(uip_ip6addr_t addr, char * result);
 #define httpd_strncmp        strncmp_P
 #define httpd_strlen         strlen_P
 #define httpd_snprintf       snprintf_P
-#define httpd_fs_cpy         memcpy_P
-#define httpd_fs_strcmp      strcmp_P
-#define httpd_fs_strchr      strchr_P
-#define httpd_fs_getchar(x)  pgm_read_byte(x)
 
 #else /* All storage in RAM */
-#define HTTPD_STRING_ATTR
+//#define HTTPD_STRING_ATTR
 #define PRINTA(FORMAT,args...) printf(FORMAT,##args)
 #define httpd_snprintf       snprintf
-#define httpd_fs_cpy         memcpy
 #define httpd_memcpy         memcpy
 #define httpd_strcpy         strcpy
 #define httpd_strcmp         strcmp
 #define httpd_strncmp        strncmp
 #define httpd_strlen         strlen
-#define httpd_fs_strchr      strchr
-#define httpd_fs_strcmp      strcmp
-#define httpd_fs_getchar(c)  *(c)
 #endif
 
 struct httpd_state {

@@ -4,6 +4,7 @@ all: $(CONTIKI_PROJECT) $(WITH_WEBSERVER)
 PROJECT_SOURCEFILES += cgi-scripts.c
 
 CFLAGS += -DPROJECT_CONF_H=\"project-conf.h\"
+
 ifeq ($(WITH_WEBSERVER),)
 #
 #Set default webserver for different platforms

@@ -47,7 +47,11 @@
 #include "contiki-net.h"
 #include "httpd.h"
 
-#include "cfs.h"
+#if HTTPD_FS_FAT
+#include "cfs-fat.h"
+#elif HTTPD_FS_COFFEE
+#include "cfs-coffee-arch.h"
+#endif
 
 struct httpd_fs_file_desc {
   struct httpd_fsdata_file *file;
@@ -64,18 +68,44 @@ struct httpd_fs_file_desc {
 
 #define HTTPD_FS_READ  CFS_READ
 
+#define HTTPD_FS_RAM    1
+#define HTTPD_FS_FLASH  2
+
+#ifdef HTTPD_FS_CONF_STOARGE
+#define HTTPD_FS_STORAGE  HTTPD_FS_CONF_STOARGE
+#else
+#if defined(__AVR__)
+#include <avr/pgmspace.h>
+#define HTTPD_FS_STORAGE  HTTPD_FS_FLASH
+#else
+#define HTTPD_FS_STORAGE  HTTPD_FS_RAM
+#endif
+#endif
+
+/* httpd file system is in ram */
+#if HTTPD_FS_STORAGE==HTTPD_FS_RAM
+#define HTTPD_STRING_ATTR
+#define httpd_fs_cpy        memcpy_P
+#define httpd_fs_strcmp     strcmp_P
+/* httpd file system is in progmem */
+#elif HTTPD_FS_STORAGE==HTTPD_FS_FLASH
+#define HTTPD_STRING_ATTR   PROGMEM
+#define httpd_fs_strcmp     strcmp
+#define httpd_fs_cpy        memcpy
+#endif /* HTTPD_FS_STORAGE */
+
 /* Wrapper function for (pseudo)file system calls. */
 #if HTTPD_CFS
-#define httpd_fs_open cfs_open
-#define httpd_fs_close cfs_close
-#define httpd_cf_read cfs_read
-#define httpd_fs_seek cfs_seek
+#define httpd_fs_open   cfs_open
+#define httpd_fs_close  cfs_close
+#define httpd_fs_read   cfs_read
+#define httpd_fs_seek   cfs_seek
 #else
 int httpd_fs_open(const char *name, int mode);
 void httpd_fs_close(int fd);
 int httpd_fs_read(int fd, void* buf, unsigned int len);
 cfs_offset_t httpd_fs_seek(int fd, cfs_offset_t offset, int whence);
-#endif
+#endif /* HTTPD_CFS */
 
 #if WEBSERVER_CONF_FILESTATS
 extern uint16_t httpd_filecount[];

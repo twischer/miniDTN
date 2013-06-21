@@ -31,11 +31,11 @@
  */
 
 /**
- * \file Configurable Contiki Webserver
+ * \file Configurable Contiki Webserver with file system support.
  * 
  * \author
  *  Adam Dunkels
- *  Enrico Jörns
+ *  Enrico Joerns <e.joerns@tu-bs.de>
  */
 
 #include <string.h>
@@ -51,12 +51,6 @@
 #include "httpd-cgi.h"
 #endif
 
-#include "lib/petsciiconv.h"
-
-#if COFFEE_FILES
-#include "cfs-coffee-arch.h"
-#endif
-
 #define DEBUG 1
 #if DEBUG
 #define PRINTD PRINTA
@@ -69,6 +63,12 @@
 /* Allocate memory for the tcp connections */
 MEMB(conns, struct httpd_state, WEBSERVER_CONF_CONNS);
 
+#ifndef HTTPD_FILE_CACHESIZE
+#define HTTPD_FILE_CACHESIZE  128
+#endif
+
+//--- Character table
+
 #define ISO_tab     0x09
 #define ISO_nl      0x0a
 #define ISO_cr      0x0d
@@ -80,7 +80,45 @@ MEMB(conns, struct httpd_state, WEBSERVER_CONF_CONNS);
 #define ISO_colon   0x3a
 #define ISO_qmark   0x3f
 
-#define HTTPD_FILE_CACHESIZE  51
+//--- String constants
+
+const char httpd_mime_htm[]     HTTPD_STRING_ATTR = "text/html";
+#if WEBSERVER_CONF_CSS
+const char httpd_mime_css[]     HTTPD_STRING_ATTR = "text/css";
+#endif
+#if WEBSERVER_CONF_PNG
+const char httpd_mime_png[]     HTTPD_STRING_ATTR = "image/png";
+#endif
+#if WEBSERVER_CONF_GIF
+const char httpd_mime_gif[]     HTTPD_STRING_ATTR = "image/gif";
+#endif
+#if WEBSERVER_CONF_JPG
+const char httpd_mime_jpg[]     HTTPD_STRING_ATTR = "image/jpeg";
+#endif
+#if WEBSERVER_CONF_TXT
+const char httpd_mime_txt[]     HTTPD_STRING_ATTR = "text/plain";
+#endif
+#if WEBSERVER_CONF_BIN
+const char httpd_mime_bin[]     HTTPD_STRING_ATTR = "application/octet-stream";
+#endif
+#if WEBSERVER_CONF_INCLUDE || WEBSERVER_CONF_CGI
+const char httpd_str_shtml []   HTTPD_STRING_ATTR = ".shtml";
+#endif
+const char httpd_str_indexfn [] HTTPD_STRING_ATTR = "/index.html";
+const char httpd_str_indexfn3 [] HTTPD_STRING_ATTR = "/index.htm";
+#if WEBSERVER_CONF_INCLUDE || WEBSERVER_CONF_CGI
+const char httpd_str_indexsfn [] HTTPD_STRING_ATTR = "/index.shtml";
+#endif
+const char httpd_str_404fn []   HTTPD_STRING_ATTR = "/404.html";
+const char httpd_str_404notf [] HTTPD_STRING_ATTR = "404 Not found";
+const char httpd_str_200ok []   HTTPD_STRING_ATTR = "200 OK";
+const char httpd_str_get[]      HTTPD_STRING_ATTR = "GET ";
+const char httpd_str_ref[]      HTTPD_STRING_ATTR = "Referer:";
+const char httpd_str_http[]     HTTPD_STRING_ATTR = "HTTP/1.0 ";
+const char httpd_str_server[]   HTTPD_STRING_ATTR = "\r\nServer: Contiki2.6\r\nConnection: close\r\n";
+const char httpd_str_content[]  HTTPD_STRING_ATTR = "Content-type: ";
+const char httpd_str_crlf[]     HTTPD_STRING_ATTR = "\r\n\r\n";
+
 
 /* Holds cached file data */
 char file_cache_array[HTTPD_FILE_CACHESIZE + 1] = {0}; // alawys 0-terminated
@@ -97,7 +135,13 @@ file_generate(void *state)
     s->sendlen = uip_mss();
   }
 
-  return httpd_fs_read(s->fd, uip_appdata, s->sendlen);
+  /* Send data and seek back (needed for retransmissions) */
+  s->sendlen = httpd_fs_read(s->fd, uip_appdata, s->sendlen);
+  httpd_fs_seek(s->fd, -s->sendlen, HTTPD_SEEK_CUR);
+  
+  ((char*)uip_appdata)[s->sendlen] = '\0';
+
+  return s->sendlen;
 }
 /*---------------------------------------------------------------------------*/
 static unsigned short
@@ -111,8 +155,6 @@ generate(void *state)
 
   memcpy(uip_appdata, file_cache_ptr, s->sendlen);
 
-  printf("---\n%s\n---\n", uip_appdata);
-  //  return httpd_fs_read(s->fd, uip_appdata, s->sendlen);
   return s->sendlen;
 }
 /*---------------------------------------------------------------------------*/
@@ -124,16 +166,18 @@ PT_THREAD(send_file(struct httpd_state *s))
 {
   PSOCK_BEGIN(&s->sout);
 
-  printf("PT_THREAD: send_file\n");
   s->sendlen = uip_mss();
-  
-  static int fend;
-  fend = httpd_fs_seek(s->fd, 0, HTTPD_SEEK_END);
-  static int sent;
+
+  static int fend, sent;
+  fend = httpd_fs_seek(s->fd, 0L, HTTPD_SEEK_END);
+  httpd_fs_seek(s->fd, 0L, HTTPD_SEEK_SET);
   sent = 0;
-  httpd_fs_seek(s->fd, 0, HTTPD_SEEK_SET);
 
   do {
+    
+    if (fend - sent < uip_mss()) {
+      s->sendlen = fend - sent;
+    }
 
     PSOCK_GENERATOR_SEND(&s->sout, file_generate, s);
     sent += httpd_fs_seek(s->fd, s->sendlen, HTTPD_SEEK_CUR);
@@ -149,7 +193,6 @@ static
 PT_THREAD(send_part_of_cache(struct httpd_state *s))
 {
   PSOCK_BEGIN(&s->sout);
-  printf("PT_THREAD: send_part_of_cache\n");
 
   static int tosend;
   tosend = s->sendlen;
@@ -161,12 +204,6 @@ PT_THREAD(send_part_of_cache(struct httpd_state *s))
 
     PSOCK_GENERATOR_SEND(&s->sout, generate, s); // sends up to uip_mss() bytes
 
-    /* Seek and check for end of file */
-    //    if (httpd_fs_seek(s->fd, s->sendlen, HTTPD_SEEK_CUR) == s->sendlen - 1) {
-    //      PRINTD("httpd: Reached EOF while sending\n");
-    //      tosend = 0;
-    //    }
-    //
     file_cache_ptr += s->sendlen;
 
     if (tosend > s->sendlen) {
@@ -255,7 +292,6 @@ load_cache(struct httpd_state *s)
   cache_len = httpd_fs_read(s->fd, file_cache_ptr, HTTPD_FILE_CACHESIZE);
   httpd_fs_seek(s->fd, -cache_len, HTTPD_SEEK_CUR);
   *(file_cache_ptr + cache_len) = '\0';
-  printf("::: cache_len: %d\n", cache_len);
   
   if (cache_len < HTTPD_FILE_CACHESIZE) {
     return -1;
@@ -274,7 +310,6 @@ load_cache(struct httpd_state *s)
 static int
 reload_cache(struct httpd_state *s)
 {
-  printf("reload_cache()\n");
   // calculate bytes to seek in file
   int toseek = file_cache_ptr - file_cache_array;
   httpd_fs_seek(s->fd, toseek, HTTPD_SEEK_CUR);
@@ -296,14 +331,12 @@ cache_size() {
 static
 PT_THREAD(handle_scripts(struct httpd_state *s))
 {
-  printf("uip_appdata: %d -- %d (%d)\n", (char*) uip_appdata, ((char*) uip_appdata) + uip_mss(), uip_mss());
   /* Note script includes will attach a leading : to the filename and a trailing zero */
   static char scriptname[MAX_SCRIPT_NAME_LENGTH + 1], *pptr;
   //  static uint16_t filelength;
   static int done, eof, eoc;
 
   PT_BEGIN(&s->scriptpt);
-  printf("PT_THREAD: handle_script\n");
   eoc = eof = done = 0;
 
   /* Init cache (null-terminated)*/
@@ -353,17 +386,14 @@ PT_THREAD(handle_scripts(struct httpd_state *s))
 #if WEBSERVER_CONF_CGI
         PT_WAIT_THREAD(&s->scriptpt, httpd_cgi(scriptname)(s, s->scriptptr));
 #endif
-        printf("CGI done\n");
       }
 
       skip_scriptline(s);
 
       file_cache_ptr = s->scriptptr;
 
-      printf("***cache_size is: %d\n", cache_size());
       if (cache_size() < 2) {
         reload_cache(s);
-        printf("***cache_size now is: %d\n", cache_size());
       }
       if (cache_size() == 0) {
         done = 1;
@@ -412,55 +442,29 @@ PT_THREAD(handle_scripts(struct httpd_state *s))
 }
 #endif /* WEBSERVER_CONF_INCLUDE || WEBSERVER_CONF_CGI */
 /*---------------------------------------------------------------------------*/
-const char httpd_http[] HTTPD_STRING_ATTR = "HTTP/1.0 ";
-const char httpd_server[] HTTPD_STRING_ATTR = "\r\nServer: Contiki2.6\r\nConnection: close\r\n";
 static unsigned short
 generate_status(void *sstr)
 {
   uint8_t slen = httpd_strlen((char *) sstr);
-  httpd_memcpy(uip_appdata, httpd_http, sizeof (httpd_http) - 1);
-  httpd_memcpy(uip_appdata + sizeof (httpd_http) - 1, (char *) sstr, slen);
-  slen += sizeof (httpd_http) - 1;
-  httpd_memcpy(uip_appdata + slen, httpd_server, sizeof (httpd_server) - 1);
-  return slen + sizeof (httpd_server) - 1;
+  httpd_memcpy(uip_appdata, httpd_str_http, sizeof (httpd_str_http) - 1);
+  httpd_memcpy(uip_appdata + sizeof (httpd_str_http) - 1, (char *) sstr, slen);
+  slen += sizeof (httpd_str_http) - 1;
+  httpd_memcpy(uip_appdata + slen, httpd_str_server, sizeof (httpd_str_server) - 1);
+  return slen + sizeof (httpd_str_server) - 1;
 }
 /*---------------------------------------------------------------------------*/
-const char httpd_content[] HTTPD_STRING_ATTR = "Content-type: ";
-const char httpd_crlf[] HTTPD_STRING_ATTR = "\r\n\r\n";
 static unsigned short
 generate_header(void *hstr)
 {
   uint8_t slen = httpd_strlen((char *) hstr);
-  httpd_memcpy(uip_appdata, httpd_content, sizeof (httpd_content) - 1);
-  httpd_memcpy(uip_appdata + sizeof (httpd_content) - 1, (char *) hstr, slen);
-  slen += sizeof (httpd_content) - 1;
-  httpd_memcpy(uip_appdata + slen, httpd_crlf, sizeof (httpd_crlf) - 1);
+  httpd_memcpy(uip_appdata, httpd_str_content, sizeof (httpd_str_content) - 1);
+  httpd_memcpy(uip_appdata + sizeof (httpd_str_content) - 1, (char *) hstr, slen);
+  slen += sizeof (httpd_str_content) - 1;
+  httpd_memcpy(uip_appdata + slen, httpd_str_crlf, sizeof (httpd_str_crlf) - 1);
   return slen + 4;
 }
 /*---------------------------------------------------------------------------*/
-const char httpd_mime_htm[] HTTPD_STRING_ATTR = "text/html";
-#if WEBSERVER_CONF_CSS
-const char httpd_mime_css[] HTTPD_STRING_ATTR = "text/css";
-#endif
-#if WEBSERVER_CONF_PNG
-const char httpd_mime_png[] HTTPD_STRING_ATTR = "image/png";
-#endif
-#if WEBSERVER_CONF_GIF
-const char httpd_mime_gif[] HTTPD_STRING_ATTR = "image/gif";
-#endif
-#if WEBSERVER_CONF_JPG
-const char httpd_mime_jpg[] HTTPD_STRING_ATTR = "image/jpeg";
-const char httpd_jpg [] HTTPD_STRING_ATTR = "jpg";
-#endif
-#if WEBSERVER_CONF_TXT
-const char httpd_mime_txt[] HTTPD_STRING_ATTR = "text/plain";
-#endif
-#if WEBSERVER_CONF_BIN
-const char httpd_mime_bin[] HTTPD_STRING_ATTR = "application/octet-stream";
-#endif
-#if WEBSERVER_CONF_INCLUDE || WEBSERVER_CONF_CGI
-const char httpd_shtml [] HTTPD_STRING_ATTR = ".shtml";
-#endif
+
 /*---------------------------------------------------------------------------*/
 static
 PT_THREAD(send_headers(struct httpd_state *s, const char *statushdr))
@@ -482,7 +486,7 @@ PT_THREAD(send_headers(struct httpd_state *s, const char *statushdr))
   } else {
     ptr++;
 #if WEBSERVER_CONF_INCLUDE || WEBSERVER_CONF_CGI
-    if (httpd_strncmp(ptr, &httpd_mime_htm[5], 3) == 0 || httpd_strncmp(ptr, &httpd_shtml[1], 4) == 0) {
+    if (httpd_strncmp(ptr, &httpd_mime_htm[5], 3) == 0 || httpd_strncmp(ptr, &httpd_str_shtml[1], 4) == 0) {
 #else
     if (httpd_strncmp(ptr, &httpd_mime_htm[5], 3) == 0) {
 #endif
@@ -512,13 +516,6 @@ PT_THREAD(send_headers(struct httpd_state *s, const char *statushdr))
   PSOCK_END(&s->sout);
 }
 /*---------------------------------------------------------------------------*/
-const char httpd_indexfn [] HTTPD_STRING_ATTR = "/index.html";
-#if WEBSERVER_CONF_INCLUDE || WEBSERVER_CONF_CGI
-const char httpd_indexsfn [] HTTPD_STRING_ATTR = "/index.shtml";
-#endif
-const char httpd_404fn [] HTTPD_STRING_ATTR = "/404.html";
-const char httpd_404notf [] HTTPD_STRING_ATTR = "404 Not found";
-const char httpd_200ok [] HTTPD_STRING_ATTR = "200 OK";
 static
 PT_THREAD(handle_output(struct httpd_state *s))
 {
@@ -527,7 +524,7 @@ PT_THREAD(handle_output(struct httpd_state *s))
   PT_BEGIN(&s->outputpt);
 
 #if DEBUGLOGIC
-  httpd_strcpy(s->filename, httpd_indexfn);
+  httpd_strcpy(s->filename, httpd_str_indexfn);
 #endif
 
   s->fd = httpd_fs_open(s->filename, HTTPD_FS_READ);
@@ -535,28 +532,41 @@ PT_THREAD(handle_output(struct httpd_state *s))
 
     /* TODO: try index.htm ? */
 #if WEBSERVER_CONF_INCLUDE || WEBSERVER_CONF_CGI
-    /* If index.html not found try index.shtml */
-    if (httpd_strcmp(s->filename, httpd_indexfn) == 0) {
-      httpd_strcpy(s->filename, httpd_indexsfn);
+    /* If index.html not found try index.htm */
+    if (httpd_strcmp(s->filename, httpd_str_indexfn) == 0) {
+      httpd_strcpy(s->filename, httpd_str_indexfn3);
     }
     s->fd = httpd_fs_open(s->filename, HTTPD_FS_READ);
-    if (s->fd != -1) goto sendfile;
+    if (s->fd != -1) {
+      goto sendfile;
+    }
+    /* If index.html not found try index.shtml */
+    if (httpd_strcmp(s->filename, httpd_str_indexfn) == 0) {
+      httpd_strcpy(s->filename, httpd_str_indexsfn);
+    }
+    s->fd = httpd_fs_open(s->filename, HTTPD_FS_READ);
+    if (s->fd == -1) {
+      PRINTD("Opening %s failed\n", s->filename);
+      goto psock_close;
+    } else {
+      goto sendfile;
+    }
 #endif
     /* If nothing was found, send 404 page */
-    httpd_strcpy(s->filename, httpd_404fn);
+    httpd_strcpy(s->filename, httpd_str_404fn);
     s->fd = httpd_fs_open(s->filename, HTTPD_FS_READ);
-    PT_WAIT_THREAD(&s->outputpt, send_headers(s, httpd_404notf));
+    PT_WAIT_THREAD(&s->outputpt, send_headers(s, httpd_str_404notf));
     PT_WAIT_THREAD(&s->outputpt, send_file(s));
 
   } else { // Opening file succeeded.
 
 sendfile:
-    PT_WAIT_THREAD(&s->outputpt, send_headers(s, httpd_200ok));
+    PT_WAIT_THREAD(&s->outputpt, send_headers(s, httpd_str_200ok));
 #if WEBSERVER_CONF_INCLUDE || WEBSERVER_CONF_CGI
     /* If filename ends with .shtml, scan file for script includes or cgi */
     ptr = strchr(s->filename, ISO_period);
-    if ((ptr != NULL && httpd_strncmp(ptr, httpd_shtml, 6) == 0)
-            || httpd_strcmp(s->filename, httpd_indexfn) == 0) {
+    if ((ptr != NULL && httpd_strncmp(ptr, httpd_str_shtml, 6) == 0)
+            || httpd_strcmp(s->filename, httpd_str_indexfn) == 0) {
       PT_INIT(&s->scriptpt);
       PT_WAIT_THREAD(&s->outputpt, handle_scripts(s));
     } else {
@@ -567,6 +577,7 @@ sendfile:
       httpd_fs_close(s->fd);
     }
   }
+psock_close:
   PSOCK_CLOSE(<y & s->sout);
   PT_END(&s->outputpt);
 }
@@ -575,8 +586,6 @@ sendfile:
 char httpd_query[WEBSERVER_CONF_PASSQUERY];
 #endif
 
-const char httpd_get[] HTTPD_STRING_ATTR = "GET ";
-const char httpd_ref[] HTTPD_STRING_ATTR = "Referer:";
 static
 PT_THREAD(handle_input(struct httpd_state *s))
 {
@@ -585,7 +594,7 @@ PT_THREAD(handle_input(struct httpd_state *s))
 
   PSOCK_READTO(&s->sin, ISO_space);
 
-  if (httpd_strncmp(s->inputbuf, httpd_get, 4) != 0) {
+  if (httpd_strncmp(s->inputbuf, httpd_str_get, 4) != 0) {
     PSOCK_CLOSE_EXIT(&s->sin);
   }
   PSOCK_READTO(&s->sin, ISO_space);
@@ -595,7 +604,7 @@ PT_THREAD(handle_input(struct httpd_state *s))
   }
 
   if (s->inputbuf[1] == ISO_space) {
-    httpd_strcpy(s->filename, httpd_indexfn);
+    httpd_strcpy(s->filename, httpd_str_indexfn);
   } else {
     uint8_t i;
     for (i = 0; i<sizeof (s->filename) + 1; i++) {
@@ -624,7 +633,7 @@ PT_THREAD(handle_input(struct httpd_state *s))
   while (1) {
     PSOCK_READTO(&s->sin, ISO_nl);
 #if WEBSERVER_CONF_LOG && WEBSERVER_CONF_REFERER
-    if (httpd_strncmp(s->inputbuf, httpd_ref, 8) == 0) {
+    if (httpd_strncmp(s->inputbuf, httpd_str_ref, 8) == 0) {
       s->inputbuf[PSOCK_DATALEN(&s->sin) - 2] = 0;
       petsciiconv_topetscii(s->inputbuf, PSOCK_DATALEN(&s->sin) - 2);
       webserver_log(s->inputbuf);
@@ -707,35 +716,10 @@ httpd_appcall(void *state)
 void
 httpd_init(void)
 {
-  //  printf("--------------------------------------------------------------\n");
   tcp_listen(UIP_HTONS(80));
   memb_init(&conns);
-    PRINTD(" sizof(struct httpd_state) = %d\n",sizeof(struct httpd_state));
+  PRINTD(" sizof(struct httpd_state) = %d\n",sizeof(struct httpd_state));
   PRINTA(" %d bytes used for httpd state storage\n", conns.size * conns.num);
 
-  char printbuf[129] = {
-    {0}
-  };
-
-  printf("Opening /status.shtml...\n");
-  int fd = httpd_fs_open("/status.shtml", HTTPD_FS_READ);
-  if (fd == -1) {
-    printf("Failed!\n");
-    goto httpd_init_close;
-  }
-
-  int readsize;
-  do {
-    readsize = httpd_fs_read(fd, printbuf, 128);
-    printf(":: %s", printbuf);
-  } while (readsize == 128);
-
-httpd_init_close:
-  httpd_fs_close(fd);
-  printf("closed!\n");
-
-#if WEBSERVER_CONF_CGI
-  httpd_cgi_init();
-#endif
 }
 /*---------------------------------------------------------------------------*/

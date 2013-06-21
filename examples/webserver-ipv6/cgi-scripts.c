@@ -11,6 +11,7 @@
 #include <string.h>
 #include "httpd.h"
 #include "httpd-cgi.h"
+#include "httpd-fs.h"
 #include "cgi-scripts.h"
 #include "httpd-fsdata.h"
 #include "lib/petsciiconv.h"
@@ -226,7 +227,7 @@ generate_file_stats(void *arg)
   uint16_t i;
   unsigned short numprinted;
   /* Transfer arg from whichever flash that contains the html file to RAM */
-  httpd_fs_cpy(&tmp, s->u.ptr, 20);
+  memcpy(&tmp, s->u.ptr, 20);
 
   /* Count for this page, with common page footer */
   if (tmp[0]=='.') { 
@@ -241,20 +242,20 @@ generate_file_stats(void *arg)
   /* Count for all files */
   /* Note buffer will overflow if there are too many files! */
   } else if (tmp[0]=='*') {
-    i=0;numprinted=0;
-    for(f = (struct httpd_fsdata_file_noconst *)httpd_fs_get_root();
-        f != NULL;
-        f = (struct httpd_fsdata_file_noconst *)fram.next) {
-
-      /* Get the linked list file entry into RAM from from wherever it is*/
-      httpd_memcpy(&fram,f,sizeof(fram));
-      /* Get the file name from whatever memory it is in */
-      httpd_fs_cpy(&tmp, fram.name, sizeof(tmp));
-#if WEBSERVER_CONF_FILESTATS
-      numprinted+=httpd_snprintf((char *)uip_appdata+numprinted, uip_mss()-numprinted, httpd_cgi_filestat2, tmp, tmp, 0);
-#endif
-      i++;
-    }
+//    i=0;numprinted=0;
+//    for(f = (struct httpd_fsdata_file_noconst *)httpd_fs_get_root();
+//        f != NULL;
+//        f = (struct httpd_fsdata_file_noconst *)fram.next) {
+//
+//      /* Get the linked list file entry into RAM from from wherever it is*/
+//      httpd_memcpy(&fram,f,sizeof(fram));
+//      /* Get the file name from whatever memory it is in */
+//      memcpy(&tmp, fram.name, sizeof(tmp));
+//#if WEBSERVER_CONF_FILESTATS
+//      numprinted+=httpd_snprintf((char *)uip_appdata+numprinted, uip_mss()-numprinted, httpd_cgi_filestat2, tmp, tmp, 0);
+//#endif
+//      i++;
+//    }
 
   /* Count for specified file */
   } else {
