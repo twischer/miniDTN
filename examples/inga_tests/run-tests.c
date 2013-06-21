@@ -13,6 +13,7 @@
 
 static char * run_tests();
 static struct etimer timer;
+int tests_run = 0;
 
 /*---------------------------------------------------------------------------*/
 PROCESS(test_process, "Test process");

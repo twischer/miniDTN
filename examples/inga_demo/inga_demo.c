@@ -31,8 +31,9 @@ extern uint8_t __bss_end;
 #define DEBUG                                   1
 
 #include <stdio.h> /* For printf() */
-
-void recursive(int val) {
+void
+recursive(int val)
+{
   int a = 5, b = 6, c = 7;
   // 	printf("%d%d%d\n", a, b, c);
   printf("SP: %d\n", (uint16_t) SP);
@@ -45,8 +46,8 @@ PROCESS(default_app_process, "Hello world process");
 AUTOSTART_PROCESSES(&default_app_process);
 /*---------------------------------------------------------------------------*/
 static struct etimer timer;
-
-PROCESS_THREAD(default_app_process, ev, data) {
+PROCESS_THREAD(default_app_process, ev, data)
+{
   PROCESS_BEGIN();
   printf("Hello, world\n");
 
@@ -55,35 +56,35 @@ PROCESS_THREAD(default_app_process, ev, data) {
 #if DEBUG
   printf("Begin initialization:\n");
 
+  if (microSD_init() == 0) {
+    printf(":microSD   OK\n");
+    microSD_switchoff();
+  } else {
+    printf(":microSD   FAILURE\n");
+  }
   if (adxl345_init() == 0) {
     printf(":ADXL345   OK\n");
   } else {
     printf(":ADXL345   FAILURE\n");
-  }
-  if (microSD_init() == 0) {
-    printf(":microSD   OK\n");
-    microSD_deinit();
-  } else {
-    printf(":microSD   FAILURE\n");
   }
   if (at45db_init() == 0) {
     printf(":AT45DBxx  OK\n");
   } else {
     printf(":AT45DBxx  FAILURE\n");
   }
-  if (bmp085_init() == 0) {
-    printf(":BMP085    OK\n");
-  } else {
-    printf(":BMP085    FAILURE\n");
-  }
-  if (l3g4200d_init() == 0) {
-    printf(":L3G4200D  OK\n");
-  } else {
-    printf(":L3G4200D  FAILURE\n");
-  }
+//  if (bmp085_init() == 0) {
+//    printf(":BMP085    OK\n");
+//  } else {
+//    printf(":BMP085    FAILURE\n");
+//  }
+//  if (l3g4200d_init() == 0) {
+//    printf(":L3G4200D  OK\n");
+//  } else {
+//    printf(":L3G4200D  FAILURE\n");
+//  }
 #else
   adxl345_init();
-  microSD_deinit();
+  microSD_switchoff();
   at45db_init();
   microSD_init();
   bmp085_init();
@@ -117,10 +118,6 @@ PROCESS_THREAD(default_app_process, ev, data) {
     //BMP085 serial Test
     printf("P:%+6ld\n", (uint32_t) bmp085_read_pressure(BMP085_HIGH_RESOLUTION));
     printf("T2:%+3d\n", bmp085_read_temperature());
-    //
-    //    tmp = (uint16_t) bmp085_read_temperature();
-    //
-    //    tmp = (int16_t) bmp085_read_pressure(BMP085_HIGH_RESOLUTION);
 
     /*############################################################*/
     //Power Monitoring
@@ -154,28 +151,28 @@ PROCESS_THREAD(default_app_process, ev, data) {
     //
     /*############################################################*/
     //Flash Test
-                              uint8_t buffer[512];
-                              uint16_t j, i;
-                
-                              for (i = 0; i < 10; i++) {
-                                      //at45db_erase_page(i);
-                                      for (j = 0; j < 512; j++) {
-                                              buffer[j] = i;
-                                      }
-                                      at45db_write_buffer(0, buffer, 512);
-                
-                                      at45db_buffer_to_page(i);
-                
-                                      at45db_read_page_bypassed(i, 0, buffer, 512);
-
-									  	for(j = 0; j < 512; j++) {
-											printf("%02x", buffer[j]);
-											if( ((j+1) % 2) == 0 )
-												printf(" ");
-											if( ((j+1) % 32) == 0 )
-												printf("\n");
-										}
-                              }
+    //    uint8_t buffer[512];
+    //    uint16_t j, i;
+    //
+    //    for (i = 0; i < 10; i++) {
+    //      //at45db_erase_page(i);
+    //      for (j = 0; j < 512; j++) {
+    //        buffer[j] = i;
+    //      }
+    //      at45db_write_buffer(0, buffer, 512);
+    //
+    //      at45db_buffer_to_page(i);
+    //
+    //      at45db_read_page_bypassed(i, 0, buffer, 512);
+    //
+    //      for (j = 0; j < 512; j++) {
+    //        printf("%02x", buffer[j]);
+    //        if (((j + 1) % 2) == 0)
+    //          printf(" ");
+    //        if (((j + 1) % 32) == 0)
+    //          printf("\n");
+    //      }
+    //    }
 
   }
 

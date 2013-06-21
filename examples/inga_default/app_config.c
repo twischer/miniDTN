@@ -136,23 +136,28 @@ _app_config_load_defaults()
   system_config.node.id = 42;
   // output defaults
   system_config.output.sdcard = false;
-  system_config.output.usb = false;
+  system_config.output.usb = true;
   system_config.output.radio = false;
   system_config.output.block_size = 0;
+  // battery defaults
+  system_config.battery.enabled = true;
+  system_config.battery.rate = 10;
   // accelerometer defaults
   system_config.acc.enabled = true;
-  system_config.acc.rate = 0;
+  system_config.acc.rate = 10;
   system_config.acc.g_range = 0;
   // gyroscope defaults
   system_config.gyro.enabled = true;
-  system_config.gyro.rate = 0;
+  system_config.gyro.rate = 10;
   system_config.gyro.dps = 0;
   // pressure defaults
   system_config.pressure.enabled = true;
-  system_config.pressure.rate = 0;
+  system_config.pressure.rate = 10;
   // temperature defaults
   system_config.temp.enabled = true;
-  system_config.temp.rate = 0;
+  system_config.temp.rate = 10;
+
+  log_i("Loading default config...\n");
 
   app_config_update();
 }

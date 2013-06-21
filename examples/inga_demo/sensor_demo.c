@@ -23,8 +23,8 @@ PROCESS(default_app_process, "Hello world process");
 AUTOSTART_PROCESSES(&default_app_process);
 /*---------------------------------------------------------------------------*/
 static struct etimer timer;
-
-PROCESS_THREAD(default_app_process, ev, data) {
+PROCESS_THREAD(default_app_process, ev, data)
+{
   PROCESS_BEGIN();
 
   SENSORS_ACTIVATE(acc_sensor);
@@ -36,14 +36,15 @@ PROCESS_THREAD(default_app_process, ev, data) {
 
     PROCESS_YIELD();
     etimer_set(&timer, CLOCK_SECOND);
-    printf("X_ACC=%d, ", acc_sensor.value(ACC_X_AXIS));
-    printf("Y_ACC=%d, ", acc_sensor.value(ACC_Y_AXIS));
-    printf("Z_ACC=%d\n", acc_sensor.value(ACC_Z_AXIS));
+    printf("X_ACC=%d, Y_ACC=%d, Z_ACC=%d\n",
+            acc_sensor.value(ACC_X),
+            acc_sensor.value(ACC_Y),
+            acc_sensor.value(ACC_Z));
     printf("X_AS=%d, Y_AS=%d, Z_AS=%d\n",
             gyro_sensor.value(X_AS),
             gyro_sensor.value(Y_AS),
             gyro_sensor.value(Z_AS));
-    printf("PRESS=%u, TEMP=%d\n\n", pressure_sensor.value(PRESS), pressure_sensor.value(TEMP));
+//    printf("PRESS=%u, TEMP=%d\n\n", pressure_sensor.value(PRESS), pressure_sensor.value(TEMP));
 
   }
 

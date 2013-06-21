@@ -130,7 +130,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 			}
 		}
 */
-		microSD_deinit();
+		microSD_switchoff();
                 
   PROCESS_END();
 }

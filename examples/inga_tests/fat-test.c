@@ -31,7 +31,7 @@ static char * test_cfs_overwrite();
 
 static struct etimer timer;
 int cnt = 0;
-int tests_run = 0;
+
 uint8_t buffer[1024];
 /*---------------------------------------------------------------------------*/
 PROCESS(fat_test_process, "Hello world process");
@@ -86,9 +86,14 @@ test_sdinit_mount()
     }
   }
   ASSERT("device initialization failed", initialized == 1);
+  
+  ASSERT("formatting failed", cfs_fat_mkfs(info) == 0);
 
   //--- Test mounting volume
   ASSERT("mount failed", cfs_fat_mount_device(info) == 0);
+
+  diskio_set_default_device(info);
+
   return 0;
 }
 /*---------------------------------------------------------------------------*/
@@ -267,11 +272,12 @@ read_test_bytes(const char* name, uint32_t size, uint8_t fill_offset)
 
     // write
     n = cfs_read(fd, buffer, buffer_size);
-
+    
     // bytewise check
     uint16_t i;
     for (i = 0; i < n; i++) {
       if (buffer[i] != (i + fill_offset) % 0xFF) {
+        PRINTD("missmatch at %d: %c != %c \n", i, buffer[i], (i + fill_offset) % 0xFF);
         return -1;
       };
     }

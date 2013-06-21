@@ -41,7 +41,7 @@ PROCESS_THREAD(default_app_process, ev, data) {
     //		settings_wipe();
     PROCESS_YIELD();
     etimer_set(&timer, CLOCK_SECOND);
-    printf("node_id = %u\n", node_id);
+//    printf("node_id = %u\n", node_id);
 
   }
 
