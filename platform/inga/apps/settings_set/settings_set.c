@@ -57,7 +57,7 @@ PROCESS_THREAD(settings_set_process, ev, data)
 #ifdef NODE_CONF_ID
   if (settings_set_uint16(SETTINGS_KEY_PAN_ADDR, (uint16_t) NODE_ID) == SETTINGS_STATUS_OK) {
     uint16_t settings_nodeid = settings_get_uint16(SETTINGS_KEY_PAN_ADDR, 0);
-    printf("[APP.settings_set] New Node ID: %X\n", settings_nodeid);
+    printf("[APP.settings_set] New Node ID: %04X\n", settings_nodeid);
   } else {
     printf("[APP.settings_set] Error: Error while writing NodeID to EEPROM\n");
   }
@@ -66,9 +66,9 @@ PROCESS_THREAD(settings_set_process, ev, data)
 #endif
 
 #ifdef RADIO_CONF_PAN_ID
-  if (settings_set_uint16(SETTINGS_KEY_PAN_ID, (uint16_t) PAN_ID) == SETTINGS_STATUS_OK) {
-    uint16_t settings_panid = settings_get_uint16(SETTINGS_KEY_PAN_ADDR, 0);
-    printf("[APP.settings_set] New Pan ID: %X\n", settings_panid);
+  if (settings_set_uint16(SETTINGS_KEY_PAN_ID, (uint16_t) RADIO_PAN_ID) == SETTINGS_STATUS_OK) {
+    uint16_t settings_panid = settings_get_uint16(SETTINGS_KEY_PAN_ID, 0);
+    printf("[APP.settings_set] New Pan ID: %04X\n", settings_panid);
   } else {
     printf("[APP.settings_set] Error: Error while writing PanID to EEPROM\n");
   }
@@ -79,7 +79,7 @@ PROCESS_THREAD(settings_set_process, ev, data)
 #ifdef RADIO_CONF_CHANNEL
   if (settings_set_uint8(SETTINGS_KEY_CHANNEL, (uint8_t) RADIO_CHANNEL) == SETTINGS_STATUS_OK) {
     uint8_t settings_channel = settings_get_uint8(SETTINGS_KEY_CHANNEL, 0);
-    printf("[APP.settings_set] New channel: %X\n", settings_channel);
+    printf("[APP.settings_set] New channel: %02X\n", settings_channel);
   } else {
     printf("[APP.settings_set] Error: Error while writing channel to EEPROM\n");
   }
@@ -91,7 +91,7 @@ PROCESS_THREAD(settings_set_process, ev, data)
 #ifdef RADIO_CONF_TX_POWER
   if (settings_set_uint8(SETTINGS_KEY_TXPOWER, (uint8_t) RADIO_TX_POWER) == SETTINGS_STATUS_OK) {
     uint8_t settings_txpower = settings_get_uint8(SETTINGS_KEY_TXPOWER, 0);
-    printf("[APP.settings_set] New TX power: %X\n", settings_txpower);
+    printf("[APP.settings_set] New TX power: %02X\n", settings_txpower);
   } else {
     printf("[APP.settings_set] Error: Error while writing TX power to EEPROM\n");
   }
