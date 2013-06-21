@@ -140,7 +140,7 @@ diskio_rw_op(struct diskio_device_info *dev, uint32_t block_start_address, uint8
       switch (op) {
         case DISKIO_OP_READ_BLOCK:
 #ifndef DISKIO_OLD_STYLE
-          for (tries = 0; tries < 50; tries++) {
+          for (tries = 0; tries < 150; tries++) {
             ret_code = SD_READ_BLOCK(block_start_address, buffer);
             if (ret_code == 0) {
               return DISKIO_SUCCESS;
@@ -285,7 +285,7 @@ diskio_detect_devices()
     index += 1;
   }
 #endif
-
+  
 #ifdef SD_INIT
   if (SD_INIT() == 0) {
     devices[index].type = DISKIO_DEVICE_TYPE_SD_CARD;
@@ -296,7 +296,7 @@ diskio_detect_devices()
     if (devices[index].sector_size > DISKIO_MAX_SECTOR_SIZE) {
       goto end_of_function;
     }
-
+    
     mbr_init(&mbr);
     mbr_read(&devices[index], &mbr);
     index += 1;

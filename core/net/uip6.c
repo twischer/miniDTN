@@ -1068,6 +1068,9 @@ uip_process(u8_t flag)
   
   PRINTF("IPv6 packet received from ");
   PRINT6ADDR(&UIP_IP_BUF->srcipaddr);
+#if UIP_UDP
+  PRINTF(": %u", UIP_HTONS(UIP_UDP_BUF->srcport));
+#endif
   PRINTF(" to ");
   PRINT6ADDR(&UIP_IP_BUF->destipaddr);
   PRINTF("\n");
@@ -2219,6 +2222,6 @@ uip_send(const void *data, int len)
       memcpy(uip_sappdata, (data), uip_slen);
     }
   }
-}
+  }
 /*---------------------------------------------------------------------------*/
 /** @} */

@@ -163,7 +163,6 @@ void avr_flash_erase(coffee_page_t sector);
 void avr_flash_read (CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE size);
 void avr_flash_write(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE size);
 
-1
 #endif /* COFFEE_AVR_FLASH */
 
 

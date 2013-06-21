@@ -31,7 +31,7 @@ AVRDUDE_PROGRAMMER=avr109
 # Additional avrdude options
 # Verify off
 #AVRDUDE_OPTIONS=-V
-AVRDUDE_OPTIONS=-b 230400
+AVRDUDE_OPTIONS=-b 230400 
 
 # TODO: not implemented
 ifdef WITH_SLIP
