@@ -78,6 +78,7 @@ cfs_fat_mkfs(struct diskio_device_info *dev)
 
   if (ret != 0) {
     PRINTF("Error(%d).", ret);
+    return 1;
   } else {
     PRINTF("done.");
   }

@@ -147,6 +147,7 @@ static void make_readable_entry(struct dir_entry *dir, struct cfs_dirent *dirent
 static uint8_t _is_file(struct dir_entry *dir_ent);
 static uint8_t _cfs_flags_ok(int flags, struct dir_entry *dir_ent);
 static void print_sector_buffer(void);
+static int fat_read_write(int fd, const void *buf, unsigned int len, unsigned char write);
 /*----------------------------------------------------------------------------*/
 /* Checks if the given fat entry is EOC (end of clusterchain)
  * returns 1 for true, 0 for false
@@ -614,7 +615,7 @@ void
 cfs_fat_flush()
 {
   if (!sector_buffer_dirty) {
-    return 0;
+    return;
   }
 
 #ifdef FAT_COOPERATIVE
@@ -928,7 +929,7 @@ cfs_open(const char *name, int flags)
 
   if (flags & CFS_APPEND) {
     PRINTF("\nfat.c: cfs_open(): Seek to end of file (APPEND)!");
-    cfs_seek(fd, CFS_SEEK_END, 0);
+    cfs_seek(fd, 0, CFS_SEEK_END);
   }
 
   // return FileDescriptor
@@ -952,6 +953,9 @@ cfs_close(int fd)
   fat_fd_pool[fd].file = NULL;
 }
 /*----------------------------------------------------------------------------*/
+/**
+ * @note len must be power of 2
+ */
 int
 cfs_read(int fd, void *buf, unsigned int len)
 {
@@ -960,71 +964,68 @@ cfs_read(int fd, void *buf, unsigned int len)
   if ((fd < 0 || fd >= FAT_FD_POOL_SIZE) || (!(fat_fd_pool[fd].flags & CFS_READ))) {
     return -1;
   }
-
-  /* offset within sector [bytes] */
-  uint32_t offset = fat_fd_pool[fd].offset % mounted.info.BPB_BytesPerSec;
-  uint32_t clusters = (fat_fd_pool[fd].offset / mounted.info.BPB_BytesPerSec) / mounted.info.BPB_SecPerClus;
-  uint8_t clus_offset = (fat_fd_pool[fd].offset / mounted.info.BPB_BytesPerSec) % mounted.info.BPB_SecPerClus;
-  uint32_t size_left = fat_file_pool[fd].dir_entry.DIR_FileSize - fat_fd_pool[fd].offset;
-  uint16_t i, j = 0;
-  uint8_t *buffer = (uint8_t *) buf;
-
-  /* limit len to remaining file length */
-  if (size_left < len) {
-    len = size_left;
-  }
-
-  /* Special case of empty file (cluster is zero) or zero length to read */
-  if ((fat_file_pool[fd].cluster == 0) || (len == 0)) {
-    PRINTDEBUG("Empty cluster or zero file size");
-    return 0;
-  }
-
-  while (load_next_sector_of_file(fd, clusters, clus_offset, 0) == 0) {
-    for (i = offset; i < 512 && j < len; i++, j++, fat_fd_pool[fd].offset++) {
-      buffer[j] = sector_buffer[i];
-    }
-
-    if ((clus_offset + 1) % mounted.info.BPB_SecPerClus == 0) {
-      clus_offset = 0;
-      clusters++;
-    } else {
-      clus_offset++;
-    }
-
-    if (j >= len) {
-      break;
-    }
-  }
-
-  return (int) j;
+  
+  return fat_read_write(fd, buf, len, 0);
 }
 /*----------------------------------------------------------------------------*/
 int
 cfs_write(int fd, const void *buf, unsigned int len)
 {
+  return fat_read_write(fd, buf, len, 1);
+}
+/*----------------------------------------------------------------------------*/
+static int
+fat_read_write(int fd, const void *buf, unsigned int len, unsigned char write)
+{
+  /* offset within sector [bytes] */
   uint16_t offset = fat_fd_pool[fd].offset % (uint32_t) mounted.info.BPB_BytesPerSec;
+  /* cluster offset */
   uint32_t clusters = (fat_fd_pool[fd].offset / mounted.info.BPB_BytesPerSec) / mounted.info.BPB_SecPerClus;
+  /* offset within cluster [sectors] */
   uint8_t clus_offset = (fat_fd_pool[fd].offset / mounted.info.BPB_BytesPerSec) % mounted.info.BPB_SecPerClus;
   uint16_t i, j = 0;
   uint8_t *buffer = (uint8_t *) buf;
 
-  while (load_next_sector_of_file(fd, clusters, clus_offset, 1) == 0) {
+  /* For read acces, check file length. */
+  if (write == 0) {
+    uint32_t size_left = fat_file_pool[fd].dir_entry.DIR_FileSize - fat_fd_pool[fd].offset;
+    
+    /* limit len to remaining file length */
+    if (size_left < len) {
+      len = size_left;
+    }
+
+    /* Special case of empty file (cluster is zero) or zero length to read */
+    if ((fat_file_pool[fd].cluster == 0) || (len == 0)) {
+      PRINTDEBUG("Empty cluster or zero file size");
+      return 0;
+    }
+  }
+
+  while (load_next_sector_of_file(fd, clusters, clus_offset, write) == 0) {
     PRINTF("\nfat.c: cfs_write(): Writing in sector %lu", sector_buffer_addr);
     for (i = offset; i < mounted.info.BPB_BytesPerSec && j < len; i++, j++, fat_fd_pool[fd].offset++) {
+      if (write) {
 #ifndef FAT_COOPERATIVE
-      sector_buffer[i] = buffer[j];
+        sector_buffer[i] = buffer[j];
 #else
-      sector_buffer[i] = get_item_from_buffer(buffer, j);
+        sector_buffer[i] = get_item_from_buffer(buffer, j);
 #endif
-      if (fat_fd_pool[fd].offset == fat_file_pool[fd].dir_entry.DIR_FileSize) {
-        fat_file_pool[fd].dir_entry.DIR_FileSize++;
-      } else if (fat_fd_pool[fd].offset > fat_file_pool[fd].dir_entry.DIR_FileSize) {
-        fat_file_pool[fd].dir_entry.DIR_FileSize = fat_fd_pool[fd].offset;
+        /* Enlarge file size if required */
+        if (fat_fd_pool[fd].offset == fat_file_pool[fd].dir_entry.DIR_FileSize) {
+          fat_file_pool[fd].dir_entry.DIR_FileSize++;
+        } else if (fat_fd_pool[fd].offset > fat_file_pool[fd].dir_entry.DIR_FileSize) {
+          fat_file_pool[fd].dir_entry.DIR_FileSize = fat_fd_pool[fd].offset;
+        }
+      } else {/* read */
+        buffer[j] = sector_buffer[i];
       }
     }
 
-    sector_buffer_dirty = 1;
+    if (write) {
+      sector_buffer_dirty = 1;
+    }
+    
     offset = 0;
     clus_offset = (clus_offset + 1) % mounted.info.BPB_SecPerClus;
     if (clus_offset == 0) {
@@ -1045,7 +1046,7 @@ cfs_seek(int fd, cfs_offset_t offset, int whence)
   if (fd < 0 || fd >= FAT_FD_POOL_SIZE) {
     return -1;
   }
-
+  
   switch (whence) {
     case CFS_SEEK_SET:
       fat_fd_pool[fd].offset = offset;
