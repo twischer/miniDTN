@@ -183,8 +183,10 @@ int convergence_layer_enqueue_bundle(struct transmit_ticket_t * ticket)
 	/* The ticket is now active a ready for transmission */
 	ticket->flags |= CONVERGENCE_LAYER_QUEUE_ACTIVE;
 
-	/* Poll the process to initiate transmission */
-	process_poll(&convergence_layer_process);
+	if( convergence_layer_pending == 0 ) {
+		/* Poll the process to initiate transmission */
+		process_poll(&convergence_layer_process);
+	}
 
 	convergence_layer_queue++;
 
@@ -468,8 +470,10 @@ int convergence_layer_parse_ackframe(rimeaddr_t * source, uint8_t * payload, uin
 	/* This neighbour is now unblocked */
 	convergence_layer_set_unblocked(source);
 
-	/* Poll the process to initiate transmission of the next bundle */
-	process_poll(&convergence_layer_process);
+	if( convergence_layer_pending == 0 ) {
+		/* Poll the process to initiate transmission of the next bundle */
+		process_poll(&convergence_layer_process);
+	}
 
 	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Incoming ACK from %u.%u for SeqNo %u", source->u8[0], source->u8[1], sequence_number);
 
@@ -842,8 +846,10 @@ void check_blocked_neighbours() {
 	/* Otherwise: just reactivate the ticket, it will be transmitted again */
 	ticket->flags = CONVERGENCE_LAYER_QUEUE_ACTIVE;
 
-	/* Tell the process to resend the bundles */
-	process_poll(&convergence_layer_process);
+	if( convergence_layer_pending == 0 ) {
+		/* Tell the process to resend the bundles */
+		process_poll(&convergence_layer_process);
+	}
 }
 
 int convergence_layer_neighbour_down(rimeaddr_t * neighbour) {
