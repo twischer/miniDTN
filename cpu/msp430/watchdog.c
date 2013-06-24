@@ -32,13 +32,8 @@
  */
 
 #include "contiki.h"
-#ifdef __IAR_SYSTEMS_ICC__
-#include <msp430.h>
-#else
-#include <io.h>
-#include <signal.h>
-#endif
 #include "dev/watchdog.h"
+#include "isr_compat.h"
 
 static int counter = 0;
 
@@ -76,13 +71,7 @@ printstring(char *s)
 #endif /* CONTIKI_TARGET_SKY */
 #endif /* PRINT_STACK_ON_REBOOT */
 /*---------------------------------------------------------------------------*/
-#ifdef __IAR_SYSTEMS_ICC__
-#pragma vector=WDT_VECTOR
-__interrupt void
-#else
-interrupt(WDT_VECTOR)
-#endif
-watchdog_interrupt(void)
+ISR(WDT, watchdog_interrupt)
 {
 #ifdef CONTIKI_TARGET_SKY
 #if PRINT_STACK_ON_REBOOT
@@ -118,9 +107,13 @@ watchdog_init(void)
      initialization. */
   counter = 0;
   watchdog_stop();
-
+#if CONTIKI_TARGET_WISMOTE
+  SFRIFG1 &= ~WDTIFG;
+  SFRIE1 |= WDTIE;
+#else
   IFG1 &= ~WDTIFG;
   IE1 |= WDTIE;
+#endif
 }
 /*---------------------------------------------------------------------------*/
 void

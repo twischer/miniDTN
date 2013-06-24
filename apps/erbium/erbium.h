@@ -75,7 +75,7 @@ struct periodic_resource_s;
 typedef void (*restful_handler) (void* request, void* response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset);
 typedef int (*restful_pre_handler) (struct resource_s *resource, void* request, void* response);
 typedef void (*restful_post_handler) (struct resource_s *resource, void* request, void* response);
-typedef int (*restful_periodic_handler) (struct resource_s* resource);
+typedef void (*restful_periodic_handler) (struct resource_s* resource);
 typedef void (*restful_response_handler) (void *data, void* response);
 
 /* Signature of the rest-engine service function. */
@@ -134,94 +134,6 @@ struct rest_implementation_type
   unsigned int APPLICATION_X_OBIX_BINARY;
 };
 
-struct rest_implementation {
-  char *name;
-
-  /** Initialize the REST implementation. */
-  void (* init)(void);
-
-  /** Register the RESTful service callback at implementation */
-  void (* set_service_callback)(service_callback_t callback);
-
-  /** Get request URI path */
-  int (* get_url)(void *request, const char **url);
-
-  int (* set_url)(void *request, char *url);
-
-  /** Get the method of a request. */
-  rest_resource_flags_t (* get_method_type)(void *request);
-
-  /** Set the status code of a response. */
-  int (* set_response_status)(void *response, unsigned int code);
-
-  /** Get the content-type of a request. */
-  unsigned int (* get_header_content_type)(void *request);
-
-  /** Set the content-type of a response. */
-  int (* set_header_content_type)(void *response, unsigned int content_type);
-
-  int (* get_header_accept)(void *request, uint16_t **accept);
-
-  /** Get the Max-Age option of a request. */
-  int (* get_header_max_age)(void *request, uint32_t *age);
-
-  /** Set the Max-Age option of a response. */
-  int (* set_header_max_age)(void *response, uint32_t age);
-
-  /** Set the ETag option of a response. */
-  int (* set_header_etag)(void *response, uint8_t *etag, size_t length);
-
-  /** Get the If-Match option of a request. */
-  int (* get_header_if_match)(void *request, const uint8_t **etag);
-
-  /** Get the If-Match option of a request. */
-  int (* get_header_if_none_match)(void *request);
-
-  /** Get the Host option of a request. */
-  int (* get_header_host)(void *request, const char **host);
-
-  /** Set the location option of a response. */
-  int (* set_header_location)(void *response, char *location);
-
-  /** Get the payload option of a request. */
-  int (* get_request_payload)(void *request, const uint8_t **payload);
-
-  /** Set the payload option of a response. */
-  int (* set_response_payload)(void *response, uint8_t *payload, size_t length);
-
-  /** Get the query string of a request. */
-  int (* get_query)(void *request, const char **value);
-
-  /** Get the value of a request query key-value pair. */
-  int (* get_query_variable)(void *request, const char *name, const char **value);
-
-  /** Get the value of a request POST key-value pair. */
-  int (* get_post_variable)(void *request, const char *name, const char **value);
-
-  /** Send the payload to all subscribers of the resource at url. */
-  void (* notify_subscribers)(const char *url, int implementation_secific_mode, uint32_t counter, uint8_t *payload, size_t payload_len);
-
-  /** The handler for resource subscriptions. */
-  restful_post_handler subscription_handler;
-
-  /** A default pre-handler that is assigned with the RESOURCE macro. */
-  restful_pre_handler default_pre_handler;
-
-  /** A default post-handler that is assigned with the RESOURCE macro. */
-  restful_post_handler default_post_handler;
-
-  /* REST status codes. */
-  const struct rest_implementation_status status;
-
-  /* REST content-types. */
-  const struct rest_implementation_type type;
-};
-
-/*
- * Instance of REST implementation
- */
-extern const struct rest_implementation REST;
-
 /*
  * Data structure representing a resource in REST.
  */
@@ -247,6 +159,93 @@ struct periodic_resource_s {
 };
 typedef struct periodic_resource_s periodic_resource_t;
 
+struct rest_implementation {
+  char *name;
+
+  /** Initialize the REST implementation. */
+  void (* init)(void);
+
+  /** Register the RESTful service callback at implementation */
+  void (* set_service_callback)(service_callback_t callback);
+
+  /** Get request URI path */
+  int (* get_url)(void *request, const char **url);
+
+  int (* set_url)(void *request, const char *url);
+
+  /** Get the method of a request. */
+  rest_resource_flags_t (* get_method_type)(void *request);
+
+  /** Set the status code of a response. */
+  int (* set_response_status)(void *response, unsigned int code);
+
+  /** Get the content-type of a request. */
+  unsigned int (* get_header_content_type)(void *request);
+
+  /** Set the content-type of a response. */
+  int (* set_header_content_type)(void *response, unsigned int content_type);
+
+  int (* get_header_accept)(void *request, const uint16_t **accept);
+
+  /** Get the Max-Age option of a request. */
+  int (* get_header_max_age)(void *request, uint32_t *age);
+
+  /** Set the Max-Age option of a response. */
+  int (* set_header_max_age)(void *response, uint32_t age);
+
+  /** Set the ETag option of a response. */
+  int (* set_header_etag)(void *response, const uint8_t *etag, size_t length);
+
+  /** Get the If-Match option of a request. */
+  int (* get_header_if_match)(void *request, const uint8_t **etag);
+
+  /** Get the If-Match option of a request. */
+  int (* get_header_if_none_match)(void *request);
+
+  /** Get the Host option of a request. */
+  int (* get_header_host)(void *request, const char **host);
+
+  /** Set the location option of a response. */
+  int (* set_header_location)(void *response, const char *location);
+
+  /** Get the payload option of a request. */
+  int (* get_request_payload)(void *request, uint8_t **payload);
+
+  /** Set the payload option of a response. */
+  int (* set_response_payload)(void *response, const void *payload, size_t length);
+
+  /** Get the query string of a request. */
+  int (* get_query)(void *request, const char **value);
+
+  /** Get the value of a request query key-value pair. */
+  int (* get_query_variable)(void *request, const char *name, const char **value);
+
+  /** Get the value of a request POST key-value pair. */
+  int (* get_post_variable)(void *request, const char *name, const char **value);
+
+  /** Send the payload to all subscribers of the resource at url. */
+  void (* notify_subscribers)(resource_t *resource, uint16_t counter, void *notification);
+
+  /** The handler for resource subscriptions. */
+  restful_post_handler subscription_handler;
+
+  /** A default pre-handler that is assigned with the RESOURCE macro. */
+  restful_pre_handler default_pre_handler;
+
+  /** A default post-handler that is assigned with the RESOURCE macro. */
+  restful_post_handler default_post_handler;
+
+  /* REST status codes. */
+  const struct rest_implementation_status status;
+
+  /* REST content-types. */
+  const struct rest_implementation_type type;
+};
+
+/*
+ * Instance of REST implementation
+ */
+extern const struct rest_implementation REST;
 
 /*
  * Macro to define a Resource
@@ -257,14 +256,21 @@ void name##_handler(void *, void *, uint8_t *, uint16_t, int32_t *); \
 resource_t resource_##name = {NULL, flags, url, attributes, name##_handler, NULL, NULL, NULL}
 
 /*
+ * Macro to define a sub-resource
+ * Make sure to define its parent resource beforehand and set 'parent' to that name.
+ */
+#define SUB_RESOURCE(name, flags, url, attributes, parent) \
+resource_t resource_##name = {NULL, flags, url, attributes, parent##_handler, NULL, NULL, NULL}
+
+/*
  * Macro to define an event resource
  * Like periodic resources, event resources have a post_handler that manages a subscriber list.
  * Instead of a periodic_handler, an event_callback must be provided.
  */
 #define EVENT_RESOURCE(name, flags, url, attributes) \
 void name##_handler(void *, void *, uint8_t *, uint16_t, int32_t *); \
-resource_t resource_##name = {NULL, flags, url, attributes, name##_handler, NULL, NULL, NULL}; \
-int name##_event_handler(resource_t*)
+void name##_event_handler(resource_t*); \
+resource_t resource_##name = {NULL, flags, url, attributes, name##_handler, NULL, NULL, NULL}
 
 /*
  * Macro to define a periodic resource
@@ -275,14 +281,14 @@ int name##_event_handler(resource_t*)
 #define PERIODIC_RESOURCE(name, flags, url, attributes, period) \
 void name##_handler(void *, void *, uint8_t *, uint16_t, int32_t *); \
 resource_t resource_##name = {NULL, flags, url, attributes, name##_handler, NULL, NULL, NULL}; \
-int name##_periodic_handler(resource_t*); \
+void name##_periodic_handler(resource_t*); \
 periodic_resource_t periodic_resource_##name = {NULL, &resource_##name, period, {{0}}, name##_periodic_handler}
 
 
 /*
  * Initializes REST framework and starts HTTP or COAP process
  */
-void rest_init_framework(void);
+void rest_init_engine(void);
 
 /*
  * Resources wanted to be accessible should be activated with the following code.

@@ -1,27 +1,24 @@
 # $Id: Makefile.z1,v 1.5 2011/02/26 enricmcalvo Exp $
 
-PROJECT_SOURCEFILES += i2cmaster.c adxl345.c
-
 ifdef GCC
 CFLAGS+=-Os -g
 endif
 
 ifdef IAR
-CFLAGS+=-e --vla -Ohz --multiplier=16s --core=430X  --data_model small --double=32
+CFLAGS += -D__MSP430F2617__=1 -e --vla -Ohz --multiplier=16s --core=430X --double=32
+else
+LDFLAGS += -Wl,--defsym -Wl,__P1SEL2=0x0041 -Wl,--defsym -Wl,__P5SEL2=0x0045
 endif
 
 CLEAN += symbols.c symbols.h
-#CFLAGS += -ffunction-sections
-#LDFLAGS += -Wl,--gc-sections,--undefined=_reset_vector__,--undefined=InterruptVectors,--undefined=_copy_data_init__,--undefined=_clear_bss_init__,--undefined=_end_of_init__
-
 
 ARCH=msp430.c leds.c watchdog.c xmem.c \
-     spix.c cc2420.c cc2420-aes.c cc2420-arch.c cc2420-arch-sfd.c\
+     spi.c cc2420.c cc2420-aes.c cc2420-arch.c cc2420-arch-sfd.c\
      node-id.c sensors.c button-sensor.c cfs-coffee.c \
-     radio-sensor.c uart0x.c uart0-putchar.c uip-ipchksum.c \
+     radio-sensor.c uart0.c uart0-putchar.c uip-ipchksum.c \
      checkpoint-arch.c slip.c slip_uart0.c \
      z1-phidgets.c sht11.c sht11-sensor.c light-sensor.c \
-     battery-sensor.c sky-sensors.c tmp102.c temperature-sensor.c
+     battery-sensor.c sky-sensors.c tmp102.c temperature-sensor.c light-ziglet.c
 
 CONTIKI_TARGET_DIRS = . dev apps net
 ifndef CONTIKI_TARGET_MAIN
@@ -37,14 +34,15 @@ CFLAGS += -DMACID=$(nodemac)
 endif
 
 CONTIKI_TARGET_SOURCEFILES += $(ARCH) $(UIPDRIVERS)
-CONTIKI_TARGET_SOURCEFILES += contiki-z1-platform.c
+CONTIKI_TARGET_SOURCEFILES += i2cmaster.c adxl345.c
 
-MCU=msp430x2617
+MCU=msp430f2617
 include $(CONTIKI)/cpu/msp430/Makefile.msp430
 
 # Add LDFLAGS after IAR_PATH is set
 ifdef IAR
-LDFLAGS += -B -xm "$(IAR_PATH)/lib/dlib/dl430xsfn.r43" -f "$(IAR_PATH)/config/lnk430f2617.xcl" -l contiki-$(TARGET).map -Fintel-extended -s __program_start -D_STACK_SIZE=80 -D_DATA16_HEAP_SIZE=80 -D_DATA20_HEAP_SIZE=80
+LDFLAGSNO += -B -xm "$(IAR_PATH)/lib/dlib/dl430xsfn.r43" -f "$(IAR_PATH)/config/lnk430f2617.xcl" -l contiki-$(TARGET).map -s __program_start -D_STACK_SIZE=80 -D_DATA16_HEAP_SIZE=80 -D_DATA20_HEAP_SIZE=80
+LDFLAGS += $(LDFLAGSNO) -Felf -yn
 endif
 
 contiki-$(TARGET).a: ${addprefix $(OBJECTDIR)/,symbols.o}

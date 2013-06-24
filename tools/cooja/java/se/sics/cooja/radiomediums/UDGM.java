@@ -215,7 +215,7 @@ public class UDGM extends AbstractRadioMedium {
       if (distance <= moteTransmissionRange) {
         /* Within transmission range */
 
-        if (!recv.isReceiverOn()) {
+        if (!recv.isRadioOn()) {
           newConnection.addInterfered(recv);
           recv.interfereAnyReception();
         } else if (recv.isInterfered()) {
@@ -287,6 +287,12 @@ public class UDGM extends AbstractRadioMedium {
         conn.getSource().setCurrentSignalStrength(SS_STRONG);
       }
       for (Radio dstRadio : conn.getDestinations()) {
+        if (conn.getSource().getChannel() >= 0 &&
+            dstRadio.getChannel() >= 0 &&
+            conn.getSource().getChannel() != dstRadio.getChannel()) {
+          continue;
+        }
+
         double dist = conn.getSource().getPosition().getDistanceTo(dstRadio.getPosition());
 
         double maxTxDist = TRANSMITTING_RANGE
@@ -303,6 +309,12 @@ public class UDGM extends AbstractRadioMedium {
     /* Set signal strength to below weak on interfered */
     for (RadioConnection conn : conns) {
       for (Radio intfRadio : conn.getInterfered()) {
+        if (conn.getSource().getChannel() >= 0 &&
+            intfRadio.getChannel() >= 0 &&
+            conn.getSource().getChannel() != intfRadio.getChannel()) {
+          continue;
+        }
+
         double dist = conn.getSource().getPosition().getDistanceTo(intfRadio.getPosition());
 
         double maxTxDist = TRANSMITTING_RANGE
@@ -369,7 +381,7 @@ public class UDGM extends AbstractRadioMedium {
       /* Backwards compatibility */
       if (element.getName().equals("success_ratio")) {
         SUCCESS_RATIO_TX = Double.parseDouble(element.getText());
-        logger.warn("Loading old COOJA Config, XML element \"sucess_ratio\" parsed at \"sucess_ratio_tx\"");
+        logger.warn("Loading old Cooja Config, XML element \"sucess_ratio\" parsed at \"sucess_ratio_tx\"");
       }
 
       if (element.getName().equals("success_ratio_tx")) {

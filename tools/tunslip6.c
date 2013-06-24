@@ -29,7 +29,6 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: tunslip6.c,v 1.6 2010/11/29 18:14:54 joxe Exp $
  *
  */
 
@@ -547,6 +546,7 @@ tun_alloc(char *dev, int tap)
 void
 cleanup(void)
 {
+#ifndef __APPLE__
   if (timestamp) stamptime();
   ssystem("ifconfig %s down", tundev);
 #ifndef linux
@@ -558,6 +558,19 @@ cleanup(void)
 	  " | awk '{ if ($2 == \"%s\") print \"route delete -net \"$1; }'"
 	  " | sh",
 	  tundev);
+#else
+  {
+    char *  itfaddr = strdup(ipaddr);
+    char *  prefix = index(itfaddr, '/');
+    if (timestamp) stamptime();
+    ssystem("ifconfig %s inet6 %s remove", tundev, ipaddr);
+    if (timestamp) stamptime();
+    ssystem("ifconfig %s down", tundev);
+    if ( prefix != NULL ) *prefix = '\0';
+    ssystem("route delete -inet6 %s", itfaddr);
+    free(itfaddr);
+  }
+#endif
 }
 
 void
@@ -596,6 +609,71 @@ ifconf(const char *tundev, const char *ipaddr)
   ssystem("ifconfig %s inet `hostname` up", tundev);
   if (timestamp) stamptime();
   ssystem("ifconfig %s add %s", tundev, ipaddr);
+
+/* radvd needs a link local address for routing */
+#if 0
+/* fe80::1/64 is good enough */
+  ssystem("ifconfig %s add fe80::1/64", tundev);
+#elif 1
+/* Generate a link local address a la sixxs/aiccu */
+/* First a full parse, stripping off the prefix length */
+  {
+    char lladdr[40];
+    char c, *ptr=(char *)ipaddr;
+    uint16_t digit,ai,a[8],cc,scc,i;
+    for(ai=0; ai<8; ai++) {
+      a[ai]=0;
+    }
+    ai=0;
+    cc=scc=0;
+    while(c=*ptr++) {
+      if(c=='/') break;
+      if(c==':') {
+	if(cc)
+	  scc = ai;
+	cc = 1;
+	if(++ai>7) break;
+      } else {
+	cc=0;
+	digit = c-'0';
+	if (digit > 9) 
+	  digit = 10 + (c & 0xdf) - 'A';
+	a[ai] = (a[ai] << 4) + digit;
+      }
+    }
+    /* Get # elided and shift what's after to the end */
+    cc=8-ai;
+    for(i=0;i<cc;i++) {
+      if ((8-i-cc) <= scc) {
+	a[7-i] = 0;
+      } else {
+	a[7-i] = a[8-i-cc];
+	a[8-i-cc]=0;
+      }
+    }
+    sprintf(lladdr,"fe80::%x:%x:%x:%x",a[1]&0xfefd,a[2],a[3],a[7]);
+    if (timestamp) stamptime();
+    ssystem("ifconfig %s add %s/64", tundev, lladdr);
+  }
+#endif /* link local */
+#elif defined(__APPLE__)
+  {
+	char * itfaddr = strdup(ipaddr);
+	char * prefix = index(itfaddr, '/');
+	if ( prefix != NULL ) {
+		*prefix = '\0';
+		prefix++;
+	} else {
+		prefix = "64";
+	}
+    if (timestamp) stamptime();
+    ssystem("ifconfig %s inet6 up", tundev );
+    if (timestamp) stamptime();
+    ssystem("ifconfig %s inet6 %s add", tundev, ipaddr );
+    if (timestamp) stamptime();
+    ssystem("sysctl -w net.inet6.ip6.forwarding=1");
+    free(itfaddr);
+  }
 #else
   if (timestamp) stamptime();
   ssystem("ifconfig %s inet `hostname` %s up", tundev, ipaddr);
@@ -626,7 +704,7 @@ main(int argc, char **argv)
   prog = argv[0];
   setvbuf(stdout, NULL, _IOLBF, 0); /* Line buffered output. */
 
-  while((c = getopt(argc, argv, "B:H:D:Lhs:t:v::d::a:p:T")) != -1) {
+  while((c = getopt(argc, argv, "B:HLhs:t:v::d::a:p:T")) != -1) {
     switch(c) {
     case 'B':
       baudrate = atoi(optarg);
@@ -684,7 +762,11 @@ main(int argc, char **argv)
 fprintf(stderr,"usage:  %s [options] ipaddress\n", prog);
 fprintf(stderr,"example: tunslip6 -L -v2 -s ttyUSB1 aaaa::1/64\n");
 fprintf(stderr,"Options are:\n");
-fprintf(stderr," -B baudrate    9600,19200,38400,57600,115200 (default)\n");
+#ifndef __APPLE__
+fprintf(stderr," -B baudrate    9600,19200,38400,57600,115200 (default),230400,460800,921600\n");
+#else
+fprintf(stderr," -B baudrate    9600,19200,38400,57600,115200 (default),230400\n");
+#endif
 fprintf(stderr," -H             Hardware CTS/RTS flow control (default disabled)\n");
 fprintf(stderr," -L             Log output format (adds time stamps)\n");
 fprintf(stderr," -s siodev      Serial device (default /dev/ttyUSB0)\n");
@@ -733,6 +815,17 @@ exit(1);
   case 115200:
     b_rate = B115200;
     break;
+  case 230400:
+    b_rate = B230400;
+    break;
+#ifndef __APPLE__
+  case 460800:
+    b_rate = B460800;
+    break;
+  case 921600:
+    b_rate = B921600;
+    break;
+#endif
   default:
     err(1, "unknown baudrate %d", baudrate);
     break;

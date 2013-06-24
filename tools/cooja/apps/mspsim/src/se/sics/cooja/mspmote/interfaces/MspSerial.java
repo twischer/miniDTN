@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, Swedish Institute of Computer Science.
+ * Copyright (c) 2011, Swedish Institute of Computer Science.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,8 +25,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $Id: MspSerial.java,v 1.4 2010/02/04 00:30:26 fros4943 Exp $
  */
 
 package se.sics.cooja.mspmote.interfaces;
@@ -43,8 +41,6 @@ import se.sics.cooja.dialogs.SerialUI;
 import se.sics.cooja.interfaces.SerialPort;
 import se.sics.cooja.mspmote.MspMote;
 import se.sics.cooja.mspmote.MspMoteTimeEvent;
-import se.sics.mspsim.core.IOUnit;
-import se.sics.mspsim.core.USART;
 import se.sics.mspsim.core.USARTListener;
 import se.sics.mspsim.core.USARTSource;
 
@@ -59,22 +55,22 @@ public class MspSerial extends SerialUI implements SerialPort {
 
   private Simulation simulation;
   private MspMote mote;
-  private USART usart;
+  private USARTSource usart;
   
   private Vector<Byte> incomingData = new Vector<Byte>();
  
   private TimeEvent writeDataEvent;
-  
+
+  public String ioConfigString() {
+	  return "USART 1";
+  }
   public MspSerial(Mote mote) {
     this.mote = (MspMote) mote;
     this.simulation = mote.getSimulation();
-
     /* Listen to port writes */
-    IOUnit ioUnit = this.mote.getCPU().getIOUnit("USART 1");
-    if (ioUnit instanceof USART) {
-      usart = (USART) ioUnit;
-      usart.setUSARTListener(new USARTListener() {
-        @Override
+    usart = getUSARTSource(this.mote);
+    if (usart != null) {
+      usart.addUSARTListener(new USARTListener() {
         public void dataReceived(USARTSource source, int data) {
           MspSerial.this.dataReceived(data);
         }
@@ -92,6 +88,10 @@ public class MspSerial extends SerialUI implements SerialPort {
       }
     };
 
+  }
+
+  protected USARTSource getUSARTSource(MspMote mote) {
+      return mote.getCPU().getIOUnit(USARTSource.class, ioConfigString());
   }
 
   public void writeByte(byte b) {

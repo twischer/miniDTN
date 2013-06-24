@@ -30,9 +30,6 @@
  */
 
 package se.sics.cooja.mspmote.interfaces;
-
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Observable;
 import java.util.Observer;
 
@@ -40,15 +37,13 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 
 import org.apache.log4j.Logger;
-import org.jdom.Element;
 
 import se.sics.cooja.Mote;
-import se.sics.cooja.MoteTimeEvent;
-import se.sics.cooja.Simulation;
 import se.sics.cooja.interfaces.MoteID;
 import se.sics.cooja.mspmote.MspMote;
 import se.sics.cooja.mspmote.MspMoteMemory;
-import se.sics.mspsim.core.CPUMonitor;
+import se.sics.mspsim.core.Memory;
+import se.sics.mspsim.core.MemoryMonitor;
 
 /**
  * Mote ID.
@@ -64,6 +59,8 @@ public class MspMoteID extends MoteID {
 	private boolean writeFlashHeader = true;
 	private int moteID = -1;
 
+	private MemoryMonitor memoryMonitor;
+	
 	/**
 	 * Creates an interface to the mote ID at mote.
 	 *
@@ -74,69 +71,6 @@ public class MspMoteID extends MoteID {
 	public MspMoteID(Mote m) {
 		this.mote = (MspMote) m;
 		this.moteMem = (MspMoteMemory) mote.getMemory();
-
-		final MoteTimeEvent writeIDEvent = new MoteTimeEvent(mote, 0) {
-			public void execute(long t) {
-				setMoteID(moteID);
-			}
-		};
-
-		if (moteMem.variableExists("node_id")) {
-			this.mote.getCPU().setBreakPoint(moteMem.getVariableAddress("node_id"), new CPUMonitor() {
-				public void cpuAction(int type, int adr, int data) {
-					if (type != MEMORY_WRITE) {
-						return;
-					}
-					if (data == moteID) {
-						return;
-					}
-					Simulation s = mote.getSimulation();
-					s.scheduleEvent(writeIDEvent, s.getSimulationTime());
-				}
-			});
-		}
-		if (moteMem.variableExists("TOS_NODE_ID")) {
-			this.mote.getCPU().setBreakPoint(moteMem.getVariableAddress("TOS_NODE_ID"), new CPUMonitor() {
-				public void cpuAction(int type, int adr, int data) {
-					if (type != MEMORY_WRITE) {
-						return;
-					}
-					if (data == moteID) {
-						return;
-					}
-					Simulation s = mote.getSimulation();
-					s.scheduleEvent(writeIDEvent, s.getSimulationTime());
-				}
-			});
-		}
-		if (moteMem.variableExists("ActiveMessageAddressC__addr")) {
-		  this.mote.getCPU().setBreakPoint(moteMem.getVariableAddress("ActiveMessageAddressC__addr"), new CPUMonitor() {
-		    public void cpuAction(int type, int adr, int data) {
-		      if (type != MEMORY_WRITE) {
-		        return;
-		      }
-		      if (data == moteID) {
-		        return;
-		      }
-		      Simulation s = mote.getSimulation();
-		      s.scheduleEvent(writeIDEvent, s.getSimulationTime());
-		    }
-		  });
-		}
-		if (moteMem.variableExists("ActiveMessageAddressC$addr")) {
-		  this.mote.getCPU().setBreakPoint(moteMem.getVariableAddress("ActiveMessageAddressC$addr"), new CPUMonitor() {
-		    public void cpuAction(int type, int adr, int data) {
-		      if (type != MEMORY_WRITE) {
-		        return;
-		      }
-		      if (data == moteID) {
-		        return;
-		      }
-		      Simulation s = mote.getSimulation();
-		      s.scheduleEvent(writeIDEvent, s.getSimulationTime());
-		    }
-		  });
-		}
 	}
 
 	public int getMoteID() {
@@ -175,6 +109,24 @@ public class MspMoteID extends MoteID {
 		if (moteMem.variableExists("ActiveMessageAddressC$addr")) {
 			moteMem.setIntValueOf("ActiveMessageAddressC$addr", newID);
 		}
+		if (memoryMonitor == null) {
+		    memoryMonitor = new MemoryMonitor.Adapter() {
+
+		        @Override
+		        public void notifyWriteAfter(int dstAddress, int data, Memory.AccessMode mode) {
+		            byte[] id = new byte[2];
+		            id[0] = (byte) (moteID & 0xff);
+		            id[1] = (byte) ((moteID >> 8) & 0xff);
+		            moteMem.setMemorySegment(dstAddress & ~1, id);
+		        }
+
+		    };
+
+                    addMonitor("node_id", memoryMonitor);
+                    addMonitor("TOS_NODE_ID", memoryMonitor);
+                    addMonitor("ActiveMessageAddressC__addr", memoryMonitor);
+                    addMonitor("ActiveMessageAddressC$addr", memoryMonitor);
+		}
 
 		notifyObservers();
 	}
@@ -209,19 +161,34 @@ public class MspMoteID extends MoteID {
 		this.deleteObserver(observer);
 	}
 
-	public Collection<Element> getConfigXML() {
-		ArrayList<Element> config = new ArrayList<Element>();
-		Element element = new Element("id");
-		element.setText(Integer.toString(getMoteID()));
-		config.add(element);
-		return config;
+	public void removed() {
+	  super.removed();
+	  if (memoryMonitor != null) {
+	      removeMonitor("node_id", memoryMonitor);
+	      removeMonitor("TOS_NODE_ID", memoryMonitor);
+	      removeMonitor("ActiveMessageAddressC__addr", memoryMonitor);
+	      removeMonitor("ActiveMessageAddressC$addr", memoryMonitor);
+	      memoryMonitor = null;
+	  }
 	}
 
-	public void setConfigXML(Collection<Element> configXML, boolean visAvailable) {
-		for (Element element : configXML) {
-			if (element.getName().equals("id")) {
-				setMoteID(Integer.parseInt(element.getText()));
-			}
-		}
+	private void addMonitor(String variable, MemoryMonitor monitor) {
+	    if (moteMem.variableExists(variable)) {
+	        int address = moteMem.getVariableAddress(variable);
+	        if ((address & 1) != 0) {
+	            // Variable can not be a word - must be a byte
+	        } else {
+	            mote.getCPU().addWatchPoint(address, monitor);
+	            mote.getCPU().addWatchPoint(address + 1, monitor);
+	        }
+	    }
 	}
+
+        private void removeMonitor(String variable, MemoryMonitor monitor) {
+            if (moteMem.variableExists(variable)) {
+                int address = moteMem.getVariableAddress(variable);
+                mote.getCPU().removeWatchPoint(address, monitor);
+                mote.getCPU().removeWatchPoint(address + 1, monitor);
+            }
+        }
 }

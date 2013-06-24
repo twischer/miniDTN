@@ -41,6 +41,7 @@
 
 #include "net/mac/nullrdc.h"
 #include "net/packetbuf.h"
+#include "net/queuebuf.h"
 #include "net/netstack.h"
 #include <string.h>
 
@@ -108,7 +109,7 @@ send_packet(mac_callback_t sent, void *ptr)
   packetbuf_set_attr(PACKETBUF_ATTR_MAC_ACK, 1);
 #endif /* NULLRDC_802154_AUTOACK || NULLRDC_802154_AUTOACK_HW */
 
-  if(NETSTACK_FRAMER.create() == 0) {
+  if(NETSTACK_FRAMER.create() < 0) {
     /* Failed to allocate space for headers */
     PRINTF("nullrdc: send failed, too large header\n");
     ret = MAC_TX_ERR_FATAL;
@@ -202,6 +203,15 @@ send_packet(mac_callback_t sent, void *ptr)
 }
 /*---------------------------------------------------------------------------*/
 static void
+send_list(mac_callback_t sent, void *ptr, struct rdc_buf_list *buf_list)
+{
+  if(buf_list != NULL) {
+    queuebuf_to_packetbuf(buf_list->buf);
+    send_packet(sent, ptr);
+  }
+}
+/*---------------------------------------------------------------------------*/
+static void
 packet_input(void)
 {
 #if NULLRDC_802154_AUTOACK
@@ -210,7 +220,7 @@ packet_input(void)
     /* PRINTF("nullrdc: ignored ack\n"); */
   } else
 #endif /* NULLRDC_802154_AUTOACK */
-  if(NETSTACK_FRAMER.parse() == 0) {
+  if(NETSTACK_FRAMER.parse() < 0) {
     PRINTF("nullrdc: failed to parse %u\n", packetbuf_datalen());
 #if NULLRDC_ADDRESS_FILTER
   } else if(!rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_RECEIVER),
@@ -278,6 +288,7 @@ const struct rdc_driver nullrdc_driver = {
   "nullrdc",
   init,
   send_packet,
+  send_list,
   packet_input,
   on,
   off,

@@ -45,14 +45,6 @@
 #define PRINTD(...)
 #endif
 
-/* Track interrupt flow through mac, rdc and radio driver */
-#if DEBUGFLOWSIZE
-uint8_t debugflowsize,debugflow[DEBUGFLOWSIZE];
-#define DEBUGFLOW(c) if (debugflowsize<(DEBUGFLOWSIZE-1)) debugflow[debugflowsize++]=c
-#else
-#define DEBUGFLOW(c)
-#endif
-
 #include <avr/pgmspace.h>
 #include <avr/fuse.h>
 #include <avr/eeprom.h>
@@ -97,6 +89,15 @@ uint8_t debugflowsize,debugflow[DEBUGFLOWSIZE];
 #endif
 
 #include "net/rime.h"
+
+/* Track interrupt flow through mac, rdc and radio driver */
+//#define DEBUGFLOWSIZE 32
+#if DEBUGFLOWSIZE
+uint8_t debugflowsize,debugflow[DEBUGFLOWSIZE];
+#define DEBUGFLOW(c) if (debugflowsize<(DEBUGFLOWSIZE-1)) debugflow[debugflowsize++]=c
+#else
+#define DEBUGFLOW(c)
+#endif
 
 /* Get periodic prints from idle loop, from clock seconds or rtimer interrupts */
 /* Use of rtimer will conflict with other rtimer interrupts such as contikimac radio cycling */
@@ -147,7 +148,7 @@ rng_get_uint8(void) {
 #if 1
   /* Upper two RSSI reg bits (RND_VALUE) are random in rf231 */
   uint8_t j;
-  j = (PHY_RSSI>>6) | (PHY_RSSI>>4) | (PHY_RSSI>>4) | PHY_RSSI;
+  j = (PHY_RSSI&0xc0) + ((PHY_RSSI>>2)&0x30) + ((PHY_RSSI>>4)&0x0c) + ((PHY_RSSI>>6)&0x03);
 #else
 /* Get a pseudo random number using the ADC */
   uint8_t i,j;
@@ -187,8 +188,12 @@ void initialize(void)
 
   /* Second rs232 port for debugging or slip alternative */
   rs232_init(RS232_PORT_1, USART_BAUD_57600,USART_PARITY_NONE | USART_STOP_BITS_1 | USART_DATA_BITS_8);
-  /* Redirect stdout to second port */
+  /* Redirect stdout */
+#if RF230BB_CONF_LEDONPORTE1 || defined(RAVEN_LCD_INTERFACE)
   rs232_redirect_stdout(RS232_PORT_1);
+#else
+  rs232_redirect_stdout(RS232_PORT_0);
+#endif
   clock_init();
 
   if(MCUSR & (1<<PORF )) PRINTD("Power-on reset.\n");
@@ -291,15 +296,9 @@ uint8_t i;
   NETSTACK_NETWORK.init();
 
 #if ANNOUNCE_BOOT
-  PRINTA("%s %s, channel %u power %u",NETSTACK_MAC.name, NETSTACK_RDC.name,rf230_get_channel(),rf230_get_txpower());
-  if (NETSTACK_RDC.channel_check_interval) {//function pointer is zero for sicslowmac
-    unsigned short tmp;
-    tmp=CLOCK_SECOND / (NETSTACK_RDC.channel_check_interval == 0 ? 1:\
-                                   NETSTACK_RDC.channel_check_interval());
-    if (tmp<65535) PRINTA(", check rate %u Hz",tmp);
-  }
-  PRINTA("\n");
-
+  PRINTA("%s %s, channel %u , check rate %u Hz tx power %u\n",NETSTACK_MAC.name, NETSTACK_RDC.name, rf230_get_channel(),
+    CLOCK_SECOND / (NETSTACK_RDC.channel_check_interval() == 0 ? 1:NETSTACK_RDC.channel_check_interval()),
+    rf230_get_txpower());	  
 #if UIP_CONF_IPV6_RPL
   PRINTA("RPL Enabled\n");
 #endif
