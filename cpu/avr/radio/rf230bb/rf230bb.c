@@ -251,7 +251,7 @@ const struct radio_driver rf230_driver =
     rf230_prepare,
     rf230_transmit,
     rf230_send,
-    rf230_read_fakeack,
+    rf230_read_fakeack,// TODO: required?
     rf230_cca,
     rf230_receiving_packet,
     rf230_pending_packet,
@@ -1001,9 +1001,9 @@ rf230_transmit(unsigned short payload_len)
   }
 
 #if RF230_INSERTACK
-  if (!((buffer[5]==0xff) && (buffer[6]==0xff)) && (buffer[0]&(1<<6))){ //packet is not broadcast and acknowledge is requested
-	  ack_pending=1;		    
-  }
+   ack_pending = 0;
+#endif
+
   if (tx_result==1) {        //success, data pending from addressee
     tx_result=RADIO_TX_OK;           //handle as ordinary success
   }
@@ -1019,19 +1019,19 @@ rf230_transmit(unsigned short payload_len)
 #endif
 
   } else if (tx_result==3) {        //CSMA channel access failure
-    ack_pending=0;		    //no fake-ack needed
+    ack_pending = 0;                //no fake-ack needed
     DEBUGFLOW('m');
     RIMESTATS_ADD(contentiondrop);
     PRINTF("rf230_transmit: Transmission never started\n");
     tx_result = RADIO_TX_COLLISION;
   } else if (tx_result==5) {        //Expected ACK, none received
-    ack_pending=0;		    //no fake-ack needed
+    ack_pending = 0;                //no fake-ack needed
     DEBUGFLOW('n');
     tx_result = RADIO_TX_NOACK;
     PRINTF("rf230_transmit: ACK not received\n");
     RIMESTATS_ADD(badackrx);		//ack was requested but not received
   } else if (tx_result==7) {        //Invalid (Can't happen since waited for idle above?)
-    ack_pending=0;		    //no fake-ack needed
+    ack_pending = 0;                //no fake-ack needed
     DEBUGFLOW('o');
     tx_result = RADIO_TX_ERR;
   }
@@ -1042,7 +1042,6 @@ rf230_transmit(unsigned short payload_len)
 static int
 rf230_prepare(const void *payload, unsigned short payload_len)
 {
-  ack_seqnum=*(((uint8_t *)payload)+2);		//get sequence number from buffer, needed to generate fake-ack
   int ret = 0;
   uint8_t total_len,*pbuf;
 #if RF230_CONF_TIMESTAMPS
@@ -1070,7 +1069,6 @@ rf230_prepare(const void *payload, unsigned short payload_len)
   /* Copy payload to RAM buffer */
   total_len = payload_len + AUX_LEN;
   if (total_len > RF230_MAX_TX_FRAME_LENGTH){
-    printf_P(PSTR("rf230_prepare: packet too large (%d, max: %d)\n"),total_len,RF230_MAX_TX_FRAME_LENGTH);
 #if RADIOSTATS
     RF230_sendfail++;
 #endif
@@ -1105,6 +1103,8 @@ rf230_prepare(const void *payload, unsigned short payload_len)
 #endif /* RF230_CONF_CHECKSUM */
   RF230BB_HOOK_TX_PACKET(buffer,total_len);
 #endif
+  
+
 bail:
   return ret;
 }
@@ -1357,7 +1357,8 @@ rf230_read_fakeack(void *buf, unsigned short bufsize)
   }
   rf230_read(buf,bufsize);
 }
-
+/*---------------------------------------------------------------------------*/
+/* Read packet that was uploaded from Radio in ISR, else return zero.
  * The two-byte checksum is appended but the returned length does not include it.
  * Frames are buffered in the interrupt routine so this routine
  * does not access the hardware or change its status.
@@ -1722,9 +1723,9 @@ rf230_receiving_packet(void)
 static int
 rf230_pending_packet(void)
 {
-  if(ack_pending ==1){ // if the RDC is waiting for an ACK, this simulates that the radio is also waitnig for it
-  	return 1;
-  }
+#if RF230_INSERTACK
+    if(ack_pending == 1) return 1;
+#endif
   return rf230_pending;
 }
 /*---------------------------------------------------------------------------*/

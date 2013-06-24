@@ -325,7 +325,6 @@ void AVR_OUTPUT_COMPARE_INT(void);
 #else
 ISR(AVR_OUTPUT_COMPARE_INT)
 {
-  
     count++;
 #if TWO_COUNTERS
   if(++scount >= CLOCK_SECOND) {
@@ -414,9 +413,6 @@ volatile static uint8_t osccalhigh,osccallow;
 #endif /* defined(DOXYGEN) */
 /*---------------------------------------------------------------------------*/
 /* Debugging aids */
-
-    for (j = 5; j > 0; j--)
-#if 0
 
 #ifdef HANDLE_UNSUPPORTED_INTERRUPTS
 /* Ignore unsupported interrupts, optionally hang for debugging */

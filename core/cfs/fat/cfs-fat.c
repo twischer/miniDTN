@@ -953,9 +953,6 @@ cfs_close(int fd)
   fat_fd_pool[fd].file = NULL;
 }
 /*----------------------------------------------------------------------------*/
-/**
- * @note len must be power of 2
- */
 int
 cfs_read(int fd, void *buf, unsigned int len)
 {
