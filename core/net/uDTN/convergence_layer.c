@@ -94,6 +94,11 @@ uint8_t outgoing_sequence_number;
  */
 uint8_t convergence_layer_pending;
 
+/**
+ * Backoff timer
+ */
+struct etimer convergence_layer_backoff;
+
 int convergence_layer_init(void)
 {
 	// Start CL process
@@ -614,7 +619,7 @@ int convergence_layer_status(void * pointer, uint8_t outcome)
 	if( convergence_layer_pending == 0 ) {
 		if( outcome == CONVERGENCE_LAYER_STATUS_NOSEND ) {
 			/* Send event to slow the stuff down */
-			process_post(&convergence_layer_process, PROCESS_EVENT_CONTINUE, NULL);
+			etimer_set(&convergence_layer_backoff, 0.5 * CLOCK_SECOND);
 		} else {
 			/* Poll to make it faster */
 			process_poll(&convergence_layer_process);
@@ -912,15 +917,20 @@ PROCESS_THREAD(convergence_layer_process, ev, data)
 	etimer_set(&stale_timer, CLOCK_SECOND);
 
 	while(1) {
-		PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL || ev == PROCESS_EVENT_CONTINUE || etimer_expired(&stale_timer));
+		PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL || ev == PROCESS_EVENT_CONTINUE || etimer_expired(&stale_timer) || ev == PROCESS_EVENT_TIMER);
 
 		if( etimer_expired(&stale_timer) ) {
 			check_blocked_neighbours();
 			etimer_restart(&stale_timer);
 		}
 
-		if( ev == PROCESS_EVENT_POLL || ev == PROCESS_EVENT_CONTINUE ) {
+		if( ev == PROCESS_EVENT_POLL || ev == PROCESS_EVENT_CONTINUE || (ev == PROCESS_EVENT_TIMER && ((struct etimer *) data) == &convergence_layer_backoff) ) {
 			convergence_layer_pending = 0;
+
+			/* Stop timer to avoid it firing again */
+			if ( (ev == PROCESS_EVENT_TIMER && ((struct etimer *) data) == &convergence_layer_backoff) ) {
+				etimer_stop(&convergence_layer_backoff);
+			}
 
 			/* If we are currently transmitting, we cannot send another bundle */
 			if( convergence_layer_transmitting ) {
