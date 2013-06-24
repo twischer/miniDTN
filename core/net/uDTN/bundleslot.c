@@ -16,7 +16,7 @@
 #include "logging.h"
 
 #include "bundle.h"
-
+#include "storage.h"
 #include "agent.h"
 #include "bundleslot.h"
 
@@ -24,7 +24,7 @@
 #ifdef CONF_BUNDLE_NUM
 #define BUNDLE_NUM CONF_BUNDLE_NUM
 #else
-#define BUNDLE_NUM 50
+#define BUNDLE_NUM (BUNDLE_STORAGE_SIZE + 10)
 #endif
 
 #define INIT_GUARD() \
