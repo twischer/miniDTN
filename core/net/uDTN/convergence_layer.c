@@ -869,8 +869,13 @@ int convergence_layer_neighbour_down(rimeaddr_t * neighbour) {
 			ticket = list_item_next(ticket) ) {
 
 			if( rimeaddr_cmp(neighbour, &ticket->neighbour) ) {
+				/* Notify routing module */
+				ROUTING.sent(ticket, ROUTING_STATUS_FAIL);
+
+				/* Mark as changed */
 				changed = 1;
-				convergence_layer_free_transmit_ticket(ticket);
+
+				/* Stop look and start over again */
 				break;
 			}
 		}
