@@ -688,8 +688,12 @@ void routing_flooding_bundle_sent(struct transmit_ticket_t * ticket, uint8_t sta
 		// --> note down address in blacklist
 		if( routing_flooding_blacklist_add(&ticket->neighbour) ) {
 			// Node is now past threshold and blacklisted, notify discovery
-			DISCOVERY.dead(&ticket->neighbour);
 			routing_flooding_blacklist_delete(&ticket->neighbour);
+
+			// "dead" will free all tickets, we do not have to do it
+			DISCOVERY.dead(&ticket->neighbour);
+
+			return;
 		}
 
 		/* Free up the ticket */
