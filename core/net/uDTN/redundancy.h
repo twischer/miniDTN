@@ -45,9 +45,9 @@ struct redundance_check {
 	/** called by agent at startup*/
 	void (* init)(void);
 	/** checks if bundle was delivered before */
-	uint8_t (* check)(struct mmem *bundlemem);
+	uint8_t (* check)(uint32_t bundle_number);
 	/** sets that bundle was delivered */
-	uint8_t (* set)(struct mmem *bundlemem);
+	uint8_t (* set)(uint32_t bundle_number);
 };
 
 extern const struct redundance_check REDUNDANCE;

@@ -35,6 +35,7 @@
 #include "discovery.h"
 #include "statistics.h"
 #include "convergence_layer.h"
+#include "hash.h"
 
 #include "agent.h"
 
@@ -194,6 +195,9 @@ PROCESS_THREAD(agent_process, ev, data)
 
 			// Copy the sending process, because 'bundle' will not be accessible anymore afterwards
 			source_process = bundle->source_process;
+
+			// Calculate the bundle number
+			bundle->bundle_num = HASH.hash_convenience(bundle->tstamp_seq, bundle->tstamp, bundle->src_node, bundle->frag_offs, bundle->app_len);
 
 			// Save the bundle in storage
 			n = BUNDLE_STORAGE.save_bundle(bundleptr, &bundle_number_ptr);
