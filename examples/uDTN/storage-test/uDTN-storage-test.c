@@ -49,6 +49,7 @@
 #include "list.h"
 #include "cfs-coffee.h"
 
+#include "net/uDTN/hash.h"
 #include "net/uDTN/agent.h"
 #include "net/uDTN/bundle.h"
 #include "net/uDTN/storage.h"
@@ -99,6 +100,9 @@ uint8_t my_create_bundle(uint32_t sequence_number, uint32_t * bundle_number, uin
 
 	// Add a payload block
 	bundle_add_block(ptr, BUNDLE_BLOCK_TYPE_PAYLOAD, BUNDLE_BLOCK_FLAG_NULL, payload, 60);
+
+	// Calculate the bundle number
+	bundle->bundle_num = HASH.hash_convenience(bundle->tstamp_seq, bundle->tstamp, bundle->src_node, bundle->frag_offs, bundle->app_len);
 
 	// And tell storage to save the bundle
 	n = BUNDLE_STORAGE.save_bundle(ptr, &bundle_number_ptr);
@@ -192,7 +196,7 @@ PROCESS_THREAD(test_process, ev, data)
 
 	PROCESS_BEGIN();
 
-  PROCESS_PAUSE();
+	PROCESS_PAUSE();
 
 	profiling_init();
 	profiling_start();
