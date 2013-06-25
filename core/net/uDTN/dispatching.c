@@ -27,6 +27,7 @@
 #include "statusreport.h"
 #include "storage.h"
 #include "hash.h"
+#include "redundancy.h"
 
 #include "dispatching.h"
 
@@ -89,7 +90,8 @@ int dispatching_check_report(struct mmem * bundlemem) {
 
 int dispatching_dispatch_bundle(struct mmem *bundlemem) {
 	struct bundle_t *bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
-	uint32_t * bundle_number;
+	uint32_t * bundle_number_ptr;
+	uint32_t bundle_number = 0;
 	int n;
 	uint8_t received_report = 0;
 
@@ -146,7 +148,19 @@ int dispatching_dispatch_bundle(struct mmem *bundlemem) {
 		// bundle is custody
 		LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "Handing over to custody");
 
-		CUSTODY.decide(bundlemem, bundle_number);
+		CUSTODY.decide(bundlemem, bundle_number_ptr);
+		return 1;
+	}
+
+	// Calculate the bundle number
+	bundle_number = HASH.hash_convenience(bundle->tstamp_seq, bundle->tstamp, bundle->src_node, bundle->frag_offs, bundle->app_len);
+	bundle->bundle_num = bundle_number;
+
+	// Check if the bundle has been delivered before
+	if( REDUNDANCE.check(bundle_number) ) {
+		bundle_decrement(bundlemem);
+
+		// If the bundle is redundant we still have to report success to make the CL send an ACK
 		return 1;
 	}
 
@@ -157,16 +171,16 @@ int dispatching_dispatch_bundle(struct mmem *bundlemem) {
 
 	// regular bundle, no custody
 	LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "Handing over to storage");
-	n = BUNDLE_STORAGE.save_bundle(bundlemem, &bundle_number);
+	n = BUNDLE_STORAGE.save_bundle(bundlemem, &bundle_number_ptr);
 	bundlemem = NULL;
 
 	// Send out a "received" status report if requested
 	if( received_report ) {
 		// Read back from storage
-		bundlemem = BUNDLE_STORAGE.read_bundle(*bundle_number);
+		bundlemem = BUNDLE_STORAGE.read_bundle(bundle_number);
 
 		if( bundlemem != NULL) {
-			LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "Sending out delivery report for bundle %lu", *bundle_number);
+			LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "Sending out delivery report for bundle %lu", bundle_number);
 
 			// Send out report
 			STATUSREPORT.send(bundlemem, NODE_RECEIVED_BUNDLE, NO_ADDITIONAL_INFORMATION);
@@ -176,9 +190,13 @@ int dispatching_dispatch_bundle(struct mmem *bundlemem) {
 		}
 	}
 
-	// Now we have to send an event to our daemon
 	if( n ) {
-		process_post(&agent_process, dtn_bundle_in_storage_event, bundle_number);
+		// Put the bundle into the list of already seen bundles
+		REDUNDANCE.set(bundle_number);
+
+		// Now we have to send an event to our daemon
+		process_post(&agent_process, dtn_bundle_in_storage_event, bundle_number_ptr);
+
 		return 1;
 	}
 

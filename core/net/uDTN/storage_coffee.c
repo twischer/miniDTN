@@ -414,7 +414,6 @@ uint8_t storage_coffee_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_n
 	char bundle_filename[STORAGE_FILE_NAME_LENGTH];
 	int fd_write;
 	int n;
-	uint32_t bundle_number;
 
 	if( bundlemem == NULL ) {
 		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "save_bundle with invalid pointer %p", bundlemem);
@@ -430,15 +429,12 @@ uint8_t storage_coffee_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_n
 		return 0;
 	}
 
-	// Calculate the bundle number
-	bundle_number = HASH.hash_convenience(bundle->tstamp_seq, bundle->tstamp, bundle->src_node, bundle->frag_offs, bundle->app_len);
-
 	// Look for duplicates in the storage
 	for(entry = list_head(bundle_list);
 		entry != NULL;
 		entry = list_item_next(entry)) {
 
-		if( bundle_number == entry->bundle_num ) {
+		if( bundle->bundle_num == entry->bundle_num ) {
 			LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "%lu is the same bundle", entry->bundle_num);
 			*bundle_number_ptr = &entry->bundle_num;
 			bundle_decrement(bundlemem);
@@ -475,8 +471,7 @@ uint8_t storage_coffee_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_n
 	entry->file_size = bundlemem->size;
 
 	// Assign a unique bundle number
-	bundle->bundle_num = bundle_number;
-	entry->bundle_num = bundle_number;
+	entry->bundle_num = bundle->bundle_num;
 
 	// determine the filename
 	n = snprintf(bundle_filename, STORAGE_FILE_NAME_LENGTH, "%lu.b", entry->bundle_num);
