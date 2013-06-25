@@ -233,13 +233,22 @@ void discovery_simple_stop() {
 
 void discovery_simple_clear() {
   struct discovery_neighbour_list_entry * entry;
+  int changed = 1;
 
-   LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_INF, "Clearing neighbour list");
+  LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_INF, "Clearing neighbour list");
 
-   for (entry = list_head(neighbour_list); entry != NULL ; entry = entry->next) {
-     memb_free(&neighbour_mem, entry);
-     list_remove(neighbour_list, entry);
-   }
+  /* Funktioniert das? */
+  while(changed) {
+    changed = 0;
+
+    for (entry = list_head(neighbour_list); entry != NULL ; entry = entry->next) {
+      convergence_layer_neighbour_down(&entry->neighbour);
+      list_remove(neighbour_list, entry);
+      memb_free(&neighbour_mem, entry);
+      changed = 1;
+      break;
+    }
+  }
 }
 
 const struct discovery_driver discovery_simple = {
