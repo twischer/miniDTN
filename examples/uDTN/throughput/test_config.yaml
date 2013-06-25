@@ -25,14 +25,14 @@ tests:
         program: uDTN-sender
         instrument: []
         debug: []
-        cflags: "-DCONF_SEND_TO_NODE=$RECEIVER"
+        cflags: "-fno-inline -DCONF_SEND_TO_NODE=$RECEIVER"
         graph_options: ""
       - name: receiver
         programdir: examples/uDTN/throughput
         program: uDTN-sink
         instrument: []
         debug: []
-        cflags: "-fno-inline -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30"
+        cflags: "-fno-inline"
         graph_options: ""
 ### Test delivery-reports
   - name: delivery-reports
@@ -95,14 +95,14 @@ tests:
         program: uDTN-sender
         instrument: []
         debug: []
-        cflags: "-DCONF_REPORTING_INTERVAL=1 -DCONF_BUNDLES=100 -DBUNDLE_CONF_STORAGE_INIT=1 -DCONF_SEND_TO_NODE=$RECEIVER -DBUNDLE_CONF_STORAGE=storage_coffee"
+        cflags: "-fno-inline -DCONF_REPORTING_INTERVAL=1 -DCONF_BUNDLES=100 -DBUNDLE_CONF_STORAGE_INIT=1 -DCONF_SEND_TO_NODE=$RECEIVER -DBUNDLE_CONF_STORAGE=storage_coffee"
         graph_options: ""
       - name: receiver
         programdir: examples/uDTN/throughput
         program: uDTN-sink
         instrument: []
         debug: []
-        cflags: "-DCONF_REPORTING_INTERVAL=1 -DCONF_BUNDLES=100 -DBUNDLE_CONF_STORAGE_INIT=1 -DBUNDLE_CONF_STORAGE=storage_coffee"
+        cflags: "-fno-inline -DCONF_REPORTING_INTERVAL=1 -DCONF_BUNDLES=100 -DBUNDLE_CONF_STORAGE_INIT=1 -DBUNDLE_CONF_STORAGE=storage_coffee"
         graph_options: ""
 ### Basically the throughput test with the contiki network stack instrumented
   - name: contiki-net
@@ -130,12 +130,12 @@ tests:
         program: uDTN-sender
         instrument: []
         debug: []
-        cflags: "-fno-inline -DCONF_SEND_TO_NODE=$RECEIVER "
+        cflags: "-fno-inline -DCONF_SEND_TO_NODE=$RECEIVER"
         graph_options: ""
       - name: receiver
         programdir: examples/uDTN/throughput
         program: uDTN-sink
         instrument: []
         debug: []
-        cflags: "-fno-inline "
+        cflags: "-fno-inline"
         graph_options: ""
