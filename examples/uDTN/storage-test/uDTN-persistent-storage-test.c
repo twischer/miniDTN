@@ -65,6 +65,7 @@ AUTOSTART_PROCESSES(&test_process);
 
 uint8_t my_create_bundle(uint32_t sequence_number, uint32_t * bundle_number, uint32_t lifetime) {
 	struct mmem * ptr = NULL;
+	struct bundle_t * bundle = NULL;
 	int n;
 	uint32_t i;
 	uint8_t payload[60];
@@ -72,6 +73,12 @@ uint8_t my_create_bundle(uint32_t sequence_number, uint32_t * bundle_number, uin
 
 	ptr = bundle_create_bundle();
 	if( ptr == NULL ) {
+		printf("CREATE: Bundle %lu could not be allocated\n", sequence_number);
+		return 0;
+	}
+
+	bundle = (struct bundle_t *) MMEM_PTR(ptr);
+	if( bundle == NULL ) {
 		printf("CREATE: Bundle %lu could not be allocated\n", sequence_number);
 		return 0;
 	}
