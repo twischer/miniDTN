@@ -31,7 +31,7 @@
 #ifdef CONF_REDUNDANCE
 #define REDUNDANCE CONF_REDUNDANCE
 #else
-#define REDUNDANCE redundancy_bloomfilter
+#define REDUNDANCE redundancy_basic
 #endif
 
 /**
