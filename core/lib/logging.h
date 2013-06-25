@@ -58,11 +58,6 @@
 
 #include <stdio.h>
 
-//FIXME it would be better to check for avr... at least for the include
-#ifdef ENABLE_LOGGING_FLASH
-#include <avr/pgmspace.h>
-#endif
-
 #define LOGL_DBG 0
 #define LOGL_INF 1
 #define LOGL_WRN 2
@@ -77,15 +72,7 @@
 #define LOGD_DTN  4
 #define LOGD_NUM  5 /* Always last! */
 
-#define SUBDOMS 10
-
-struct log_cfg {
-	uint8_t subl[SUBDOMS];
-	uint8_t subdom_next;
-};
-
-static struct log_cfg log_d[LOGD_NUM];
-
+#ifdef ENABLE_LOGGING
 /*---------------------------------------------------------------------------*/
 /**
  * \brief         Log a message
@@ -98,21 +85,10 @@ static struct log_cfg log_d[LOGD_NUM];
  *
  * \hideinitializer
  */
-#ifdef ENABLE_LOGGING_FLASH
 #define LOG(logdom, sdom, logl, fmt, ...) do { \
-    if (logdom >= LOGD_NUM || logl >= LOGL_NUM || sdom >= SUBDOMS) { \
-    break; \
-    } \
-    if (logl >= log_d[logdom].subl[sdom]) { \
-        printf_P(PSTR("[%s:%s](%s:%d): " fmt"\r\n"), logging_level2str(logl), \
-                                logging_dom2str(logdom), __func__, __LINE__, ## __VA_ARGS__); \
-    } \
+		logging_logfn(logdom, sdom, logl, "[%s:%s](%s:%d): " fmt, logging_level2str(logl), \
+				logging_dom2str(logdom), __func__, __LINE__, ## __VA_ARGS__); \
 	} while (0)
-#elif ENABLE_LOGGING
-#define LOG(logdom, sdom, logl, fmt, ...) do { \
-        logging_logfn(logdom, sdom, logl, "[%s:%s](%s:%d): " fmt, logging_level2str(logl), \
-                logging_dom2str(logdom), __func__, __LINE__, ## __VA_ARGS__); \
-    } while (0)
 #else
 #define LOG(...)
 #endif

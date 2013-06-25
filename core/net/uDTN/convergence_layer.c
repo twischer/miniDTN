@@ -98,6 +98,7 @@ uint8_t convergence_layer_pending;
  * Backoff timer
  */
 struct etimer convergence_layer_backoff;
+uint8_t convergence_layer_backoff_pending = 0;
 
 int convergence_layer_init(void)
 {
@@ -620,6 +621,7 @@ int convergence_layer_status(void * pointer, uint8_t outcome)
 		if( outcome == CONVERGENCE_LAYER_STATUS_NOSEND ) {
 			/* Send event to slow the stuff down */
 			etimer_set(&convergence_layer_backoff, 0.5 * CLOCK_SECOND);
+			convergence_layer_backoff_pending = 1;
 		} else {
 			/* Poll to make it faster */
 			process_poll(&convergence_layer_process);
@@ -924,12 +926,13 @@ PROCESS_THREAD(convergence_layer_process, ev, data)
 			etimer_restart(&stale_timer);
 		}
 
-		if( ev == PROCESS_EVENT_POLL || ev == PROCESS_EVENT_CONTINUE || (ev == PROCESS_EVENT_TIMER && ((struct etimer *) data) == &convergence_layer_backoff) ) {
+		if( ev == PROCESS_EVENT_POLL || ev == PROCESS_EVENT_CONTINUE || (convergence_layer_backoff_pending && etimer_expired(&convergence_layer_backoff)) ) {
 			convergence_layer_pending = 0;
 
 			/* Stop timer to avoid it firing again */
-			if ( (ev == PROCESS_EVENT_TIMER && ((struct etimer *) data) == &convergence_layer_backoff) ) {
+			if ( (convergence_layer_backoff_pending && etimer_expired(&convergence_layer_backoff)) ) {
 				etimer_stop(&convergence_layer_backoff);
+				convergence_layer_backoff_pending = 0;
 			}
 
 			/* If we are currently transmitting, we cannot send another bundle */
