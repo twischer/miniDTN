@@ -802,6 +802,8 @@ const struct storage_driver storage_coffee = {
 	storage_coffee_save_bundle,
 	storage_coffee_delete_bundle,
 	storage_coffee_read_bundle,
+	storage_coffee_lock_bundle,
+	storage_coffee_unlock_bundle,
 	storage_coffee_get_free_space,
 	storage_coffee_get_bundle_numbers,
 	storage_coffee_get_bundles,
