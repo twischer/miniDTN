@@ -888,6 +888,9 @@ int convergence_layer_neighbour_down(rimeaddr_t * neighbour) {
 		}
 	}
 
+	/* Remove potentially stale lock for neighbour */
+	convergence_layer_set_unblocked(neighbour);
+
 	return 1;
 }
 
