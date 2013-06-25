@@ -26,7 +26,6 @@
 #include "sdnv.h"
 #include "agent.h"
 #include "custody.h"
-#include "redundancy.h"
 #include "statistics.h"
 #include "storage.h"
 
@@ -93,15 +92,6 @@ int delivery_deliver_bundle(struct mmem *bundlemem) {
 		return DELIVERY_STATE_ERROR;
 	}
 
-	// Check if the bundle has been delivered before
-	if( REDUNDANCE.check(bundlemem) ) {
-		bundle_decrement(bundlemem);
-
-		// If the bundle is redundant, we have to pretend that it has been delivered
-		// This ensures that the bundle will be deleted by the routing module
-		return DELIVERY_STATE_DELETE;
-	}
-
 	// Let's see, what service registrations we have
 	for(n = list_head(reg_list);
 		n != NULL;
@@ -152,9 +142,6 @@ int delivery_deliver_bundle(struct mmem *bundlemem) {
 
 	// Notify statistics
 	statistics_bundle_delivered(1);
-
-	// Put the bundle into the list of already delivered bundles
-	REDUNDANCE.set(bundlemem);
 
 	// And report to custody
 	if (bundle->flags & BUNDLE_FLAG_CUST_REQ) {
