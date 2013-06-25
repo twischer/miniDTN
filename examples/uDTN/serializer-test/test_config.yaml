@@ -10,7 +10,7 @@ tests:
         debug: []
         cflags: "-fno-inline -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30"
         graph_options: ""
-  - name: serializer-basic-uninstr
+  - name: serializer-uninstr
     timeout: 1200
     devices:
       - name: receiver
