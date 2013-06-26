@@ -243,8 +243,8 @@ send_packet(mac_callback_t sent, void *ptr)
           &&  ret == MAC_TX_OK) {
     send_flag = 1;
 #ifdef DISCOVERY_AWARE_RDC_CONF_DYNAMIC_TIMEOUT
-    //to_modifier++;
-    to_modifier <<= 1;
+    to_modifier++;
+    //to_modifier <<= 1;
 #endif /* DISCOVERY_AWARE_RDC_CONF_DYNAMIC_TIMEOUT */
   }
 
@@ -290,8 +290,8 @@ packet_input(void)
 
 #ifdef DISCOVERY_AWARE_RDC_CONF_DYNAMIC_TIMEOUT
     if (!rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_RECEIVER), &rimeaddr_null)) {
-      //to_modifier++;
-      to_modifier <<= 1;
+      to_modifier++;
+      //to_modifier <<= 1;
     }
 #endif /* DISCOVERY_AWARE_RDC_CONF_DYNAMIC_TIMEOUT */
 
