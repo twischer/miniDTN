@@ -658,14 +658,15 @@ int convergence_layer_status(void * pointer, uint8_t outcome)
 		if( outcome == CONVERGENCE_LAYER_STATUS_NOSEND ) {
 			// Has not been transmitted, so retry right away
 			ticket->timestamp = 0;
+			ticket->failed_tries ++;
 		}
 
 		/* Increase the retry counter */
 		ticket->tries ++;
 
 		/* Give up on too many retries */
-		if( ticket->tries >= CONVERGENCE_LAYER_RETRANSMIT_TRIES ) {
-			LOG(LOGD_DTN, LOG_CL, LOGL_WRN, "CL: Giving up on ticket %p after %d tries", ticket, ticket->tries);
+		if( ticket->tries >= CONVERGENCE_LAYER_RETRANSMIT_TRIES || ticket->failed_tries >= CONVERGENCE_LAYER_FAILED_RETRIES) {
+			LOG(LOGD_DTN, LOG_CL, LOGL_WRN, "CL: Giving up on ticket %p after %d (or %d) tries", ticket, ticket->tries, ticket->failed_tries);
 			convergence_layer_free_transmit_ticket(ticket);
 
 			return 0;
