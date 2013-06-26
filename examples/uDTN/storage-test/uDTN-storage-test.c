@@ -477,6 +477,8 @@ PROCESS_THREAD(test_process, ev, data)
 		}
 	}
 
+	printf("Done\n");
+	watchdog_periodic();
 	time_stop = test_precise_timestamp();
 
 	if( BUNDLE_STORAGE.get_bundles() != NULL ) {
