@@ -203,7 +203,7 @@ PROCESS_THREAD(udtn_sink_process, ev, data)
 			bundle_set_attr(bundle_outgoing, DEST_SERV, &tmp);
 
 			/* Bundle flags */
-			tmp=BUNDLE_FLAG_SINGLETON;
+			tmp=BUNDLE_FLAG_SINGLETON | BUNDLE_PRIORITY_EXPEDITED;
 			bundle_set_attr(bundle_outgoing, FLAGS, &tmp);
 
 			/* Bundle lifetime */
