@@ -181,7 +181,8 @@ uint8_t storage_mmem_make_room(struct mmem * bundlemem)
 		return 0;
 	}
 #elif (BUNDLE_STORAGE_BEHAVIOUR == BUNDLE_STORAGE_BEHAVIOUR_DELETE_OLDEST || BUNDLE_STORAGE_BEHAVIOUR == BUNDLE_STORAGE_BEHAVIOUR_DELETE_YOUNGEST )
-	struct bundle_t * bundle = NULL;
+	struct bundle_t * bundle_new = NULL;
+	struct bundle_t * bundle_old = NULL;
 	struct bundle_list_entry_t * entry = NULL;
 
 	/* Keep deleting bundles until we have enough slots */
@@ -189,25 +190,33 @@ uint8_t storage_mmem_make_room(struct mmem * bundlemem)
 		unsigned long comparator = 0;
 		struct bundle_list_entry_t * deletor = NULL;
 
+		/* Obtain the new pointer each time, since the address may change */
+		bundle_new = (struct bundle_t *) MMEM_PTR(bundlemem);
+
 		for( entry = list_head(bundle_list);
 			 entry != NULL;
 			 entry = list_item_next(entry) ) {
 
-			bundle = (struct bundle_t *) MMEM_PTR(entry->bundle);
+			bundle_old = (struct bundle_t *) MMEM_PTR(entry->bundle);
 
 			/* Never delete locked bundles */
 			if( entry->flags & STORAGE_MMEM_FLAGS_LOCKED ) {
 				continue;
 			}
 
+			/* Always keep bundles with higher priority */
+			if( (bundle_old->flags & BUNDLE_PRIORITY_MASK) > (bundle_new->flags & BUNDLE_PRIORITY_MASK ) ) {
+				continue;
+			}
+
 #if BUNDLE_STORAGE_BEHAVIOUR == BUNDLE_STORAGE_BEHAVIOUR_DELETE_OLDEST
 			if( (clock_seconds() - bundle->rec_time) > comparator || comparator == 0) {
-				comparator = clock_seconds() - bundle->rec_time;
+				comparator = clock_seconds() - bundle_old->rec_time;
 				deletor = entry;
 			}
 #elif BUNDLE_STORAGE_BEHAVIOUR == BUNDLE_STORAGE_BEHAVIOUR_DELETE_YOUNGEST
 			if( (clock_seconds() - bundle->rec_time) < comparator || comparator == 0) {
-				comparator = clock_seconds() - bundle->rec_time;
+				comparator = clock_seconds() - bundle_old->rec_time;
 				deletor = entry;
 			}
 #endif
@@ -242,6 +251,11 @@ uint8_t storage_mmem_make_room(struct mmem * bundlemem)
 
 			/* Never delete locked bundles */
 			if( entry->flags & STORAGE_MMEM_FLAGS_LOCKED ) {
+				continue;
+			}
+
+			/* Always keep bundles with higher priority */
+			if( (bundle_old->flags & BUNDLE_PRIORITY_MASK) > (bundle_new->flags & BUNDLE_PRIORITY_MASK ) ) {
 				continue;
 			}
 
