@@ -11,7 +11,7 @@ tests:
         cflags: "-DCONF_REDUNDANCE=redundancy_basic -fno-inline -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30"
         graph_options: ""
   - name: redundancy-basic-uninstr
-    timeout: 1200
+    timeout: 480
     devices:
       - name: receiver
         programdir: examples/uDTN/redundancy-test
@@ -22,7 +22,7 @@ tests:
         graph_options: ""
 ### uDTN Redundancy test Bloomfilter
   - name: redundancy-bloomfilter
-    timeout: 1200
+    timeout: 5200
     devices:
       - name: receiver
         programdir: examples/uDTN/redundancy-test
@@ -32,7 +32,7 @@ tests:
         cflags: "-DCONF_REDUNDANCE=redundancy_bloomfilter -fno-inline -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30"
         graph_options: ""
   - name: redundancy-bloomfilter-uninstr
-    timeout: 1200
+    timeout: 480
     devices:
       - name: receiver
         programdir: examples/uDTN/redundancy-test
