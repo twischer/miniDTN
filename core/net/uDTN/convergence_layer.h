@@ -37,17 +37,17 @@
 /**
  * How often shall we retransmit bundles before we notify routing
  */
-#define CONVERGENCE_LAYER_RETRIES				3
+#define CONVERGENCE_LAYER_RETRIES				4
 
 /**
  * How often shell we retry to transmit, if it has not been transmitted at all?
  */
-#define CONVERGENCE_LAYER_FAILED_RETRIES		10
+#define CONVERGENCE_LAYER_FAILED_RETRIES		15
 
 /**
  * How long shall we wait for an app-layer ACK or NACK? [in seconds]
  */
-#define CONVERGENCE_LAYER_TIMEOUT			5
+#define CONVERGENCE_LAYER_TIMEOUT				5
 
 /**
  * How long shell we wait before retransmitting an app-layer ACK or NACK? [in seconds]
