@@ -129,7 +129,7 @@ PROCESS_THREAD(test_process, ev, data)
 		}
 
 		// Keep the watchdog happy
-		if( i % 100 == 0 ) {
+		if( i % 10 == 0 ) {
 			watchdog_periodic();
 		}
 
@@ -158,7 +158,14 @@ PROCESS_THREAD(test_process, ev, data)
 			printf("ERROR: %lu should be set but is not\n", i);
 			errors++;
 		}
+
+		// Keep the watchdog happy
+		if( i % 5 == 0 ) {
+			watchdog_periodic();
+		}
 	}
+
+	printf("Done\n");
 
 	// Measure the current time
 	time_stop = test_precise_timestamp();
