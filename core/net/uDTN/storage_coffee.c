@@ -174,7 +174,7 @@ void storage_coffee_reconstruct_bundles()
 
 		/* Get the bundle number from the filename */
 		delimeter = '\0';
-		bundle_number = atol(directory_entry.name);
+		bundle_number = strtoul(directory_entry.name, NULL, 10);
 
 		/* Check if this bundle is in storage already */
 		found = 0;
