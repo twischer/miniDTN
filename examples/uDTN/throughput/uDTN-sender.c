@@ -189,9 +189,11 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 		/* Stop profiling if we've sent BUNDLES bundles. We still need to send
 		 * more since some might have been lost on the way */
 		if (bundles_sent == BUNDLES) {
+			printf("Stopping profiling and taking time...\n");
 			profiling_stop();
 			/* Note down the time of the last bundle */
 			time_stop = test_precise_timestamp();
+			printf("\tdone\n");
 		}
 
 		/* Allocate memory for the outgoing bundle */
