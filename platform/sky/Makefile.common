@@ -97,6 +97,20 @@ ifndef MOTELIST
   CMOTES=$(MOTES)
 endif
 
+UNAME := $(shell uname)
+
+ifeq ($(UNAME), Darwin)
+    # Mac OS X
+    SERIALDUMP = $(CONTIKI)/tools/sky/serialdump-macos
+    MOTELIST = $(CONTIKI)/tools/sky/motelist-macos
+    TMOTE_BSL_FILE = tmote-bsl-linux
+    TMOTE_BSL=$(if $(wildcard $(CONTIKI)/tools/sky/$(TMOTE_BSL_FILE)),1,0)
+    MOTES = $(shell $(MOTELIST) 2>&- | grep usbserial | \
+            cut -f 4 -d \  | \
+            perl -ne 'print $$1 . " " if(m-(/dev/\w+\.\w+\-\w+)-);')
+    CMOTES=$(MOTES)
+endif
+
 motelist: sky-motelist
 
 sky-motelist:
