@@ -121,7 +121,7 @@ sky-motes:
 ifdef MOTE
 %.upload: %.ihex
 	cp $< $(IHEXFILE)
-	$(MAKE) sky-u.$(subst /,-,$(word $(MOTE), $(MOTES)))
+	$(MAKE) sky-u.$(subst /,--,$(word $(MOTE), $(MOTES)))
 else # MOTE
 %.upload: %.ihex
 	cp $< $(IHEXFILE)
@@ -133,7 +133,7 @@ ifdef FILE
 	@echo Uploading $(FILE)
 	cp $(FILE) $(IHEXFILE)
 ifdef MOTE
-	$(MAKE) sky-u.$(subst /,-,$(word $(MOTE), $(MOTES)))
+	$(MAKE) sky-u.$(subst /,--,$(word $(MOTE), $(MOTES)))
 else # MOTE
 	$(MAKE) sky-reset sky-upload
 endif # MOTE
@@ -144,25 +144,25 @@ endif
 sky-upload: sky-reset
 	$(MAKE) -j $(NUMPAR) sky-upload-sequence
 
-sky-upload-sequence:	$(foreach PORT, $(MOTES), sky-u.$(subst /,-,$(PORT)))
+sky-upload-sequence:	$(foreach PORT, $(MOTES), sky-u.$(subst /,--,$(PORT)))
 	@echo Done
 
 sky-reset:
 	$(MAKE) -k -j $(NUMPAR) sky-reset-sequence
 
-sky-reset-sequence:	$(foreach PORT, $(MOTES), sky-r.$(subst /,-,$(PORT)))
+sky-reset-sequence:	$(foreach PORT, $(MOTES), sky-r.$(subst /,--,$(PORT)))
 	@echo Done
 
 sky-u.%:
 	@echo +++++ Erasing $(subst -,/,$*); \
-	$(BSL) -c $(subst -,/,$*) -e && sleep 2 ; \
+	$(BSL) -c $(subst --,/,$*) -e && sleep 2 ; \
 	echo +++++ Programming $(subst -,/,$*) ; \
-	$(BSL) -c $(subst -,/,$*) $(BSL_FILETYPE) -p $(IHEXFILE) && sleep 2 ; \
+	$(BSL) -c $(subst --,/,$*) $(BSL_FILETYPE) -p $(IHEXFILE) && sleep 2 ; \
 	echo +++++ Resetting $(subst -,/,$*) ; \
-	$(BSL) -c $(subst -,/,$*) -r
+	$(BSL) -c $(subst --,/,$*) -r
 
 sky-r.%:
-	$(BSL) -c $(subst -,/,$*) -r
+	$(BSL) -c $(subst --,/,$*) -r
 
 sizeplot:
 	msp430-size $(OBJECTDIR)/*.o | $(CONTIKI)/tools/sky/check-size > size-data
