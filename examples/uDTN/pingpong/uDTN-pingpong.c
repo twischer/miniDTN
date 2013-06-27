@@ -255,7 +255,7 @@ PROCESS_THREAD(ping_process, ev, data)
 
 				if (!synced) {
 					/* We're synced */
-					if (*u32_ptr == 0xfdfdfdfd) {
+					if (block->payload[0] == 0xfd && block->payload[1] == 0xfd && block->payload[2] == 0xfd && block->payload[3] == 0xfd) {
 						synced = 1;
 						printf("PING: synced\n");
 					} else {
