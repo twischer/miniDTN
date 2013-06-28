@@ -99,6 +99,11 @@ PROCESS_THREAD(test_process, ev, data)
 	printf("Storing 10 bundles...\n");
 	for(i=0; i<10; i++) {
 		REDUNDANCE.set(test_data[i]);
+
+		// Keep the watchdog happy
+		if( i % 5 == 0 ) {
+			watchdog_periodic();
+		}
 	}
 
 	// Keep the watchdog happy
@@ -140,6 +145,9 @@ PROCESS_THREAD(test_process, ev, data)
 
 	printf("We have %lu collisions\n", collisions);
 
+	// Keep the watchdog happy
+	watchdog_periodic();
+
 	// -----------------------------------
 	// Now set 1000 bundle IDs and check the last 10 of them
 	printf("Setting 1000 bundle IDs...\n");
@@ -147,10 +155,13 @@ PROCESS_THREAD(test_process, ev, data)
 		REDUNDANCE.set(i);
 
 		// Keep the watchdog happy
-		if( i % 10 == 0 ) {
+		if( i % 5 == 0 ) {
 			watchdog_periodic();
 		}
 	}
+
+	// Keep the watchdog happy
+	watchdog_periodic();
 
 	printf("Verifying IDs...\n");
 	for(i=990; i<1000; i++) {
