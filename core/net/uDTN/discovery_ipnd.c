@@ -39,7 +39,7 @@ void discovery_ipnd_refresh_neighbour(rimeaddr_t * neighbour);
 void discovery_ipnd_save_neighbour(rimeaddr_t * neighbour);
 
 #define DISCOVERY_NEIGHBOUR_CACHE	3
-#define DISCOVERY_CYCLE			1.5
+#define DISCOVERY_CYCLE			1
 #define DISCOVERY_NEIGHBOUR_TIMEOUT	(5*DISCOVERY_CYCLE)
 #define DISCOVERY_IPND_SERVICE		"lowpancl"
 #define DISCOVERY_IPND_BUFFER_LEN 	60
@@ -205,6 +205,11 @@ void discovery_ipnd_receive(rimeaddr_t * source, uint8_t * payload, uint8_t leng
 		// IPND must have at least 3 bytes
 		return;
 	}
+
+#ifdef DTN_DISCO_EVAL
+    static uint32_t c = 0;
+    printf("R %lu %lu %u\n", c++, clock_seconds(), source->u8[0]);
+#endif
 
 	// Save all peer from which we receive packets to the active neighbours list
 	discovery_ipnd_refresh_neighbour(source);
