@@ -1,0 +1,34 @@
+suite:
+    logbase:   /sample/logbase
+    logpattern: date-tag
+    contikibase: /sample/contikibase 
+    contikiscm: git # Here only git and none are supported at the moment
+    testcases:
+        - generate-bundles-20
+        - generate-bundles-80
+        - generate-bundles-20-uninstr
+        - generate-bundles-80-uninstr
+        - mmem-test
+        - mmem-test-uninstr
+        - throughput
+        - throughput-uninstr
+        - pingpong
+        - pingpong-uninstr
+        - pingpong-loopback
+        - pingpong-loopback-uninstr
+        - storage
+        - storage-uninstr
+        - hash
+        - hash-uninstr
+
+# List of devices
+# Each device has a name, a class (type of device), a path and an id
+devices:
+  - name: sender
+    class: INGA
+    path: /dev/inga/12
+    id: 0x12
+  - name: receiver
+    class: INGA
+    path: /dev/inga/13
+    id: 0x13
