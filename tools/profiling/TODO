@@ -1,0 +1,20 @@
+X Cluster functions to source files
+X Include number of callsites in edges
+X Output complete runtime in profiler
+X Count only time spent in function without the subcalls
+X Highlight certain functions
+X Filter out/in certain function names
+X Verify the duration and increase resolution
+x Implement a stack for instrumented functions
+X Binary search
+X Measure overhead
+X What effect does inlining have? -> Do NOT use inlining!
+* Add option(s) to cluster/show callsites of only certain files/functions
+* Make limits, etc. configurable (colouring/style)
+* Wrapper for "system" calls --wrap linker option (automatic macros with __builtin_apply?)
+* Calculate percent over complete runtime
+* Fraction of time spent calling subfunctions
+* Record based nodes: http://www.graphviz.org/doc/info/shapes.html
+* Transparency for nodes/edges
+* Add with saturation
+* Record overhead in the call stack
