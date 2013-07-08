@@ -123,7 +123,7 @@
 //#   define TICKTIMER  3
 //#   define HAS_SPARE_TIMER // Not used
 
-#elif INGA_REVISION == INGA_12
+#elif INGA_REVISION == INGA_V12
 /* 1284 raven */
 #   define SSPORT     B
 #   define SSPIN      (0x04)
