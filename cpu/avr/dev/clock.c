@@ -84,7 +84,6 @@ void clock_adjust_ticks(uint16_t howmany) {
 //SIGNAL(SIG_OUTPUT_COMPARE0)
 ISR(AVR_OUTPUT_COMPARE_INT)
 {
-  
   count++;
   if(++scount == CLOCK_SECOND) {
     scount = 0;
@@ -95,7 +94,6 @@ ISR(AVR_OUTPUT_COMPARE_INT)
     rf230_calibrate=1;
   }
 #endif
-
 #if RADIOSTATS
   if (RF230_receive_on) {
     if (++rcount == CLOCK_SECOND) {
@@ -137,6 +135,20 @@ clock_init(void)
   OCRSetup();
 //scount = count = 0;
   sei ();
+}
+
+/*---------------------------------------------------------------------------*/
+unsigned short
+clock_fine(void)
+{
+  return AVR_CLOCK_COUNTER;
+}
+
+/*---------------------------------------------------------------------------*/
+int
+clock_fine_max(void)
+{
+  return AVR_CLOCK_MAX;
 }
 
 /*---------------------------------------------------------------------------*/
