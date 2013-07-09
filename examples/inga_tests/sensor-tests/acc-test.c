@@ -1,6 +1,8 @@
 #include <stdio.h>
-#include "test.h"
+#include "../test.h"
+#include "contiki.h"
 #include "dev/acc-sensor.h"
+#include "sys/test.h"
 
 #define sqrt(a) ((a)*(a))
 
@@ -13,7 +15,7 @@ static char * assert_acc_value();
 static char *
 test_acc_init()
 {
-  printf("test_init...\n");
+
   ASSERT("activating acc failed", SENSORS_ACTIVATE(acc_sensor) == 1);
   acc_sensor.value(ACC_X);
   return 0;
@@ -22,7 +24,7 @@ test_acc_init()
 static char *
 test_acc_deinit()
 {
-  printf("test_deinit...\n");
+
   ASSERT("deactivating acc failed", SENSORS_DEACTIVATE(acc_sensor) == 1);
   return 0;
 }
@@ -30,7 +32,7 @@ test_acc_deinit()
 static char *
 test_acc_conf_odr()
 {
-  printf("test_acc_conf_odr...\n");
+
   ASSERT("ODR 0.10 Hz failed", acc_sensor.configure(ACC_CONF_DATA_RATE, ACC_0HZ10) == 1);
   ASSERT("ODR 6.25 Hz failed", acc_sensor.configure(ACC_CONF_DATA_RATE, ACC_6HZ25) == 1);
   ASSERT("ODR 25 Hz failed", acc_sensor.configure(ACC_CONF_DATA_RATE, ACC_25HZ) == 1);
@@ -60,7 +62,7 @@ assert_acc_value()
   int32_t x = 0;
   int32_t y = 0;
   int32_t z = 0;
-  printf("test_acc_value...\n");
+
   for (idx = 0; idx < 2; idx++) {
     x += acc_sensor.value(ACC_X);
     y += acc_sensor.value(ACC_Y);
@@ -80,8 +82,10 @@ assert_acc_value()
 char *
 acc_tests()
 {
-  RUN_TEST(test_acc_init);
-  RUN_TEST(test_acc_value);
-  RUN_TEST(test_acc_deinit);
-  return 0;
+  test_acc_init();
+  test_acc_value();
+  test_acc_deinit();
+  
+  return errors;
 }
+

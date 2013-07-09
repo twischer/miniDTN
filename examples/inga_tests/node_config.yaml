@@ -1,0 +1,16 @@
+suite:
+    logbase:   ../../../log/
+    logpattern: date-tag
+    contikibase: ../../../
+    contikiscm: git # Here only git and none are supported at the moment
+    testcases:
+        - acc-test
+        - gyro-test
+
+# List of devices
+# Each device has a name, a class (type of device), a path and an id
+devices:
+  - name: node
+    class: INGA
+    path: /dev/ttyUSB0
+    id: 0x12

@@ -1,9 +1,0 @@
-CONTIKI_PROJECT = fat_test
-TARGET=inga
-all: $(CONTIKI_PROJECT)
-
-FAT=1
-
-
-CONTIKI = ../../..
-include $(CONTIKI)/Makefile.include
