@@ -2,6 +2,7 @@
 #include "sys/test.h"
 #include "dev/gyro-sensor.h"
 #include "../test.h"
+#include "../sensor-tests.h"
 
 static char * test_gyro_init();
 /*---------------------------------------------------------------------------*/
@@ -13,9 +14,11 @@ test_gyro_init()
   return 0;
 }
 /*---------------------------------------------------------------------------*/
-char *
-gyro_tests()
+int
+run_tests()
 {
   test_gyro_init();
-  return 0;
+  return errors;
 }
+
+AUTOSTART_PROCESSES(&test_process);

@@ -1,10 +1,11 @@
-#include "test.h"
-#include "fat_test.h"
 #include "contiki.h"
 #include <stdlib.h>
 #include <stdio.h> /* For printf() */
 #include "dev/watchdog.h"
 #include "clock.h"
+#include "sys/test.h"
+#include "../sensor-tests.h"
+#include "../test.h"
 
 #include "fat/diskio.h"           //tested
 #include "fat/cfs-fat.h"           //tested
@@ -33,40 +34,7 @@ static struct etimer timer;
 int cnt = 0;
 
 uint8_t buffer[1024];
-/*---------------------------------------------------------------------------*/
-PROCESS(fat_test_process, "Hello world process");
-AUTOSTART_PROCESSES(&fat_test_process);
-/*---------------------------------------------------------------------------*/
-PROCESS_THREAD(fat_test_process, ev, data)
-{
-  PROCESS_BEGIN();
 
-  // Wait a second...
-  etimer_set(&timer, CLOCK_SECOND);
-  PROCESS_WAIT_UNTIL(etimer_expired(&timer));
-
-  PRINTD("Starting test...\n");
-
-  // Run tests...
-  char *result = fat_tests();
-  if (result != 0) {
-    printf("%s\n", result);
-  } else {
-    printf("ALL TESTS PASSED\n");
-  }
-  printf("Tests run: %d\n", tests_run);
-
-  return result != 0;
-
-  cfs_fat_umount_device();
-
-  //  printf("########################################################\n");
-
-  //  watchdog_stop();
-  while (1);
-
-  PROCESS_END();
-}
 /*---------------------------------------------------------------------------*/
 static char *
 test_sdinit_mount()
@@ -158,18 +126,6 @@ test_cfs_overwrite()
   ASSERT("writing 4242 bytes failed", write_test_bytes("test05.tst", 4242UL, 42) == 0);
   ASSERT("", get_file_size("test05.tst") == 4242UL);
   ASSERT("", read_test_bytes("test05.tst", 4242UL, 42) == 0);
-  return 0;
-}
-/*---------------------------------------------------------------------------*/
-char *
-fat_tests()
-{
-  RUN_TEST(test_sdinit_mount);
-  RUN_TEST(test_cfs_read_size);
-  RUN_TEST(test_cfs_write_small);
-  RUN_TEST(test_cfs_write_large);
-  RUN_TEST(test_cfs_remove);
-  RUN_TEST(test_cfs_overwrite);
   return 0;
 }
 /*---------------------------------------------------------------------------*/
@@ -294,3 +250,17 @@ read_test_bytes(const char* name, uint32_t size, uint8_t fill_offset)
 
   return 0;
 }
+/*---------------------------------------------------------------------------*/
+int
+run_tests()
+{
+  test_sdinit_mount();
+  test_cfs_read_size();
+  test_cfs_write_small();
+  test_cfs_write_large();
+  test_cfs_remove();
+  test_cfs_overwrite();
+  return errors;
+}
+
+AUTOSTART_PROCESSES(&test_process);

@@ -4,8 +4,11 @@ suite:
     contikibase: ../../../
     contikiscm: git # Here only git and none are supported at the moment
     testcases:
-        - acc-test
-        - gyro-test
+        - sensor-acc
+        - sensor-gyro
+        - timer-rtimer
+        - fat-default
+        - fat-coop
 
 # List of devices
 # Each device has a name, a class (type of device), a path and an id

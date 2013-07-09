@@ -8,9 +8,9 @@
 #ifndef SENSOR_TESTS_H
 #define	SENSOR_TESTS_H
 
-char * acc_tests();
-char * gyro_tests();
-char * battery_tests();
+int run_tests();
+
+PROCESS_NAME(test_process);
 
 #endif	/* SENSOR_TESTS_H */
 

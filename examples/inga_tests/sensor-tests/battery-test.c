@@ -1,6 +1,9 @@
 #include <stdio.h>
-#include "test.h"
+#include "contiki.h"
+#include "../test.h"
+#include "sys/test.h"
 #include "dev/battery-sensor.h"
+#include "../sensor-tests.h"
 
 static char * test_battery_init();
 static char * test_battery_value();
@@ -27,10 +30,12 @@ test_battery_value()
   return 0;
 }
 /*---------------------------------------------------------------------------*/
-char *
-battery_tests()
+int
+run_tests()
 {
-  RUN_TEST(test_battery_init);
-  RUN_TEST(test_battery_value);
-  return 0;
+  test_battery_init();
+  test_battery_value();
+  return errors;
 }
+
+AUTOSTART_PROCESSES(&test_process);

@@ -1,23 +1,34 @@
 tests:
 ### Accelerometer test
-  - name: acc-test
+  - name: sensor-acc
     timeout: 1200
     devices:
       - name: node
         programdir: examples/inga_tests/sensor-tests
-        program: sensor-tests
-        instrument: [examples/inga_tests/sensor-tests/acc-test.c,platform/inga/*.c]
+        program: acc-test
+        instrument: []
         debug: []
         cflags: "-fno-inline"
         graph_options: ""
 ### Gyroscope test
-#  - name: gyro-test
-#    timeout: 1200
-#    devices:
-#      - name: node
-#        programdir: examples/inga_tests/sensor-tests
-#        program: gyro-test
-#        instrument: [examples/inga_tests/sensor-tests/gyro-test.c,platform/inga/*.c]
-#        debug: []
-#        cflags: "-fno-inline"
-#        graph_options: ""
+  - name: sensor-gyro
+    timeout: 1200
+    devices:
+      - name: node
+        programdir: examples/inga_tests/sensor-tests
+        program: gyro-test
+        instrument: []
+        debug: []
+        cflags: "-fno-inline"
+        graph_options: ""
+### Battery test
+  - name: sensor-battery
+    timeout: 1200
+    devices:
+      - name: node
+        programdir: examples/inga_tests/sensor-tests
+        program: battery-test
+        instrument: []
+        debug: []
+        cflags: "-fno-inline"
+        graph_options: ""

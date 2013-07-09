@@ -1,7 +1,14 @@
-CONTIKI_PROJECT = sensor-tests.c
-all: $(CONTIKI_PROJECT)
+# Accelerometer tests
+acc-test: acc-test.c
 
-PROJECT_SOURCEFILES += acc-test.c gyro-test.c# battery-test.c
+# Gyroscope tests
+gyro-test: gyro-test.c
+
+# Battery tests
+battery-test: battery-test.c
+
+
+PROJECT_SOURCEFILES += ../sensor-tests.c
 
 TARGET=inga
 

@@ -1,23 +1,23 @@
 tests:
-### Accelerometer test
-  - name: acc-test
+### FAT test
+  - name: fat-default
     timeout: 1200
     devices:
       - name: node
-        programdir: examples/inga_tests/sensor-tests
-        program: sensor-tests
-        instrument: [examples/inga_tests/sensor-tests/acc-test.c,platform/inga/*.c]
+        programdir: examples/inga_tests/fat-tests
+        program: fat-tests
+        instrument: []
         debug: []
         cflags: "-fno-inline"
         graph_options: ""
-### Gyroscope test
-#  - name: gyro-test
-#    timeout: 1200
-#    devices:
-#      - name: node
-#        programdir: examples/inga_tests/sensor-tests
-#        program: gyro-test
-#        instrument: [examples/inga_tests/sensor-tests/gyro-test.c,platform/inga/*.c]
-#        debug: []
-#        cflags: "-fno-inline"
-#        graph_options: ""
+### FAT coop test
+  - name: fat-coop
+    timeout: 1200
+    devices:
+      - name: node
+        programdir: examples/inga_tests/fat-tests
+        program: fat-coop-tests
+        instrument: []
+        debug: []
+        cflags: "-fno-inline"
+        graph_options: ""

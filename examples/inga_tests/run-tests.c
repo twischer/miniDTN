@@ -2,7 +2,7 @@
 #include <contiki.h>
 #include "test.h"
 #include "fat_test.h"
-#include "sensor_tests.h"
+#include "sensor-tests.h"
 
 #define DEBUG 0
 #if DEBUG

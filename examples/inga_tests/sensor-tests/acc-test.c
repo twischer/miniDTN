@@ -1,8 +1,9 @@
 #include <stdio.h>
-#include "../test.h"
 #include "contiki.h"
+#include "../test.h"
 #include "dev/acc-sensor.h"
 #include "sys/test.h"
+#include "../sensor-tests.h"
 
 #define sqrt(a) ((a)*(a))
 
@@ -79,8 +80,8 @@ assert_acc_value()
   return 0;
 }
 /*---------------------------------------------------------------------------*/
-char *
-acc_tests()
+int
+run_tests()
 {
   test_acc_init();
   test_acc_value();
@@ -89,3 +90,4 @@ acc_tests()
   return errors;
 }
 
+AUTOSTART_PROCESSES(&test_process);
