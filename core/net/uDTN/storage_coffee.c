@@ -586,16 +586,16 @@ uint16_t storage_coffee_delete_bundle(uint32_t bundle_number, uint8_t reason)
 
 	// Figure out the source to send status report
 	if( reason != REASON_DELIVERED ) {
-		bundlemem = storage_coffee_read_bundle(bundle_number);
-		if( bundlemem == NULL ) {
-			LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to read back bundle %lu", bundle_number);
-			return 0;
-		}
+		if( (entry->bundle_flags & BUNDLE_FLAG_CUST_REQ ) || (entry->bundle_flags & BUNDLE_FLAG_REP_DELETE) ){
+			bundlemem = storage_coffee_read_bundle(bundle_number);
+			if( bundlemem == NULL ) {
+				LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to read back bundle %lu", bundle_number);
+				return 0;
+			}
 
-		bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
-		bundle->del_reason = reason;
+			bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
+			bundle->del_reason = reason;
 
-		if( (bundle->flags & BUNDLE_FLAG_CUST_REQ ) || (bundle->flags & BUNDLE_FLAG_REP_DELETE) ){
 			if (bundle->src_node != dtn_node_id){
 				STATUSREPORT.send(bundlemem, 16, bundle->del_reason);
 			}
