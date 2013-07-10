@@ -139,12 +139,14 @@ PROCESS_THREAD(agent_process, ev, data)
 			bundleptr = (struct mmem *) data;
 			if( bundleptr == NULL ) {
 				LOG(LOGD_DTN, LOG_AGENT, LOGL_ERR, "dtn_send_bundle_event with invalid pointer");
+				process_post(source_process, dtn_bundle_store_failed, NULL);
 				continue;
 			}
 
 			bundle = (struct bundle_t *) MMEM_PTR(bundleptr);
 			if( bundle == NULL ) {
 				LOG(LOGD_DTN, LOG_AGENT, LOGL_ERR, "dtn_send_bundle_event with invalid MMEM structure");
+				process_post(source_process, dtn_bundle_store_failed, NULL);
 				continue;
 			}
 
