@@ -819,7 +819,7 @@ void check_blocked_neighbours() {
 		 n != NULL;
 		 n = list_item_next(n) ) {
 
-		if( (clock_time() - n->timestamp) >= (CLOCK_SECOND * CONVERGENCE_LAYER_TIMEOUT ) ) {
+		if( (clock_time() - n->timestamp) >= (((clock_time_t) CLOCK_SECOND) * ((clock_time_t) CONVERGENCE_LAYER_TIMEOUT) ) ) {
 			/* We have a neighbour that takes quite long to reply apparently -
 			 * unblock him and resend the pending bundle
 			 */
