@@ -56,6 +56,7 @@ struct file_list_entry_t {
 
 	uint32_t rec_time;
 	uint32_t lifetime;
+	uint32_t bundle_flags;
 
 	uint16_t file_size;
 
@@ -327,6 +328,11 @@ uint8_t storage_coffee_make_room(struct mmem * bundlemem)
 				continue;
 			}
 
+			/* Always keep bundles with higher priority */
+			if( (entry->bundle_flags & BUNDLE_PRIORITY_MASK) > (bundle->flags & BUNDLE_PRIORITY_MASK ) ) {
+				continue;
+			}
+
 #if BUNDLE_STORAGE_BEHAVIOUR == BUNDLE_STORAGE_BEHAVIOUR_DELETE_OLDEST
 			if( (clock_seconds() - entry->rec_time) > comparator || comparator == 0) {
 				comparator = clock_seconds() - entry->rec_time;
@@ -366,6 +372,11 @@ uint8_t storage_coffee_make_room(struct mmem * bundlemem)
 			 entry = list_item_next(entry) ) {
 			/* Never delete locked bundles */
 			if( entry->flags & STORAGE_COFFEE_FLAGS_LOCKED ) {
+				continue;
+			}
+
+			/* Always keep bundles with higher priority */
+			if( (entry->bundle_flags & BUNDLE_PRIORITY_MASK) > (bundle->flags & BUNDLE_PRIORITY_MASK ) ) {
 				continue;
 			}
 
@@ -469,6 +480,7 @@ uint8_t storage_coffee_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_n
 	entry->rec_time = bundle->rec_time;
 	entry->lifetime = bundle->lifetime;
 	entry->file_size = bundlemem->size;
+	entry->bundle_flags = bundle->flags;
 
 	// Assign a unique bundle number
 	entry->bundle_num = bundle->bundle_num;
