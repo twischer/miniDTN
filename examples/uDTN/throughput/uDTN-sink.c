@@ -55,6 +55,7 @@
 #include "net/uDTN/agent.h"
 #include "net/uDTN/bundle.h"
 #include "net/uDTN/sdnv.h"
+#include "net/uDTN/storage.h"
 
 #ifdef CONF_BUNDLES
 #define BUNDLES CONF_BUNDLES
@@ -190,36 +191,42 @@ PROCESS_THREAD(udtn_sink_process, ev, data)
 			profiling_stop();
 			time_stop = test_precise_timestamp();
 
-			bundle_outgoing = bundle_create_bundle();
+			PROCESS_WAIT_UNTIL(BUNDLE_STORAGE.free_space(NULL) > 0);
 
-			if( bundle_outgoing == NULL ) {
-				printf("create_bundle failed\n");
-				continue;
-			}
+			do {
+				bundle_outgoing = bundle_create_bundle();
 
-			/* tmp already holds the src address of the sender */
-			bundle_set_attr(bundle_outgoing, DEST_NODE, &tmp);
-			tmp=25;
-			bundle_set_attr(bundle_outgoing, DEST_SERV, &tmp);
+				if( bundle_outgoing == NULL ) {
+					printf("create_bundle failed\n");
+					continue;
+				}
 
-			/* Bundle flags */
-			tmp=BUNDLE_FLAG_SINGLETON | BUNDLE_PRIORITY_EXPEDITED;
-			bundle_set_attr(bundle_outgoing, FLAGS, &tmp);
+				/* tmp already holds the src address of the sender */
+				bundle_set_attr(bundle_outgoing, DEST_NODE, &tmp);
+				tmp=25;
+				bundle_set_attr(bundle_outgoing, DEST_SERV, &tmp);
 
-			/* Bundle lifetime */
-			tmp=2000;
-			bundle_set_attr(bundle_outgoing, LIFE_TIME, &tmp);
+				/* Bundle flags */
+				tmp=BUNDLE_FLAG_SINGLETON | BUNDLE_PRIORITY_EXPEDITED;
+				bundle_set_attr(bundle_outgoing, FLAGS, &tmp);
 
-			/* Add the payload */
-			userdata[0] = 'o';
-			userdata[1] = 'k';
-			bundle_add_block(bundle_outgoing, BUNDLE_BLOCK_TYPE_PAYLOAD, BUNDLE_BLOCK_FLAG_NULL, userdata, 2);
+				/* Bundle lifetime */
+				tmp=2000;
+				bundle_set_attr(bundle_outgoing, LIFE_TIME, &tmp);
 
-			/* Send out the bundle */
-			process_post(&agent_process, dtn_send_bundle_event, (void *) bundle_outgoing);
+				/* Add the payload */
+				userdata[0] = 'o';
+				userdata[1] = 'k';
+				bundle_add_block(bundle_outgoing, BUNDLE_BLOCK_TYPE_PAYLOAD, BUNDLE_BLOCK_FLAG_NULL, userdata, 2);
 
-			/* Wait for the agent to process our outgoing bundle */
-			PROCESS_WAIT_UNTIL(ev == dtn_bundle_stored);
+				/* Send out the bundle */
+				process_post(&agent_process, dtn_send_bundle_event, (void *) bundle_outgoing);
+
+				printf("bundle sent, waiting for event...\n");
+
+				/* Wait for the agent to process our outgoing bundle */
+				PROCESS_WAIT_UNTIL(ev == dtn_bundle_stored || ev == dtn_bundle_store_failed);
+			} while( ev == dtn_bundle_store_failed);
 
 			/* Deactivate our registration, so that we do not receive bundles anymore */
 			reg.status = 0;
