@@ -54,6 +54,14 @@
 #include "net/uDTN/bundle.h"
 #include "net/uDTN/storage.h"
 
+#define DEBUG 0
+#if DEBUG
+#include <stdio.h>
+#define PRINTF(...) printf(__VA_ARGS__)
+#else
+#define PRINTF(...)
+#endif
+
 #define TEST_BUNDLES BUNDLE_STORAGE_SIZE
 
 // defined in mmem.c, no function to access it though
@@ -79,13 +87,13 @@ uint8_t my_create_bundle(uint32_t sequence_number, uint32_t * bundle_number, uin
 
 	ptr = bundle_create_bundle();
 	if( ptr == NULL ) {
-		printf("CREATE: Bundle %lu could not be allocated\n", sequence_number);
+		PRINTF("CREATE: Bundle %lu could not be allocated\n", sequence_number);
 		return 0;
 	}
 
 	bundle = (struct bundle_t *) MMEM_PTR(ptr);
 	if( bundle == NULL ) {
-		printf("CREATE: Bundle %lu could not be allocated\n", sequence_number);
+		PRINTF("CREATE: Bundle %lu could not be allocated\n", sequence_number);
 		return 0;
 	}
 
@@ -114,7 +122,7 @@ uint8_t my_create_bundle(uint32_t sequence_number, uint32_t * bundle_number, uin
 	// And tell storage to save the bundle
 	n = BUNDLE_STORAGE.save_bundle(ptr, &bundle_number_ptr);
 	if( !n ) {
-		printf("CREATE: Bundle %lu could not be created\n", sequence_number);
+		PRINTF("CREATE: Bundle %lu could not be created\n", sequence_number);
 		return 0;
 	}
 
@@ -133,13 +141,13 @@ uint8_t my_verify_bundle(uint32_t bundle_number, uint32_t sequence_number) {
 
 	ptr = BUNDLE_STORAGE.read_bundle(bundle_number);
 	if( ptr == NULL ) {
-		printf("VERIFY: MMEM ptr is invalid\n");
+		PRINTF("VERIFY: MMEM ptr is invalid\n");
 		return 0;
 	}
 
 	struct bundle_t * bundle = (struct bundle_t *) MMEM_PTR(ptr);
 	if( bundle == NULL ) {
-		printf("VERIFY: bundle ptr is invalid\n");
+		PRINTF("VERIFY: bundle ptr is invalid\n");
 		return 0;
 	}
 
@@ -155,7 +163,7 @@ uint8_t my_verify_bundle(uint32_t bundle_number, uint32_t sequence_number) {
 		}
 
 		if( attr != i ) {
-			printf("VERIFY: attribute %lu mismatch\n", i);
+			PRINTF("VERIFY: attribute %lu mismatch\n", i);
 			errors ++;
 		}
 	}
@@ -163,19 +171,19 @@ uint8_t my_verify_bundle(uint32_t bundle_number, uint32_t sequence_number) {
 	// Verify the sequence number
 	bundle_get_attr(ptr, TIME_STAMP_SEQ_NR, &attr);
 	if( attr != sequence_number ) {
-		printf("VERIFY: sequence number mismatch\n");
+		PRINTF("VERIFY: sequence number mismatch\n");
 		errors ++;
 	}
 
 	block = bundle_get_payload_block(ptr);
 	if( block == NULL ) {
-		printf("VERIFY: unable to get payload block\n");
+		PRINTF("VERIFY: unable to get payload block\n");
 		errors ++;
 	} else {
 		// Fill the payload
 		for(i=0; i<60; i++) {
 			if( block->payload[i] != (i + (uint8_t) sequence_number) ) {
-				printf("VERIFY: payload byte %lu mismatch\n", i);
+				PRINTF("VERIFY: payload byte %lu mismatch\n", i);
 				errors ++;
 			}
 		}
@@ -188,6 +196,32 @@ uint8_t my_verify_bundle(uint32_t bundle_number, uint32_t sequence_number) {
 	}
 
 	return 1;
+}
+
+uint8_t check_constraints() {
+	uint8_t errors = 0;
+
+	if( BUNDLE_STORAGE.get_bundles() != NULL ) {
+		PRINTF("Bundle list is not empty\n");
+		errors ++;
+	}
+
+	if( BUNDLE_STORAGE.get_bundle_num() > 0 ) {
+		PRINTF("Storage reports more than 0 bundles\n");
+		errors ++;
+	}
+
+	if( BUNDLE_STORAGE.free_space(NULL) != bundle_slots_free ) {
+		PRINTF("Storage does not report enough free slots\n");
+		errors ++;
+	}
+
+	if( avail_memory != initial_memory ) {
+		PRINTF("MMEM fail\n");
+		errors++;
+	}
+
+	return errors;
 }
 
 PROCESS_THREAD(test_process, ev, data)
@@ -221,7 +255,7 @@ PROCESS_THREAD(test_process, ev, data)
 	watchdog_stop();
 	profiling_report("init", 0);
 	watchdog_start();
-	printf("Init done, starting test using %s storage\n", BUNDLE_STORAGE.name);
+	PRINTF("Init done, starting test using %s storage\n", BUNDLE_STORAGE.name);
 
 	profiling_init();
 	profiling_start();
@@ -229,165 +263,147 @@ PROCESS_THREAD(test_process, ev, data)
 	// Measure the current time
 	time_start = test_precise_timestamp();
 
-	printf("Create, Read and Delete in sequence\n");
+	PRINTF("Create, Read and Delete in sequence\n");
 	for(i=0; i<TEST_BUNDLES; i++) {
 		PROCESS_PAUSE();
 
 		if( my_create_bundle(i, &bundle_numbers[i], 3600) ) {
-			printf("\tBundle %lu created successfully \n", i);
+			PRINTF("\tBundle %lu created successfully \n", i);
 		} else {
-			printf("\tBundle %lu could not be created \n", i);
+			PRINTF("\tBundle %lu could not be created \n", i);
 			errors ++;
 			continue;
 		}
 
 		if( my_verify_bundle(bundle_numbers[i], i) ) {
-			printf("\tBundle %lu read back successfully \n", i);
+			PRINTF("\tBundle %lu read back successfully \n", i);
 		} else {
-			printf("\tBundle %lu could not be read back and verified \n", i);
+			PRINTF("\tBundle %lu could not be read back and verified \n", i);
 			errors ++;
 		}
 
 		n = BUNDLE_STORAGE.del_bundle(bundle_numbers[i], REASON_DELIVERED);
 
 		if( n ) {
-			printf("\tBundle %lu deleted successfully\n", i);
+			PRINTF("\tBundle %lu deleted successfully\n", i);
 		} else {
-			printf("\tBundle %lu could not be deleted\n", i);
+			PRINTF("\tBundle %lu could not be deleted\n", i);
 			errors++;
 		}
 
-		if( BUNDLE_STORAGE.get_bundles() != NULL ) {
-			printf("Bundle list is not empty\n");
-			errors ++;
-		}
-
-		if( BUNDLE_STORAGE.get_bundle_num() > 0 ) {
-			printf("Storage reports more than 0 bundles\n");
-			errors ++;
-		}
-
-		if( BUNDLE_STORAGE.free_space(NULL) != bundle_slots_free ) {
-			printf("Storage does not report enough free slots\n");
-			errors ++;
-		}
-
-		if( avail_memory != initial_memory ) {
-			printf("MMEM fail\n");
-			errors++;
-		}
+		errors += check_constraints();
 	}
 
 	for(mode=0; mode<6; mode ++) {
 		PROCESS_PAUSE();
 
-		printf("MODE %u\n", mode);
+		PRINTF("MODE %u\n", mode);
 
 		if( BUNDLE_STORAGE.get_bundles() != NULL ) {
-			printf("Bundle list is not empty\n");
+			PRINTF("Bundle list is not empty\n");
 			errors ++;
 		}
 
-		printf("Creating bundles...\n");
+		PRINTF("Creating bundles...\n");
 		// Create TEST_BUNDLES bundles
 		for(i=0; i<TEST_BUNDLES; i++) {
 			PROCESS_PAUSE();
 
 			if( BUNDLE_STORAGE.get_bundle_num() != i ) {
-				printf("Storage erroneously reports %u bundles\n", BUNDLE_STORAGE.get_bundle_num());
+				PRINTF("Storage erroneously reports %u bundles\n", BUNDLE_STORAGE.get_bundle_num());
 				errors ++;
 			}
 
 			if( (bundle_slots_free - BUNDLE_STORAGE.free_space(NULL)) != i ) {
-				printf("Storage erroneously reports %u bundle slots left\n", BUNDLE_STORAGE.free_space(NULL));
+				PRINTF("Storage erroneously reports %u bundle slots left\n", BUNDLE_STORAGE.free_space(NULL));
 				errors ++;
 			}
 
 			if( my_create_bundle(i, &bundle_numbers[i], 3600) ) {
-				printf("\tBundle %lu created successfully \n", i);
+				PRINTF("\tBundle %lu created successfully \n", i);
 			} else {
-				printf("\tBundle %lu could not be created \n", i);
+				PRINTF("\tBundle %lu could not be created \n", i);
 				errors ++;
 			}
 
 			if( (bundle_slots_free - i - 1) != BUNDLE_STORAGE.free_space(NULL) ) {
-				printf("Storage erroneously reports %u bundle slots left\n", BUNDLE_STORAGE.free_space(NULL));
+				PRINTF("Storage erroneously reports %u bundle slots left\n", BUNDLE_STORAGE.free_space(NULL));
 				errors ++;
 			}
 
 			if( BUNDLE_STORAGE.get_bundle_num() != i+1 ) {
-				printf("Storage erroneously reports %u bundles\n", BUNDLE_STORAGE.get_bundle_num());
+				PRINTF("Storage erroneously reports %u bundles\n", BUNDLE_STORAGE.get_bundle_num());
 				errors ++;
 			}
 		}
 
 		if( mode == 0 || mode == 1 ) {
-			printf("Reading bundles back FORWARD...\n");
+			PRINTF("Reading bundles back FORWARD...\n");
 			// Verify the created bundles by reading them back and checking the content
 			for(i=0; i<TEST_BUNDLES; i++) {
 				PROCESS_PAUSE();
 
 				if( my_verify_bundle(bundle_numbers[i], i) ) {
-					printf("\tBundle %lu read back successfully \n", i);
+					PRINTF("\tBundle %lu read back successfully \n", i);
 				} else {
-					printf("\tBundle %lu could not be read back and verified \n", i);
+					PRINTF("\tBundle %lu could not be read back and verified \n", i);
 					errors ++;
 				}
 			}
 		} else if( mode == 2 || mode == 3 ) {
-			printf("Reading bundles back BACKWARD...\n");
+			PRINTF("Reading bundles back BACKWARD...\n");
 			// Verify the created bundles by reading them back and checking the content
 			for(i=TEST_BUNDLES; i>0; i--) {
 				PROCESS_PAUSE();
 
 				if( my_verify_bundle(bundle_numbers[i-1], i-1) ) {
-					printf("\tBundle %lu read back successfully \n", i-1);
+					PRINTF("\tBundle %lu read back successfully \n", i-1);
 				} else {
-					printf("\tBundle %lu could not be read back and verified \n", i-1);
+					PRINTF("\tBundle %lu could not be read back and verified \n", i-1);
 					errors ++;
 				}
 			}
 		} else if( mode == 4 ) {
-			printf("Reading bundles and deleting them FORWARD...\n");
+			PRINTF("Reading bundles and deleting them FORWARD...\n");
 			// Verify the created bundles by reading them back and checking the content
 			for(i=0; i<TEST_BUNDLES; i++) {
 				PROCESS_PAUSE();
 
 				if( my_verify_bundle(bundle_numbers[i], i) ) {
-					printf("\tBundle %lu read back successfully \n", i);
+					PRINTF("\tBundle %lu read back successfully \n", i);
 				} else {
-					printf("\tBundle %lu could not be read back and verified \n", i);
+					PRINTF("\tBundle %lu could not be read back and verified \n", i);
 					errors ++;
 				}
 
 				n = BUNDLE_STORAGE.del_bundle(bundle_numbers[i], REASON_DELIVERED);
 
 				if( n ) {
-					printf("\tBundle %lu deleted successfully\n", i);
+					PRINTF("\tBundle %lu deleted successfully\n", i);
 				} else {
-					printf("\tBundle %lu could not be deleted\n", i);
+					PRINTF("\tBundle %lu could not be deleted\n", i);
 					errors++;
 				}
 			}
 		} else if( mode == 5 ) {
-			printf("Reading bundles and deleting them BACKWARD...\n");
+			PRINTF("Reading bundles and deleting them BACKWARD...\n");
 			// Verify the created bundles by reading them back and checking the content
 			for(i=TEST_BUNDLES; i>0; i--) {
 				PROCESS_PAUSE();
 
 				if( my_verify_bundle(bundle_numbers[i-1], i-1) ) {
-					printf("\tBundle %lu read back successfully \n", i-1);
+					PRINTF("\tBundle %lu read back successfully \n", i-1);
 				} else {
-					printf("\tBundle %lu could not be read back and verified \n", i-1);
+					PRINTF("\tBundle %lu could not be read back and verified \n", i-1);
 					errors ++;
 				}
 
 				n = BUNDLE_STORAGE.del_bundle(bundle_numbers[i-1], REASON_DELIVERED);
 
 				if( n ) {
-					printf("\tBundle %lu deleted successfully\n", i-1);
+					PRINTF("\tBundle %lu deleted successfully\n", i-1);
 				} else {
-					printf("\tBundle %lu could not be deleted\n", i-1);
+					PRINTF("\tBundle %lu could not be deleted\n", i-1);
 					errors++;
 				}
 			}
@@ -406,7 +422,7 @@ PROCESS_THREAD(test_process, ev, data)
 				}
 
 				if( !ok ) {
-					printf("Bundle list contains bundle that should not exist\n");
+					PRINTF("Bundle list contains bundle that should not exist\n");
 					errors++;
 				}
 			}
@@ -423,44 +439,44 @@ PROCESS_THREAD(test_process, ev, data)
 				}
 
 				if( !ok ) {
-					printf("Bundle list does not contain bundle %lu\n", bundle_numbers[i]);
+					PRINTF("Bundle list does not contain bundle %lu\n", bundle_numbers[i]);
 					errors ++;
 				}
 			}
 		}
 
 		if( mode == 0 || mode == 2 ) {
-			printf("Deleting bundles FORWARD...\n");
+			PRINTF("Deleting bundles FORWARD...\n");
 			// Now delete all the bundles again
 			for(i=0; i<TEST_BUNDLES; i++) {
 				PROCESS_PAUSE();
 
 				if( BUNDLE_STORAGE.get_bundle_num() != (TEST_BUNDLES - i) ) {
-					printf("Storage erroneously reports %u bundles\n", BUNDLE_STORAGE.get_bundle_num());
+					PRINTF("Storage erroneously reports %u bundles\n", BUNDLE_STORAGE.get_bundle_num());
 					errors ++;
 				}
 
 				if( (bundle_slots_free - BUNDLE_STORAGE.free_space(NULL)) != (TEST_BUNDLES - i) ) {
-					printf("Storage erroneously reports %u bundle slots left\n", BUNDLE_STORAGE.free_space(NULL));
+					PRINTF("Storage erroneously reports %u bundle slots left\n", BUNDLE_STORAGE.free_space(NULL));
 					errors ++;
 				}
 
 				n = BUNDLE_STORAGE.del_bundle(bundle_numbers[i], REASON_DELIVERED);
 
 				if( n ) {
-					printf("\tBundle %lu deleted successfully\n", i);
+					PRINTF("\tBundle %lu deleted successfully\n", i);
 				} else {
-					printf("\tBundle %lu could not be deleted\n", i);
+					PRINTF("\tBundle %lu could not be deleted\n", i);
 					errors++;
 				}
 
 				if( BUNDLE_STORAGE.get_bundle_num() != (TEST_BUNDLES - i - 1) ) {
-					printf("Storage erroneously reports %u bundles\n", BUNDLE_STORAGE.get_bundle_num());
+					PRINTF("Storage erroneously reports %u bundles\n", BUNDLE_STORAGE.get_bundle_num());
 					errors ++;
 				}
 			}
 		} else if( mode == 1 || mode == 3 ) {
-			printf("Deleting bundles BACKWARD...\n");
+			PRINTF("Deleting bundles BACKWARD...\n");
 			// Now delete all the bundles again
 			for(i=TEST_BUNDLES; i>0; i--) {
 				PROCESS_PAUSE();
@@ -468,91 +484,71 @@ PROCESS_THREAD(test_process, ev, data)
 				n = BUNDLE_STORAGE.del_bundle(bundle_numbers[i-1], REASON_DELIVERED);
 
 				if( n ) {
-					printf("\tBundle %lu deleted successfully\n", i-1);
+					PRINTF("\tBundle %lu deleted successfully\n", i-1);
 				} else {
-					printf("\tBundle %lu could not be deleted\n", i-1);
+					PRINTF("\tBundle %lu could not be deleted\n", i-1);
 					errors++;
 				}
 			}
 		}
 	}
 
-	printf("Done\n");
+	PRINTF("Done\n");
 	watchdog_periodic();
 	time_stop = test_precise_timestamp();
 
 	if( BUNDLE_STORAGE.get_bundles() != NULL ) {
-		printf("Bundle list is not empty\n");
+		PRINTF("Bundle list is not empty\n");
 		errors ++;
 	}
 
-	printf("Verifying bundle expiration...\n");
+	PRINTF("Verifying bundle expiration...\n");
 	// Now verify the lifetime expiration of the storage
 	for(i=0; i<TEST_BUNDLES; i++) {
 		PROCESS_PAUSE();
 
 		if( my_create_bundle(i, &bundle_numbers[i], 5) ) {
-			printf("\tBundle %lu created successfully \n", i);
+			PRINTF("\tBundle %lu created successfully \n", i);
 		} else {
-			printf("\tBundle %lu could not be created \n", i);
+			PRINTF("\tBundle %lu could not be created \n", i);
 			errors ++;
 		}
 	}
 
-	printf("Waiting 60s to expire bundles...\n");
+	PRINTF("Waiting 60s to expire bundles...\n");
 	// Wait 60s until all bundles must have timed out
 	etimer_set(&timer, CLOCK_SECOND * 60);
 	PROCESS_WAIT_UNTIL(etimer_expired(&timer));
 
-	printf("Checking for leftovers...\n");
-	// And check!
-	if( BUNDLE_STORAGE.get_bundles() != NULL ) {
-		printf("Bundle list is not empty\n");
-		errors ++;
-	}
+	errors += check_constraints();
 
-	if( BUNDLE_STORAGE.get_bundle_num() > 0 ) {
-		printf("Storage reports more than 0 bundles\n");
-		errors ++;
-	}
-
-	if( BUNDLE_STORAGE.free_space(NULL) != bundle_slots_free ) {
-		printf("Storage does not report enough free slots\n");
-		errors ++;
-	}
-
-	if( avail_memory != initial_memory ) {
-		printf("MMEM fail\n");
-		errors++;
-	}
-
-	printf("Verifying that storage overwrites old bundles when new come in...\n");
+	PRINTF("Verifying that storage overwrites old bundles when new come in...\n");
 	for(i=0; i<TEST_BUNDLES*2; i++) {
 		PROCESS_PAUSE();
 
 		if( my_create_bundle(i, &bundle_numbers[i], 3600) ) {
-			printf("\tBundle %lu created successfully \n", i);
+			PRINTF("\tBundle %lu created successfully \n", i);
 		} else {
-			printf("\tBundle %lu could not be created \n", i);
+			PRINTF("\tBundle %lu could not be created \n", i);
 			errors ++;
 		}
 	}
 
 	PROCESS_PAUSE();
 
-	printf("Reading back and verifying...\n");
+	PRINTF("Reading back and verifying...\n");
 	for(i=TEST_BUNDLES; i<TEST_BUNDLES*2; i++) {
 		PROCESS_PAUSE();
 
 		if( my_verify_bundle(bundle_numbers[i], i) ) {
-			printf("\tBundle %lu read back successfully \n", i);
+			PRINTF("\tBundle %lu read back successfully \n", i);
 		} else {
-			printf("\tBundle %lu could not be read back and verified \n", i);
+			PRINTF("\tBundle %lu could not be read back and verified \n", i);
 			errors ++;
 		}
 	}
 
-	printf("Checking all bundles...\n");
+	PRINTF("Checking all bundles...\n");
 	for(i=TEST_BUNDLES; i<TEST_BUNDLES*2; i++) {
 		ok = 0;
 
@@ -565,69 +561,49 @@ PROCESS_THREAD(test_process, ev, data)
 		}
 
 		if( !ok ) {
-			printf("Bundle list does not contain bundle %lu\n", bundle_numbers[i]);
+			PRINTF("Bundle list does not contain bundle %lu\n", bundle_numbers[i]);
 			errors ++;
 		}
 	}
 
-	printf("Deleting...\n");
+	PRINTF("Deleting...\n");
 	for(i=TEST_BUNDLES; i<TEST_BUNDLES*2; i++) {
 		PROCESS_PAUSE();
 
 		if( BUNDLE_STORAGE.get_bundle_num() != ((TEST_BUNDLES*2) - i) ) {
-			printf("Storage erroneously reports %u bundles, expected %u\n", BUNDLE_STORAGE.get_bundle_num(), ((TEST_BUNDLES*2) - i));
+			PRINTF("Storage erroneously reports %u bundles, expected %u\n", BUNDLE_STORAGE.get_bundle_num(), ((TEST_BUNDLES*2) - i));
 			errors ++;
 		}
 
 		if( (bundle_slots_free - BUNDLE_STORAGE.free_space(NULL)) != ((TEST_BUNDLES*2) - i) ) {
-			printf("Storage erroneously reports %u bundle slots left\n", BUNDLE_STORAGE.free_space(NULL));
+			PRINTF("Storage erroneously reports %u bundle slots left\n", BUNDLE_STORAGE.free_space(NULL));
 			errors ++;
 		}
 
 		n = BUNDLE_STORAGE.del_bundle(bundle_numbers[i], REASON_DELIVERED);
-
 		if( n ) {
-			printf("\tBundle %lu deleted successfully\n", i);
+			PRINTF("\tBundle %lu deleted successfully\n", i);
 		} else {
-			printf("\tBundle %lu could not be deleted\n", i);
+			PRINTF("\tBundle %lu could not be deleted\n", i);
 			errors++;
 		}
 
 		if( BUNDLE_STORAGE.get_bundle_num() != ((TEST_BUNDLES*2) - i - 1) ) {
-			printf("Storage erroneously reports %u bundles\n", BUNDLE_STORAGE.get_bundle_num());
+			PRINTF("Storage erroneously reports %u bundles\n", BUNDLE_STORAGE.get_bundle_num());
 			errors ++;
 		}
 	}
 
-	// And check!
-	if( BUNDLE_STORAGE.get_bundles() != NULL ) {
-		printf("Bundle list is not empty\n");
-		errors ++;
-	}
-
-	if( BUNDLE_STORAGE.get_bundle_num() > 0 ) {
-		printf("Storage reports more than 0 bundles\n");
-		errors ++;
-	}
-
-	if( BUNDLE_STORAGE.free_space(NULL) != bundle_slots_free ) {
-		printf("Storage does not report enough free slots\n");
-		errors ++;
-	}
-
-	if( avail_memory != initial_memory ) {
-		printf("MMEM fail\n");
-		errors++;
-	}
+	errors += check_constraints();
 
 	watchdog_stop();
 	profiling_report("storage", 0);
 
-	TEST_REPORT("No of errors", errors, 1, "errors");
+	TEST_REPORT("Errors", errors, 1, "");
 	TEST_REPORT("Duration", time_stop-time_start, CLOCK_SECOND, "s");
 
 	if( errors > 0 ) {
-		TEST_FAIL("More than 1 error occured");
+		TEST_FAIL("Error(s) occurred");
 	} else {
 		TEST_PASS();
 	}
