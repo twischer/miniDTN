@@ -450,9 +450,6 @@ int convergence_layer_parse_dataframe(rimeaddr_t * source, uint8_t * payload, ui
 	/* Store the RSSI for this packet */
 	bundle->rssi = rssi;
 
-	/* Notify the discovery module, that we have seen a peer */
-	DISCOVERY.alive(source);
-
 	/* Hand over the bundle to dispatching */
 	n = dispatching_dispatch_bundle(bundlemem);
 	bundlemem = NULL;
@@ -537,6 +534,9 @@ int convergence_layer_incoming_frame(rimeaddr_t * source, uint8_t * payload, uin
 	int ret = 0;
 
 	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Incoming frame from %u.%u", source->u8[0], source->u8[1]);
+
+	/* Notify the discovery module, that we have seen a peer */
+	DISCOVERY.alive(source);
 
 	/* Check the COMPAT information */
 	if( (payload[0] & CONVERGENCE_LAYER_MASK_COMPAT) != CONVERGENCE_LAYER_COMPAT ) {
