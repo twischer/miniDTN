@@ -317,7 +317,7 @@ uint8_t storage_coffee_make_room(struct mmem * bundlemem)
 	/* Keep deleting bundles until we have enough slots */
 	while( bundles_in_storage >= BUNDLE_STORAGE_SIZE) {
 		unsigned long comparator = 0;
-		struct bundle_list_entry_t * deletor = NULL;
+		struct file_list_entry_t * deletor = NULL;
 
 		for( entry = list_head(bundle_list);
 			 entry != NULL;
