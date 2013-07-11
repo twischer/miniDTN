@@ -191,47 +191,6 @@ PROCESS_THREAD(udtn_sink_process, ev, data)
 			profiling_stop();
 			time_stop = test_precise_timestamp();
 
-			PROCESS_WAIT_UNTIL(BUNDLE_STORAGE.free_space(NULL) > 0);
-
-			do {
-				bundle_outgoing = bundle_create_bundle();
-
-				if( bundle_outgoing == NULL ) {
-					printf("create_bundle failed\n");
-					continue;
-				}
-
-				/* tmp already holds the src address of the sender */
-				bundle_set_attr(bundle_outgoing, DEST_NODE, &tmp);
-				tmp=25;
-				bundle_set_attr(bundle_outgoing, DEST_SERV, &tmp);
-
-				/* Bundle flags */
-				tmp=BUNDLE_FLAG_SINGLETON | BUNDLE_PRIORITY_EXPEDITED;
-				bundle_set_attr(bundle_outgoing, FLAGS, &tmp);
-
-				/* Bundle lifetime */
-				tmp=2000;
-				bundle_set_attr(bundle_outgoing, LIFE_TIME, &tmp);
-
-				/* Add the payload */
-				userdata[0] = 'o';
-				userdata[1] = 'k';
-				bundle_add_block(bundle_outgoing, BUNDLE_BLOCK_TYPE_PAYLOAD, BUNDLE_BLOCK_FLAG_NULL, userdata, 2);
-
-				/* Send out the bundle */
-				process_post(&agent_process, dtn_send_bundle_event, (void *) bundle_outgoing);
-
-				printf("bundle sent, waiting for event...\n");
-
-				/* Wait for the agent to process our outgoing bundle */
-				PROCESS_WAIT_UNTIL(ev == dtn_bundle_stored || ev == dtn_bundle_store_failed);
-			} while( ev == dtn_bundle_store_failed);
-
-			/* Deactivate our registration, so that we do not receive bundles anymore */
-			reg.status = 0;
-			process_post(&agent_process, dtn_application_status_event, &reg);
-
 			watchdog_stop();
 			profiling_report("recv-bundles", 0);
 			TEST_REPORT("throughput", BUNDLES*CLOCK_SECOND, time_stop-time_start, "bundles/s");
@@ -243,7 +202,52 @@ PROCESS_THREAD(udtn_sink_process, ev, data)
 			TEST_REPORT("packetloss", (seqno-(BUNDLES-1))*100, seqno+1, "\%");
 			TEST_PASS();
 			watchdog_start();
-			PROCESS_EXIT();
+		}
+
+		if( bundles_recv >= BUNDLES && BUNDLE_STORAGE.free_space(NULL) > 0 ) {
+			bundle_outgoing = bundle_create_bundle();
+
+			if( bundle_outgoing == NULL ) {
+				printf("create_bundle failed\n");
+				continue;
+			}
+
+			/* tmp already holds the src address of the sender */
+			bundle_set_attr(bundle_outgoing, DEST_NODE, &tmp);
+			tmp=25;
+			bundle_set_attr(bundle_outgoing, DEST_SERV, &tmp);
+
+			/* Bundle flags */
+			tmp=BUNDLE_FLAG_SINGLETON | BUNDLE_PRIORITY_EXPEDITED;
+			bundle_set_attr(bundle_outgoing, FLAGS, &tmp);
+
+			/* Bundle lifetime */
+			tmp=2000;
+			bundle_set_attr(bundle_outgoing, LIFE_TIME, &tmp);
+
+			/* Add the payload */
+			userdata[0] = 'o';
+			userdata[1] = 'k';
+			bundle_add_block(bundle_outgoing, BUNDLE_BLOCK_TYPE_PAYLOAD, BUNDLE_BLOCK_FLAG_NULL, userdata, 2);
+
+			/* Send out the bundle */
+			process_post(&agent_process, dtn_send_bundle_event, (void *) bundle_outgoing);
+
+			printf("bundle sent, waiting for event...\n");
+
+			/* Wait for the agent to process our outgoing bundle */
+			PROCESS_WAIT_UNTIL(ev == dtn_bundle_stored || ev == dtn_bundle_store_failed);
+
+			if( ev == dtn_bundle_stored ) {
+				/* Deactivate our registration, so that we do not receive bundles anymore */
+				reg.status = 0;
+				process_post(&agent_process, dtn_application_status_event, &reg);
+
+				watchdog_start();
+				PROCESS_EXIT();
+			} else {
+				printf("bundle send failed\n");
+			}
 		}
 	}
 	PROCESS_END();
