@@ -43,7 +43,11 @@
  * For each bundle, how many neighbours to which
  * the bundle has been sent before should be stored?
  */
-#define ROUTING_NEI_MEM 	 	 2
+#ifdef CONF_ROUTING_NEIGHBOURS
+#define ROUTING_NEI_MEM CONF_ROUTING_NEIGHBOURS
+#else
+#define ROUTING_NEI_MEM 2
+#endif
 
 /**
  * Routing bundle Flags
