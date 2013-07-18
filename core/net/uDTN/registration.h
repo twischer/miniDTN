@@ -21,6 +21,8 @@
 
 list_t reg_list;
 
+#define REGISTRATION_EID_UNDEFINED 0
+
 /**
  * \brief structure of registration
  */
@@ -102,7 +104,7 @@ struct process * registration_get_process(uint32_t app_id, uint32_t node_id);
  *
  * \param application_process Pointer to the process
  *
- * \return app_id, 0xFFFF on error
+ * \return app_id, REGISTRATION_EID_UNDEFINED on error
  */
 uint32_t registration_get_application_id(struct process * application_process);
 

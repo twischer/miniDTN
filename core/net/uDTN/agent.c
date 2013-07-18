@@ -152,7 +152,7 @@ PROCESS_THREAD(agent_process, ev, data)
 
 			/* Go and find the process from which the bundle has been sent */
 			uint32_t app_id = registration_get_application_id(bundle->source_process);
-			if( app_id == 0xFFFF  && bundle->source_process != &agent_process) {
+			if( app_id == REGISTRATION_EID_UNDEFINED  && bundle->source_process != &agent_process) {
 				LOG(LOGD_DTN, LOG_AGENT, LOGL_ERR, "Unregistered process %s tries to send a bundle", PROCESS_NAME_STRING(bundle->source_process));
 				process_post(source_process, dtn_bundle_store_failed, NULL);
 				bundle_decrement(bundleptr);

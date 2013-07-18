@@ -181,7 +181,7 @@ uint32_t registration_get_application_id(struct process * application_process)
 		}
 	}
 
-	return 0xFFFF;
+	return REGISTRATION_EID_UNDEFINED;
 }
 
 uint8_t registration_is_local(uint32_t app_id, uint32_t node_id)
