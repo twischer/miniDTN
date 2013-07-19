@@ -87,7 +87,7 @@ int send_bundle(uint32_t destination_node, uint32_t destination_service, uint8_t
 
 	/* Add the payload block */
 	n = bundle_add_block(outgoing_bundle_memory, BUNDLE_BLOCK_TYPE_PAYLOAD, BUNDLE_BLOCK_FLAG_NULL, payload, length);
-	if( !n ) {
+	if( n == -1 ) {
 		printf("Not enough memory for payload block\n");
 
 		/* If anything goes wrong, we have to free memory */
@@ -141,7 +141,7 @@ PROCESS_THREAD(simple_transceiver_process, ev, data)
 			/* Send out the bundle with our payload */
 			n = send_bundle(CONF_SEND_TO_NODE, CONF_SEND_TO_SERVICE, payload, 40);
 
-			if( n ) {
+			if( n >= 0 ) {
 				/* Whenever we have sent a bundle, we wait for feedback from the agent */
 				create_bundles = 0;
 			} else {
