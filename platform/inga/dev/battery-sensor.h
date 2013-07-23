@@ -50,6 +50,8 @@
 #ifndef BATTERY_SENSOR_H
 #define	BATTERY_SENSOR_H
 
+#include "lib/sensors.h"
+
 extern const struct sensors_sensor battery_sensor;
 
 /** Returns battery voltage im mV */
