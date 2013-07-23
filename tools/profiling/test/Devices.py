@@ -264,7 +264,7 @@ class INGA(Device):
 	"""INGA node"""
 	prefix="avr"
 	platform="inga"
-	baudrate=19200
+	baudrate=38400
 
 	def upload(self):
 		try:
