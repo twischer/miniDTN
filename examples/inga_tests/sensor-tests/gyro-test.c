@@ -10,7 +10,7 @@ static char *
 test_gyro_init()
 {
 
-  ASSERT("activating acc failed", SENSORS_ACTIVATE(gyro_sensor) == 1);
+  ASSERT("activating gyro failed", SENSORS_ACTIVATE(gyro_sensor) == 1);
   return 0;
 }
 /*---------------------------------------------------------------------------*/

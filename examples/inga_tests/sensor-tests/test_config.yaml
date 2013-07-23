@@ -1,7 +1,7 @@
 tests:
 ### Accelerometer test
   - name: sensor-acc
-    timeout: 1200
+    timeout: 60
     devices:
       - name: receiver
         programdir: examples/inga_tests/sensor-tests
@@ -12,7 +12,7 @@ tests:
         graph_options: ""
 ### Gyroscope test
   - name: sensor-gyro
-    timeout: 1200
+    timeout: 60
     devices:
       - name: receiver
         programdir: examples/inga_tests/sensor-tests
@@ -23,7 +23,7 @@ tests:
         graph_options: ""
 ### Battery test
   - name: sensor-battery
-    timeout: 1200
+    timeout: 60
     devices:
       - name: receiver
         programdir: examples/inga_tests/sensor-tests

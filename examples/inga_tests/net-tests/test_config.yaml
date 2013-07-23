@@ -1,23 +1,39 @@
 tests:
-### Accelerometer test
-  - name: acc-test
-    timeout: 1200
+### RIME stack test
+  - name: net-rime
+    timeout: 120
     devices:
-      - name: node
-        programdir: examples/inga_tests/sensor-tests
-        program: sensor-tests
-        instrument: [examples/inga_tests/sensor-tests/acc-test.c,platform/inga/*.c]
+      - name: sender
+        programdir: examples/inga_tests/net-tests
+        program: rime-sender
+        instrument: []
         debug: []
         cflags: "-fno-inline"
         graph_options: ""
-### Gyroscope test
-#  - name: gyro-test
-#    timeout: 1200
-#    devices:
-#      - name: node
-#        programdir: examples/inga_tests/sensor-tests
-#        program: gyro-test
-#        instrument: [examples/inga_tests/sensor-tests/gyro-test.c,platform/inga/*.c]
-#        debug: []
-#        cflags: "-fno-inline"
-#        graph_options: ""
+    devices:
+      - name: receiver
+        programdir: examples/inga_tests/net-tests
+        program: rime-receiver
+        instrument: []
+        debug: []
+        cflags: "-fno-inline"
+        graph_options: ""
+
+  - name: net-udp
+    timeout: 120
+    devices:
+      - name: sender
+        programdir: examples/inga_tests/net-tests
+        program: udp-sender
+        instrument: []
+        debug: []
+        cflags: "-fno-inline"
+        graph_options: ""
+    devices:
+      - name: receiver
+        programdir: examples/inga_tests/net-tests
+        program: udp-receiver
+        instrument: []
+        debug: []
+        cflags: "-fno-inline"
+        graph_options: ""

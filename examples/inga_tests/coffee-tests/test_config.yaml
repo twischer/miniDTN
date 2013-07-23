@@ -1,11 +1,11 @@
 tests:
-### rtimer test
-  - name: timer-rtimer
+### COFFEE test
+  - name: coffee-default
     timeout: 1200
     devices:
       - name: receiver
-        programdir: examples/inga_tests/timer-tests
-        program: rtimer-test
+        programdir: examples/inga_tests/fat-tests
+        program: coffee-tests
         instrument: []
         debug: []
         cflags: "-fno-inline"

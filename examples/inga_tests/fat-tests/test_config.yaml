@@ -3,7 +3,7 @@ tests:
   - name: fat-default
     timeout: 1200
     devices:
-      - name: node
+      - name: receiver
         programdir: examples/inga_tests/fat-tests
         program: fat-tests
         instrument: []
@@ -14,7 +14,7 @@ tests:
   - name: fat-coop
     timeout: 1200
     devices:
-      - name: node
+      - name: receiver
         programdir: examples/inga_tests/fat-tests
         program: fat-coop-tests
         instrument: []

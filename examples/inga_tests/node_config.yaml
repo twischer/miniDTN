@@ -1,11 +1,12 @@
 suite:
-    logbase:   ../../../log/
+    logbase:   /home/enrico/Hiwi/contiki-inga/log
     logpattern: date-tag
-    contikibase: ../../../
+    contikibase: /home/enrico/Hiwi/contiki-inga
     contikiscm: git # Here only git and none are supported at the moment
     testcases:
         - sensor-acc
         - sensor-gyro
+        - sensor-battery
         - timer-rtimer
         - fat-default
         - fat-coop
@@ -13,7 +14,12 @@ suite:
 # List of devices
 # Each device has a name, a class (type of device), a path and an id
 devices:
-  - name: node
+  - name: receiver
     class: INGA
     path: /dev/ttyUSB0
     id: 0x12
+
+#  - name: sender
+#    class: INGA
+#    path: /dev/ttyUSB1
+#    id: 0x13

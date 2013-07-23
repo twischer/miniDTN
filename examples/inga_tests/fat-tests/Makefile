@@ -1,8 +1,8 @@
 # FAT tests
-fat-test: fat-test.c
+fat-tests: fat-tests.c
 
 # FAT coop tests
-fat-coop-test: fat-coop-test.c
+fat-coop-tests: fat-coop-tests.c
 
 
 PROJECT_SOURCEFILES += ../sensor-tests.c
