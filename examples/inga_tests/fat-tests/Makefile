@@ -5,7 +5,7 @@ fat-tests: fat-tests.c
 fat-coop-tests: fat-coop-tests.c
 
 
-PROJECT_SOURCEFILES += ../sensor-tests.c
+#PROJECT_SOURCEFILES += ../sensor-tests.c
 
 FAT=1
 TARGET=inga

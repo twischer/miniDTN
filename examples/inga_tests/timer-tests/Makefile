@@ -2,7 +2,7 @@
 rtimer-test: rtimer-test.c
 	
 
-PROJECT_SOURCEFILES += ../sensor-tests.c
+#PROJECT_SOURCEFILES += ../sensor-tests.c
 
 TARGET=inga
 

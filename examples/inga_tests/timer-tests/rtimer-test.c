@@ -53,6 +53,7 @@ void rtime_call(struct rtimer *t, void *ptr){
 	}
 	DONE=2;
 }
+/*---------------------------------------------------------------------------*/
 PROCESS_THREAD(rtimer_test_process, ev, data)
 {
 	PROCESS_BEGIN();

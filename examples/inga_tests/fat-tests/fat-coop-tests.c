@@ -4,15 +4,12 @@
  *
  *  Created on: 13.10.2011
  *      Author: Georg von Zengen 
-
- *	to set node_id, give NODE_ID=<x> with make
  *
  */
 
 #include "contiki.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include "node-id.h"
 #include "leds.h"
 
 #include "fat/diskio.h"           //tested
