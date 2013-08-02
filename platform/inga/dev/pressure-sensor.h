@@ -40,6 +40,15 @@
  */
 
 /** \defgroup inga_pressure_driver Pressure and Temperature Sensor
+ *
+ * This sensor interface allows to control the gyroscope of the INGA sensor platform.
+ *
+\code
+uint16_t press_h = pressure_sensor.value(PRESS_H);
+uint16_t press_l = pressure_sensor.value(PRESS_L);
+int32_t pressval = ((int32_t) press_h << 16);
+pressval |= (pressure_sensor.value(PRESS_L) & 0xFFFF);
+\endcode
  * @{
  */
 
@@ -50,10 +59,17 @@
 
 extern const struct sensors_sensor pressure_sensor;
 
-/* Returns Temperature */
-#define  TEMP 0
-/* Returns Pressure */
-#define  PRESS 1
+#define PRESSURE_SENSOR "Press"
+
+/** \name Sensor values
+ * @{ */
+/** Returns Temperature */
+#define  TEMP     0
+/** Returns Pressure [High] */
+#define  PRESS_H  2
+/** Returns Pressure [Low] */
+#define  PRESS_L  1
+/** @} */
 
 /** @} */
 /** @} */

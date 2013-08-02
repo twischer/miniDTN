@@ -41,6 +41,7 @@
 #include "gyro-sensor.h"
 const struct sensors_sensor gyro_sensor;
 static uint8_t initialized = 0;
+static uint8_t ready = 0;
 #define raw_to_dps(raw) TODO
 static angle_data_t gyro_data;
 /*---------------------------------------------------------------------------*/
@@ -49,7 +50,7 @@ cond_update_gyro_data(int ch)
 {
   /* bit positions set to one indicate that data is obsolete and a new readout will
    * needs to be performed. */
-  static uint8_t gyro_data_obsolete_vec;
+  static uint8_t gyro_data_obsolete_vec = 0xFF;
   /* A real readout is performed only when the channels obsolete flag is already
    * set. I.e. the channels value has been used already.
    * Then all obsolete flags are reset to zero. */
@@ -100,8 +101,9 @@ status(int type)
 {
   switch (type) {
     case SENSORS_ACTIVE:
-    case SENSORS_READY:
       return initialized;
+    case SENSORS_READY:
+      return ready;
   }
   return 0;
 }
@@ -112,10 +114,25 @@ configure(int type, int c)
   uint8_t value = 0;
   switch (type) {
 
+    case SENSORS_HW_INIT:
+      if (l3g4200d_available()) {
+        ready = 1;
+        return 1;
+      } else {
+        ready = 0;
+        return 0;
+      }
+      break;
+
     case SENSORS_ACTIVE:
       if (c) {
         if (l3g4200d_init() == 0) {
           initialized = 1;
+          return 1;
+        }
+      } else {
+        if (l3g4200d_deinit() == 0) {
+          initialized = 0;
           return 1;
         }
       }
@@ -152,8 +169,9 @@ configure(int type, int c)
         return 0;
       }
       return (l3g4200d_set_data_rate(value) == 0) ? 1 : 0;
+
   }
   return 0;
 }
 /*---------------------------------------------------------------------------*/
-SENSORS_SENSOR(gyro_sensor, "GYROSCOPE", value, configure, status);
+SENSORS_SENSOR(gyro_sensor, GYRO_SENSOR, value, configure, status);

@@ -48,20 +48,48 @@
 #define L3G4200D_DPSDIV_2000G	280
 
 uint16_t l3g4200d_dps_scale;
+
+#define TEMP_OFFSET     0
+// converts raw value to tempeartue, offset might need to be adjusted
+#define raw_to_temp(a)  (25 - TEMP_OFFSET - ((int8_t) a))
+//*----------------------------------------------------------------------------*/
+int8_t
+l3g4200d_available(void)
+{
+  uint8_t tries = 0;
+
+  i2c_init();
+  while (l3g4200d_read8bit(L3G4200D_WHO_AM_I_REG) != L3G4200D_WHO_AM_I) {
+    _delay_ms(10);
+    if (tries++ > 10) {
+      return 0;
+    }
+  }
+  return 1;
+}
 /*----------------------------------------------------------------------------*/
 int8_t
 l3g4200d_init(void)
 {
-  uint8_t i = 0;
-
-  i2c_init();
-  while (l3g4200d_read8bit(L3G4200D_WHO_I_AM_REG) != 0xD3) {
-    _delay_ms(10);
-    if (i++ > 10) {
-      return -1;
-    }
+  
+  if (!l3g4200d_available()) {
+    return -1;
   }
-  l3g4200d_write8bit(L3G4200D_CTRL_REG1, 0x0F);
+  // disable power down mode, enable axis
+  l3g4200d_write8bit(L3G4200D_CTRL_REG1, 
+      (1 << L3G4200D_PD) 
+      | (1 << L3G4200D_ZEN) 
+      | (1 << L3G4200D_YEN) 
+      | (1 << L3G4200D_XEN));
+  l3g4200d_set_dps(L3G4200D_250DPS);
+  return 0;
+}
+/*----------------------------------------------------------------------------*/
+int8_t
+l3g4200d_deinit(void)
+{
+  // enable power down mode, disable axis
+  l3g4200d_write8bit(L3G4200D_CTRL_REG1, 0x00);
   return 0;
 }
 /*----------------------------------------------------------------------------*/
@@ -170,10 +198,11 @@ l3g4200d_get_z_angle(void)
   return l3g4200d_read16bit(L3G4200D_OUT_Z_L);
 }
 /*----------------------------------------------------------------------------*/
-uint8_t
+
+int8_t
 l3g4200d_get_temp(void)
 {
-  return l3g4200d_read8bit(L3G4200D_OUT_TEMP);
+  return raw_to_temp(l3g4200d_read8bit(L3G4200D_OUT_TEMP));
 }
 /*----------------------------------------------------------------------------*/
 uint8_t

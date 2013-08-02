@@ -45,33 +45,58 @@
  * 
  * This sensor interface allows to control the accelerometer of the INGA sensor platform.
  * 
- * \section Initialization
+ * @note This interface provides only a subset of the full sensor features.
+ * If you require extended configuration, consider using the underlying sensor driver.
+ *
+ *
+ * \section act_acc Activate Sensor
  * 
  * Default initialization settings:
  *  - <b>bypass mode</b>, i.e. a read command will always return the latest sampled data
  *  - 100Hz sample rate
- *  - 
  * 
- * \section acc_sensor_data_channels Data channels
- * The sensor provides 6 abstract data channels.
- * 3 for reading raw sensor data from x, y and z sensor axis
- * and 3 for reading sensor data in [mg] from x, y and z sensor axis.
+ *
+ * \section cfg_sensor Configure sensor
+ * <code> acc_sensor.configure(type, value) </code>
+ *
+ * The sensor interface allows to configure:
+ * - Sensitivity (\ref ACC_CONF_SENSITIVITY)
+ * - Data rate (\ref ACC_CONF_DATA_RATE)
+ *
+ * Details of the different configurations are given in
+ * the documentation of respective config.
+ *
+ *
+ * \section query_measure Query measurements
+ * <code>acc_sensor.value(channel)</code>
+ *
+ * The sensor provides 6 data channels.
+ * - 3 provide mg values
+ * - 3 provide unprocessed raw values
  * A detailed list can be found at \ref acc_sensor_channels "Channels"
  * 
- * <code>acc_sensor.value(ACC_X)</code>
+ * @note Measurement values are updated only if one channel
+ * is read twice. I.e. reading x,y, and z channel
+ * will provide values from a single measurement.
+ * If then one of these channels is read again, a new
+ * measurement is initated.
  * 
- * \section acc_sensor_settings Settings
- * 
- * <code> acc_sensor.configure(type, value) </code>
- * 
- * \section acc_sensor_details Details
- * - The implementation allows reading values from the same sample, a new
- *   sample is taken only each time the \em same channel is read \em again.
- *   I.e. reading y,z,x,y will update data each time the y is read while
- *   reading z,z,z will update data at each readout.
- * 
- * @{
- */
+ *
+ * \section usage Example Usage
+ *
+\code
+#include <sensors.h>
+[...]
+struct sensors_sensor accsensor = find_sensor("ACC");
+ACTIVATE_SENSOR(accsensor);
+accsensor.configure(GYRO_CONF_SENSITIVITY, ACC_25HZ);
+[...]
+int x = accsensor.value(ACC_X);
+int y = accsensor.value(ACC_Y);
+int z = accsensor.value(ACC_Z);
+\endcode
+ *
+ * @{ */
 
 #ifndef __ADXL345_SENSOR_H__
 #define __ADXL345_SENSOR_H__
@@ -80,38 +105,88 @@
 
 extern const struct sensors_sensor acc_sensor;
 
+#define ACC_SENSOR "Acc"
+
 /**
- * \name Channels
+ * \name Data Output Channels
  * \anchor acc_sensor_channels
  * 
  * @{ */
-/** x axis data (raw output) */
-#define ACC_X_RAW   0
-/** y axis data (raw output) */
-#define ACC_Y_RAW   1
-/** z axis data (raw output) */
-#define ACC_Z_RAW   2
 /** x axis data (mg output) */
-#define ACC_X       3
+#define ACC_X       0
 /** y axis data (mg output) */
-#define ACC_Y       4
+#define ACC_Y       1
 /** z axis data (mg output) */
-#define ACC_Z       5
-/** length of vector sqrt(x^2,y^2,z^2) */
-//#define ACC_LENGTH  6
+#define ACC_Z       2
+/** x axis data (raw output) */
+#define ACC_X_RAW   3
+/** y axis data (raw output) */
+#define ACC_Y_RAW   4
+/** z axis data (raw output) */
+#define ACC_Z_RAW   5
 /** @} */
 
 /**
- * \name Sensitivity Values
+ * \name Configuration types
+ * @{ */
+/**
+ * Sensitivity configuration
+ * The sensor can operate at different ranges at different sensitivity levels (+/-2g,+/-4g,+/-8g,+/-16g)
+ * Possible values can be found in \ref sens_val "SENSITIVITY Values"
+ */
+#define ACC_CONF_SENSITIVITY  10
+/**
+ * FIFO mode configuration 
+ * 
+ * - \ref ACC_MODE_BYPASS - Bypass mode
+ * - \ref ACC_MODE_FIFO		- FIFO mode
+ * - \ref ACC_MODE_STREAM - Stream mode
+ */
+#define ACC_CONF_FIFOMODE     20
+/**
+ * Controls power / sleep mode
+ *
+ * - \ref ACC_NOSLEEP -	No sleep
+ * - \ref ACC_AUTOSLEEP - Autosleep
+ */
+#define ACC_CONF_POWERMODE    30
+/**
+ * Output data rate.
+ * 
+ * Values should be one of those described in
+ * \ref acc_sensor_odr_values "Output Data Rate Values".
+ * 
+ * \note If another value is given, the value is rounded to the next upper valid value.
+ * 
+ * \note In bypass mode (default) you should always select twice the rate of your
+ * desired readout frequency
+ * 
+ */
+#define ACC_CONF_DATA_RATE           40
+/** @} */
+
+/**
+ * \name Status types
+ * @{ */
+/**
+ * Fill level of the sensor buffer (If working in FIFO or Streaming mode).
+ * Max value: 33 (full)
+ * 
+ * This can be used to determine whether a buffer overflow occured between
+ * two readouts or to adapt readout rate.
+ */
+#define ACC_STATUS_BUFFER_LEVEL     50
+/** @} */
+
+
+/**
+ * \name SENSITIVITY Values
+ * \anchor sens_val
  * \see ACC_SENSOR_SENSITIVITY
  * @{ */
-/// 2g acceleration
 #define ACC_2G  2
-/// 4g acceleration
 #define ACC_4G  4
-/// 8g acceleration
 #define ACC_8G  8
-/// 16g acceleration
 #define ACC_16G 16
 /** @} */
 
@@ -183,67 +258,10 @@ extern const struct sensors_sensor acc_sensor;
 #define ACC_NOSLEEP   0
 /** Auto sleep */
 #define ACC_AUTOSLEEP 1
-
-/** @} */
-
-/**
- * \name Setting types
- * @{ */
-/**
- * Sensitivity configuration
- *
- * - \ref ACC_2G  -  2g @256LSB/g
- * - \ref ACC_4G  -  4g @128LSB/g
- * - \ref ACC_8G  -  8g @64LSB/g
- * - \ref ACC_16G - 16g @32LSB/g
- */
-#define ACC_CONF_SENSITIVITY  10
-/**
- * FIFO mode configuration 
- * 
- * - \ref ACC_MODE_BYPASS - Bypass mode
- * - \ref ACC_MODE_FIFO		- FIFO mode
- * - \ref ACC_MODE_STREAM - Stream mode
- */
-#define ACC_CONF_FIFOMODE     20
-/**
- * Controls power / sleep mode
- *
- * - \ref ACC_NOSLEEP		-	No sleep
- * - \ref ACC_AUTOSLEEP	-	Autosleep
- */
-#define ACC_CONF_POWERMODE    30
-/**
- * Output data rate.
- * 
- * Values should be one of those described in
- * \ref acc_sensor_odr_values "Output Data Rate Values".
- * 
- * \note If another value is given, the value is rounded to the next upper valid value.
- * 
- * \note In bypass mode (default) you should always select twice the rate of your
- * desired readout frequency
- * 
- */
-#define ACC_CONF_DATA_RATE           40
-/** @} */
-
-/**
- * \name Status types
- * <code> acc_sensor.status(type) </code>
- * @{ */
-/**
- * Fill level of the sensor buffer (If working in FIFO or Streaming mode).
- * Max value: 33 (full)
- * 
- * This can be used to determine whether a buffer overflow occured between
- * two readouts or to adapt readout rate.
- */
-#define ACC_STATUS_BUFFER_LEVEL     50
-/** @} */
-
-
-/** @} */
 /** @} */
 
 #endif /* __ACC-SENSOR_H__ */
+
+/** @} */
+/** @} */
+

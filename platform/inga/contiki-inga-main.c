@@ -82,8 +82,13 @@ uint8_t debugflowsize, debugflow[DEBUGFLOWSIZE];
 // settings manager
 #include "settings.h"
 
+// sensors
 #include "lib/sensors.h"
 #include "dev/button-sensor.h"
+#include "dev/acc-sensor.h"
+#include "dev/gyro-sensor.h"
+#include "dev/pressure-sensor.h"
+#include "dev/battery-sensor.h"
 #include "dev/at45db.h"
 
 #include "uip.h"
@@ -704,7 +709,10 @@ periodic_prints()
 /*-------------------------------------------------------------------------*/
 /*------------------------- Main Scheduler loop----------------------------*/
 /*-------------------------------------------------------------------------*/
-SENSORS(&button_sensor);
+
+// setup sensors
+SENSORS(&button_sensor, &acc_sensor, &gyro_sensor, &pressure_sensor, &battery_sensor);
+
 int
 main(void)
 {

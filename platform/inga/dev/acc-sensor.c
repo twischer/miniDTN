@@ -47,6 +47,7 @@
 
 const struct sensors_sensor acc_sensor;
 bool interrupt_mode = false; // TODO: needed for possible later implementations with interrupts/events
+static uint8_t ready = 0;
 static bool acc_active = false;
 static acc_data_t acc_data;
 
@@ -60,7 +61,7 @@ cond_update_acc_data(int ch)
 {
   /* bit positions set to one indicate that data is obsolete and a new readout will
    * needs to be performed. */
-  static uint8_t acc_data_obsolete_vec;
+  static uint8_t acc_data_obsolete_vec = 0xFF;
   /* A real readout is performed only when the channels obsolete flag is already
    * set. I.e. the channels value has been used already.
    * Then all obsolete flags are reset to zero. */
@@ -99,14 +100,6 @@ value(int type)
     case ACC_Z:
       cond_update_acc_data(ACC_Z);
       return adxl345_raw_to_mg(acc_data.z);
-
-      //    case ACC_LENGTH:
-      //      acc_data_t mg;
-      //      cond_update_acc_data(ACC_LENGTH);
-      //      mg.x = raw_to_mg(acc_data.x);
-      //      mg.y = raw_to_mg(acc_data.y);
-      //      mg.z = raw_to_mg(acc_data.z);
-      //      return (mg.x * mg.x + mg.y * mg.y + mg.z * mg.z);
   }
   return 0;
 }
@@ -119,7 +112,7 @@ status(int type)
       return acc_active; // TODO: do check
       break;
     case SENSORS_READY:
-      return adxl345_ready();
+      return ready;
       break;
     case ACC_STATUS_BUFFER_LEVEL:
       return adxl345_get_fifo_level();
@@ -133,6 +126,14 @@ configure(int type, int c)
 {
   uint8_t value;
   switch (type) {
+
+    case SENSORS_HW_INIT:
+      if (adxl345_available()) {
+        ready = 1;
+      } else {
+        ready = 0;
+      }
+      break;
 
     case SENSORS_ACTIVE:
       if (c) {
@@ -235,4 +236,4 @@ configure(int type, int c)
   return 0;
 }
 /*---------------------------------------------------------------------------*/
-SENSORS_SENSOR(acc_sensor, "Accelerometer", value, configure, status);
+SENSORS_SENSOR(acc_sensor, ACC_SENSOR, value, configure, status);

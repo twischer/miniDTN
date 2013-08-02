@@ -41,6 +41,11 @@
  */
 
 /** \defgroup l3g4200d_interface ST L3G4200D 3-axis Gyroscope interface
+ *
+ * Details about sensors functionality can be found
+ * in corresponding datasheet.
+ * Registers and bit positions are named according to their datasheet names.
+ *
  * @{
  */
 
@@ -50,14 +55,16 @@
 #include "../dev/i2c.h"
 #include <util/delay.h>
 
-#define L3G4200D_DPSDIV_250G	35
-#define L3G4200D_DPSDIV_500G	70
-#define L3G4200D_DPSDIV_2000G	280
+/* Divisior for converting raw value to dps. */
+//#define L3G4200D_DPSDIV_250G	35
+//#define L3G4200D_DPSDIV_500G	70
+//#define L3G4200D_DPSDIV_2000G	280
 
 extern uint16_t l3g4200d_dps_scale;
 /** Convert raw values to dps */
 #define l3g4200d_raw_to_dps(raw) (int16_t) (((int32_t) raw * l3g4200d_dps_scale) / 4000)
 
+#define L3G4200D_WHO_AM_I               0xD3
 /* Gyroscope device address*/
 #define L3G4200D_DEV_ADDR_R		0xD3
 #define L3G4200D_DEV_ADDR_W		0xD2
@@ -70,7 +77,7 @@ extern uint16_t l3g4200d_dps_scale;
  * 
  * @{ */
 /// Device identification register
-#define L3G4200D_WHO_I_AM_REG 0x0F
+#define L3G4200D_WHO_AM_I_REG 0x0F
 /// Control register 1
 #define L3G4200D_CTRL_REG1    0x20
 /// Control register 2
@@ -287,7 +294,7 @@ extern uint16_t l3g4200d_dps_scale;
 /** @} */
 
 
-// types
+//--- types
 
 /** Angle data type. */
 typedef struct {
@@ -297,11 +304,21 @@ typedef struct {
 } angle_data_t;
 
 
-// functions
+//--- functions
+/** Checks if l3g4200d is avialable.
+ * \retval 1 is available
+ * \retval 0 not available
+ */
+int8_t l3g4200d_available(void);
 
-/** Inits the gyroscope. */
+/** Inits the gyroscope. 
+ * \retval 0 if init succeeded
+ * \retval 1 if init failed
+ */
 int8_t l3g4200d_init(void);
 
+/** Deinit the gyroscope. */
+int8_t l3g4200d_deinit(void);
 
 /** Sets the sensitivity value [dps]
  * 
@@ -312,7 +329,7 @@ extern inline uint8_t l3g4200d_set_dps(uint8_t set);
 /**
  * Sets the data rate [Hz]
  * 
- * @param set One of L3G4200D_ODR_100HZ, L3G4200D_ODR_200HZ, L3G4200D_ODR_400HZ, L3G4200D_ODR_800HZ
+ * @param set one of L3G4200D_ODR_100HZ, L3G4200D_ODR_200HZ, L3G4200D_ODR_400HZ, L3G4200D_ODR_800HZ
  * @return 
  */
 extern inline uint8_t l3g4200d_set_data_rate(uint8_t set);
@@ -342,7 +359,7 @@ extern inline int8_t l3g4200d_fifo_overrun(void);
 
 /** Reads data for x,y and z angle.
  * 
- * @note This function is faster than l3g4200d_get_x_angle (etc.) if all values are required!
+ * @note If all channels are required, this function is faster than reading values with l3g4200d_get_x/y/z_angle, because only a single readout is performed!
  */
 angle_data_t l3g4200d_get_angle(void);
 
@@ -375,9 +392,9 @@ int16_t l3g4200d_get_z_angle(void);
 
 
 /** Reads temperature value
- * @return temperature
+ * @return 1 degree/digit
  */
-uint8_t l3g4200d_get_temp(void);
+int8_t l3g4200d_get_temp(void);
 
 
 /** Reads 2x8 bit register from gyroscopes

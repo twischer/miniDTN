@@ -158,17 +158,34 @@ static int32_t bmp085_read_uncomp_pressure(uint8_t mode);
 static int32_t bmp085_read_uncomp_temperature(void);
 /*---------------------------------------------------------------------------*/
 int8_t
-bmp085_init(void)
+bmp085_available(void)
 {
-  uint8_t i = 0;
+  uint8_t i;
+
   i2c_init();
   while (bmp085_read16bit_data(BMP085_AC1_ADDR) == 0x00) {
     _delay_ms(10);
     if (i++ > 10) {
-      return -1;
+      return 0;
     }
   }
+  return 1;
+}
+/*---------------------------------------------------------------------------*/
+int8_t
+bmp085_init(void)
+{
+  if (!bmp085_available()) {
+    return -1;
+  }
   bmp085_read_calib_data();
+  return 0;
+}
+/*---------------------------------------------------------------------------*/
+int8_t
+bmp085_deinit(void)
+{
+  // todo: needs implementation?
   return 0;
 }
 /*---------------------------------------------------------------------------*/
@@ -217,11 +234,10 @@ bmp085_read_uncomp_pressure(uint8_t mode)
   return (pressure >> (8 - mode));
 }
 /*---------------------------------------------------------------------------*/
-int32_t
+int16_t
 bmp085_read_temperature(void)
 {
-  int32_t ut = 0, compt = 0;
-
+  int32_t ut = 0;
   int32_t x1, x2, b5;
 
   ut = bmp085_read_uncomp_temperature();
@@ -230,9 +246,8 @@ bmp085_read_temperature(void)
           * (int32_t) bmp085_coeff.ac5 >> 15;
   x2 = ((int32_t) bmp085_coeff.mc << 11) / (x1 + bmp085_coeff.md);
   b5 = x1 + x2;
-  compt = (b5 + 8) >> 4;
 
-  return compt;
+  return (int16_t) ((b5 + 8) >> 4);
 }
 /*---------------------------------------------------------------------------*/
 int32_t

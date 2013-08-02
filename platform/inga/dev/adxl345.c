@@ -44,31 +44,12 @@
 #define ADXL345_DEVICE_ID_DATA            0xE5
 /*----------------------------------------------------------------------------*/
 int8_t
-adxl345_init(void)
+adxl345_available(void)
 {
+  uint8_t i = 0;
   mspi_chip_release(ADXL345_CS);
   mspi_init(ADXL345_CS, MSPI_MODE_3, MSPI_BAUD_MAX);
 
-  // full resolution, 2g range
-  adxl345_write(ADXL345_DATA_FORMAT_REG, (1 << ADXL345_FULL_RES));
-  // measuring enabled
-  adxl345_write(ADXL345_POWER_CTL_REG, (1 << ADXL345_MEASURE));
-  // output data rate: 100Hz
-  adxl345_write(ADXL345_BW_RATE_REG, ADXL345_ODR_100HZ);
-
-  return adxl345_ready() ? 0 : -1;
-}
-/*----------------------------------------------------------------------------*/
-void
-adxl345_deinit(void)
-{
-  adxl345_set_powermode(ADXL345_PMODE_STANDBY);
-}
-/*----------------------------------------------------------------------------*/
-int8_t
-adxl345_ready(void)
-{
-  uint8_t i = 0;
   while (adxl345_read(ADXL345_DEVICE_ID_REG) != ADXL345_DEVICE_ID_DATA) {
     _delay_ms(10);
     if (i++ > 10) {
@@ -77,6 +58,30 @@ adxl345_ready(void)
   }
   return 1;
 }
+/*----------------------------------------------------------------------------*/
+int8_t
+adxl345_init(void)
+{
+
+  if (!adxl345_available()) {
+    return -1;
+  }
+  // full resolution, 2g range
+  adxl345_write(ADXL345_DATA_FORMAT_REG, (1 << ADXL345_FULL_RES));
+  // measuring enabled
+  adxl345_write(ADXL345_POWER_CTL_REG, (1 << ADXL345_MEASURE));
+  // output data rate: 100Hz
+  adxl345_write(ADXL345_BW_RATE_REG, ADXL345_ODR_100HZ);
+
+  return 0;
+}
+/*----------------------------------------------------------------------------*/
+void
+adxl345_deinit(void)
+{
+  adxl345_set_powermode(ADXL345_PMODE_STANDBY);
+}
+
 /*----------------------------------------------------------------------------*/
 inline void
 adxl345_set_g_range(uint8_t range)

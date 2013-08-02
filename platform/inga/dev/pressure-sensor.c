@@ -39,14 +39,19 @@
 #include "dev/bmp085.h"
 #include "dev/pressure-sensor.h"
 const struct sensors_sensor pressure_sensor;
-uint8_t press_state = 0;
+static uint8_t ready = 0;
+static uint8_t active = 0;
+static uint32_t pressure;
 /*----------------------------------------------------------------------------*/
 static int
 value(int type)
 {
   switch (type) {
-    case PRESS:
-      return (uint16_t) bmp085_read_pressure(0);
+    case PRESS_H:
+      pressure = bmp085_read_pressure(0);
+      return (uint16_t) ((pressure >> 16) & 0xFFFF);
+    case PRESS_L:
+      return (uint16_t) (pressure & 0xFFFF);
     case TEMP:
       return (int16_t) bmp085_read_temperature();
   }
@@ -56,19 +61,35 @@ value(int type)
 static int
 status(int type)
 {
-  return press_state;
+  switch (type) {
+    case SENSORS_READY:
+      return ready;
+      break;
+    case SENSORS_ACTIVE:
+      return active;
+      break;
+  }
+  return active;
 }
 /*----------------------------------------------------------------------------*/
 static int
 configure(int type, int c)
 {
   switch (type) {
+    case SENSORS_HW_INIT:
+      if (bmp085_available()) {
+        ready = 1;
+      } else {
+        ready = 0;
+      }
+      break;
     case SENSORS_ACTIVE:
       if (c) {
-        press_state = 1;
+        active = 1;
         return (bmp085_init() == 0) ? 1 : 0;
       } else {
-
+        active = 0;
+        return (bmp085_deinit() == 0) ? 1 : 0;
       }
       break;
     default:
@@ -77,4 +98,4 @@ configure(int type, int c)
   return 0;
 }
 /*----------------------------------------------------------------------------*/
-SENSORS_SENSOR(pressure_sensor, "PRESSURE", value, configure, status);
+SENSORS_SENSOR(pressure_sensor, PRESSURE_SENSOR, value, configure, status);

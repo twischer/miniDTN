@@ -49,6 +49,7 @@
 /* @2.56Vref: 2^10 => 128mA; */
 #define BATTERY_SENSOR_I_SCALE 1 / 4
 
+static uint8_t ready = 0;
 static uint8_t initialized = 0;
 
 const struct sensors_sensor battery_sensor;
@@ -70,8 +71,9 @@ status(int type)
 {
   switch (type) {
     case SENSORS_ACTIVE:
-    case SENSORS_READY:
       return initialized;
+    case SENSORS_READY:
+      return ready;
   }
   return 0;
 }
@@ -80,6 +82,9 @@ static int
 configure(int type, int c)
 {
   switch (type) {
+    case SENSORS_HW_INIT:
+      ready = 1;
+      break;
     case SENSORS_ACTIVE:
       if (c) {
         adc_init(ADC_SINGLE_CONVERSION, ADC_REF_2560MV_INT);
@@ -97,5 +102,5 @@ configure(int type, int c)
   }
 }
 /*----------------------------------------------------------------------------*/
-SENSORS_SENSOR(battery_sensor, "PRESSURE", value, configure, status);
+SENSORS_SENSOR(battery_sensor, BATTERY_SENSOR, value, configure, status);
 

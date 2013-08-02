@@ -56,6 +56,12 @@
 #include "../dev/i2c.h"
 #include <util/delay.h>
 
+/**
+ * Tests if BMP085 is available
+ * \retval 1 is avaiable
+ * \retval 0 is not available
+ */
+int8_t bmp085_available(void);
 
 /**
  * \brief Initializes the BMP085 Pressure Sensor
@@ -71,7 +77,7 @@ int8_t bmp085_init(void);
  *
  * \return Temerature in 0.1 Degree
  */
-int32_t bmp085_read_temperature(void);
+int16_t bmp085_read_temperature(void);
 
 /**
  * \name Operation modes

@@ -42,6 +42,50 @@
 
 /**
  * \defgroup inga_gyro_driver Gyroscope Sensor
+ *
+ * This sensor interface allows to control the gyroscope of the INGA sensor platform. 
+ *
+ * @note This interface provides only a subset of the full sensor features.
+ * If you require extended configuration, consider using the underlying sensor driver.
+ *
+ * \section cfg_sensor Configure sensor
+ * <code> acc_sensor.configure(type, value) </code>
+ *
+ * The sensor interface allows to configure:
+ * - Sensitivity (\ref GYRO_CONF_SENSITIVITY)
+ * - Data rate (\ref GYRO_CONF_DATA_RATE)
+ *
+ * Details of the different configurations are given in
+ * the documentation of respective config.
+ *
+ * \section query_measure Query measurements
+ * <code>acc_sensor.value(channel)</code>
+ *
+ * The sensor provides 7 data channels.
+ * - 3 provide dps values
+ * - 3 provide unprocessed raw values
+ * - 1 provides temperature value
+ *
+ * @note Measurement values are updated only if one channel
+ * is read twice. I.e. reading x,y, and z channel
+ * will provide values from a single measurement.
+ * If then one of these channels is read again, a new
+ * measurement is initated.
+ *
+ * \section usage Example Usage
+ *
+\code
+#include <sensors.h>
+[...]
+struct sensors_sensor gyrosensor = find_sensor("Gyro");
+ACTIVATE_SENSOR(gyrosensor);
+gyrosensor.configure(GYRO_CONF_SENSITIVITY, GYRO_250DPS);
+[...]
+int x = gyrosensor.value(GYRO_X);
+int y = gyrosensor.value(GYRO_Y);
+int z = gyrosensor.value(GYRO_Z);
+\endcode
+ *
  * @{
  */
 
@@ -49,45 +93,16 @@
 #define __GYRO_SENSOR_H__
 
 #include "lib/sensors.h"
-#include "l3g4200d.h"
-
-/**
- * \name Configurations
- * @{
- */
-/** Configures the sensitivity. */
-#define GYRO_CONF_SENSITIVITY  10
-/** Configures the output data rate. */
-#define GYRO_CONF_DATA_RATE    20
-/** Configures the fifo mode. */
-#define GYRO_CONF_FIFOMODE     30
-/** @} */
-
-/**
- * \name Sensitivity Values
- * \see GYRO_SENSITIVITY
- * @{ */
-/// 250 dps
-#define GYRO_250DPS  250
-/// 500 dps
-#define GYRO_500DPS  500
-/// 2000 dps
-#define GYRO_2000DPS 2000
-/** @} */
-
-
-/** \name Data rate Values.
- *  \see GYRO_DATARATE
- * @{
- */
-#define GYRO_100HZ  100
-#define GYRO_200HZ  200
-#define GYRO_400HZ  400
-#define GYRO_800HZ  800
-/** @} */
 
 extern const struct sensors_sensor gyro_sensor;
 
+#define GYRO_SENSOR "Gyro"
+
+/** 
+ * \name Data Output Channels
+ * GYRO_X/Y/Z provide values for the respective axis in degree pre seconds (dps).
+ * GYRO_X/Y/Z_RAW provide raw output values.
+ * @{ */
 #define GYRO_X      0
 #define GYRO_Y      1
 #define GYRO_Z      2
@@ -95,6 +110,48 @@ extern const struct sensors_sensor gyro_sensor;
 #define GYRO_Y_RAW  4
 #define GYRO_Z_RAW  5
 #define GYRO_TEMP   6
+/** @} */
+
+/**
+ * \name Configuration Types
+ *
+ * Sensor specific configuration types.
+ * @{ */
+/** Configures the sensitivity.
+ * The sensor can operate at three different sensitivity levels (+/-250,+/-500,+/-2000 [dps]).
+ * Possible values can be found in \ref sens_val "SENSITIVITY Values"
+ */
+#define GYRO_CONF_SENSITIVITY  10
+/** Configures the output data rate.
+ * The sensor can operate at different update rates (100,200,400,800 [Hz]).
+ * Allowed values can be found in \ref rate_val "DATA_RATE Values"
+ */
+#define GYRO_CONF_DATA_RATE    20
+/** @} */
+
+
+/**
+ * \name SENSITIVITY Values
+ * \anchor sens_val
+ * \see GYRO_CONF_SENSITIVITY
+ * @{ */
+#define GYRO_250DPS  250
+#define GYRO_500DPS  500
+#define GYRO_2000DPS 2000
+/** @} */
+
+
+/** 
+ * \name DATA_RATE Values.
+ * \anchor rate_val
+ * \see GYRO_CONF_DATA_RATE
+ * @{
+ */
+#define GYRO_100HZ  100
+#define GYRO_200HZ  200
+#define GYRO_400HZ  400
+#define GYRO_800HZ  800
+/** @} */
 
 #endif /* __GYRO-SENSOR_H__ */
 

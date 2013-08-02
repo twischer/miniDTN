@@ -54,6 +54,8 @@
 
 extern const struct sensors_sensor battery_sensor;
 
+#define BATTERY_SENSOR "Batt"
+
 /** Returns battery voltage im mV */
 #define BATTERY_VOLTAGE   2
 /** Returns battery current im mA */
