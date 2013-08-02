@@ -32,3 +32,14 @@ tests:
         debug: []
         cflags: "-fno-inline"
         graph_options: ""
+### Pressure/Temperature test
+  - name: sensor-temppress
+    timeout: 60
+    devices:
+      - name: receiver
+        programdir: examples/inga_tests/sensor-tests
+        program: temppress-test
+        instrument: []
+        debug: []
+        cflags: "-fno-inline"
+        graph_options: ""

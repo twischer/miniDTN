@@ -4,7 +4,6 @@
 #include "dev/watchdog.h"
 #include "clock.h"
 #include "sys/test.h"
-#include "../sensor-tests.h"
 #include "../test.h"
 
 #include "fat/diskio.h"           //tested
@@ -23,15 +22,10 @@ static int write_test_bytes(const char* name, uint32_t size, uint8_t fill_offset
 static int read_test_bytes(const char* name, uint32_t size, uint8_t fill_offset);
 static unsigned long get_file_size(const char* name);
 
-static char * test_sdinit_mount();
-static char * test_cfs_read_size();
-static char * test_cfs_write_small();
-static char * test_cfs_write_large();
-static char * test_cfs_remove();
-static char * test_cfs_overwrite();
-
 static struct etimer timer;
 int cnt = 0;
+
+TEST_SUITE("fat-test");
 
 uint8_t buffer[1024];
 
@@ -250,17 +244,29 @@ read_test_bytes(const char* name, uint32_t size, uint8_t fill_offset)
 
   return 0;
 }
+static struct etimer timer;
+
+PROCESS(test_process, "Test process");
 /*---------------------------------------------------------------------------*/
-int
-run_tests()
+PROCESS_THREAD(test_process, ev, data)
 {
-  test_sdinit_mount();
-  test_cfs_read_size();
-  test_cfs_write_small();
-  test_cfs_write_large();
-  test_cfs_remove();
-  test_cfs_overwrite();
-  return errors;
+  PROCESS_BEGIN();
+  
+  // Wait a second...
+  etimer_set(&timer, CLOCK_SECOND);
+  PROCESS_WAIT_UNTIL(etimer_expired(&timer));
+  
+  RUN_TEST("test_sdinit_mount", test_sdinit_mount);
+  RUN_TEST("test_cfs_read_size", test_cfs_read_size);
+  RUN_TEST("test_cfs_write_small", test_cfs_write_small);
+  RUN_TEST("test_cfs_write_large", test_cfs_write_large);
+  RUN_TEST("test_cfs_remove", test_cfs_remove);
+  RUN_TEST("test_cfs_overwrite", test_cfs_overwrite);
+  
+  TESTS_DONE();
+
+  PROCESS_END();
 }
+
 
 AUTOSTART_PROCESSES(&test_process);

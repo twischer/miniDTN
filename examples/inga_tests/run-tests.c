@@ -17,7 +17,6 @@ int tests_run = 0;
 
 /*---------------------------------------------------------------------------*/
 PROCESS(test_process, "Test process");
-AUTOSTART_PROCESSES(&test_process);
 /*---------------------------------------------------------------------------*/
 PROCESS_THREAD(test_process, ev, data)
 {

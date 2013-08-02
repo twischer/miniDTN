@@ -3,39 +3,70 @@
 #include "../test.h"
 #include "sys/test.h"
 #include "dev/battery-sensor.h"
-#include "../sensor-tests.h"
+#include "sensor-tests.h"
 
-static char * test_battery_init();
-static char * test_battery_value();
+/*--- Test parameters ---*/
+#define SENSOR_NAME             "BATTERY"
+#define BATTERY_TEST_CFG_MIN_V  3000
+#define BATTERY_TEST_CFG_MAX_V  4500
+#define BATTERY_TEST_CFG_MIN_I  30
+#define BATTERY_TEST_CFG_MAX_I  100
+/*--- ---*/
+
+struct sensors_sensor *test_sensor; // TODO: use
+
+TEST_SUITE("temppress_sensor");
+
 /*---------------------------------------------------------------------------*/
-static char *
+void
 test_battery_init()
 {
-  printf("test_battery_init...\n");
-  ASSERT("activating battery sensor failed", SENSORS_ACTIVATE(battery_sensor) == 1);
-  return 0;
+  test_sensor_activate(battery_sensor);
 }
 /*---------------------------------------------------------------------------*/
-static char *
+void
+test_battery_deinit()
+{
+  test_sensor_deactivate(battery_sensor);
+}
+/*---------------------------------------------------------------------------*/
+void
 test_battery_value()
 {
+  TEST_PRE();
+  
+  
+  TEST_CODE();
   printf("test_battery_value...\n");
   // get voltage and current
-  int v = battery_sensor.value(2);// TODO: BATTERY_VOLTAGE
-  int i = battery_sensor.value(3);
-  ASSERT("v wrong", v < 4500);
-  ASSERT("v wrong", v > 3000);
-  ASSERT("i wrong", i < 100);
-  ASSERT("i wrong", i > 30);
-  return 0;
+  int v = battery_sensor.value(BATTERY_VOLTAGE);
+  int i = battery_sensor.value(BATTERY_CURRENT);
+  TEST_LEQ(v, BATTERY_TEST_CFG_MAX_V);
+  TEST_GEQ(v, BATTERY_TEST_CFG_MIN_V);
+  TEST_LEQ(i, BATTERY_TEST_CFG_MAX_I);
+  TEST_GEQ(i, BATTERY_TEST_CFG_MIN_I);
 }
 /*---------------------------------------------------------------------------*/
-int
-run_tests()
+
+static struct etimer timer;
+
+PROCESS(test_process, "Test process");
+/*---------------------------------------------------------------------------*/
+PROCESS_THREAD(test_process, ev, data)
 {
-  test_battery_init();
-  test_battery_value();
-  return errors;
+  PROCESS_BEGIN();
+  
+  // Wait a second...
+  etimer_set(&timer, CLOCK_SECOND);
+  PROCESS_WAIT_UNTIL(etimer_expired(&timer));
+  
+  RUN_TEST("battery_init", test_battery_init);
+  RUN_TEST("battery_value", test_battery_value);
+  RUN_TEST("battery_deinit", test_battery_deinit);
+  
+  TESTS_DONE();
+  
+  PROCESS_END();
 }
 
 AUTOSTART_PROCESSES(&test_process);
