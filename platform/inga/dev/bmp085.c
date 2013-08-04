@@ -185,7 +185,6 @@ bmp085_init(void)
 int8_t
 bmp085_deinit(void)
 {
-  // todo: needs implementation?
   return 0;
 }
 /*---------------------------------------------------------------------------*/
@@ -207,29 +206,28 @@ bmp085_read_uncomp_pressure(uint8_t mode)
   i2c_start(BMP085_DEV_ADDR_W);
   i2c_write(BMP085_CTRL_REG_ADDR);
   switch (mode) {
-    case 0:
+    case BMP085_ULTRA_LOW_POWER:
       i2c_write(BMP085_CTRL_REG_PRESS_0);
       i2c_stop();
       _delay_ms(5);
       break;
-    case 1:
+    case BMP085_STANDARD:
       i2c_write(BMP085_CTRL_REG_PRESS_1);
       i2c_stop();
       _delay_ms(8);
       break;
-    case 2:
+    case BMP085_HIGH_RESOLUTION:
       i2c_write(BMP085_CTRL_REG_PRESS_2);
       i2c_stop();
       _delay_ms(14);
       break;
-    case 3:
+    case BMP085_ULTRA_HIGH_RES:
       i2c_write(BMP085_CTRL_REG_PRESS_3);
       i2c_stop();
       _delay_ms(26);
       break;
   }
-  pressure = bmp085_read16bit_data(BMP085_DATA_REG_N);
-  pressure = pressure << 8;
+  pressure = (int32_t) bmp085_read16bit_data(BMP085_DATA_REG_N) << 8;
   pressure += bmp085_read8bit_data(BMP085_DATA_REG_X);
   return (pressure >> (8 - mode));
 }

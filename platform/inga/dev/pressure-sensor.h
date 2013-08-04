@@ -31,6 +31,7 @@
  * \file
  *      Pressure sensor interface definition
  * \author
+ *      Enrico Joerns <joerns@ibr.cs.tu-bs.de>
  *      Georg von Zengen
  */
 
@@ -43,14 +44,27 @@
  *
  * This sensor interface allows to control the gyroscope of the INGA sensor platform.
  *
+ * \section query_measure Query measurements
+ * <code>acc_sensor.value(channel)</code>
+ *
+ * The sensor provides 3 data channels.
+ * - 2 channels for pressure value (high/low)
+ * - One channel for temperature
+ *
+ * \section usage Example Usage
+ *
 \code
+#include <sensors.h>
+[...]
+struct sensors_sensor batterysensor = find_sensor("Batt");
+ACTIVATE_SENSOR(batterysensor);
+[...]
 uint16_t press_h = pressure_sensor.value(PRESS_H);
 uint16_t press_l = pressure_sensor.value(PRESS_L);
 int32_t pressval = ((int32_t) press_h << 16);
 pressval |= (pressure_sensor.value(PRESS_L) & 0xFFFF);
 \endcode
- * @{
- */
+ * @{ */
 
 #ifndef __PRESS_SENSOR_H__
 #define __PRESS_SENSOR_H__
@@ -63,13 +77,29 @@ extern const struct sensors_sensor pressure_sensor;
 
 /** \name Sensor values
  * @{ */
-/** Returns Temperature */
+/** Returns Temperature [C] */
 #define  TEMP     0
-/** Returns Pressure [High] */
+/** Returns Pressure [High] [Pa] */
 #define  PRESS_H  2
-/** Returns Pressure [Low] */
+/** Returns Pressure [Low] [Pa] */
 #define  PRESS_L  1
 /** @} */
+
+/** \name Configuration types
+ * @{ */
+/** Selects the operation mode. */
+#define PRESSURE_CONF_OPERATION_MODE  10
+/** @} */
+
+/** \name OPERATION_MODE values
+ * \anchor op_mode_values
+ * @{ */
+#define PRESSURE_MODE_ULTRA_LOW_POWER 0
+#define PRESSURE_MODE_STANDARD        1
+#define PRESSURE_MODE_HIGH_RES        2
+#define PRESSURE_MODE_ULTRA_HIGH_RES  3
+/** @} */
+
 
 /** @} */
 /** @} */

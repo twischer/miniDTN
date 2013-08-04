@@ -38,17 +38,25 @@
 #include "lib/sensors.h"
 #include "dev/bmp085.h"
 #include "dev/pressure-sensor.h"
+
+#define CFG_READY_  0
+#define CFG_ACTIVE_ 1
+#define CFG_MODE_   3
+
 const struct sensors_sensor pressure_sensor;
-static uint8_t ready = 0;
-static uint8_t active = 0;
+static uint8_t config = 0x00;
 static uint32_t pressure;
 /*----------------------------------------------------------------------------*/
 static int
 value(int type)
 {
+  // if not activated, do not query data
+  if (!(config & (1 << CFG_ACTIVE_))) return -1;
+
   switch (type) {
     case PRESS_H:
-      pressure = bmp085_read_pressure(0);
+      // read with selected mode
+      pressure = bmp085_read_pressure((config & (0x3 << CFG_MODE_)) >> CFG_MODE_);
       return (uint16_t) ((pressure >> 16) & 0xFFFF);
     case PRESS_L:
       return (uint16_t) (pressure & 0xFFFF);
@@ -63,13 +71,13 @@ status(int type)
 {
   switch (type) {
     case SENSORS_READY:
-      return ready;
+      return (config & (1 << CFG_READY_)) >> CFG_READY_;
       break;
     case SENSORS_ACTIVE:
-      return active;
+      return (config & (1 << CFG_ACTIVE_)) >> CFG_ACTIVE_;
       break;
   }
-  return active;
+  return 0;
 }
 /*----------------------------------------------------------------------------*/
 static int
@@ -78,21 +86,42 @@ configure(int type, int c)
   switch (type) {
     case SENSORS_HW_INIT:
       if (bmp085_available()) {
-        ready = 1;
+        config |= (1 << CFG_READY_);
       } else {
-        ready = 0;
+        config &= (1 << CFG_READY_);
       }
       break;
     case SENSORS_ACTIVE:
       if (c) {
-        active = 1;
+        config |= (1 << CFG_ACTIVE_);
         return (bmp085_init() == 0) ? 1 : 0;
       } else {
-        active = 0;
+        config &= ~(1 << CFG_ACTIVE_);
         return (bmp085_deinit() == 0) ? 1 : 0;
       }
       break;
     default:
+      break;
+
+    case PRESSURE_CONF_OPERATION_MODE:
+      switch (c) {
+        case PRESSURE_MODE_ULTRA_LOW_POWER:
+          config &= ~(0x3 << CFG_MODE_);
+          config |= (BMP085_ULTRA_LOW_POWER << CFG_MODE_);
+          break;
+        case PRESSURE_MODE_STANDARD:
+          config &= ~(0x3 << CFG_MODE_);
+          config |= (BMP085_STANDARD << CFG_MODE_);
+          break;
+        case PRESSURE_MODE_HIGH_RES:
+          config &= ~(0x3 << CFG_MODE_);
+          config |= (BMP085_HIGH_RESOLUTION << CFG_MODE_);
+          break;
+        case PRESSURE_MODE_ULTRA_HIGH_RES:
+          config &= ~(0x3 << CFG_MODE_);
+          config |= (BMP085_ULTRA_HIGH_RES << CFG_MODE_);
+          break;
+      }
       break;
   }
   return 0;

@@ -66,11 +66,16 @@ int8_t bmp085_available(void);
 /**
  * \brief Initializes the BMP085 Pressure Sensor
  *
- * \return
- * - 0 at45db available
- * - -1 at45db not available
+ * \retval 0 at45db available
+ * \retval 1 at45db not available
  */
 int8_t bmp085_init(void);
+
+/**
+ * \brief Deinitializes the sensor.
+ * @todo: Dummy function that does nothing
+ */
+int8_t bmp085_deinit(void);
 
 /**
  * \brief This function reads and returns the calibration compensated temerature
