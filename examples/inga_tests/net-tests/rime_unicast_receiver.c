@@ -2,7 +2,20 @@
 #include "net/rime.h"
 
 #include <stdio.h>
+#include "../test.h"
 
+/*--- Test parameters ---*/
+#define NET_TEST_CFG_TARGET_NODE_ID     0x4711
+#define NET_TEST_CFG_REQUEST_MSG        "This is request message %02d"
+#define NET_TEST_CFG_REQUEST_MSG_LEN    27
+#define NET_TEST_CFG_REPLY_MSG          "This is reply message %02d"
+#define NET_TEST_CFG_REPLY_MSG_LEN      25
+/*--- ---*/
+
+static struct unicast_conn uc;
+static char buff_[30];
+
+TEST_SUITE("net_test");
 /*---------------------------------------------------------------------------*/
 PROCESS(rime_unicast_sender, "Example unicast");
 AUTOSTART_PROCESSES(&rime_unicast_sender);
@@ -11,14 +24,27 @@ static void
 recv_uc(struct unicast_conn *c, const rimeaddr_t *from)
 {
   char *datapntr;
+  static uint8_t rec_count = 0;
   datapntr = packetbuf_dataptr();
-  datapntr[15] = '\0';
+  datapntr[NET_TEST_CFG_REQUEST_MSG_LEN] = '\0';
 
-  printf("unicast message received from %d.%d: '%s'\n", from->u8[0], from->u8[1], datapntr);
+  printf("unicast message received from %x.%x: '%s'\n", from->u8[0], from->u8[1], datapntr);
+
+  sprintf(buff_, NET_TEST_CFG_REQUEST_MSG, rec_count);
+  TEST_EQUALS(strcmp((char *) datapntr, buff_), 0);
+
+  sprintf(buff_, NET_TEST_CFG_REPLY_MSG, rec_count);
+  packetbuf_copyfrom(buff_, NET_TEST_CFG_REPLY_MSG_LEN); 
+  unicast_send(&uc, from);
+
+  rec_count++;
+
+  if (rec_count == 10) {
+    TESTS_DONE();
+  }
 }
 
 static const struct unicast_callbacks unicast_callbacks = {recv_uc}; // List of Callbacks to be called if a message has been received.
-static struct unicast_conn uc;
 /*---------------------------------------------------------------------------*/
 
 PROCESS_THREAD(rime_unicast_sender, ev, data)

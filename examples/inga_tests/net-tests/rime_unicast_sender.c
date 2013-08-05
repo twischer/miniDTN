@@ -6,6 +6,19 @@
 #include "net/rime.h"
 
 #include <stdio.h>
+#include "../test.h"
+
+/*--- Test parameters ---*/
+#define NET_TEST_CFG_TARGET_NODE_ID     0x4711
+#define NET_TEST_CFG_REQUEST_MSG        "This is request message %02d"
+#define NET_TEST_CFG_REQUEST_MSG_LEN    27
+#define NET_TEST_CFG_REPLY_MSG          "This is reply message %02d"
+#define NET_TEST_CFG_REPLY_MSG_LEN      25
+/*--- ---*/
+
+static char buff_[30];
+
+TEST_SUITE("net_test");
 
 /*---------------------------------------------------------------------------*/
 PROCESS(rime_unicast_sender, "Rime Unicast Sender");
@@ -14,7 +27,18 @@ AUTOSTART_PROCESSES(&rime_unicast_sender);
 static void
 recv_uc(struct unicast_conn *c, const rimeaddr_t *from)
 {
-  printf("unicast message received from %d.%d: '%s'\n", from->u8[0], from->u8[1], (char *) packetbuf_dataptr());
+  static uint8_t rec_count = 0;
+
+  printf("unicast message received from %x.%x: '%s'\n", from->u8[0], from->u8[1], (char *) packetbuf_dataptr());
+  sprintf(buff_, NET_TEST_CFG_REPLY_MSG, rec_count);
+  TEST_EQUALS(strcmp((char *) packetbuf_dataptr(), buff_), 0);
+
+  rec_count++;
+
+  // check if done
+  if (rec_count == 10) {
+    TESTS_DONE();
+  }
 }
 
 static const struct unicast_callbacks unicast_callbacks = {recv_uc};
@@ -26,25 +50,31 @@ PROCESS_THREAD(rime_unicast_sender, ev, data)
 
   PROCESS_BEGIN();
 
+
   unicast_open(&uc, 146, &unicast_callbacks); // channel = 145
 
-  while (1) {
-    static struct etimer et;
-    rimeaddr_t addr;
+  static struct etimer et;
+  static rimeaddr_t addr;
 
+  etimer_set(&et, 2*CLOCK_SECOND);
+
+  PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
+
+  // set address
+  addr.u8[0] = NET_TEST_CFG_TARGET_NODE_ID & 0xFF;
+  addr.u8[1] = NET_TEST_CFG_TARGET_NODE_ID >> 8;
+
+  // send 10 messages
+  static int8_t idx = 0;
+  char buff_[30] = {'\0'};
+  for (idx = 0; idx < 10; idx++) {
     etimer_set(&et, CLOCK_SECOND);
-
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
 
-    packetbuf_copyfrom("Unicast Example", 15); // String + Length to be send
-
-    addr.u8[0] = 13; // Address of receiving Node
-    addr.u8[1] = 0;
-
-    if (!rimeaddr_cmp(&addr, &rimeaddr_node_addr)) {
-      printf("Message sent\n"); // debug message
-      unicast_send(&uc, &addr);
-    }
+    sprintf(buff_, NET_TEST_CFG_REQUEST_MSG, idx);
+    packetbuf_copyfrom(buff_ , NET_TEST_CFG_REQUEST_MSG_LEN); 
+    unicast_send(&uc, &addr);
+    printf("sent: %s\n", buff_);
   }
 
   PROCESS_END();
