@@ -47,6 +47,10 @@
  * interface between the boot section and the application section.</p>
  *
  * \note
+ * All functions will return immediately if flash is uninitialized
+ * or initialization failed.
+ *
+ * \note
  * The function of the AT45DBxx1 is a little bit different compared to
  * an SD-Card. The basic idea of the SD-Card is, to store one block
  * (512Byte) into a local buffer an transfer the whole block via SPI
@@ -77,10 +81,8 @@
 /*!
  * Status Register Address. Bit 7 signalizes if the device is
  * busy.
- * <ul>
- * <li> 1 : not busy
- * <li> 0 : busy
- * </ul>
+ * - 1 : not busy
+ * - 0 : busy
  */
 #define AT45DB_STATUS_REG			0xD7
 
@@ -170,10 +172,8 @@ typedef struct{
 /**
  * \brief Initialize the AT45DBxx1 Flash EEPROM
  *
- *\return 	<ul>
- *  		<li> 0 at45db available
- *  		<li> -1 at45db not available
- * 		 	</ul>
+ * \retval 0 at45db available
+ * \retval -1 at45db not available
  *
  * \note No special settings are necessary to initialize
  * the Flash memory. The standard data flash page size is
