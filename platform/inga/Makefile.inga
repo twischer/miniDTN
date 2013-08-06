@@ -16,6 +16,9 @@ CONTIKIBOARD=.
 CONTIKI_PLAT_DEFS = -DF_CPU=8000000UL -DAUTO_CRC_PADDING=2
 
 MCU=atmega1284p
+
+### Avrdude Options
+
 #AVRDUDE_PROGRAMMER=jtag2
 AVRDUDE_PROGRAMMER=avr109
 
@@ -27,22 +30,22 @@ AVRDUDE_PROGRAMMER=avr109
 #AVRDUDE_PORT=usb:00B000000D79
 #AVRDUDE_PORT=usb
 
-
 # Additional avrdude options
 # Verify off
 #AVRDUDE_OPTIONS=-V
+# Baudrate
 AVRDUDE_OPTIONS=-b 230400 
 
-# TODO: not implemented
+# enable SLIP support
 ifdef WITH_SLIP
 CONTIKI_TARGET_SOURCEFILES += slip_uart0.c slip.c slip-bridge.c
 CFLAGS += -DINGA_CONF_WITH_SLIP=1
 endif
 
+# DTN support
 ifdef CONF_DTN
   CFLAGS += -DWITH_DTN=1
 endif
-CFLAGS += -DWITH_NODE_ID=1
 
 ifndef INGA_BAUDRATE
   INGA_BAUDRATE = 38400
@@ -53,51 +56,61 @@ ifdef MOTES
   MOTELIST=1
   CMOTES=$(MOTES)
   MOTE=1;
-  SERIALDUMP = $(CONTIKI)/tools/sky/serialdump-linux
 endif
 
 UNAME := $(shell uname)
 
 ifeq ($(UNAME), Darwin)
-	# Mac OS X
-	SERIALDUMP = $(CONTIKI)/tools/sky/serialdump-macos
-	MOTELIST = $(CONTIKI)/tools/sky/motelist-macos
-	MOTES = $(shell $(MOTELIST) 2>&- | grep usbserial | \
-			cut -f 4 -d \  | \
-			perl -ne 'print $$1 . " " if(m-(/dev/\w+\.\w+\-\w+)-);')
-	CMOTES=$(MOTES)
-endif
-
-INGA_RESET = $(CONTIKI)/tools/inga/inga_tool/inga_tool
-ifndef MOTELIST
+  # Mac OS X
+  SERIALDUMP = $(CONTIKI)/tools/sky/serialdump-macos
+  MOTELIST ?= $(CONTIKI)/tools/sky/motelist-macos
+  MOTES ?= $(shell $(MOTELIST) 2>&- | grep usbserial | \
+	  cut -f 4 -d \  | \
+	  perl -ne 'print $$1 . " " if(m-(/dev/\w+\.\w+\-\w+)-);')
+else ifeq ($(UNAME), Linux)
+  # Linux
+  INGA_RESET = $(CONTIKI)/tools/inga/inga_tool/inga_tool
   SERIALDUMP = $(CONTIKI)/tools/sky/serialdump-linux
-  MOTELIST = $(CONTIKI)/tools/sky/motelist-linux
-  MOTES = $(shell $(MOTELIST) 2>&- | grep USB | \
-     cut -f 4 -d \  | \
-     perl -ne 'print $$1 . " " if(m-(/dev/\w+)-);')
-  CMOTES=$(MOTES)
+  MOTELIST ?= $(CONTIKI)/tools/sky/motelist-linux
+  MOTES ?= $(shell $(MOTELIST) 2>&- | grep USB | \
+	  cut -f 4 -d \  | \
+	  perl -ne 'print $$1 . " " if(m-(/dev/\w+)-);')
+else
+  $(warning Operating system '$(UNAME)' not supported)
 endif
 
-motelist: sky-motelist
+CMOTES=$(MOTES)
 
 motelist:
 	$(MOTELIST)
+
 motes:
 	@echo $(MOTES)
 
 login:
 	$(SERIALDUMP) -b$(INGA_BAUDRATE) $(firstword $(CMOTES))
-ifdef MOTE
+
 AVRDUDE_PORT=$(CMOTES)
+
 %.upload:  %.hex
-	if test -x $(INGA_RESET); then $(INGA_RESET) -d $(MOTES) -r;sleep 0.5;fi
-	avrdude $(AVRDUDE_OPTIONS) -P $(MOTES) $(AVRDUDE_PROGRAMMER) -p $(MCU) -U flash:w:$< 
-	@echo DONE
+ifeq ($(UNAME), Linux)
+	@make -C $(CONTIKI)/tools/inga/inga_tool
 else
-%.upload: %.hex 
-	$(foreach PORT, $(MOTES), $(shell if test -x $(INGA_RESET); then $(INGA_RESET) -d $(PORT) -r;fi)) echo DONE; wait $!;
-	sleep 0.5
-	$(foreach PORT, $(MOTES), avrdude $(AVRDUDE_OPTIONS) -P $(PORT) $(AVRDUDE_PROGRAMMER) -p $(MCU) -U flash:w:$<& )echo DONE; wait $!
-endif
+	$(warning resetting not supported)
+endif  
+	@echo MOTES: $(MOTES)
+	@$(foreach PORT, \
+	  $(MOTES), \
+	  if test -x $(INGA_RESET); then \
+	    $(INGA_RESET) -d $(PORT) -r; \
+	  fi;)
+	@wait $!
+	@echo Waiting 0.5s; sleep 0.5
+	@echo Uploading...
+	$(foreach PORT, \
+	  $(MOTES), \
+	  avrdude $(AVRDUDE_OPTIONS) -P $(PORT) $(AVRDUDE_PROGRAMMER) -p $(MCU) -U flash:w:$<& )wait $!
+	@echo Upload done.
+
 include $(CONTIKIAVR)/Makefile.avr
 include $(CONTIKIAVR)/radio/Makefile.radio
