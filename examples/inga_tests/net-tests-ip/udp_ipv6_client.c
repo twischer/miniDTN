@@ -20,31 +20,31 @@ TEST_SUITE("udp_ipv6_client");
 PROCESS(udp_client_process, "UDP client process");
 AUTOSTART_PROCESSES(&udp_client_process);
 /*---------------------------------------------------------------------------*/
-static void
-tcpip_handler(void)
+static int
+check_reply(void)
 {
   char *str;
   static uint8_t msg_cnt = 0;
 
+  // validates received message and return 0 if equals expected
   if (uip_newdata()) {
     str = uip_appdata;
     str[uip_datalen()] = '\0';
     printf("Response from the server: '%s'\n", str);
 
-    sprintf(buff_, NET_TEST_CFG_REPLY_MSG, msg_cnt);          
+    sprintf(buff_, NET_TEST_CFG_REPLY_MSG, msg_cnt++);
 
-    msg_cnt++;
     if (msg_cnt == 10) {
-      TESTS_DONE();
       done = 1;
-    } else {
-      TEST_EQUALS(strcmp(buff_, str), 0);
     }
+    return strcmp(buff_, str);
   }
+
+  return 0;
 }
 /*---------------------------------------------------------------------------*/
 static void
-timeout_handler(void)
+send_message(void)
 {
   static int seq_id = 0;
   char buf[MAX_PAYLOAD_LEN];
@@ -64,6 +64,8 @@ PROCESS_THREAD(udp_client_process, ev, data)
 
   PROCESS_BEGIN();
 
+  TEST_BEGIN("send10x");
+
   printf("############################################################\n");
 
   /* NOTE: Use IPv6 address of server here. */
@@ -82,18 +84,21 @@ PROCESS_THREAD(udp_client_process, ev, data)
 
   etimer_set(&et, SEND_INTERVAL);
 
-  static int8_t idx;
   while (!done) {
 
     PROCESS_YIELD();
 
     if (etimer_expired(&et)) {
-      timeout_handler();
+      send_message();
       etimer_restart(&et);
     } else if (ev == tcpip_event) {
-      tcpip_handler();
+      TEST_EQUALS(check_reply(), 0);
     }
   }
+
+  TEST_END();
+
+  TESTS_DONE();
 
   PROCESS_END();
 }

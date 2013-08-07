@@ -3,18 +3,17 @@ tests:
   - name: net-udp
     timeout: 120
     devices:
-      - name: sender
-        programdir: examples/inga_tests/net-tests-ip
-        program: udp-sender
-        instrument: []
-        debug: []
-        cflags: "-fno-inline"
-        graph_options: ""
-    devices:
       - name: receiver
         programdir: examples/inga_tests/net-tests-ip
-        program: udp-receiver
+        program: udp_ipv6_server
         instrument: []
         debug: []
-        cflags: "-fno-inline"
+        cflags: "-fno-inline -DNODE_CONF_ID=0x4711 -DAPP_SETTINGS_SET=1"
+        graph_options: ""
+      - name: sender
+        programdir: examples/inga_tests/net-tests-ip
+        program: udp_ipv6_client
+        instrument: []
+        debug: []
+        cflags: "-fno-inline -DNODE_CONF_ID=0x2424 -DAPP_SETTINGS_SET=1"
         graph_options: ""

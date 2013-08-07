@@ -55,7 +55,6 @@ extern struct test_suite suite;
     TEST_FAIL(suite.test_name); \
   }
   
-static char buffer_[128];
 
 #define REPORT_WARNING  0
 #define REPORT_FAIL     1
@@ -79,7 +78,7 @@ static char buffer_[128];
 #define TEST_EQUALS(a, b) \
   if ((a) != (b)) { \
     suite.errors++; \
-    report_fail(#a "!=" #b); \
+    report_fail(a, b, #a " != " #b); \
     return; \
   }
 
@@ -89,7 +88,7 @@ static char buffer_[128];
 #define TEST_NEQ(a, b) \
   if ((a) == (b)) { \
     suite.errors++; \
-    report_fail(#a "==" #b); \
+    report_fail(a, b, #a " == " #b); \
     return; \
   }
 
@@ -99,7 +98,7 @@ static char buffer_[128];
 #define TEST_LEQ(a, b) \
   if ((a) > (b)) { \
     suite.errors++; \
-    report_fail(#a ">" #b); \
+    report_fail(a, b, #a " > " #b); \
     return; \
   }
 
@@ -109,12 +108,13 @@ static char buffer_[128];
 #define TEST_GEQ(a, b) \
   if ((a) < (b)) { \
     suite.errors++; \
-    report_fail(#a "<" #b); \
+    report_fail(a, b, #a " < " #b); \
     return; \
   }
 
-static void report_fail(char *msg) {
-  sprintf(buffer_, "%s@%s=>%s", suite.test_name, suite.test_type, msg);
+static void report_fail(int a, int b, char *msg) {
+  static char buffer_[128];
+  sprintf(buffer_, "%s@%s=>%s, %d, %d", suite.test_name, suite.test_type, msg, a, b);
   TEST_FAIL(buffer_); \
 }
 

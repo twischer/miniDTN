@@ -14,16 +14,18 @@
 #define PRINTF  printf
 
 static struct uip_udp_conn *server_conn;
+static uint8_t done = 0;
 
 TEST_SUITE("udp_ipv6_server");
 
 PROCESS(udp_server_process, "UDP server process");
 AUTOSTART_PROCESSES(&udp_server_process);
 /*---------------------------------------------------------------------------*/
-static void
-tcpip_handler(void)
+static int
+check_request(void)
 {
   static int seq_id = 0;
+  int8_t retval = 0;
   char buf[MAX_PAYLOAD_LEN];
 
   if (uip_newdata()) {
@@ -33,9 +35,7 @@ tcpip_handler(void)
     PRINTF("\n");
 
     sprintf(buf, NET_TEST_CFG_REQUEST_MSG, seq_id);
-    printf("I received: %s\n", (char*) uip_appdata);
-    printf("Should be : %s\n", (char*) buf);
-    TEST_EQUALS(strcmp(uip_appdata, buf), 0);
+    retval = strcmp(uip_appdata, buf); 
 
     // reply message
     sprintf(buf, NET_TEST_CFG_REPLY_MSG, seq_id++);
@@ -49,27 +49,34 @@ tcpip_handler(void)
     memset(&server_conn->ripaddr, 0, sizeof (server_conn->ripaddr));
 
     if (seq_id == 10) {
-      TESTS_DONE();
-      exit(0);
+      done = 1;
     }
+
+    return retval;
   }
+
+  return 0;
 }
 /*---------------------------------------------------------------------------*/
 PROCESS_THREAD(udp_server_process, ev, data)
 {
   PROCESS_BEGIN();
 
-  printf("############################################################\n");
+  TEST_BEGIN("receive10x");
 
   server_conn = udp_new(NULL, UIP_HTONS(0), NULL);
   udp_bind(server_conn, UIP_HTONS(3000));
 
-  while (1) {
+  while (!done) {
     PROCESS_YIELD();
     if (ev == tcpip_event) {
-      tcpip_handler();
+      TEST_EQUALS(check_request(), 0);
     }
   }
+
+  TEST_END();
+
+  TESTS_DONE();
 
   PROCESS_END();
 }
