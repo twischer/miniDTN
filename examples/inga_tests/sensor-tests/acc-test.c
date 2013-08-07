@@ -6,8 +6,8 @@
 #include "sensor-tests.h"
 
 /*--- Test parameters ---*/
-#define ACC_TEST_CFG_MIN_ACC    900L
-#define ACC_TEST_CFG_MAX_ACC    1100L
+#define ACC_TEST_CFG_MIN_ACC    800L
+#define ACC_TEST_CFG_MAX_ACC    1200L
 /*--- ---*/
 
 struct sensors_sensor *test_sensor; // TODO: use

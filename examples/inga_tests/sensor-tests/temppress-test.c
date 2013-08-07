@@ -40,6 +40,7 @@ test_temperature_value()
 {
   int tempval = pressure_sensor.value(TEMP);
   printf("temp: %d\n", tempval);
+  TEST_REPORT("Temperature", tempval, 10, "deg C");
   TEST_LEQ(tempval, TEMPPRESS_TEST_CFG_MAX_TEMP)
   TEST_GEQ(tempval, TEMPPRESS_TEST_CFG_MIN_TEMP)
 }
@@ -51,8 +52,22 @@ test_pressure_value()
   uint16_t press_l = pressure_sensor.value(PRESS_L);
   int32_t pressval = ((int32_t) press_h << 16);
   pressval |= (pressure_sensor.value(PRESS_L) & 0xFFFF);
+  TEST_REPORT("pressure", pressval, 100, "hPa");
   TEST_LEQ(pressval, TEMPPRESS_TEST_CFG_MAX_PRESS);
   TEST_GEQ(pressval, TEMPPRESS_TEST_CFG_MIN_PRESS);
+}
+/*---------------------------------------------------------------------------*/
+void
+test_pressure_mode()
+{
+  pressure_sensor.configure(PRESSURE_CONF_OPERATION_MODE, PRESSURE_MODE_ULTRA_LOW_POWER);
+  test_pressure_value();
+  pressure_sensor.configure(PRESSURE_CONF_OPERATION_MODE, PRESSURE_MODE_STANDARD);
+  test_pressure_value();
+  pressure_sensor.configure(PRESSURE_CONF_OPERATION_MODE, PRESSURE_MODE_HIGH_RES);
+  test_pressure_value();
+  pressure_sensor.configure(PRESSURE_CONF_OPERATION_MODE, PRESSURE_MODE_ULTRA_HIGH_RES);
+  test_pressure_value();
 }
 /*---------------------------------------------------------------------------*/
 
@@ -71,11 +86,11 @@ PROCESS_THREAD(test_process, ev, data)
   RUN_TEST("temppress_find", test_temppress_find);
   RUN_TEST("temppress_init", test_temppress_init);
   RUN_TEST("temperature_value", test_temperature_value);
-  RUN_TEST("pressure_value", test_pressure_value);
+  RUN_TEST("pressure_mode", test_pressure_mode);
   RUN_TEST("temppress_deinit", test_temppress_deinit);
   
   TESTS_DONE();
-  
+
   PROCESS_END();
 }
 
