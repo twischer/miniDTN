@@ -19,7 +19,8 @@ devices:
     path: /dev/ttyUSB0
     id: 0x12
 
-#  - name: sender
-#    class: INGA
-#    path: /dev/ttyUSB1
-#    id: 0x13
+  - name: sender
+    class: INGA
+    path: /dev/ttyUSB1
+    id: 0x13
+

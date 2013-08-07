@@ -1,7 +1,7 @@
 tests:
 ### FAT test
   - name: fat-default
-    timeout: 1200
+    timeout: 120
     devices:
       - name: receiver
         programdir: examples/inga_tests/fat-tests
@@ -12,7 +12,7 @@ tests:
         graph_options: ""
 ### FAT coop test
   - name: fat-coop
-    timeout: 1200
+    timeout: 120
     devices:
       - name: receiver
         programdir: examples/inga_tests/fat-tests

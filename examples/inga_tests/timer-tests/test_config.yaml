@@ -1,7 +1,7 @@
 tests:
 ### rtimer test
   - name: timer-rtimer
-    timeout: 1200
+    timeout: 120
     devices:
       - name: receiver
         programdir: examples/inga_tests/timer-tests
