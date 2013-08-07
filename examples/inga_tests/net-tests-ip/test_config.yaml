@@ -1,0 +1,20 @@
+tests:
+### RIME stack test
+  - name: net-udp
+    timeout: 120
+    devices:
+      - name: sender
+        programdir: examples/inga_tests/net-tests-ip
+        program: udp-sender
+        instrument: []
+        debug: []
+        cflags: "-fno-inline"
+        graph_options: ""
+    devices:
+      - name: receiver
+        programdir: examples/inga_tests/net-tests-ip
+        program: udp-receiver
+        instrument: []
+        debug: []
+        cflags: "-fno-inline"
+        graph_options: ""

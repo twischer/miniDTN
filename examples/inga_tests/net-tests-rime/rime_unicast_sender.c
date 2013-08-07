@@ -7,18 +7,11 @@
 
 #include <stdio.h>
 #include "../test.h"
-
-/*--- Test parameters ---*/
-#define NET_TEST_CFG_TARGET_NODE_ID     0x4711
-#define NET_TEST_CFG_REQUEST_MSG        "This is request message %02d"
-#define NET_TEST_CFG_REQUEST_MSG_LEN    27
-#define NET_TEST_CFG_REPLY_MSG          "This is reply message %02d"
-#define NET_TEST_CFG_REPLY_MSG_LEN      25
-/*--- ---*/
+#include "test-params.h"
 
 static char buff_[30];
 
-TEST_SUITE("net_test");
+TEST_SUITE("net_test_sender");
 
 /*---------------------------------------------------------------------------*/
 PROCESS(rime_unicast_sender, "Rime Unicast Sender");
