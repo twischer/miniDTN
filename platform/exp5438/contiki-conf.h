@@ -1,5 +1,4 @@
 /* -*- C -*- */
-/* @(#)$Id: contiki-conf.h,v 1.91 2011/01/09 21:04:14 adamdunkels Exp $ */
 
 #ifndef CONTIKI_CONF_H
 #define CONTIKI_CONF_H
@@ -141,9 +140,9 @@
 #ifndef UIP_CONF_DS6_NBR_NBU
 #define UIP_CONF_DS6_NBR_NBU     30
 #endif /* UIP_CONF_DS6_NBR_NBU */
-#ifndef UIP_CONF_DS6_ROUTE_NBU
-#define UIP_CONF_DS6_ROUTE_NBU   30
-#endif /* UIP_CONF_DS6_ROUTE_NBU */
+#ifndef UIP_CONF_MAX_ROUTES
+#define UIP_CONF_MAX_ROUTES   30
+#endif /* UIP_CONF_MAX_ROUTES */
 
 #define UIP_CONF_ND6_SEND_RA		0
 #define UIP_CONF_ND6_REACHABLE_TIME     600000

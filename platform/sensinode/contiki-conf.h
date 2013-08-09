@@ -24,6 +24,10 @@
 /* Logging.. */
 #define LOG_CONF_ENABLED		0
 
+#ifndef STACK_CONF_DEBUGGING
+#define STACK_CONF_DEBUGGING  0
+#endif
+
 /* Energest Module */
 #ifndef ENERGEST_CONF_ON
 #define ENERGEST_CONF_ON      0
@@ -202,12 +206,7 @@
 
 /* ND and Routing */
 #ifndef UIP_CONF_ROUTER
-#define UIP_CONF_ROUTER                      1 
-#endif
-
-/* Prevent SDCC compile error when UIP_CONF_ROUTER == 0 */
-#if !UIP_CONF_ROUTER
-#define UIP_CONF_DS6_AADDR_NBU               1
+#define UIP_CONF_ROUTER                      1
 #endif
 
 #define UIP_CONF_ND6_SEND_RA                 0
@@ -215,7 +214,7 @@
 #define RPL_CONF_STATS                       0
 #define RPL_CONF_MAX_DAG_ENTRIES             1
 #ifndef RPL_CONF_OF
-#define RPL_CONF_OF rpl_of_etx
+#define RPL_CONF_OF rpl_mrhof
 #endif
 
 #define UIP_CONF_ND6_REACHABLE_TIME     600000
@@ -224,8 +223,8 @@
 #ifndef UIP_CONF_DS6_NBR_NBU
 #define UIP_CONF_DS6_NBR_NBU                 4 /* Handle n Neighbors */
 #endif
-#ifndef UIP_CONF_DS6_ROUTE_NBU
-#define UIP_CONF_DS6_ROUTE_NBU               4 /* Handle n Routes */
+#ifndef UIP_CONF_MAX_ROUTES
+#define UIP_CONF_MAX_ROUTES               4 /* Handle n Routes */
 #endif
 
 /* uIP */
@@ -276,5 +275,10 @@
 #define RIME_CONF_NO_POLITE_ANNOUCEMENTS     0
 #define QUEUEBUF_CONF_NUM                    8
 #endif /* UIP_CONF_IPV6 */
+
+/* Prevent SDCC compile error when UIP_CONF_ROUTER == 0 */
+#if !UIP_CONF_ROUTER
+#define UIP_CONF_DS6_AADDR_NBU               1
+#endif
 
 #endif /* __CONTIKI_CONF_H__ */
