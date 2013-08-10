@@ -1,4 +1,8 @@
 /**
+ * \addtogroup esb
+ * @{ */
+
+/**
 \defgroup quickref Function quick reference
 @{
 
@@ -76,3 +80,4 @@ actively queried to check when they have expired.
 
 
 *//** @{ */
+/** @{ */

@@ -30,7 +30,7 @@
  */
 
 /**
- * \addtogroup Device Interfaces
+ * \addtogroup cfs
  * @{
  *
  * \addtogroup diskio_layer

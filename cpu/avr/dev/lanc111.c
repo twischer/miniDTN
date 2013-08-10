@@ -167,9 +167,12 @@
 #endif
 
 /*!
- * \addtogroup xgSmscRegs
- */
-/*@{*/
+ * \addtogroup avr
+ * @{ */
+/*!
+ * \defgroup xgSmscRegs
+ *
+ * @{ */
 
 /*! 
  * \brief Bank select register. 
@@ -1359,4 +1362,7 @@ lanc111_init(void)
 
     return 0;
 }
+
+/** @} */
+/** @} */
 

@@ -31,7 +31,7 @@
  */
 
 /**
- * \addtogroup Device Interfaces
+ * \addtogroup inga_device_driver
  * @{
  *
  * \addtogroup microSD_interface

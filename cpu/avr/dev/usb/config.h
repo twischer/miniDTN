@@ -53,7 +53,7 @@
 #define _CONFIG_H_
 
 /**
-   @addtogroup usb
+   @addtogroup usbstick
    @{
 */
 

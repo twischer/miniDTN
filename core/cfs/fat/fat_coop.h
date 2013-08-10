@@ -30,7 +30,7 @@
  */
  
  /**
- * \addtogroup Drivers
+ * \addtogroup cfs
  * @{
  *
  * \defgroup fat_coop_driver FAT Driver - Cooperative Additions

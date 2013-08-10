@@ -44,8 +44,15 @@ More information about the MSB430 platform can be found at
 Scatterweb: http://www.scatterweb.com/content/products/MSB_en.html
 
 @{
-
 */
+
+/** \defgroup msb_interfaces Interfaces
+ * @{ */
+/** @} */
+
+/** \defgroup msb_storage Storage
+ * @{ */
+/** @} */
 
 /** @} */
 /** @} */

@@ -1,4 +1,7 @@
 /**
+ * \addtogroup platform
+ * @{ */
+/**
  * \defgroup mbxxx-platform The STM32W MBXXX platform.
  *
  * The STM32W MBXXX platform.
@@ -99,4 +102,5 @@ typedef unsigned long rtimer_clock_t;
 #define UIP_CONF_BYTE_ORDER      UIP_LITTLE_ENDIAN
 
 #endif /* __PLATFORM_CONF_H__ */
+/** @} */
 /** @} */

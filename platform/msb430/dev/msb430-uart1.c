@@ -42,7 +42,7 @@ Berlin, 2007
 
 /**
  * @file		ScatterWeb.Uart.c
- * @addtogroup	interfaces
+ * @addtogroup	msb_interfaces
  * @brief		UART interface
  * @author		Michael Baar	<baar@inf.fu-berlin.de>
  *
