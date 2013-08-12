@@ -41,11 +41,30 @@
 
 /**
  * \defgroup inga_battery_driver Battery Sensor
- * 
+ *
  * This sensor interface allows to monitor the supply voltage and current
  * of the INGA sensor platform.
- * @{
- */
+ *
+ * \section query_measure Query measurements
+ * <code>acc_sensor.value(channel)</code>
+ *
+ * The sensor provides 2 data channels.
+ * - One provides battery voltage level
+ * - One provides battery current
+ * A detailed list can be found at \ref batt_out_channels "Data Output Channels"
+ *
+ * \section usage Example Usage
+ *
+\code
+#include <sensors.h>
+[...]
+struct sensors_sensor batterysensor = find_sensor("Batt");
+ACTIVATE_SENSOR(batterysensor);
+[...]
+int v = batterysensor.value(BATTERY_VOLTAGE);
+int i = batterysensor.value(BATTERY_CURRENT);
+\endcode
+ * @{ */
 
 #ifndef BATTERY_SENSOR_H
 #define	BATTERY_SENSOR_H
@@ -56,10 +75,16 @@ extern const struct sensors_sensor battery_sensor;
 
 #define BATTERY_SENSOR "Batt"
 
+/**
+ * \name Data Output Channels
+ * \anchor batt_out_channels
+ * 
+ * @{ */
 /** Returns battery voltage im mV */
 #define BATTERY_VOLTAGE   2
 /** Returns battery current im mA */
 #define BATTERY_CURRENT   3
+/** @} */
 
 #endif	/* BATTERY_SENSOR_H */
 

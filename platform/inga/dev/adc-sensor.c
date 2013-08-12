@@ -36,8 +36,6 @@
 
 #include "adc-sensor.h"
 
-static uint8_t cfg_mode;
-static uint8_t cfg_ref;
 
 const struct sensors_sensor adc_sensor;
 uint8_t adc_state=0;

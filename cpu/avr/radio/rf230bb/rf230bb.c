@@ -1406,7 +1406,7 @@ rf230_read_fakeack(void *buf, unsigned short bufsize)
 	buff[2]=ack_seqnum;
 	return bufsize;
   }
-  rf230_read(buf,bufsize);
+  return rf230_read(buf,bufsize);
 }
 /*---------------------------------------------------------------------------*/
 /* Read packet that was uploaded from Radio in ISR, else return zero.

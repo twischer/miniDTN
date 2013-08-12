@@ -160,7 +160,7 @@ static int32_t bmp085_read_uncomp_temperature(void);
 int8_t
 bmp085_available(void)
 {
-  uint8_t i;
+  uint8_t i = 0;
 
   i2c_init();
   while (bmp085_read16bit_data(BMP085_AC1_ADDR) == 0x00) {

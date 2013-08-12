@@ -66,8 +66,8 @@ int8_t bmp085_available(void);
 /**
  * \brief Initializes the BMP085 Pressure Sensor
  *
- * \retval 0 at45db available
- * \retval 1 at45db not available
+ * \retval 0 bmp085 available
+ * \retval 1 bmp085 not available
  */
 int8_t bmp085_init(void);
 

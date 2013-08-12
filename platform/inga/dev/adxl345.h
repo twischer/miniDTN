@@ -230,6 +230,14 @@ typedef struct {
 } acc_data_t;
 
 /**
+ * \brief Checks if ADXL345 is available
+ *
+ * \retval 1 available
+ * \retval 0 not availabe
+ */
+int8_t adxl345_available(void);
+
+/**
  * \brief Initialize the ADXL345 accelerometer
  * 
  * Default settings are: TODO

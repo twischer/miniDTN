@@ -300,10 +300,8 @@ bail:
 settings_status_t
 settings_delete(settings_key_t key, uint8_t index)
 {
-  // Requires the settings store to be shifted. Currently unimplemented.
-  // TODO: Writeme!
 
-  settings_status_t ret = SETTINGS_STATUS_NOT_FOUND;
+  //settings_status_t ret = SETTINGS_STATUS_NOT_FOUND;  ///@todo: returns INVALID only?
   eeprom_addr_t current_item = SETTINGS_TOP_ADDR;
   eeprom_addr_t tmp_addr;
   uint8_t tmp_data;

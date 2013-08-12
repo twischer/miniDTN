@@ -100,6 +100,7 @@ configure(int type, int c)
       return 0;
       break;
   }
+  return 0;
 }
 /*----------------------------------------------------------------------------*/
 SENSORS_SENSOR(battery_sensor, BATTERY_SENSOR, value, configure, status);
