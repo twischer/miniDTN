@@ -47,25 +47,25 @@
 //Currently you may choose just one of the following for the coffee file sytem
 //A static file sysstem allows file rewrites but no extensions or new files
 //This allows a static linked list to index into the file system
-#if COFFEE_FILES==1             //1=eeprom for static file system
-#define COFFEE_AVR_EEPROM 1
+#if COFFEE_DEVICE==1             //1=eeprom for static file system
+#define COFFEE_INGA_EEPROM 1
 #define COFFEE_STATIC     1
-#elif COFFEE_FILES==2           //2=eeprom for full file system
-#define COFFEE_AVR_EEPROM 1
-#elif COFFEE_FILES==3           //3=program flash for static file system
-#define COFFEE_AVR_FLASH  1
+#elif COFFEE_DEVICE==2           //2=eeprom for full file system
+#define COFFEE_INGA_EEPROM 1
+#elif COFFEE_DEVICE==3           //3=program flash for static file system
+#define COFFEE_INGA_FLASH  1
 #define COFFEE_STATIC     1
-#elif COFFEE_FILES==4           //4=program flash with full file system
-#define COFFEE_AVR_FLASH  1
-#elif COFFEE_FILES==5			//5=use external onboard flash with full file system
-#define COFFEE_AVR_EXTERNAL 1
-#elif COFFEE_FILES==6           //6=sdcard flash for full file system
-#define COFFEE_AVR_SDCARD  1
+#elif COFFEE_DEVICE==4           //4=program flash with full file system
+#define COFFEE_INGA_FLASH  1
+#elif COFFEE_DEVICE==5			//5=use external onboard flash with full file system
+#define COFFEE_INGA_EXTERNAL 1
+#elif COFFEE_DEVICE==6           //6=sdcard flash for full file system
+#define COFFEE_INGA_SDCARD  1
 #else
-#error COFFEE_FILES value is undefined
+#error COFFEE_DEVICE value is undefined
 #endif
 
-#ifdef COFFEE_AVR_EEPROM
+#ifdef COFFEE_INGA_EEPROM
 #include "dev/eeprom.h"
 //1284p EEPROM has 512 pages of 8 bytes each = 4KB
 
@@ -104,9 +104,9 @@ void avr_eeprom_erase(uint16_t sector);
 #define COFFEE_READ(buf, size, offset) \
         eeprom_read (COFFEE_START + (offset), (unsigned char *)(buf), (size))
 
-#endif /* COFFEE_AVR_EEPROM */
+#endif /* COFFEE_INGA_EEPROM */
 
-#ifdef COFFEE_AVR_FLASH
+#ifdef COFFEE_INGA_FLASH
 /* 1284p PROGMEM has 512 pages of 256 bytes each = 128KB
  * Writing to the last 32 NRRW pages will halt the CPU.
  * Take care not to overwrite the .bootloader section...
@@ -163,10 +163,10 @@ void avr_flash_erase(coffee_page_t sector);
 void avr_flash_read (CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE size);
 void avr_flash_write(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE size);
 
-#endif /* COFFEE_AVR_FLASH */
+#endif /* COFFEE_INGA_FLASH */
 
 
-#ifdef COFFEE_AVR_EXTERNAL
+#ifdef COFFEE_INGA_EXTERNAL
 
 /* Byte page size, starting address on page boundary, and size of the file system */
 #define COFFEE_PAGE_SIZE          528
@@ -216,9 +216,9 @@ void external_flash_read(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSE
 
 void external_flash_erase(coffee_page_t sector);
 
-#endif /* COFFEE_AVR_EXTERNAL */
+#endif /* COFFEE_INGA_EXTERNAL */
 
-#ifdef COFFEE_AVR_SDCARD
+#ifdef COFFEE_INGA_SDCARD
 /* Byte page size, starting address on page boundary, and size of the file system */
 #define COFFEE_PAGE_SIZE          512
 #ifndef COFFEE_ADDRESS
@@ -265,7 +265,7 @@ void sd_read(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE size)
 
 void sd_erase(coffee_page_t sector);
 
-#endif /* COFFEE_AVR_SDCARD */
+#endif /* COFFEE_INGA_SDCARD */
 
 int coffee_file_test(void);
 #endif /* !COFFEE_ARCH_H */

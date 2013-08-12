@@ -123,6 +123,10 @@ uint8_t debugflowsize, debugflow[DEBUGFLOWSIZE];
 #include "cfs/cfs-coffee.h"
 #endif
 
+#if WITH_UIP6
+#include "net/uip-ds6.h"
+#endif /* WITH_UIP6 */
+
 #include "net/rime.h"
 
 // Apps 

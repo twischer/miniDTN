@@ -115,37 +115,16 @@ unsigned long clock_seconds(void);
 /* Network setup. The new NETSTACK interface requires RF230BB (as does ip4) */
 #if RF230BB
 #undef PACKETBUF_CONF_HDR_SIZE                  //Use the packetbuf default for header size
-#else
+#else /* RF230BB */
 #define PACKETBUF_CONF_HDR_SIZE   0            //RF230 combined driver/mac handles headers internally
-#endif /*RF230BB */
-
-
-#if UIP_CONF_IPV6
-#define NETSTACK_CONF_NETWORK     sicslowpan_driver
-#define RIMEADDR_CONF_SIZE        8
-#define UIP_CONF_ICMP6            1
-#define UIP_CONF_UDP              1
-#define UIP_CONF_TCP              1
-//#define UIP_CONF_IPV6_RPL       0
-#define SICSLOWPAN_CONF_COMPRESSION SICSLOWPAN_COMPRESSION_HC06
-
-#elif WITH_DTN
-#define NETSTACK_CONF_NETWORK     dtn_network_driver
-#define RIMEADDR_CONF_SIZE        2
-
-#else
-/* ip4 should build but is largely untested */
-#define NETSTACK_CONF_NETWORK     rime_driver
-#define RIMEADDR_CONF_SIZE        2
-
-#endif /* UIP_CONF_IPV6 */
+#endif /* RF230BB */
 
 
 /* See uip-ds6.h */
 #define UIP_CONF_DS6_NBR_NBU      20
 #define UIP_CONF_DS6_DEFRT_NBU    2
 #define UIP_CONF_DS6_PREFIX_NBU   3
-#define UIP_CONF_DS6_ROUTE_NBU    20
+#define UIP_CONF_MAX_ROUTES       20
 #define UIP_CONF_DS6_ADDR_NBU     3
 #define UIP_CONF_DS6_MADDR_NBU    0
 #define UIP_CONF_DS6_AADDR_NBU    0
@@ -189,20 +168,23 @@ unsigned long clock_seconds(void);
 #define UIP_CONF_IP_FORWARD       0
 #define UIP_CONF_FWCACHE_SIZE     0
 
-#define UIP_CONF_IPV6_CHECKS      1
-#define UIP_CONF_IPV6_QUEUE_PKT   1
-#define UIP_CONF_IPV6_REASSEMBLY  0
 
 #define UIP_CONF_UDP_CHECKSUMS    1
 #define UIP_CONF_TCP_SPLIT        1
 #define UIP_CONF_DHCP_LIGHT       1
 
-
+/*
+ * Network stack setup.
+ */
 #if WITH_DTN
+#define NETSTACK_CONF_NETWORK     dtn_network_driver
 #define NETSTACK_CONF_MAC         csma_driver
 #define NETSTACK_CONF_RDC         nullrdc_driver 
 #define NETSTACK_CONF_FRAMER      framer_802154
 #define NETSTACK_CONF_RADIO       rf230_driver
+
+#define RIMEADDR_CONF_SIZE        2
+
 #define CHANNEL_802_15_4          26
 #define RF230_CONF_AUTOACK        1
 #define SICSLOWPAN_CONF_ACK_ALL   0
@@ -211,12 +193,42 @@ unsigned long clock_seconds(void);
 #define QUEUEBUF_CONF_NUM         16
 #endif
 
-#else /* No radio cycling */
-
+#elif WITH_UIP6 /* WITH_DTN */
+#define NETSTACK_CONF_NETWORK     sicslowpan_driver
 #define NETSTACK_CONF_MAC         nullmac_driver
 #define NETSTACK_CONF_RDC         nullrdc_driver
 #define NETSTACK_CONF_FRAMER      framer_802154
 #define NETSTACK_CONF_RADIO       rf230_driver
+
+#define RIMEADDR_CONF_SIZE        8
+
+#define UIP_CONF_ICMP6            1
+#define UIP_CONF_UDP              1
+#define UIP_CONF_TCP              1
+//#define UIP_CONF_IPV6_RPL       0
+#define SICSLOWPAN_CONF_COMPRESSION SICSLOWPAN_COMPRESSION_HC06
+
+#else /* WITH_DTN */
+/* ip4 should build but is largely untested */
+#define NETSTACK_CONF_NETWORK     rime_driver
+#define NETSTACK_CONF_MAC         nullmac_driver
+#define NETSTACK_CONF_RDC         nullrdc_driver
+#define NETSTACK_CONF_FRAMER      framer_802154
+#define NETSTACK_CONF_RADIO       rf230_driver
+
+#define RIMEADDR_CONF_SIZE        2
+
+#endif /* WITH_DTN */
+
+#ifdef WITH_UIP6
+#define UIP_CONF_IPV6             1
+#define UIP_CONF_IPV6_CHECKS      1
+#define UIP_CONF_IPV6_QUEUE_PKT   1
+#define UIP_CONF_IPV6_REASSEMBLY  0
+#endif /* WITH_UIP6 */
+
+#ifndef WITH_DTN
+
 #define CHANNEL_802_15_4          26
 #define RADIO_CONF_CALIBRATE_INTERVAL 256
 /* AUTOACK receive mode gives better rssi measurements,
@@ -246,36 +258,36 @@ unsigned long clock_seconds(void);
 // RADIO_PAN_ID
 #ifndef RADIO_CONF_PAN_ID
 	#define RADIO_PAN_ID	IEEE802154_PANID
-#else
+#else /* RADIO_CONF_PAN_ID */
 	#define RADIO_PAN_ID	RADIO_CONF_PAN_ID
-#endif
+#endif /* RADIO_CONF_PAN_ID */
 
 /* Assure NODE_ID is not set manually */
 #ifdef NODE_ID
 	#undef NODE_ID
 	#warning Use NODE_CONF_ID to define your NodeId
-#endif
+#endif /* NODE_ID */
 
 // NODE_ID
 #ifndef NODE_CONF_ID
 	#define NODE_ID	0
-#else
+#else /* NODE_CONF_ID */
 	#define NODE_ID	NODE_CONF_ID
-#endif
+#endif /* NODE_CONF_ID */
 
 // RADIO_CHANNEL
 #ifndef RADIO_CONF_CHANNEL
 	#define RADIO_CHANNEL	26
-#else
+#else /* RADIO_CONF_CHANNEL */
 	#define RADIO_CHANNEL	RADIO_CONF_CHANNEL
-#endif
+#endif /* RADIO_CONF_CHANNEL */
 
 // RADIO_TX_POWER
 #ifndef RADIO_CONF_TX_POWER
 	#define RADIO_TX_POWER	0
-#else
+#else /* RADIO_CONF_TX_POWER */
 	#define RADIO_TX_POWER	RADIO_CONF_TX_POWER
-#endif
+#endif /* RADIO_CONF_TX_POWER */
 
 #endif   /* Network setup */
 

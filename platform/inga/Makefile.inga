@@ -3,17 +3,127 @@ CONTIKI_TARGET_DIRS = . dev
 CONTIKI_CORE=contiki-inga-main
 CONTIKI_TARGET_MAIN = ${CONTIKI_CORE}.o
 CONTIKI_TARGET_SOURCEFILES += contiki-inga-main.c
-CONTIKI_TARGET_SOURCEFILES += i2c.c  mspi.c microSD.c 
-#The avr cpu makefile will also add these files if COFFEE_FILES is specified.
-#CONTIKI_TARGET_SOURCEFILES += cfs-coffee.c cfs-coffee-arch.c
-DRIVERS = adc.c at45db.c adxl345.c bmp085.c l3g4200d.c mpl115a.c
-SENSORS = sensors.c acc-sensor.c adc-sensor.c battery-sensor.c button-sensor.c gyro-sensor.c pressure-sensor.c radio-sensor.c
-CONTIKI_TARGET_SOURCEFILES += $(DRIVERS) $(SENSORS)
+# INGA platform source files
+INGA_INTERFACES = i2c.c  mspi.c microSD.c 
+INGA_DRIVERS = adc.c at45db.c adxl345.c bmp085.c l3g4200d.c mpl115a.c
+INGA_SENSORS = sensors.c acc-sensor.c adc-sensor.c battery-sensor.c \
+	       button-sensor.c gyro-sensor.c pressure-sensor.c radio-sensor.c
+INGA_SOURCEFILES += $(INGA_INTERFACES) $(INGA_DRIVERS) $(INGA_SENSORS)
+
+# Enable profiling if needed
+ifeq ($(ENABLE_PROFILING),1)
+  INGA_SOURCEFILES += profiling.c sprofiling.c
+endif
+
+# Enable SLIP support
+ifeq ($(CONF_SLIP),1)
+  INGA_SOURCEFILES += slip_uart0.c slip.c slip-bridge.c
+  CFLAGS += -DINGA_CONF_WITH_SLIP=1
+endif
+
+CONTIKI_TARGET_SOURCEFILES += $(INGA_SOURCEFILES)
+
+# Enable IPv6
+ifeq ($(UIP_CONF_IPV6),1)
+  CFLAGS += -DWITH_UIP6=1
+endif
+
+# Enable DTN support
+ifeq ($(CONF_DTN),1)
+  CFLAGS += -DWITH_DTN=1
+endif
+
+#Use coffee as default file system
+ifndef CFS
+  CFS=coffee
+endif
+
+#Check for file system type
+ifeq ($(CFS),coffee)
+  #use program flash for static file system if not specified
+  ifndef COFFEE_DEVICE
+    COFFEE_DEVICE=3
+  endif
+else ifeq ($(CFS),fat)
+  include $(CONTIKI)/core/cfs/fat/Makefile.fat
+endif
+
+
+#For a coffee file system, the application makefile can define COFFEE_DEVICE=n
+#to select the type and COFFEE_ADDRESS=0xaaaaaaaa as the starting byte address.
+#If only one is define the other will use the (Raven webserver 1284p) defaults
+#of a static file system in program flash starting at 0x10000 (word address=0x8000)
+#For program flash the starting address is rounded down to a page boundary in cfs-coffee-arch.h
+#It should be rounded down here too if someone can figure out how :)
+
+COFFEE_DEFAULT_ADDR=0x0 
+
+ifdef COFFEE_DEVICE                #if files are defined force definition of COFFEE_ADDRESS
+ ifndef COFFEE_ADDRESS
+  ifeq ($(COFFEE_DEVICE), 1)         # 1 = eeprom static
+   $(info Coffee in EEPROM (static))
+   COFFEE_ADDRESS=COFFEE_DEFAULT_ADDR 
+  else ifeq ($(COFFEE_DEVICE), 2)    # 2 = eeprom dynamic
+   $(info Coffee in EEPROM (dynamic))
+   COFFEE_ADDRESS=COFFEE_DEFAULT_ADDR 
+  else ifeq ($(COFFEE_DEVICE), 3)    # 3 = program flash static
+   $(info Coffee in Flash (static))
+   COFFEE_ADDRESS=0x14000
+  else ifeq ($(COFFEE_DEVICE), 4)    # 4 = program flash dynamic
+   $(info Coffee in Flash (dynamic))
+   COFFEE_ADDRESS=0x10000
+  else ifeq ($(COFFEE_DEVICE), 5)    # 5 = INGA external flash
+   $(info Coffee in external Flash)
+   COFFEE_ADDRESS=COFFEE_DEFAULT_ADDR 
+  else ifeq ($(COFFEE_DEVICE), 6)    # 6 = INGA SDCard slot
+   $(info Coffee on SD-Card)
+   COFFEE_ADDRESS=COFFEE_DEFAULT_ADDR
+  else
+   $(error Unsupported coffee file type $(COFFEE_DEVICE), supported are \
+     1=EEPROM static, \
+     2=EEPROM dynamic, \
+     3=Flash static, \
+     4=Flash dynamic, \
+     5=Flash external, \
+     6=SD card)
+  endif
+ endif
+ COFFEE_ADDRESS1 = $(shell echo $$(( $(COFFEE_ADDRESS) + 1 )))
+ CONTIKI_TARGET_SOURCEFILES += cfs-coffee.c cfs-coffee-arch.c 
+ CFLAGS += -DCOFFEE_DEVICE=$(COFFEE_DEVICE) -DCOFFEE_ADDRESS=$(COFFEE_ADDRESS)
+ ifneq ($(COFFEE_ADDRESS), DEFAULT)
+   LDFLAGS+= -Wl,--section-start=.coffeefiles=$(COFFEE_ADDRESS)
+ endif
+
+ #If $make invokation passed starting address use phony target to force synchronization of source to .coffeefiles section
+ #Warning: recompilation will not be forced if the starting address is then dropped, with dire consequences:
+ # -->Source that uses COFFEE_DEVICE and read macros for conditional compilation will be left hanging!
+ # -->Object modules that used .coffeesection will overlap the .data section.
+ # -->$make clean is safest.
+#ifeq ($(origin COFFEE_ADDRESS), command line)
+# ifeq ($(COFFEE_DEVICE), 2)      #safest to force recompilation even if eeprom address is changed, might have been switched from flash
+   .PHONY : coffee
+   coffee:
+   $(OBJECTDIR)/cfs-coffee-arch.o    : coffee      #cfs-coffee-arch uses COFFEE_DEVICE, COFFEE_ADDRESS
+   $(OBJECTDIR)/contiki-raven-main.o : coffee      #Raven Webserver uses COFFEE_DEVICE
+   $(OBJECTDIR)/httpd-fs.o           : coffee      #this file contains httpd-fsdata.c which has the .coffeesection data
+   $(OBJECTDIR)/httpd.c.o            : coffee      #uses defines to read from file system
+   $(OBJECTDIR)/httpd-cgi.o          : coffee      #uses defines to read from file system
+   $(OBJECTDIR)/cfs-coffee.o         : coffee      #core routine requires recompilation
+
+#endif
+#endif
+
+endif
+
 
 CONTIKIAVR=$(CONTIKI)/cpu/avr
 CONTIKIBOARD=.
 
-CONTIKI_PLAT_DEFS = -DF_CPU=8000000UL -DAUTO_CRC_PADDING=2
+INGA_FCPU=8000000UL
+INGA_DEFS=-DAUTO_CRC_PADDING=2
+CONTIKI_PLAT_DEFS = -DF_CPU=$(INGA_FCPU) $(INGA_DEFS)
+#CONTIKI_PLAT_DEFS = -DF_CPU=8000000UL -DAUTO_CRC_PADDING=2
 
 MCU=atmega1284p
 
@@ -36,21 +146,10 @@ AVRDUDE_PROGRAMMER=avr109
 # Baudrate
 AVRDUDE_OPTIONS=-b 230400 
 
-# enable SLIP support
-ifdef WITH_SLIP
-CONTIKI_TARGET_SOURCEFILES += slip_uart0.c slip.c slip-bridge.c
-CFLAGS += -DINGA_CONF_WITH_SLIP=1
+ifndef INGA_CONF_BAUDRATE
+  INGA_CONF_BAUDRATE = 38400
 endif
-
-# DTN support
-ifdef CONF_DTN
-  CFLAGS += -DWITH_DTN=1
-endif
-
-ifndef INGA_BAUDRATE
-  INGA_BAUDRATE = 38400
-endif
-CFLAGS+=-DUSART_BAUD_INGA=USART_BAUD_$(INGA_BAUDRATE)
+CFLAGS+=-DUSART_BAUD_INGA=USART_BAUD_$(INGA_CONF_BAUDRATE)
 
 ifdef MOTES
   MOTELIST=1
@@ -87,12 +186,7 @@ motelist:
 motes:
 	@echo $(MOTES)
 
-login:
-	$(SERIALDUMP) -b$(INGA_BAUDRATE) $(firstword $(CMOTES))
-
-AVRDUDE_PORT=$(CMOTES)
-
-%.upload:  %.hex
+reset:
 ifeq ($(UNAME), Linux)
 	@make -C $(CONTIKI)/tools/inga/inga_tool
 else
@@ -106,6 +200,14 @@ endif
 	  fi;)
 	@wait $!
 	@echo Waiting 0.5s; sleep 0.5
+
+
+login:
+	$(SERIALDUMP) -b$(INGA_BAUDRATE) $(firstword $(CMOTES))
+
+AVRDUDE_PORT=$(CMOTES)
+
+%.upload:  %.hex reset
 	@echo Uploading...
 	$(foreach PORT, \
 	  $(MOTES), \

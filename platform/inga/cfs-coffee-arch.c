@@ -60,7 +60,7 @@
 /*---------------------------------------------------------------------------*/
 /*---------------------------EEPROM ROUTINES---------------------------------*/
 /*---------------------------------------------------------------------------*/
-#ifdef COFFEE_AVR_EEPROM
+#ifdef COFFEE_INGA_EEPROM
 
 /* Letting .bss initialize nullb to zero saves COFFEE_SECTOR_SIZE of flash */
 //static const unsigned char nullb[COFFEE_SECTOR_SIZE] = {0};
@@ -75,9 +75,9 @@ avr_eeprom_erase(uint16_t sector)
   eeprom_write(COFFEE_START + sector * COFFEE_SECTOR_SIZE,
           (unsigned char *) nullb, sizeof (nullb));
 }
-#endif /* COFFEE_AVR_EEPROM */
+#endif /* COFFEE_INGA_EEPROM */
 
-#ifdef COFFEE_AVR_FLASH
+#ifdef COFFEE_INGA_FLASH
 /*---------------------------------------------------------------------------*/
 /*-----------------------Internal FLASH ROUTINES-----------------------------*/
 /*---------------------------------------------------------------------------*/
@@ -321,13 +321,13 @@ avr_flash_write(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE si
   SREG = sreg;
 }
 
-#endif /* COFFEE_AVR_FLASH */
+#endif /* COFFEE_INGA_FLASH */
 
 
 /*---------------------------------------------------------------------------*/
 /*-----------------------External FLASH ROUTINES-----------------------------*/
 /*---------------------------------------------------------------------------*/
-#ifdef COFFEE_AVR_EXTERNAL
+#ifdef COFFEE_INGA_EXTERNAL
 
 #include "dev/at45db.h"
 void
@@ -514,9 +514,9 @@ void external_flash_erase(coffee_page_t sector) {
 }
  */
 
-#endif /* COFFEE_AVR_EXTERNAL */
+#endif /* COFFEE_INGA_EXTERNAL */
 
-#ifdef COFFEE_AVR_SDCARD
+#ifdef COFFEE_INGA_SDCARD
 #include "cfs/fat/diskio.h"
 static uint8_t cfs_buffer[512];
 struct diskio_device_info *cfs_info = 0;
@@ -681,59 +681,5 @@ sd_erase(coffee_page_t page)
   watchdog_periodic();
 }
 
-#endif /* COFFEE_AVR_SDCARD */
-
-
-/*---------------------------------------------------------------------------*/
-/*---------------------------http fs routines--------------------------------*/
-/*---------------------------------------------------------------------------*/
-
-/* @todo: move this to a seperate file? */
-/*httpd-fs routines
-  getchar is straigtforward.
-  strcmp only needs to handle file names for fs_open. Note filename in buf will not be zero terminated
-    if it fills the coffee name field, so a pseudo strcmp is done here.
-  strchr searches for script starts so must handle arbitrarily large strings
- */
-char
-avr_httpd_fs_getchar(char *addr)
-{
-  char r;
-  http_fs_read((CFS_CONF_OFFSET_TYPE)(intptr_t) addr, (uint8_t*) & r, 1);
-  return r;
-}
-/*----------------------------------------------------------------------------*/
-int
-avr_httpd_fs_strcmp(char *ram, char *addr)
-{
-  uint8_t i, *in, buf[32];
-  http_fs_read((CFS_CONF_OFFSET_TYPE)(intptr_t) addr, buf, sizeof (buf));
-  //return strcmp(ram, (char *)buf);
-  in = (uint8_t *) ram;
-  for (i = 0; i < 32; i++) {
-    if (buf[i] == 0) return (0);
-    if (buf[i] != *in) break;
-    in++;
-  }
-  /* A proper strcmp would return a + or minus number based on the last comparison*/
-  //if (buf[i]>*in) return(i); else return(-i);
-  return (i);
-}
-/*----------------------------------------------------------------------------*/
-char *
-avr_httpd_fs_strchr(char *addr, int character)
-{
-  char buf[129], *pptr;
-  buf[128] = character;
-  while (1) {
-    http_fs_read((CFS_CONF_OFFSET_TYPE)(intptr_t) addr, (uint8_t *) buf, 128);
-    pptr = strchr(buf, character);
-    if (pptr != &buf[128]) {
-      if (pptr == 0) return 0;
-      return (addr + (pptr - buf));
-    }
-    addr += 128;
-  }
-
-}
+#endif /* COFFEE_INGA_SDCARD */
 
