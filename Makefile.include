@@ -64,9 +64,6 @@ LIBS    = memb.c mmem.c timer.c list.c etimer.c ctimer.c energest.c rtimer.c sti
 DEV     = nullradio.c
 
 include $(CONTIKI)/core/net/Makefile.uip
-ifdef FAT
-include $(CONTIKI)/core/cfs/fat/Makefile.fat
-endif
 
 include $(CONTIKI)/core/net/rpl/Makefile.rpl
 
@@ -74,7 +71,7 @@ CTK     = ctk.c
 CTKVNC  = $(CTK) ctk-vncserver.c libconio.c vnc-server.c vnc-out.c ctk-vncfont.c
 
 ifndef CONTIKI_NO_NET
-  CONTIKIFILES = $(SYSTEM) $(LIBS) $(NET) $(THREADS) $(DHCP) $(DEV)
+  CONTIKIFILES = $(SYSTEM) $(LIBS) $(NET) $(THREADS) $(DHCP) $(DEV) 
 else
   CONTIKIFILES = $(SYSTEM) $(LIBS) $(THREADS) $(DEV) sicslowpan.c fakeuip.c
 endif
