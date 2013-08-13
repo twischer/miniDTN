@@ -101,16 +101,16 @@ avr_flash_read(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE siz
     *buf++ = ~(uint8_t) pgm_read_byte_far(addr32++);
 #else
     *buf++ = (uint8_t) pgm_read_byte_far(addr32++);
-#endif /*FLASH_COMPLEMENT_DATA*/
+#endif /* FLASH_COMPLEMENT_DATA */
   }
-#else
+#else /* FLASH_WORD_READS */
   /* 130 bytes more PROGMEM, but faster */
   if (isize & 0x01) { //handle first odd byte
 #if FLASH_COMPLEMENT_DATA
     *buf++ = ~(uint8_t) pgm_read_byte_far(addr32++);
 #else
     *buf++ = (uint8_t) pgm_read_byte_far(addr32++);
-#endif /*FLASH_COMPLEMENT_DATA*/
+#endif /* FLASH_COMPLEMENT_DATA */
     isize--;
   }
   for (; isize > 1; isize -= 2) {//read words from flash
@@ -118,7 +118,7 @@ avr_flash_read(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE siz
     *(uint16_t *) buf = ~(uint16_t) pgm_read_word_far(addr32);
 #else
     *(uint16_t *) buf = (uint16_t) pgm_read_word_far(addr32);
-#endif /*FLASH_COMPLEMENT_DATA*/
+#endif /* FLASH_COMPLEMENT_DATA */
     buf += 2;
     addr32 += 2;
   }
@@ -127,7 +127,7 @@ avr_flash_read(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE siz
     *buf++ = ~(uint8_t) pgm_read_byte_far(addr32);
 #else
     *buf++ = (uint8_t) pgm_read_byte_far(addr32);
-#endif /*FLASH_COMPLEMENT_DATA*/
+#endif /* FLASH_COMPLEMENT_DATA */
   }
 #endif /* FLASH_WORD_READS */
 
@@ -135,7 +135,7 @@ avr_flash_read(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE siz
   PRINTF("\nbuf=");
   //  PRINTF("%s",bufo);
   // for (i=0;i<16;i++) PRINTF("%2x ",*bufo++);
-#endif
+#endif /* DEBUG */
 }
 /*---------------------------------------------------------------------------*/
 /*
@@ -170,11 +170,11 @@ avr_flash_erase(coffee_page_t sector)
   //RE-enable interrupts
   boot_rww_enable();
   SREG = sreg;
-#else
+#else /* FLASH_COMPLEMENT_DATA */
   for (i = 0; i < COFFEE_SECTOR_SIZE / COFFEE_PAGE_SIZE; i++) {
     avr_flash_write((sector + i) * COFFEE_PAGE_SIZE, 0, 0);
   }
-#endif
+#endif /* FLASH_COMPLEMENT_DATA */
 }
 /*---------------------------------------------------------------------------*/
 /*
@@ -216,7 +216,7 @@ avr_flash_write(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE si
   } else {
     PRINTF("e0x%04x %u ", w, startpage);
   }
-#endif
+#endif /* DEBUG */
 
   /* If buf not null, modify the page(s) */
   if (buf) {
@@ -234,7 +234,7 @@ avr_flash_write(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE si
         w = pgm_read_word_far(addr32);
 #if FLASH_COMPLEMENT_DATA
         w = ~w;
-#endif /*FLASH_COMPLEMENT_DATA*/
+#endif /* FLASH_COMPLEMENT_DATA */
         w &= 0xff;
         bb = 0;
         size++;
@@ -244,7 +244,7 @@ avr_flash_write(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE si
       w += (*buf++) << 8;
 #if FLASH_COMPLEMENT_DATA
       w = ~w;
-#endif /*FLASH_COMPLEMENT_DATA*/
+#endif /* FLASH_COMPLEMENT_DATA */
       boot_page_fill(addr32, w);
       size -= 2;
       /* Below ought to work but writing to 0xnnnnnnfe modifies the NEXT flash page
@@ -280,9 +280,9 @@ avr_flash_write(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE si
         w &= 0xff00;
 #if FLASH_COMPLEMENT_DATA
         w += ~(*buf);
-#else
+#else /* FLASH_COMPLEMENT_DATA */
         w += *buf;
-#endif /*FLASH_COMPLEMENT_DATA*/
+#endif /* FLASH_COMPLEMENT_DATA */
         size = 0;
       }
       boot_page_fill(addr32, w);
@@ -298,7 +298,7 @@ avr_flash_write(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE si
       boot_page_fill(addr32, 0);
       addr32 += 2;
     }
-#endif /*FLASH_COMPLEMENT_DATA*/
+#endif /* FLASH_COMPLEMENT_DATA */
   }
   /* Write the last (or only) page */
   addr32 -= 0x42; //get an address within the page
@@ -309,10 +309,10 @@ avr_flash_write(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE si
     boot_page_write(addr32);
     boot_spm_busy_wait();
   }
-#else
+#else /* FLASH_COMPLEMENT_DATA */
   boot_page_write(addr32);
   boot_spm_busy_wait();
-#endif /*FLASH_COMPLEMENT_DATA*/
+#endif /* FLASH_COMPLEMENT_DATA */
   /* Reenable RWW-section again. We need this if we want to jump back
    * to the application after bootloading. */
   boot_rww_enable();
@@ -402,7 +402,7 @@ external_flash_write(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TY
     printf("%02X %c ", buf[g] & 0xFF, buf[g] & 0xFF);
   }
   printf("\n");
-#endif
+#endif /* DEBUG */
 }
 /*----------------------------------------------------------------------------*/
 void
@@ -424,7 +424,7 @@ external_flash_read_page(coffee_page_t page, CFS_CONF_OFFSET_TYPE offset, uint8_
     printf("%02X %c ", buf[g] & 0xFF, buf[g] & 0xFF);
   }
   printf("\n");
-#endif
+#endif /* DEBUG */
 }
 /*----------------------------------------------------------------------------*/
 void
@@ -475,7 +475,7 @@ external_flash_read(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYP
     printf("%02X %c ", buf[g] & 0xFF, buf[g] & 0xFF);
   }
   printf("\n");
-#endif
+#endif /* DEBUG */
 }
 /*----------------------------------------------------------------------------*/
 void
@@ -517,7 +517,9 @@ void external_flash_erase(coffee_page_t sector) {
 #endif /* COFFEE_INGA_EXTERNAL */
 
 #ifdef COFFEE_INGA_SDCARD
+
 #include "cfs/fat/diskio.h"
+
 static uint8_t cfs_buffer[512];
 struct diskio_device_info *cfs_info = 0;
 void
@@ -590,7 +592,7 @@ sd_write(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE size)
     printf("%02X ", buf[g] & 0xFF, buf[g] & 0xFF);
   }
   printf("\n");
-#endif
+#endif /* DEBUG */
 }
 /*----------------------------------------------------------------------------*/
 void
@@ -612,7 +614,7 @@ sd_read_page(coffee_page_t page, CFS_CONF_OFFSET_TYPE offset, uint8_t *buf, CFS_
     printf("%02X ", buf[g] & 0xFF, buf[g] & 0xFF);
   }
   printf("\n");
-#endif
+#endif /* DEBUG */
 
 }
 /*----------------------------------------------------------------------------*/
@@ -664,7 +666,7 @@ sd_read(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE size)
     printf("%02X ", buf[g] & 0xFF, buf[g] & 0xFF);
   }
   printf("\n");
-#endif
+#endif /* DEBUG */
 }
 /*----------------------------------------------------------------------------*/
 void
