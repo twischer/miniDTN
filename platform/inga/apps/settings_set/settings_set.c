@@ -40,7 +40,7 @@
 
 #include "contiki.h"
 #include "contiki-lib.h"
-#include "settings.h"
+#include "lib/settings.h"
 #include <stdio.h>
 
 #include "settings_set.h"

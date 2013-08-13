@@ -80,7 +80,7 @@ uint8_t debugflowsize, debugflow[DEBUGFLOWSIZE];
 #include "dev/watchdog.h"
 
 // settings manager
-#include "settings.h"
+#include "lib/settings.h"
 
 // sensors
 #include "lib/sensors.h"
@@ -636,11 +636,11 @@ periodic_prints()
 #elif RADIOSTATS
       extern volatile unsigned long radioontime;
       PRINTF("%u(%u)s\n", clocktime, radioontime);
-#else
+#else /* RADIOSTATS */
       PRINTF("%us\n", clocktime);
-#endif
+#endif /* RADIOSTATS */
     }
-#endif
+#endif /* PER_STAMPS */
 
 #if PER_PINGS&&0
     extern void raven_ping6(void);
@@ -648,7 +648,7 @@ periodic_prints()
       PRINTF("**Ping\n");
       raven_ping6();
     }
-#endif
+#endif /* PER_PINGS */
 
 #if PER_ROUTES
     if ((clocktime % PER_ROUTES) == 2) {
@@ -691,7 +691,7 @@ periodic_prints()
       if (j) PRINTF("  <none>");
       PRINTF("\n---------\n");
     }
-#endif /* ROUTES && UIP_CONF_IPV6 */
+#endif /* PER_ROUTES */
 
 #if STACKMONITOR
     /* Checks for highest address with STACK_FREE_MARKs in RAM */
@@ -706,10 +706,10 @@ periodic_prints()
         p += 10;
       } while (p < RAMEND - 10);
     }
-#endif
+#endif /* STACKMONITOR */
   }
 }
-#endif
+#endif /* PERIODICPRINTS */
 /*-------------------------------------------------------------------------*/
 /*------------------------- Main Scheduler loop----------------------------*/
 /*-------------------------------------------------------------------------*/

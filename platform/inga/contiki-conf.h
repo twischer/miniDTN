@@ -52,6 +52,12 @@ typedef unsigned char u8_t;
 typedef unsigned short u16_t;
 typedef unsigned long u32_t;
 
+#include <avr/eeprom.h>
+
+/* Skip the last four bytes of the EEPROM, to leave room for things
+ * like the avrdude erase count and bootloader signaling. */
+#define EEPROM_CONF_SIZE   ((E2END + 1) - 4)
+
 void clock_delay(unsigned int us2);
 //void clock_wait(int ms10);
 void clock_set_seconds(unsigned long s);
