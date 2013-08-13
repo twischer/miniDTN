@@ -1,5 +1,12 @@
-The Contiki Operating System
-============================
+The INGA sensor platform on Contiki-OS.
+=======================================
+
+INGA is an Open Source Wireless Sensor Node for many different applications. 
+INGA was developed at IBR as Inexpensive Node for General Applications and became part of many projects.
+
+For more information see the INGA project website:
+
+[http://www.ibr.cs.tu-bs.de/projects/inga/](http://www.ibr.cs.tu-bs.de/projects/inga/index.xml?lang=en).
 
 [![Build Status](https://secure.travis-ci.org/contiki-os/contiki.png)](http://travis-ci.org/contiki-os/contiki)
 
