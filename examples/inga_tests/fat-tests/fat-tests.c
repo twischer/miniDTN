@@ -11,12 +11,11 @@
 
 /*--- Test parameters ---*/
 #define FAT_TEST_CONF_NUM_FILES     13
-#define FAT_TEST_CONF_BUF_SIZE      512
+#define FAT_TEST_CONF_BUF_SIZE      1024
 /*--- ---*/
 uint32_t file_sizes[FAT_TEST_CONF_NUM_FILES] = {42, 128, 512, 1042, 3210, 6789, 12345, 32768L, 35000L, 44444L, 65535L, 65536L, 71315L};
 uint8_t file_inits[FAT_TEST_CONF_NUM_FILES] = {5, 12, 80, 3, 76, 13, 123, 42, 23, 200, 255, 7, 99};
 
-#define FAT_TEST_CONF_BUF_SIZE 1024
 
 #define DEBUG 0
 #if DEBUG
@@ -93,7 +92,7 @@ test_sd_mkfs()
 void
 test_cfs_write_files()
 {
-  int fd, idx;
+  int idx;
   char fnamebuf[12];
 
   // Write test files....
@@ -108,7 +107,7 @@ test_cfs_write_files()
 void
 test_cfs_seek()
 {
-  int fd, idx;
+  int idx;
   char fnamebuf[12];
   // Test file size
   for (idx = 0; idx < FAT_TEST_CONF_NUM_FILES; idx++) {
@@ -122,7 +121,7 @@ test_cfs_seek()
 void
 test_cfs_read_files()
 {
-  int fd, idx;
+  int idx;
   char fnamebuf[12];
 
   // Test file content
@@ -137,7 +136,7 @@ test_cfs_read_files()
 void
 test_cfs_remove()
 {
-  int fd, idx;
+  int idx;
   char fnamebuf[12];
 
   // Test file remove
@@ -199,7 +198,7 @@ write_test_bytes(const char* name, uint32_t size, uint8_t fill_offset)
 
   TEST_EQUALS(wsize, size);
 
-  PRINTD("Wrote %ld bytes of data\n", wsize);
+  TEST_REPORT("Bytes written to file", wsize, 1, "bytes");
 
   cfs_close(fd);
 }
@@ -207,7 +206,6 @@ write_test_bytes(const char* name, uint32_t size, uint8_t fill_offset)
 static unsigned long
 get_file_size(const char* name)
 {
-  uint16_t n = 0;
   uint8_t buffer[FAT_TEST_CONF_BUF_SIZE];
   // And open it
   int fd = cfs_open(name, CFS_READ);
@@ -220,7 +218,7 @@ get_file_size(const char* name)
 
   // check file size
   unsigned long read_size = cfs_seek(fd, 0L, CFS_SEEK_END) + 1;
-  PRINTD("Size of seek is %lu\n", read_size);
+  TEST_REPORT("Size of seek", read_size, 1, "bytes");
   cfs_close(fd);
 
   return read_size;
@@ -269,11 +267,9 @@ read_test_bytes(const char* name, uint32_t size, uint8_t fill_offset)
     PRINTD("%ld left\n", to_read);
   } while (n == buffer_size);
 
-  PRINTD("Read %ld bytes of data\n", wsize);
+  TEST_REPORT("Bytes read from file", wsize, 1, "bytes");
 
   cfs_close(fd);
-
-  return 0;
 }
 static struct etimer timer;
 
@@ -283,8 +279,6 @@ PROCESS_THREAD(test_process, ev, data)
 {
   PROCESS_BEGIN();
 
-  //printf("##################################################\n");
-  
   // Wait a second...
   etimer_set(&timer, CLOCK_SECOND);
   PROCESS_WAIT_UNTIL(etimer_expired(&timer));
