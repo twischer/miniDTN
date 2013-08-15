@@ -29,20 +29,10 @@
  * Author: Wolf-Bastian Poettner <poettner@ibr.cs.tu-bs.de>
  */
 
-/**
- * \addtogroup Drivers
- * @{
- */
-
-/**
- * \defgroup fat_driver FAT Driver - Platform Specific
- *
- * @{
- */
 
 /**
  * \file
- *		FAT driver definitions - Platform Specific
+ *      FAT driver definitions - Platform Specific
  * \author
  *      Wolf-Bastian Poettner <poettner@ibr.cs.tu-bs.de>
  */
@@ -56,7 +46,7 @@
 #define SD_READ_BLOCK(block_start_address, buffer) \
         microSD_read_block( block_start_address, buffer )
 #define SD_WRITE_BLOCK(block_start_address, buffer) \
-				microSD_write_block( block_start_address, buffer )
+        microSD_write_block( block_start_address, buffer )
 #define SD_INIT() \
         microSD_init()
 
@@ -70,5 +60,3 @@
 
 #endif /* CFS_FAT_ARCH_H */
 
-/** @} */
-/** @} */

@@ -33,6 +33,9 @@ ifeq ($(CONF_DTN),1)
   CFLAGS += -DWITH_DTN=1
 endif
 
+# Enable settings manager
+CFLAGS += -DCONTIKI_CONF_SETTINGS_MANAGER=1
+
 #Use coffee as default file system
 ifndef CFS
   CFS=coffee
@@ -91,7 +94,6 @@ ifdef COFFEE_DEVICE                #if files are defined force definition of COF
  COFFEE_ADDRESS1 = $(shell echo $$(( $(COFFEE_ADDRESS) + 1 )))
  CONTIKI_TARGET_SOURCEFILES += cfs-coffee.c cfs-coffee-arch.c 
  CFLAGS += -DCOFFEE_DEVICE=$(COFFEE_DEVICE) -DCOFFEE_ADDRESS=$(COFFEE_ADDRESS)
- CFLAGS += -DCONTIKI_CONF_SETTINGS_MANAGER=1
  ifneq ($(COFFEE_ADDRESS), DEFAULT)
    LDFLAGS+= -Wl,--section-start=.coffeefiles=$(COFFEE_ADDRESS)
  endif
