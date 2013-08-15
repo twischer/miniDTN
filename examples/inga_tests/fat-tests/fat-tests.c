@@ -73,13 +73,16 @@ test_sd_mkfs()
 
   cfs_fat_get_fat_info( &fat );
 
+  // Must be one of 512, 1024, 2048, 4096.
   TEST_REPORT("BytesPerSec", fat.BPB_BytesPerSec, 1, "bytes/sector");
   TEST_REPORT("Reserved sectors", fat.BPB_RsvdSecCnt, 1, "sectors");
   TEST_REPORT("Total sectors", fat.BPB_TotSec, 1, "sectors");
-  TEST_REPORT("FAT size", fat.BPB_NumFATs, 1, "sector");
+  TEST_REPORT("FAT size", fat.BPB_NumFATs, 1, "sectors");
+  // Must be one of 1, 2, 4, 8, 16, 32, 64, 128.
+  TEST_REPORT("SecPerClus", fat.BPB_SecPerClus, 1, "sectors");
 
-  TEST_EQUALS(fat.BPB_BytesPerSec, 512);
-  TEST_EQUALS(fat.BPB_SecPerClus, 8);
+  //TEST_EQUALS(fat.BPB_BytesPerSec, 512);
+  //TEST_EQUALS(fat.BPB_SecPerClus, 8);
   TEST_EQUALS(fat.BPB_NumFATs, 2);
   TEST_EQUALS(fat.BPB_Media, 0xF8);
 
