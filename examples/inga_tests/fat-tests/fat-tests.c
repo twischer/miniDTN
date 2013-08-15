@@ -3,13 +3,20 @@
 #include <stdio.h> /* For printf() */
 #include "dev/watchdog.h"
 #include "clock.h"
-#include "sys/test.h"
 #include "../test.h"
+#include <util/delay.h>
 
 #include "fat/diskio.h"           //tested
 #include "fat/cfs-fat.h"           //tested
 
-#define KBYTE 1024
+/*--- Test parameters ---*/
+#define FAT_TEST_CONF_NUM_FILES     13
+#define FAT_TEST_CONF_BUF_SIZE      512
+/*--- ---*/
+uint32_t file_sizes[FAT_TEST_CONF_NUM_FILES] = {42, 128, 512, 1042, 3210, 6789, 12345, 32768L, 35000L, 44444L, 65535L, 65536L, 71315L};
+uint8_t file_inits[FAT_TEST_CONF_NUM_FILES] = {5, 12, 80, 3, 76, 13, 123, 42, 23, 200, 255, 7, 99};
+
+#define FAT_TEST_CONF_BUF_SIZE 1024
 
 #define DEBUG 0
 #if DEBUG
@@ -18,8 +25,8 @@
 #define PRINTD(...)
 #endif
 
-static int write_test_bytes(const char* name, uint32_t size, uint8_t fill_offset);
-static int read_test_bytes(const char* name, uint32_t size, uint8_t fill_offset);
+void write_test_bytes(const char* name, uint32_t size, uint8_t fill_offset);
+void read_test_bytes(const char* name, uint32_t size, uint8_t fill_offset);
 static unsigned long get_file_size(const char* name);
 
 static struct etimer timer;
@@ -27,125 +34,145 @@ int cnt = 0;
 
 TEST_SUITE("fat-test");
 
-uint8_t buffer[1024];
+struct diskio_device_info *info = 0;
 
 /*---------------------------------------------------------------------------*/
-static char *
-test_sdinit_mount()
+void
+test_sdinit()
 {
-  struct diskio_device_info *info = 0;
   int initialized = 0, i;
 
-  printf("test_sdinit_mount...\n");
   //--- Detecting devices and partitions
-  ASSERT("device detect failed", diskio_detect_devices() == DISKIO_SUCCESS);
+  TEST_EQUALS(diskio_detect_devices(), DISKIO_SUCCESS);
+
   info = diskio_devices();
   for (i = 0; i < DISKIO_MAX_DEVICES; i++) {
     if ((info + i)->type == (DISKIO_DEVICE_TYPE_SD_CARD | DISKIO_DEVICE_TYPE_PARTITION)) {
       info += i;
       initialized = 1;
-      break;
+      break; 
     }
   }
-  ASSERT("device initialization failed", initialized == 1);
-  
-  ASSERT("formatting failed", cfs_fat_mkfs(info) == 0);
+  TEST_EQUALS(initialized, 1);
+ 
+}
+/*---------------------------------------------------------------------------*/
+void
+test_sd_mkfs()
+{
+  struct FAT_Info fat;
 
-  //--- Test mounting volume
-  ASSERT("mount failed", cfs_fat_mount_device(info) == 0);
+  TEST_CODE();
+
+  // format partition
+  TEST_EQUALS(cfs_fat_mkfs(info), 0);
+  // mount volume
+  TEST_EQUALS(cfs_fat_mount_device(info), 0);
+
+  TEST_POST();
+
+  cfs_fat_get_fat_info( &fat );
+
+  TEST_REPORT("BytesPerSec", fat.BPB_BytesPerSec, 1, "bytes/sector");
+  TEST_REPORT("Reserved sectors", fat.BPB_RsvdSecCnt, 1, "sectors");
+  TEST_REPORT("Total sectors", fat.BPB_TotSec, 1, "sectors");
+  TEST_REPORT("FAT size", fat.BPB_NumFATs, 1, "sector");
+
+  TEST_EQUALS(fat.BPB_BytesPerSec, 512);
+  TEST_EQUALS(fat.BPB_SecPerClus, 8);
+  TEST_EQUALS(fat.BPB_NumFATs, 2);
+  TEST_EQUALS(fat.BPB_Media, 0xF8);
 
   diskio_set_default_device(info);
+}
+/*---------------------------------------------------------------------------*/
 
-  return 0;
-}
-/*---------------------------------------------------------------------------*/
-static char *
-test_cfs_read_size()
+void
+test_cfs_write_files()
 {
-  int fd;
-  printf("test_cfs_read_size...\n");
-  //--- Tests for correct return value of cfs_read
-  ASSERT("writing 1042 test bytes failed", write_test_bytes("test01.tst", 1042UL, 0) == 0);
-  ASSERT("failed to open", cfs_open("test01.tst", CFS_READ) == 0);
-  ASSERT("cfs_read() != 1024", cfs_read(fd, buffer, 1024) == 1024);
-  ASSERT("cfs_read() != 18", cfs_read(fd, buffer, 1024) == 18);
-  ASSERT("cfs_read() != 0", cfs_read(fd, buffer, 1024) == 0);
-  cfs_close(fd);
-  return 0;
+  int fd, idx;
+  char fnamebuf[12];
+
+  // Write test files....
+  for (idx = 0; idx < FAT_TEST_CONF_NUM_FILES; idx++) {
+    sprintf(fnamebuf, "test%02d.dat", idx);
+    write_test_bytes(fnamebuf, file_sizes[idx], file_inits[idx]);
+    printf(".");
+  }
+  printf("\n");
 }
 /*---------------------------------------------------------------------------*/
-static char *
-test_cfs_write_small()
+void
+test_cfs_seek()
 {
-  printf("test_cfs_write_small...\n");
-  //--- Tests for 16 bit size limits 
-  ASSERT("writing 12345 bytes failed", write_test_bytes("test02.tst", 12345UL, 0) == 0);
-  ASSERT("read file size != 12345", get_file_size("test02.tst") == 12345UL);
-  ASSERT("file verification error", read_test_bytes("test02.tst", 12345UL, 0) == 0);
-  return 0;
+  int fd, idx;
+  char fnamebuf[12];
+  // Test file size
+  for (idx = 0; idx < FAT_TEST_CONF_NUM_FILES; idx++) {
+    sprintf(fnamebuf, "test%02d.dat", idx);
+    TEST_EQUALS(get_file_size(fnamebuf), file_sizes[idx]);
+    printf(".");
+  }
+  printf("\n");
 }
 /*---------------------------------------------------------------------------*/
-static char *
-test_cfs_write_large()
+void
+test_cfs_read_files()
 {
-  printf("test_cfs_write_large...\n");
-  //--- Tests for 16 bit size limits 
-  ASSERT("writing 80808 bytes failed", write_test_bytes("test03.tst", 80808UL, 0) == 0);
-  ASSERT("read file size != 80808", get_file_size("test03.tst") == 80808UL);
-  ASSERT("file verification error", read_test_bytes("test03.tst", 80808UL, 0) == 0);
-  return 0;
+  int fd, idx;
+  char fnamebuf[12];
+
+  // Test file content
+  for (idx = 0; idx < FAT_TEST_CONF_NUM_FILES; idx++) {
+    sprintf(fnamebuf, "test%02d.dat", idx);
+    read_test_bytes(fnamebuf, file_sizes[idx], file_inits[idx]);
+    printf(".");
+  }
+  printf("\n");
 }
 /*---------------------------------------------------------------------------*/
-static char *
+void
 test_cfs_remove()
 {
-  printf("test_cfs_remove...\n");
-  //---
-  ASSERT("writing 4711 bytes failed", write_test_bytes("test04.tst", 4711UL, 0) == 0);
-  ASSERT("remove failed", cfs_remove("test04.tst") == 0);
-  ASSERT("still existent", cfs_open("test04.tst", CFS_READ) != 0);
-  return 0;
-}
-/*---------------------------------------------------------------------------*/
-static char *
-test_cfs_overwrite()
-{
-  printf("test_cfs_overwrite...\n");
-  //--- Tests simple file write
-  ASSERT("writing 12345 bytes failed", write_test_bytes("test05.tst", 12345UL, 0) == 0);
-  ASSERT("", get_file_size("test05.tst") == 12345UL);
-  ASSERT("", read_test_bytes("test05.tst", 12345UL, 0) == 0);
+  int fd, idx;
+  char fnamebuf[12];
 
-  //--- Tests overwriting of existent file with smaller file
-  ASSERT("writing 4242 bytes failed", write_test_bytes("test05.tst", 4242UL, 42) == 0);
-  ASSERT("", get_file_size("test05.tst") == 4242UL);
-  ASSERT("", read_test_bytes("test05.tst", 4242UL, 42) == 0);
-  return 0;
+  // Test file remove
+  for (idx = 0; idx < FAT_TEST_CONF_NUM_FILES; idx++) {
+    sprintf(fnamebuf, "test%02d.dat", idx);
+
+    TEST_CODE();
+
+    TEST_EQUALS(cfs_remove(fnamebuf), 0);
+
+    TEST_POST();
+
+    TEST_NEQ(cfs_open(fnamebuf, CFS_READ), 0);
+    printf(".");
+  }
+  printf("\n");
 }
 /*---------------------------------------------------------------------------*/
 /* Writes exactly size bytes of data to file. */
-static int
+void
 write_test_bytes(const char* name, uint32_t size, uint8_t fill_offset)
 {
-  uint8_t buffer[KBYTE];
+  uint8_t buffer[FAT_TEST_CONF_BUF_SIZE];
   uint32_t wsize = 0;
   uint32_t to_write = size;
   uint16_t buffer_size, n;
   int fd;
 
   fd = cfs_open(name, CFS_WRITE);
-  if (fd == -1) {
-    PRINTD("############# STORAGE: open for write failed\n");
-    return -1;
-  }
+  TEST_NEQ(fd, -1);
 
   PRINTD("Starting to write %ld bytes of data\n", to_write);
 
   do {
     // fill write buffer
-    if (to_write / KBYTE > 0) {
-      buffer_size = KBYTE;
-      to_write -= KBYTE;
+    if (to_write / FAT_TEST_CONF_BUF_SIZE > 0) {
+      buffer_size = FAT_TEST_CONF_BUF_SIZE;
+      to_write -= FAT_TEST_CONF_BUF_SIZE;
     } else {
       buffer_size = to_write;
       to_write = 0;
@@ -157,34 +184,37 @@ write_test_bytes(const char* name, uint32_t size, uint8_t fill_offset)
 
     // write
     n = cfs_write(fd, buffer, buffer_size);
+    TEST_EQUALS(n, buffer_size);
 
     // check
-    if (n != buffer_size) {
-      PRINTD("############# STORAGE: Only wrote %d bytes, wanted %d\n", n, buffer_size);
-      return -1;
-    }
+    TEST_EQUALS(n, buffer_size);
 
     wsize += n;
 
-    //    printf(".");
     PRINTD("%ld left\n", to_write);
   } while (to_write > 0);
+
+  TEST_EQUALS(wsize, size);
 
   PRINTD("Wrote %ld bytes of data\n", wsize);
 
   cfs_close(fd);
-  return 0;
 }
 /*---------------------------------------------------------------------------*/
 static unsigned long
 get_file_size(const char* name)
 {
+  uint16_t n = 0;
+  uint8_t buffer[FAT_TEST_CONF_BUF_SIZE];
   // And open it
   int fd = cfs_open(name, CFS_READ);
-  if (fd == -1) {
-    PRINTD("############# STORAGE: open for write failed\n");
-    return -1;
-  }
+  TEST_NEQ(fd, -1);
+
+  // NOTE: we need a delay here, otherwise test will fail!
+  // Reason might be sd card access timing 
+  // @TODO: check this!
+  _delay_ms(10);
+
   // check file size
   unsigned long read_size = cfs_seek(fd, 0L, CFS_SEEK_END) + 1;
   PRINTD("Size of seek is %lu\n", read_size);
@@ -193,43 +223,41 @@ get_file_size(const char* name)
   return read_size;
 }
 /*---------------------------------------------------------------------------*/
-static int
+void
 read_test_bytes(const char* name, uint32_t size, uint8_t fill_offset)
 {
-  uint8_t buffer[KBYTE];
+  uint8_t buffer[FAT_TEST_CONF_BUF_SIZE];
   uint32_t wsize = 0;
   uint32_t to_read = size;
+  uint32_t read_size;
   uint16_t buffer_size, n;
   int fd;
 
   fd = cfs_open(name, CFS_READ);
-  if (fd == -1) {
-    PRINTD("############# STORAGE: open for read failed\n");
-    return -1;
-  }
+  TEST_NEQ(fd, -1);
 
   PRINTD("Starting to read %ld bytes of data\n", to_read);
 
-  buffer_size = KBYTE;
+  buffer_size = FAT_TEST_CONF_BUF_SIZE;
 
   do {
-    // fill write buffer
-    if (to_read / KBYTE > 0) {
-      to_read -= KBYTE;
+    //
+    if (to_read / FAT_TEST_CONF_BUF_SIZE > 0) {
+      read_size = FAT_TEST_CONF_BUF_SIZE;
+      to_read -= FAT_TEST_CONF_BUF_SIZE;
     } else {
+      read_size = to_read;
       to_read = 0;
     }
 
-    // write
+    // read
     n = cfs_read(fd, buffer, buffer_size);
+    TEST_EQUALS(n, read_size);
     
     // bytewise check
     uint16_t i;
     for (i = 0; i < n; i++) {
-      if (buffer[i] != (i + fill_offset) % 0xFF) {
-        PRINTD("missmatch at %d: %c != %c \n", i, buffer[i], (i + fill_offset) % 0xFF);
-        return -1;
-      };
+      TEST_EQUALS(buffer[i], (i + fill_offset) % 0xFF);
     }
 
     wsize += n;
@@ -251,17 +279,19 @@ PROCESS(test_process, "Test process");
 PROCESS_THREAD(test_process, ev, data)
 {
   PROCESS_BEGIN();
+
+  //printf("##################################################\n");
   
   // Wait a second...
   etimer_set(&timer, CLOCK_SECOND);
   PROCESS_WAIT_UNTIL(etimer_expired(&timer));
   
-  RUN_TEST("test_sdinit_mount", test_sdinit_mount);
-  RUN_TEST("test_cfs_read_size", test_cfs_read_size);
-  RUN_TEST("test_cfs_write_small", test_cfs_write_small);
-  RUN_TEST("test_cfs_write_large", test_cfs_write_large);
+  RUN_TEST("test_sdinit", test_sdinit);
+  RUN_TEST("test_sd_mkfs", test_sd_mkfs);
+  RUN_TEST("cfs_write_files", test_cfs_write_files);
+  RUN_TEST("cfs_seek", test_cfs_seek);
+  RUN_TEST("cfs_read_files", test_cfs_read_files);
   RUN_TEST("test_cfs_remove", test_cfs_remove);
-  RUN_TEST("test_cfs_overwrite", test_cfs_overwrite);
   
   TESTS_DONE();
 
