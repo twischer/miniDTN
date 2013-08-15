@@ -1,13 +1,12 @@
+all: fat-tests fat-coop-tests
+
 # FAT tests
 fat-tests: fat-tests.c
 
 # FAT coop tests
 fat-coop-tests: fat-coop-tests.c
 
-
-#PROJECT_SOURCEFILES += ../sensor-tests.c
-
-FAT=1
+CFS=fat
 TARGET=inga
 
 CONTIKI = ../../..
