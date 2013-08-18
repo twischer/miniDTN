@@ -339,8 +339,11 @@ unsigned long clock_seconds(void);
 /** Contiki Loadable Interface (has no function here) */
 #define CLIF
 
+#ifndef CC_CONF_INLINE
+#define CC_CONF_INLINE inline
+#endif 
 
-/* include the project config.
+/* Include the project config.
  * PROJECT_CONF_H might be defined in the project Makefile */
 #ifdef PROJECT_CONF_H
 #include PROJECT_CONF_H
