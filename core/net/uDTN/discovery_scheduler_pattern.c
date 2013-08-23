@@ -29,7 +29,7 @@
 #ifdef DTN_DISCO_CONF_TIMESLOT_LENGTH
 #define DTN_DISCO_TIMESLOT_LENGTH DTN_DISCO_CONF_TIMESLOT_LENGTH
 #else
-#define DTN_DISCO_TIMESLOT_LENGTH 1
+#define DTN_DISCO_TIMESLOT_LENGTH 0.05
 #endif
 
 
@@ -39,12 +39,14 @@
 #ifdef DTN_DISCO_PATTERN_CONF
 #define DTN_DISCO_PATTERN DTN_DISCO_PATTERN_CONF
 #else
-#define DTN_DISCO_PATTERN {1,1}
+/* pds2^1={0,1,3} schedule, length 7, dutycycle ~43%, equivalent to {1,1,0,1,0,0,0} */
+#define DTN_DISCO_PATTERN {2,1,1,3}
 #endif
 
 
 static struct ctimer dst;
 static uint8_t schedule_index = 0;
+
 
 void discovery_scheduler_pattern_func(void * ptr);
 
@@ -62,36 +64,44 @@ void discovery_scheduler_pattern_func(void * ptr)
 	 * of loop, therefore set to zero, here */
 	static uint8_t sched_state = 0;
 
-	/* calculate new timeout */
-	clock_time_t newTimeout = schedule[schedule_index] * DTN_DISCO_TIMESLOT_LENGTH * CLOCK_SECOND;
-	schedule_index++;
+	/* Count timeslots */
+	static uint8_t counter = 0;
 
-	/* wrap schedule if appropriate */
-	schedule_index = schedule_index % schedule_length;
 
 	/* Rescheudle ourself */
-	ctimer_set(&dst, newTimeout, discovery_scheduler_pattern_func, NULL);
+	ctimer_reset(&dst);
 
-	/* switch discovery state */
-	sched_state = ~sched_state;
+	if (counter == 0) {
+		/* calculate new timeout */
+		clock_time_t newTimeout = schedule[schedule_index] * DTN_DISCO_TIMESLOT_LENGTH * CLOCK_SECOND;
 
-	if (sched_state) {
-		LOG(LOGD_DTN, LOG_DISCOVERY_SCHEDULER, LOGL_DBG, "PATTERN DISCOVERY SCHEDULER: begin of discovery phase");
-		process_post(&discovery_aware_rdc_process, dtn_disco_start_event, 0);
-		DISCOVERY.start(newTimeout, schedule_index);
-	} else {
-		LOG(LOGD_DTN, LOG_DISCOVERY_SCHEDULER, LOGL_DBG, "PATTERN DISCOVERY SCHEDULER: end of discovery phase");
-		DISCOVERY.stop();
-		process_post(&discovery_aware_rdc_process, dtn_disco_stop_event, 0);
+		counter = schedule[schedule_index++];
+
+		/* wrap schedule if appropriate */
+		schedule_index = schedule_index % schedule_length;
+
+		/* switch discovery state */
+		sched_state = ~sched_state;
+
+		if (sched_state) {
+			LOG(LOGD_DTN, LOG_DISCOVERY_SCHEDULER, LOGL_DBG, "PATTERN DISCOVERY SCHEDULER: begin of discovery phase");
+			process_post(&discovery_aware_rdc_process, dtn_disco_start_event, 0);
+			DISCOVERY.start(newTimeout, schedule_index);
+		} else {
+			LOG(LOGD_DTN, LOG_DISCOVERY_SCHEDULER, LOGL_DBG, "PATTERN DISCOVERY SCHEDULER: end of discovery phase");
+			DISCOVERY.stop();
+			process_post(&discovery_aware_rdc_process, dtn_disco_stop_event, 0);
+		}
 	}
 
+	counter--;
 }
 
 void discovery_scheduler_pattern_set_schedule_index(uint8_t index) {
-  if (index != schedule_index) {
-    LOG(LOGD_DTN, LOG_DISCOVERY_SCHEDULER, LOGL_DBG, "Schedule index WAS: %u      IS: %u", schedule_index, index);
-    schedule_index = index;
-  }
+	if (index != schedule_index) {
+		LOG(LOGD_DTN, LOG_DISCOVERY_SCHEDULER, LOGL_DBG, "Schedule index WAS: %u      IS: %u", schedule_index, index);
+		schedule_index = index;
+	}
 }
 
 const struct discovery_scheduler_driver discovery_scheduler_pattern = {

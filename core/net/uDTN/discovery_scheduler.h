@@ -18,7 +18,7 @@
 #ifdef CONF_DISCOVERY_SCHEDULER
 #define DISCOVERY_SCHEDULER CONF_DISCOVERY_SCHEDULER
 #else
-#define DISCOVERY_SCHEDULER discovery_scheduler_pattern2
+#define DISCOVERY_SCHEDULER discovery_scheduler_pattern
 #endif
 
 
