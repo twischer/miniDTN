@@ -25,6 +25,7 @@
 #include "clock.h"
 #include "net/mac/frame802154.h" // for IEEE802154_PANID
 #include "logging.h"
+#include "sys/ctimer.h"
 
 #include "dtn_network.h"
 #include "agent.h"
@@ -37,10 +38,10 @@
 
 void discovery_ipnd_refresh_neighbour(rimeaddr_t * neighbour);
 void discovery_ipnd_save_neighbour(rimeaddr_t * neighbour);
+void discovery_ipnd_remove_stale_neighbours(void * ptr);
 
 #define DISCOVERY_NEIGHBOUR_CACHE	3
-#define DISCOVERY_CYCLE			1
-#define DISCOVERY_NEIGHBOUR_TIMEOUT	(5*DISCOVERY_CYCLE)
+#define DISCOVERY_NEIGHBOUR_TIMEOUT	5
 #define DISCOVERY_IPND_SERVICE		"lowpancl"
 #define DISCOVERY_IPND_BUFFER_LEN 	60
 #define DISCOVERY_IPND_WHITELIST	0
@@ -62,8 +63,6 @@ struct discovery_basic_neighbour_list_entry {
 	uint8_t active;
 };
 
-PROCESS(discovery_process, "DISCOVERY process");
-
 /**
  * List and memory blocks to save information about neighbours
  */
@@ -71,8 +70,7 @@ LIST(neighbour_list);
 MEMB(neighbour_mem, struct discovery_basic_neighbour_list_entry, DISCOVERY_NEIGHBOUR_CACHE);
 
 uint8_t discovery_status = 0;
-static struct etimer discovery_timeout_timer;
-static struct etimer discovery_cycle_timer;
+static struct ctimer discovery_timeout_timer;
 uint16_t discovery_sequencenumber = 0;
 
 rimeaddr_t discovery_whitelist[DISCOVERY_IPND_WHITELIST];
@@ -82,9 +80,6 @@ rimeaddr_t discovery_whitelist[DISCOVERY_IPND_WHITELIST];
  */
 void discovery_ipnd_init()
 {
-	// Enable discovery module
-	discovery_status = 1;
-
 	// Initialize the neighbour list
 	list_init(neighbour_list);
 
@@ -95,13 +90,16 @@ void discovery_ipnd_init()
 	// Clear the discovery whitelist
 	memset(&discovery_whitelist, 0, sizeof(rimeaddr_t) * DISCOVERY_IPND_WHITELIST);
 
- // Fill the datastructure here
+	// Fill the datastructure here
 
 	LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_WRN, "Whitelist enabled");
 #endif
 
-	// Start discovery process
-	process_start(&discovery_process, NULL);
+	// Set the neighbour timeout timer
+	ctimer_set(&discovery_timeout_timer, DISCOVERY_NEIGHBOUR_TIMEOUT * CLOCK_SECOND, discovery_ipnd_remove_stale_neighbours, NULL);
+
+	// Enable discovery module
+	discovery_status = 1;
 }
 
 /** 
@@ -135,7 +133,6 @@ uint8_t discovery_ipnd_is_neighbour(rimeaddr_t * dest)
  */
 void discovery_ipnd_enable()
 {
-	discovery_status = 1;
 }
 
 /**
@@ -144,7 +141,6 @@ void discovery_ipnd_enable()
  */
 void discovery_ipnd_disable()
 {
-	discovery_status = 0;
 }
 
 /**
@@ -431,12 +427,14 @@ void discovery_ipnd_stop_pending()
 
 void discovery_ipnd_start(clock_time_t duration, uint8_t index)
 {
-
+	// Send at the beginning of a cycle
+	discovery_ipnd_send();
 }
 
 void discovery_ipnd_stop()
 {
-
+	// Send at the end of a cycle
+	discovery_ipnd_send();
 }
 
 void discovery_ipnd_clear()
@@ -444,62 +442,37 @@ void discovery_ipnd_clear()
 
 }
 
-/**
- * \brief IPND Discovery Persistent Process
- */
-PROCESS_THREAD(discovery_process, ev, data)
+void discovery_ipnd_remove_stale_neighbours(void * ptr)
 {
-	PROCESS_BEGIN();
+	struct discovery_basic_neighbour_list_entry * entry;
 
-	etimer_set(&discovery_timeout_timer, DISCOVERY_NEIGHBOUR_TIMEOUT * CLOCK_SECOND);
-	etimer_set(&discovery_cycle_timer, DISCOVERY_CYCLE * CLOCK_SECOND);
-	LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_INF, "Discovery process running");
-
-	while(1) {
-		PROCESS_WAIT_EVENT();
-
-		if( etimer_expired(&discovery_timeout_timer) ) {
-			struct discovery_basic_neighbour_list_entry * entry;
-
-			for(entry = list_head(neighbour_list);
-					entry != NULL;
-					entry = entry->next) {
-				if( entry->active && (clock_seconds() - entry->timestamp_last) > DISCOVERY_NEIGHBOUR_TIMEOUT ) {
-					LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "Neighbour %u.%u timed out: %lu vs. %lu = %lu", entry->neighbour.u8[0], entry->neighbour.u8[1], clock_time(), entry->timestamp_last, clock_time() - entry->timestamp_last);
-					discovery_ipnd_delete_neighbour(&entry->neighbour);
-				}
-			}
-
-			etimer_restart(&discovery_timeout_timer);
-		}
-
-		/**
-		 * Regularly send out our discovery beacon
-		 */
-		if( etimer_expired(&discovery_cycle_timer) ) {
-			discovery_ipnd_send();
-			etimer_restart(&discovery_cycle_timer);
+	for(entry = list_head(neighbour_list);
+			entry != NULL;
+			entry = entry->next) {
+		if( entry->active && (clock_seconds() - entry->timestamp_last) > DISCOVERY_NEIGHBOUR_TIMEOUT ) {
+			LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "Neighbour %u.%u timed out: %lu vs. %lu = %lu", entry->neighbour.u8[0], entry->neighbour.u8[1], clock_time(), entry->timestamp_last, clock_time() - entry->timestamp_last);
+			discovery_ipnd_delete_neighbour(&entry->neighbour);
 		}
 	}
 
-	PROCESS_END();
+	ctimer_set(&discovery_timeout_timer, DISCOVERY_NEIGHBOUR_TIMEOUT * CLOCK_SECOND, discovery_ipnd_remove_stale_neighbours, NULL);
 }
 
 const struct discovery_driver discovery_ipnd = {
-	"IPND_DISCOVERY",
-	discovery_ipnd_init,
-	discovery_ipnd_is_neighbour,
-	discovery_ipnd_enable,
-	discovery_ipnd_disable,
-	discovery_ipnd_receive,
-	discovery_ipnd_refresh_neighbour,
-	discovery_ipnd_delete_neighbour,
-	discovery_ipnd_is_neighbour,
-	discovery_ipnd_list_neighbours,
-	discovery_ipnd_stop_pending,
-	discovery_ipnd_start,
-	discovery_ipnd_stop,
-	discovery_ipnd_clear
+		"IPND_DISCOVERY",
+		discovery_ipnd_init,
+		discovery_ipnd_is_neighbour,
+		discovery_ipnd_enable,
+		discovery_ipnd_disable,
+		discovery_ipnd_receive,
+		discovery_ipnd_refresh_neighbour,
+		discovery_ipnd_delete_neighbour,
+		discovery_ipnd_is_neighbour,
+		discovery_ipnd_list_neighbours,
+		discovery_ipnd_stop_pending,
+		discovery_ipnd_start,
+		discovery_ipnd_stop,
+		discovery_ipnd_clear
 };
 /** @} */
 /** @} */

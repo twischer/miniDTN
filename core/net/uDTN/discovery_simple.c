@@ -108,13 +108,14 @@ void discovery_simple_dead(rimeaddr_t * neighbour) {
 }
 
 void discovery_simple_send_discover() {
-	if (discovery_simple_enabled) {
-		rimeaddr_t br_dest = { { 0, 0 } };
-		LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "send discover..");
-
-		//convergence_layer_send_discovery((uint8_t *) "DTN_DISCOVERY", 13, &br_dest);
-		convergence_layer_send_discovery((uint8_t *) "", 0, &br_dest);
+	if (!discovery_simple_enabled) {
+		return;
 	}
+
+	rimeaddr_t br_dest = { { 0, 0 } };
+	LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "send discover..");
+
+	convergence_layer_send_discovery((uint8_t *) "", 0, &br_dest);
 }
 
 uint8_t discovery_simple_discover(rimeaddr_t * dest) {
