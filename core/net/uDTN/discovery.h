@@ -28,7 +28,7 @@
 #ifdef CONF_DISCOVERY
 #define DISCOVERY CONF_DISCOVERY
 #else
-#define DISCOVERY discovery_simple
+#define DISCOVERY discovery_ipnd
 #endif
 
 
