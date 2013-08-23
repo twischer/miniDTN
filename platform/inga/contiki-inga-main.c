@@ -17,8 +17,7 @@
  * THIS SOFTWARE IS PROVIDED BY THE INSTITUTE AND CONTRIBUTORS ``AS IS'' AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE INSTITUTE OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE INSTITUTE OR CONTRIBUTORS BE LIABLE * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
  * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
  * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
@@ -109,6 +108,7 @@ uint8_t debugflowsize, debugflow[DEBUGFLOWSIZE];
 #include "contiki.h"
 #include "contiki-net.h"
 #include "contiki-lib.h"
+#include "sys/node-id.h"
 
 #include "dev/rs232.h"
 #include "dev/serial-line.h"
@@ -249,6 +249,22 @@ uip_log(char *msg)
   printf("%s\n", msg);
 }
 /*----------------------------------------------------------------------------*/
+// implement sys/node-id.h interface
+unsigned short node_id;
+/*----------------------------------------------------------------------------*/
+void node_id_restore(void) {
+  node_id = settings_get_uint16(SETTINGS_KEY_PAN_ADDR, 0);
+}
+/*----------------------------------------------------------------------------*/
+void node_id_burn(unsigned short node_id) {
+  if (settings_set_uint16(SETTINGS_KEY_PAN_ADDR, (uint16_t) node_id) == SETTINGS_STATUS_OK) {
+    uint16_t settings_nodeid = settings_get_uint16(SETTINGS_KEY_PAN_ADDR, 0);
+    PRINTF("New Node ID: %04X\n", settings_nodeid);
+  } else {
+    PRINTF("Error: Error while writing NodeID to EEPROM\n");
+  }
+}
+/*----------------------------------------------------------------------------*/
 void
 platform_radio_init(void)
 {
@@ -258,7 +274,7 @@ platform_radio_init(void)
   uint8_t radio_tx_power = RADIO_TX_POWER;
   uint8_t radio_channel = RADIO_CHANNEL;
   uint16_t pan_id = RADIO_PAN_ID;
-  uint16_t pan_addr = NODE_ID;
+  node_id = NODE_ID;
   uint8_t eui64_addr[8] = {0, 0, 0, 0, 0, 0, 0, 0};
   //rimeaddr_t addr;
 
@@ -276,7 +292,7 @@ platform_radio_init(void)
 
   // PAN_ADDR/NODE_ID
   if (settings_check(SETTINGS_KEY_PAN_ADDR, 0) == true) {
-    pan_addr = settings_get_uint16(SETTINGS_KEY_PAN_ADDR, 0);
+    node_id = settings_get_uint16(SETTINGS_KEY_PAN_ADDR, 0);
   } else {
     printf("NodeID/PanAddr not in EEPROM - using default\n");
   }
@@ -303,8 +319,8 @@ platform_radio_init(void)
     generate_new_eui64(eui64_addr);
     printf("Radio IEEE Addr not in EEPROM - generated random\n");
 #else /* CONTIKI_CONF_RANDOM_MAC */
-    eui64_addr[0] = pan_addr & 0xFF;
-    eui64_addr[1] = (pan_addr >> 8) & 0xFF;
+    eui64_addr[0] = node_id & 0xFF;
+    eui64_addr[1] = (node_id >> 8) & 0xFF;
     eui64_addr[2] = 0;
     eui64_addr[3] = 0;
     eui64_addr[4] = 0;
@@ -320,12 +336,12 @@ platform_radio_init(void)
 
 #if EUI64_BY_NODE_ID
   /* Replace lower 2 bytes with node ID  */
-  eui64_addr[0] = pan_addr & 0xFF;
-  eui64_addr[1] = (pan_addr >> 8) & 0xFF;
+  eui64_addr[0] = node_id & 0xFF;
+  eui64_addr[1] = (node_id >> 8) & 0xFF;
 #endif
 
   PRINTA("Network ID (pan_id): 0x%04X\n", pan_id);
-  PRINTA("Node ID (pan_addr): 0x%04X\n", pan_addr);
+  PRINTA("Node ID (pan_addr): 0x%04X\n", node_id);
   PRINTA("Radio TX power: 0x%02X\n", radio_tx_power);
   PRINTA("Radio channel: 0x%02X\n", radio_channel);
   PRINTA("MAC(EUI64) address %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x\n\r",
@@ -360,7 +376,7 @@ platform_radio_init(void)
   //--- Radio address settings
   {
     /* change order of bytes for rf23x */
-    uint16_t inv_node_id = ((pan_addr >> 8) & 0xff) + ((pan_addr & 0xff) << 8);
+    uint16_t inv_node_id = ((node_id >> 8) & 0xff) + ((node_id & 0xff) << 8);
     rf230_set_pan_addr(
             pan_id, // Network address 2 byte
             inv_node_id, // PAN ADD 2 Byte
