@@ -125,9 +125,6 @@ static volatile uint8_t rec_flag = 0;
 
 static uint16_t to_modifier = 1;
 
-// Enable CLEAR NEIGHBOURS
-#define DISCOVERY_AWARE_RDC_CONF_CLEAR_NEIGHBOURS
-
 
 static int on(void);
 static int off(int);
@@ -242,10 +239,7 @@ send_packet(mac_callback_t sent, void *ptr)
   if (!rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_RECEIVER), &rimeaddr_null)
           &&  ret == MAC_TX_OK) {
     send_flag = 1;
-#ifdef DISCOVERY_AWARE_RDC_CONF_DYNAMIC_TIMEOUT
     to_modifier+=10;
-    //to_modifier <<= 1;
-#endif /* DISCOVERY_AWARE_RDC_CONF_DYNAMIC_TIMEOUT */
   }
 
   mac_call_sent_callback(sent, ptr, ret, 1);
@@ -288,12 +282,9 @@ packet_input(void)
                   packetbuf_addr(PACKETBUF_ADDR_SENDER));
 #endif /* DISCOVERY_AWARE_RDC_802154_AUTOACK */
 
-#ifdef DISCOVERY_AWARE_RDC_CONF_DYNAMIC_TIMEOUT
     if (!rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_RECEIVER), &rimeaddr_null)) {
       to_modifier+=10;
-      //to_modifier <<= 1;
     }
-#endif /* DISCOVERY_AWARE_RDC_CONF_DYNAMIC_TIMEOUT */
 
 
     if (!rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_RECEIVER), &rimeaddr_null)) {
@@ -357,9 +348,7 @@ PROCESS_THREAD(discovery_aware_rdc_process, ev, data)
       PRINTF("RDC: received STOP event\n");
       if (radio_may_be_turned_off == 0 ) {
         etimer_set(&radio_off_timeout_timer, RADIO_OFF_SEND_TIMEOUT * to_modifier * CLOCK_SECOND);
-#ifdef DISCOVERY_AWARE_RDC_CONF_DYNAMIC_TIMEOUT
         to_modifier = 1;
-#endif /* DISCOVERY_AWARE_RDC_CONF_DYNAMIC_TIMEOUT */
         radio_may_be_turned_off = 1;
       }
       continue;
@@ -377,25 +366,19 @@ PROCESS_THREAD(discovery_aware_rdc_process, ev, data)
           send_flag = 0;
           rec_flag = 0;
           etimer_set(&radio_off_timeout_timer, RADIO_OFF_SEND_TIMEOUT * to_modifier * CLOCK_SECOND);
-#ifdef DISCOVERY_AWARE_RDC_CONF_DYNAMIC_TIMEOUT
           to_modifier = 1;
-#endif /* DISCOVERY_AWARE_RDC_CONF_DYNAMIC_TIMEOUT */
         } else {
           PRINTF("RDC: Turning radio OFF.\n");
           radio_status = 0;
           send_flag = 0;
           rec_flag = 0;
-#ifdef DISCOVERY_AWARE_RDC_CONF_DYNAMIC_TIMEOUT
           to_modifier = 1;
-#endif /* DISCOVERY_AWARE_RDC_CONF_DYNAMIC_TIMEOUT */
 
           NETSTACK_RADIO.off();
 
-#ifdef DISCOVERY_AWARE_RDC_CONF_CLEAR_NEIGHBOURS
           // empty neightbour list to prevent routing from senseless activity
           PRINTF("Clearing neighbours after radio off\n.");
           DISCOVERY.clear();
-#endif /* DISCOVERY_AWARE_RDC_CONF_CLEAR_NEIGHBOURS */
         }
       } else {
         PRINTF("RDC: NOT Turning radio off because it is already.\n");

@@ -206,11 +206,6 @@ void discovery_ipnd_receive(rimeaddr_t * source, uint8_t * payload, uint8_t leng
 		return;
 	}
 
-#ifdef DTN_DISCO_EVAL
-    static uint32_t c = 0;
-    printf("R %lu %lu %u\n", c++, clock_seconds(), source->u8[0]);
-#endif
-
 	// Save all peer from which we receive packets to the active neighbours list
 	discovery_ipnd_refresh_neighbour(source);
 

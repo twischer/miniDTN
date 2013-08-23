@@ -24,17 +24,6 @@
 
 #include "discovery.h"
 
-#ifdef DTN_DISCOVERY_SIMPLE_CONF_PS
-// PS - Phase Shift Optimization
-#include "discovery_scheduler.h"
-#endif /* DTN_DISCOVERY_SIMPLE_CONF_PS */
-
-#ifdef DTN_DISCOVERY_SIMPLE_CONF_FC
-// FC - Flow Control
-#include "storage.h"
-#endif /* DTN_DISCOVERY_SIMPLE_CONF_FC */
-
-
 #define DISCOVERY_NEIGHBOUR_CACHE	3
 
 
@@ -44,17 +33,7 @@ MEMB(neighbour_mem, struct discovery_neighbour_list_entry, DISCOVERY_NEIGHBOUR_C
 
 static uint8_t discovery_simple_enabled = 0;
 
-#ifdef DTN_DISCOVERY_SIMPLE_CONF_PS
-static uint8_t discovery_simple_schedule_index = 0;
-#endif  /* DTN_DISCOVERY_SIMPLE_CONF_PS */
-
 void discovery_simple_send_discover();
-
-#ifdef DTN_DISCOVERY_SIMPLE_CONF_AC
-// AC -- Active. Send additional beacons during discovery phase
-// Intra Phase Timer
-static struct ctimer discovery_simple_ipt;
-#endif /* DTN_DISCOVERY_SIMPLE_CONF_AC */
 
 
 void discovery_simple_init() {
@@ -91,18 +70,6 @@ void discovery_simple_receive(rimeaddr_t * source, uint8_t * payload, uint8_t le
 	LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "received from %u:%u", source->u8[1], source->u8[0]);
 
 	if (!discovery_simple_is_neighbour(source)) {
-
-#ifdef DTN_DISCOVERY_SIMPLE_CONF_TH
-		// TH -- throttle discovery when neighbor found
-		//discovery_simple_enabled = 0;
-#endif /* DTN_DISCOVERY_SIMPLE_CONF_TH */
-
-
-#ifdef DTN_DISCO_EVAL
-		static uint32_t c = 0;
-		printf("R %lu %lu %u\n", c++, clock_seconds(), source->u8[0]);
-#endif
-
 		struct discovery_neighbour_list_entry * entry;
 		entry = memb_alloc(&neighbour_mem);
 
@@ -112,20 +79,9 @@ void discovery_simple_receive(rimeaddr_t * source, uint8_t * payload, uint8_t le
 		rimeaddr_copy(&(entry->neighbour), source);
 		list_add(neighbour_list, entry);
 
-#ifdef DTN_DISCOVERY_SIMPLE_CONF_PS
-		// PS - Phase Shift Optimization
-		uint32_t * neigh_id = (uint32_t *) payload;
-		LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "Schedule Index of neighbor %lu: %u      I am %lu", *neigh_id, payload[4], dtn_node_id);
-		if (*neigh_id > dtn_node_id) {
-			DISCOVERY_SCHEDULER.set_schedule_index(payload[4]);
-		}
-#endif /* DTN_DISCOVERY_SIMPLE_CONF_PS */
-
-#ifdef DTN_DISCOVERY_SIMPLE_CONF_PR
 		// Respond with discovery packet
 		LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "Responding to neighbor %u.%u", source->u8[0], source->u8[1]);
 		discovery_simple_send_discover();
-#endif /* DTN_DISCOVERY_SIMPLE_CONF_PR */
 	}
 
 	// We have found a new neighbor, now go and notify the agent
@@ -152,30 +108,12 @@ void discovery_simple_dead(rimeaddr_t * neighbour) {
 }
 
 void discovery_simple_send_discover() {
-
-#ifdef DTN_DISCOVERY_SIMPLE_CONF_FC
-	// FC -- Flow Control. Only send discover when we have bundle space left
-	if (BUNDLE_STORAGE.free_space(NULL) < 0) return;
-#endif /* DTN_DISCOVERY_SIMPLE_CONF_FC */
-
-#ifdef DTN_DISCOVERY_SIMPLE_CONF_TH
-	// TH -- throttle discovery when neighbor found
-	if (list_length(neighbour_list)) return;
-#endif /* DTN_DISCOVERY_SIMPLE_CONF_FC */
-
 	if (discovery_simple_enabled) {
 		rimeaddr_t br_dest = { { 0, 0 } };
 		LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "send discover..");
 
-#ifdef DTN_DISCOVERY_SIMPLE_CONF_PS
-		// PS -- Phase Shift Optimization, send disco schedule index and node id
-		uint8_t payload[5] = {0, 0, 0, 0, discovery_simple_schedule_index};
-		memcpy(payload, &dtn_node_id, 4);
-		convergence_layer_send_discovery(payload, 5, &br_dest);
-#else
 		//convergence_layer_send_discovery((uint8_t *) "DTN_DISCOVERY", 13, &br_dest);
 		convergence_layer_send_discovery((uint8_t *) "", 0, &br_dest);
-#endif /* DTN_DISCOVERY_SIMPLE_CONF_PS */
 	}
 }
 
@@ -200,32 +138,13 @@ void discovery_simple_stop_pending() {
 	LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "Stop pending.");
 }
 
-#ifdef DTN_DISCOVERY_SIMPLE_CONF_AC
-void discovery_simple__send_helper(void * ptr) {
-	ctimer_reset(&discovery_simple_ipt);
-	discovery_simple_send_discover();
-}
-#endif /* DTN_DISCOVERY_SIMPLE_CONF_AC */
-
 void discovery_simple_start(clock_time_t duration, uint8_t index) {
 	LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "Start of discovery phase.");
 	discovery_simple_enabled = 1;
 	discovery_simple_send_discover();
-
-#ifdef DTN_DISCOVERY_SIMPLE_CONF_PS
-	discovery_simple_schedule_index = index;
-#endif /* DTN_DISCOVERY_SIMPLE_CONF_PS */
-
-#ifdef DTN_DISCOVERY_SIMPLE_CONF_AC
-	ctimer_set(&discovery_simple_ipt, 0.5 * duration, discovery_simple__send_helper, NULL);
-#endif /* DTN_DISCOVERY_SIMPLE_CONF_AC */
 }
 
 void discovery_simple_stop() {
-#ifdef DTN_DISCOVERY_SIMPLE_CONF_AC
-	ctimer_stop(&discovery_simple_ipt);
-#endif /* DTN_DISCOVERY_SIMPLE_CONF_AC */
-
 	discovery_simple_send_discover();
 	discovery_simple_enabled = 0;
 	LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "End of discovery phase.");
