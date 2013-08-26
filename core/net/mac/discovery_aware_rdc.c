@@ -283,11 +283,7 @@ packet_input(void)
 #endif /* DISCOVERY_AWARE_RDC_802154_AUTOACK */
 
     if (!rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_RECEIVER), &rimeaddr_null)) {
-      to_modifier+=10;
-    }
-
-
-    if (!rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_RECEIVER), &rimeaddr_null)) {
+      to_modifier += 10;
       rec_flag = 1;
     }
 
