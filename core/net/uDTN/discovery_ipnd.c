@@ -41,7 +41,7 @@ void discovery_ipnd_save_neighbour(rimeaddr_t * neighbour);
 void discovery_ipnd_remove_stale_neighbours(void * ptr);
 
 #define DISCOVERY_NEIGHBOUR_CACHE	3
-#define DISCOVERY_NEIGHBOUR_TIMEOUT	5
+#define DISCOVERY_NEIGHBOUR_TIMEOUT	25
 #define DISCOVERY_IPND_SERVICE		"lowpancl"
 #define DISCOVERY_IPND_BUFFER_LEN 	60
 #define DISCOVERY_IPND_WHITELIST	0
