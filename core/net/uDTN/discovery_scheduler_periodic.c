@@ -30,10 +30,15 @@
 #endif
 
 static struct ctimer dst;
+process_event_t dtn_disco_start_event;
+process_event_t dtn_disco_stop_event;
 
 void discovery_scheduler_periodic_func(void * ptr);
 
 void discovery_scheduler_periodic_init() {
+	dtn_disco_start_event = process_alloc_event();
+	dtn_disco_stop_event = process_alloc_event();
+
 	ctimer_set(&dst, DISCOVERY_CYCLE * CLOCK_SECOND, discovery_scheduler_periodic_func, NULL);
 }
 
