@@ -439,7 +439,22 @@ void discovery_ipnd_stop()
 
 void discovery_ipnd_clear()
 {
+	struct discovery_neighbour_list_entry * entry;
+	int changed = 1;
 
+	LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_INF, "Clearing neighbour list");
+
+	while(changed) {
+		changed = 0;
+
+		for (entry = list_head(neighbour_list); entry != NULL ; entry = entry->next) {
+			convergence_layer_neighbour_down(&entry->neighbour);
+			list_remove(neighbour_list, entry);
+			memb_free(&neighbour_mem, entry);
+			changed = 1;
+			break;
+		}
+	}
 }
 
 void discovery_ipnd_remove_stale_neighbours(void * ptr)
