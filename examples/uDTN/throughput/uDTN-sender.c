@@ -90,7 +90,7 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 	static uint32_t time_start, time_stop;
 	uint8_t userdata[80];
 	uint32_t tmp;
-	rimeaddr_t destination;
+	static rimeaddr_t destination;
 	static struct mmem * bundle_outgoing;
 
 	PROCESS_BEGIN();
@@ -114,8 +114,7 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 
 	/* Wait until a neighbour has been discovered */
 	printf("Waiting for neighbour to appear...\n");
-	tmp = CONF_SEND_TO_NODE;
-	destination = convert_eid_to_rime(tmp);
+	destination = convert_eid_to_rime(CONF_SEND_TO_NODE);
 	while( !DISCOVERY.is_neighbour(&destination) ) {
 		PROCESS_PAUSE();
 	}
