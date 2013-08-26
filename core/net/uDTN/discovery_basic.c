@@ -354,10 +354,22 @@ void discovery_basic_stop_pending()
 /**
  * \brief Starts a periodic rediscovery
  */
-void b_dis_start_pending()
+void discovery_basic_start_pending()
 {
 	discovery_pending = 1;
 	etimer_set(&discovery_pending_timer, DISCOVERY_CYCLE * CLOCK_SECOND);
+}
+
+void discovery_basic_start(clock_time_t duration, uint8_t index)
+{
+}
+
+void discovery_basic_stop()
+{
+}
+
+void discovery_basic_clear()
+{
 }
 
 /**
@@ -420,17 +432,20 @@ PROCESS_THREAD(discovery_process, ev, data)
 }
 
 const struct discovery_driver discovery_basic = {
-	.name = "B_DISCOVERY",
-	.init = discovery_basic_init,
-	.is_neighbour = discovery_basic_is_neighbour,
-	.enable = discovery_basic_enable,
-	.disable = discovery_basic_disable,
-	.receive = discovery_basic_receive,
-	.alive = discovery_basic_refresh_neighbour,
-	.dead = NULL,
-	.discover = discovery_basic_discover,
-	.neighbours = discovery_basic_list_neighbours,
-	.stop_pending = discovery_basic_stop_pending,
+		.name = "B_DISCOVERY",
+		.init = discovery_basic_init,
+		.is_neighbour = discovery_basic_is_neighbour,
+		.enable = discovery_basic_enable,
+		.disable = discovery_basic_disable,
+		.receive = discovery_basic_receive,
+		.alive = discovery_basic_refresh_neighbour,
+		.dead = NULL,
+		.discover = discovery_basic_discover,
+		.neighbours = discovery_basic_list_neighbours,
+		.stop_pending = discovery_basic_stop_pending,
+		.start        = discovery_basic_start,
+		.stop         = discovery_basic_stop,
+		.clear        = discovery_basic_clear,
 };
 /** @} */
 /** @} */
