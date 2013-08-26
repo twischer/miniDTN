@@ -94,8 +94,8 @@
 
 #if DISCOVERY_AWARE_RDC_802154_AUTOACK || DISCOVERY_AWARE_RDC_802154_AUTOACK_HW
 struct seqno {
-  rimeaddr_t sender;
-  uint8_t seqno;
+	rimeaddr_t sender;
+	uint8_t seqno;
 };
 
 #ifdef NETSTACK_CONF_MAC_SEQNO_HISTORY
@@ -133,268 +133,268 @@ static int off(int);
 static void
 send_packet(mac_callback_t sent, void *ptr)
 {
-  int ret;
-  packetbuf_set_addr(PACKETBUF_ADDR_SENDER, &rimeaddr_node_addr);
+	int ret;
+	packetbuf_set_addr(PACKETBUF_ADDR_SENDER, &rimeaddr_node_addr);
 #if DISCOVERY_AWARE_RDC_802154_AUTOACK || DISCOVERY_AWARE_RDC_802154_AUTOACK_HW
-  packetbuf_set_attr(PACKETBUF_ATTR_MAC_ACK, 1);
+	packetbuf_set_attr(PACKETBUF_ATTR_MAC_ACK, 1);
 #endif /* DISCOVERY_AWARE_RDC_802154_AUTOACK || DISCOVERY_AWARE_RDC_802154_AUTOACK_HW */
 
-  if (!radio_status) {
-    on();
-  }
+	if (!radio_status) {
+		on();
+	}
 
 
-  if(NETSTACK_FRAMER.create() == 0) {
-    /* Failed to allocate space for headers */
-    ret = MAC_TX_ERR_FATAL;
-  } else {
+	if(NETSTACK_FRAMER.create() == 0) {
+		/* Failed to allocate space for headers */
+		ret = MAC_TX_ERR_FATAL;
+	} else {
 
 #if DISCOVERY_AWARE_RDC_802154_AUTOACK
-    int is_broadcast;
-    uint8_t dsn;
-    dsn = ((uint8_t *)packetbuf_hdrptr())[2] & 0xff;
+		int is_broadcast;
+		uint8_t dsn;
+		dsn = ((uint8_t *)packetbuf_hdrptr())[2] & 0xff;
 
-    NETSTACK_RADIO.prepare(packetbuf_hdrptr(), packetbuf_totlen());
+		NETSTACK_RADIO.prepare(packetbuf_hdrptr(), packetbuf_totlen());
 
-    is_broadcast = rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_RECEIVER),
-                                &rimeaddr_null);
+		is_broadcast = rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_RECEIVER),
+				&rimeaddr_null);
 
-    if(NETSTACK_RADIO.receiving_packet() ||
-       (!is_broadcast && NETSTACK_RADIO.pending_packet())) {
+		if(NETSTACK_RADIO.receiving_packet() ||
+				(!is_broadcast && NETSTACK_RADIO.pending_packet())) {
 
-      /* Currently receiving a packet over air or the radio has
+			/* Currently receiving a packet over air or the radio has
          already received a packet that needs to be read before
          sending with auto ack. */
-      ret = MAC_TX_COLLISION;
+			ret = MAC_TX_COLLISION;
 
-    } else {
-      switch(NETSTACK_RADIO.transmit(packetbuf_totlen())) {
-      case RADIO_TX_OK:
-        if(is_broadcast) {
-          ret = MAC_TX_OK;
-        } else {
-          rtimer_clock_t wt;
+		} else {
+			switch(NETSTACK_RADIO.transmit(packetbuf_totlen())) {
+			case RADIO_TX_OK:
+				if(is_broadcast) {
+					ret = MAC_TX_OK;
+				} else {
+					rtimer_clock_t wt;
 
-          /* Check for ack */
-          wt = RTIMER_NOW();
-          watchdog_periodic();
-          while(RTIMER_CLOCK_LT(RTIMER_NOW(), wt + ACK_WAIT_TIME));
+					/* Check for ack */
+					wt = RTIMER_NOW();
+					watchdog_periodic();
+					while(RTIMER_CLOCK_LT(RTIMER_NOW(), wt + ACK_WAIT_TIME));
 
-          ret = MAC_TX_NOACK;
-          if(NETSTACK_RADIO.receiving_packet() ||
-             NETSTACK_RADIO.pending_packet() ||
-             NETSTACK_RADIO.channel_clear() == 0) {
-            int len;
-            uint8_t ackbuf[ACK_LEN];
+					ret = MAC_TX_NOACK;
+					if(NETSTACK_RADIO.receiving_packet() ||
+							NETSTACK_RADIO.pending_packet() ||
+							NETSTACK_RADIO.channel_clear() == 0) {
+						int len;
+						uint8_t ackbuf[ACK_LEN];
 
-            wt = RTIMER_NOW();
-            watchdog_periodic();
-            while(RTIMER_CLOCK_LT(RTIMER_NOW(),
-                                  wt + AFTER_ACK_DETECTED_WAIT_TIME));
+						wt = RTIMER_NOW();
+						watchdog_periodic();
+						while(RTIMER_CLOCK_LT(RTIMER_NOW(),
+								wt + AFTER_ACK_DETECTED_WAIT_TIME));
 
-            if(NETSTACK_RADIO.pending_packet()) {
-              len = NETSTACK_RADIO.read(ackbuf, ACK_LEN);
-              if(len == ACK_LEN && ackbuf[2] == dsn) {
-                /* Ack received */
-                ret = MAC_TX_OK;
-              } else {
-                /* Not an ack or ack not for us: collision */
-                ret = MAC_TX_COLLISION;
-              }
-            }
-          }
-        }
-        break;
-      case RADIO_TX_COLLISION:
-        ret = MAC_TX_COLLISION;
-        break;
-      default:
-        ret = MAC_TX_ERR;
-        break;
-      }
-    }
+						if(NETSTACK_RADIO.pending_packet()) {
+							len = NETSTACK_RADIO.read(ackbuf, ACK_LEN);
+							if(len == ACK_LEN && ackbuf[2] == dsn) {
+								/* Ack received */
+								ret = MAC_TX_OK;
+							} else {
+								/* Not an ack or ack not for us: collision */
+								ret = MAC_TX_COLLISION;
+							}
+						}
+					}
+				}
+				break;
+			case RADIO_TX_COLLISION:
+				ret = MAC_TX_COLLISION;
+				break;
+			default:
+				ret = MAC_TX_ERR;
+				break;
+			}
+		}
 
 #else /* ! DISCOVERY_AWARE_RDC_802154_AUTOACK */
 
-    switch(NETSTACK_RADIO.send(packetbuf_hdrptr(), packetbuf_totlen())) {
-    case RADIO_TX_OK:
-      ret = MAC_TX_OK;
-      break;
-    case RADIO_TX_COLLISION:
-      ret = MAC_TX_COLLISION;
-      break;
-    case RADIO_TX_NOACK:
-      ret = MAC_TX_NOACK;
-      break;
-    default:
-      ret = MAC_TX_ERR;
-      break;
-    }
+		switch(NETSTACK_RADIO.send(packetbuf_hdrptr(), packetbuf_totlen())) {
+		case RADIO_TX_OK:
+			ret = MAC_TX_OK;
+			break;
+		case RADIO_TX_COLLISION:
+			ret = MAC_TX_COLLISION;
+			break;
+		case RADIO_TX_NOACK:
+			ret = MAC_TX_NOACK;
+			break;
+		default:
+			ret = MAC_TX_ERR;
+			break;
+		}
 
 #endif /* ! DISCOVERY_AWARE_RDC_802154_AUTOACK */
-  }
+	}
 
 
 
-  if (!rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_RECEIVER), &rimeaddr_null)
-          &&  ret == MAC_TX_OK) {
-    send_flag = 1;
-    to_modifier+=10;
-  }
+	if (!rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_RECEIVER), &rimeaddr_null)
+			&&  ret == MAC_TX_OK) {
+		send_flag = 1;
+		to_modifier+=10;
+	}
 
-  mac_call_sent_callback(sent, ptr, ret, 1);
+	mac_call_sent_callback(sent, ptr, ret, 1);
 }
 /*---------------------------------------------------------------------------*/
 static void
 packet_input(void)
 {
 #if DISCOVERY_AWARE_RDC_802154_AUTOACK
-  if(packetbuf_datalen() == ACK_LEN) {
-    /* Ignore ack packets */
-  } else
+	if(packetbuf_datalen() == ACK_LEN) {
+		/* Ignore ack packets */
+	} else
 #endif /* DISCOVERY_AWARE_RDC_802154_AUTOACK */
-  if(NETSTACK_FRAMER.parse() == 0) {
+		if(NETSTACK_FRAMER.parse() == 0) {
 #if DISCOVERY_AWARE_RDC_ADDRESS_FILTER
-  } else if(!rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_RECEIVER),
-                                         &rimeaddr_node_addr) &&
-            !rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_RECEIVER),
-                          &rimeaddr_null)) {
+		} else if(!rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_RECEIVER),
+				&rimeaddr_node_addr) &&
+				!rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_RECEIVER),
+						&rimeaddr_null)) {
 #endif /* DISCOVERY_AWARE_RDC_ADDRESS_FILTER */
-  } else {
+		} else {
 #if DISCOVERY_AWARE_RDC_802154_AUTOACK || DISCOVERY_AWARE_RDC_802154_AUTOACK_HW
-    /* Check for duplicate packet by comparing the sequence number
+			/* Check for duplicate packet by comparing the sequence number
        of the incoming packet with the last few ones we saw. */
-    int i;
-    for(i = 0; i < MAX_SEQNOS; ++i) {
-      if(packetbuf_attr(PACKETBUF_ATTR_PACKET_ID) == received_seqnos[i].seqno &&
-         rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_SENDER),
-                      &received_seqnos[i].sender)) {
-        /* Drop the packet. */
-         return;
-      }
-    }
-    for(i = MAX_SEQNOS - 1; i > 0; --i) {
-      memcpy(&received_seqnos[i], &received_seqnos[i - 1],
-             sizeof(struct seqno));
-    }
-    received_seqnos[0].seqno = packetbuf_attr(PACKETBUF_ATTR_PACKET_ID);
-    rimeaddr_copy(&received_seqnos[0].sender,
-                  packetbuf_addr(PACKETBUF_ADDR_SENDER));
+			int i;
+			for(i = 0; i < MAX_SEQNOS; ++i) {
+				if(packetbuf_attr(PACKETBUF_ATTR_PACKET_ID) == received_seqnos[i].seqno &&
+						rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_SENDER),
+								&received_seqnos[i].sender)) {
+					/* Drop the packet. */
+					return;
+				}
+			}
+			for(i = MAX_SEQNOS - 1; i > 0; --i) {
+				memcpy(&received_seqnos[i], &received_seqnos[i - 1],
+						sizeof(struct seqno));
+			}
+			received_seqnos[0].seqno = packetbuf_attr(PACKETBUF_ATTR_PACKET_ID);
+			rimeaddr_copy(&received_seqnos[0].sender,
+					packetbuf_addr(PACKETBUF_ADDR_SENDER));
 #endif /* DISCOVERY_AWARE_RDC_802154_AUTOACK */
 
-    if (!rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_RECEIVER), &rimeaddr_null)) {
-      to_modifier += 10;
-      rec_flag = 1;
-    }
+			if (!rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_RECEIVER), &rimeaddr_null)) {
+				to_modifier += 10;
+				rec_flag = 1;
+			}
 
-    NETSTACK_MAC.input();
-  }
+			NETSTACK_MAC.input();
+		}
 }
 /*---------------------------------------------------------------------------*/
 static int
 on(void)
 {
-  radio_status = 1;
-  return NETSTACK_RADIO.on();
+	radio_status = 1;
+	return NETSTACK_RADIO.on();
 }
 /*---------------------------------------------------------------------------*/
 static int
 off(int keep_radio_on)
 {
-  if(keep_radio_on) {
-    return NETSTACK_RADIO.on();
-  } else {
-    radio_status = 0;
-    PRINTF("RDC: Radio OFF\n");
-    return NETSTACK_RADIO.off();
-  }
+	if(keep_radio_on) {
+		return NETSTACK_RADIO.on();
+	} else {
+		radio_status = 0;
+		PRINTF("RDC: Radio OFF\n");
+		return NETSTACK_RADIO.off();
+	}
 }
 /*---------------------------------------------------------------------------*/
 static unsigned short
 channel_check_interval(void)
 {
-  return 0;
+	return 0;
 }
 /*---------------------------------------------------------------------------*/
 static void
 init(void)
 {
-  on();
-  PRINTF("RDC: init\n");
-  process_start(&discovery_aware_rdc_process, NULL);
+	on();
+	PRINTF("RDC: init\n");
+	process_start(&discovery_aware_rdc_process, NULL);
 }
 
 PROCESS_THREAD(discovery_aware_rdc_process, ev, data)
 {
-  PROCESS_BEGIN();
+	PROCESS_BEGIN();
 
-  while(1) {
-    PROCESS_WAIT_EVENT();
+	while(1) {
+		PROCESS_WAIT_EVENT();
 
-    if (dtn_disco_start_event == ev) {
-      PRINTF("RDC: received START event\n");
-      radio_may_be_turned_off = 0;
-      if (!radio_status) {
-        on();
-      }
-      continue;
-    }
+		if (dtn_disco_start_event == ev) {
+			PRINTF("RDC: received START event\n");
+			radio_may_be_turned_off = 0;
+			if (!radio_status) {
+				on();
+			}
+			continue;
+		}
 
-    if (dtn_disco_stop_event == ev) {
-      PRINTF("RDC: received STOP event\n");
-      if (radio_may_be_turned_off == 0 ) {
-        etimer_set(&radio_off_timeout_timer, RADIO_OFF_SEND_TIMEOUT * to_modifier * CLOCK_SECOND);
-        to_modifier = 1;
-        radio_may_be_turned_off = 1;
-      }
-      continue;
-    }
+		if (dtn_disco_stop_event == ev) {
+			PRINTF("RDC: received STOP event\n");
+			if (radio_may_be_turned_off == 0 ) {
+				etimer_set(&radio_off_timeout_timer, RADIO_OFF_SEND_TIMEOUT * to_modifier * CLOCK_SECOND);
+				to_modifier = 1;
+				radio_may_be_turned_off = 1;
+			}
+			continue;
+		}
 
-    if (etimer_expired(&radio_off_timeout_timer) && radio_may_be_turned_off) {
-      PRINTF("RDC: Radio off timeout reached!\n");
-      if (radio_status) {
-        if (  NETSTACK_RADIO.pending_packet() ||
-              NETSTACK_RADIO.receiving_packet() ||
-              !NETSTACK_RADIO.channel_clear() ||
-              rec_flag == 1 ||
-              send_flag == 1) {
-          PRINTF("RDC: NOT turning radio OFF because of pending packet or recent traffic.\n");
-          send_flag = 0;
-          rec_flag = 0;
-          etimer_set(&radio_off_timeout_timer, RADIO_OFF_SEND_TIMEOUT * to_modifier * CLOCK_SECOND);
-          to_modifier = 1;
-        } else {
-          PRINTF("RDC: Turning radio OFF.\n");
-          radio_status = 0;
-          send_flag = 0;
-          rec_flag = 0;
-          to_modifier = 1;
+		if (etimer_expired(&radio_off_timeout_timer) && radio_may_be_turned_off) {
+			PRINTF("RDC: Radio off timeout reached!\n");
+			if (radio_status) {
+				if (  NETSTACK_RADIO.pending_packet() ||
+						NETSTACK_RADIO.receiving_packet() ||
+						!NETSTACK_RADIO.channel_clear() ||
+						rec_flag == 1 ||
+						send_flag == 1) {
+					PRINTF("RDC: NOT turning radio OFF because of pending packet or recent traffic.\n");
+					send_flag = 0;
+					rec_flag = 0;
+					etimer_set(&radio_off_timeout_timer, RADIO_OFF_SEND_TIMEOUT * to_modifier * CLOCK_SECOND);
+					to_modifier = 1;
+				} else {
+					PRINTF("RDC: Turning radio OFF.\n");
+					radio_status = 0;
+					send_flag = 0;
+					rec_flag = 0;
+					to_modifier = 1;
 
-          NETSTACK_RADIO.off();
+					NETSTACK_RADIO.off();
 
-          // empty neightbour list to prevent routing from senseless activity
-          PRINTF("Clearing neighbours after radio off\n.");
-          DISCOVERY.clear();
-        }
-      } else {
-        PRINTF("RDC: NOT Turning radio off because it is already.\n");
-      }
-      continue;
-    }
+					// empty neightbour list to prevent routing from senseless activity
+					PRINTF("Clearing neighbours after radio off\n.");
+					DISCOVERY.clear();
+				}
+			} else {
+				PRINTF("RDC: NOT Turning radio off because it is already.\n");
+			}
+			continue;
+		}
 
-  }
-  PROCESS_END();
+	}
+	PROCESS_END();
 }
 
 /*---------------------------------------------------------------------------*/
 const struct rdc_driver discovery_aware_rdc_driver = {
-  "discovery_aware_rdc",
-  init,
-  send_packet,
-  packet_input,
-  on,
-  off,
-  channel_check_interval,
+		"discovery_aware_rdc",
+		init,
+		send_packet,
+		packet_input,
+		on,
+		off,
+		channel_check_interval,
 };
 /*---------------------------------------------------------------------------*/
 
