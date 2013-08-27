@@ -250,16 +250,13 @@ void storage_coffee_reconstruct_bundles()
  */
 void storage_coffee_prune()
 {
-	uint32_t elapsed_time;
 	struct file_list_entry_t * entry = NULL;
 
 	// Delete expired bundles from storage
 	for(entry = list_head(bundle_list);
 			entry != NULL;
 			entry = list_item_next(entry)) {
-		elapsed_time = clock_seconds() - entry->rec_time;
-
-		if( entry->lifetime < elapsed_time ) {
+		if( entry->lifetime < (clock_time() - entry->rec_time) / CLOCK_SECOND ) {
 			LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "bundle lifetime expired of bundle %lu", entry->bundle_num);
 			storage_coffee_delete_bundle(entry->bundle_num, REASON_LIFETIME_EXPIRED);
 		}
@@ -334,13 +331,13 @@ uint8_t storage_coffee_make_room(struct mmem * bundlemem)
 			}
 
 #if BUNDLE_STORAGE_BEHAVIOUR == BUNDLE_STORAGE_BEHAVIOUR_DELETE_OLDEST
-			if( (clock_seconds() - entry->rec_time) > comparator || comparator == 0) {
-				comparator = clock_seconds() - entry->rec_time;
+			if( (clock_time() - entry->rec_time) > comparator || comparator == 0) {
+				comparator = clock_time() - entry->rec_time;
 				deletor = entry;
 			}
 #elif BUNDLE_STORAGE_BEHAVIOUR == BUNDLE_STORAGE_BEHAVIOUR_DELETE_YOUNGEST
-			if( (clock_seconds() - entry->rec_time) < comparator || comparator == 0) {
-				comparator = clock_seconds() - entry->rec_time;
+			if( (clock_time() - entry->rec_time) < comparator || comparator == 0) {
+				comparator = clock_time() - entry->rec_time;
 				deletor = entry;
 			}
 #endif
@@ -384,12 +381,12 @@ uint8_t storage_coffee_make_room(struct mmem * bundlemem)
 			/* If the new bundle has a longer lifetime than the bundle in our storage,
 			 * delete the bundle from storage to make room
 			 */
-			if( bundle->lifetime - (clock_seconds() - bundle->rec_time) >= entry->lifetime - (clock_seconds() - entry->rec_time) ) {
+			if( bundle->lifetime - (clock_time() - bundle->rec_time) / CLOCK_SECOND >= entry->lifetime - (clock_time() - entry->rec_time) / CLOCK_SECOND ) {
 				break;
 			}
 #elif BUNDLE_STORAGE_BEHAVIOUR == BUNDLE_STORAGE_BEHAVIOUR_DELETE_YOUNGER
 			/* Delete youngest bundle in storage */
-			if( bundle->lifetime - (clock_seconds() - bundle->rec_time) >= entry->lifetime - (clock_seconds() - entry->rec_time) ) {
+			if( bundle->lifetime - (clock_time() - bundle->rec_time) / CLOCK_SECOND >= entry->lifetime - (clock_time() - entry->rec_time) / CLOCK_SECOND ) {
 				break;
 			}
 #endif
@@ -478,7 +475,9 @@ uint8_t storage_coffee_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_n
 
 	// Copy necessary values from the bundle
 	entry->rec_time = bundle->rec_time;
-	entry->lifetime = bundle->lifetime;
+
+	/* Reduce the lifetime by the age of the bundle to ensure that the bundle will "timeout" when appropriate */
+	entry->lifetime = bundle->lifetime - bundle->aeb_value_ms / 1000;
 	entry->file_size = bundlemem->size;
 	entry->bundle_flags = bundle->flags;
 
@@ -713,18 +712,6 @@ struct mmem * storage_coffee_read_bundle(uint32_t bundle_number)
 
 	/* Get the bundle pointer */
 	bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
-
-	/* How long did this bundle rot in our storage? */
-	uint32_t elapsed_time = clock_seconds() - bundle->rec_time;
-
-	/* Update lifetime of bundle */
-	if( bundle->lifetime < elapsed_time ) {
-		bundle->lifetime = 0;
-		bundle->rec_time = clock_seconds();
-	} else {
-		bundle->lifetime = bundle->lifetime - elapsed_time;
-		bundle->rec_time = clock_seconds();
-	}
 
 	return bundlemem;
 }

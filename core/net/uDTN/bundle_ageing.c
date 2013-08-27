@@ -33,7 +33,7 @@ uint32_t bundle_ageing_get_age(struct mmem * bundlemem) {
 		return 0;
 	}
 
-	return bundle->aeb_value_ms + ((uint32_t) clock_seconds() - bundle->rec_time) * 1000;
+	return bundle->aeb_value_ms + (((uint32_t) clock_time() - bundle->rec_time) * 1000) / CLOCK_SECOND;
 }
 
 /**

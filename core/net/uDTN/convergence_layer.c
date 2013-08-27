@@ -28,6 +28,7 @@
 #include "dispatching.h"
 #include "bundleslot.h"
 #include "statusreport.h"
+#include "bundle_ageing.h"
 
 #include "convergence_layer.h"
 
@@ -228,7 +229,7 @@ int convergence_layer_send_bundle(struct transmit_ticket_t * ticket)
 	}
 
 	/* Check if bundle has expired */
-	if( bundle->lifetime == 0 ) {
+	if( bundle_ageing_is_expired(ticket->bundle) ) {
 		LOG(LOGD_DTN, LOG_CL, LOGL_INF, "Bundle %lu has expired, not sending it", ticket->bundle_number);
 
 		/* Bundle is expired */

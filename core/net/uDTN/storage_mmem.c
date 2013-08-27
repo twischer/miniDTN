@@ -32,6 +32,7 @@
 #include "profiling.h"
 #include "statistics.h"
 #include "hash.h"
+#include "bundle_ageing.h"
 
 #include "storage.h"
 
@@ -122,7 +123,6 @@ void storage_mmem_init(void)
  */
 void storage_mmem_prune()
 {
-	uint32_t elapsed_time;
 	struct bundle_list_entry_t * entry = NULL;
 	struct bundle_t *bundle = NULL;
 
@@ -131,9 +131,8 @@ void storage_mmem_prune()
 			entry != NULL;
 			entry = list_item_next(entry)) {
 		bundle = (struct bundle_t *) MMEM_PTR(entry->bundle);
-		elapsed_time = clock_seconds() - bundle->rec_time;
 
-		if( bundle->lifetime < elapsed_time ) {
+		if( bundle_ageing_is_expired(entry->bundle) ) {
 			LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "bundle lifetime expired of bundle %lu", entry->bundle_num);
 			storage_mmem_delete_bundle(bundle->bundle_num, REASON_LIFETIME_EXPIRED);
 		}
@@ -210,13 +209,13 @@ uint8_t storage_mmem_make_room(struct mmem * bundlemem)
 			}
 
 #if BUNDLE_STORAGE_BEHAVIOUR == BUNDLE_STORAGE_BEHAVIOUR_DELETE_OLDEST
-			if( (clock_seconds() - bundle->rec_time) > comparator || comparator == 0) {
-				comparator = clock_seconds() - bundle_old->rec_time;
+			if( (clock_time() - bundle->rec_time) > comparator || comparator == 0) {
+				comparator = clock_time() - bundle_old->rec_time;
 				deletor = entry;
 			}
 #elif BUNDLE_STORAGE_BEHAVIOUR == BUNDLE_STORAGE_BEHAVIOUR_DELETE_YOUNGEST
-			if( (clock_seconds() - bundle->rec_time) < comparator || comparator == 0) {
-				comparator = clock_seconds() - bundle_old->rec_time;
+			if( (clock_time() - bundle->rec_time) < comparator || comparator == 0) {
+				comparator = clock_time() - bundle_old->rec_time;
 				deletor = entry;
 			}
 #endif
@@ -263,12 +262,12 @@ uint8_t storage_mmem_make_room(struct mmem * bundlemem)
 			/* If the new bundle has a longer lifetime than the bundle in our storage,
 			 * delete the bundle from storage to make room
 			 */
-			if( bundle_new->lifetime - (clock_seconds() - bundle_new->rec_time) >= bundle_old->lifetime - (clock_seconds() - bundle_old->rec_time) ) {
+			if( bundle_new->lifetime - (clock_time() - bundle_new->rec_time) / CLOCK_SECOND >= bundle_old->lifetime - (clock_time() - bundle_old->rec_time) / CLOCK_SECOND ) {
 				break;
 			}
 #elif BUNDLE_STORAGE_BEHAVIOUR == BUNDLE_STORAGE_BEHAVIOUR_DELETE_YOUNGER
 			/* Delete youngest bundle in storage */
-			if( bundle_new->lifetime - (clock_seconds() - bundle_new->rec_time) >= bundle_old->lifetime - (clock_seconds() - bundle_old->rec_time) ) {
+			if( bundle_new->lifetime - (clock_time() - bundle_new->rec_time) / CLOCK_SECOND >= bundle_old->lifetime - (clock_time() - bundle_old->rec_time) / CLOCK_SECOND ) {
 				break;
 			}
 #endif
@@ -480,18 +479,6 @@ struct mmem *storage_mmem_read_bundle(uint32_t bundle_num)
 
 	// Someone requested the bundle, he will have to decrease the reference counter again
 	bundle_increment(entry->bundle);
-
-	/* How long did this bundle rot in our storage? */
-	uint32_t elapsed_time = clock_seconds() - bundle->rec_time;
-
-	/* Update lifetime of bundle */
-	if( bundle->lifetime < elapsed_time ) {
-		bundle->lifetime = 0;
-		bundle->rec_time = clock_seconds();
-	} else {
-		bundle->lifetime = bundle->lifetime - elapsed_time;
-		bundle->rec_time = clock_seconds();
-	}
 
 	return entry->bundle;
 }

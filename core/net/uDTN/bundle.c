@@ -58,7 +58,7 @@ struct mmem * bundle_create_bundle()
 
 	bundle = (struct bundle_t *) MMEM_PTR(&bs->bundle);
 	memset(bundle, 0, sizeof(struct bundle_t));
-	bundle->rec_time=(uint32_t) clock_seconds();
+	bundle->rec_time = (uint32_t) clock_time();
 	bundle->num_blocks = 0;
 	bundle->source_process = PROCESS_CURRENT();
 
