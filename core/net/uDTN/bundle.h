@@ -105,9 +105,6 @@
 //payload block defines
 #define DATA 							17
 
-// Enable Timing debug output
-#define DEBUG_H 0
-
 struct bundle_block_t {
 	uint8_t type;
 	uint32_t flags;
@@ -152,9 +149,6 @@ struct bundle_t{
 	packetbuf_attr_t rssi;
 	struct process * source_process;
 	rimeaddr_t msrc;
-#if DEBUG_H
-	uint16_t debug_time;
-#endif
 	uint8_t num_blocks;
 
 	uint8_t block_data[];

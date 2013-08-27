@@ -153,12 +153,6 @@ int delivery_deliver_bundle(struct mmem *bundlemem) {
 		STATUSREPORT.send(bundlemem, NODE_DELIVERED_BUNDLE, NO_ADDITIONAL_INFORMATION);
 	}
 
-#if DEBUG_H
-	uint16_t time = clock_time();
-	time -= bundle->debug_time;
-	LOG(LOGD_DTN, LOG_BUNDLE, LOGL_DBG, "time needed to process bundle for Delivery: %i", time);
-#endif
-
 	return DELIVERY_STATE_WAIT_FOR_APP;
 }
 /** @} */
