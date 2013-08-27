@@ -51,6 +51,8 @@
 
 /* Bundle Block Types */
 #define BUNDLE_BLOCK_TYPE_PAYLOAD		0x01
+#define BUNDLE_BLOCK_TYPE_AEB_DEFAULT	0x0A
+#define BUNDLE_BLOCK_TYPE_AEB_MS		0x0B
 
 /* Bundle deletion reasons */
 #define REASON_NO_INFORMATION			0x00
@@ -149,8 +151,10 @@ struct bundle_t{
 	packetbuf_attr_t rssi;
 	struct process * source_process;
 	rimeaddr_t msrc;
-	uint8_t num_blocks;
 
+	uint32_t aeb_value_ms;
+
+	uint8_t num_blocks;
 	uint8_t block_data[];
 } __attribute__ ((packed));
 

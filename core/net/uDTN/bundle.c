@@ -25,6 +25,7 @@
 #include "sdnv.h"
 #include "bundleslot.h"
 #include "agent.h"
+#include "bundle_ageing.h"
 
 #include "bundle.h"
 
@@ -370,6 +371,10 @@ static uint8_t bundle_decode_block(struct mmem *bundlemem, uint8_t *buffer, int 
 
 	block_offs = bundlemem->size;
 
+	if( type == BUNDLE_BLOCK_TYPE_AEB_DEFAULT || type == BUNDLE_BLOCK_TYPE_AEB_MS ) {
+		return offs + bundle_ageing_parse_age_extension_block(bundlemem, type, flags, &buffer[offs], size);
+	}
+
 	n = mmem_realloc(bundlemem, bundlemem->size + sizeof(struct bundle_block_t) + size);
 	if( !n ) {
 		LOG(LOGD_DTN, LOG_BUNDLE, LOGL_ERR, "Bundle payload length too big for MMEM.");
@@ -509,9 +514,13 @@ int bundle_encode_bundle(struct mmem *bundlemem, uint8_t *buffer, int max_len)
 
 	offs += ret-1;
 
+	/* Encode Bundle Age Block - always as first block */
+	offs += bundle_ageing_encode_age_extension_block(bundlemem, &buffer[offs], max_len - offs);
+
 	block = (struct bundle_block_t *) bundle->block_data;
 	for (i=0;i<bundle->num_blocks;i++) {
 		offs += bundle_encode_block(block, &buffer[offs], max_len - offs);
+
 		/* Reference the next block */
 		block = (struct bundle_block_t *) &block->payload[block->block_size];
 	}
