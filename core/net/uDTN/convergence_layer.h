@@ -115,8 +115,23 @@
 
 /**
  * Maximum payload length of one outgoing frame
+ *
+ * IEEE 802.15.4 MAC Frames: 127 Byte
+ * Frame Control Field    2 Byte
+ * Sequence Number        1 Byte
+ * Dst PAN                2 Byte
+ * Dst Address            2 Byte
+ * Src PAN                2 Byte
+ * Src Address            2 Byte
+ * Security Header        0 Byte
+ * Frame Check Sequence   2 Byte
+ * --- TOTAL:            13 Byte
+ *
+ * With PAN Compression: 11 Byte
+ *
+ * 127 Byte - 11 Byte = 116 Byte
  */
-#define CONVERGENCE_LAYER_MAX_LENGTH 115
+#define CONVERGENCE_LAYER_MAX_LENGTH 116
 
 /**
  * Convergence Layer Process
