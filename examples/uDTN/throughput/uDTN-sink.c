@@ -57,6 +57,12 @@
 #include "net/uDTN/sdnv.h"
 #include "net/uDTN/storage.h"
 
+#ifdef CONF_BUNDLE_SIZE
+#define BUNDLE_SIZE CONF_BUNDLE_SIZE
+#else
+#define BUNDLE_SIZE 80
+#endif
+
 #ifdef CONF_BUNDLES
 #define BUNDLES CONF_BUNDLES
 #else
@@ -146,12 +152,12 @@ PROCESS_THREAD(udtn_sink_process, ev, data)
 			printf("Payload: no block\n");
 			error = 1;
 		} else {
-			if( block->block_size != 80 ) {
-				printf("Payload: length is %d, should be 80\n", block->block_size);
+			if( block->block_size != BUNDLE_SIZE ) {
+				printf("Payload: length is %d, should be %d\n", block->block_size, BUNDLE_SIZE);
 				error = 1;
 			}
 
-			for(i=0; i<80; i++) {
+			for(i=0; i<BUNDLE_SIZE; i++) {
 				if( block->payload[i] != i ) {
 					printf("Payload: byte %d mismatch. Should be %02X, is %02X\n", i, i, block->payload[i]);
 					error = 1;

@@ -60,6 +60,12 @@
 #error "I need a destination node - set CONF_SEND_TO_NODE"
 #endif
 
+#ifdef CONF_BUNDLE_SIZE
+#define BUNDLE_SIZE CONF_BUNDLE_SIZE
+#else
+#define BUNDLE_SIZE 80
+#endif
+
 #ifdef CONF_BUNDLES
 #define BUNDLES CONF_BUNDLES
 #else
@@ -88,7 +94,7 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 	static struct registration_api reg;
 	static uint16_t bundles_sent = 0;
 	static uint32_t time_start, time_stop;
-	uint8_t userdata[80];
+	uint8_t userdata[BUNDLE_SIZE];
 	uint32_t tmp;
 	static rimeaddr_t destination;
 	static struct mmem * bundle_outgoing;
@@ -225,9 +231,10 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 		bundle_set_attr(bundle_outgoing, LIFE_TIME, &tmp);
 
 		/* Add the payload */
-		for(i=0; i<80; i++)
+		for(i=0; i<BUNDLE_SIZE; i++)
 			userdata[i] = i;
-		n = bundle_add_block(bundle_outgoing, BUNDLE_BLOCK_TYPE_PAYLOAD, BUNDLE_BLOCK_FLAG_NULL, userdata, 80);
+
+		n = bundle_add_block(bundle_outgoing, BUNDLE_BLOCK_TYPE_PAYLOAD, BUNDLE_BLOCK_FLAG_NULL, userdata, BUNDLE_SIZE);
 		if( n == -1 ) {
 			printf("not enough room for block\n");
 			bundle_decrement(bundle_outgoing);
