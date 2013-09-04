@@ -371,7 +371,7 @@ static uint8_t bundle_decode_block(struct mmem *bundlemem, uint8_t *buffer, int 
 
 	block_offs = bundlemem->size;
 
-	if( type == BUNDLE_BLOCK_TYPE_AEB_DEFAULT || type == BUNDLE_BLOCK_TYPE_AEB_MS ) {
+	if( type == BUNDLE_BLOCK_TYPE_AEB ) {
 		return offs + bundle_ageing_parse_age_extension_block(bundlemem, type, flags, &buffer[offs], size);
 	}
 

@@ -51,8 +51,7 @@
 
 /* Bundle Block Types */
 #define BUNDLE_BLOCK_TYPE_PAYLOAD		0x01
-#define BUNDLE_BLOCK_TYPE_AEB_DEFAULT	0x0A
-#define BUNDLE_BLOCK_TYPE_AEB_MS		0x0B
+#define BUNDLE_BLOCK_TYPE_AEB			0x0A
 
 /* Bundle deletion reasons */
 #define REASON_NO_INFORMATION			0x00
