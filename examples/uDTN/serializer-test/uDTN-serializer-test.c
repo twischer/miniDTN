@@ -161,7 +161,11 @@ uint8_t my_static_compare(uint8_t * buffer, uint8_t length) {
 	for(i=0; i<mylength; i++) {
 		if( buffer[i] != static_compare_bundle[i] ) {
 			printf("%u mismatch %02X vs. %02X\n", i, buffer[i], static_compare_bundle[i]);
-			errors ++;
+
+			// 19, 20 and 21 are where the bundle age is stored that changes with every serialization
+			if( i != 19 && i != 20 && i != 21 ) {
+				errors ++;
+			}
 		}
 	}
 
