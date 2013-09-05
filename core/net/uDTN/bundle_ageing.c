@@ -76,7 +76,6 @@ uint8_t bundle_ageing_is_expired(struct mmem * bundlemem) {
  */
 uint8_t bundle_ageing_parse_age_extension_block(struct mmem *bundlemem, uint8_t type, uint32_t flags, uint8_t * buffer, int length) {
 	uint8_t offset = 0;
-	uint64_t age = 0;
 	struct bundle_t *bundle;
 
 	/* Check for the proper block type */
@@ -93,15 +92,29 @@ uint8_t bundle_ageing_parse_age_extension_block(struct mmem *bundlemem, uint8_t 
 		return 0;
 	}
 
+#if UDTN_SUPPORT_LONG_AEB
 	/* Decode the age block value */
-	offset = sdnv_decode_long(buffer, length, &age);
+	if( sdnv_len(buffer) > 4 ) {
+		// 64 bit operations are expensive - avoid them where possible
+		uint64_t age = 0;
+		offset = sdnv_decode_long(buffer, length, &age);
 
-	if( type == BUNDLE_BLOCK_TYPE_AEB ) {
-		/* age is in microseconds... what a stupid idea */
-		age /= 1000;
+		// Convert Age to milliseconds
+		bundle->aeb_value_ms = (uint32_t) (age / 1000);
+	} else {
+		uint32_t age = 0;
+		offset = sdnv_decode(buffer, length, &age);
+
+		// Convert Age to milliseconds
+		bundle->aeb_value_ms = age / 1000;
 	}
+#else
+	uint32_t age = 0;
+	offset = sdnv_decode(buffer, length, &age);
 
-	bundle->aeb_value_ms = (uint32_t) age;
+	// Convert Age to milliseconds
+	bundle->aeb_value_ms = age / 1000;
+#endif
 
 	return offset;
 }
@@ -118,7 +131,6 @@ uint8_t bundle_ageing_encode_age_extension_block(struct mmem *bundlemem, uint8_t
 	uint32_t length = 0;
 	uint8_t offset = 0;
 	uint8_t tmpbuffer[10];
-	uint64_t age = 0;
 	uint32_t flags = 0;
 	int ret;
 
@@ -131,8 +143,25 @@ uint8_t bundle_ageing_encode_age_extension_block(struct mmem *bundlemem, uint8_t
 		return 0;
 	}
 
-	/* Update the age value */
-	age = ((uint64_t) bundle_ageing_get_age(bundlemem)) * ((uint64_t) 1000);
+#if UDTN_SUPPORT_LONG_AEB
+	/* Update the age value
+	 * 4294967 = 0xFFFFFFFF / 1000
+	 */
+	if( bundle_ageing_get_age(bundlemem) > 4294967 ) {
+		// Keep use of 64 bit data types as low as possible for performance reasons
+		uint64_t age = 0;
+		age = ((uint64_t) bundle_ageing_get_age(bundlemem)) * ((uint64_t) 1000);
+		length = sdnv_encode_long(age, tmpbuffer, 10);
+	} else {
+		uint32_t age = 0;
+		age = bundle_ageing_get_age(bundlemem) * 1000;
+		length = sdnv_encode(age, tmpbuffer, 10);
+	}
+#else
+	uint32_t age = 0;
+	age = bundle_ageing_get_age(bundlemem) * 1000;
+	length = sdnv_encode(age, tmpbuffer, 10);
+#endif
 
 	/* Encode the next block */
 	buffer[offset] = BUNDLE_BLOCK_TYPE_AEB;
@@ -145,9 +174,6 @@ uint8_t bundle_ageing_encode_age_extension_block(struct mmem *bundlemem, uint8_t
 		return 0;
 	}
 	offset += ret;
-
-	/* Encode the age in ms */
-	length = sdnv_encode_long(age, tmpbuffer, 10);
 
 	/* Blocksize */
 	ret = sdnv_encode(length, &buffer[offset], max_len - offset);
