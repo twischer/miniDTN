@@ -339,7 +339,11 @@ get_panid_from_eeprom(void) {
 }
 static uint16_t
 get_panaddr_from_eeprom(void) {
-  return eeprom_read_word (&eemem_panaddr);
+#ifdef NODEID
+	return NODEID;
+#else
+	return eeprom_read_word (&eemem_panaddr);
+#endif
 }
 static uint8_t
 get_txpower_from_eeprom(void)
@@ -412,6 +416,9 @@ get_panid_from_eeprom(void) {
 }
 static uint16_t
 get_panaddr_from_eeprom(void) {
+#ifdef NODEID
+	return NODEID;
+#else
   uint16_t x;
   size_t  size = 2;
   if (settings_get(SETTINGS_KEY_PAN_ADDR, 0,(unsigned char*)&x, &size) == SETTINGS_STATUS_OK) {
@@ -423,6 +430,7 @@ get_panaddr_from_eeprom(void) {
     }
   }        
   return x;
+#endif
 }
 static uint8_t
 get_txpower_from_eeprom(void) {
