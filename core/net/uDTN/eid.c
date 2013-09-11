@@ -59,16 +59,10 @@ int eid_parse_host_length(uint8_t * buffer, uint8_t length, uint32_t * node_id)
 	return sdnv_length + ret;
 }
 
-int eid_parse_full(char * buffer, uint8_t length, uint32_t * node_id, uint32_t * service_id)
+int eid_parse_ssp(char * buffer, uint8_t length, uint32_t * node_id, uint32_t * service_id)
 {
 	char * delimeter = NULL;
 	int result;
-
-	/* Do we have an ipn scheme? */
-	if( strncmp(buffer, "ipn:", 4) != 0 ) {
-		LOG(LOGD_DTN, LOG_AGENT, LOGL_WRN, "Unknown EID format %s", &buffer[4]);
-		return -1;
-	}
 
 	/* Go and search for the . delimeter */
 	delimeter = strchr(buffer, '.');
@@ -82,7 +76,7 @@ int eid_parse_full(char * buffer, uint8_t length, uint32_t * node_id, uint32_t *
 	delimeter ++;
 
 	/* Now parse host part */
-	*node_id = atoi(&buffer[4]);
+	*node_id = atoi(buffer);
 
 	/* And service part */
 	*service_id = atoi(delimeter);
@@ -93,6 +87,17 @@ int eid_parse_full(char * buffer, uint8_t length, uint32_t * node_id, uint32_t *
 	*(delimeter-1) = '.';
 
 	return result;
+}
+
+int eid_parse_full(char * buffer, uint8_t length, uint32_t * node_id, uint32_t * service_id)
+{
+	/* Do we have an ipn scheme? */
+	if( strncmp(buffer, "ipn:", 4) != 0 ) {
+		LOG(LOGD_DTN, LOG_AGENT, LOGL_WRN, "Unknown EID format %s", &buffer[4]);
+		return -1;
+	}
+
+	return 4 + eid_parse_ssp(&buffer[4], length - 4, node_id, service_id);
 }
 
 
