@@ -60,6 +60,8 @@ class Device(object):
 			for dev in self.devcfg:
 				myenv['CFLAGS']=myenv['CFLAGS'].replace(str("-DCONF_DEST_NODE=$"+dev['name'].upper()),str("-DCONF_DEST_NODE="+str(dev['id'])))
 				myenv['CFLAGS']=myenv['CFLAGS'].replace(str("-DCONF_SEND_TO_NODE=$"+dev['name'].upper()),str("-DCONF_SEND_TO_NODE="+str(dev['id'])))
+			# always add the nodeid of this node as define
+			myenv['CFLAGS']+=str(" -DNODEID="+str(self.id))
 			self.myenv = myenv
 			output = subprocess.check_output(["make", "TARGET=%s"%(self.platform), self.program], stderr=subprocess.STDOUT, env=myenv)
 			self.logger.debug(output)
