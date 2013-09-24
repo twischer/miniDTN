@@ -561,7 +561,7 @@ static int bundle_encode_block(struct bundle_block_t *block, uint8_t *buffer, ui
 int bundle_increment(struct mmem *bundlemem)
 {
 	struct bundle_slot_t *bs;
-	LOG(LOGD_DTN, LOG_BUNDLE, LOGL_DBG, "bundle_increment(%p) %u", bundle, bundle->rec_time);
+	LOG(LOGD_DTN, LOG_BUNDLE, LOGL_DBG, "bundle_increment(%p)", bundlemem);
 
 	bs = container_of(bundlemem, struct bundle_slot_t, bundle);
 	return bundleslot_increment(bs);
@@ -570,7 +570,7 @@ int bundle_increment(struct mmem *bundlemem)
 int bundle_decrement(struct mmem *bundlemem)
 {
 	struct bundle_slot_t *bs;
-	LOG(LOGD_DTN, LOG_BUNDLE, LOGL_DBG, "bundle_decrement(%p) %u", bundle, bundle->rec_time);
+	LOG(LOGD_DTN, LOG_BUNDLE, LOGL_DBG, "bundle_decrement(%p)", bundlemem);
 
 	bs = container_of(bundlemem, struct bundle_slot_t, bundle);
 	return bundleslot_decrement(bs);
@@ -579,7 +579,7 @@ int bundle_decrement(struct mmem *bundlemem)
 uint16_t bundle_delete_bundle(struct mmem *bundlemem)
 {
 	struct bundle_slot_t *bs;
-	LOG(LOGD_DTN, LOG_BUNDLE, LOGL_DBG, "delete %p %u", bundle,bundle->rec_time);
+	LOG(LOGD_DTN, LOG_BUNDLE, LOGL_DBG, "delete %p", bundlemem);
 
 	bs = container_of(bundlemem, struct bundle_slot_t, bundle);
 	bundleslot_free(bs);
