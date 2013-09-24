@@ -24,6 +24,7 @@
 
 #include "hash.h"
 #include "redundancy.h"
+#include "agent.h"
 
 /**
  * How much RAM can we invest into detecting redundant bundles?
