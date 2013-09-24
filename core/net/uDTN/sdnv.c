@@ -18,6 +18,8 @@
 
 #include "agent.h"
 
+#include "sdnv.h"
+
 /** maximum sdnv length */
 #define MAX_LENGTH 4
 #define MAX_LENGTH_LONG 8
