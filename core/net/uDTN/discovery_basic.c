@@ -423,7 +423,7 @@ PROCESS_THREAD(discovery_process, ev, data)
 		 * In case we should start the periodic discovery, do it here and now
 		 */
 		if( discovery_pending_start ) {
-			b_dis_start_pending();
+			discovery_basic_start_pending();
 			discovery_pending_start = 0;
 		}
 	}
