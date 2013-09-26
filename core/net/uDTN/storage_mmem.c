@@ -209,13 +209,13 @@ uint8_t storage_mmem_make_room(struct mmem * bundlemem)
 			}
 
 #if BUNDLE_STORAGE_BEHAVIOUR == BUNDLE_STORAGE_BEHAVIOUR_DELETE_OLDEST
-			if( (clock_time() - bundle->rec_time) > comparator || comparator == 0) {
-				comparator = clock_time() - bundle_old->rec_time;
+			if( (clock_seconds() - bundle_old->rec_time) > comparator || comparator == 0) {
+				comparator = clock_seconds() - bundle_old->rec_time;
 				deletor = entry;
 			}
 #elif BUNDLE_STORAGE_BEHAVIOUR == BUNDLE_STORAGE_BEHAVIOUR_DELETE_YOUNGEST
-			if( (clock_time() - bundle->rec_time) < comparator || comparator == 0) {
-				comparator = clock_time() - bundle_old->rec_time;
+			if( (clock_seconds() - bundle_old->rec_time) < comparator || comparator == 0) {
+				comparator = clock_seconds() - bundle_old->rec_time;
 				deletor = entry;
 			}
 #endif
