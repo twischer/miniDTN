@@ -218,6 +218,9 @@ void discovery_ipnd_receive(rimeaddr_t * source, uint8_t * payload, uint8_t leng
 	uint16_t sequenceNumber = ((payload[offset] & 0xFF) << 8) + (payload[offset+1] & 0xFF);
 	offset += 2;
 
+  /* Prevent compiler warning about unused variable */
+  (void) sequenceNumber;
+
 	uint32_t eid = 0;
 	if( flags & IPND_FLAGS_SOURCE_EID ) {
 		offset += discovery_ipnd_parse_eid(&eid, &payload[offset], length - offset);
