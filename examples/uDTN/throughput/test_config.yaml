@@ -139,3 +139,73 @@ tests:
         debug: []
         cflags: "-fno-inline"
         graph_options: ""
+### Test delay-tolerant
+  - name: delay-tolerant
+    timeout: 900
+    devices:
+      - name: sender
+        programdir: examples/uDTN/throughput
+        program: uDTN-sender
+        instrument: [examples/uDTN/throughput/*.c,core/net/uDTN/*.c]
+        debug: []
+        cflags: "-fno-inline -DCONF_SEND_TO_NODE=$RECEIVER -DCONF_WAITING_TIME=30"
+        graph_options: ""
+      - name: receiver
+        programdir: examples/uDTN/throughput
+        program: uDTN-sink
+        instrument: [examples/uDTN/throughput/*.c,core/net/uDTN/*.c]
+        debug: []
+        cflags: "-fno-inline -DCONF_WAITING_TIME=30"
+        graph_options: ""
+  - name: delay-tolerant-uninstr
+    timeout: 900
+    devices:
+      - name: sender
+        programdir: examples/uDTN/throughput
+        program: uDTN-sender
+        instrument: []
+        debug: []
+        cflags: "-fno-inline -DCONF_SEND_TO_NODE=$RECEIVER -DCONF_WAITING_TIME=30"
+        graph_options: ""
+      - name: receiver
+        programdir: examples/uDTN/throughput
+        program: uDTN-sink
+        instrument: []
+        debug: []
+        cflags: "-fno-inline -DCONF_WAITING_TIME=30"
+        graph_options: ""
+  - name: delay-tolerant-coffee
+    timeout: 900
+    devices:
+      - name: sender
+        programdir: examples/uDTN/throughput
+        program: uDTN-sender
+        instrument: [examples/uDTN/throughput/*.c,core/net/uDTN/*.c]
+        debug: []
+        cflags: "-DCONF_REPORTING_INTERVAL=1 -DCONF_BUNDLES=50 -DBUNDLE_CONF_STORAGE_INIT=1 -fno-inline -DBUNDLE_CONF_STORAGE=storage_coffee -DCONF_SEND_TO_NODE=$RECEIVER -DCONF_WAITING_TIME=200"
+        graph_options: ""
+      - name: receiver
+        programdir: examples/uDTN/throughput
+        program: uDTN-sink
+        instrument: [examples/uDTN/throughput/*.c,core/net/uDTN/*.c]
+        debug: []
+        cflags: "-DCONF_REPORTING_INTERVAL=1 -DCONF_BUNDLES=50 -DBUNDLE_CONF_STORAGE_INIT=1 -fno-inline -DBUNDLE_CONF_STORAGE=storage_coffee -DCONF_WAITING_TIME=200"
+        graph_options: ""
+  - name: delay-tolerant-coffee-uninstr
+    timeout: 900
+    devices:
+      - name: sender
+        programdir: examples/uDTN/throughput
+        program: uDTN-sender
+        instrument: []
+        debug: []
+        cflags: "-DCONF_REPORTING_INTERVAL=1 -DCONF_BUNDLES=50 -DBUNDLE_CONF_STORAGE_INIT=1 -fno-inline -DBUNDLE_CONF_STORAGE=storage_coffee -DCONF_SEND_TO_NODE=$RECEIVER -DCONF_WAITING_TIME=200"
+        graph_options: ""
+      - name: receiver
+        programdir: examples/uDTN/throughput
+        program: uDTN-sink
+        instrument: []
+        debug: []
+        cflags: "-DCONF_REPORTING_INTERVAL=1 -DCONF_BUNDLES=50 -DBUNDLE_CONF_STORAGE_INIT=1 -fno-inline -DBUNDLE_CONF_STORAGE=storage_coffee -DCONF_WAITING_TIME=200"
+        graph_options: ""
+             

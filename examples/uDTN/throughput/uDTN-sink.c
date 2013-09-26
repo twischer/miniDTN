@@ -69,6 +69,10 @@
 #define REPORTING_INTERVAL 50
 #endif
 
+#ifdef CONF_WAITING_TIME
+#define WAITING_TIME CONF_WAITING_TIME
+#endif
+
 /*---------------------------------------------------------------------------*/
 PROCESS(udtn_sink_process, "uDTN Sink process");
 AUTOSTART_PROCESSES(&udtn_sink_process);
@@ -88,6 +92,17 @@ PROCESS_THREAD(udtn_sink_process, ev, data)
 	static struct mmem * bundle_outgoing;
 
 	PROCESS_BEGIN();
+
+#ifdef WAITING_TIME
+	/* make this node wait a couple of minutes until startup */
+	printf("Waiting %u seconds...\n", WAITING_TIME);
+	watchdog_stop();
+	unsigned long start = clock_seconds();
+	while( (clock_seconds() - start) < WAITING_TIME );
+	watchdog_start();
+	printf("Starting Test\n");
+#endif
+
 	profiling_init();
 	profiling_start();
 
