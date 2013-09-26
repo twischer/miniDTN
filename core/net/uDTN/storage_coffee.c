@@ -316,6 +316,9 @@ uint8_t storage_coffee_make_room(struct mmem * bundlemem)
 		unsigned long comparator = 0;
 		struct file_list_entry_t * deletor = NULL;
 
+		/* Obtain the new pointer each time, since the address may change */
+		bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
+
 		for( entry = list_head(bundle_list);
 			 entry != NULL;
 			 entry = list_item_next(entry) ) {
