@@ -82,6 +82,10 @@
 #define REPORT 1
 #endif
 
+#ifdef CONF_WAITING_TIME
+#define WAITING_TIME CONF_WAITING_TIME
+#endif
+
 /*---------------------------------------------------------------------------*/
 PROCESS(udtn_sender_process, "uDTN Sender process");
 AUTOSTART_PROCESSES(&udtn_sender_process);
@@ -118,12 +122,14 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 	profiling_report("init", 0);
 	watchdog_start();
 
+#ifndef WAITING_TIME
 	/* Wait until a neighbour has been discovered */
 	printf("Waiting for neighbour to appear...\n");
 	destination = convert_eid_to_rime(CONF_SEND_TO_NODE);
 	while( !DISCOVERY.is_neighbour(&destination) ) {
 		PROCESS_PAUSE();
 	}
+#endif
 
 	/* Give the receiver a second to start up */
 	etimer_set(&timer, CLOCK_SECOND);
