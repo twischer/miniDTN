@@ -28,7 +28,6 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: httpd-cgi.c,v 1.13 2010/12/23 19:41:07 dak664 Exp $
  *
  */
 #include <util/delay.h>
@@ -165,7 +164,7 @@ generate_file_stats(void *arg)
   static const char httpd_cgi_filestat3[] HTTPD_STRING_ATTR = "%5u";
   char tmp[20];
   struct httpd_fsdata_file_noconst *f,fram;
-  u16_t i;
+  uint16_t i;
   unsigned short numprinted;
 
   /* Transfer arg from whichever flash that contains the html file to RAM */

@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: DGRMConfigurator.java,v 1.4 2010/02/03 09:30:38 fros4943 Exp $
  */
 
 package se.sics.cooja.plugins;
@@ -65,6 +64,7 @@ import se.sics.cooja.GUI;
 import se.sics.cooja.Mote;
 import se.sics.cooja.PluginType;
 import se.sics.cooja.Simulation;
+import se.sics.cooja.SupportedArguments;
 import se.sics.cooja.VisPlugin;
 import se.sics.cooja.interfaces.Radio;
 import se.sics.cooja.radiomediums.AbstractRadioMedium;
@@ -74,14 +74,15 @@ import se.sics.cooja.radiomediums.DirectedGraphMedium.Edge;
 import se.sics.cooja.util.StringUtils;
 
 /**
- * Simple user interface for configuring edges for the Directed Graph 
+ * Simple user interface for configuring edges for the Directed Graph
  * Radio Medium (DGRM).
- * 
+ *
  * @see DirectedGraphMedium
  * @author Fredrik Osterlind
  */
 @ClassDescription("DGRM Links")
 @PluginType(PluginType.SIM_PLUGIN)
+@SupportedArguments(radioMediums = {DirectedGraphMedium.class})
 public class DGRMConfigurator extends VisPlugin {
 	private static final long serialVersionUID = 4769638341635882051L;
 	private static Logger logger = Logger.getLogger(DGRMConfigurator.class);
@@ -90,9 +91,11 @@ public class DGRMConfigurator extends VisPlugin {
   private final static int IDX_DST = 1;
   private final static int IDX_RATIO = 2;
   private final static int IDX_SIGNAL = 3;
-  private final static int IDX_DELAY = 4;
+  private final static int IDX_LQI = 4;
+  private final static int IDX_DELAY = 5;
+
   private final static String[] COLUMN_NAMES = new String[] {
-    "Source", "Destination", "RX Ratio", "RSSI", "Delay"
+    "Source", "Destination", "RX Ratio", "RSSI","LQI", "Delay"
   };
 
   private GUI gui = null;
@@ -127,6 +130,10 @@ public class DGRMConfigurator extends VisPlugin {
           for (double d=AbstractRadioMedium.SS_STRONG; d >= AbstractRadioMedium.SS_WEAK; d -= 1) {
             combo.addItem((int) d);
           }
+        } else if (column == IDX_LQI) {
+            for (int d = 110; d > 50; d -= 5) {
+              combo.addItem((int) d);
+            }
         } else if (column == IDX_DELAY) {
           for (double d=0; d <= 5; d++) {
             combo.addItem(d);
@@ -160,6 +167,17 @@ public class DGRMConfigurator extends VisPlugin {
         setText(String.format("%1.1f dBm", v));
       }
     });
+    graphTable.getColumnModel().getColumn(IDX_LQI).setCellRenderer(new DefaultTableCellRenderer() {
+		private static final long serialVersionUID = -4669897764928372246L;
+		public void setValue(Object value) {
+	    if (!(value instanceof Long)) {
+	      setText(value.toString());
+	      return;
+	    }
+    	long v = ((Long) value).longValue();
+    	setText(String.valueOf(v));
+		}
+    });
     graphTable.getColumnModel().getColumn(IDX_DELAY).setCellRenderer(new DefaultTableCellRenderer() {
 			private static final long serialVersionUID = -4669897764928372246L;
 			public void setValue(Object value) {
@@ -173,11 +191,12 @@ public class DGRMConfigurator extends VisPlugin {
     });
     graphTable.getColumnModel().getColumn(IDX_RATIO).setCellEditor(new DefaultCellEditor(combo));
     graphTable.getColumnModel().getColumn(IDX_SIGNAL).setCellEditor(new DefaultCellEditor(combo));
+    graphTable.getColumnModel().getColumn(IDX_LQI).setCellEditor(new DefaultCellEditor(combo));
     graphTable.getColumnModel().getColumn(IDX_DELAY).setCellEditor(new DefaultCellEditor(combo));
 
     graphTable.setAutoResizeMode(JTable.AUTO_RESIZE_SUBSEQUENT_COLUMNS);
     graphTable.getSelectionModel().setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-    
+
     JPanel southPanel = new JPanel(new GridLayout(1, 3));
     JButton button = new JButton("Add");
     button.addActionListener(new ActionListener() {
@@ -202,11 +221,11 @@ public class DGRMConfigurator extends VisPlugin {
       }
     });
     southPanel.add(button);
-    
+
     getContentPane().setLayout(new BorderLayout());
     add(BorderLayout.CENTER, new JScrollPane(graphTable));
     add(BorderLayout.SOUTH, southPanel);
-    
+
     graphTable.getSelectionModel().addListSelectionListener(new ListSelectionListener() {
     	public void valueChanged(ListSelectionEvent e) {
     		ListSelectionModel lsm = (ListSelectionModel)e.getSource();
@@ -336,14 +355,14 @@ public class DGRMConfigurator extends VisPlugin {
 	public static DirectedGraphMedium.Edge[] parseDGRMLinksFile(File file, Simulation simulation) {
 		String fileContents = StringUtils.loadFromFile(file);
 		ArrayList<DirectedGraphMedium.Edge> edges = new ArrayList<DirectedGraphMedium.Edge>();
-		
+
 		/* format: # [src] [dst] [prr] [prr_ci] [num_tx] [num_rx] [rssi] [rssi_min] [rssi_max] */
 		for (String l: fileContents.split("\n")) {
 			l = l.trim();
 			if (l.startsWith("#")) {
 				continue;
 			}
-			
+
 			Mote m;
 			String[] arr = l.split(" ");
 			int source = Integer.parseInt(arr[INDEX_SRC]);
@@ -365,7 +384,7 @@ public class DGRMConfigurator extends VisPlugin {
 			double rssi = Double.parseDouble(arr[INDEX_RSSI_MEDIAN]);
 			/*int rssiMin <- INDEX_RSSI_MIN;*/
 			/*int rssiMax <- INDEX_RSSI_MAX;*/
-			
+
 			DirectedGraphMedium.Edge edge = new DirectedGraphMedium.Edge(sourceRadio, destRadio);
 			destRadio.delay = 0;
 			destRadio.ratio = prr;
@@ -375,7 +394,7 @@ public class DGRMConfigurator extends VisPlugin {
 		}
 		return edges.toArray(new DirectedGraphMedium.Edge[0]);
 	}
-	
+
   final AbstractTableModel model = new AbstractTableModel() {
 		private static final long serialVersionUID = 9101118401527171218L;
 		public String getColumnName(int column) {
@@ -410,6 +429,9 @@ public class DGRMConfigurator extends VisPlugin {
       if (column == IDX_SIGNAL) {
         return ((DGRMDestinationRadio)edge.superDest).signal;
       }
+      if (column == IDX_LQI) {
+          return ((DGRMDestinationRadio)edge.superDest).lqi;
+        }
       if (column == IDX_DELAY) {
         return ((DGRMDestinationRadio)edge.superDest).delay / Simulation.MILLISECOND;
       }
@@ -432,7 +454,10 @@ public class DGRMConfigurator extends VisPlugin {
       	} else if (column == IDX_DELAY) {
       		((DGRMDestinationRadio)edge.superDest).delay =
       			((Number)value).longValue() * Simulation.MILLISECOND;
-      	} else {
+      	} else if (column == IDX_LQI) {
+  			((DGRMDestinationRadio)edge.superDest).lqi = ((Number)value).intValue();
+      	} 
+      	else {
           super.setValueAt(value, row, column);
       	}
       	radioMedium.requestEdgeAnalysis();
@@ -458,6 +483,9 @@ public class DGRMConfigurator extends VisPlugin {
         return true;
       }
       if (column == IDX_SIGNAL) {
+        return true;
+      }
+      if (column == IDX_LQI) {
         return true;
       }
       if (column == IDX_DELAY) {

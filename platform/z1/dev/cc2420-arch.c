@@ -26,22 +26,13 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * @(#)$Id: cc2420-arch.c,v 1.1 2010/11/07 08:38:51 enricmcalvo Exp $
  */
 
 #include "contiki.h"
 #include "contiki-net.h"
-
-#ifdef __IAR_SYSTEMS_ICC__
-#include <msp430.h>
-#else
-#include <io.h>
-#include <signal.h>
-#endif
-
-
 #include "dev/spi.h"
 #include "dev/cc2420.h"
+#include "isr_compat.h"
 
 #ifndef CONF_SFD_TIMESTAMPS
 #define CONF_SFD_TIMESTAMPS 0
@@ -54,8 +45,7 @@
 /*---------------------------------------------------------------------------*/
 #if 0
 // this is now handled in the ADXL345 accelerometer code as it uses irq on port1 too.
-interrupt(CC2420_IRQ_VECTOR)
-cc24240_port1_interrupt(void)
+ISR(CC2420_IRQ, cc24240_port1_interrupt)
 {
   ENERGEST_ON(ENERGEST_TYPE_IRQ);
   if(cc2420_interrupt()) {

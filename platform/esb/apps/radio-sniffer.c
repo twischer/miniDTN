@@ -28,7 +28,6 @@
  *
  * This file is part of the Contiki operating system.
  *
- * $Id: radio-sniffer.c,v 1.3 2007/08/07 11:20:11 nifi Exp $
  */
 
 /**
@@ -53,7 +52,7 @@ static void
 sniffer_callback(const struct radio_driver *driver)
 {
   static char buf[40];
-  static u8_t packet[UIP_BUFSIZE];
+  static uint8_t packet[UIP_BUFSIZE];
   static int len;
   len = driver->read(packet, sizeof(packet));
   if(len > 0) {

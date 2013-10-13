@@ -1,8 +1,7 @@
 #ifndef CONTIKI_CLOCK_AVR_H
 #define CONTIKI_CLOCK_AVR_H
 
-#if defined (__AVR_ATmega128__)
-
+#if defined (__AVR_ATmega128__) 
 #define AVR_OUTPUT_COMPARE_INT TIMER0_COMP_vect
 #define AVR_CLOCK_COUNTER TCNT0
 #define AVR_CLOCK_MAX (F_CPU/1024UL/CLOCK_CONF_SECOND)
@@ -302,6 +301,23 @@
    * counter value in TCNT2 is cleared automatically. \
    */ \
   TIMSK = _BV (OCIE2);
+#elif defined(__AVR_XMEGA__)
+
+#include "contiki-conf.h"
+#include "xmega_timer.h"
+
+// If XMEGA_TIMER_RTC is not defined, we use TCC0
+#if (!defined(XMEGA_TIMER_RTC) || XMEGA_TIMER_RTC == 1)
+       #define AVR_OUTPUT_COMPARE_INT TCC0_OVF_vect
+// Else we use RTC OVF only, if we are not using the event system
+#else
+       #define AVR_OUTPUT_COMPARE_INT RTC_COMP_vect
+#endif
+
+#define OCRSetup() \
+       TCC0.PER = TIMER_TOP;                                           \
+       TCC0.INTCTRLA = TC0_OVFINTLVL_gm;                               \
+       TCC0.CTRLA = TIMER_PRESCALE; 
 #else
 #error "Setup CPU in clock-avr.h"
 #endif

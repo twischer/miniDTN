@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * @(#)$Id: temperature-sensor.c,v 1.1 2010/08/25 19:34:06 nifi Exp $
  */
 
 /**
@@ -38,9 +37,9 @@
  *         Niclas Finne <nfi@sics.se>
  */
 
+#include "contiki.h"
 #include "dev/temperature-sensor.h"
 #include "dev/sky-sensors.h"
-#include <io.h>
 
 #define INPUT_CHANNEL      (1 << INCH_10)
 #define INPUT_REFERENCE    SREF_1

@@ -30,7 +30,6 @@
  *
  * Author: Adam Dunkels <adam@sics.se>
  *
- * $Id: shell-ping.c,v 1.6 2011/01/12 22:58:34 nifi Exp $
  */
 
 #include <string.h>
@@ -85,8 +84,8 @@ send_ping(uip_ipaddr_t *dest_addr)
   
   uip_len = UIP_ICMPH_LEN + UIP_ICMP6_ECHO_REQUEST_LEN +
     UIP_IPH_LEN + PING_DATALEN;
-  UIP_IP_BUF->len[0] = (u8_t)((uip_len - 40) >> 8);
-  UIP_IP_BUF->len[1] = (u8_t)((uip_len - 40) & 0x00ff);
+  UIP_IP_BUF->len[0] = (uint8_t)((uip_len - 40) >> 8);
+  UIP_IP_BUF->len[1] = (uint8_t)((uip_len - 40) & 0x00ff);
   
   UIP_ICMP_BUF->icmpchksum = 0;
   UIP_ICMP_BUF->icmpchksum = ~uip_icmp6chksum();
@@ -116,11 +115,11 @@ send_ping(uip_ipaddr_t *dest_addr)
   UIP_ICMP_BUF->seqno = uip_htons(seqno++);
   
   uip_len = UIP_ICMPH_LEN + UIP_IPH_LEN + PING_DATALEN;
-  UIP_IP_BUF->len[0] = (u8_t)((uip_len) >> 8);
-  UIP_IP_BUF->len[1] = (u8_t)((uip_len) & 0x00ff);
+  UIP_IP_BUF->len[0] = (uint8_t)((uip_len) >> 8);
+  UIP_IP_BUF->len[1] = (uint8_t)((uip_len) & 0x00ff);
   
   UIP_ICMP_BUF->icmpchksum = 0;
-  UIP_ICMP_BUF->icmpchksum = ~uip_chksum((u16_t *)&(UIP_ICMP_BUF->type),
+  UIP_ICMP_BUF->icmpchksum = ~uip_chksum((uint16_t *)&(UIP_ICMP_BUF->type),
 					 UIP_ICMPH_LEN + PING_DATALEN);
 
   /* Calculate IP checksum. */
@@ -167,7 +166,7 @@ PROCESS_THREAD(shell_ping_process, ev, data)
     } else if(ev == resolv_event_found) {
       /* Either found a hostname, or not. */
       if((char *)data != NULL &&
-	 resolv_lookup((char *)data) != NULL) {
+	 resolv_lookup((char *)data, &ipaddr) == RESOLV_STATUS_CACHED) {
 	uip_ipaddr_copy(serveraddr, ipaddr);
 	telnet_connect(&s, server, serveraddr, nick);
       } else {

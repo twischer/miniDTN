@@ -27,7 +27,6 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $Id: uip_arch.c,v 1.3 2010/10/19 18:29:04 adamdunkels Exp $
  *
  */
  /*
@@ -41,15 +40,15 @@
 #include <stddef.h>
 #include "uip_arch.h"
 
-static const u16_t sizeof_uip_ipaddr_t = sizeof(uip_ipaddr_t);
-static const u16_t offset_tcpip_hdr_len = offsetof(struct uip_tcpip_hdr, len);
-static const u16_t offset_tcpip_hdr_srcipaddr = offsetof(struct uip_tcpip_hdr, srcipaddr);
+static const uint16_t sizeof_uip_ipaddr_t = sizeof(uip_ipaddr_t);
+static const uint16_t offset_tcpip_hdr_len = offsetof(struct uip_tcpip_hdr, len);
+static const uint16_t offset_tcpip_hdr_srcipaddr = offsetof(struct uip_tcpip_hdr, srcipaddr);
 
 /*--------------------------------------------------------------------------*/
 static void upper_layer_chksum() {
 __asm
 	;; ---------------------------------
-	;; static u16_t upper_layer_chksum(u8_t proto);
+	;; static uint16_t upper_layer_chksum(uint8_t proto);
 	;; Stack; retl reth
 	;; @param C proto
 	;; ABCDEHL____
@@ -142,12 +141,12 @@ __endasm;
 }
 
 /*--------------------------------------------------------------------------*/
-u16_t
+uint16_t
 uip_ipchksum(void)
 {
 __asm
 	;; ---------------------------------
-	;; u16_t uip_ipchksum(void);
+	;; uint16_t uip_ipchksum(void);
 	;; Stack; retl reth
 	;; ABCDEHL____
 	;; return HL
@@ -164,12 +163,12 @@ __endasm;
 
 /*--------------------------------------------------------------------------*/
 #if UIP_CONF_IPV6
-u16_t
+uint16_t
 uip_icmp6chksum(void)
 {
 __asm
 	;; ---------------------------------
-	;; u16_t uip_icmp6chksum(void);
+	;; uint16_t uip_icmp6chksum(void);
 	;; Stack; retl reth
 	;; ABCDEHL____
 	;; return HL
@@ -181,12 +180,12 @@ __endasm;
 #endif /* UIP_CONF_IPV6 */
 
 /*--------------------------------------------------------------------------*/
-u16_t
+uint16_t
 uip_tcpchksum(void)
 {
 __asm
 	;; ---------------------------------
-	;; u16_t uip_tcpchksum(void);
+	;; uint16_t uip_tcpchksum(void);
 	;; Stack; retl reth
 	;; ABCDEHL____
 	;; return HL
@@ -198,12 +197,12 @@ __endasm;
 
 /*--------------------------------------------------------------------------*/
 #if UIP_UDP_CHKSUMS
-u16_t
+uint16_t
 uip_udpchksum(void)
 {
 __asm
 	;; ---------------------------------
-	;; u16_t uip_udpchksum(void);
+	;; uint16_t uip_udpchksum(void);
 	;; Stack; retl reth
 	;; ABCDEHL____
 	;; return HL

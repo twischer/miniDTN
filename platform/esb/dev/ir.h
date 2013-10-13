@@ -28,7 +28,6 @@
  *
  * This file is part of the Contiki operating system.
  *
- * @(#)$Id: ir.h,v 1.1 2006/06/18 07:49:33 adamdunkels Exp $
  */
 #ifndef __IR_H__
 #define __IR_H__
@@ -47,11 +46,11 @@ void ir_init(void);
 
 void ir_send(unsigned short low12bits);
 
-u8_t ir_poll(void);
+uint8_t ir_poll(void);
 #define IR_NODATA 0
 #define IR_DATA   1
 
-u16_t ir_data(void);
+uint16_t ir_data(void);
 
 void ir_irq(void);
 

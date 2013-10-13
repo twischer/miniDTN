@@ -28,7 +28,6 @@
  *
  * This file is part of the Contiki operating system.
  *
- * $Id: cc2420-aes.c,v 1.5 2010/06/24 11:25:55 nifi Exp $
  */
 
 /**
@@ -39,12 +38,6 @@
  */
 
 #include "contiki.h"
-#ifdef __IAR_SYSTEMS_ICC__
-#include <msp430.h>
-#else
-#include <io.h>
-#include <signal.h>
-#endif
 #include "dev/cc2420.h"
 #include "dev/cc2420-aes.h"
 #include "dev/spi.h"

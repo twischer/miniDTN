@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF 
  * SUCH DAMAGE. 
  *
- * @(#)$Id: avrdef.h,v 1.2 2007/12/11 17:21:14 joxe Exp $
  */
 
 #ifndef AVRDEF_H
@@ -36,22 +35,28 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 
-#ifdef HAVE_STDINT_H
-#include <stdint.h>
-#else
-typedef unsigned char   uint8_t;
-typedef unsigned short uint16_t;
-typedef unsigned long  uint32_t;
-typedef   signed char    int8_t;
-typedef          short  int16_t;
-typedef          long   int32_t;
-#endif /* !HAVE_STDINT_H */
+/* Include stdint.h before avrdef.h, best option, otherwise do it this way. */
+#ifndef __STDINT_H_
+	#ifdef HAVE_STDINT_H
+		#include <stdint.h>
+	#else
+		typedef unsigned char   uint8_t;
+		typedef unsigned short uint16_t;
+		typedef unsigned long  uint32_t;
+		typedef   signed char    int8_t;
+		typedef          short  int16_t;
+		typedef          long   int32_t;
+	#endif /* !HAVE_STDINT_H */
+#endif
 
 /* These names are deprecated, use C99 names. */
 typedef  uint8_t    u8_t;
 typedef uint16_t   u16_t;
 typedef uint32_t   u32_t;
 typedef  int32_t   s32_t;
+typedef unsigned short clock_time_t;
+typedef unsigned short uip_stats_t;
+typedef unsigned long off_t;
 
 void cpu_init(void);
 

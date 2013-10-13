@@ -28,7 +28,6 @@
  *
  * This file is part of the Contiki operating system.
  *
- * @(#)$Id: rs232.c,v 1.9 2009/06/29 12:46:50 nvt-se Exp $
  */
 
 /** \addtogroup esbrs232
@@ -42,9 +41,7 @@
  * This file contains an RS232 device driver for the MSP430 microcontroller.
  *
  */
-
-#include <io.h>
-#include <signal.h>
+#include "contiki.h"
 #include <string.h>
 #include "dev/msb430-uart1.h"
 #include "rs232.h"

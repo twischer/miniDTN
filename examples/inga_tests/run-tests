@@ -1,0 +1,9 @@
+#!/bin/bash
+
+#TESTLIST=(sensor-acc sensor-gyro sensor-temppress sensor-battery fat-default)
+TESTLIST=timer-rtimer
+for i in ${TESTLIST[@]}; do
+  TEST_CONF=$(grep -l ${i} $(find . -name test_config.yaml) | head -1)
+  ./../../tools/profiling/test/test.py -x $(pwd) -t $TEST_CONF --only-tests ${i}
+done
+

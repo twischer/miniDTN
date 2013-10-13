@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: MspDebugOutput.java,v 1.2 2010/01/21 18:02:54 fros4943 Exp $
  */
 
 package se.sics.cooja.mspmote.interfaces;
@@ -43,7 +42,8 @@ import se.sics.cooja.Mote;
 import se.sics.cooja.interfaces.Log;
 import se.sics.cooja.mspmote.MspMote;
 import se.sics.cooja.mspmote.MspMoteMemory;
-import se.sics.mspsim.core.CPUMonitor;
+import se.sics.mspsim.core.Memory;
+import se.sics.mspsim.core.MemoryMonitor;
 
 /**
  * Observes writes to a special (hardcoded) Contiki variable: cooja_debug_ptr.
@@ -67,6 +67,7 @@ public class MspDebugOutput extends Log {
   private MspMoteMemory mem;
   
   private String lastLog = null;
+  private MemoryMonitor memoryMonitor = null;
   
   public MspDebugOutput(Mote mote) {
     this.mote = (MspMote) mote;
@@ -76,19 +77,16 @@ public class MspDebugOutput extends Log {
       /* Disabled */
       return;
     }
-    this.mote.getCPU().setBreakPoint(mem.getVariableAddress(CONTIKI_POINTER),
-        new CPUMonitor() {
-      public void cpuAction(int type, int adr, int data) {
-        if (type != MEMORY_WRITE) {
-          return;
-        }
-
-        String msg = extractString(mem, data);
-        if (msg != null && msg.length() > 0) {
-          lastLog = "DEBUG: " + msg;
-          setChanged();
-          notifyObservers(MspDebugOutput.this.mote);
-        }
+    this.mote.getCPU().addWatchPoint(mem.getVariableAddress(CONTIKI_POINTER),
+        memoryMonitor = new MemoryMonitor.Adapter() {
+        @Override
+        public void notifyWriteAfter(int adr, int data, Memory.AccessMode mode) {
+          String msg = extractString(mem, data);
+          if (msg != null && msg.length() > 0) {
+            lastLog = "DEBUG: " + msg;
+            setChanged();
+            notifyObservers(MspDebugOutput.this.mote);
+          }
       }
     });
   }
@@ -136,6 +134,9 @@ public class MspDebugOutput extends Log {
 
   public void removed() {
     super.removed();
-    /* TODO Remove watchpoint */
+
+    if (memoryMonitor != null) {
+      mote.getCPU().removeWatchPoint(mem.getVariableAddress(CONTIKI_POINTER), memoryMonitor);
+    }
   }
 }

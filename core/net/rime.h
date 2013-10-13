@@ -33,7 +33,6 @@
  *
  * This file is part of the Contiki operating system.
  *
- * $Id: rime.h,v 1.30 2010/06/14 19:19:16 adamdunkels Exp $
  */
 
 /**
@@ -88,8 +87,6 @@ int rime_init(void);
 void rime_input(void);
 
 int rime_output(struct channel *c);
-
-extern const struct mac_driver *rime_mac;
 
 struct rime_sniffer {
   struct rime_sniffer *next;

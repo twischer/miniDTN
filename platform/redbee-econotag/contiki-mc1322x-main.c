@@ -89,7 +89,7 @@ void rtimercycle(void) {rtimerflag=1;}
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)
-#define PRINT6ADDR(addr) PRINTF(" %02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x ", ((u8_t *)addr)[0], ((u8_t *)addr)[1], ((u8_t *)addr)[2], ((u8_t *)addr)[3], ((u8_t *)addr)[4], ((u8_t *)addr)[5], ((u8_t *)addr)[6], ((u8_t *)addr)[7], ((u8_t *)addr)[8], ((u8_t *)addr)[9], ((u8_t *)addr)[10], ((u8_t *)addr)[11], ((u8_t *)addr)[12], ((u8_t *)addr)[13], ((u8_t *)addr)[14], ((u8_t *)addr)[15])
+#define PRINT6ADDR(addr) PRINTF(" %02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x ", ((uint8_t *)addr)[0], ((uint8_t *)addr)[1], ((uint8_t *)addr)[2], ((uint8_t *)addr)[3], ((uint8_t *)addr)[4], ((uint8_t *)addr)[5], ((uint8_t *)addr)[6], ((uint8_t *)addr)[7], ((uint8_t *)addr)[8], ((uint8_t *)addr)[9], ((uint8_t *)addr)[10], ((uint8_t *)addr)[11], ((uint8_t *)addr)[12], ((uint8_t *)addr)[13], ((uint8_t *)addr)[14], ((uint8_t *)addr)[15])
 #define PRINTLLADDR(lladdr) PRINTF(" %02x:%02x:%02x:%02x:%02x:%02x ",(lladdr)->addr[0], (lladdr)->addr[1], (lladdr)->addr[2], (lladdr)->addr[3],(lladdr)->addr[4], (lladdr)->addr[5])
 #else
 #define PRINTF(...)
@@ -199,7 +199,7 @@ init_lowlevel(void)
 	trim_xtal();
 	
 	/* uart init */
-	uart_init(BRINC, BRMOD, SAMP);
+	uart_init(UART1, 115200);
 	
 	default_vreg_init();
 
@@ -280,6 +280,8 @@ void oui_to_eui64(rimeaddr_t *eui64, uint32_t oui, uint64_t ext) {
 	eui64->u8[7] =  ext        & 0xff;
 }
 
+extern unsigned short node_id;
+
 void
 set_rimeaddr(rimeaddr_t *addr) 
 {
@@ -332,6 +334,7 @@ set_rimeaddr(rimeaddr_t *addr)
 		PRINTF("loading rime address from flash.\n\r");
 	}
 
+	node_id = (addr->u8[6] << 8 | addr->u8[7]);
 	rimeaddr_set_node_addr(addr);
 }
 
@@ -611,18 +614,23 @@ extern uip_ds6_netif_t uip_ds6_if;
     }
   }
   if (j) printf("  <none>");
-  printf("\nRoutes [%u max]\n",UIP_DS6_ROUTE_NB);
-  for(i = 0,j=1; i < UIP_DS6_ROUTE_NB; i++) {
-    if(uip_ds6_routing_table[i].isused) {
-      uip_debug_ipaddr_print(&uip_ds6_routing_table[i].ipaddr);
-      printf("/%u (via ", uip_ds6_routing_table[i].length);
-      uip_debug_ipaddr_print(&uip_ds6_routing_table[i].nexthop);
+  PRINTF("\nRoutes [%u max]\n",UIP_DS6_ROUTE_NB);
+  {
+    uip_ds6_route_t *r;
+    PRINTF("\nRoutes [%u max]\n",UIP_DS6_ROUTE_NB);
+    j = 1;
+    for(r = uip_ds6_route_list_head();
+        r != NULL;
+        r = list_item_next(r)) {
+      ipaddr_add(&r->ipaddr);
+      PRINTF("/%u (via ", r->length);
+      ipaddr_add(&r->nexthop);
  //     if(uip_ds6_routing_table[i].state.lifetime < 600) {
-        printf(") %lus\n", uip_ds6_routing_table[i].state.lifetime);
- //     } else {
- //       printf(")\n");
- //     }
-      j=0;
+      PRINTF(") %lus\n", r->state.lifetime);
+      //     } else {
+      //       PRINTF(")\n");
+      //     }
+      j = 0;
     }
   }
   if (j) printf("  <none>");

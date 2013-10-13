@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: MspStackWatcher.java,v 1.7 2010/01/15 10:55:03 fros4943 Exp $
  */
 
 package se.sics.cooja.mspmote.plugins;
@@ -50,18 +49,19 @@ import se.sics.cooja.Mote;
 import se.sics.cooja.MotePlugin;
 import se.sics.cooja.PluginType;
 import se.sics.cooja.Simulation;
+import se.sics.cooja.SupportedArguments;
 import se.sics.cooja.VisPlugin;
 import se.sics.cooja.mspmote.MspMote;
 import se.sics.mspsim.core.MSP430;
 import se.sics.mspsim.ui.StackUI;
-import se.sics.mspsim.ui.WindowManager;
 import se.sics.mspsim.util.Utils;
 
 @ClassDescription("Msp Stack Watcher")
 @PluginType(PluginType.MOTE_PLUGIN)
+@SupportedArguments(motes = {MspMote.class})
 public class MspStackWatcher extends VisPlugin implements MotePlugin {
   private static Logger logger = Logger.getLogger(MspStackWatcher.class);
-  
+
   private MspMote mspMote;
   private MSP430 cpu;
   private StackUI stackUI;
@@ -121,7 +121,7 @@ public class MspStackWatcher extends VisPlugin implements MotePlugin {
     stackUI = new StackUI(cpu);
     stackUI.init("MSPSim stack", mspMote.registry);
     stackUI.start();
-    
+
     // Register as log listener
     /*if (logObserver == null && mspMote.getInterfaces().getLog() != null) {
       mspMote.getInterfaces().getLog().addObserver(logObserver = new Observer() {

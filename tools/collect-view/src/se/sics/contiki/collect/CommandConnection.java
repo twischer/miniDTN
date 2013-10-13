@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: CommandConnection.java,v 1.1 2010/11/03 14:53:05 adamdunkels Exp $
  *
  * -----------------------------------------------------------------
  *
@@ -132,6 +131,10 @@ public class CommandConnection extends SerialConnection {
         }
       }, "read error stream thread");
 
+      if (!isOpen) {
+        isOpen = true;
+        serialOpened();
+      }
       readInput.start();
       readError.start();
     } catch (Exception e) {
@@ -143,10 +146,6 @@ public class CommandConnection extends SerialConnection {
   }
 
   protected void standardData(String line) {
-    if (!isOpen) {
-      isOpen = true;
-      serialOpened();
-    }
     serialData(line);
   }
 

@@ -28,7 +28,6 @@
  *
  * This file is part of the Contiki operating system.
  *
- * @(#)$Id: sensors.c,v 1.5 2010/01/14 20:04:38 nifi Exp $
  */
 /* exeperimental code, will be renamed to sensors.c when done */
 
@@ -39,7 +38,7 @@
 
 #include "lib/sensors.h"
 
-extern struct sensors_sensor *sensors[];
+const extern struct sensors_sensor *sensors[];
 extern unsigned char sensors_flags[];
 
 #define FLAG_CHANGED    0x80
@@ -63,13 +62,13 @@ get_sensor_index(const struct sensors_sensor *s)
   return i;
 }
 /*---------------------------------------------------------------------------*/
-struct sensors_sensor *
+const struct sensors_sensor *
 sensors_first(void)
 {
   return sensors[0];
 }
 /*---------------------------------------------------------------------------*/
-struct sensors_sensor *
+const struct sensors_sensor *
 sensors_next(const struct sensors_sensor *s)
 {
   return sensors[get_sensor_index(s) + 1];
@@ -82,7 +81,7 @@ sensors_changed(const struct sensors_sensor *s)
   process_poll(&sensors_process);
 }
 /*---------------------------------------------------------------------------*/
-struct sensors_sensor *
+const struct sensors_sensor *
 sensors_find(const char *prefix)
 {
   int i;
@@ -123,7 +122,7 @@ PROCESS_THREAD(sensors_process, ev, data)
       events = 0;
       for(i = 0; i < num_sensors; ++i) {
 	if(sensors_flags[i] & FLAG_CHANGED) {
-	  if(process_post(PROCESS_BROADCAST, sensors_event, sensors[i]) == PROCESS_ERR_OK) {
+	  if(process_post(PROCESS_BROADCAST, sensors_event, (void *)sensors[i]) == PROCESS_ERR_OK) {
 	    PROCESS_WAIT_EVENT_UNTIL(ev == sensors_event);
 	  }
 	  sensors_flags[i] &= ~FLAG_CHANGED;

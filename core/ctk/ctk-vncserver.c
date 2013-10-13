@@ -41,7 +41,6 @@
  *
  * This file is part of the "ctk" console GUI toolkit for cc65
  *
- * $Id: ctk-vncserver.c,v 1.3 2010/10/19 18:29:04 adamdunkels Exp $
  *
  */
 
@@ -240,9 +239,9 @@ vnc_server_update_remove(struct vnc_server_state *vs,
  */
 /*-----------------------------------------------------------------------------------*/
 static void
-update_area(u8_t x, u8_t y, u8_t w, u8_t h)
+update_area(uint8_t x, uint8_t y, uint8_t w, uint8_t h)
 {
-  u8_t i;
+  uint8_t i;
   
   if(h == 0 || w == 0) {
     return;
@@ -266,7 +265,7 @@ update_area(u8_t x, u8_t y, u8_t w, u8_t h)
 static struct vnc_server_state *
 alloc_state(void)
 {
-  u8_t i;
+  uint8_t i;
   for(i = 0; i < CTK_VNCSERVER_CONF_NUMCONNS; ++i) {
     if(conns[i].state == VNC_DEALLOCATED) {
       return &conns[i];

@@ -42,18 +42,41 @@
 #ifndef __CONTIKI_CONF_H__
 #define __CONTIKI_CONF_H__
 
-/* MCU and clock rate */
-#define PLATFORM PLATFORM_AVR
-#define HARWARE_REVISION ZIGBIT
+/* Platform name, type, and MCU clock rate */
+#define PLATFORM_NAME  "Zigbit"
+#define PLATFORM_TYPE  ZIGBIT
+#ifndef F_CPU
+#define F_CPU          8000000UL
+#endif
 
+#include <stdint.h>
+#include <avr/eeprom.h>
+
+/* Skip the last four bytes of the EEPROM, to leave room for things
+ * like the avrdude erase count and bootloader signaling. */
+#define EEPROM_CONF_SIZE		((E2END + 1) - 4)
+
+/* The AVR tick interrupt usually is done with an 8 bit counter around 128 Hz.
+ * 125 Hz needs slightly more overhead during the interrupt, as does a 32 bit
+ * clock_time_t.
+ */
 /* Clock ticks per second */
 #define CLOCK_CONF_SECOND 125
-
-/* Since clock_time_t is 16 bits, maximum interval is 524 seconds */
-#define RIME_CONF_BROADCAST_ANNOUNCEMENT_MAX_TIME CLOCK_CONF_SECOND * 524UL /*Default uses 600*/
-
-/* Maximum time interval (used for timers) */
+#if 1
+/* 16 bit counter overflows every ~10 minutes */
+typedef unsigned short clock_time_t;
+#define CLOCK_LT(a,b)  ((signed short)((a)-(b)) < 0)
 #define INFINITE_TIME 0xffff
+#define RIME_CONF_BROADCAST_ANNOUNCEMENT_MAX_TIME INFINITE_TIME/CLOCK_CONF_SECOND /* Default uses 600 */
+#define COLLECT_CONF_BROADCAST_ANNOUNCEMENT_MAX_TIME INFINITE_TIME/CLOCK_CONF_SECOND /* Default uses 600 */
+#else
+typedef unsigned long clock_time_t;
+#define CLOCK_LT(a,b)  ((signed long)((a)-(b)) < 0)
+#define INFINITE_TIME 0xffffffff
+#endif
+/* These routines are not part of the contiki core but can be enabled in cpu/avr/clock.c */
+void clock_delay_msec(uint16_t howlong);
+void clock_adjust_ticks(clock_time_t howmany);
 
 /* COM port to be used for SLIP connection */
 #define SLIP_PORT RS232_PORT_0
@@ -68,6 +91,9 @@
 
 #define CCIF
 #define CLIF
+#ifndef CC_CONF_INLINE
+#define CC_CONF_INLINE inline
+#endif
 
 #define RIMEADDR_CONF_SIZE       8
 #define PACKETBUF_CONF_HDR_SIZE    0
@@ -98,7 +124,7 @@
 #define NETSTACK_CONF_RADIO       rf230_driver
 #define CHANNEL_802_15_4          26
 #define RF230_CONF_AUTOACK        1
-#define RF230_CONF_AUTORETRIES    2
+#define RF230_CONF_FRAME_RETRIES    2
 #define SICSLOWPAN_CONF_FRAG      1
 //Most browsers reissue GETs after 3 seconds which stops frag reassembly, longer MAXAGE does no good
 #define SICSLOWPAN_CONF_MAXAGE    3
@@ -143,19 +169,15 @@
 #define UIP_CONF_TCP_SPLIT       1
 
 
-#include <stdint.h>
-
-typedef int32_t s32_t;
-typedef unsigned short clock_time_t;
+/* These names are deprecated, use C99 names. */
+/*
 typedef unsigned char u8_t;
 typedef unsigned short u16_t;
 typedef unsigned long u32_t;
+typedef int32_t s32_t;
+*/
 typedef unsigned short uip_stats_t;
 typedef unsigned long off_t;
 
-void clock_delay(unsigned int us2);
-void clock_wait(int ms10);
-void clock_set_seconds(unsigned long s);
-unsigned long clock_seconds(void);
 
 #endif /* __CONTIKI_CONF_H__ */

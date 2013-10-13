@@ -30,7 +30,6 @@
  * 
  * Author: Adam Dunkels <adam@sics.se>
  *
- * $Id: ftpc.h,v 1.2 2010/05/31 15:22:08 nifi Exp $
  */
 #ifndef __FTPC_H__
 #define __FTPC_H__
@@ -39,7 +38,7 @@
 
 void ftpc_init(void);
 
-void *ftpc_connect(uip_ipaddr_t *ipaddr, u16_t port);
+void *ftpc_connect(uip_ipaddr_t *ipaddr, uint16_t port);
 char ftpc_list(void *connection);
 void ftpc_cwd(void *connection, char *dir);
 void ftpc_cdup(void *connection);
@@ -63,6 +62,6 @@ void ftpc_closed(void);
 void ftpc_aborted(void);
 void ftpc_timedout(void);
 void ftpc_list_file(char *filename);
-void ftpc_data(u8_t *data, u16_t len);
+void ftpc_data(uint8_t *data, uint16_t len);
 
 #endif /* __FTPC_H__ */

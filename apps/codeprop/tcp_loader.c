@@ -28,7 +28,6 @@
  *
  * This file is part of the Contiki operating system.
  *
- * @(#)$Id: tcp_loader.c,v 1.4 2010/10/19 18:29:03 adamdunkels Exp $
  */
 
 #include <stdio.h>
@@ -50,8 +49,8 @@ PROCESS(tcp_loader_process, "TCP loader");
 
 static
 struct codeprop_state {
-  u16_t addr;
-  u16_t len;
+  uint16_t addr;
+  uint16_t len;
   struct pt tcpthread_pt;
 } s;
 

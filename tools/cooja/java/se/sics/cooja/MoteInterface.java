@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: MoteInterface.java,v 1.7 2009/11/13 08:41:06 fros4943 Exp $
  */
 
 package se.sics.cooja;
@@ -146,6 +145,12 @@ public abstract class MoteInterface extends Observable {
    * This method is called when the mote is removed from the simulation.
    */
   public void removed() {
+  }
+  
+  /**
+   * Called when all mote interfaces have been added to mote.
+   */
+  public void added() {
   }
 
 }

@@ -28,7 +28,6 @@
  *
  * This file is part of the Contiki operating system.
  *
- * @(#)$Id: contiki-conf.h,v 1.10 2010/03/18 20:11:54 dak664 Exp $
  */
 
 #ifndef __CONTIKI_CONF_H__
@@ -45,11 +44,18 @@
 #define CCIF
 #define CLIF
 
+#ifndef EEPROM_CONF_SIZE
+#define EEPROM_CONF_SIZE				1024
+#endif
+
+/* These names are deprecated, use C99 names. */
 typedef uint8_t   u8_t;
 typedef uint16_t u16_t;
 typedef uint32_t u32_t;
 typedef  int32_t s32_t;
+
 typedef unsigned short uip_stats_t;
+
 
 #if UIP_CONF_IPV6
 /* The Windows build uses wpcap to connect to a host interface. It finds the interface by scanning for
@@ -94,7 +100,6 @@ typedef unsigned short uip_stats_t;
  * They should all attach to a minimal-net rpl border that uses the same primary interface.
  * For multihop testing, configure intermediate notes as routers.
  */
-#define RPL_CONF_ADJUST_LLH_LEN    1
 #define HARD_CODED_ADDRESS      "bbbb::10"  //the prefix is ignored for a rpl node
 #define UIP_CONF_ROUTER                 0
 #define UIP_CONF_ND6_SEND_RA            0
@@ -141,7 +146,7 @@ typedef unsigned short uip_stats_t;
 #define UIP_CONF_TCP_SPLIT            0
 #define UIP_CONF_IP_FORWARD           0
 #define UIP_CONF_LOGGING              0
-#define UIP_CONF_UDP_CHECKSUMS        0
+#define UIP_CONF_UDP_CHECKSUMS        1
 
 /* Not used but avoids compile errors while sicslowpan.c is being developed */
 #define SICSLOWPAN_CONF_COMPRESSION       SICSLOWPAN_COMPRESSION_HC06
@@ -160,7 +165,7 @@ typedef unsigned short uip_stats_t;
 #define UIP_CONF_DS6_NBR_NBU     100
 #define UIP_CONF_DS6_DEFRT_NBU   2
 #define UIP_CONF_DS6_PREFIX_NBU  5
-#define UIP_CONF_DS6_ROUTE_NBU   100
+#define UIP_CONF_MAX_ROUTES   100
 #define UIP_CONF_DS6_ADDR_NBU    10
 #define UIP_CONF_DS6_MADDR_NBU   0
 #define UIP_CONF_DS6_AADDR_NBU   0

@@ -1,0 +1,12 @@
+tests:
+### COFFEE test
+  - name: coffee-default
+    timeout: 120
+    devices:
+      - name: receiver
+        programdir: examples/inga_tests/fat-tests
+        program: coffee-tests
+        instrument: []
+        debug: []
+        cflags: "-fno-inline"
+        graph_options: ""

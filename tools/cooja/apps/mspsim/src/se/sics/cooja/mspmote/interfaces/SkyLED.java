@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: SkyLED.java,v 1.3 2010/02/05 08:44:57 fros4943 Exp $
  */
 
 package se.sics.cooja.mspmote.interfaces;
@@ -69,7 +68,7 @@ public class SkyLED extends LED {
 
     IOUnit unit = mspMote.getCPU().getIOUnit("Port 5");
     if (unit instanceof IOPort) {
-      ((IOPort) unit).setPortListener(new PortListener() {
+      ((IOPort) unit).addPortListener(new PortListener() {
         public void portWrite(IOPort source, int data) {
           blueOn = (data & SkyNode.BLUE_LED) == 0;
           greenOn = (data & SkyNode.GREEN_LED) == 0;

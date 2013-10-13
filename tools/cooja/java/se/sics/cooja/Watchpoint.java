@@ -26,30 +26,31 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: Watchpoint.java,v 1.2 2009/06/16 12:15:27 fros4943 Exp $
  */
 
 package se.sics.cooja;
 
 import java.awt.Color;
+import java.io.File;
 
 /**
  * @author Fredrik Osterlind
  */
 public interface Watchpoint {
-  
-  /**
-   * @return Short watchpoint description
-   */
-  public String getDescription();
 
-  /**
-   * @return Mote
-   */
-  public Mote getMote();
-  
-  /**
-   * @return Color
-   */
+  public WatchpointMote getMote();
+
   public Color getColor();
+  public void setColor(Color newColor);
+
+  public String getDescription();
+  public void setUserMessage(String msg);
+  public String getUserMessage();
+
+  public File getCodeFile();
+  public int getLineNumber();
+  public int getExecutableAddress();
+
+  public void setStopsSimulation(boolean b);
+  public boolean stopsSimulation();
 }

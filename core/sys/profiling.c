@@ -40,16 +40,18 @@
 #include "sys/profiling.h"
 #include "profiling_arch.h"
 
+/* Disable by default */
 #ifdef PROFILES_CONF_MAX
 #define MAX_PROFILES PROFILES_CONF_MAX
 #else
-#define MAX_PROFILES 1
+#define MAX_PROFILES 0
 #endif /* MAX_CONF_PROFILES */
 
+/* Disable by default */
 #ifdef PROFILES_CONF_STACKSIZE
 #define PROFILE_STACKSIZE PROFILES_CONF_STACKSIZE
 #else
-#define PROFILE_STACKSIZE 20
+#define PROFILE_STACKSIZE 0
 #endif /* PROFILES_CONF_STACKSIZE */
 
 static struct profile_t profile;

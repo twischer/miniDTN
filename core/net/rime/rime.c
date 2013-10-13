@@ -33,7 +33,6 @@
  *
  * This file is part of the Contiki operating system.
  *
- * $Id: rime.c,v 1.31 2010/10/03 20:10:22 adamdunkels Exp $
  */
 
 /**
@@ -61,8 +60,6 @@
 
 #include "lib/list.h"
 
-const struct mac_driver *rime_mac;
-
 #ifdef RIME_CONF_BROADCAST_ANNOUNCEMENT_CHANNEL
 #define BROADCAST_ANNOUNCEMENT_CHANNEL RIME_CONF_BROADCAST_ANNOUNCEMENT_CHANNEL
 #else /* RIME_CONF_BROADCAST_ANNOUNCEMENT_CHANNEL */
@@ -72,7 +69,7 @@ const struct mac_driver *rime_mac;
 #ifdef RIME_CONF_BROADCAST_ANNOUNCEMENT_BUMP_TIME
 #define BROADCAST_ANNOUNCEMENT_BUMP_TIME RIME_CONF_BROADCAST_ANNOUNCEMENT_BUMP_TIME
 #else /* RIME_CONF_BROADCAST_ANNOUNCEMENT_BUMP_TIME */
-#define BROADCAST_ANNOUNCEMENT_BUMP_TIME CLOCK_SECOND * 8
+#define BROADCAST_ANNOUNCEMENT_BUMP_TIME CLOCK_SECOND * 32 / NETSTACK_RDC_CHANNEL_CHECK_RATE
 #endif /* RIME_CONF_BROADCAST_ANNOUNCEMENT_BUMP_TIME */
 
 #ifdef RIME_CONF_BROADCAST_ANNOUNCEMENT_MIN_TIME
@@ -130,7 +127,6 @@ init(void)
   packetbuf_clear();
   announcement_init();
 
-  rime_mac = &NETSTACK_MAC;
   chameleon_init();
   
   /* XXX This is initializes the transmission of announcements but it

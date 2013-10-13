@@ -1,0 +1,7 @@
+FAT_FS = cfs-fat.c fat_mkfs.c
+FAT_COOP = fat_coop.c
+DISKIO = diskio.c mbr.c
+
+CONTIKI_SOURCEFILES += $(FAT_FS) \
+		       $(FAT_COOP) \
+		       $(DISKIO)

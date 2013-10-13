@@ -26,20 +26,11 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * @(#)$Id: contiki-sky-main.c,v 1.87 2011/01/09 21:03:42 adamdunkels Exp $
  */
 
 #include <stdio.h>
 #include <string.h>
 #include "contiki.h"
-
-#ifdef __IAR_SYSTEMS_ICC__
-#include <msp430.h>
-#else
-#include <io.h>
-#include <signal.h>
-#endif
-
 #include "dev/cc2420.h"
 #include "dev/ds2411.h"
 #include "dev/leds.h"
@@ -58,7 +49,7 @@
 
 #include "net/rime.h"
 
-#include "node-id.h"
+#include "sys/node-id.h"
 #include "cfs-coffee-arch.h"
 #include "cfs/cfs-coffee.h"
 #include "sys/autostart.h"
@@ -164,6 +155,7 @@ set_rime_addr(void)
   printf("%d\n", addr.u8[i]);
 }
 /*---------------------------------------------------------------------------*/
+#if !PROCESS_CONF_NO_PROCESS_NAMES
 static void
 print_processes(struct process * const processes[])
 {
@@ -175,6 +167,7 @@ print_processes(struct process * const processes[])
   }
   putchar('\n');
 }
+#endif /* !PROCESS_CONF_NO_PROCESS_NAMES */
 /*--------------------------------------------------------------------------*/
 #if WITH_UIP
 static void
@@ -210,9 +203,6 @@ main(int argc, char **argv)
 
 
   uart1_init(BAUD2UBR(115200)); /* Must come before first printf */
-#if WITH_UIP
-  slip_arch_init(BAUD2UBR(115200));
-#endif /* WITH_UIP */
 
   leds_on(LEDS_GREEN);
   ds2411_init();
@@ -258,6 +248,10 @@ main(int argc, char **argv)
   process_start(&etimer_process, NULL);
 
   ctimer_init();
+
+#if WITH_UIP
+  slip_arch_init(BAUD2UBR(115200));
+#endif /* WITH_UIP */
 
   init_platform();
 
@@ -401,7 +395,11 @@ main(int argc, char **argv)
 
   watchdog_start();
 
+#if !PROCESS_CONF_NO_PROCESS_NAMES
   print_processes(autostart_processes);
+#else /* !PROCESS_CONF_NO_PROCESS_NAMES */
+  putchar('\n'); /* include putchar() */
+#endif /* !PROCESS_CONF_NO_PROCESS_NAMES */
   autostart_start(autostart_processes);
 
   /*

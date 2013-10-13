@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: testetimer.c,v 1.2 2008/10/03 09:39:38 fros4943 Exp $
  */
 
 #include "contiki.h"
@@ -40,7 +39,7 @@ AUTOSTART_PROCESSES(&test_etimer_process);
 PROCESS_THREAD(test_etimer_process, ev, data)
 {
   static struct etimer et;
-  static u16_t counter = 0;
+  static uint16_t counter = 0;
 
   PROCESS_BEGIN();
 

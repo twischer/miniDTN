@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: battery-sensor.c,v 1.6 2010/02/08 00:00:45 nifi Exp $
  *
  * -----------------------------------------------------------------
  *
@@ -36,8 +35,8 @@
  *           $Revision: 1.6 $
  */
 
+#include "contiki.h"
 #include "dev/battery-sensor.h"
-#include <io.h>
 #include "dev/irq.h"
 
 const struct sensors_sensor battery_sensor;

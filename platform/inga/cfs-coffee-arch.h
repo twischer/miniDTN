@@ -47,21 +47,25 @@
 //Currently you may choose just one of the following for the coffee file sytem
 //A static file sysstem allows file rewrites but no extensions or new files
 //This allows a static linked list to index into the file system
-#if COFFEE_FILES==1             //1=eeprom for static file system
-#define COFFEE_AVR_EEPROM 1
+#if COFFEE_DEVICE==1             //1=eeprom for static file system
+#define COFFEE_INGA_EEPROM 1
 #define COFFEE_STATIC     1
-#elif COFFEE_FILES==2           //2=eeprom for full file system
-#define COFFEE_AVR_EEPROM 1
-#elif COFFEE_FILES==3           //3=program flash for static file system
-#define COFFEE_AVR_FLASH  1
+#elif COFFEE_DEVICE==2           //2=eeprom for full file system
+#define COFFEE_INGA_EEPROM 1
+#elif COFFEE_DEVICE==3           //3=program flash for static file system
+#define COFFEE_INGA_FLASH  1
 #define COFFEE_STATIC     1
-#elif COFFEE_FILES==4           //4=program flash with full file system
-#define COFFEE_AVR_FLASH  1
+#elif COFFEE_DEVICE==4           //4=program flash with full file system
+#define COFFEE_INGA_FLASH  1
+#elif COFFEE_DEVICE==5			//5=use external onboard flash with full file system
+#define COFFEE_INGA_EXTERNAL 1
+#elif COFFEE_DEVICE==6           //6=sdcard flash for full file system
+#define COFFEE_INGA_SDCARD  1
 #else
-#define COFFEE_AVR_EXTERNAL 1
+#error COFFEE_DEVICE value is undefined
 #endif
 
-#ifdef COFFEE_AVR_EEPROM
+#ifdef COFFEE_INGA_EEPROM
 #include "dev/eeprom.h"
 //1284p EEPROM has 512 pages of 8 bytes each = 4KB
 
@@ -100,9 +104,8 @@ void avr_eeprom_erase(uint16_t sector);
 #define COFFEE_READ(buf, size, offset) \
         eeprom_read (COFFEE_START + (offset), (unsigned char *)(buf), (size))
 
-#endif /* COFFEE_AVR_EEPROM */
 
-#ifdef COFFEE_AVR_FLASH
+#elif defined COFFEE_INGA_FLASH /* COFFEE_INGA_EEPROM */
 /* 1284p PROGMEM has 512 pages of 256 bytes each = 128KB
  * Writing to the last 32 NRRW pages will halt the CPU.
  * Take care not to overwrite the .bootloader section...
@@ -113,10 +116,10 @@ void avr_eeprom_erase(uint16_t sector);
 #ifndef COFFEE_ADDRESS            //Make can pass starting address with COFFEE_ADDRESS=0xnnnnnnnn, default is 64KB for webserver
 #define COFFEE_ADDRESS            0x10000
 #endif
-#define COFFEE_PAGES              (512-(COFFEE_ADDRESS/COFFEE_PAGE_SIZE)-32)
+#define COFFEE_PAGES              (512-(COFFEE_ADDRESS/COFFEE_PAGE_SIZE)-32) /* COFFEE_ADDRESS undefined */
 #define COFFEE_START              (COFFEE_ADDRESS & ~(COFFEE_PAGE_SIZE-1))
 //#define COFFEE_START            (COFFEE_PAGE_SIZE*COFFEE_PAGES) 
-#define COFFEE_SIZE               (COFFEE_PAGES*COFFEE_PAGE_SIZE)
+#define COFFEE_SIZE               (COFFEE_PAGES*COFFEE_PAGE_SIZE) /* XXX */
 
 /* These must agree with the parameters passed to makefsdata */
 #define COFFEE_SECTOR_SIZE        (COFFEE_PAGE_SIZE*1)
@@ -159,16 +162,8 @@ void avr_flash_erase(coffee_page_t sector);
 void avr_flash_read (CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE size);
 void avr_flash_write(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE size);
 
-#define avr_httpd_fs_cpy(dest,addr,size) avr_flash_read((CFS_CONF_OFFSET_TYPE) addr, (uint8_t *)dest, (CFS_CONF_OFFSET_TYPE) size)
-char    avr_httpd_fs_getchar(char *addr);
-char *  avr_httpd_fs_strchr (char *ram, int character);
-int     avr_httpd_fs_strcmp (char *addr,char *ram);
 
-
-#endif /* COFFEE_AVR_FLASH */
-
-
-#ifdef COFFEE_AVR_EXTERNAL
+#elif defined COFFEE_INGA_EXTERNAL /* COFFEE_INGA_FLASH */
 
 /* Byte page size, starting address on page boundary, and size of the file system */
 #define COFFEE_PAGE_SIZE          528UL
@@ -218,7 +213,57 @@ void external_flash_read(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSE
 
 void external_flash_erase(coffee_page_t sector);
 
-#endif /* COFFEE_AVR_EXTERNAL */
+
+#elif defined COFFEE_INGA_SDCARD /* COFFEE_INGA_EXTERNAL */
+/* Byte page size, starting address on page boundary, and size of the file system */
+#define COFFEE_PAGE_SIZE          512
+#ifndef COFFEE_ADDRESS
+#define COFFEE_ADDRESS            0x0
+#endif
+#define COFFEE_PAGES              500UL
+#define COFFEE_START              (COFFEE_ADDRESS)
+#define COFFEE_SIZE               (COFFEE_PAGES * COFFEE_PAGE_SIZE)
+
+/* These must agree with the parameters passed to makefsdata */
+#define COFFEE_SECTOR_SIZE        COFFEE_PAGE_SIZE
+#define COFFEE_NAME_LENGTH        16
+
+/* These are used internally by the coffee file system */
+/* Micro logs are not needed for single page sectors */
+#define COFFEE_MAX_OPEN_FILES     6
+#define COFFEE_FD_SET_SIZE        8
+#define COFFEE_LOG_TABLE_LIMIT    16
+#define COFFEE_DYN_SIZE           (COFFEE_PAGE_SIZE*1)
+#define COFFEE_MICRO_LOGS         0
+#define COFFEE_LOG_SIZE           128
+
+/* coffee_page_t is used for page and sector numbering
+ * uint8_t can handle 511 pages.
+ * cfs_offset_t is used for full byte addresses
+ * If CFS_CONF_OFFSET_TYPE is not defined it defaults to int.
+ * uint16_t can handle up to a 65535 byte file system.
+ */
+#define coffee_page_t uint32_t
+#define CFS_CONF_OFFSET_TYPE uint32_t
+
+#define COFFEE_WRITE(buf, size, offset) \
+		sd_write(offset, (uint8_t *) buf, size)
+
+#define COFFEE_READ(buf, size, offset) \
+		sd_read(offset, (uint8_t *) buf, size)
+
+#define COFFEE_ERASE(sector) \
+		sd_erase(sector)
+
+void sd_write(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE size);
+
+void sd_read(CFS_CONF_OFFSET_TYPE addr, uint8_t *buf, CFS_CONF_OFFSET_TYPE size);
+
+void sd_erase(coffee_page_t sector);
+
+#else /* COFFEE_INGA_SDCARD */
+#error No coffee device defined
+#endif /* COFFEE_INGA_SDCARD */
 
 int coffee_file_test(void);
 #endif /* !COFFEE_ARCH_H */

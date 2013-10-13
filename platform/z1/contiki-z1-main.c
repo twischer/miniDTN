@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * @(#)$Id: contiki-z1-main.c,v 1.4 2010/08/26 22:08:11 nifi Exp $
  */
 
 #include <stdio.h>
@@ -34,13 +33,6 @@
 #include <stdarg.h> 
 
 #include "contiki.h"
-#ifdef __IAR_SYSTEMS_ICC__
-#include <msp430.h>
-#else
-#include <io.h>
-#include <signal.h>
-#endif
-
 #include "dev/cc2420.h"
 #include "dev/leds.h"
 #include "dev/serial-line.h"
@@ -52,6 +44,8 @@
 #include "net/netstack.h"
 #include "net/mac/frame802154.h"
 #include "dev/button-sensor.h"
+#include "dev/adxl345.h"
+#include "sys/clock.h"
 
 #if WITH_UIP6
 #include "net/uip-ds6.h"
@@ -59,7 +53,7 @@
 
 #include "net/rime.h"
 
-#include "node-id.h"
+#include "sys/node-id.h"
 #include "cfs-coffee-arch.h"
 #include "cfs/cfs-coffee.h"
 #include "sys/autostart.h"
@@ -72,6 +66,7 @@
 
 SENSORS(&button_sensor);
 
+extern unsigned char node_mac[8];
 
 #if DCOSYNCH_CONF_ENABLED
 static struct timer mgt_timer;
@@ -225,8 +220,8 @@ main(int argc, char **argv)
   node_id_restore();
 
   /* If no MAC address was burned, we use the node ID. */
-  if(node_mac[0] | node_mac[1] | node_mac[2] | node_mac[3] |
-     node_mac[4] | node_mac[5] | node_mac[6] | node_mac[7]) {
+  if(!(node_mac[0] | node_mac[1] | node_mac[2] | node_mac[3] |
+       node_mac[4] | node_mac[5] | node_mac[6] | node_mac[7])) {
     node_mac[0] = 0xc1;  /* Hardcoded for Z1 */
     node_mac[1] = 0x0c;  /* Hardcoded for Revision C */
     node_mac[2] = 0x00;  /* Hardcoded to arbitrary even number so that

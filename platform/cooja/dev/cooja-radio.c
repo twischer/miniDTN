@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: cooja-radio.c,v 1.15 2010/06/14 19:19:17 adamdunkels Exp $
  */
 
 #include <stdio.h>
@@ -45,8 +44,10 @@
 #include "dev/cooja-radio.h"
 
 #define COOJA_RADIO_BUFSIZE PACKETBUF_SIZE
-
 #define CCA_SS_THRESHOLD -95
+
+#define WITH_TURNAROUND 1
+#define WITH_SEND_CCA 1
 
 const struct simInterface radio_interface;
 
@@ -109,16 +110,16 @@ radio_off(void)
 static void
 doInterfaceActionsBeforeTick(void)
 {
-  if (!simRadioHWOn) {
+  if(!simRadioHWOn) {
     simInSize = 0;
     return;
   }
-  if (simReceiving) {
+  if(simReceiving) {
     simLastSignalStrength = simSignalStrength;
     return;
   }
 
-  if (simInSize > 0) {
+  if(simInSize > 0) {
     process_poll(&cooja_radio_process);
   }
 }
@@ -133,7 +134,7 @@ radio_read(void *buf, unsigned short bufsize)
 {
   int tmp = simInSize;
 
-  if (simInSize == 0) {
+  if(simInSize == 0) {
     return 0;
   }
   if(bufsize < simInSize) {
@@ -148,9 +149,24 @@ radio_read(void *buf, unsigned short bufsize)
 }
 /*---------------------------------------------------------------------------*/
 static int
+channel_clear(void)
+{
+  if(simSignalStrength > CCA_SS_THRESHOLD) {
+    return 0;
+  }
+  return 1;
+}
+/*---------------------------------------------------------------------------*/
+static int
 radio_send(const void *payload, unsigned short payload_len)
 {
   int radiostate = simRadioHWOn;
+
+  /* Simulate turnaround time of 1ms */
+#if WITH_TURNAROUND
+  simProcessRunValue = 1;
+  cooja_mt_yield();
+#endif /* WITH_TURNAROUND */
 
   if(!simRadioHWOn) {
     /* Turn on radio temporarily */
@@ -165,6 +181,13 @@ radio_send(const void *payload, unsigned short payload_len)
   if(simOutSize > 0) {
     return RADIO_TX_ERR;
   }
+
+  /* Transmit on CCA */
+#if WITH_SEND_CCA
+  if(!channel_clear()) {
+    return RADIO_TX_COLLISION;
+  }
+#endif /* WITH_SEND_CCA */
 
   /* Copy packet data to temporary storage */
   memcpy(simOutDataBuffer, payload, payload_len);
@@ -206,15 +229,6 @@ static int
 pending_packet(void)
 {
   return !simReceiving && simInSize > 0;
-}
-/*---------------------------------------------------------------------------*/
-static int
-channel_clear(void)
-{
-  if(simSignalStrength > CCA_SS_THRESHOLD) {
-    return 0;
-  }
-  return 1;
 }
 /*---------------------------------------------------------------------------*/
 PROCESS_THREAD(cooja_radio_process, ev, data)

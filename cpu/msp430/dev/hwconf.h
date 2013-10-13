@@ -28,21 +28,11 @@
  *
  * This file is part of the Contiki operating system.
  *
- * @(#)$Id: hwconf.h,v 1.3 2010/01/14 20:05:58 nifi Exp $
  */
 #ifndef __HWCONF_H__
 #define __HWCONF_H__
-
+#include "contiki.h"
 #include "sys/cc.h"
-
-#ifdef __GNUC__
-#include <io.h>
-#include <signal.h>
-#endif
-
-#ifdef __IAR_SYSTEMS_ICC__
-#include <msp430.h>
-#endif 
 
 #define HWCONF_PIN(name, port, bit)                                           \
 static CC_INLINE void name##_SELECT() {P##port##SEL &= ~(1 << bit);}          \

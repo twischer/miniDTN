@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: wget.c,v 1.2 2010/06/14 14:12:43 nifi Exp $
  */
 
 /**
@@ -138,7 +137,7 @@ PROCESS_THREAD(wget_process, ev, data)
 }
 /*---------------------------------------------------------------------------*/
 void
-webclient_datahandler(char *data, u16_t len)
+webclient_datahandler(char *data, uint16_t len)
 {
   if(len == 0) {
 #if STATS

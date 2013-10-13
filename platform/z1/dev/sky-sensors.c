@@ -28,7 +28,6 @@
  *
  * This file is part of the Contiki operating system.
  *
- * $Id: sky-sensors.c,v 1.3 2010/08/25 19:30:53 nifi Exp $
  *
  * -----------------------------------------------------------------
  *
@@ -39,11 +38,6 @@
  */
 #include "contiki.h"
 #include "lib/sensors.h"
-#ifdef __IAR_SYSTEMS_ICC__
-#include <msp430.h>
-#else
-#include <io.h>
-#endif
 
 #define ADC12MCTL_NO(adcno) ((unsigned char *) ADC12MCTL0_)[adcno]
 

@@ -30,7 +30,6 @@
 *
 * This file is part of the uIP TCP/IP stack.
 *
-* $Id: wpcapslip6.c,v 1.3 2011/01/19 09:22:23 salvopitru Exp $
 */
 
  /**
@@ -331,8 +330,8 @@ is_sensible_string(const unsigned char *s, int len)
 void
 serial_to_wpcap(FILE *inslip)
 {
-	u16_t buf_aligned[BUF_SIZE/2 + 42]; //extra for possible eth_hdr and ip_process expansion
-	u8_t *buf = (u8_t *)buf_aligned;
+	uint16_t buf_aligned[BUF_SIZE/2 + 42]; //extra for possible eth_hdr and ip_process expansion
+	uint8_t *buf = (uint8_t *)buf_aligned;
 
     static int inbufptr = 0, issensiblestring=1;
     int ret;
@@ -1322,7 +1321,7 @@ main(int argc, char **argv)
 			tv.tv_usec = 10;
 			ret = select(maxfd + 1, &rset, &wset, NULL, &tv);
 		}
-		if(ret == -1 && errno != EINTR) {
+		if(ret == -1 && errno != EINTR && errno != EAGAIN) {
 			err(1, "select");
 		}
 		else if(ret > 0) {

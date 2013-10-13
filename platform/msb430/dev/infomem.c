@@ -42,8 +42,8 @@ Berlin, 2007
 
 /**
  * @file		infomem.c
- * @addtogroup	storage
- * @brief		MSP430 Infomemory Storage
+ * @addtogroup	msb_storage
+ * @brief		MSB430 Infomemory Storage
  * @author		Michael Baar	<baar@inf.fu-berlin.de>
  *
  * Functions to store and read data from the two infomemories (2 x 128 Bytes).
@@ -51,10 +51,8 @@ Berlin, 2007
  * across both blocks are not allowed.
  */
 #include <string.h>
-#include <signal.h>
 #include <stdarg.h>
 #include "contiki-conf.h"
-#include <msp430/flash.h>
 #include "infomem.h"
 
 void

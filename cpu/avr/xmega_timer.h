@@ -1,0 +1,36 @@
+#ifndef __XMEGA_TIMER_H__
+#define __XMEGA_TIMER_H__ 1
+
+#if F_CPU == 32000000UL
+	#define CLOCK_CONF_SECOND 	125
+	#define TIMER_TOP      250
+	#define TIMER_PRESCALE TC_CLKSEL_DIV1024_gc
+#elif F_CPU == 16000000UL
+	#define CLOCK_CONF_SECOND 	125
+	#define TIMER_TOP      500
+	#define TIMER_PRESCALE TC_CLKSEL_DIV256_gc
+#elif F_CPU == 18000000UL
+	#define CLOCK_CONF_SECOND 	375
+	#define TIMER_TOP      750
+	#define TIMER_PRESCALE TC_CLKSEL_DIV64_gc
+#elif F_CPU == 20000000UL
+	#define CLOCK_CONF_SECOND 	125
+	#define TIMER_TOP      625
+	#define TIMER_PRESCALE TC_CLKSEL_DIV256_gc
+#elif F_CPU == 8000000UL
+	#define CLOCK_CONF_SECOND 	125
+	#define TIMER_TOP      250
+	#define TIMER_PRESCALE TC_CLKSEL_DIV256_gc
+#elif F_CPU == 4000000UL
+	#define CLOCK_CONF_SECOND 	125
+	#define TIMER_TOP      250
+	#define TIMER_PRESCALE TC_CLKSEL_DIV256_gc
+#elif F_CPU == 2000000UL
+	#define CLOCK_CONF_SECOND 	125
+	#define TIMER_TOP      250
+	#define TIMER_PRESCALE TC_CLKSEL_DIV64_gc
+#else
+	#error CPU Frequence Unknown
+#endif
+
+#endif /* #ifndef __XMEGA_TIMER_H__ */

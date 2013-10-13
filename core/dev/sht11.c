@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * @(#)$Id: sht11.c,v 1.3 2008/11/10 21:10:36 adamdunkels Exp $
  */
 
 /*
@@ -36,14 +35,6 @@
 
 #include "contiki.h"
 #include <stdio.h>
-
-#ifdef __IAR_SYSTEMS_ICC__
-#include <msp430.h>
-#else
-#include <io.h>
-#include <signal.h>
-#endif
-
 #include <dev/sht11.h>
 #include "sht11-arch.h"
 
@@ -220,6 +211,17 @@ sht11_init(void)
 #ifdef SHT11_INIT
   SHT11_INIT();
 #else
+  /* As this driver is bit-bang based, disable the I2C first
+     This assumes the SDA/SCL pins passed in the -arch.h file are 
+     actually the same used for I2C operation, else comment out the following
+  */
+  #warning SHT11: DISABLING I2C BUS
+  SHT11_PxSEL &= ~(BV(SHT11_ARCH_SDA) | BV(SHT11_ARCH_SCL));
+  #if defined(__MSP430_HAS_MSP430X_CPU__) || defined(__MSP430_HAS_MSP430XV2_CPU__)
+    SHT11_PxREN &= ~(BV(SHT11_ARCH_SDA) | BV(SHT11_ARCH_SCL));
+  #endif
+
+  /* Configure SDA/SCL as GPIOs */
   SHT11_PxOUT |= BV(SHT11_ARCH_PWR);
   SHT11_PxOUT &= ~(BV(SHT11_ARCH_SDA) | BV(SHT11_ARCH_SCL));
   SHT11_PxDIR |= BV(SHT11_ARCH_PWR) | BV(SHT11_ARCH_SCL);
@@ -247,7 +249,7 @@ sht11_off(void)
 static unsigned int
 scmd(unsigned cmd)
 {
-  unsigned long n;
+  unsigned int n;
 
   if(cmd != MEASURE_HUMI && cmd != MEASURE_TEMP) {
     PRINTF("Illegal command: %d\n", cmd);
@@ -260,7 +262,7 @@ scmd(unsigned cmd)
     goto fail;
   }
 
-  for(n = 0; n < 250000; n++) {
+  for(n = 0; n < 20000; n++) {
     if(!SDA_IS_1) {
       unsigned t0, t1, rcrc;
       t0 = sread(1);
@@ -282,8 +284,9 @@ scmd(unsigned cmd)
 #endif
       return (t0 << 8) | t1;
     }
+    /* short wait before next loop */
+    clock_wait(1);
   }
-
  fail:
   sreset();
   return -1;

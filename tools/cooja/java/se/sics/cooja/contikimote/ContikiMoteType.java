@@ -26,14 +26,11 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: ContikiMoteType.java,v 1.44 2010/11/10 13:11:43 fros4943 Exp $
  */
 
 package se.sics.cooja.contikimote;
 
-import java.awt.BorderLayout;
 import java.awt.Container;
-import java.awt.Dimension;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -45,16 +42,14 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Properties;
+import java.util.HashMap;
 import java.util.Random;
 import java.util.Vector;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.swing.Box;
-import javax.swing.BoxLayout;
+import javax.swing.JComponent;
 import javax.swing.JLabel;
-import javax.swing.JPanel;
 
 import org.apache.log4j.Logger;
 import org.jdom.Element;
@@ -76,14 +71,14 @@ import se.sics.cooja.dialogs.MessageList.MessageContainer;
 import se.sics.cooja.util.StringUtils;
 
 /**
- * The Contiki mote type holds the native library used to communicate with an
+ * The Cooja mote type holds the native library used to communicate with an
  * underlying Contiki system. All communication with that system should always
  * pass through this mote type.
  * <p>
  * This type also contains information about sensors and mote interfaces a mote
  * of this type has.
  * <p>
- * All core communication with the Contiki mote should be via this class. When a
+ * All core communication with the Cooja mote should be via this class. When a
  * mote type is created it allocates a CoreComm to be used with this type, and
  * loads the variable and segments addresses.
  * <p>
@@ -94,7 +89,7 @@ import se.sics.cooja.util.StringUtils;
  *
  * @author Fredrik Osterlind
  */
-@ClassDescription("Contiki Mote Type")
+@ClassDescription("Cooja mote")
 @AbstractionLevelDescription("OS level")
 public class ContikiMoteType implements MoteType {
   private static Logger logger = Logger.getLogger(ContikiMoteType.class);
@@ -127,7 +122,7 @@ public class ContikiMoteType implements MoteType {
   public enum NetworkStack {
     DEFAULT, MANUAL;
     public String manualHeader = "netstack-conf-example.h";
-    
+
     public String toString() {
       if (this == DEFAULT) {
         return "Default (from contiki-conf.h)";
@@ -194,23 +189,16 @@ public class ContikiMoteType implements MoteType {
 
   private NetworkStack netStack = NetworkStack.DEFAULT;
 
-  private Simulation simulation = null;
-
   // Type specific class configuration
   private ProjectConfig myConfig = null;
 
-  private int relAddressOfReferenceVariable = 0;
-
   private CoreComm myCoreComm = null;
-
-  // Variable name to address mappings
-  private Properties varAddresses = new Properties();
 
   // Initial memory for all motes of this type
   private SectionMoteMemory initialMemory = null;
 
   /**
-   * Creates a new uninitialized Contiki mote type. This mote type needs to load
+   * Creates a new uninitialized Cooja mote type. This mote type needs to load
    * a library file and parse a map file before it can be used.
    */
   public ContikiMoteType() {
@@ -222,13 +210,12 @@ public class ContikiMoteType implements MoteType {
 
   public boolean configureAndInit(Container parentContainer, Simulation simulation,
       boolean visAvailable) throws MoteTypeCreationException {
-    this.simulation = simulation;
     myConfig = simulation.getGUI().getProjectConfig().clone();
 
     if (visAvailable) {
 
       if (getDescription() == null) {
-        setDescription("Contiki Mote Type #" + (simulation.getMoteTypes().length+1));
+        setDescription("Cooja Mote Type #" + (simulation.getMoteTypes().length+1));
       }
 
       /* Compile Contiki from dialog */
@@ -263,7 +250,7 @@ public class ContikiMoteType implements MoteType {
       javaClassName = CoreComm.getAvailableClassName();
 
       if (javaClassName == null) {
-        throw new MoteTypeCreationException("Could not allocate a core communicator!");
+        throw new MoteTypeCreationException("Could not allocate a core communicator.");
       }
 
       /* Delete output files */
@@ -403,14 +390,16 @@ public class ContikiMoteType implements MoteType {
     int dataSectionAddr = -1, dataSectionSize = -1;
     int bssSectionAddr = -1, bssSectionSize = -1;
     int commonSectionAddr = -1, commonSectionSize = -1;
+    int readonlySectionAddr = -1, readonlySectionSize = -1;
 
+    HashMap<String, Integer> addresses = new HashMap<String, Integer>();
     if (useCommand) {
       /* Parse command output */
       String[] output = loadCommandData(getContikiFirmwareFile());
       if (output == null) {
         throw new MoteTypeCreationException("No parse command output loaded");
       }
-      boolean parseOK = parseCommandData(output, varAddresses);
+      boolean parseOK = parseCommandData(output, addresses);
       if (!parseOK) {
         logger.fatal("Command output parsing failed");
         throw new MoteTypeCreationException("Command output parsing failed");
@@ -422,19 +411,27 @@ public class ContikiMoteType implements MoteType {
       bssSectionSize = parseCommandBssSectionSize(output);
       commonSectionAddr = parseCommandCommonSectionAddr(output);
       commonSectionSize = parseCommandCommonSectionSize(output);
-      
+
+      try {
+        readonlySectionAddr = parseCommandReadonlySectionAddr(output);
+        readonlySectionSize = parseCommandReadonlySectionSize(output);
+      } catch (Exception e) {
+        readonlySectionAddr = -1;
+        readonlySectionSize = -1;
+      }
+
     } else {
       /* Parse command output */
       if (mapFile == null ||
           !mapFile.exists()) {
-        throw new MoteTypeCreationException("Map file " + mapFile + " could not be found!");
+        throw new MoteTypeCreationException("Map file " + mapFile + " could not be found");
       }
       String[] mapData = loadMapFile(mapFile);
       if (mapData == null) {
         logger.fatal("No map data could be loaded");
         throw new MoteTypeCreationException("No map data could be loaded: " + mapFile);
       }
-      boolean parseOK = parseMapFileData(mapData, varAddresses);
+      boolean parseOK = parseMapFileData(mapData, addresses);
       if (!parseOK) {
         logger.fatal("Map data parsing failed");
         throw new MoteTypeCreationException("Map data parsing failed: " + mapFile);
@@ -446,52 +443,99 @@ public class ContikiMoteType implements MoteType {
       bssSectionSize = parseMapBssSectionSize(mapData);
       commonSectionAddr = parseMapCommonSectionAddr(mapData);
       commonSectionSize = parseMapCommonSectionSize(mapData);
-      
+      readonlySectionAddr = -1;
+      readonlySectionSize = -1;
+
     }
 
-    if (varAddresses.size() == 0) {
+    if (dataSectionAddr >= 0) {
+      logger.info(getContikiFirmwareFile().getName() +
+          ": data section at 0x" + Integer.toHexString(dataSectionAddr) +
+          " (" + dataSectionSize + " == 0x" + Integer.toHexString(dataSectionSize) + " bytes)");
+    } else {
+      logger.fatal(getContikiFirmwareFile().getName() + ": no data section found");
+    }
+    if (bssSectionAddr >= 0) {
+      logger.info(getContikiFirmwareFile().getName() +
+          ": BSS section at 0x" + Integer.toHexString(bssSectionAddr) +
+          " (" + bssSectionSize + " == 0x" + Integer.toHexString(bssSectionSize) + " bytes)");
+    } else {
+      logger.fatal(getContikiFirmwareFile().getName() + ": no BSS section found");
+    }
+    if (commonSectionAddr >= 0) {
+      logger.info(getContikiFirmwareFile().getName() +
+          ": common section at 0x" + Integer.toHexString(commonSectionAddr) +
+          " (" + commonSectionSize + " == 0x" + Integer.toHexString(commonSectionSize) + " bytes)");
+    } else {
+      logger.info(getContikiFirmwareFile().getName() + ": no common section found");
+    }
+    if (readonlySectionAddr >= 0) {
+      logger.info(getContikiFirmwareFile().getName() +
+          ": readonly section at 0x" + Integer.toHexString(readonlySectionAddr) +
+          " (" + readonlySectionSize + " == 0x" + Integer.toHexString(readonlySectionSize) + " bytes)");
+    } else {
+      logger.warn(getContikiFirmwareFile().getName() + ": no readonly section found");
+    }
+    if (addresses.size() == 0) {
       throw new MoteTypeCreationException("Library variables parsing failed");
     }
-
-    try {
-      /* Relative <-> absolute addresses offset */
-      relAddressOfReferenceVariable = (Integer) varAddresses.get("referenceVar");
-    } catch (Exception e) {
-      throw (MoteTypeCreationException) new MoteTypeCreationException(
-          "JNI call error: " + e.getMessage()).initCause(e);
-    }
-
     if (dataSectionAddr <= 0 || dataSectionSize <= 0
         || bssSectionAddr <= 0 || bssSectionSize <= 0) {
       throw new MoteTypeCreationException("Library section addresses parsing failed");
     }
 
-    myCoreComm.setReferenceAddress(relAddressOfReferenceVariable);
+    try {
+      /* Relative <-> absolute addresses offset */
+      int referenceVar = addresses.get("referenceVar");
+      myCoreComm.setReferenceAddress(referenceVar);
+    } catch (Exception e) {
+      throw (MoteTypeCreationException) new MoteTypeCreationException(
+          "JNI call error: " + e.getMessage()).initCause(e);
+    }
+
+    /* We first need the value of Contiki's referenceVar, which tells us the
+     * memory offset between Contiki's variable and the relative addresses that
+     * were calculated directly from the library file.
+     *
+     * This offset will be used in Cooja in the memory abstraction to match
+     * Contiki's and Cooja's address spaces */
+    int offset;
+    {
+      SectionMoteMemory tmp = new SectionMoteMemory(addresses, 0);
+      byte[] data = new byte[dataSectionSize];
+      getCoreMemory(dataSectionAddr, dataSectionSize, data);
+      tmp.setMemorySegment(dataSectionAddr, data);
+      byte[] bss = new byte[bssSectionSize];
+      getCoreMemory(bssSectionAddr, bssSectionSize, bss);
+      tmp.setMemorySegment(bssSectionAddr, bss);
+
+      offset = tmp.getIntValueOf("referenceVar");
+      logger.info(getContikiFirmwareFile().getName() +
+          ": offsetting Cooja mote address space: " + offset);
+    }
 
     /* Create initial memory: data+bss+optional common */
-    initialMemory = new SectionMoteMemory(varAddresses);
-    
+    initialMemory = new SectionMoteMemory(addresses, offset);
+
     byte[] initialDataSection = new byte[dataSectionSize];
     getCoreMemory(dataSectionAddr, dataSectionSize, initialDataSection);
-    initialMemory.setMemorySegment(dataSectionAddr, initialDataSection);
-    logger.info(getContikiFirmwareFile().getName() +
-        ": data section at 0x" + Integer.toHexString(dataSectionAddr) + 
-        " (" + dataSectionSize + " bytes)");
-    
+    initialMemory.setMemorySegmentNative(dataSectionAddr, initialDataSection);
+
     byte[] initialBssSection = new byte[bssSectionSize];
     getCoreMemory(bssSectionAddr, bssSectionSize, initialBssSection);
-    initialMemory.setMemorySegment(bssSectionAddr, initialBssSection);
-    logger.info(getContikiFirmwareFile().getName() +
-        ": BSS section at 0x" + Integer.toHexString(bssSectionAddr) + 
-        " (" + bssSectionSize + " bytes)");
-    
-    if (commonSectionAddr > 0 && commonSectionSize > 0) {
+    initialMemory.setMemorySegmentNative(bssSectionAddr, initialBssSection);
+
+    if (commonSectionAddr >= 0 && commonSectionSize > 0) {
       byte[] initialCommonSection = new byte[commonSectionSize];
       getCoreMemory(commonSectionAddr, commonSectionSize, initialCommonSection);
-      initialMemory.setMemorySegment(commonSectionAddr, initialCommonSection);
-      logger.info(getContikiFirmwareFile().getName() +
-          ": common section at 0x" + Integer.toHexString(commonSectionAddr) + 
-          " (" + commonSectionSize + " bytes)");
+      initialMemory.setMemorySegmentNative(commonSectionAddr, initialCommonSection);
+    }
+
+    /* Read "read-only" memory */
+    if (readonlySectionAddr >= 0 && readonlySectionSize > 0) {
+      byte[] readonlySection = new byte[readonlySectionSize];
+      getCoreMemory(readonlySectionAddr, readonlySectionSize, readonlySection);
+      initialMemory.setReadonlyMemorySegment(readonlySectionAddr+offset, readonlySection);
     }
   }
 
@@ -524,7 +568,7 @@ public class ContikiMoteType implements MoteType {
   public void setCoreMemory(SectionMoteMemory mem) {
     for (int i = 0; i < mem.getNumberOfSections(); i++) {
       setCoreMemory(
-          mem.getStartAddrOfSection(i),
+          mem.getSectionNativeAddress(i) /* native address space */,
           mem.getSizeOfSection(i), mem.getDataOfSection(i));
     }
   }
@@ -538,8 +582,7 @@ public class ContikiMoteType implements MoteType {
    * @param varAddresses
    *          Properties that should contain the name to addresses mappings.
    */
-  public static boolean parseMapFileData(String[] mapFileData,
-      Properties varAddresses) {
+  public static boolean parseMapFileData(String[] mapFileData, HashMap<String, Integer> varAddresses) {
     String[] varNames = getMapFileVarNames(mapFileData);
     if (varNames == null || varNames.length == 0) {
       return false;
@@ -565,10 +608,10 @@ public class ContikiMoteType implements MoteType {
    * @param output Command output
    * @param addresses Variable addresses mappings
    */
-  public static boolean parseCommandData(String[] output, Properties addresses) {
+  public static boolean parseCommandData(String[] output, HashMap<String, Integer> addresses) {
     int nrNew = 0, nrOld = 0, nrMismatch = 0;
 
-    Pattern pattern = 
+    Pattern pattern =
       Pattern.compile(GUI.getExternalToolsSetting("COMMAND_VAR_NAME_ADDRESS"));
 
     for (String line : output) {
@@ -583,7 +626,7 @@ public class ContikiMoteType implements MoteType {
           nrNew++;
           addresses.put(symbol, new Integer(address));
         } else {
-          int oldAddress = (Integer) addresses.get(symbol);
+          int oldAddress = addresses.get(symbol);
           if (oldAddress != address) {
             /*logger.warn("Warning, command response not matching previous entry of: "
                 + varName);*/
@@ -615,10 +658,9 @@ public class ContikiMoteType implements MoteType {
    */
   public void getCoreMemory(SectionMoteMemory mem) {
     for (int i = 0; i < mem.getNumberOfSections(); i++) {
-      int startAddr = mem.getStartAddrOfSection(i);
+      int startAddr = mem.getSectionNativeAddress(i); /* native address space */
       int size = mem.getSizeOfSection(i);
       byte[] data = mem.getDataOfSection(i);
-
       getCoreMemory(startAddr, size, data);
     }
   }
@@ -689,12 +731,10 @@ public class ContikiMoteType implements MoteType {
    * @param varName Name of variable
    * @return Relative memory address of variable or -1 if not found
    */
-  public static int getMapFileVarAddress(String[] mapFileData, String varName, Properties varAddresses) {
-    int varAddr;
-    String varAddrString;
-    if ((varAddrString = varAddresses.getProperty(varName)) != null) {
-      varAddr = Integer.parseInt(varAddrString);
-      return varAddr;
+  private static int getMapFileVarAddress(String[] mapFileData, String varName, HashMap<String, Integer> varAddresses) {
+    Integer varAddrInteger;
+    if ((varAddrInteger = varAddresses.get(varName)) != null) {
+      return varAddrInteger.intValue();
     }
 
     String regExp =
@@ -704,9 +744,9 @@ public class ContikiMoteType implements MoteType {
     String retString = getFirstMatchGroup(mapFileData, regExp, 1);
 
     if (retString != null) {
-      varAddresses.setProperty(varName, Integer.toString(Integer.parseInt(
-          retString.trim(), 16)));
-      return Integer.parseInt(retString.trim(), 16);
+      varAddrInteger = Integer.parseInt(retString.trim(), 16);
+      varAddresses.put(varName, varAddrInteger);
+      return varAddrInteger.intValue();
     } else {
       return -1;
     }
@@ -760,7 +800,7 @@ public class ContikiMoteType implements MoteType {
     return varNames.toArray(new String[0]);
   }
 
-  public static String[] getAllVariableNames(String[] lines,
+  private static String[] getAllVariableNames(String[] lines,
       int startAddress, int endAddress) {
     ArrayList<String> varNames = new ArrayList<String>();
 
@@ -779,8 +819,8 @@ public class ContikiMoteType implements MoteType {
 
   protected int getVariableSize(Vector<String> lines, String varName) {
     Pattern pattern = Pattern.compile(
-        GUI.getExternalToolsSetting("MAPFILE_VAR_SIZE_1") + 
-        varName + 
+        GUI.getExternalToolsSetting("MAPFILE_VAR_SIZE_1") +
+        varName +
         GUI.getExternalToolsSetting("MAPFILE_VAR_SIZE_2"));
     for (int i = 0; i < lines.size(); i++) {
       Matcher matcher = pattern.matcher(lines.get(i));
@@ -792,7 +832,7 @@ public class ContikiMoteType implements MoteType {
   }
 
   private static int parseFirstHexInt(String regexp, String[] data) {
-    String retString = 
+    String retString =
       getFirstMatchGroup(data, regexp, 1);
 
     if (retString != null) {
@@ -915,10 +955,25 @@ public class ContikiMoteType implements MoteType {
     return end - start;
   }
 
+  private static int parseCommandReadonlySectionAddr(String[] output) {
+    return parseFirstHexInt("^([0-9A-Fa-f]*)[ \t]t[ \t].text$", output);
+  }
+  private static int parseCommandReadonlySectionSize(String[] output) {
+    int start = parseCommandReadonlySectionAddr(output);
+    if (start < 0) {
+      return -1;
+    }
+
+    /* Extract the last specified address, assuming that the interval covers all the memory */
+    String last  = output[output.length-1];
+    int lastAddress = Integer.parseInt(last.split("[ \t]")[0],16);
+    return lastAddress - start;
+  }
+
   private static int getRelVarAddr(String mapFileData[], String varName) {
-    String regExp = 
+    String regExp =
       GUI.getExternalToolsSetting("MAPFILE_VAR_ADDRESS_1") +
-      varName + 
+      varName +
       GUI.getExternalToolsSetting("MAPFILE_VAR_ADDRESS_2");
     String retString = getFirstMatchGroup(mapFileData, regExp, 1);
 
@@ -953,14 +1008,14 @@ public class ContikiMoteType implements MoteType {
       }
 
       /* Prepare command */
-      command = command.replace("$(LIBFILE)", 
+      command = command.replace("$(LIBFILE)",
           libraryFile.getName().replace(File.separatorChar, '/'));
 
       /* Execute command, read response */
       String line;
       Process p = Runtime.getRuntime().exec(
-          command.split(" "), 
-          null, 
+          command.split(" "),
+          null,
           libraryFile.getParentFile()
       );
       BufferedReader input = new BufferedReader(
@@ -1082,7 +1137,7 @@ public class ContikiMoteType implements MoteType {
   }
 
   /**
-   * Generates a unique Contiki mote type ID.
+   * Generates a unique Cooja mote type ID.
    *
    * @param existingTypes Already existing mote types, may be null
    * @param reservedIdentifiers Already reserved identifiers, may be null
@@ -1137,102 +1192,56 @@ public class ContikiMoteType implements MoteType {
    *
    * @return Mote type visualizer
    */
-  public JPanel getTypeVisualizer() {
-    JPanel panel = new JPanel();
-    JLabel label = new JLabel();
-    JPanel smallPane;
+  public JComponent getTypeVisualizer() {
+    StringBuilder sb = new StringBuilder();
+    // Identifier
+    sb.append("<html><table><tr><td>Identifier</td><td>")
+    .append(getIdentifier()).append("</td></tr>");
 
-    panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-
-    /* Identifier */
-    smallPane = new JPanel(new BorderLayout());
-    label = new JLabel("Identifier");
-    smallPane.add(BorderLayout.WEST, label);
-    label = new JLabel(identifier);
-    smallPane.add(BorderLayout.EAST, label);
-    panel.add(smallPane);
-
-    /* Description */
-    smallPane = new JPanel(new BorderLayout());
-    label = new JLabel("Description");
-    smallPane.add(BorderLayout.WEST, label);
-    label = new JLabel(description);
-    smallPane.add(BorderLayout.EAST, label);
-    panel.add(smallPane);
+    // Description
+    sb.append("<tr><td>Description</td><td>")
+    .append(getDescription()).append("</td></tr>");
 
     /* Contiki application */
-    smallPane = new JPanel(new BorderLayout());
-    label = new JLabel("Contiki application");
-    smallPane.add(BorderLayout.WEST, label);
-    label = new JLabel(getContikiSourceFile().getName());
-    label.setToolTipText(getContikiSourceFile().getAbsolutePath());
-    smallPane.add(BorderLayout.EAST, label);
-    panel.add(smallPane);
-
-    panel.add(Box.createVerticalStrut(15));
+    sb.append("<tr><td>Contiki application</td><td>")
+    .append(getContikiSourceFile().getAbsolutePath()).append("</td></tr>");
 
     /* Contiki firmware */
-    smallPane = new JPanel(new BorderLayout());
-    label = new JLabel("Contiki firmware");
-    smallPane.add(BorderLayout.WEST, label);
-    label = new JLabel(getContikiFirmwareFile().getName());
-    label.setToolTipText(getContikiFirmwareFile().getAbsolutePath());
-    smallPane.add(BorderLayout.EAST, label);
-    panel.add(smallPane);
+    sb.append("<tr><td>Contiki firmware</td><td>")
+    .append(getContikiFirmwareFile().getAbsolutePath()).append("</td></tr>");
 
-    /* JNI Class */
-    smallPane = new JPanel(new BorderLayout());
-    label = new JLabel("Java class (JNI)");
-    smallPane.add(BorderLayout.WEST, label);
-    label = new JLabel(this.javaClassName);
-    smallPane.add(BorderLayout.EAST, label);
-    panel.add(smallPane);
+    /* JNI class */
+    sb.append("<tr><td>JNI library</td><td>")
+    .append(this.javaClassName).append("</td></tr>");
 
-    /* Sensors */
-    smallPane = new JPanel(new BorderLayout());
-    label = new JLabel("Sensors");
-    smallPane.add(BorderLayout.WEST, label);
-    panel.add(smallPane);
-
-    for (String sensor : sensors) {
-      smallPane = new JPanel(new BorderLayout());
-      label = new JLabel(sensor);
-      smallPane.add(BorderLayout.EAST, label);
-      panel.add(smallPane);
+    /* Contiki sensors */
+    sb.append("<tr><td valign=\"top\">Contiki sensors</td><td>");
+    for (String sensor: sensors) {
+      sb.append(sensor).append("<br>");
     }
+    sb.append("</td></tr>");
 
-    /* Mote Interfaces */
-    smallPane = new JPanel(new BorderLayout());
-    label = new JLabel("Mote interfaces");
-    smallPane.add(BorderLayout.WEST, label);
-    panel.add(smallPane);
-
-    for (Class intf : moteInterfacesClasses) {
-      smallPane = new JPanel(new BorderLayout());
-      label = new JLabel(intf.getSimpleName());
-      smallPane.add(BorderLayout.EAST, label);
-      panel.add(smallPane);
+    /* Mote interfaces */
+    sb.append("<tr><td valign=\"top\">Mote interface</td><td>");
+    for (Class<? extends MoteInterface> moteInterface: moteInterfacesClasses) {
+      sb.append(moteInterface.getSimpleName()).append("<br>");
     }
+    sb.append("</td></tr>");
 
-    /* Core Interfaces */
-    smallPane = new JPanel(new BorderLayout());
-    label = new JLabel("Core interfaces");
-    smallPane.add(BorderLayout.WEST, label);
-    panel.add(smallPane);
-
-    for (String intf : getCoreInterfaces()) {
-      smallPane = new JPanel(new BorderLayout());
-      label = new JLabel(intf);
-      smallPane.add(BorderLayout.EAST, label);
-      panel.add(smallPane);
+    /* Contiki core mote interfaces */
+    sb.append("<tr><td valign=\"top\">Contiki's mote interface</td><td>");
+    for (String coreInterface: getCoreInterfaces()) {
+      sb.append(coreInterface).append("<br>");
     }
+    sb.append("</td></tr>");
 
-    panel.add(Box.createRigidArea(new Dimension(0, 5)));
-    return panel;
+    JLabel label = new JLabel(sb.append("</table></html>").toString());
+    label.setVerticalTextPosition(JLabel.TOP);
+    return label;
   }
 
-  public Collection<Element> getConfigXML() {
-    Vector<Element> config = new Vector<Element>();
+  public Collection<Element> getConfigXML(Simulation simulation) {
+    ArrayList<Element> config = new ArrayList<Element>();
     Element element;
 
     element = new Element("identifier");
@@ -1243,7 +1252,7 @@ public class ContikiMoteType implements MoteType {
     element.setText(getDescription());
     config.add(element);
 
-    element = new Element("contikiapp");
+    element = new Element("source");
     File file = simulation.getGUI().createPortablePath(getContikiSourceFile());
     element.setText(file.getPath().replaceAll("\\\\", "/"));
     config.add(element);
@@ -1278,7 +1287,6 @@ public class ContikiMoteType implements MoteType {
     File oldVersionSource = null;
 
     moteInterfacesClasses = new ArrayList<Class<? extends MoteInterface>>();
-    this.simulation = simulation;
 
     for (Element element : configXML) {
       String name = element.getName();
@@ -1287,7 +1295,7 @@ public class ContikiMoteType implements MoteType {
         identifier = element.getText();
       } else if (name.equals("description")) {
         description = element.getText();
-      } else if (name.equals("contikiapp")) {
+      } else if (name.equals("contikiapp") || name.equals("source")) {
         File file = new File(element.getText());
         if (!file.exists()) {
           file = simulation.getGUI().restorePortablePath(file);
@@ -1306,7 +1314,7 @@ public class ContikiMoteType implements MoteType {
       } else if (name.equals("symbols")) {
         hasSystemSymbols = Boolean.parseBoolean(element.getText());
       } else if (name.equals("commstack")) {
-        logger.warn("COOJA's communication stack config was removed: " + element.getText());
+        logger.warn("The Cooja communication stack config was removed: " + element.getText());
         logger.warn("Instead assuming default network stack.");
         netStack = NetworkStack.DEFAULT;
       } else if (name.equals("netstack")) {
@@ -1333,10 +1341,10 @@ public class ContikiMoteType implements MoteType {
           name.equals("process") ||
           name.equals("sensor") ||
           name.equals("coreinterface")) {
-        /* Backwards compatibility: old contiki mote type is being loaded */
+        /* Backwards compatibility: old cooja mote type is being loaded */
         if (!warnedOldVersion) {
           warnedOldVersion = true;
-          logger.warn("Old simulation config detected: contiki mote types may not load correctly");
+          logger.warn("Old simulation config detected: Cooja mote types may not load correctly");
         }
 
         if (name.equals("compilefile")) {
@@ -1359,7 +1367,7 @@ public class ContikiMoteType implements MoteType {
     moteInterfacesClasses.toArray(arr);
     setCoreInterfaces(ContikiMoteType.getRequiredCoreInterfaces(arr));
 
-    /* Backwards compatibility: old contiki mote type is being loaded */
+    /* Backwards compatibility: old cooja mote type is being loaded */
     if (getContikiSourceFile() == null &&
         warnedOldVersion &&
         oldVersionSource != null)

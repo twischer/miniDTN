@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: Notes.java,v 1.1 2010/03/11 22:11:10 fros4943 Exp $
  */
 
 package se.sics.cooja.plugins;
@@ -42,6 +41,7 @@ import java.util.Collection;
 
 import javax.swing.JMenuItem;
 import javax.swing.JPopupMenu;
+import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
 import javax.swing.plaf.basic.BasicInternalFrameUI;
@@ -56,18 +56,18 @@ import se.sics.cooja.Simulation;
 import se.sics.cooja.VisPlugin;
 
 @ClassDescription("Notes")
-@PluginType(PluginType.SIM_PLUGIN)
+@PluginType(PluginType.SIM_STANDARD_PLUGIN)
 public class Notes extends VisPlugin {
   private static final long serialVersionUID = 1L;
   private static Logger logger = Logger.getLogger(Visualizer.class);
 
-  private JTextArea notes = new JTextArea("enter simulation notes here");
+  private JTextArea notes = new JTextArea("Enter notes here");
   private boolean decorationsVisible = true;
 
   public Notes(Simulation simulation, GUI gui) {
     super("Notes", gui);
 
-    add(BorderLayout.CENTER, notes);
+    add(BorderLayout.CENTER, new JScrollPane(notes));
 
     /* Popup menu */
     if (Notes.this.getUI() instanceof BasicInternalFrameUI) {
@@ -84,7 +84,7 @@ public class Notes extends VisPlugin {
         public void mousePressed(MouseEvent e) {
           if (e.isPopupTrigger()) {
             popup.show(Notes.this, e.getX(), e.getY());
-          } 
+          }
         }
         public void mouseReleased(MouseEvent e) {
           if (e.isPopupTrigger()) {
@@ -99,7 +99,18 @@ public class Notes extends VisPlugin {
       });
     }
 
-    this.setSize(300, 300);
+
+    /* XXX HACK: here we set the position and size of the window when it appears on a blank simulation screen. */
+    this.setLocation(680, 0);
+    this.setSize(gui.getDesktopPane().getWidth() - 680, 160);
+  }
+
+  public String getNotes() {
+    return notes.getText();
+  }
+
+  public void setNotes(String text) {
+    this.notes.setText(text);
   }
 
   private void setDecorationsVisible(boolean visible) {
@@ -112,7 +123,7 @@ public class Notes extends VisPlugin {
       ui.getNorthPane().setPreferredSize(null);
     } else {
       ui.getNorthPane().setPreferredSize(new Dimension(0,0));
-    }      
+    }
 
     Notes.this.revalidate();
     SwingUtilities.invokeLater(new Runnable() {
@@ -123,7 +134,7 @@ public class Notes extends VisPlugin {
 
     decorationsVisible = visible;
   }
-  
+
   public Collection<Element> getConfigXML() {
     ArrayList<Element> config = new ArrayList<Element>();
     Element element;

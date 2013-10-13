@@ -41,7 +41,7 @@ Berlin, 2007
 */
 
 /**
- * @addtogroup interfaces
+ * @addtogroup msb_interfaces
  * @{ */
 
 /**

@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF 
  * SUCH DAMAGE. 
  *
- * @(#)$Id: slip_uart1.c,v 1.1 2007/02/02 13:13:16 bg- Exp $
  */
 
 /*
@@ -73,7 +72,7 @@ FDEV_SETUP_STREAM(slip_putchar, NULL, _FDEV_SETUP_WRITE);
 void
 slip_arch_init(unsigned long ubr)
 {
-  u8_t dummy;
+  uint8_t dummy;
   spl_t s = splhigh();
 
   UBRR1L = ubr;

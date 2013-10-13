@@ -28,7 +28,6 @@
  *
  * This file is part of the Contiki operating system.
  * 
- * $Id: wpcap-drv.h,v 1.1 2007/05/20 21:32:25 oliverschmidt Exp $
  */
 
 #ifndef __WPCAP_DRV_H__
@@ -38,6 +37,6 @@
 
 PROCESS_NAME(wpcap_process);
 
-u8_t wpcap_output(void);
+uint8_t wpcap_output(void);
 
 #endif /* __WPCAP_DRV_H__ */

@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: MspCompileDialog.java,v 1.2 2010/03/08 14:26:12 fros4943 Exp $
  */
 
 package se.sics.cooja.mspmote;
@@ -45,7 +44,7 @@ import se.sics.cooja.dialogs.AbstractCompileDialog;
 
 public class MspCompileDialog extends AbstractCompileDialog {
   private static final long serialVersionUID = -7273193946433145019L;
-  private static String target;
+  private final String target;
 
   public static boolean showDialog(
       Container parent,
@@ -53,7 +52,6 @@ public class MspCompileDialog extends AbstractCompileDialog {
       MspMoteType moteType,
       String target) {
 
-  	MspCompileDialog.target = target;
     final AbstractCompileDialog dialog = new MspCompileDialog(parent, simulation, moteType, target);
 
     /* Show dialog and wait for user */
@@ -68,18 +66,13 @@ public class MspCompileDialog extends AbstractCompileDialog {
 
   private MspCompileDialog(Container parent, Simulation simulation, MspMoteType moteType, String target) {
     super(parent, simulation, moteType);
+    this.target = target;
     setTitle("Create Mote Type: Compile Contiki for " + target);
-    
-    /* Select all mote interfaces */
-    boolean selected = true;
-    if (moteIntfBox.getComponentCount() > 0) {
-      selected = false;
-    }
-    for (Class<? extends MoteInterface> intfClass: moteType.getAllMoteInterfaceClasses()) {
-      addMoteInterface(intfClass, selected);
-    }
+    addCompilationTipsTab(tabbedPane);
+  }
 
-    addCompilationTipsTab(tabbedPane); 
+  public Class<? extends MoteInterface>[] getDefaultMoteInterfaces() {
+    return ((MspMoteType)moteType).getAllMoteInterfaceClasses();
   }
 
   private void addCompilationTipsTab(JTabbedPane parent) {
@@ -89,10 +82,10 @@ public class MspCompileDialog extends AbstractCompileDialog {
     		"DEFINES=NETSTACK_MAC=nullmac_driver,NETSTACK_RDC=nullrdc_noframer_driver,CC2420_CONF_AUTOACK=0\n" +
     		"# (remember to \"make clean\" after changing compilation flags)"
     );
-    
+
     parent.addTab("Tips", null, new JScrollPane(textArea), "Compilation tips");
   }
-  
+
   public boolean canLoadFirmware(File file) {
     if (file.getName().endsWith("." + target)) {
       return true;
@@ -106,7 +99,7 @@ public class MspCompileDialog extends AbstractCompileDialog {
   public String getDefaultCompileCommands(File source) {
     /* TODO Split into String[] */
     return
-    GUI.getExternalToolsSetting("PATH_MAKE") + " " + 
+    GUI.getExternalToolsSetting("PATH_MAKE") + " " +
     getExpectedFirmwareFile(source).getName() + " TARGET=" + target;
   }
 
@@ -117,7 +110,7 @@ public class MspCompileDialog extends AbstractCompileDialog {
   public void writeSettingsToMoteType() {
     /* Nothing to do */
   }
-  
+
   protected String getTargetName() {
   	/* Override me */
   	return target;

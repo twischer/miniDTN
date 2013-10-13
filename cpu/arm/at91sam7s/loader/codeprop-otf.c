@@ -28,7 +28,6 @@
  *
  * This file is part of the Contiki operating system.
  *
- * @(#)$Id: codeprop-otf.c,v 1.2 2010/10/19 18:29:04 adamdunkels Exp $
  */
 
 /** \addtogroup esb
@@ -106,18 +105,18 @@ static const char *err_msgs[] =
 #define UDPDATASIZE   32
 
 struct codeprop_udphdr {
-  u16_t id;
-  u16_t type;
+  uint16_t id;
+  uint16_t type;
 #define TYPE_DATA 0x0001
 #define TYPE_NACK 0x0002
-  u16_t addr;
-  u16_t len;
-  u8_t data[UDPDATASIZE];
+  uint16_t addr;
+  uint16_t len;
+  uint8_t data[UDPDATASIZE];
 };
 
 struct codeprop_tcphdr {
-  u16_t len;
-  u16_t pad;
+  uint16_t len;
+  uint16_t pad;
 };
 
 static void uipcall(void *state);
@@ -125,19 +124,19 @@ static void uipcall(void *state);
 PROCESS(codeprop_process, "Code propagator");
 
 struct codeprop_state {
-  u8_t state;
+  uint8_t state;
 #define STATE_NONE              0
 #define STATE_RECEIVING_TCPDATA 1
 #define STATE_RECEIVING_UDPDATA 2
 #define STATE_SENDING_UDPDATA   3
-  u16_t count;
-  u16_t addr;
-  u16_t len;
-  u16_t id;
+  uint16_t count;
+  uint16_t addr;
+  uint16_t len;
+  uint16_t id;
   struct etimer sendtimer;
   struct timer nacktimer, timer, starttimer;
-  u8_t received;
-  u8_t send_counter;
+  uint8_t received;
+  uint8_t send_counter;
   struct pt tcpthread_pt;
   struct pt udpthread_pt;
   struct pt recv_udpthread_pt;
@@ -200,10 +199,10 @@ PROCESS_THREAD(codeprop_process, ev, data)
   PROCESS_END();
 }
 /*---------------------------------------------------------------------*/
-static u16_t
+static uint16_t
 send_udpdata(struct codeprop_udphdr *uh)
 {
-  u16_t len;
+  uint16_t len;
 
   uh->type = UIP_HTONS(TYPE_DATA);
   uh->addr = uip_htons(s.addr);

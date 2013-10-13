@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: testctimer.c,v 1.3 2010/06/14 18:58:45 adamdunkels Exp $
  */
 
 #include "contiki.h"
@@ -38,7 +37,7 @@ PROCESS(test_ctimer_process, "Callback timer test process");
 AUTOSTART_PROCESSES(&test_ctimer_process);
 /*---------------------------------------------------------------------------*/
 static struct ctimer ct;
-static u16_t counter = 0;
+static uint16_t counter = 0;
 /*---------------------------------------------------------------------------*/
 static void
 callback(void *ptr)

@@ -28,7 +28,6 @@
  *
  * This file is part of the Contiki operating system.
  *
- * $Id: rtimer-arch.c,v 1.10 2010/02/28 21:29:19 dak664 Exp $
  */
 
 /**
@@ -44,6 +43,7 @@
 /* OBS: 8 seconds maximum time! */
 
 #include <avr/io.h>
+
 #include <avr/interrupt.h>
 #include <stdio.h>
 
@@ -51,7 +51,7 @@
 #include "sys/rtimer.h"
 #include "rtimer-arch.h"
 
-#if defined(__AVR_ATmega1281__) || defined(__AVR_ATmega1284P__)
+#if defined(__AVR_ATmega1284P__)
 #define ETIMSK TIMSK3
 #define ETIFR TIFR3
 #define TICIE3 ICIE3
@@ -63,19 +63,19 @@
 
 #define OCIE3C	OCIE3B
 #define OCF3C	OCF3B
-#endif
+#endif // 1281 / 1284p
 
-#if defined(__AVR_AT90USB1287__) || defined(__AVR_ATmega128RFA1__) 
+#if defined(__AVR_ATmega1281__) || defined(__AVR_AT90USB1287__) || defined(__AVR_ATmega128RFA1__)
 #define ETIMSK TIMSK3
 #define ETIFR TIFR3
 #define TICIE3 ICIE3
-#endif
+#endif // atusb
 
 #if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega644__)
 #define TIMSK TIMSK1
 #define TICIE1 ICIE1
 #define TIFR TIFR1
-#endif
+#endif // 328p / 644
 
 /* Track flow through rtimer interrupts*/
 #if DEBUGFLOWSIZE&&0
@@ -86,7 +86,17 @@ extern uint8_t debugflowsize,debugflow[DEBUGFLOWSIZE];
 #endif
 
 /*---------------------------------------------------------------------------*/
-#if defined(TCNT3) && RTIMER_ARCH_PRESCALER
+#if defined(__AVR_ATxmega256A3__) || defined(__AVR_ATxmega256A3U__)
+ISR(RTC_OVF_vect)
+{
+	rtimer_run_next();
+}
+#elif defined(__AVR_ATxmega256A3B__) || defined(__AVR_ATxmega256A3BU__)
+ISR(RTC32_OVF_vect)
+{
+	rtimer_run_next();
+}
+#elif defined(TCNT3) && RTIMER_ARCH_PRESCALER
 ISR (TIMER3_COMPA_vect) {
   DEBUGFLOW('/');
   ENERGEST_ON(ENERGEST_TYPE_IRQ);
@@ -129,7 +139,26 @@ rtimer_arch_init(void)
   sreg = SREG;
   cli ();
 
-#ifdef TCNT3
+#if defined(__AVR_ATxmega256A3__) || defined(__AVR_ATxmega256A3U__)
+	xmega_rtc_rcosc_enable();
+	
+	xmega_rtc_wait_sync_busy();
+
+	xmega_rtc_set_per(31);
+	xmega_rtc_set_comp(31);
+	xmega_rtc_set_cnt(0);
+	
+	// DIV256
+	xmega_rtc_set_prescaler(RTC_PRESCALER_DIV1_gc);
+	
+	// Use both interrupts here. Overflow interrupt will be used directly for rtimer - compare interrupt is used for contiki timer
+	xmega_rtc_set_interrupt_levels(RTC_OVFINTLVL_LO_gc, RTC_COMPINTLVL_LO_gc);
+	
+	xmega_rtc_wait_sync_busy();
+#elif defined(__AVR_ATxmega256A3BU__) || defined(__AVR_ATxmega256A3B__)
+	#warning RTC NOT IMPLEMENTED
+#elif defined(TCNT3)
+
   /* Disable all timer functions */
   ETIMSK &= ~((1 << OCIE3A) | (1 << OCIE3B) | (1 << TOIE3) |
       (1 << TICIE3) | (1 << OCIE3C));
@@ -144,7 +173,7 @@ rtimer_arch_init(void)
 
   /* Reset counter */
   TCNT3 = 0;
-
+  
 #if RTIMER_ARCH_PRESCALER==1024
   TCCR3B |= 5;
 #elif RTIMER_ARCH_PRESCALER==256
@@ -185,7 +214,7 @@ rtimer_arch_init(void)
 #elif RTIMER_ARCH_PRESCALER==1
   TCCR1B |= 1;
 #else
-#error Timer1 PRESCALER factor not supported.
+	#error Timer1 PRESCALER factor not supported.
 #endif
 
 #endif /* TCNT3 */
@@ -204,7 +233,28 @@ rtimer_arch_schedule(rtimer_clock_t t)
   sreg = SREG;
   cli ();
   DEBUGFLOW(':');
-#ifdef TCNT3
+#if defined(__AVR_ATxmega256A3__) || defined(__AVR_ATxmega256A3U__)
+	// uint16_t CNT_pre=RTC_CNT;
+	//stop rtc clearing RTC
+	RTC.CTRL = 0x00;
+	while (RTC.STATUS & RTC_SYNCBUSY_bm) {;}
+
+	//Set period and trigger overflow interrupt (medium level)
+	RTC.PER = (uint16_t) t;
+	RTC.INTCTRL |= RTC_OVFINTLVL_MED_gc;
+	//start RTC again
+	RTC.CTRL = RTC_PRESCALER_DIV1_gc;
+
+#elif defined(__AVR_ATxmega256A3BU__) || defined(__AVR_ATxmega256A3B__)
+	RTC32.CTRL = 0x00;
+		
+	while(RTC32.SYNCCTRL & RTC32_SYNCBUSY_bm);
+	
+	RTC32.PER = (uint16_t) t;
+	RTC32.INTCTRL |= RTC32_OVFINTLVL_LO_gc;
+	
+	RTC32.CTRL |= RTC32_ENABLE_bm;
+#elif defined(TCNT3)
   /* Set compare register */
   OCR3A = t;
   /* Write 1s to clear all timer function flags */
@@ -225,3 +275,111 @@ rtimer_arch_schedule(rtimer_clock_t t)
   SREG = sreg;
 #endif /* RTIMER_ARCH_PRESCALER */
 }
+
+#if RDC_CONF_MCU_SLEEP
+/*---------------------------------------------------------------------------*/
+void
+rtimer_arch_sleep(rtimer_clock_t howlong)
+{
+/* Deep Sleep for howlong rtimer ticks. This will stop all timers except
+ * for TIMER2 which can be clocked using an external crystal.
+ * Unfortunately this is an 8 bit timer; a lower prescaler gives higher
+ * precision but smaller maximum sleep time.
+ * Here a maximum 128msec (contikimac 8Hz channel check sleep) is assumed.
+ * The rtimer and system clocks are adjusted to reflect the sleep time.
+ */
+#include <avr/sleep.h>
+#include <dev/watchdog.h>
+uint32_t longhowlong;
+#if AVR_CONF_USE32KCRYSTAL
+/* Save TIMER2 configuration if clock.c is using it */
+    uint8_t savedTCNT2=TCNT2, savedTCCR2A=TCCR2A, savedTCCR2B = TCCR2B, savedOCR2A = OCR2A;
+#endif
+    cli();
+	watchdog_stop();
+	set_sleep_mode(SLEEP_MODE_PWR_SAVE);
+
+/* Set TIMER2 clock asynchronus from external source, CTC mode */
+    ASSR |= (1 << AS2);
+    TCCR2A =(1<<WGM21);
+/* Set prescaler and TIMER2 output compare register */
+#if 0    //Prescale by 1024 -   32 ticks/sec, 8 seconds max sleep
+    TCCR2B =((1<<CS22)|(1<<CS21)|(1<<CS20));
+	longhowlong=howlong*32UL; 
+#elif 0  // Prescale by 256 -  128 ticks/sec, 2 seconds max sleep
+	TCCR2B =((1<<CS22)|(1<<CS21)|(0<<CS20));
+	longhowlong=howlong*128UL;
+#elif 0  // Prescale by 128 -  256 ticks/sec, 1 seconds max sleep
+	TCCR2B =((1<<CS22)|(0<<CS21)|(1<<CS20));
+	longhowlong=howlong*256UL;
+#elif 0  // Prescale by  64 -  512 ticks/sec, 500 msec max sleep
+	TCCR2B =((1<<CS22)|(0<<CS21)|(0<<CS20));
+	longhowlong=howlong*512UL;
+#elif 1  // Prescale by  32 - 1024 ticks/sec, 250 msec max sleep
+	TCCR2B =((0<<CS22)|(1<<CS21)|(1<<CS20));
+	longhowlong=howlong*1024UL;
+#elif 0  // Prescale by   8 - 4096 ticks/sec, 62.5 msec max sleep
+	TCCR2B =((0<<CS22)|(1<<CS21)|(0<<CS20));
+	longhowlong=howlong*4096UL;
+#else    // No Prescale -    32768 ticks/sec, 7.8 msec max sleep
+	TCCR2B =((0<<CS22)|(0<<CS21)|(1<<CS20));
+	longhowlong=howlong*32768UL;
+#endif
+	OCR2A = longhowlong/RTIMER_ARCH_SECOND;
+
+/* Reset timer count, wait for the write (which assures TCCR2x and OCR2A are finished) */
+    TCNT2 = 0; 
+    while(ASSR & (1 << TCN2UB));
+
+/* Enable TIMER2 output compare interrupt, sleep mode and sleep */
+    TIMSK2 |= (1 << OCIE2A);
+    SMCR |= (1 <<  SE);
+	sei();
+	ENERGEST_OFF(ENERGEST_TYPE_CPU);
+	if (OCR2A) sleep_mode();
+	  //...zzZZZzz...Ding!//
+
+/* Disable sleep mode after wakeup, so random code cant trigger sleep */
+    SMCR  &= ~(1 << SE);
+
+/* Adjust rtimer ticks if rtimer is enabled. TIMER3 is preferred, else TIMER1 */
+#if RTIMER_ARCH_PRESCALER
+#ifdef TCNT3
+    TCNT3 += howlong;
+#else
+    TCNT1 += howlong;
+#endif
+#endif
+	ENERGEST_ON(ENERGEST_TYPE_CPU);
+
+#if AVR_CONF_USE32KCRYSTAL
+/* Restore clock.c configuration */
+    cli();
+    TCCR2A = savedTCCR2A;
+    TCCR2B = savedTCCR2B;
+    OCR2A  = savedOCR2A;
+    TCNT2  = savedTCNT2;
+    sei();
+#else
+/* Disable TIMER2 interrupt */
+    TIMSK2 &= ~(1 << OCIE2A);
+#endif
+    watchdog_start();
+
+/* Adjust clock.c for the time spent sleeping */
+	longhowlong=CLOCK_CONF_SECOND;
+	longhowlong*=howlong;
+    clock_adjust_ticks(longhowlong/RTIMER_ARCH_SECOND);
+
+}
+#if !AVR_CONF_USE32KCRYSTAL
+/*---------------------------------------------------------------------------*/
+/* TIMER2 Interrupt service */
+
+ISR(TIMER2_COMPA_vect)
+{
+//    TIMSK2 &= ~(1 << OCIE2A);       //Just one interrupt needed for waking
+}
+#endif /* !AVR_CONF_USE32KCRYSTAL */
+#endif /* RDC_CONF_MCU_SLEEP */
+

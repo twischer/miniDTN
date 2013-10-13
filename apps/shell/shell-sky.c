@@ -28,7 +28,6 @@
  *
  * This file is part of the Contiki operating system.
  *
- * $Id: shell-sky.c,v 1.17 2010/10/12 11:34:08 adamdunkels Exp $
  */
 
 /**
@@ -44,6 +43,7 @@
 #include "dev/watchdog.h"
 
 #include "net/rime.h"
+#include "net/netstack.h"
 #include "dev/cc2420.h"
 #include "dev/leds.h"
 #include "dev/sht11.h"
@@ -52,7 +52,7 @@
 #include "dev/sht11-sensor.h"
 #include "net/rime/timesynch.h"
 
-#include "node-id.h"
+#include "sys/node-id.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -97,7 +97,7 @@ do_rssi(void)
   static int sample;
   int channel;
   
-  rime_mac->off(0);
+  NETSTACK_MAC.off(0);
 
   cc2420_on();
   for(channel = 11; channel <= 26; ++channel) {
@@ -105,7 +105,7 @@ do_rssi(void)
     rssi_samples[sample].channel[channel - 11] = cc2420_rssi() + 53;
   }
   
-  rime_mac->on();
+  NETSTACK_MAC.on();
   
   sample = (sample + 1) % NUM_SAMPLES;
 

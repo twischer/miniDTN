@@ -85,8 +85,8 @@
 #define COAP_MAX_ATTEMPTS             4
 #endif /* COAP_MAX_ATTEMPTS */
 
-#define UIP_IP_BUF   ((struct uip_ip_hdr *)&uip_buf[UIP_LLH_LEN])
-#define UIP_UDP_BUF  ((struct uip_udp_hdr *)&uip_buf[uip_l2_l3_hdr_len])
+#define UIP_IP_BUF    ((struct uip_ip_hdr *)&uip_buf[UIP_LLH_LEN])
+#define UIP_UDP_BUF   ((struct uip_udp_hdr *)&uip_buf[UIP_LLH_LEN + UIP_IPH_LEN])
 
 #define SET_OPTION(packet, opt) ((packet)->options |= 1<<opt)
 #define IS_OPTION(packet, opt) ((packet)->options & 1<<opt)
@@ -120,7 +120,7 @@ typedef enum {
   BAD_REQUEST_400 = 160,
   NOT_FOUND_404 = 164,
   METHOD_NOT_ALLOWED_405 = 165,
-  UNSUPPORTED_MADIA_TYPE_415 = 175,
+  UNSUPPORTED_MEDIA_TYPE_415 = 175,
   INTERNAL_SERVER_ERROR_500 = 200,
   BAD_GATEWAY_502 = 202,
   SERVICE_UNAVAILABLE_503 = 203,
@@ -200,11 +200,11 @@ typedef struct {
   uint8_t etag_len;
   uint8_t etag[COAP_ETAG_LEN];
   uint8_t uri_host_len;
-  char *uri_host;
+  const char *uri_host;
   uint8_t location_path_len;
-  char *location_path;
+  const char *location_path;
   uint8_t uri_path_len;
-  char *uri_path;
+  const char *uri_path;
   uint32_t observe; /* 0-4 bytes for coap-03 */
   uint8_t token_len;
   uint8_t token[COAP_TOKEN_LEN];
@@ -213,7 +213,7 @@ typedef struct {
   uint16_t block_size;
   uint32_t block_offset;
   uint8_t uri_query_len;
-  char *uri_query;
+  const char *uri_query;
 
   uint16_t payload_len;
   uint8_t *payload;
@@ -226,7 +226,7 @@ typedef enum
   NO_ERROR,
 
   /* Memory errors */
-  MEMORY_ALLOC_ERR,
+  MEMORY_ALLOCATION_ERROR,
   MEMORY_BOUNDARY_EXCEEDED,
 
   /* CoAP errors */
@@ -236,7 +236,7 @@ typedef enum
 
 void coap_init_connection(uint16_t port);
 uint16_t coap_get_tid(void);
-void coap_send_message(uip_ipaddr_t *addr, uint16_t port, uint8_t *data, uint16_t length);
+void coap_send_message(uip_ipaddr_t *addr, uint16_t port, const uint8_t *data, uint16_t length);
 
 void coap_init_message(void *packet, coap_message_type_t type, uint8_t code, uint16_t tid);
 int coap_serialize_message(void *packet, uint8_t *buffer);
@@ -255,30 +255,30 @@ int coap_get_header_max_age(void *packet, uint32_t *age);
 int coap_set_header_max_age(void *packet, uint32_t age);
 
 int coap_get_header_etag(void *packet, const uint8_t **etag);
-int coap_set_header_etag(void *packet, uint8_t *etag, size_t etag_len);
+int coap_set_header_etag(void *packet, const uint8_t *etag, size_t etag_len);
 
 int coap_get_header_uri_host(void *packet, const char **host); /*CAUTION in-place string might not be 0-terminated */
-int coap_set_header_uri_host(void *packet, char *host);
+int coap_set_header_uri_host(void *packet, const char *host);
 
 int coap_get_header_location(void *packet, const char **uri); /*CAUTION in-place string might not be 0-terminated */
-int coap_set_header_location(void *packet, char *uri);
+int coap_set_header_location(void *packet, const char *uri);
 
 int coap_get_header_uri_path(void *packet, const char **uri); /*CAUTION in-place string might not be 0-terminated */
-int coap_set_header_uri_path(void *packet, char *uri);
+int coap_set_header_uri_path(void *packet, const char *uri);
 
 int coap_get_header_observe(void *packet, uint32_t *observe);
 int coap_set_header_observe(void *packet, uint32_t observe);
 
 int coap_get_header_token(void *packet, const uint8_t **token);
-int coap_set_header_token(void *packet, uint8_t *token, size_t token_len);
+int coap_set_header_token(void *packet, const uint8_t *token, size_t token_len);
 
 int coap_get_header_block(void *packet, uint32_t *num, uint8_t *more, uint16_t *size, uint32_t *offset);
 int coap_set_header_block(void *packet, uint32_t num, uint8_t more, uint16_t size);
 
 int coap_get_header_uri_query(void *packet, const char **query); /*CAUTION in-place string might not be 0-terminated */
-int coap_set_header_uri_query(void *packet, char *query);
+int coap_set_header_uri_query(void *packet, const char *query);
 
 int coap_get_payload(void *packet, const uint8_t **payload);
-int coap_set_payload(void *packet, uint8_t *payload, size_t length);
+int coap_set_payload(void *packet, const void *payload, size_t length);
 
 #endif /* COAP_03_H_ */

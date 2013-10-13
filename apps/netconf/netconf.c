@@ -29,7 +29,6 @@
  *
  * This file is part of the Contiki desktop environment
  *
- * $Id: netconf.c,v 1.9 2010/05/31 15:22:08 nifi Exp $
  *
  */
 
@@ -73,7 +72,7 @@ static void makestrings(void);
 
 /*-----------------------------------------------------------------------------------*/
 static char *
-makebyte(u8_t byte, char *str)
+makebyte(uint8_t byte, char *str)
 {
   if(byte >= 100) {
     *str++ = (byte / 100 ) % 10 + '0';

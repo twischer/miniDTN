@@ -28,7 +28,6 @@
  *
  * This file is part of the Contiki operating system.
  *
- * $Id: sky-collect.c,v 1.13 2010/09/14 06:47:08 adamdunkels Exp $
  */
 
 /**
@@ -39,6 +38,7 @@
  */
 
 #include "contiki.h"
+#include "net/netstack.h"
 #include "net/rime.h"
 #include "net/rime/collect.h"
 #include "net/rime/collect-neighbor.h"
@@ -133,7 +133,7 @@ do_rssi(void)
   static int sample;
   int channel;
   
-  rime_mac->off(0);
+  NETSTACK_MAC.off(0);
 
   cc2420_on();
   for(channel = 11; channel <= 26; ++channel) {
@@ -141,7 +141,7 @@ do_rssi(void)
     rssi_samples[sample].channel[channel - 11] = cc2420_rssi() + 53;
   }
   
-  rime_mac->on();
+  NETSTACK_MAC.on();
   
   sample = (sample + 1) % NUM_SAMPLES;
 
@@ -246,24 +246,24 @@ PROCESS_THREAD(test_collect_process, ev, data)
 	msg->best_neighbor_rtmetric = n->rtmetric;
       }
 
-      msg->tx = rimestats.tx;
-      msg->rx = rimestats.rx;
-      msg->reliabletx = rimestats.reliabletx;
-      msg->reliablerx = rimestats.reliablerx;
-      msg->rexmit = rimestats.rexmit;
-      msg->acktx = rimestats.acktx;
-      msg->noacktx = rimestats.noacktx;
-      msg->ackrx = rimestats.ackrx;
-      msg->timedout = rimestats.timedout;
-      msg->badackrx = rimestats.badackrx;
-      msg->toolong = rimestats.toolong;
-      msg->tooshort = rimestats.tooshort;
-      msg->badsynch = rimestats.badsynch;
-      msg->badcrc = rimestats.badcrc;
-      msg->contentiondrop = rimestats.contentiondrop;
-      msg->sendingdrop = rimestats.sendingdrop;
-      msg->lltx = rimestats.lltx;
-      msg->llrx = rimestats.llrx;
+      msg->tx = RIMESTATS_GET(tx);
+      msg->rx = RIMESTATS_GET(rx);
+      msg->reliabletx = RIMESTATS_GET(reliabletx);
+      msg->reliablerx = RIMESTATS_GET(reliablerx);
+      msg->rexmit = RIMESTATS_GET(rexmit);
+      msg->acktx = RIMESTATS_GET(acktx);
+      msg->noacktx = RIMESTATS_GET(noacktx);
+      msg->ackrx = RIMESTATS_GET(ackrx);
+      msg->timedout = RIMESTATS_GET(timedout);
+      msg->badackrx = RIMESTATS_GET(badackrx);
+      msg->toolong = RIMESTATS_GET(toolong);
+      msg->tooshort = RIMESTATS_GET(tooshort);
+      msg->badsynch = RIMESTATS_GET(badsynch);
+      msg->badcrc = RIMESTATS_GET(badcrc);
+      msg->contentiondrop = RIMESTATS_GET(contentiondrop);
+      msg->sendingdrop = RIMESTATS_GET(sendingdrop);
+      msg->lltx = RIMESTATS_GET(lltx);
+      msg->llrx = RIMESTATS_GET(llrx);
 #if TIMESYNCH_CONF_ENABLED
       msg->timestamp = timesynch_time();
 #else

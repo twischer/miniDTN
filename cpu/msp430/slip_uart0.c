@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * @(#)$Id: slip_uart0.c,v 1.1 2010/08/24 16:23:20 joxe Exp $
  */
 
 /*
@@ -34,14 +33,6 @@
  */
 
 #include "contiki-conf.h"
-
-#ifdef __IAR_SYSTEMS_ICC__
-#include <msp430.h>
-#else
-#include <io.h>
-#include <signal.h>
-#endif
-
 #include "dev/slip.h"
 #include "dev/uart0.h"
 /*---------------------------------------------------------------------------*/

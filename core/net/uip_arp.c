@@ -54,7 +54,6 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: uip_arp.c,v 1.8 2010/12/14 22:45:22 dak664 Exp $
  *
  */
 
@@ -65,11 +64,11 @@
 
 struct arp_hdr {
   struct uip_eth_hdr ethhdr;
-  u16_t hwtype;
-  u16_t protocol;
-  u8_t hwlen;
-  u8_t protolen;
-  u16_t opcode;
+  uint16_t hwtype;
+  uint16_t protocol;
+  uint8_t hwlen;
+  uint8_t protolen;
+  uint16_t opcode;
   struct uip_eth_addr shwaddr;
   uip_ipaddr_t sipaddr;
   struct uip_eth_addr dhwaddr;
@@ -79,14 +78,14 @@ struct arp_hdr {
 struct ethip_hdr {
   struct uip_eth_hdr ethhdr;
   /* IP header. */
-  u8_t vhl,
+  uint8_t vhl,
     tos,
     len[2],
     ipid[2],
     ipoffset[2],
     ttl,
     proto;
-  u16_t ipchksum;
+  uint16_t ipchksum;
   uip_ipaddr_t srcipaddr, destipaddr;
 };
 
@@ -98,19 +97,19 @@ struct ethip_hdr {
 struct arp_entry {
   uip_ipaddr_t ipaddr;
   struct uip_eth_addr ethaddr;
-  u8_t time;
+  uint8_t time;
 };
 
 static const struct uip_eth_addr broadcast_ethaddr =
   {{0xff,0xff,0xff,0xff,0xff,0xff}};
-static const u16_t broadcast_ipaddr[2] = {0xffff,0xffff};
+static const uint16_t broadcast_ipaddr[2] = {0xffff,0xffff};
 
 static struct arp_entry arp_table[UIP_ARPTAB_SIZE];
 static uip_ipaddr_t ipaddr;
-static u8_t i, c;
+static uint8_t i, c;
 
-static u8_t arptime;
-static u8_t tmpage;
+static uint8_t arptime;
+static uint8_t tmpage;
 
 #define BUF   ((struct arp_hdr *)&uip_buf[0])
 #define IPBUF ((struct ethip_hdr *)&uip_buf[0])
@@ -312,8 +311,8 @@ uip_arp_arpin(void)
       BUF->opcode = UIP_HTONS(ARP_REPLY);
 
       memcpy(BUF->dhwaddr.addr, BUF->shwaddr.addr, 6);
-      memcpy(BUF->shwaddr.addr, uip_ethaddr.addr, 6);
-      memcpy(BUF->ethhdr.src.addr, uip_ethaddr.addr, 6);
+      memcpy(BUF->shwaddr.addr, uip_lladdr.addr, 6);
+      memcpy(BUF->ethhdr.src.addr, uip_lladdr.addr, 6);
       memcpy(BUF->ethhdr.dest.addr, BUF->dhwaddr.addr, 6);
       
       uip_ipaddr_copy(&BUF->dipaddr, &BUF->sipaddr);
@@ -409,8 +408,8 @@ uip_arp_out(void)
 
       memset(BUF->ethhdr.dest.addr, 0xff, 6);
       memset(BUF->dhwaddr.addr, 0x00, 6);
-      memcpy(BUF->ethhdr.src.addr, uip_ethaddr.addr, 6);
-      memcpy(BUF->shwaddr.addr, uip_ethaddr.addr, 6);
+      memcpy(BUF->ethhdr.src.addr, uip_lladdr.addr, 6);
+      memcpy(BUF->shwaddr.addr, uip_lladdr.addr, 6);
     
       uip_ipaddr_copy(&BUF->dipaddr, &ipaddr);
       uip_ipaddr_copy(&BUF->sipaddr, &uip_hostaddr);
@@ -430,7 +429,7 @@ uip_arp_out(void)
     /* Build an ethernet header. */
     memcpy(IPBUF->ethhdr.dest.addr, tabptr->ethaddr.addr, 6);
   }
-  memcpy(IPBUF->ethhdr.src.addr, uip_ethaddr.addr, 6);
+  memcpy(IPBUF->ethhdr.src.addr, uip_lladdr.addr, 6);
   
   IPBUF->ethhdr.type = UIP_HTONS(UIP_ETHTYPE_IP);
 

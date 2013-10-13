@@ -1,6 +1,10 @@
 CONTIKI_PROJECT=webserver6
 all: $(CONTIKI_PROJECT) $(WITH_WEBSERVER)
 
+PROJECT_SOURCEFILES += cgi-scripts.c
+
+CFLAGS += -DPROJECT_CONF_H=\"project-conf.h\"
+
 ifeq ($(WITH_WEBSERVER),)
 #
 #Set default webserver for different platforms
@@ -36,5 +40,13 @@ endif
 
 UIP_CONF_IPV6=1
 DEFINES=WITH_UIP6
+
+# Make no RPL the default for minimal-net builds
+ifeq ($(TARGET),minimal-net)
+ifndef UIP_CONF_RPL
+UIP_CONF_RPL=0
+endif
+endif
+
 CONTIKI = ../..
 include $(CONTIKI)/Makefile.include

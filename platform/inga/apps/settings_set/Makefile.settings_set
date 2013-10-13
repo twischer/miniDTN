@@ -1,0 +1,39 @@
+settings_set_src = settings_set.c
+
+# NODEID
+ifdef NODE_ID
+ CFLAGS += -DNODE_CONF_ID=$(NODE_ID)
+ ifndef settings_set_load
+  settings_set_load=1
+ endif
+endif
+
+# PANID
+ifdef PAN_ID
+ CFLAGS += -DRADIO_CONF_PAN_ID=$(PAN_ID)
+ ifndef settings_set_load
+  settings_set_load=1
+ endif
+endif
+
+# RADIO CHANNEL
+ifdef RADIO_CHANNEL
+ CFLAGS += -DRADIO_CONF_CHANNEL=$(RADIO_CHANNEL)
+ ifndef settings_set_load
+  settings_set_load=1
+ endif
+endif
+
+# RADIO TX POWER
+ifdef RADIO_TX_POWER
+ CFLAGS += -DRADIO_CONF_TX_POWER=$(RADIO_TX_POWER)
+ ifndef settings_set_load
+  settings_set_load=1
+ endif
+endif
+
+# Load app if needed
+ifdef settings_set_load
+ $(info [APP.settings_set] loaded)
+ CFLAGS+=-DAPP_SETTINGS_SET=1
+endif

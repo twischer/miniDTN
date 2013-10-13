@@ -322,7 +322,10 @@ def generate_callgraph(calls, outfile):
 		if options.cumulative:
 			frac = reltime*10
 		else:
-			frac = reltime/(avgtime*2)
+			if avgtime > 0:
+				frac = reltime/(avgtime*2)
+			else:
+				frac = 0
 
 		if frac > 1:
 			frac = 1

@@ -224,6 +224,7 @@ write_header(struct file_header *hdr, coffee_page_t page)
 {
   hdr->flags |= HDR_FLAG_VALID;
   COFFEE_WRITE(hdr, sizeof(*hdr), page * COFFEE_PAGE_SIZE);
+	PRINTF("hdr.flags = %x\n", hdr->flags);
 }
 /*---------------------------------------------------------------------------*/
 static void
@@ -233,6 +234,7 @@ read_header(struct file_header *hdr, coffee_page_t page)
 #if DEBUG
   if(HDR_ACTIVE(*hdr) && !HDR_VALID(*hdr)) {
     PRINTF("Invalid header at page %u!\n", (unsigned)page);
+	PRINTF("hdr.flags = %x\n", hdr->flags);
   }
 #endif
 }
@@ -258,7 +260,7 @@ get_sector_status(uint16_t sector, struct sector_status *stats)
 
   /*
    * get_sector_status() is an iterative function using local static 
-   * state. It therefore requires the the caller loops starts from 
+   * state. It therefore requires that the caller starts iterating from 
    * sector 0 in order to reset the internal state.
    */
   if(sector == 0) {
@@ -333,7 +335,7 @@ get_sector_status(uint16_t sector, struct sector_status *stats)
   stats->free = free;
 
   /*
-   * To avoid unnecessary page isolation, we notify the callee that 
+   * To avoid unnecessary page isolation, we notify the caller that 
    * "skip_pages" pages should be isolated only if the current file extent 
    * ends in the next sector. If the file extent ends in a more distant 
    * sector, however, the garbage collection can free the next sector 
@@ -816,7 +818,7 @@ merge_log(coffee_page_t file_page, int extend)
 
   /*
    * The reservation function adds extra space for the header, which has
-   * already been calculated with in the previous reservation.
+   * already been accounted for in the previous reservation.
    */
   max_pages = hdr.max_pages << extend;
   new_file = reserve(hdr.name, max_pages, 1, 0);

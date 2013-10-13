@@ -28,7 +28,6 @@
  *
  * This file is part of the Contiki operating system.
  * 
- * $Id: ethernet-drv.h,v 1.1 2007/11/20 21:10:20 oliverschmidt Exp $
  */
 
 #ifndef __ETHERNET_DRV_H__
@@ -37,12 +36,12 @@
 #include "contiki.h"
 
 struct ethernet_config {
-  u16_t addr;
+  uint16_t addr;
   char  name[12+1];
 };
 
 PROCESS_NAME(ethernet_process);
 
-u8_t ethernet_output(void);
+uint8_t ethernet_output(void);
 
 #endif /* __ETHERNET_DRV_H__ */

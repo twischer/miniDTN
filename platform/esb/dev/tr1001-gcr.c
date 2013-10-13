@@ -28,7 +28,6 @@
  *
  * This file is part of the Contiki operating system.
  *
- * @(#)$Id: tr1001-gcr.c,v 1.15 2010/03/02 22:40:39 nifi Exp $
  */
 /**
  * \addtogroup esb
@@ -50,6 +49,7 @@
  *
  */
 
+#include "contiki.h"
 #include "contiki-esb.h"
 
 #include "dev/tr1001.h"
@@ -58,9 +58,8 @@
 #include "lib/crc16.h"
 #include "net/netstack.h"
 #include "net/rime/rimestats.h"
+#include "isr_compat.h"
 
-#include <io.h>
-#include <signal.h>
 #include <string.h>
 
 #ifdef TR1001_CONF_BEEP_ON_BAD_CRC
@@ -386,8 +385,7 @@ tr1001_init(void)
   return 1;
 }
 /*---------------------------------------------------------------------------*/
-interrupt (UART0RX_VECTOR)
-     tr1001_rxhandler(void)
+ISR(UART0RX, tr1001_rxhandler)
 {
   ENERGEST_ON(ENERGEST_TYPE_IRQ);
   tr1001_default_rxhandler_pt(RXBUF0);

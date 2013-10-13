@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: leds-arch.c,v 1.1 2010/05/03 21:57:35 nifi Exp $
  */
 
 /**
@@ -38,10 +37,8 @@
  *         Joakim Eriksson <joakime@sics.se>
  */
 
-#include "contiki-conf.h"
+#include "contiki.h"
 #include "dev/leds.h"
-
-#include <io.h>
 
 /*---------------------------------------------------------------------------*/
 void

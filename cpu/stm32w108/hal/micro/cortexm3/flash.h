@@ -4,8 +4,13 @@
  * <!--(C) COPYRIGHT 2010 STMicroelectronics. All rights reserved.        -->
  */
  
-/** @addtogroup flash
- * @brief Definition and description of public flash manipulation routines.
+/**
+ * \addtogroup stm32w-cpu
+ * @{
+ */
+
+/** 
+ * @defgroup flash Definition and description of public flash manipulation routines.
  *
  * @note
  * During an erase or a write the flash is not available,
@@ -65,7 +70,7 @@ boolean halFlashEraseIsActive(void);
  *  - ST_ERR_FLASH_VERIFY_FAILED if erase verification failed
  *  - ST_SUCCESS if erasure completed and verified properly
  */
-StStatus halInternalFlashErase(int8u eraseType, int32u address);
+StStatus halInternalFlashErase(uint8_t eraseType, uint32_t address);
 
 /** @brief Writes a block of words to flash.  A page is erased
  * to 0xFFFF at every address.  Only two writes can be performed to the same
@@ -96,7 +101,7 @@ StStatus halInternalFlashErase(int8u eraseType, int32u address);
  *  - ST_ERR_FLASH_VERIFY_FAILED if write verification failed
  *  - ST_SUCCESS if writing completed and verified properly
  */
-StStatus halInternalFlashWrite(int32u address, int16u * data, int32u length);
+StStatus halInternalFlashWrite(uint32_t address, uint16_t * data, uint32_t length);
 
 /** @brief Writes an option byte to the customer information block.  Only
  * two writes can be performed to the same address between erasures and this
@@ -116,11 +121,12 @@ StStatus halInternalFlashWrite(int32u address, int16u * data, int32u length);
  *  - ST_ERR_FLASH_VERIFY_FAILED if write verification failed
  *  - ST_SUCCESS if writing completed and verified properly
  */
-StStatus halInternalCibOptionByteWrite(int8u byte, int8u data);
+StStatus halInternalCibOptionByteWrite(uint8_t byte, uint8_t data);
 
 #endif //DOXYGEN_SHOULD_SKIP_THIS
 
 #endif //__FLASH_H__
 
 /** @} END addtogroup */
+/** @} */
 
