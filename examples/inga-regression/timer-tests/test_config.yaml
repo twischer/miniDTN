@@ -4,7 +4,7 @@ tests:
     timeout: 120
     devices:
       - name: receiver
-        programdir: examples/inga_tests/timer-tests
+        programdir: examples/inga-regression/timer-tests
         program: rtimer-test
         instrument: []
         debug: []

@@ -14,5 +14,5 @@ endif
 TARGET=inga
 APPS = settings_set settings_delete
 
-CONTIKI = ../..
+CONTIKI = ../../..
 include $(CONTIKI)/Makefile.include

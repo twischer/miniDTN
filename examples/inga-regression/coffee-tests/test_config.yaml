@@ -4,7 +4,7 @@ tests:
     timeout: 120
     devices:
       - name: receiver
-        programdir: examples/inga_tests/coffee-tests
+        programdir: examples/inga-regression/coffee-tests
         program: coffee-tests
         instrument: []
         debug: []
@@ -14,7 +14,7 @@ tests:
     timeout: 120
     devices:
       - name: receiver
-        programdir: examples/inga_tests/coffee-tests
+        programdir: examples/inga-regression/coffee-tests
         program: coffee-tests
         instrument: []
         debug: []
@@ -24,7 +24,7 @@ tests:
     timeout: 120
     devices:
       - name: receiver
-        programdir: examples/inga_tests/coffee-tests
+        programdir: examples/inga-regression/coffee-tests
         program: coffee-tests
         instrument: []
         debug: []
@@ -34,7 +34,7 @@ tests:
     timeout: 120
     devices:
       - name: receiver
-        programdir: examples/inga_tests/coffee-tests
+        programdir: examples/inga-regression/coffee-tests
         program: coffee-tests
         instrument: []
         debug: []
@@ -44,7 +44,7 @@ tests:
     timeout: 120
     devices:
       - name: receiver
-        programdir: examples/inga_tests/coffee-tests
+        programdir: examples/inga-regression/coffee-tests
         program: coffee-tests
         instrument: []
         debug: []
@@ -54,7 +54,7 @@ tests:
     timeout: 120
     devices:
       - name: receiver
-        programdir: examples/inga_tests/coffee-tests
+        programdir: examples/inga-regression/coffee-tests
         program: coffee-tests
         instrument: []
         debug: []

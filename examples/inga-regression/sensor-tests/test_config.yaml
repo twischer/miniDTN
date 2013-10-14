@@ -4,7 +4,7 @@ tests:
     timeout: 60
     devices:
       - name: receiver
-        programdir: examples/inga_tests/sensor-tests
+        programdir: examples/inga-regression/sensor-tests
         program: acc-test
         instrument: []
         debug: []
@@ -15,7 +15,7 @@ tests:
     timeout: 60
     devices:
       - name: receiver
-        programdir: examples/inga_tests/sensor-tests
+        programdir: examples/inga-regression/sensor-tests
         program: gyro-test
         instrument: []
         debug: []
@@ -26,7 +26,7 @@ tests:
     timeout: 60
     devices:
       - name: receiver
-        programdir: examples/inga_tests/sensor-tests
+        programdir: examples/inga-regression/sensor-tests
         program: battery-test
         instrument: []
         debug: []
@@ -37,7 +37,7 @@ tests:
     timeout: 60
     devices:
       - name: receiver
-        programdir: examples/inga_tests/sensor-tests
+        programdir: examples/inga-regression/sensor-tests
         program: temppress-test
         instrument: []
         debug: []
