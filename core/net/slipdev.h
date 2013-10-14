@@ -39,7 +39,6 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: slipdev.h,v 1.2 2009/03/17 20:28:44 nvt-se Exp $
  *
  */
 
@@ -57,7 +56,7 @@
  *
  * \param c The character to be put on the serial device.
  */
-void slipdev_char_put(u8_t c);
+void slipdev_char_put(uint8_t c);
 
 /**
  * Poll the serial device for a character.
@@ -77,11 +76,11 @@ void slipdev_char_put(u8_t c);
  * \retval 0 If no character is available.
  * \retval Non-zero If a character is available.
  */
-u8_t slipdev_char_poll(u8_t *c);
+uint8_t slipdev_char_poll(uint8_t *c);
 
 void slipdev_init(void);
-u8_t slipdev_send(void);
-u16_t slipdev_poll(void);
+uint8_t slipdev_send(void);
+uint16_t slipdev_poll(void);
 
 #endif /* __SLIPDEV_H__ */
 

@@ -28,7 +28,6 @@
  *
  * This file is part of the Contiki operating system.
  *
- * $Id: bus.h,v 1.3 2010/01/25 23:13:04 anthony-a Exp $
  */
 
 /**
@@ -44,11 +43,11 @@
 
 #include "cc2430_sfr.h"
 #include "8051def.h"
+#include "contiki-conf.h"
 
 #define inline
 
-void bus_init(void) __banked;
-void flash_read(uint8_t *buf, uint32_t address, uint8_t size) __banked;
-void cc2430_clock_ISR( void ) __interrupt (ST_VECTOR);
+void bus_init(void);
+void clock_ISR( void ) __interrupt (ST_VECTOR);
 
 #endif /* __BUS_H__ */

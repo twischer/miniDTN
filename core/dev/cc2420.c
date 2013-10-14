@@ -28,7 +28,6 @@
  *
  * This file is part of the Contiki operating system.
  *
- * @(#)$Id: cc2420.c,v 1.63 2011/01/09 21:09:28 adamdunkels Exp $
  */
 /*
  * This code is almost device independent and should be easy to port.
@@ -40,12 +39,6 @@
 
 #if defined(__AVR__)
 #include <avr/io.h>
-#elif defined(__MSP430__)
-#ifdef __IAR_SYSTEMS_ICC__
-#include <msp430.h>
-#else
-#include <io.h>
-#endif
 #endif
 
 #include "dev/leds.h"

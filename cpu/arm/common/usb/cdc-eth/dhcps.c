@@ -29,7 +29,6 @@
  *
  * This file is part of the Contiki operating system.
  *
- * @(#)$Id: dhcps.c,v 1.2 2010/10/19 18:29:04 adamdunkels Exp $
  */
 
 #include <stdio.h>
@@ -299,7 +298,7 @@ create_msg(CC_REGISTER_ARG struct dhcp_msg *m)
   m->op = DHCP_REPLY;
   /* m->htype = DHCP_HTYPE_ETHERNET; */
 /*   m->hlen = DHCP_HLEN_ETHERNET; */
-/*   memcpy(m->chaddr, &uip_ethaddr,DHCP_HLEN_ETHERNET); */
+/*   memcpy(m->chaddr, &uip_lladdr,DHCP_HLEN_ETHERNET); */
   m->hops = 0;
   m->secs = 0;
   memcpy(m->siaddr, &uip_hostaddr, 4);
@@ -315,7 +314,7 @@ static uip_ipaddr_t bcast_addr;
 static void
 send_offer(struct uip_udp_conn *conn, struct dhcps_client_lease *lease)
 {
-  u8_t *end;
+  uint8_t *end;
   struct dhcp_msg *m = (struct dhcp_msg *)uip_appdata;
   
   create_msg(m);
@@ -327,13 +326,13 @@ send_offer(struct uip_udp_conn *conn, struct dhcps_client_lease *lease)
   end = add_config(end);
   end = add_end(end);
   uip_ipaddr_copy(&conn->ripaddr, &bcast_addr);
-  uip_send(uip_appdata, (int)(end - (u8_t *)uip_appdata));
+  uip_send(uip_appdata, (int)(end - (uint8_t *)uip_appdata));
 }
 
 static void
 send_ack(struct uip_udp_conn *conn, struct dhcps_client_lease *lease)
 {
-  u8_t *end;
+  uint8_t *end;
   uip_ipaddr_t ciaddr;
   struct dhcp_msg *m = (struct dhcp_msg *)uip_appdata;
   
@@ -347,13 +346,13 @@ send_ack(struct uip_udp_conn *conn, struct dhcps_client_lease *lease)
   end = add_end(end);
   memcpy(&ciaddr, &lease->ipaddr,4);
   uip_ipaddr_copy(&conn->ripaddr, &bcast_addr);
-  uip_send(uip_appdata, (int)(end - (u8_t *)uip_appdata));
+  uip_send(uip_appdata, (int)(end - (uint8_t *)uip_appdata));
   printf("ACK\n");
 }
 static void
 send_nack(struct uip_udp_conn *conn)
 {
-  u8_t *end;
+  uint8_t *end;
   struct dhcp_msg *m = (struct dhcp_msg *)uip_appdata;
   
   create_msg(m);
@@ -364,7 +363,7 @@ send_nack(struct uip_udp_conn *conn)
   end = add_end(end);
 
   uip_ipaddr_copy(&conn->ripaddr, &bcast_addr);
-  uip_send(uip_appdata, (int)(end - (u8_t *)uip_appdata));
+  uip_send(uip_appdata, (int)(end - (uint8_t *)uip_appdata));
   printf("NACK\n");
 }
 

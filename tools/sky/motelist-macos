@@ -1,5 +1,4 @@
 #!/usr/bin/perl -w
-# Code comes from http://code.google.com/p/tinyos-main/source/browse/trunk/tools/platforms/msp430/motelist/motelist-macos
 use strict;
 
 my $help = <<'EOF';

@@ -11,14 +11,6 @@ ifndef CONTIKI
   $(error CONTIKI not defined!)
 endif
 
-ifndef WINDIR
-  ifdef OS
-    ifneq (,$(findstring Windows,$(OS)))
-      WINDIR := Windows
-    endif
-  endif
-endif
-
 ### Assuming simulator quickstart if no JNI library name set from Cooja
 ifndef LIBNAME
 QUICKSTART=1
@@ -33,10 +25,12 @@ $(CONTIKI)/tools/cooja/dist/cooja.jar:
 	(cd $(CONTIKI)/tools/cooja && ant jar)
 
 # Quickstart rule
+ifneq ($(MAKECMDGOALS),clean)
 .PHONY: $(MAKECMDGOALS)
 .PRECIOUS: $(MAKECMDGOALS)
 $(MAKECMDGOALS): $(CONTIKI)/tools/cooja/dist/cooja.jar
 	 java -mx512m -jar $< -quickstart='$(firstword $(MAKECMDGOALS))' -contiki='$(CONTIKI)'
+endif
 
 endif ## QUICKSTART
 
@@ -77,22 +71,33 @@ CONTIKI_CPU=$(CONTIKI)/cpu/x86
 ### Compiler arguments
 #CC = gcc
 CFLAGSNO = $(EXTRA_CC_ARGS) -Wall -g -I/usr/local/include -DCLASSNAME=$(CLASSNAME)
-CFLAGS   = $(CFLAGSNO)
+CFLAGS   += $(CFLAGSNO)
 
-ifdef UIP_CONF_IPV6
+ifeq ($(UIP_CONF_IPV6),1)
   CFLAGS += -DWITH_UIP6=1
 endif
 ifdef WITH_UIP
   CFLAGS += -DWITH_UIP=1
 endif
 
+## Copied from Makefile.include, since Cooja overrides CFLAGS et al
+ifeq ($(UIP_CONF_IPV6),1)
+  CFLAGS += -DUIP_CONF_IPV6=1
+  ifneq ($(UIP_CONF_RPL),0)
+    CFLAGS += -DUIP_CONF_IPV6_RPL=1
+  endif # UIP_CONF_RPL
+endif # UIP_CONF_IPV6
+
 REDEF_PRINTF=1 # Redefine functions to enable printf()s inside Cooja
 
 ### Define custom targets
-$(ARCHIVE): ${addprefix $(OBJECTDIR)/, $(CONTIKI_SOURCEFILES:.c=.o)}
+
+# NB: Assumes ARCHIVE was not overridden and is in $(OBJECTDIR)
+$(ARCHIVE): ${addprefix $(OBJECTDIR)/, $(CONTIKI_SOURCEFILES:.c=.o)} | $(OBJECTDIR)
 	$(AR_COMMAND_1) $^ $(AR_COMMAND_2)
 
-$(JNILIB): $(CONTIKI_APP_OBJ) $(MAIN_OBJ) $(PROJECT_OBJECTFILES) $(ARCHIVE)
+# NB: Assumes JNILIB was not overridden and is in $(OBJECTDIR)
+$(JNILIB): $(CONTIKI_APP_OBJ) $(MAIN_OBJ) $(PROJECT_OBJECTFILES) $(ARCHIVE) | $(OBJECTDIR)
 ifdef SYMBOLS
 	@echo Generating symbols
 	# Recreate symbols file and relink with final memory layout (twice)
@@ -104,9 +109,9 @@ ifdef SYMBOLS
 endif ## SYMBOLS
 ifdef REDEF_PRINTF
 	@echo Redefining printf
-	-$(foreach OBJ,$^, objcopy --redefine-sym printf=log_printf $(OBJ); )		
-	-$(foreach OBJ,$^, objcopy --redefine-sym puts=log_puts $(OBJ); )		
-	-$(foreach OBJ,$^, objcopy --redefine-sym putchar=log_putchar $(OBJ); )		
+	-$(foreach OBJ,$^, $(OBJCOPY) --redefine-sym printf=log_printf $(OBJ); )
+	-$(foreach OBJ,$^, $(OBJCOPY) --redefine-sym puts=log_puts $(OBJ); )
+	-$(foreach OBJ,$^, $(OBJCOPY) --redefine-sym putchar=log_putchar $(OBJ); )
 endif ## REDEF_PRINTF
 	$(LINK_COMMAND_1) $^ $(LINK_COMMAND_2)
 
@@ -115,7 +120,9 @@ $(CONTIKI_APP).cooja: $(JNILIB)
 	cp $(JNILIB) $@
 	rm $(CONTIKI_APP_OBJ)
 
-mtype%.o: contiki-cooja-main.o
+# Trickiness: GNU make matches this against the file base name.
+# Assume that the directory part is the standard location.
+mtype%.o: contiki-cooja-main.o | $(OBJECTDIR)
 	mv contiki-cooja-main.o $@
 
 symbols.c:

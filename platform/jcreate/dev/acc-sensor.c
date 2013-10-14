@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: acc-sensor.c,v 1.2 2010/08/25 19:34:42 nifi Exp $
  *
  * -----------------------------------------------------------------
  *
@@ -36,9 +35,9 @@
  *           $Revision: 1.2 $
  */
 
+#include "contiki.h"
 #include "dev/acc-sensor.h"
 #include "dev/sky-sensors.h"
-#include <io.h>
 
 /* Configure ADC12_2 to sample channel 4, 5, 6 and use */
 /* the Vref+ as reference (SREF_1) since it is a stable reference */

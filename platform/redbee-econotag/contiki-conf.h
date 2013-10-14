@@ -51,6 +51,8 @@
 
 #include <stdint.h>
 
+#define PLATFORM_NAME  "Econotag"
+#define PLATFORM_TYPE  MC1322X
 /* mc1322x files */
 #include "contiki-mc1322x-conf.h"
 /* this is from cpu/mc1322x/board */
@@ -62,6 +64,9 @@
 /* FIXME setting this will break the sensor button (and other gpio) */
 /* since leds_arch hits the entire gpio_data */
 #define BLINK_SECONDS 0
+/* Set to 1 to sample an ADC channel every second, 9 second refresh */
+/* Set >1 to sample an ADC channel every tick, 90 msec refresh  */
+#define CLOCK_CONF_SAMPLEADC 1
 
 #define CCIF
 #define CLIF
@@ -76,7 +81,10 @@
 #define SAMP UCON_SAMP_8X
 //#define SAMP UCON_SAMP_16X
 
-#define uart_init uart1_init
+#define CONSOLE_UART UART1
+#define CONSOLE_BAUD 115200
+
+//#define uart_init uart1_init
 #define dbg_putchar(x) uart1_putc(x)
 
 #define USE_FORMATTED_STDIO         1
@@ -189,7 +197,7 @@ typedef unsigned long rtimer_clock_t;
 #define UIP_CONF_IPV6_RPL               1
 
 #define UIP_CONF_DS6_NBR_NBU     30
-#define UIP_CONF_DS6_ROUTE_NBU   30
+#define UIP_CONF_MAX_ROUTES   30
 
 #define UIP_CONF_ND6_SEND_RA		0
 #define UIP_CONF_ND6_REACHABLE_TIME     600000
@@ -227,7 +235,7 @@ typedef unsigned long rtimer_clock_t;
 
 #define UIP_CONF_DHCP_LIGHT
 #define UIP_CONF_LLH_LEN         0
-#define UIP_CONF_RECEIVE_WINDOW  48
+#define UIP_CONF_RECEIVE_WINDOW  300
 #define UIP_CONF_TCP_MSS         48
 #define UIP_CONF_MAX_CONNECTIONS 4
 #define UIP_CONF_MAX_LISTENPORTS 8

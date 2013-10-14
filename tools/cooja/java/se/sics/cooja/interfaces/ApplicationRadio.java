@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: ApplicationRadio.java,v 1.14 2010/08/31 07:35:22 fros4943 Exp $
  */
 
 package se.sics.cooja.interfaces;
@@ -34,6 +33,8 @@ package se.sics.cooja.interfaces;
 import java.awt.BorderLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Observable;
@@ -42,6 +43,7 @@ import java.util.Observer;
 import javax.swing.Box;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
+import javax.swing.JFormattedTextField;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 
@@ -62,7 +64,7 @@ import se.sics.cooja.Simulation;
  *
  * @author Fredrik Osterlind
  */
-public class ApplicationRadio extends Radio implements NoiseSourceRadio {
+public class ApplicationRadio extends Radio implements NoiseSourceRadio, DirectionalAntennaRadio {
   private static Logger logger = Logger.getLogger(ApplicationRadio.class);
 
   private Simulation simulation;
@@ -82,7 +84,7 @@ public class ApplicationRadio extends Radio implements NoiseSourceRadio {
 
   private double signalStrength = -100;
   private int radioChannel = -1;
-  private double outputPower = 0;
+  private double outputPower = 0; /* typical cc2420 values: -25 <-> 0 dBm */
   private int outputPowerIndicator = 100;
 
   private int interfered;
@@ -264,7 +266,7 @@ public class ApplicationRadio extends Radio implements NoiseSourceRadio {
   /**
    * @param p New output power
    */
-  public void setOutputPower(int p) {
+  public void setOutputPower(double p) {
     outputPower = p;
   }
 
@@ -286,31 +288,38 @@ public class ApplicationRadio extends Radio implements NoiseSourceRadio {
     final JLabel statusLabel = new JLabel("");
     final JLabel lastEventLabel = new JLabel("");
     final JLabel channelLabel = new JLabel("");
+    final JLabel powerLabel = new JLabel("Output power (dBm):");
     final JLabel ssLabel = new JLabel("");
     final JButton updateButton = new JButton("Update SS");
 
     JComboBox channelMenu = new JComboBox(new String[] {
-    		"ALL",
-    		"1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
-    		"11", "12", "13", "14", "15", "16", "17", "18", "19", "20",
-    		"21", "22", "23", "24", "25", "26", "27", "28", "29", "30"
+        "ALL",
+        "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
+        "11", "12", "13", "14", "15", "16", "17", "18", "19", "20",
+        "21", "22", "23", "24", "25", "26", "27", "28", "29", "30"
     });
     channelMenu.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				JComboBox m = (JComboBox) e.getSource();
-				String s = (String) m.getSelectedItem();
-				if (s == null || s.equals("ALL")) {
-					setChannel(-1);
-				} else {
-					setChannel(Integer.parseInt(s));
-				}
-			}
-		});
+      public void actionPerformed(ActionEvent e) {
+        JComboBox m = (JComboBox) e.getSource();
+        String s = (String) m.getSelectedItem();
+        if (s == null || s.equals("ALL")) {
+          setChannel(-1);
+        } else {
+          setChannel(Integer.parseInt(s));
+        }
+      }
+    });
     if (getChannel() == -1) {
       channelMenu.setSelectedIndex(0);
     } else {
       channelMenu.setSelectedIndex(getChannel());
     }
+    final JFormattedTextField outputPower = new JFormattedTextField(new Double(getCurrentOutputPower()));
+    outputPower.addPropertyChangeListener("value", new PropertyChangeListener() {
+      public void propertyChange(PropertyChangeEvent evt) {
+        setOutputPower(((Number)outputPower.getValue()).doubleValue());
+      }
+    });
 
     box.add(statusLabel);
     box.add(lastEventLabel);
@@ -318,6 +327,8 @@ public class ApplicationRadio extends Radio implements NoiseSourceRadio {
     box.add(updateButton);
     box.add(channelLabel);
     box.add(channelMenu);
+    box.add(powerLabel);
+    box.add(outputPower);
 
     updateButton.addActionListener(new ActionListener() {
       public void actionPerformed(ActionEvent e) {
@@ -356,7 +367,8 @@ public class ApplicationRadio extends Radio implements NoiseSourceRadio {
   }
 
   public Collection<Element> getConfigXML() {
-  	/* TODO Save channel info? */
+    /* TODO Save channel info? */
+    /* TODO Save output power? */
     return null;
   }
 
@@ -379,30 +391,41 @@ public class ApplicationRadio extends Radio implements NoiseSourceRadio {
     this.setChanged();
     this.notifyObservers();
   }
-  public boolean isReceiverOn() {
+  public boolean isRadioOn() {
     return radioOn;
   }
 
   /* Noise source radio support */
-	public int getNoiseLevel() {
-		return noiseSignal;
-	}
-	public void addNoiseLevelListener(NoiseLevelListener l) {
-		noiseListeners.add(l);
-	}
-	public void removeNoiseLevelListener(NoiseLevelListener l) {
-		noiseListeners.remove(l);
-	}
+  public int getNoiseLevel() {
+    return noiseSignal;
+  }
+  public void addNoiseLevelListener(NoiseLevelListener l) {
+    noiseListeners.add(l);
+  }
+  public void removeNoiseLevelListener(NoiseLevelListener l) {
+    noiseListeners.remove(l);
+  }
 
   /* Noise source radio support (app mote API) */
-	private int noiseSignal = Integer.MIN_VALUE;
-	private ArrayList<NoiseLevelListener> noiseListeners = new ArrayList<NoiseLevelListener>();
-	public void setNoiseLevel(int signal) {
-		this.noiseSignal = signal;
-		for (NoiseLevelListener l: noiseListeners) {
-			l.noiseLevelChanged(this, signal);
-		}
-	}
-  
-  
+  private int noiseSignal = Integer.MIN_VALUE;
+  private ArrayList<NoiseLevelListener> noiseListeners = new ArrayList<NoiseLevelListener>();
+  public void setNoiseLevel(int signal) {
+    this.noiseSignal = signal;
+    for (NoiseLevelListener l: noiseListeners) {
+      l.noiseLevelChanged(this, signal);
+    }
+  }
+
+  public double getDirection() {
+    return 0;
+  }
+  public double getRelativeGain(double radians, double distance) {
+    /* Simple sinus-based gain */
+    return 5.0*Math.sin(5.0*radians)/(0.01*distance);
+  }
+  public void addDirectionChangeListener(DirectionChangeListener l) {
+  }
+  public void removeDirectionChangeListener(DirectionChangeListener l) {
+  }
+
 }

@@ -28,7 +28,6 @@
  *
  * This file is part of the Contiki operating system.
  *
- * $Id: uip-ipchksum.c,v 1.4 2007/04/04 11:53:07 bg- Exp $
  */
 
 /**
@@ -42,18 +41,18 @@
 /*---------------------------------------------------------------------------*/
 #ifdef UIP_ARCH_IPCHKSUM
 #ifdef __IAR_SYSTEMS_ICC__
-u16_t
+uint16_t
 uip_ipchksum(void)
 {
   return 0;
 }
 #else
-u16_t
+uint16_t
 uip_ipchksum(void)
 {
   /* Assumes proper alignement of uip_buf. */
-  u16_t *p = (u16_t *)&uip_buf[UIP_LLH_LEN];
-  register u16_t sum;
+  uint16_t *p = (uint16_t *)&uip_buf[UIP_LLH_LEN];
+  register uint16_t sum;
 
   sum = p[0];
   asmv("add  %[p], %[sum]": [sum] "+r" (sum): [p] "m" (p[1]));

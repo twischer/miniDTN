@@ -1,0 +1,23 @@
+tests:
+### FAT test
+  - name: fat-default
+    timeout: 120
+    devices:
+      - name: receiver
+        programdir: examples/inga_tests/fat-tests
+        program: fat-tests
+        instrument: []
+        debug: []
+        cflags: "-fno-inline"
+        graph_options: ""
+### FAT coop test
+  - name: fat-coop
+    timeout: 120
+    devices:
+      - name: receiver
+        programdir: examples/inga_tests/fat-tests
+        program: fat-coop-tests
+        instrument: []
+        debug: []
+        cflags: "-fno-inline"
+        graph_options: ""

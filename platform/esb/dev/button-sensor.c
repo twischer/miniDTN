@@ -28,12 +28,11 @@
  *
  * This file is part of the Contiki operating system.
  *
- * @(#)$Id: button-sensor.c,v 1.5 2010/02/08 00:00:45 nifi Exp $
  */
 
 #include "dev/button-sensor.h"
 #include "dev/hwconf.h"
-#include <signal.h>
+#include "isr_compat.h"
 
 const struct sensors_sensor button_sensor;
 
@@ -43,8 +42,7 @@ HWCONF_PIN(BUTTON, 2, 7);
 HWCONF_IRQ(BUTTON, 2, 7);
 
 /*---------------------------------------------------------------------------*/
-interrupt(PORT2_VECTOR)
-     irq_p2(void)
+ISR(PORT2, irq_p2)
 {
   ENERGEST_ON(ENERGEST_TYPE_IRQ);
 

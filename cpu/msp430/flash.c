@@ -29,22 +29,12 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
  * OF SUCH DAMAGE.
  *
- * $Id: flash.c,v 1.3 2010/11/15 21:52:54 adamdunkels Exp $
  *
  * Author: Adam Dunkels <adam@sics.se>
  *
  */
 
 #include "contiki.h"
-#ifdef __IAR_SYSTEMS_ICC__
-#include <msp430.h>
-#else
-#include <stdlib.h>
-#include <io.h>
-#include <signal.h>
-#endif
-
-
 #include "dev/flash.h"
 #include "dev/watchdog.h"
 

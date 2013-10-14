@@ -24,7 +24,6 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $Id: AbstractWakeupMote.java,v 1.3 2010/10/12 10:58:31 fros4943 Exp $
  */
 
 package se.sics.cooja.motes;
@@ -98,6 +97,16 @@ public abstract class AbstractWakeupMote implements Mote {
   }
 
   /**
+   * @return Next wakeup time, or -1 if not scheduled
+   */
+  public long getNextWakeupTime() {
+	  if (!executeMoteEvent.isScheduled()) {
+		  return -1;
+	  }
+	  return executeMoteEvent.getTime();
+  }
+  
+  /**
    * Execute mote software at given time, or earlier.
    * 
    * If a wakeup is already scheduled earlier than given argument,
@@ -126,6 +135,7 @@ public abstract class AbstractWakeupMote implements Mote {
       /*logger.info("Rescheduled wakeup from " + executeMoteEvent.getTime() + " to " + time);*/
       executeMoteEvent.remove();
     }
+
     simulation.scheduleEvent(executeMoteEvent, time);
     return true;
   }

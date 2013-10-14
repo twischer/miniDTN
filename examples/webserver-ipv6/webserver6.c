@@ -28,11 +28,63 @@
  *
  * This file is part of the Contiki operating system.
  *
- * $Id: webserver6.c,v 1.1 2008/10/14 10:01:53 julienabeille Exp $
  */
 
 #include "webserver-nogui.h"
 
+#include "httpd-fs.h"
+
+#if HTTPD_FS_FAT
+#include "fat/diskio.h"
+#include "fat/cfs-fat.h"
+PROCESS(fat_mount_process, "FAT mount process");
+static struct etimer timer;
+#endif
+
 /*---------------------------------------------------------------------------*/
-AUTOSTART_PROCESSES(&webserver_nogui_process);
+AUTOSTART_PROCESSES(&webserver_nogui_process, &fat_mount_process);
 /*---------------------------------------------------------------------------*/
+
+
+#if HTTPD_FS_FAT
+PROCESS_THREAD(fat_mount_process, ev, data)
+{
+  struct diskio_device_info *info = 0;
+  int i;
+  int initialized = 0;
+
+  PROCESS_BEGIN();
+
+  etimer_set(&timer, CLOCK_SECOND * 2);
+  PROCESS_WAIT_UNTIL(etimer_expired(&timer));
+
+  while (!initialized) {
+    printf("Detecting devices and partitions...");
+    while ((i = diskio_detect_devices()) != DISKIO_SUCCESS) {
+      watchdog_periodic();
+    }
+    printf("done\n\n");
+
+    info = diskio_devices();
+    for (i = 0; i < DISKIO_MAX_DEVICES; i++) {
+
+      if ((info + i)->type == (DISKIO_DEVICE_TYPE_SD_CARD | DISKIO_DEVICE_TYPE_PARTITION)) {
+        info += i;
+        initialized = 1;
+        break;
+      }
+    }
+  }
+
+  printf("Mounting device...");
+  if (cfs_fat_mount_device(info) == 0) {
+    printf("done\n\n");
+  } else {
+    printf("failed\n\n");
+  }
+
+  diskio_set_default_device(info);
+  
+  PROCESS_END();
+}
+#endif

@@ -26,10 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * This file is part of the Contiki operating system.
- *
- * $Id: CoffeeManager.java,v 1.6 2009/08/13 12:15:35 nvt-se Exp $
- *
  * @author Nicolas Tsiftes
  *
  */
@@ -39,26 +35,23 @@ package se.sics.coffee;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import se.sics.coffee.CoffeeFS.CoffeeException;
 import se.sics.coffee.CoffeeFS.CoffeeFileException;
 
 public class CoffeeManager {
-	private static CoffeeFS coffeeFS;
 	public enum Command { INSERT, EXTRACT, REMOVE, LIST, STATS };
 
 	public static void main(String args[]) {
 		String platform = "sky";
-		String usage = "Usage: java -jar coffee.jar ";
 		Command command = Command.STATS;
 		String filename = "";
 		String fsImage = "";
-
-		usage += "[-p <hardware platform>] ";
-		usage += "[-i|e|r <file>] ";
-		usage += "[-l|s] ";
-		usage += "<file system image>";
+		String usage = "Usage: java -jar coffee.jar " +
+		        "[-p <hardware platform>] " +
+		        "[-i|e|r <file>] " +
+		        "[-l|s] " +
+		        "<file system image>";
 
 		if (args.length < 2) {
 			System.err.println(usage);
@@ -103,7 +96,7 @@ public class CoffeeManager {
 
 		try {
 			CoffeeConfiguration conf = new CoffeeConfiguration(platform + ".properties");
-			coffeeFS = new CoffeeFS(new CoffeeImageFile(fsImage, conf));
+			CoffeeFS coffeeFS = new CoffeeFS(new CoffeeImageFile(fsImage, conf));
 			switch (command) {
 			case INSERT:
 				if (coffeeFS.getFiles().get(filename) != null) {
@@ -161,8 +154,7 @@ public class CoffeeManager {
 			Iterator<Map.Entry<String, CoffeeFile>> iterator =
 				coffeeFS.getFiles().entrySet().iterator();
 			while (iterator.hasNext()) {
-				Map.Entry<String, CoffeeFile> pair = (Map.Entry<String, CoffeeFile>) iterator.next();
-				String key = pair.getKey();
+				Map.Entry<String, CoffeeFile> pair = iterator.next();
 				CoffeeFile file = pair.getValue();
 				bytesWritten += file.getLength();
 				bytesReserved += file.getHeader().getReservedSize();
@@ -188,8 +180,7 @@ public class CoffeeManager {
 		try {
 			Iterator<Map.Entry<String, CoffeeFile>> iterator = files.entrySet().iterator();
 			while (iterator.hasNext()) {
-				Map.Entry<String, CoffeeFile> pair = (Map.Entry<String, CoffeeFile>) iterator.next();
-				String key = pair.getKey();
+				Map.Entry<String, CoffeeFile> pair = iterator.next();
 				CoffeeFile file = pair.getValue();
 				System.out.println(file.getName() + " " + file.getLength());
 			}

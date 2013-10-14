@@ -28,7 +28,6 @@
  *
  * This file is part of the Contiki operating system.
  *
- * $Id: neighbor-info.h,v 1.4 2010/10/22 13:50:13 nvt-se Exp $
  */
 /**
  * \file
@@ -40,6 +39,7 @@
 #ifndef NEIGHBOR_INFO_H
 #define NEIGHBOR_INFO_H
 
+#include "net/neighbor-attr.h"
 #include "net/rime.h"
 
 /* ETX_DIVISOR is the value that a fix-point representation of the ETX 
@@ -53,6 +53,9 @@
 
 typedef void (*neighbor_info_subscriber_t)(const rimeaddr_t *, int known, int etx);
 typedef uint8_t link_metric_t;
+
+NEIGHBOR_ATTRIBUTE_DECLARE(attr_etx);
+NEIGHBOR_ATTRIBUTE_DECLARE(attr_timestamp);
 
 /**
  * Notify the neighbor information module about the status of

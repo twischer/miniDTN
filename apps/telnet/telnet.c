@@ -28,7 +28,6 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: telnet.c,v 1.3 2010/10/19 18:29:03 adamdunkels Exp $
  *
  */
 
@@ -44,7 +43,7 @@
 #define FLAG_ABORT 2
 /*-----------------------------------------------------------------------------------*/
 unsigned char
-telnet_send(struct telnet_state *s, char *text, u16_t len)
+telnet_send(struct telnet_state *s, char *text, uint16_t len)
 {
   if(s->text != NULL) {
     return 1;
@@ -104,7 +103,7 @@ senddata(struct telnet_state *s)
 }
 /*-----------------------------------------------------------------------------------*/
 struct telnet_state *
-telnet_connect(struct telnet_state *s, uip_ipaddr_t *addr, u16_t port)
+telnet_connect(struct telnet_state *s, uip_ipaddr_t *addr, uint16_t port)
 {
   struct uip_conn *conn;
   

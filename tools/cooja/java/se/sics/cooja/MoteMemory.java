@@ -26,10 +26,10 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: MoteMemory.java,v 1.2 2007/01/10 14:57:42 fros4943 Exp $
  */
 
 package se.sics.cooja;
+
 
 /**
  * This interface represents a mote memory.
@@ -44,7 +44,7 @@ package se.sics.cooja;
  * @see se.sics.cooja.SectionMoteMemory
  * @author Fredrik Osterlind
  */
-public interface MoteMemory {
+public interface MoteMemory extends AddressMemory {
 
   /**
    * Clears the entire memory.
@@ -77,4 +77,14 @@ public interface MoteMemory {
    */
   public int getTotalSize();
 
+  public abstract int parseInt(byte[] memorySegment);
+
+  public enum MemoryEventType { READ, WRITE };
+
+  public interface MemoryMonitor {
+    public void memoryChanged(MoteMemory memory, MemoryEventType type, int address);
+  }
+
+  public boolean addMemoryMonitor(int address, int size, MemoryMonitor mm);
+  public void removeMemoryMonitor(int address, int size, MemoryMonitor mm);
 }

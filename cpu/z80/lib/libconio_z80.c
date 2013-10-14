@@ -27,7 +27,6 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $Id: libconio_z80.c,v 1.1 2007/09/19 12:48:26 matsutsuka Exp $
  *
  */
  /*
@@ -47,7 +46,7 @@
 /*---------------------------------------------------------------------------*/
 static void scroll() {
   unsigned char y;
-  u16_t src, dst;
+  uint16_t src, dst;
   for (y = 0; y < LIBCONIO_CONF_SCREEN_HEIGHT - 1; y++) {
     dst = LIBCONIO_VRAM_OFFSET(0, y);
     src = LIBCONIO_VRAM_OFFSET(0, y + 1);
@@ -85,7 +84,7 @@ void ctk_arch_draw_char(char c,
 			unsigned char ypos,
 			unsigned char reversed,
 			unsigned char color) {
-  u16_t off;
+  uint16_t off;
   adjust(&xpos, &ypos);
 
   off = LIBCONIO_VRAM_OFFSET(xpos, ypos);

@@ -26,16 +26,15 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: ESBMote.java,v 1.11 2009/10/27 10:02:48 fros4943 Exp $
  */
 
 package se.sics.cooja.mspmote;
 
 import java.io.File;
+
 import org.apache.log4j.Logger;
-import se.sics.cooja.MoteInterfaceHandler;
+
 import se.sics.cooja.Simulation;
-import se.sics.cooja.interfaces.*;
 import se.sics.mspsim.platform.esb.ESBNode;
 
 /**
@@ -45,10 +44,6 @@ public class ESBMote extends MspMote {
   private static Logger logger = Logger.getLogger(ESBMote.class);
 
   public ESBNode esbNode = null;
-
-  public ESBMote() {
-    super();
-  }
 
   public ESBMote(MspMoteType moteType, Simulation sim) {
     super(moteType, sim);

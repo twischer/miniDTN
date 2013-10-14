@@ -26,10 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * This file is part of the Contiki operating system.
- *
- * $Id: CoffeeFS.java,v 1.5 2009/08/11 17:03:59 fros4943 Exp $
- *
  * @author Nicolas Tsiftes
  *
  */
@@ -41,8 +37,8 @@ import java.util.Map;
 import java.util.TreeMap;
 
 public class CoffeeFS {
-	private CoffeeImage image;
-	private CoffeeConfiguration conf;
+	private final CoffeeImage image;
+	private final CoffeeConfiguration conf;
 	private int currentPage;
 	private Map<String, CoffeeFile> files;
 	private static final int INVALID_PAGE = -1;
@@ -64,7 +60,7 @@ public class CoffeeFS {
 	}
 
 	private int pageCount(long size) {
-		int headerSize = conf.NAME_LENGTH + conf.pageTypeSize * 2 + 6;
+		int headerSize = conf.nameLength + conf.pageTypeSize * 2 + 6;
 		return (int)(size + headerSize + conf.pageSize - 1) / conf.pageSize;
 	}
 
@@ -100,8 +96,7 @@ public class CoffeeFS {
 	}
 
 	public CoffeeHeader readHeader(int page) throws IOException {
-		byte[] bytes = new byte[conf.NAME_LENGTH + conf.pageTypeSize * 2 + 6];
-		int index = 0;
+		byte[] bytes = new byte[conf.nameLength + conf.pageTypeSize * 2 + 6];
 
 		image.read(bytes, bytes.length, page * conf.pageSize);
 		CoffeeHeader header = new CoffeeHeader(this, page, bytes);
@@ -134,27 +129,24 @@ public class CoffeeFS {
         }
         
 	public CoffeeFile insertFile(File file) throws IOException {
-		CoffeeFile coffeeFile;
-		try {
-			FileInputStream input = new FileInputStream(file);
-			int allocatePages = pageCount(file.length());
-			int start = findFreeExtent(allocatePages);
+	    CoffeeFile coffeeFile;
+	    FileInputStream input = new FileInputStream(file);
+	    int allocatePages = pageCount(file.length());
+	    int start = findFreeExtent(allocatePages);
 
-			if (start == INVALID_PAGE) {
-				return null;
-			}
-			CoffeeHeader header = new CoffeeHeader(this, start);
-			header.setName(file.getName());
-			header.setReservedSize(allocatePages);
-			header.allocate();
-			coffeeFile = new CoffeeFile(this, header);
-			writeHeader(header);
-			coffeeFile.insertContents(input);
-			input.close();
-			return coffeeFile;
-		} catch (FileNotFoundException e) {
-		}
-		return null;
+	    if (start == INVALID_PAGE) {
+	        input.close();
+	        return null;
+	    }
+	    CoffeeHeader header = new CoffeeHeader(this, start);
+	    header.setName(file.getName());
+	    header.setReservedSize(allocatePages);
+	    header.allocate();
+	    coffeeFile = new CoffeeFile(this, header);
+	    writeHeader(header);
+	    coffeeFile.insertContents(input);
+	    input.close();
+	    return coffeeFile;
 	}
 
 	public void removeFile(String filename)
@@ -184,16 +176,21 @@ public class CoffeeFS {
 		return true;
 	}
 
-	static class CoffeeException extends RuntimeException {
-	        public CoffeeException(String message) {
-	                super("Coffee error: " + message);
-	        }
+	public static class CoffeeException extends RuntimeException {
+		private static final long serialVersionUID = 1146474084441011154L;
+
+		public CoffeeException(String message) {
+			super("Coffee error: " + message);
+		}
 	}
 
-	static class CoffeeFileException extends RuntimeException {
-	        public CoffeeFileException(String message) {
-	                super("Coffee file error: " + message);
-	        }
+	public static class CoffeeFileException extends RuntimeException {
+
+		private static final long serialVersionUID = -2954553141887245203L;
+
+		public CoffeeFileException(String message) {
+			super("Coffee file error: " + message);
+		}
 	}
 
 

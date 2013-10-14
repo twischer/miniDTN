@@ -28,7 +28,6 @@
  *
  * This file is part of the Contiki operating system.
  *
- * $Id: z1-phidgets.c,v 1.3 2010/11/05 10:31:57 joxe Exp $
  *
  * -----------------------------------------------------------------
  *
@@ -39,13 +38,6 @@
  */
 
 #include "contiki.h"
-#ifdef __IAR_SYSTEMS_ICC__
-#include <msp430.h>
-#else
-#include <io.h>
-#include <signal.h>
-#endif
-
 #include "lib/sensors.h"
 #include "dev/z1-phidgets.h"
 

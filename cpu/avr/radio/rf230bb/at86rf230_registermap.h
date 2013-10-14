@@ -1,7 +1,6 @@
 /**
  * @file
  * @brief This file contains the register definitions for the AT86RF230.
- * $Id: at86rf230_registermap.h,v 1.2 2010/03/02 16:29:59 dak664 Exp $
  */
 /*   Copyright (c) 2008, Swedish Institute of Computer Science
   All rights reserved. 
@@ -69,7 +68,7 @@
 /** Constant PLL_ON for sub-register @ref SR_TRX_STATUS */
 #define PLL_ON                   (9)
 /** Constant SLEEP for sub-register @ref SR_TRX_STATUS */
-#define SLEEP                    (15)
+// #define SLEEP                    (15)
 /** Constant BUSY_RX_AACK for sub-register @ref SR_TRX_STATUS */
 #define BUSY_RX_AACK             (17)
 /** Constant BUSY_TX_ARET for sub-register @ref SR_TRX_STATUS */
@@ -345,7 +344,9 @@
 #define RG_CSMA_BE                      0x2f
 /** Access parameters for sub-register MIN_BE in register @ref RG_CSMA_SEED_1 */
 #define SR_MIN_BE                    0x2e, 0xc0, 6
-#define SR_reserved_2e_2             0x2e, 0x30, 4
+/** Access parameters for AACK_SET_PD bit in register @ref RG_CSMA_SEED_1 */
+#define SR_AACK_SET_PD               0x2e, 0x20, 5
+//#define SR_reserved_2e_2             0x2e, 0x30, 4
 /** Access parameters for sub-register I_AM_COORD in register @ref RG_CSMA_SEED_1 */
 #define SR_I_AM_COORD                0x2e, 0x08, 3
 /** Access parameters for sub-register CSMA_SEED_1 in register @ref RG_CSMA_SEED_1 */

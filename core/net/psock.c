@@ -30,7 +30,6 @@
  *
  * Author: Adam Dunkels <adam@sics.se>
  *
- * $Id: psock.c,v 1.12 2010/06/15 14:19:22 nifi Exp $
  */
 
 #include <string.h>
@@ -70,15 +69,15 @@
 /*---------------------------------------------------------------------------*/
 static void
 buf_setup(struct psock_buf *buf,
-	  u8_t *bufptr, u16_t bufsize)
+	  uint8_t *bufptr, uint16_t bufsize)
 {
   buf->ptr = bufptr;
   buf->left = bufsize;
 }
 /*---------------------------------------------------------------------------*/
-static u8_t
-buf_bufdata(struct psock_buf *buf, u16_t len,
-	    u8_t **dataptr, u16_t *datalen)
+static uint8_t
+buf_bufdata(struct psock_buf *buf, uint16_t len,
+	    uint8_t **dataptr, uint16_t *datalen)
 {
   if(*datalen < buf->left) {
     memcpy(buf->ptr, *dataptr, *datalen);
@@ -104,11 +103,11 @@ buf_bufdata(struct psock_buf *buf, u16_t len,
   }
 }
 /*---------------------------------------------------------------------------*/
-static u8_t
-buf_bufto(CC_REGISTER_ARG struct psock_buf *buf, u8_t endmarker,
-	  CC_REGISTER_ARG u8_t **dataptr, CC_REGISTER_ARG u16_t *datalen)
+static uint8_t
+buf_bufto(CC_REGISTER_ARG struct psock_buf *buf, uint8_t endmarker,
+	  CC_REGISTER_ARG uint8_t **dataptr, CC_REGISTER_ARG uint16_t *datalen)
 {
-  u8_t c;
+  uint8_t c;
   while(buf->left > 0 && *datalen > 0) {
     c = *buf->ptr = **dataptr;
     ++*dataptr;
@@ -125,16 +124,6 @@ buf_bufto(CC_REGISTER_ARG struct psock_buf *buf, u8_t endmarker,
     return BUF_NOT_FOUND;
   }
 
-  while(*datalen > 0) {
-    c = **dataptr;
-    --*datalen;
-    ++*dataptr;
-    
-    if(c == endmarker) {
-      return BUF_FOUND | BUF_FULL;
-    }
-  }
-  
   return BUF_FULL;
 }
 /*---------------------------------------------------------------------------*/
@@ -233,7 +222,7 @@ PT_THREAD(psock_generator_send(CC_REGISTER_ARG struct psock *s,
   PT_END(&s->psockpt);
 }
 /*---------------------------------------------------------------------------*/
-u16_t
+uint16_t
 psock_datalen(struct psock *psock)
 {
   return psock->bufsize - psock->buf.left;
@@ -272,12 +261,12 @@ PT_THREAD(psock_readto(CC_REGISTER_ARG struct psock *psock, unsigned char c))
     if(psock->readlen == 0) {
       PT_WAIT_UNTIL(&psock->psockpt, psock_newdata(psock));
       psock->state = STATE_READ;
-      psock->readptr = (u8_t *)uip_appdata;
+      psock->readptr = (uint8_t *)uip_appdata;
       psock->readlen = uip_datalen();
     }
-  } while((buf_bufto(&psock->buf, c,
-		     &psock->readptr,
-		     &psock->readlen) & BUF_FOUND) == 0);
+  } while(buf_bufto(&psock->buf, c,
+		    &psock->readptr,
+		    &psock->readlen) == BUF_NOT_FOUND);
   
   if(psock_datalen(psock) == 0) {
     psock->state = STATE_NONE;
@@ -300,7 +289,7 @@ PT_THREAD(psock_readbuf_len(CC_REGISTER_ARG struct psock *psock, uint16_t len))
     if(psock->readlen == 0) {
       PT_WAIT_UNTIL(&psock->psockpt, psock_newdata(psock));
       psock->state = STATE_READ;
-      psock->readptr = (u8_t *)uip_appdata;
+      psock->readptr = (uint8_t *)uip_appdata;
       psock->readlen = uip_datalen();
     }
   } while(buf_bufdata(&psock->buf, psock->bufsize,

@@ -28,7 +28,6 @@
  *
  * This file is part of the Contiki operating system.
  *
- * $Id: shell-rime-ping.c,v 1.9 2009/03/31 17:39:36 adamdunkels Exp $
  */
 
 /**
@@ -123,7 +122,7 @@ sent_mesh(struct mesh_conn *c)
 {
 }
 static void
-recv_mesh(struct mesh_conn *c, const rimeaddr_t *from, u8_t hops)
+recv_mesh(struct mesh_conn *c, const rimeaddr_t *from, uint8_t hops)
 {
   struct rime_ping_msg ping;
   char buf[64];

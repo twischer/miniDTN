@@ -28,17 +28,9 @@
  *
  * This file is part of the Contiki operating system.
  *
- * @(#)$Id: light-sensor.c,v 1.7 2010/08/25 19:30:53 nifi Exp $
  */
 
 #include "contiki.h"
-#ifdef __IAR_SYSTEMS_ICC__
-#include <msp430.h>
-#else
-#include <io.h>
-#include <signal.h>
-#endif
-
 #include "lib/sensors.h"
 #include "dev/sky-sensors.h"
 #include "dev/light-sensor.h"

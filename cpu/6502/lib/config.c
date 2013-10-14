@@ -30,7 +30,6 @@
  * 
  * Author: Oliver Schmidt <ol.sc@web.de>
  *
- * $Id: config.c,v 1.7 2010/09/29 21:48:54 oliverschmidt Exp $
  */
 
 #include <stdlib.h>
@@ -48,7 +47,7 @@ static char * CC_FASTCALL
 ipaddrtoa(uip_ipaddr_t *ipaddr, char *buffer)
 {
   char *ptr = buffer;
-  u8_t i;
+  uint8_t i;
 
   for(i = 0; i < 4; ++i) {
     *ptr = '.';
@@ -79,7 +78,7 @@ config_read(char *filename)
   }
 
   if(cfs_read(file, &config, sizeof(config)) < sizeof(config)
-					     - sizeof(config.ethernetcfg.name)) {
+                                             - sizeof(config.ethernetcfg.name)) {
     log_message(filename, ": No config file");
     error_exit();
   }

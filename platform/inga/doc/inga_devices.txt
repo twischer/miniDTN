@@ -1,0 +1,22 @@
+/**
+ * \addtogroup inga
+ * @{
+ */
+
+/**
+ * \defgroup inga_device_driver Device Drivers
+ *
+ * \section about About
+ * The interfaces are the second layer above the hardware and aim to separate
+ * the discrete hardware from the user application layer.
+ *
+ * \section usage Usage
+ *
+ * The interfaces are compatible with contiki os and can be directly used
+ * in a process environment.
+ * 
+ * @{
+ */
+
+/** @} */ // inga_device_driver
+/** @} */ // inga

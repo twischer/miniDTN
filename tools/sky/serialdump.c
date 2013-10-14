@@ -173,6 +173,8 @@ int main(int argc, char **argv)
 #else
   fd = open(device, O_RDWR | O_NOCTTY | O_NDELAY | O_DIRECT | O_SYNC );
 #endif
+  fd = open(device, O_RDWR | O_NOCTTY | O_NDELAY | O_SYNC );
+#endif
   if (fd <0) {
     fprintf(stderr, "\n");
     perror(device);

@@ -26,17 +26,21 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: WatchpointMote.java,v 1.1 2009/06/11 10:02:11 fros4943 Exp $
  */
 
 package se.sics.cooja;
 
-import java.awt.event.ActionListener;
+import java.io.File;
 
 /**
  * @author Fredrik Osterlind
  */
-public interface WatchpointMote {
+public interface WatchpointMote extends Mote {
+
+  public interface WatchpointListener {
+    public void watchpointTriggered(Watchpoint watchpoint);
+    public void watchpointsChanged();
+  }
 
   /**
    * Adds a breakpoint listener.
@@ -44,28 +48,27 @@ public interface WatchpointMote {
    *
    * @param listener Action listener
    */
-  public void addWatchpointListener(ActionListener listener);
+  public void addWatchpointListener(WatchpointListener listener);
 
   /**
    * Removes previously registered listener.
-   * 
+   *
    * @param listener Listeners
    */
-  public void removeWatchpointListener(ActionListener listener);
+  public void removeWatchpointListener(WatchpointListener listener);
 
   /**
    * @return All registered listeners
    */
-  public ActionListener[] getWatchpointListeners();
+  public WatchpointListener[] getWatchpointListeners();
 
-  /**
-   * @return Last triggered watchpoint
-   */
-  public Watchpoint getLastWatchpoint();
+  public Watchpoint addBreakpoint(File codeFile, int lineNr, int address);
+  public void removeBreakpoint(Watchpoint watchpoint);
+  public Watchpoint[] getBreakpoints();
 
-  /**
-   * @return Mote
-   */
-  public Mote getMote();
+  public boolean breakpointExists(int address);
+  public boolean breakpointExists(File file, int lineNr);
+
+  public int getExecutableAddressOf(File file, int lineNr);
 
 }

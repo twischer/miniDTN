@@ -30,101 +30,178 @@
  * 
  */
 
+/**
+ * \file webserver static fake file system routines.
+ *
+ * \author Enrico Joerns <e.joerns@tu-bs.de>
+ */
+
 #include "contiki-net.h"
 #include "httpd.h"
 #include "httpd-fs.h"
 #include "httpd-fsdata.h"
 
-#include <string.h> /* for memcpy */
+#include <string.h>
+#include <limits.h> /* for memcpy */
 
 /* httpd-fsdata.c contains the web content.
  * It is generated using the PERL script /tools/makefsdata 
  */
 #include "httpd-fsdata.c"
 
-#if WEBSERVER_CONF_FILESTATS==1
-u16_t httpd_filecount[HTTPD_FS_NUMFILES];
+#define DEBUG 1
+#if DEBUG
+#define PRINTD PRINTA
+#else
+#define PRINTD(...)
 #endif
-/*-----------------------------------------------------------------------------------*/
+
+/* Here we hold our 'files' */
+struct httpd_fs_file_desc files_desc[HTTPD_FS_NUMFILES] = {{0}};
+
+#if WEBSERVER_CONF_FILESTATS==1
+uint16_t httpd_filecount[HTTPD_FS_NUMFILES];
+#endif
+
+/*----------------------------------------------------------------------------*/
+static int get_free_fd() {
+  int idx;
+  for (idx = 0; idx < HTTPD_FS_NUMFILES; idx++) {
+    if (files_desc[idx].file == NULL) {
+      return idx;
+    }
+  }
+  return INT_MAX;
+}
+/*----------------------------------------------------------------------------*/
 void *
 httpd_fs_get_root()
 {
-  return (void *)HTTPD_FS_ROOT;
+  return (void *) HTTPD_FS_ROOT;
 }
-/*-----------------------------------------------------------------------------------*/
-u16_t
+/*----------------------------------------------------------------------------*/
+uint16_t
 httpd_fs_get_size()
 {
   return HTTPD_FS_SIZE;
 }
-/*-----------------------------------------------------------------------------------*/
-uint16_t
-httpd_fs_open(const char *name, struct httpd_fs_file *file)
+/*----------------------------------------------------------------------------*/
+int
+httpd_fs_open(const char *name, int mode)
 {
 #if WEBSERVER_CONF_FILESTATS
-  u16_t i = 0;
+  uint16_t i = 0;
 #endif
-  struct httpd_fsdata_file_noconst *f,fram;
+  static struct httpd_fsdata_file_noconst *f, fram;
 
-  for(f = (struct httpd_fsdata_file_noconst *)HTTPD_FS_ROOT;
-      f != NULL;
-      f = (struct httpd_fsdata_file_noconst *)fram.next) {
+  int fd = get_free_fd();
+
+  /* Iterate over linked list of files and search for filename. */
+  for (f = (struct httpd_fsdata_file_noconst *) HTTPD_FS_ROOT;
+          f != NULL;
+          f = (struct httpd_fsdata_file_noconst *) fram.next) {
 
     /*Get the linked list entry into ram from wherever it is */
-    httpd_memcpy(&fram,f,sizeof(fram));
+    httpd_memcpy(&fram, f, sizeof (fram));
 
     /*Compare name passed in RAM with name in whatever flash the file is in */
-	/*makefsdata no longer adds an extra zero byte at the end of the file */
-    if(httpd_fs_strcmp((char *)name, fram.name) == 0) {
-      if (file) {
-        file->data = fram.data;
- //     file->len  = fram.len-1;
-		file->len  = fram.len;
-#if WEBSERVER_CONF_FILESTATS==2         //increment count in linked list field if it is in RAM
-        f->count++;
-      }
-      return f->count;
-    }
-    ++i
-#elif WEBSERVER_CONF_FILESTATS==1       //increment count in RAM array when linked list is in flash
-        ++httpd_filecount[i];
-      }
-      return httpd_filecount[i];
-    }
-    ++i;
-#else                              //no file statistics
-      }
-      return 1;
-    }
+    /*makefsdata no longer adds an extra zero byte at the end of the file */
+    if (httpd_fs_strcmp((char *) name, fram.name) == 0) {
+      files_desc[fd].file = &fram;
+      files_desc[fd].offset = 0;
+#if WEBSERVER_CONF_FILESTATS
+      // TODO :)
 #endif /* WEBSERVER_CONF_FILESTATS */
+      return fd;
+    }
   }
-  return 0;
+  PRINTD("httpd-fs.c: Failed opening %s\n", name);
+  return -1;
 }
-/*-----------------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
+void
+httpd_fs_close(int fd)
+{
+  files_desc[fd].file = NULL;
+}
+/*----------------------------------------------------------------------------*/
+int
+httpd_fs_read(int fd, void* buf, unsigned int len)
+{
+  struct httpd_fs_file_desc *fdp;
+  struct httpd_fsdata_file *file;
+
+  fdp = &files_desc[fd];
+  file = fdp->file;
+  
+  /* read only available data. */
+  if (fdp->offset + len > fdp->file->len) {
+    len = fdp->file->len - fdp->offset;
+  }
+
+  httpd_fs_cpy(buf, fdp->file->data + fdp->offset, len);
+  fdp->offset += len;
+
+  return len;
+}
+/*----------------------------------------------------------------------------*/
+/* Seek to a specified position in an open file. */
+cfs_offset_t
+httpd_fs_seek(int fd, cfs_offset_t offset, int whence)
+{
+  struct httpd_fs_file_desc *fdp;
+  struct httpd_fs_file *file;
+  cfs_offset_t new_offset;
+
+  fdp = &files_desc[fd];
+  file = fdp->file;
+  
+  printf("httpd_fs_seek(%d, %d, %d)\n", fd, offset, whence);
+  
+  switch (whence) {
+    case HTTPD_SEEK_SET:
+      new_offset = offset;
+      break;
+    case HTTPD_SEEK_CUR:
+      new_offset = fdp->offset + offset;
+      break;
+    case HTTPD_SEEK_END:
+      new_offset = fdp->file->len + offset;
+      break;
+    default:
+      return (cfs_offset_t)-1;
+      break;
+  }
+  
+  printf("seek offset: %d\n", new_offset);
+
+  return fdp->offset = new_offset;  
+}
+/*----------------------------------------------------------------------------*/
 void
 httpd_fs_init(void)
 {
 #if WEBSERVER_CONF_FILESTATS==1
-  u16_t i;
-  for(i = 0; i < HTTPD_FS_NUMFILES; i++) {
+  uint16_t i;
+  for (i = 0; i < HTTPD_FS_NUMFILES; i++) {
     httpd_filecount[i] = 0;
   }
 #endif
 }
-/*-----------------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 #if WEBSERVER_CONF_FILESTATS && 0
-u16_t
+uint16_t
 httpd_fs_count(char *name)
 {
   struct httpd_fsdata_file_noconst *f;
-  u16_t i;
+  uint16_t i;
 
   i = 0;
-  for(f = (struct httpd_fsdata_file_noconst *)HTTPD_FS_ROOT;
-      f != NULL;
-      f = (struct httpd_fsdata_file_noconst *)f->next) {
+  for (f = (struct httpd_fsdata_file_noconst *) HTTPD_FS_ROOT;
+          f != NULL;
+          f = (struct httpd_fsdata_file_noconst *) f->next) {
 
-    if(httpd_fs_strcmp(name, f->name) == 0) {
+    if (httpd_fs_strcmp(name, f->name) == 0) {
       return httpd_filecount[i];
     }
     ++i;
@@ -132,4 +209,4 @@ httpd_fs_count(char *name)
   return 0;
 }
 #endif
-/*-----------------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/

@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * @(#)$Id: xmem.c,v 1.13 2011/01/18 14:03:55 nvt-se Exp $
  */
 
 /**
@@ -43,14 +42,6 @@
 #include "contiki.h"
 #include <stdio.h>
 #include <string.h>
-
-#ifdef __IAR_SYSTEMS_ICC__
-#include <msp430.h>
-#else
-#include <io.h>
-#include <signal.h>
-#endif
-
 
 #include "dev/spi.h"
 #include "dev/xmem.h"

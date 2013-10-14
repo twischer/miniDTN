@@ -28,7 +28,6 @@
  *
  * This file is part of the Contiki operating system.
  *
- * @(#)$Id: radio-uip-uaodv.h,v 1.1 2007/05/19 14:25:43 fros4943 Exp $
  */
 
 #ifndef __RADIO_UIP_UAODV_H__
@@ -40,7 +39,7 @@
 void
 radio_uip_uaodv_init(const struct radio_driver *d);
 
-u8_t
+uint8_t
 radio_uip_uaodv_send(void);
 
 #endif /* __RADIO_UIP_UAODV_H__ */

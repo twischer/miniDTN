@@ -31,7 +31,6 @@
  *
  * This file is part of the Contiki operating system.
  *
- * $Id: servreg-hack.c,v 1.3 2010/10/19 18:29:03 adamdunkels Exp $
  */
 
 /**
@@ -330,7 +329,7 @@ send_udp_packet(struct uip_udp_conn *conn)
 }
 /*---------------------------------------------------------------------------*/
 static void
-parse_incoming_packet(const u8_t *buf, int len)
+parse_incoming_packet(const uint8_t *buf, int len)
 {
   int numregs;
   int flags;

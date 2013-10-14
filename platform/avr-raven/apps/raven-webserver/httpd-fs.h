@@ -30,7 +30,6 @@
  * 
  * Author: Adam Dunkels <adam@sics.se>
  *
- * $Id: httpd-fs.h,v 1.3 2009/07/23 16:16:07 dak664 Exp $
  */
 #ifndef __HTTPD_FS_H__
 #define __HTTPD_FS_H__
@@ -41,7 +40,7 @@
 #define HTTPD_FS_STATISTICS 2     //Puts count in RAM array
 
 #if HTTPD_FS_STATISTICS==2
-extern u16_t httpd_filecount[];
+extern uint16_t httpd_filecount[];
 #endif /* HTTPD_FS_STATISTICS */
 
 #include <avr/pgmspace.h>
@@ -59,12 +58,12 @@ void  httpd_fs_init(void);
 /* Returns root of http files in program flash */
 void* httpd_fs_get_root();
 /* Returns size of http files in any flash */
-u16_t httpd_fs_get_size();
+uint16_t httpd_fs_get_size();
 /* Open a file in any flash and return statistics if enabled.
    If file is allocated by caller it will be filled in.
    If NULL, just file stats are returned.
  */
-u16_t httpd_fs_open(const char *name, struct httpd_fs_file *file);
+uint16_t httpd_fs_open(const char *name, struct httpd_fs_file *file);
 
 #if COFFEE_FILES
 /* Coffee file system can be static or dynamic. If static, new files

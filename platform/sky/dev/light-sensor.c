@@ -28,19 +28,12 @@
  *
  * This file is part of the Contiki operating system.
  *
- * @(#)$Id: light-sensor.c,v 1.7 2010/08/25 19:30:53 nifi Exp $
  */
 
 #include "contiki.h"
 #include "lib/sensors.h"
 #include "dev/sky-sensors.h"
 #include "dev/light-sensor.h"
-
-#ifdef __IAR_SYSTEMS_ICC__
-#include <msp430.h>
-#else
-#include <io.h>
-#endif
 
 /* Photodiode 1 (P64) on INCH_4 */
 /* Photodiode 2 (P65) on INCH_5 */

@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: framer-nullmac.c,v 1.2 2010/06/14 19:19:16 adamdunkels Exp $
  */
 
 /**
@@ -69,7 +68,7 @@ create(void)
     return sizeof(struct nullmac_hdr);
   }
   PRINTF("PNULLMAC-UT: too large header: %u\n", len);
-  return 0;
+  return FRAMER_FAILED;
 }
 /*---------------------------------------------------------------------------*/
 static int
@@ -88,7 +87,7 @@ parse(void)
 
     return sizeof(struct nullmac_hdr);
   }
-  return 0;
+  return FRAMER_FAILED;
 }
 /*---------------------------------------------------------------------------*/
 const struct framer framer_nullmac = {

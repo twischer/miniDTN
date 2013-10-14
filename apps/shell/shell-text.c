@@ -28,7 +28,6 @@
  *
  * This file is part of the Contiki operating system.
  *
- * $Id: shell-text.c,v 1.7 2010/09/13 13:29:47 adamdunkels Exp $
  */
 
 /**
@@ -75,7 +74,7 @@ PROCESS_THREAD(shell_echo_process, ev, data)
 {
   PROCESS_BEGIN();
 
-  shell_output(&echo_command, data, (int)strlen(data), "\n", 1);
+  shell_output(&echo_command, data, (int)strlen(data), "", 0);
   
   PROCESS_END();
 }

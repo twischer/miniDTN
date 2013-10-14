@@ -24,7 +24,6 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $Id: AvrMoteMemory.java,v 1.4 2009/11/17 14:30:26 joxe Exp $
  */
 
 package se.sics.cooja.avrmote;
@@ -169,5 +168,18 @@ public class AvrMoteMemory implements MoteMemory, AddressMemory {
 
     public boolean variableExists(String varName) {
         return memoryMap.getLocation(varName) != null;
+    }
+
+    public boolean addMemoryMonitor(int address, int size, MemoryMonitor mm) {
+      logger.warn("Not implemented");
+      return false;
+    }
+
+    public void removeMemoryMonitor(int address, int size, MemoryMonitor mm) {
+    }
+
+    public int parseInt(byte[] memorySegment) {
+      logger.warn("Not implemented");
+      return 0;
     }
 }

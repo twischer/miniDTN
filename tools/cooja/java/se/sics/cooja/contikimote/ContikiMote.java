@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: ContikiMote.java,v 1.18 2010/10/04 12:54:01 joxe Exp $
  */
 
 package se.sics.cooja.contikimote;
@@ -69,15 +68,6 @@ public class ContikiMote extends AbstractWakeupMote implements Mote {
   private MoteInterfaceHandler myInterfaceHandler = null;
 
   /**
-   * Creates a new uninitialized Contiki mote.
-   *
-   * This mote needs at least a type, a memory, a mote interface handler
-   * and to be connected to a simulation.
-   */
-  public ContikiMote() {
-  }
-
-  /**
    * Creates a new mote of given type.
    * Both the initial mote memory and the interface handler
    * are supplied from the mote type.
@@ -90,14 +80,14 @@ public class ContikiMote extends AbstractWakeupMote implements Mote {
     this.myType = moteType;
     this.myMemory = moteType.createInitialMemory();
     this.myInterfaceHandler = new MoteInterfaceHandler(this, moteType.getMoteInterfaceClasses());
-    
+
     requestImmediateWakeup();
   }
 
   public int getID() {
     return myInterfaceHandler.getMoteID().getMoteID();
   }
-  
+
   public MoteInterfaceHandler getInterfaces() {
     return myInterfaceHandler;
   }
@@ -154,6 +144,7 @@ public class ContikiMote extends AbstractWakeupMote implements Mote {
     myType.getCoreMemory(myMemory);
 
     /* Poll mote interfaces */
+    myMemory.pollForMemoryChanges();
     myInterfaceHandler.doActiveActionsAfterTick();
     myInterfaceHandler.doPassiveActionsAfterTick();
   }

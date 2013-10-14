@@ -24,13 +24,13 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $Id: AbstractApplicationMote.java,v 1.12 2010/10/04 12:54:01 joxe Exp $
  */
 
 package se.sics.cooja.motes;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Observable;
 import java.util.Observer;
 import java.util.Properties;
@@ -90,7 +90,7 @@ public abstract class AbstractApplicationMote extends AbstractWakeupMote impleme
   public AbstractApplicationMote(MoteType moteType, Simulation sim) {
     setSimulation(sim);
     this.moteType = moteType;
-    this.memory = new SectionMoteMemory(new Properties());
+    this.memory = new SectionMoteMemory(new HashMap<String, Integer>(), 0);
     this.moteInterfaces = new MoteInterfaceHandler(this, moteType.getMoteInterfaceClasses());
     this.moteInterfaces.getRadio().addObserver(radioDataObserver);
     requestImmediateWakeup();
@@ -145,7 +145,7 @@ public abstract class AbstractApplicationMote extends AbstractWakeupMote impleme
   public boolean setConfigXML(Simulation simulation,
       Collection<Element> configXML, boolean visAvailable) {
     setSimulation(simulation);
-    this.memory = new SectionMoteMemory(new Properties());
+    this.memory = new SectionMoteMemory(new HashMap<String, Integer>(), 0);
     moteInterfaces.getRadio().addObserver(radioDataObserver);
 
     for (Element element : configXML) {

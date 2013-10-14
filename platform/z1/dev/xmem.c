@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * @(#)$Id: xmem.c,v 1.2 2011/01/18 15:48:38 nifi Exp $
  */
 
 /**
@@ -44,13 +43,6 @@
 #include <string.h>
 
 #include "contiki.h"
-#ifdef __IAR_SYSTEMS_ICC__
-#include <msp430.h>
-#else
-#include <io.h>
-#include <signal.h>
-#endif
-
 #include "dev/spi.h"
 #include "dev/xmem.h"
 #include "dev/watchdog.h"
@@ -196,7 +188,7 @@ xmem_pread(void *_p, int size, unsigned long offset)
   return size;
 }
 /*---------------------------------------------------------------------------*/
-static const char *
+static const unsigned char *
 program_page(unsigned long offset, const unsigned char *p, int nbytes)
 {
   const unsigned char *end = p + nbytes;

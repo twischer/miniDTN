@@ -28,7 +28,6 @@
  *
  * This file is part of the Contiki operating system.
  *
- * @(#)$Id: rs232.c,v 1.3 2007/08/07 11:06:14 nifi Exp $
  */
 
 /** \addtogroup esbrs232
@@ -43,17 +42,16 @@
  *
  */
 
-#include <io.h>
-#include <signal.h>
+#include "contiki.h"
 #include <string.h>
 
 #include "contiki-esb.h"
+#include "isr_compat.h"
 
 static int (* input_handler)(unsigned char) = NULL;
 
 /*---------------------------------------------------------------------------*/
-interrupt(UART1RX_VECTOR)
-     rs232_rx_usart1(void)
+ISR(UART1RX, rs232_rx_usart1)
 {
   ENERGEST_ON(ENERGEST_TYPE_IRQ);
   /* Check status register for receive errors. - before reading RXBUF since

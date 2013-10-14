@@ -28,7 +28,6 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: httpd-cgi.h,v 1.3 2008/10/14 11:07:57 adamdunkels Exp $
  *
  */
 
@@ -38,6 +37,9 @@
 #include "contiki.h"
 #include "httpd.h"
 
+/**
+ * Type of a function that can be executed as cgi script.
+ */
 typedef PT_THREAD((* httpd_cgifunction)(struct httpd_state *, char *));
 
 httpd_cgifunction httpd_cgi(char *name);
@@ -48,10 +50,23 @@ struct httpd_cgi_call {
   httpd_cgifunction function;
 };
 
+/**
+ * Adds a cgi script.
+ * @see HTTPD_CGI_CALL
+ * 
+ * @param c cgi script to add
+ */
 void httpd_cgi_add(struct httpd_cgi_call *c);
 
+/**
+ * Defines a cgi call as needed by httpd_cgi_add
+ * @param name name of file to add
+ * @param str string name under which this script can be reference in html
+ * @param function pointer to httpd_cgifunction
+ */
 #define HTTPD_CGI_CALL(name, str, function) \
-static struct httpd_cgi_call name = {NULL, str, function}
+  static struct httpd_cgi_call name = {NULL, str, function}
 
+/** Needs to be implemented by user!? */
 void httpd_cgi_init(void);
 #endif /* __HTTPD_CGI_H__ */

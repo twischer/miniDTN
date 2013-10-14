@@ -42,8 +42,8 @@ Berlin, 2006
 
 /**
  * @file		infomem.h
- * @addtogroup		storage
- * @brief		MSP430 Infomemory Storage
+ * @addtogroup		msb_storage
+ * @brief		MSB430 Infomemory Storage
  * 
  * @author		Michael Baar	<baar@inf.fu-berlin.de>
  */

@@ -30,7 +30,6 @@
  * 
  * Author: Oliver Schmidt <ol.sc@web.de>
  *
- * $Id: contiki-main.c,v 1.25 2010/10/27 22:17:39 oliverschmidt Exp $
  */
 
 #include <string.h>
@@ -54,9 +53,9 @@
 #endif /* WITH_DNS */
 
 PROCINIT(&etimer_process,
-	 CTK_PROCESS
-	 RESOLV_PROCESS
-	 &tcpip_process);
+         CTK_PROCESS
+         RESOLV_PROCESS
+         &tcpip_process);
 
 /*-----------------------------------------------------------------------------------*/
 void
@@ -91,7 +90,7 @@ main(void)
 
 #if (WITH_GUI && WITH_MOUSE)
   {
-    static const u8_t mouse_sprite[64] = {
+    static const uint8_t mouse_sprite[64] = {
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
       0x00, 0x0F, 0xE0, 0x00, 0x0F, 0xC0, 0x00, 0x0F,
       0x80, 0x00, 0x0F, 0xC0, 0x00, 0x0D, 0xE0, 0x00,
@@ -102,7 +101,7 @@ main(void)
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
     memcpy((void*)0x0340, mouse_sprite, sizeof(mouse_sprite));
-    *(u8_t*)0x07F8 = 0x0340 / 64;
+    *(uint8_t*)0x07F8 = 0x0340 / 64;
     VIC.spr0_color = COLOR_WHITE;
   }
 #endif /* WITH_GUI && WITH_MOUSE */
@@ -114,7 +113,7 @@ main(void)
   autostart_start(autostart_processes);
 
   log_message("Contiki up and running ...", "");
-  
+
   while(1) {
 
     process_run();

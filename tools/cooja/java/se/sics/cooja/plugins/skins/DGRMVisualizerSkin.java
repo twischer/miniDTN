@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: DGRMVisualizerSkin.java,v 1.1 2010/09/24 12:49:14 fros4943 Exp $
  */
 
 package se.sics.cooja.plugins.skins;
@@ -41,6 +40,7 @@ import org.apache.log4j.Logger;
 import se.sics.cooja.ClassDescription;
 import se.sics.cooja.Mote;
 import se.sics.cooja.Simulation;
+import se.sics.cooja.SupportedArguments;
 import se.sics.cooja.interfaces.Position;
 import se.sics.cooja.interfaces.Radio;
 import se.sics.cooja.plugins.Visualizer;
@@ -50,6 +50,7 @@ import se.sics.cooja.radiomediums.DestinationRadio;
 import se.sics.cooja.radiomediums.DirectedGraphMedium;
 
 @ClassDescription("Radio environment (DGRM)")
+@SupportedArguments(radioMediums = {DirectedGraphMedium.class})
 public class DGRMVisualizerSkin implements VisualizerSkin {
 	private static Logger logger = Logger.getLogger(DGRMVisualizerSkin.class);
 
@@ -82,7 +83,7 @@ public class DGRMVisualizerSkin implements VisualizerSkin {
 
 	public void paintBeforeMotes(Graphics g) {
           Mote selectedMote = visualizer.getSelectedMote();
-		if (simulation == null 
+		if (simulation == null
 				|| selectedMote == null
 				|| selectedMote.getInterfaces().getRadio() == null) {
 			return;
@@ -100,7 +101,7 @@ public class DGRMVisualizerSkin implements VisualizerSkin {
 		g.setColor(Color.BLACK);
 
 		DirectedGraphMedium radioMedium = (DirectedGraphMedium) simulation.getRadioMedium();
-		
+
 		/* Print transmission success probabilities */
 		DestinationRadio[] dests = radioMedium.getPotentialDestinations(selectedRadio);
 		if (dests == null || dests.length == 0) {
@@ -116,6 +117,15 @@ public class DGRMVisualizerSkin implements VisualizerSkin {
 		g.drawString(msg, x - msgWidth/2, y + 2*Visualizer.MOTE_RADIUS + 3);
 		for (DestinationRadio r: dests) {
 			double prob = ((DGRMDestinationRadio)r).ratio;
+			double rssi = ((DGRMDestinationRadio)r).signal;
+			double pos_rssi = rssi + 100;
+			int lqi = ((DGRMDestinationRadio)r).lqi;
+			float red = (float)(1 - prob*pos_rssi/90*lqi/100);
+			if(red > 1) red = 1;
+			if(red < 0) red = 0;
+			float green = (float)(prob*pos_rssi/90*lqi/100);
+			if(green > 1) green = 1;
+			if(green < 0) green = 0;
 			if (prob == 0.0d) {
 				continue;
 			}
@@ -123,7 +133,8 @@ public class DGRMVisualizerSkin implements VisualizerSkin {
 			Position pos = r.radio.getPosition();
 			Point pixel = visualizer.transformPositionToPixel(pos);
 			msgWidth = fm.stringWidth(msg);
-			g.setColor(new Color(1-(float)prob, (float)prob, 0.0f));
+			g.setColor(new Color(red, green, 0.0f));
+			g.drawString("LQI: " + lqi + "  RSSI: " + rssi,(x + pixel.x)/2,(y + pixel.y)/2);
 			g.drawLine(x, y, pixel.x, pixel.y);
 			g.setColor(Color.BLACK);
 			g.drawString(msg, pixel.x - msgWidth/2, pixel.y + 2*Visualizer.MOTE_RADIUS + 3);

@@ -28,7 +28,6 @@
  *
  * This file is part of the Contiki operating system.
  *
- * $Id: rssi-scanner.c,v 1.2 2009/04/25 22:38:00 joxe Exp $
  */
 
 /**
@@ -41,6 +40,7 @@
 
 #include "contiki.h"
 #include "net/rime.h"
+#include "net/netstack.h"
 
 #include "dev/leds.h"
 #include "dev/cc2420.h"
@@ -83,7 +83,7 @@ PROCESS_THREAD(scanner_process, ev, data)
 {
   PROCESS_BEGIN();
   /* switch mac layer off, and turn radio on */
-  rime_mac->off(0);
+  NETSTACK_MAC.off(0);
   cc2420_on();
 
   while(1) {

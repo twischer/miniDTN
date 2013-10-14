@@ -30,7 +30,6 @@
  * 
  * Author: Adam Dunkels <adam@sics.se>
  *
- * $Id: httpd-fsdata.h,v 1.2 2009/06/19 17:11:28 dak664 Exp $
  */
 #ifndef __HTTPD_FSDATA_H__
 #define __HTTPD_FSDATA_H__
@@ -43,7 +42,7 @@ struct httpd_fsdata_file {
   const char *data;
   const int len;
 #if HTTPD_FS_STATISTICS == 1
-  u16_t count;
+  uint16_t count;
 #endif /* HTTPD_FS_STATISTICS */
 };
 
@@ -53,7 +52,7 @@ struct httpd_fsdata_file_noconst {
   char *data;
   int len;
 #if HTTPD_FS_STATISTICS == 1
-  u16_t count;
+  uint16_t count;
 #endif /* HTTPD_FS_STATISTICS */
 };
 

@@ -30,7 +30,6 @@
  * 
  * Author: Adam Dunkels <adam@sics.se>
  *
- * $Id: httpd-fs.h,v 1.3 2008/10/14 11:07:57 adamdunkels Exp $
  */
 #ifndef __HTTPD_FS_H__
 #define __HTTPD_FS_H__
@@ -50,7 +49,7 @@ int httpd_fs_open(const char *name, struct httpd_fs_file *file);
 
 #ifdef HTTPD_FS_STATISTICS
 #if HTTPD_FS_STATISTICS == 1  
-u16_t httpd_fs_count(char *name);
+uint16_t httpd_fs_count(char *name);
 #endif /* HTTPD_FS_STATISTICS */
 #endif /* HTTPD_FS_STATISTICS */
 
