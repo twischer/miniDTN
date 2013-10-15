@@ -273,14 +273,22 @@ diskio_detect_devices()
 
   memset(devices, 0, DISKIO_MAX_DEVICES * sizeof (struct diskio_device_info));
 
+/** @todo Place definitions at proper position */
+#ifndef FLASH_ARCH_NUM_SECTORS	
+    /* This Flash has 4096 Pages */
+#define FLASH_ARCH_NUM_SECTORS	4096
+#endif
+#ifndef FLASH_ARCH_SECTOR_SIZE
+    /* A Page is 528 Bytes long, but for easier acces we use only 512 Byte*/
+#define FLASH_ARCH_SECTOR_SIZE	512
+#endif
+
 #ifdef FLASH_INIT
   if (FLASH_INIT() == 0) {
     devices[index].type = DISKIO_DEVICE_TYPE_GENERIC_FLASH;
     devices[index].number = dev_num;
-    /* This Flash has 4096 Pages */
-    devices[index].num_sectors = 4096;
-    /* A Page is 528 Bytes long, but for easier acces we use only 512 Byte*/
-    devices[index].sector_size = 512;
+    devices[index].num_sectors = FLASH_ARCH_NUM_SECTORS;
+    devices[index].sector_size = FLASH_ARCH_SECTOR_SIZE;
     devices[index].first_sector = 0;
     index += 1;
   }
