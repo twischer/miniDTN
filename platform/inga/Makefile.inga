@@ -41,14 +41,8 @@ ifndef CFS
   CFS=coffee
 endif
 
-#Check for file system type
-ifeq ($(CFS),coffee)
-  #use program flash for static file system if not specified
-  ifndef COFFEE_DEVICE
-    COFFEE_DEVICE=3
-  endif
-else ifeq ($(CFS),fat)
-  include $(CONTIKI)/core/cfs/fat/Makefile.fat
+ifndef COFFEE_DEVICE
+  COFFEE_DEVICE=3
 endif
 
 
