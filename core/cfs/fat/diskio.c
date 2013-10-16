@@ -130,13 +130,14 @@ diskio_rw_op(struct diskio_device_info *dev, uint32_t block_start_address, uint8
   }
 
   block_start_address += dev->first_sector;
+
+  uint8_t ret_code = 0;
+  uint8_t tries = 0, reinit = 0;
   switch (dev->type & DISKIO_DEVICE_TYPE_MASK) {
-      uint8_t ret_code = 0;
-      uint8_t tries = 0, reinit = 0;
 
 #ifdef SD_INIT
-      PRINTF("\nSD_INIT OK");
     case DISKIO_DEVICE_TYPE_SD_CARD:
+    PRINTF("\nSD_INIT OK");
       switch (op) {
         case DISKIO_OP_READ_BLOCK:
 #ifndef DISKIO_OLD_STYLE
