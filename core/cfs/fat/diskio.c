@@ -59,6 +59,11 @@
 #define PRINTF(...)
 #endif
 
+/* Number of read/write retries */
+#define DISKIO_RW_RETRIES   150
+/* Delay between retries. */
+#define DISKIO_RW_DELAY_MS  10
+
 static struct diskio_device_info *default_device = 0;
 static struct diskio_device_info devices[DISKIO_MAX_DEVICES];
 
@@ -141,76 +146,78 @@ diskio_rw_op(struct diskio_device_info *dev, uint32_t block_start_address, uint8
       switch (op) {
         case DISKIO_OP_READ_BLOCK:
 #ifndef DISKIO_OLD_STYLE
-          for (tries = 0; tries < 150; tries++) {
+          for (tries = 0; tries < DISKIO_RW_RETRIES; tries++) {
             ret_code = SD_READ_BLOCK(block_start_address, buffer);
             if (ret_code == 0) {
               return DISKIO_SUCCESS;
             } else {
-              PRINTF("\nret_code: %u", ret_code);
+              //PRINTF("\nret_code: %u", ret_code);
             }
 
 #ifdef FAT_COOPERATIVE
-			if (!coop_step_allowed) {
-			  next_step_type = READ;
-			  coop_switch_sp();
-			} else {
-			  coop_step_allowed = 0;
-			}
-#else
-            _delay_ms(1);
-#endif
+            if (!coop_step_allowed) {
+              next_step_type = READ;
+              coop_switch_sp();
+            } else {
+              coop_step_allowed = 0;
+            }
+#else /* FAT_COOPERATIVE */
+            _delay_ms(DISKIO_RW_DELAY_MS);
+#endif /* FAT_COOPERATIVE */
 
-            if (reinit == 0 && tries == 49) {
+            /* Try once to reinit sd card if access failed. */
+            if ((reinit == 0) && (tries == DISKIO_RW_RETRIES - 1)) {
+              PRINTF("\nReinit");
               tries = 0;
               reinit = 1;
               microSD_init();
             }
           }
-          PRINTF("\ndiskion_rw_op(): Unrecoverable Error!");
+          PRINTF("\ndiskion_rw_op(): Unrecoverable Read Error!");
           return DISKIO_ERROR_INTERNAL_ERROR;
-#else
+#else /* !DISKIO_OLD_STYLE */
           if (SD_READ_BLOCK(block_start_address, buffer) == 0) {
             return DISKIO_SUCCESS;
           }
           return DISKIO_ERROR_TRY_AGAIN;
-#endif
+#endif /* !DISKIO_OLD_STYLE */
           break;
         case DISKIO_OP_READ_BLOCKS:
           return DISKIO_ERROR_TO_BE_IMPLEMENTED;
           break;
         case DISKIO_OP_WRITE_BLOCK:
 #ifndef DISKIO_OLD_STYLE
-          for (tries = 0; tries < 50; tries++) {
+          for (tries = 0; tries < DISKIO_RW_RETRIES; tries++) {
             ret_code = SD_WRITE_BLOCK(block_start_address, buffer);
             if (ret_code == 0) {
               return DISKIO_SUCCESS;
             }
 
 #ifdef FAT_COOPERATIVE
-			if (!coop_step_allowed) {
-			  next_step_type = WRITE;
-			  coop_switch_sp();
-			} else {
-			  coop_step_allowed = 0;
-			}
-#else
-            _delay_ms(1);
-#endif
-
-            if (reinit == 0 && tries == 49) {
+            if (!coop_step_allowed) {
+              next_step_type = WRITE;
+              coop_switch_sp();
+            } else {
+              coop_step_allowed = 0;
+            }
+#else /* FAT_COOPERATIVE */
+            _delay_ms(DISKIO_RW_DELAY_MS);
+#endif /* FAT_COOPERATIVE */
+            if ((reinit == 0) && (tries == DISKIO_RW_RETRIES - 1)) {
+              PRINTF("\nReinit");
               tries = 0;
               reinit = 1;
               microSD_init();
             }
           }
-          PRINTF("\ndiskion_rw_op(): Unrecoverable Error!");
+          PRINTF("\ndiskion_rw_op(): Unrecoverable Write Error!");
           return DISKIO_ERROR_INTERNAL_ERROR;
-#else
+#else /* !DISKIO_OLD_STYLE */
           if (SD_WRITE_BLOCK(block_start_address, buffer) == 0) {
             return DISKIO_SUCCESS;
           }
           return DISKIO_ERROR_TRY_AGAIN;
-#endif
+#endif /* !DISKIO_OLD_STYLE */
           break;
         case DISKIO_OP_WRITE_BLOCKS:
           return DISKIO_ERROR_TO_BE_IMPLEMENTED;
@@ -220,7 +227,7 @@ diskio_rw_op(struct diskio_device_info *dev, uint32_t block_start_address, uint8
           break;
       }
       break;
-#endif
+#endif /* SD_INIT */
 
 #ifdef FLASH_INIT
     case DISKIO_DEVICE_TYPE_GENERIC_FLASH:
@@ -244,7 +251,7 @@ diskio_rw_op(struct diskio_device_info *dev, uint32_t block_start_address, uint8
           break;
       }
       break;
-#endif
+#endif /* FLASH_INIT */
 
     case DISKIO_DEVICE_TYPE_NOT_RECOGNIZED:
     default:
@@ -293,7 +300,7 @@ diskio_detect_devices()
     devices[index].first_sector = 0;
     index += 1;
   }
-#endif
+#endif /* FLASH_INIT */
   
 #ifdef SD_INIT
   if (SD_INIT() == 0) {
@@ -324,7 +331,7 @@ diskio_detect_devices()
     dev_num += 1;
     index += 1;
   }
-#endif
+#endif /* SD_INIT */
 
 end_of_function:
 
