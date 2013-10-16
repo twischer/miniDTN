@@ -16,6 +16,7 @@
 *.wismote
 *.esb
 *.avr-raven
+*.inga
 *.exp5438
 *.mbxxx
 *.win32
@@ -29,6 +30,8 @@ summary
 *.summary
 *.faillog
 *.orig
+*.difference
+*.swp
 *~
 .DS_Store
 obj_*
