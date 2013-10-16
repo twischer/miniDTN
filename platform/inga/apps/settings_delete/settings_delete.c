@@ -46,7 +46,10 @@ PROCESS_THREAD(settings_delete_process, ev, data)
 	
 	// Delete all Settings if no value is defined
 	//#if !defined(NODE_CONF_ID) && !defined(RADIO_CONF_CHANNEL) && !defined(RADIO_CONF_TX_POWER)
-		settings_wipe();
+        printf("Wiping settings...");
+        settings_wipe();
+        printf("done.\n");
+
 	//#elif defined(NODE_CONF_ID)
 	//	printf("[APP.nodeid-burn] Delete Status: %d\n", settings_delete(SETTINGS_KEY_PAN_ID, 0) == SETTINGS_STATUS_OK ? 1 : 0);
 	//#endif

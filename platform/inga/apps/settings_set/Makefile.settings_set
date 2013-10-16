@@ -32,8 +32,25 @@ ifdef RADIO_TX_POWER
  endif
 endif
 
+# EUI64
+ifdef EUI64
+  $(info EUI64 is: $(EUI64))
+  CONF_EUI64 := $(shell echo $(EUI64) | sed 's/\([0-9a-fA-F]\{2\}\)/0x\1/g' | sed 's/:/,/g')
+  $(info new EUI64 is: $(CONF_EUI64))
+  CFLAGS += -DEUI64=$(CONF_EUI64)
+  ifndef settings_set_load
+   settings_set_load=1
+  endif
+endif
+
 # Load app if needed
 ifdef settings_set_load
  $(info [APP.settings_set] loaded)
  CFLAGS+=-DAPP_SETTINGS_SET=1
 endif
+
+all:
+	$(info doing all)
+
+.PHONY: all
+
