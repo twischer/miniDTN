@@ -58,6 +58,9 @@ typedef unsigned long u32_t;
  * like the avrdude erase count and bootloader signaling. */
 #define EEPROM_CONF_SIZE   ((E2END + 1) - 4)
 
+/* @todo: Just a temporary solution... */
+#define CFS_CONF_OFFSET_SIZE  uint32_t
+
 void clock_delay(unsigned int us2);
 //void clock_wait(int ms10);
 void clock_set_seconds(unsigned long s);
