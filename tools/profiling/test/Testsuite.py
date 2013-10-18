@@ -126,6 +126,8 @@ class Testsuite(object):
 
 		failure = []
 		success = []
+		if not 'testcases' in self.config:
+		  self.config['testcases'] = [x.name for x in self.tests.values()]
 		for testname in self.config['testcases']:
 			logging.info("Running test %s", testname)
 			try:
