@@ -293,7 +293,11 @@ class INGA(Device):
 			raise
 	def dummy(self,testname):
 		self.logger = logging.getLogger("test.%s.%s"%(testname, self.name))
-		self.reset()
+		try:
+			self.reset()
+		except:
+			self.logger.warning("Did not find dummy device. Ignoring it.")
+			return
 		try:
 			self.logger.info( "Uploading DUMMY to %s"%(self.name))
 			output = subprocess.check_output(["avrdude", "-b","230400", "-P", self.path, "-c", "avr109" ,"-p","atmega1284p","-e" ], stderr=subprocess.STDOUT)
