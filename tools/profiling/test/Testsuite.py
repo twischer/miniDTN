@@ -137,7 +137,8 @@ class Testsuite(object):
 				continue
 
 			try:
-				test.run()
+			  for i in range(test.repeated):
+			    test.run()
 			except Exception as err:
 				logging.error("Test %s failed, traceback follows", testname)
 				logging.error(traceback.format_exc())

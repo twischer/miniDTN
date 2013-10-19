@@ -24,6 +24,8 @@ class Testcase(object):
 		self.logbase = os.path.join(config['logbase'], self.name)
 		self.contikibase = config['contikibase']
 		self.timeout = int(config.setdefault('timeout', "300"))
+		self.repeated = int(config.setdefault('repeated', "1"))
+		self.torepeat = self.repeated
 		self.devices = []
 		self.unused_devices = []
 		self.timedout = False
@@ -88,8 +90,9 @@ class Testcase(object):
 			for device in self.devices:
 				try:
 					self.logger.info("Setting up %s for device %s", device.programdir, device.name)
-					device.build(self.options)
-					device.upload()
+					if not self.options.resetonly and self.torepeat == self.repeated:
+						device.build(self.options)
+						device.upload()
 				except Exception as err:
 					self.logger.error("Test could not complete")
 					self.logger.error(err)
@@ -175,9 +178,15 @@ class Testcase(object):
 		resulthandler.setFormatter(formatter)
 		resulthandler.setLevel(logging.DEBUG)
 		self.logger.addHandler(resulthandler)
-		self.logger.info("Test %s report:", self.name)
+		if self.torepeat == self.repeated:
+		  self.logger.info("Test %s report:", self.name)
+		self.torepeat -= 1
+		teststring = ""
 		for item in self.result:
-			self.logger.info("%s:%s:%f:%s", item['name'], item['desc'], float(item['data'])/item['scale'], item['unit'])
+			teststring += str(float(item['data'])/item['scale'])
+			teststring += ', '
+			#self.logger.info("%s:%s:%f:%s", item['name'], item['desc'], float(item['data'])/item['scale'], item['unit'])
+		self.logger.info(teststring)
 
 		self.logger.removeHandler(resulthandler)
 		self.logger.removeHandler(handler)

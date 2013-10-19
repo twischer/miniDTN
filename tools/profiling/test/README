@@ -1,23 +1,50 @@
+Prerequisites
+===
+
 To run test.py / profile-neat.py (with INGA) the following requirements have to be met:
 
-1.
-python >= 2.7 (e.g. Debian Testing/Wheezy)
+1. python >= 2.7 (e.g. Debian Testing/Wheezy)
 
-2.
-aptitude install python-yaml python-serial python-argparse python2.7-pygraphviz gcc-avr avrdude avr-libc python-pyparsing inkscape
+2. Installed packages
 
-3.
-python-pydot >= 1.0.23 (e.g. 1.0.28)
-aptitude install python-setuptools
-easy_install pydot
+    aptitude install python-yaml python-serial python-argparse python2.7-pygraphviz gcc-avr avrdude avr-libc python-pyparsing inkscape
 
-4.
-Read/Write for INGA-Devices (/dev/ttyUSB*, e.g. via udev-rule)
+3. python-pydot >= 1.0.23 (e.g. 1.0.28)
 
-5.
-Correct Values for "logbase", "contikibase" and correct device-configuration in config.yaml (all paths have to be absolute)
+    aptitude install python-setuptools
+    easy_install pydot
 
-6.
-test.py attempts to build inga-tool , see: <contikibase>tools/inga/inga_tool/README , (aptitude install libftdi-dev libusb-dev libudev-dev libpopt-dev)
-inga-tool sources are expected to be at: <contikibase>tools/inga/inga_tool/
-profile-neat.py is expected to be at: <contikibase>tools/profiling/
+4. Read/Write access for INGA-Devices (/dev/ttyUSB*, e.g. via udev-rule)
+
+5. Correct Values for "logbase", "contikibase" and correct device-configuration in config.yaml (all paths have to be absolute)
+
+6. test.py attempts to build inga-tool , see: <contikibase>tools/inga/inga_tool/README , 
+    (aptitude install libftdi-dev libusb-dev libudev-dev libpopt-dev)
+    inga-tool sources are expected to be at: <contikibase>tools/inga/inga_tool/
+    profile-neat.py is expected to be at: <contikibase>tools/profiling/
+
+Added:
+- Option -r only resets device for test but does neither build nor upload coade
+- config file option 'repeated' allows to configure a test repetition summed up in a single log file
+
+Usage
+===
+
+Node configuration
+---
+
+Holds information about nodes available for test
+
+Test configuration
+---
+
+Defines tests.
+
+
+
+How to set target addresses in source files:
+You can add `-DCONF_DEST_NODE=$MYNODE` in your `test_config.yaml`.
+If your `node_config.yaml` defines a device called `mynode` the test script will automatically replace
+the upright variant `$MYNODE` with the id configured for that node.
+Note: This is also true for `-DCONF_SEND_TO_NODE=$MYNODE`
+

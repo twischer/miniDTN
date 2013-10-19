@@ -28,6 +28,8 @@ parser.add_argument("-l", "--list", dest="list_tests", action="store_true", defa
 		help="only list what tests/devices are defined")
 parser.add_argument("-d", "--dirty", dest="dirty", action="store_true", default=False,
 		help="don't clean the projects")
+parser.add_argument("-r", "--reset-only", dest="resetonly", action="store_true", default=False,
+		help="don't build and upload")
 parser.add_argument("-t", "--test-config", dest="test_configfile", default="test_config.yaml",
 		help="where to read the test config from")
 parser.add_argument("-n", "--node-config", dest="node_configfile", default="node_config.yaml",

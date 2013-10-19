@@ -29,6 +29,7 @@ class Device(object):
 		self.contikibase = config['contikibase']
 		self.programdir = os.path.join(self.contikibase, config['programdir'])
 		self.program = config['program']
+		self.binary = os.path.join(self.logdir, "%s-%s"%(self.name, self.program))
 		self.instrument = config['instrument']
 		self.debug = config['debug']
 		self.cflags = config.setdefault('cflags', "")
@@ -60,6 +61,8 @@ class Device(object):
 			for dev in self.devcfg:
 				myenv['CFLAGS']=myenv['CFLAGS'].replace(str("-DCONF_DEST_NODE=$"+dev['name'].upper()),str("-DCONF_DEST_NODE="+str(dev['id'])))
 				myenv['CFLAGS']=myenv['CFLAGS'].replace(str("-DCONF_SEND_TO_NODE=$"+dev['name'].upper()),str("-DCONF_SEND_TO_NODE="+str(dev['id'])))
+			# always add the nodeid of this node as define
+			myenv['CFLAGS']+=str(" -DNODEID="+str(self.id))
 			self.myenv = myenv
 			output = subprocess.check_output(["make", "TARGET=%s"%(self.platform), self.program], stderr=subprocess.STDOUT, env=myenv)
 			self.logger.debug(output)
@@ -175,9 +178,10 @@ class Device(object):
 					profiledata += "\n"
 					profilelines -= 1
 				if profilelines == 0:
-					workitem = (profilename, profiledata, self.logdir, self.prefix, self.binary)
-					callgraphqueue.put(workitem)
-					profilelines = -1
+					if not callgraphqueue is None:
+						workitem = (profilename, profiledata, self.logdir, self.prefix, self.binary)
+						callgraphqueue.put(workitem)
+						profilelines = -1
 
 				if line.startswith("TEST"):
 					testdata = line.split(':')
