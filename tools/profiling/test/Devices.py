@@ -275,7 +275,7 @@ class INGA(Device):
 
 		try:
 			self.logger.info("Uploading %s", os.path.join(self.programdir, self.program))
-			output = subprocess.check_output(["make", "TARGET=inga", "MOTES=%s"%(self.path), "%s.upload"%(self.program)], stderr=subprocess.STDOUT)
+			output = subprocess.check_output(["make", "TARGET=inga", "MOTES=%s"%(self.path), "%s.upload"%(self.program)], stderr=subprocess.STDOUT, env=self.myenv)
 			self.binary = os.path.join(self.logdir, "%s-%s"%(self.name, self.program))
 			shutil.copyfile("%s.inga"%(self.program), self.binary)
 			self.logger.debug(output)
