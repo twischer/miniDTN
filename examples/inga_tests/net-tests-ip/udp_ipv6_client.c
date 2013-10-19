@@ -3,11 +3,14 @@
 #include "contiki-net.h"
 
 #include <string.h>
+
+#define DEBUG DEBUG_PRINT
 #include "net/uip-debug.h"
+
 #include "../test.h"
 #include "test-params.h"
 
-#define DEBUG DEBUG_PRINT
+
 #define SEND_INTERVAL		CLOCK_SECOND
 #define MAX_PAYLOAD_LEN		40
 
@@ -66,12 +69,12 @@ PROCESS_THREAD(udp_client_process, ev, data)
 
   TEST_BEGIN("send10x");
 
-  printf("############################################################\n");
+  //printf("############################################################\n");
 
   /* NOTE: Use IPv6 address of server here. */
   uip_ip6addr(&ipaddr, 0xfe80, 0x0000, 0x0000, 0x0000, 
-      (NET_TEST_CFG_TARGET_NODE_ID >> 8) | 0x0200 | ((NET_TEST_CFG_TARGET_NODE_ID & 0xFF) << 8),
-      0x22ff, 0xfe33, 0x4455);
+      (CONF_DEST_NODE >> 8) | 0x0200 | ((CONF_DEST_NODE & 0xFF) << 8),
+      0x0000, 0x0000, 0x0000);
 
   /* new connection with remote host */
   client_conn = udp_new(&ipaddr, UIP_HTONS(3000), NULL);

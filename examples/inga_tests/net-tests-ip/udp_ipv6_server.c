@@ -3,7 +3,10 @@
 #include "contiki-net.h"
 
 #include <string.h>
+
+#define DEBUG DEBUG_PRINT
 #include "net/uip-debug.h"
+
 #include "../test.h"
 #include "test-params.h"
 
@@ -11,7 +14,6 @@
 #define UIP_UDP_BUF   ((struct uip_udp_hdr *)&uip_buf[uip_l2_l3_hdr_len])
 
 #define MAX_PAYLOAD_LEN 120
-#define PRINTF  printf
 
 static struct uip_udp_conn *server_conn;
 static uint8_t done = 0;
