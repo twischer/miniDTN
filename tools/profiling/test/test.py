@@ -63,12 +63,21 @@ suite_config = yaml.load(suite_configfile)
 node_configfile = open(options.node_configfile, 'r')
 node_config = yaml.load(node_configfile)
 
+# Directory of suite_config.yaml is base directory unless 'workdir' property is set
+if 'workdir' in suite_config['suite']:
+	workdir = suite_config['suite']['workdir']
+else:
+	workdir = os.path.dirname(os.path.abspath(options.suite_configfile))
+logging.info("Working directory is '%s'", workdir)
+suite_config['suite']['contikibase'] = os.path.join(workdir, suite_config['suite']['contikibase'])
+suite_config['suite']['logbase'] = os.path.join(workdir, suite_config['suite']['logbase'])
+
 # Load test from dirs selected with suite option 'testdirs'
 # If this option is not set try to load single test config file
 test_config = {'tests' : []}
 if 'testdirs' in suite_config['suite']:
 	for testdir in suite_config['suite']['testdirs']:
-		loadfile = os.path.join(testdir, "test_config.yaml")
+		loadfile = os.path.join(workdir, testdir, "test_config.yaml")
 		try:
 			test_configfile = open(loadfile, 'r')
 			new_tests = yaml.load(test_configfile)['tests']
