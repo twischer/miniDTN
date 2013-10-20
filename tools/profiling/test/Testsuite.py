@@ -18,9 +18,9 @@ from helper import *
 
 
 class Testsuite(object):
-	def __init__(self, suitecfg, devcfg, testcfg,options):
+	def __init__(self, suitecfg, devcfg, testcfg, options):
 		self.config = suitecfg
-		self.devcfg=devcfg
+		self.devcfg = devcfg
 		# Set PATH to contain inga_tool and profile-neat.py
 		path_inga_tool_dir = os.path.join(self.config['contikibase'], "tools", "inga", "inga_tool")
 		path_profile_neat_py_dir = os.path.join(self.config['contikibase'], "tools", "profiling")
@@ -60,8 +60,12 @@ class Testsuite(object):
 			verfile.write(self.contikiversion)
 			verfile.write('\n')
 
+                # Save a copy of current configuration to log dir
 		shutil.copyfile(options.node_configfile, os.path.join(self.logdir, 'node_config.yaml'))
-		shutil.copyfile(options.test_configfile, os.path.join(self.logdir, 'test_config.yaml'))
+                try:
+	          shutil.copyfile(options.suite_configfile, os.path.join(self.logdir, 'suite_config.yaml'))
+                except IOError:
+		  shutil.copyfile(options.test_configfile, os.path.join(self.logdir, 'test_config.yaml'))
 
 		# create symlink to logdir
 		try:
@@ -102,7 +106,7 @@ class Testsuite(object):
 			testcfg['logbase'] = self.logdir
 			testcfg['contikibase'] = self.config['contikibase']
 			#if testcfg['name'] in self.config['testcases']:
-			testcase = Testcase(testcfg, self.devices, testcfg['devices'],devcfg,options)
+			testcase = Testcase(testcfg, self.devices, testcfg['devices'], devcfg, options)
 			self.tests[testcfg['name']] = testcase
 
 
@@ -116,9 +120,9 @@ class Testsuite(object):
 					device.platform, device.path)
 		logging.info("The following tests are defined:")
 		for test in self.tests.values():
-			logging.info("* %s with devices:", test.name)
+			logging.info("* [%s] with devices:", test.name)
 			for device in test.devices:
-				logging.info("  * %s configured with program %s", device.name,
+				logging.info("  * [%s] configured with program %s", device.name,
 						os.path.join(device.programdir, device.program))
 
 
