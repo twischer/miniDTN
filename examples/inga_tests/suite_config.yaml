@@ -1,8 +1,8 @@
 # Test suite
 suite:
-    logbase:   /home/enrico/Hiwi/contiki-inga/log
+    logbase:   ../../log/
     logpattern: date-tag
-    contikibase: /home/enrico/Hiwi/contiki-inga
+    contikibase: ../../
     contikiscm: git # Here only git and none are supported at the moment
     testdirs:
         - sensor-tests
