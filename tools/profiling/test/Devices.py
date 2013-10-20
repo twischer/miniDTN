@@ -46,6 +46,7 @@ class Device(object):
 			raise
 
 		try:
+			# run 'make clean' if its not a dirty build
 			if not options.dirty:
 				self.logger.info("Cleaning %s", self.programdir)
 				output = subprocess.check_output(["make", "TARGET=%s"%(self.platform), "clean"], stderr=subprocess.STDOUT)
@@ -67,7 +68,9 @@ class Device(object):
 			output = subprocess.check_output(filter(None, ["make", self.makeargs, "TARGET=%s"%(self.platform), self.program]), stderr=subprocess.STDOUT, env=myenv)
 			self.logger.debug(output)
 			time.sleep(2)
-			if len(just_instrument) > 0: #build file with just instrumentation again
+
+			# build file with just instrumentation again
+			if len(just_instrument) > 0:
 				touchcall = ["touch"]
 				touchcall.extend([os.path.join(self.contikibase, instrpat) for instrpat in just_instrument])
 				self.logger.debug(' '.join(touchcall))
@@ -82,8 +85,8 @@ class Device(object):
 				output = subprocess.check_output(filter(None, ["make", self.makeargs, "TARGET=%s"%(self.platform), self.program]), stderr=subprocess.STDOUT, env=myenv)
 				self.logger.debug(output)
 
-
-			if len(just_debug) > 0: #build file witch just debug again
+			# build file with just debug again
+			if len(just_debug) > 0: 
 				touchcall = ["touch"]
 				touchcall.extend([os.path.join(self.contikibase, instrpat) for instrpat in just_debug])
 				self.logger.debug(' '.join(touchcall))
@@ -98,8 +101,8 @@ class Device(object):
 				output = subprocess.check_output(filter(None, ["make", self.makeargs, "TARGET=%s"%(self.platform), self.program]), stderr=subprocess.STDOUT, env=myenv)
 				self.logger.debug(output)
 
-
-			if len(instrument_and_debug) > 0: #build file with instrumentation and debug
+			# build file with instrumentation and debug
+			if len(instrument_and_debug) > 0: 
 				touchcall = ["touch"]
 				touchcall.extend([os.path.join(self.contikibase, instrpat) for instrpat in instrument_and_debug])
 				self.logger.debug(' '.join(touchcall))
@@ -117,14 +120,19 @@ class Device(object):
 			self.logger.error(err)
 			self.logger.error(err.output)
 			raise
+
 	def upload(self):
 		raise Exception('Unimplemented')
+
 	def reset(self):
 		raise Exception('Unimplemented')
+
 	def dummy(self,testname):
 		raise Exception('Unimplemented')
+
 	def reset_occurred(self):
 		self.abort_by_reset = True
+
 	def recordlog(self, callgraphqueue, queue, controlqueue):
 		logfile = os.path.join(self.logdir, "%s.log"%(self.name))
 
@@ -239,6 +247,7 @@ class SKY(Device):
 			self.logger.error(err)
 			self.logger.error(err.output)
 			raise
+
 	def reset(self):
 		try:
 			self.logger.info( "Resetting")
@@ -247,6 +256,7 @@ class SKY(Device):
 			self.logger.error(err)
 			self.logger.error(err.output)
 			raise
+
 	def dummy(self,testname):
 		self.logger = logging.getLogger("test.%s.%s"%(testname, self.name))
 		output = subprocess.check_output(["msp430-bsl-linux", "--telosb","-c", self.path, "-r"], stderr=subprocess.STDOUT)
@@ -258,8 +268,10 @@ class SKY(Device):
 			self.logger.error(err.output)
 			raise
 
+
 class SkyMonitor(SKY):
 	pass
+
 
 class INGA(Device):
 	"""INGA node"""
@@ -284,6 +296,7 @@ class INGA(Device):
 			self.logger.error(err)
 			self.logger.error(err.output)
 			raise
+
 	def reset(self):
 		try:
 			self.logger.info( "Resetting")
@@ -292,6 +305,7 @@ class INGA(Device):
 			self.logger.error(err)
 			self.logger.error(err.output)
 			raise
+
 	def dummy(self,testname):
 		self.logger = logging.getLogger("test.%s.%s"%(testname, self.name))
 		try:

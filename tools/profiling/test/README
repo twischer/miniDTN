@@ -30,6 +30,15 @@ Added:
 Usage
 ===
 
+Suite configuration
+---
+
+Allows to set basic information such as contiki base dir, logdir etc.
+Lets you choose a set of directorier with 'test_config.yaml' files and
+a (sub)set of tests of tests that should be executed
+
+Note: Old usage with only a single test_config is still supported partly
+
 Node configuration
 ---
 
