@@ -33,6 +33,7 @@ class Device(object):
 		self.instrument = config['instrument']
 		self.debug = config['debug']
 		self.cflags = config.setdefault('cflags', "")
+		self.makeargs = config.setdefault('makeargs', None)
 		self.graph_options = config.setdefault('graph_options', "")
 
 	def build(self,options):
@@ -64,7 +65,7 @@ class Device(object):
 			# always add the nodeid of this node as define
 			myenv['CFLAGS']+=str(" -DNODEID="+str(self.id))
 			self.myenv = myenv
-			output = subprocess.check_output(["make", "TARGET=%s"%(self.platform), self.program], stderr=subprocess.STDOUT, env=myenv)
+			output = subprocess.check_output(filter(None, ["make", self.makeargs, "TARGET=%s"%(self.platform), self.program]), stderr=subprocess.STDOUT, env=myenv)
 			self.logger.debug(output)
 			time.sleep(2)
 			if len(just_instrument) > 0: #build file with just instrumentation again
@@ -80,7 +81,7 @@ class Device(object):
 				for dev in self.devcfg:
 					myenv['CFLAGS']=myenv['CFLAGS'].replace(str("-DCONF_DEST_NODE=$"+dev['name'].upper()),str("-DCONF_DEST_NODE="+str(dev['id'])))
 					myenv['CFLAGS']=myenv['CFLAGS'].replace(str("-DCONF_SEND_TO_NODE=$"+dev['name'].upper()),str("-DCONF_SEND_TO_NODE="+str(dev['id'])))
-				output = subprocess.check_output(["make", "TARGET=%s"%(self.platform), self.program], stderr=subprocess.STDOUT, env=myenv)
+				output = subprocess.check_output(filter(None, ["make", self.makeargs, "TARGET=%s"%(self.platform), self.program]), stderr=subprocess.STDOUT, env=myenv)
 				self.logger.debug(output)
 
 
@@ -97,7 +98,7 @@ class Device(object):
 				for dev in self.devcfg:
 					myenv['CFLAGS']=myenv['CFLAGS'].replace(str("-DCONF_DEST_NODE=$"+dev['name'].upper()),str("-DCONF_DEST_NODE="+str(dev['id'])))
 					myenv['CFLAGS']=myenv['CFLAGS'].replace(str("-DCONF_SEND_TO_NODE=$"+dev['name'].upper()),str("-DCONF_SEND_TO_NODE="+str(dev['id'])))
-				output = subprocess.check_output(["make", "TARGET=%s"%(self.platform), self.program], stderr=subprocess.STDOUT, env=myenv)
+				output = subprocess.check_output(filter(None, ["make", self.makeargs, "TARGET=%s"%(self.platform), self.program]), stderr=subprocess.STDOUT, env=myenv)
 				self.logger.debug(output)
 
 
@@ -114,7 +115,7 @@ class Device(object):
 				for dev in self.devcfg:
 					myenv['CFLAGS']=myenv['CFLAGS'].replace(str("-DCONF_DEST_NODE=$"+dev['name'].upper()),str("-DCONF_DEST_NODE="+str(dev['id'])))
 					myenv['CFLAGS']=myenv['CFLAGS'].replace(str("-DCONF_SEND_TO_NODE=$"+dev['name'].upper()),str("-DCONF_SEND_TO_NODE="+str(dev['id'])))
-				output = subprocess.check_output(["make", "TARGET=%s"%(self.platform), self.program], stderr=subprocess.STDOUT, env=myenv)
+				output = subprocess.check_output(filter(None, ["make", self.makeargs, "TARGET=%s"%(self.platform), self.program]), stderr=subprocess.STDOUT, env=myenv)
 				self.logger.debug(output)
 		except subprocess.CalledProcessError as err:
 			self.logger.error(err)
