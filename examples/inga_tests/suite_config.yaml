@@ -1,0 +1,19 @@
+# Test suite
+suite:
+    logbase:   /home/enrico/Hiwi/contiki-inga/log
+    logpattern: date-tag
+    contikibase: /home/enrico/Hiwi/contiki-inga
+    contikiscm: git # Here only git and none are supported at the moment
+    testdirs:
+        - sensor-tests
+        - net-tests-rime
+        - net-tests-ip
+        - foodir
+    testcases:
+        - sensor-acc
+        - sensor-gyro
+        - sensor-battery
+        - timer-rtimer
+        - fat-default
+        - fat-coop
+
