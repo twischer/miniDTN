@@ -1,7 +1,24 @@
 tests:
 ### settings app test
+  - name: settings-delete
+    timeout: 100
+    devices:
+      - name: receiver
+        programdir: examples/inga_tests/settings-tests
+        program: settings-test
+        instrument: []
+        debug: []
+        cflags: "-DAPP_SETTINGS_DELETE=1"
+        graph_options: ""
+      - name: sender
+        programdir: examples/inga_tests/settings-tests
+        program: settings-test
+        instrument: []
+        debug: []
+        cflags: "-DAPP_SETTINGS_DELETE=1"
+        graph_options: ""
   - name: settings-set
-    timeout: 120
+    timeout: 100
     devices:
       - name: receiver
         programdir: examples/inga_tests/settings-tests
@@ -18,7 +35,7 @@ tests:
         cflags: "-DAPP_SETTINGS_SET=1 -DNODE_CONF_ID=$SENDER -DEUI64=0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 -DRADIO_CONF_PAN_ID=0xABCD -DRADIO_CONF_CHANNEL=0x1A -DRADIO_CONF_TX_POWER=0x00"
         graph_options: ""
   - name: settings-set-chaotic
-    timeout: 120
+    timeout: 100
     devices:
       - name: receiver
         programdir: examples/inga_tests/settings-tests

@@ -9,15 +9,29 @@
 
 TEST_SUITE("settings test");
 /*---------------------------------------------------------------------------*/
-PROCESS(udp_client_process, "UDP client process");
-AUTOSTART_PROCESSES(&udp_client_process);
+PROCESS(settings_test_process, "UDP client process");
+AUTOSTART_PROCESSES(&settings_test_process);
 /*---------------------------------------------------------------------------*/
-PROCESS_THREAD(udp_client_process, ev, data)
+PROCESS_THREAD(settings_test_process, ev, data)
 {
   static struct etimer et;
 
   PROCESS_BEGIN();
 
+#if APP_SETTINGS_DELETE
+  TEST_BEGIN("settings_delete");
+
+  etimer_set(&et, CLOCK_SECOND);
+
+  PROCESS_YIELD();
+
+  TEST_EQUALS(settings_check(SETTINGS_KEY_PAN_ADDR, 0), 0);
+  TEST_EQUALS(settings_check(SETTINGS_KEY_PAN_ID, 0), 0);
+  TEST_EQUALS(settings_check(SETTINGS_KEY_CHANNEL, 0), 0);
+  TEST_EQUALS(settings_check(SETTINGS_KEY_TXPOWER, 0), 0);
+  TEST_EQUALS(settings_check(SETTINGS_KEY_EUI64, 0), 0);
+
+#elif APP_SETTINGS_SET
   TEST_BEGIN("settings_set");
 
   etimer_set(&et, CLOCK_SECOND);
@@ -47,6 +61,8 @@ PROCESS_THREAD(udp_client_process, ev, data)
   TEST_EQUALS(settings_eui64[5], compare_eui64[5]);
   TEST_EQUALS(settings_eui64[6], compare_eui64[6]);
   TEST_EQUALS(settings_eui64[7], compare_eui64[7]);
+
+#endif /* APP_SETTINGS_SET */
 
   TEST_END();
 

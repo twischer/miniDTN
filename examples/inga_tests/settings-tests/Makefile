@@ -5,7 +5,7 @@ TARGET=inga
 
 UIP_CONF_IPV6=1
 
-APPS = settings_set  
+APPS = settings_set settings_delete
 
 CONTIKI = ../../..
 include $(CONTIKI)/Makefile.include
