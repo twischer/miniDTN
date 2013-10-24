@@ -36,7 +36,7 @@ endif
 # Enable settings manager
 CFLAGS += -DCONTIKI_CONF_SETTINGS_MANAGER=1
 
-#Use coffee as default file system
+# Use coffee as default file system
 ifndef CFS
   CFS=coffee
 endif
@@ -59,10 +59,10 @@ ifdef COFFEE_DEVICE                #if files are defined force definition of COF
  ifndef COFFEE_ADDRESS
   ifeq ($(COFFEE_DEVICE), 1)         # 1 = eeprom static
    $(info Coffee in EEPROM (static))
-   COFFEE_ADDRESS=COFFEE_DEFAULT_ADDR 
+   COFFEE_ADDRESS=$(COFFEE_DEFAULT_ADDR) 
   else ifeq ($(COFFEE_DEVICE), 2)    # 2 = eeprom dynamic
    $(info Coffee in EEPROM (dynamic))
-   COFFEE_ADDRESS=COFFEE_DEFAULT_ADDR 
+   COFFEE_ADDRESS=$(COFFEE_DEFAULT_ADDR) 
   else ifeq ($(COFFEE_DEVICE), 3)    # 3 = program flash static
    $(info Coffee in Flash (static))
    COFFEE_ADDRESS=0x14000
@@ -71,10 +71,11 @@ ifdef COFFEE_DEVICE                #if files are defined force definition of COF
    COFFEE_ADDRESS=0x10000
   else ifeq ($(COFFEE_DEVICE), 5)    # 5 = INGA external flash
    $(info Coffee in external Flash)
-   COFFEE_ADDRESS=COFFEE_DEFAULT_ADDR 
+   COFFEE_ADDRESS=$(COFFEE_DEFAULT_ADDR) 
   else ifeq ($(COFFEE_DEVICE), 6)    # 6 = INGA SDCard slot
    $(info Coffee on SD-Card)
-   COFFEE_ADDRESS=COFFEE_DEFAULT_ADDR
+   COFFEE_ADDRESS=$(COFFEE_DEFAULT_ADDR)
+   CONTIKI_TARGET_SOURCEFILES+=diskio.c
   else
    $(error Unsupported coffee file type $(COFFEE_DEVICE), supported are \
      1=EEPROM static, \
