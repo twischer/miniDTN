@@ -40,7 +40,6 @@ class Testcase(object):
 				device = devicelist[unused['name']]
 				device = copy.copy(device)
 				self.unused_devices.append(device)
-				device.dummy(self.name)
 		mkdir_p(self.logbase)
 		for cfgdevice in devicecfg:
 			try:
@@ -87,6 +86,8 @@ class Testcase(object):
 
 		try:
 			self.logger.info("Starting test %s", self.name)
+                        for device in self.unused_devices:
+                                device.dummy(self.name)    
 			for device in self.devices:
 				try:
 					self.logger.info("Setting up %s for device %s", device.programdir, device.name)
