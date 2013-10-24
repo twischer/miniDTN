@@ -892,9 +892,9 @@ cfs_open(const char *name, int flags)
     PRINTF("\nfat.c: cfs_open(): No free FileDescriptors available!");
     return fd;
   }
-#else
+#else /* !FAT_COOPERATIVE */
   fd = queue[queue_start].ret_value;
-#endif
+#endif /* !FAT_COOPERATIVE */
 
   /* Reset entry for overwriting */
   if (flags & CFS_WRITE) {
@@ -941,10 +941,12 @@ void
 cfs_close(int fd)
 {
   if (fd < 0 || fd >= FAT_FD_POOL_SIZE) {
+    PRINTF("\nfat.c: cfs_close: Invalid fd");
     return;
   }
 
   if (fat_fd_pool[fd].file == NULL) {
+    PRINTF("\nfat.c: cfs_close: file not found\n");
     return;
   }
 
