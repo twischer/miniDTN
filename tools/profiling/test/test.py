@@ -55,13 +55,21 @@ logging.basicConfig(level=logging.DEBUG,
 
 logging.getLogger().handlers[0].setLevel(logging.INFO)
 
-# Load test suite
-suite_configfile = open(options.suite_configfile, 'r')
-suite_config = yaml.load(suite_configfile)
+# Load test suite if available
+try:
+        suite_configfile = open(options.suite_configfile, 'r')
+        suite_config = yaml.load(suite_configfile)
+except IOError:
+        logging.error("Failed to load suite configuration '%s'.", options.suite_configfile)
+        sys.exit(1)
 
 # Load nodes
-node_configfile = open(options.node_configfile, 'r')
-node_config = yaml.load(node_configfile)
+try:
+        node_configfile = open(options.node_configfile, 'r')
+        node_config = yaml.load(node_configfile)
+except IOError:
+        logging.error("Failed to load nodes configuration '%s'.", options.node_configfile)
+        sys.exit(1)
 
 # Directory of suite_config.yaml is base directory unless 'workdir' property is set
 if 'workdir' in suite_config['suite']:
