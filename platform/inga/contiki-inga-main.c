@@ -313,8 +313,7 @@ platform_radio_init(void)
 
   // EUI64 ADDR
   // if setting not set or invalid data - generate ieee_addr from node_id 
-  size_t eui64_size = sizeof (eui64_addr);
-  if (settings_check(SETTINGS_KEY_EUI64, 0) != true || settings_get(SETTINGS_KEY_EUI64, 0, (void*) &eui64_addr, &eui64_size) != SETTINGS_STATUS_OK) {
+  if (settings_check(SETTINGS_KEY_EUI64, 0) != true || settings_get(SETTINGS_KEY_EUI64, 0, (void*) &eui64_addr, sizeof(eui64_addr)) != SETTINGS_STATUS_OK) {
 #if CONTIKI_CONF_RANDOM_MAC
     generate_new_eui64(eui64_addr);
     PRINTD("Radio IEEE Addr not in EEPROM - generated random\n");
