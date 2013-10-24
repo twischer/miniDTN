@@ -287,28 +287,28 @@ platform_radio_init(void)
   if (settings_check(SETTINGS_KEY_PAN_ID, 0) == true) {
     pan_id = settings_get_uint16(SETTINGS_KEY_PAN_ID, 0);
   } else {
-    printf("PanId not in EEPROM - using default\n");
+    PRINTD("PanID not in EEPROM - using default\n");
   }
 
   // PAN_ADDR/NODE_ID
   if (settings_check(SETTINGS_KEY_PAN_ADDR, 0) == true) {
     node_id = settings_get_uint16(SETTINGS_KEY_PAN_ADDR, 0);
   } else {
-    printf("NodeID/PanAddr not in EEPROM - using default\n");
+    PRINTD("NodeID/PanAddr not in EEPROM - using default\n");
   }
 
   // TX_POWER
   if (settings_check(SETTINGS_KEY_TXPOWER, 0) == true) {
     radio_tx_power = settings_get_uint8(SETTINGS_KEY_TXPOWER, 0);
   } else {
-    printf("Radio TXPower not in EEPROM - using default\n");
+    PRINTD("Radio TXPower not in EEPROM - using default\n");
   }
 
   // CHANNEL
   if (settings_check(SETTINGS_KEY_CHANNEL, 0) == true) {
     radio_channel = settings_get_uint8(SETTINGS_KEY_CHANNEL, 0);
   } else {
-    printf("Radio Channel not in EEPROM - using default\n");
+    PRINTD("Radio Channel not in EEPROM - using default\n");
   }
 
   // EUI64 ADDR
@@ -317,7 +317,7 @@ platform_radio_init(void)
   if (settings_check(SETTINGS_KEY_EUI64, 0) != true || settings_get(SETTINGS_KEY_EUI64, 0, (void*) &eui64_addr, &eui64_size) != SETTINGS_STATUS_OK) {
 #if CONTIKI_CONF_RANDOM_MAC
     generate_new_eui64(eui64_addr);
-    printf("Radio IEEE Addr not in EEPROM - generated random\n");
+    PRINTD("Radio IEEE Addr not in EEPROM - generated random\n");
 #else /* CONTIKI_CONF_RANDOM_MAC */
     eui64_addr[0] = node_id & 0xFF;
     eui64_addr[1] = (node_id >> 8) & 0xFF;
@@ -327,11 +327,15 @@ platform_radio_init(void)
     eui64_addr[5] = 0;
     eui64_addr[6] = 0;
     eui64_addr[7] = 0;
-    printf("Radio IEEE Addr not in EEPROM - using default\n");
+    PRINTD("Radio IEEE Addr not in EEPROM - using default\n");
 #endif /* CONTIKI_CONF_RANDOM_MAC */
+#if WRITE_EUI64
     if (settings_set(SETTINGS_KEY_EUI64, eui64_addr, sizeof (eui64_addr)) == SETTINGS_STATUS_OK) {
       PRINTD("Wrote new IEEE Addr to EEPROM.\n");
+    } else {
+      PRINTD("Failed writing IEEE Addr to EEPROM.\n");
     }
+#endif
   }
 
 #if EUI64_BY_NODE_ID
@@ -511,7 +515,6 @@ init(void)
   ctimer_init();
 
 #if defined(APP_SETTINGS_SET)
-  printf("STARTING APP_SETTINGS_SET PROCESS...\n");
   process_start(&settings_set_process, NULL);
 #endif
 
@@ -761,6 +764,7 @@ main(void)
   return 0;
 }
 /*---------------------------------------------------------------------------*/
+/* implements sys/log interface */
 void
 log_message(char *m1, char *m2)
 {
