@@ -1,24 +1,31 @@
 # Allows to simply add file system source
-# by setting CFS variable in makefile.
-# CFS=<fat/coffee/posix>
+# by setting CFS variable in makefile:
+#
+#     CFS=<fat/fat-coop/coffee/posix>
+#
 
-CFS_DEF=NONE
+FAT_FS = cfs-fat.c fat_mkfs.c
+FAT_COOP = fat_coop.c
+DISKIO = diskio.c mbr.c
+
 ifeq ($(CFS),fat)
-  FAT_FS = cfs-fat.c fat_mkfs.c
-  FAT_COOP = fat_coop.c
-  DISKIO = diskio.c mbr.c
-  CFS_FILES += $(FAT_FS) \
+  CFS_FILES = $(FAT_FS) \
+	       $(DISKIO)
+  CFS_DEFS=-DCFS_FAT=1
+else ifeq ($(CFS),fat-coop)
+  CFS_FILES = $(FAT_FS) \
 	       $(FAT_COOP) \
 	       $(DISKIO)
-  CFS_DEF=CFS_FAT
+  CFS_DEF=-DCFS_FAT=1
+  CFS_DEFS+=-DFAT_CONF_COOPERATIVE=1
 else ifeq ($(CFS),coffee)
-  CFS_FILES = cfs-coffee.c
-  CFS_DEF=CFS_COFFEE
+  CFS_FILES = cfs-coffee.c diskio.c
+  CFS_DEFS=-DCFS_COFFEE=1
 else ifeq ($(CFS),posix)
   CFS_FILE = cfs-posix.c
-  CFS_DEF=CFS_POSIX
+  CFS_DEFS=-DCFS_POSIX=1
 endif
 
-CFLAGS += -D$(CFS_DEF)=1
 CONTIKI_SOURCEFILES += $(CFS_FILES)
+CFLAGS += $(CFS_DEFS)
 
