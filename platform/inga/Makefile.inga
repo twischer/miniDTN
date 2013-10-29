@@ -42,7 +42,7 @@ ifndef CFS
 endif
 
 
-CONTIKI_TARGET_SOURCEFILES += cfs-coffee.c cfs-coffee-arch.c 
+CONTIKI_TARGET_SOURCEFILES += cfs-coffee-arch.c 
 
 # For a coffee file system, the application makefile can define COFFEE_DEVICE=n
 # to select the type and COFFEE_ADDRESS=0xaaaaaaaa as the starting byte address.
