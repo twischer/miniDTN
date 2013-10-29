@@ -46,6 +46,16 @@
 
 #include "at45db.h"
 
+#define DEBUG 1
+
+#if DEBUG
+#include <avr/pgmspace.h>
+#include <stdio.h>
+#define PRINTF(FORMAT,args...) printf_P(PSTR(FORMAT),##args)
+#else
+#define PRINTF(...)
+#endif
+
 /*!
  * Buffer manager allows it to improve write times, by switching
  * the dual buffer and parallelize flash write operations. (e.g. Write
@@ -77,6 +87,7 @@ at45db_init(void) {
     mspi_chip_release(AT45DB_CS);
     _delay_ms(10);
     if (i++ > 10) {
+      PRINTF("Initialization failed\n");
       initialized = 0;
       return -1;
     }
@@ -262,7 +273,9 @@ at45db_busy_wait(void) {
   mspi_chip_select(AT45DB_CS);
   mspi_transceive(AT45DB_STATUS_REG);
   while ((mspi_transceive(MSPI_DUMMY_BYTE) >> 7) != 0x01) {
+    _delay_ms(1);
     if (i++ > 500) {
+      PRINTF("Error: at45db_busy_wait timeout\n");
       return;
     }
   }

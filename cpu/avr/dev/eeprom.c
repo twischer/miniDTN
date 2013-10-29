@@ -27,28 +27,61 @@
  * SUCH DAMAGE.
  *
  * This file is part of the Contiki operating system.
+ */
+
+/**
+ * \file EEPROM read/write routines for AVR
  *
- * Author: Adam Dunkels <adam@sics.se>
- *
+ * \author
+ *        Adam Dunkels <adam@sics.se>
+ *        Enrico Joerns <e.joerns@tu-bs.de>
  */
 
 #include "dev/eeprom.h"
 
 #include <avr/eeprom.h>
 #include <stdio.h>
+#include <util/delay.h>
+
+#define EEPROM_WRITE_MAX_TRIES  100
 
 /*---------------------------------------------------------------------------*/
 void
 eeprom_write(eeprom_addr_t addr, unsigned char *buf, int size)
 {
-  while(!eeprom_is_ready());
+  uint8_t tries = 0;
+
+  // nonblocking wait
+  while(!eeprom_is_ready()) {
+    watchdog_periodic();
+    _delay_ms(1);
+    tries++;
+
+    if (tries > EEPROM_WRITE_MAX_TRIES) {
+      printf("Error: EEPROM write failed (%d,%u,%d)\n", 0, addr, size);
+      return;
+    }
+  }
+
   eeprom_write_block(buf, (unsigned short *)addr, size);
 }
 /*---------------------------------------------------------------------------*/
 void
 eeprom_read(eeprom_addr_t addr, unsigned char *buf, int size)
 {
-  while(!eeprom_is_ready());
+  uint8_t tries = 0;
+
+  // nonblocking wait
+  while(!eeprom_is_ready()) {
+    watchdog_periodic();
+    _delay_ms(1);
+    tries++;
+    if (tries > EEPROM_WRITE_MAX_TRIES) {
+      printf("Error: EEPROM read failed\n");
+      return;
+    }
+  }
+
   eeprom_read_block(buf, (unsigned short *)addr, size);
 }
 /*---------------------------------------------------------------------------*/
