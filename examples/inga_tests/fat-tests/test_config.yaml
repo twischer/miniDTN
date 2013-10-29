@@ -9,6 +9,7 @@ tests:
         instrument: []
         debug: []
         cflags: "-fno-inline"
+        mkaeopts: "CFS=fat"
         graph_options: ""
 ### FAT coop test
   - name: fat-coop
@@ -20,4 +21,5 @@ tests:
         instrument: []
         debug: []
         cflags: "-fno-inline"
+        mkaeopts: "CFS=fat-coop"
         graph_options: ""
