@@ -35,15 +35,23 @@
 
 #include "contiki.h"
 #include "test.h"
+#include "../test.h"
 
 #include <stdio.h> /* For printf() */
 #include "cfs/cfs-coffee.h"
+
+TEST_SUITE("coffee-tests");
+
 /*---------------------------------------------------------------------------*/
 PROCESS(coffee_test_process, "Onboard Flash COFFEE Test process");
 AUTOSTART_PROCESSES(&coffee_test_process);
 /*---------------------------------------------------------------------------*/
 struct etimer et;
-int cnt = 0;
+#if (COFFEE_DEVICE == 6)
+#include "fat/diskio.h"           //tested
+struct diskio_device_info *info = 0;
+#endif
+
 void fail() {
   TEST_FAIL("");
   watchdog_stop();
@@ -53,19 +61,44 @@ void fail() {
 PROCESS_THREAD(coffee_test_process, ev, data)
 {
   int fd_write, n, i;
+  static int cnt = 0;
   uint8_t buffer[FILE_SIZE];
   clock_time_t now;
   unsigned short now_fine;
   static uint32_t time_start, time_stop;
+
+  printf("###########################################################\n");
+
   PROCESS_BEGIN();
 
   printf("process running\n");
 
+  // wait for 5 sec
   etimer_set(&et, CLOCK_SECOND * 5);
   PROCESS_YIELD_UNTIL(etimer_expired(&et));
 
-  cfs_coffee_format();
-  printf("test starting\n");
+#if (COFFEE_DEVICE == 6)
+  int initialized = 0, i;
+
+  //--- Detecting devices and partitions
+  TEST_EQUALS(diskio_detect_devices(), DISKIO_SUCCESS);
+
+  info = diskio_devices();
+  for (i = 0; i < DISKIO_MAX_DEVICES; i++) {
+    if ((info + i)->type == (DISKIO_DEVICE_TYPE_SD_CARD | DISKIO_DEVICE_TYPE_PARTITION)) {
+      info += i;
+      initialized = 1;
+      break; 
+    }
+  }
+  TEST_EQUALS(initialized, 1);
+
+  diskio_set_default_device(info);
+#endif
+
+  printf("fomartting...\n");
+  TEST_EQUALS(cfs_coffee_format(), 0);
+  //printf("test starting\n");
 
   do {
     now_fine = clock_time();
@@ -82,32 +115,25 @@ PROCESS_THREAD(coffee_test_process, ev, data)
     sprintf(b_file,"%u.b", cnt);
 
     // Set the file size
-    if( cfs_coffee_reserve(b_file, FILE_SIZE) == -1 ) {
-      printf("############# STORAGE: unable to reserve %u bytes\n", FILE_SIZE);
-      fail();
-    }
+    printf("Reserving '%s'...\n", b_file);
+    TEST_EQUALS(cfs_coffee_reserve(b_file, FILE_SIZE), 0);
 
-    // And open it
+      // And open it
+    printf("Opening '%s'...\n", b_file);
     fd_write = cfs_open(b_file, CFS_WRITE);
+    TEST_NEQ(fd_write, -1);
 
-    // In case something goes wrong, we cannot save this file
-    if( fd_write == -1 ) {
-      printf("############# STORAGE: open for write failed\n");
-      fail();
-    }
-
+    // fill buffer
     for(i=0; i<FILE_SIZE; i++) {
       buffer[i] = cnt % 0xFF;
     }
 
     // Open was successful, write has to be successful too since the size has been reserved
+    printf("Writing'%s'...\n", b_file);
     n = cfs_write(fd_write, buffer, FILE_SIZE);
     cfs_close(fd_write);
 
-    if( n != FILE_SIZE ) {
-      printf("############# STORAGE: Only wrote %d bytes, wanted 100\n", n);
-      fail();
-    }
+    TEST_EQUALS(n, FILE_SIZE);
 
     printf("%s written\n", b_file);
 
@@ -119,6 +145,7 @@ PROCESS_THREAD(coffee_test_process, ev, data)
       sprintf(r_file,"%u.b", cnt - FILES_IN_STORAGE);
 
       // Open the bundle file
+      printf("Reopening '%s'...\n", r_file);
       fd_read = cfs_open(r_file, CFS_READ);
       if(fd_read == -1) {
         // Could not open file
@@ -129,6 +156,7 @@ PROCESS_THREAD(coffee_test_process, ev, data)
       memset(buffer, 0, FILE_SIZE);
 
       // And now read the bundle back from flash
+      printf("Reading '%s'...\n", b_file);
       if (cfs_read(fd_read, buffer, FILE_SIZE) == -1){
         printf("############# STORAGE: cfs_read error\n");
         cfs_close(fd_read);
@@ -153,7 +181,6 @@ PROCESS_THREAD(coffee_test_process, ev, data)
 
     cnt ++;
 
-    //if( cnt >= 2 * COFFEE_PAGES ) {
     if( cnt >= 10 ) {
       do {
         now_fine = clock_time();
@@ -169,5 +196,5 @@ PROCESS_THREAD(coffee_test_process, ev, data)
   }
 
   PROCESS_END();
-  }
-  /*---------------------------------------------------------------------------*/
+}
+/*---------------------------------------------------------------------------*/
