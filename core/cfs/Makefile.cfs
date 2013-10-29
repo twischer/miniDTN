@@ -19,7 +19,8 @@ else ifeq ($(CFS),fat-coop)
   CFS_DEF=-DCFS_FAT=1
   CFS_DEFS+=-DFAT_CONF_COOPERATIVE=1
 else ifeq ($(CFS),coffee)
-  CFS_FILES = cfs-coffee.c diskio.c
+  CFS_FILES = cfs-coffee.c 
+  CFS_FILES += $(DISKIO)
   CFS_DEFS=-DCFS_COFFEE=1
 else ifeq ($(CFS),posix)
   CFS_FILE = cfs-posix.c
