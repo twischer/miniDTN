@@ -33,7 +33,7 @@ class Device(object):
 		self.instrument = config['instrument']
 		self.debug = config['debug']
 		self.cflags = config.setdefault('cflags', "")
-		self.makeargs = config.setdefault('makeargs', None)
+		self.makeargs = config.setdefault('makeopts', None)
 		self.graph_options = config.setdefault('graph_options', "")
 
 	def build(self,options):
