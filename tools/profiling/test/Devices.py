@@ -37,11 +37,11 @@ class Device(object):
 		self.graph_options = config.setdefault('graph_options', "")
 
 	def build(self,options):
-                try:
-		        ser = serial.Serial(port=self.path, baudrate=1200, timeout=0.5)
-		        ser.close()
-                except serial.SerialException as err:
-                        raise
+#                try:
+#		        ser = serial.Serial(port=self.path, baudrate=1200, timeout=0.5)
+#		        ser.close()
+#                except serial.SerialException as err:
+#                        raise
 		try:
 			os.chdir(self.programdir)
 		except OSError as err:

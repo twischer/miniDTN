@@ -86,8 +86,6 @@ class Testcase(object):
 
 		try:
 			self.logger.info("Starting test %s", self.name)
-                        for device in self.unused_devices:
-                                device.dummy(self.name)    
 			for device in self.devices:
 				try:
 					self.logger.info("Setting up %s for device %s", device.programdir, device.name)
@@ -100,6 +98,8 @@ class Testcase(object):
 					raise
 
 			self.logger.info("All devices configured, resetting and starting test")
+                        for device in self.unused_devices:
+                                device.dummy(self.name)    
 
 			try:
 				threads = {}
