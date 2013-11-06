@@ -77,7 +77,7 @@ PROCESS_THREAD(temppress_process, ev, data)
 
   }
 
-  // deactivate
+  // deactivate (never reached here)
   SENSORS_DEACTIVATE(*temppress_sensor);
 
   PROCESS_END();

@@ -30,20 +30,20 @@
  */
 
 /**
- * @file battery-example.c
+ * @file button-example.c
  * @author Enrico Joerns <e.joerns@tu-bs.de>
  */
 
 #include <stdio.h>
 #include "contiki.h"
-#include "battery-sensor.h"
+#include "button-sensor.h"
 
 /*---------------------------------------------------------------------------*/
-PROCESS(batt_process, "Battery process");
-AUTOSTART_PROCESSES(&batt_process);
+PROCESS(button_process, "button process");
+AUTOSTART_PROCESSES(&button_process);
 /*---------------------------------------------------------------------------*/
 static struct etimer timer;
-PROCESS_THREAD(batt_process, ev, data)
+PROCESS_THREAD(button_process, ev, data)
 {
   PROCESS_BEGIN();
 
@@ -52,31 +52,31 @@ PROCESS_THREAD(batt_process, ev, data)
   PROCESS_YIELD();
 
   // get pointer to sensor
-  static const struct sensors_sensor *batt_sensor;
-  batt_sensor = sensors_find("Batt");
+  static const struct sensors_sensor *button_sensor;
+  button_sensor = sensors_find("Button");
 
   // activate and check status
-  uint8_t status = SENSORS_ACTIVATE(*batt_sensor);
+  uint8_t status = SENSORS_ACTIVATE(*button_sensor);
   if (status == 0) {
-    printf("Error: Failed to init battery sensor, aborting...\n");
+    printf("Error: Failed to init button sensor, aborting...\n");
     PROCESS_EXIT();
   }
   
   while (1) {
 
-    // read and output values
-    printf("V: %d, I: %d\n",
-        batt_sensor->value(BATTERY_VOLTAGE),
-        batt_sensor->value(BATTERY_CURRENT));
-  
-    PROCESS_PAUSE();
+    PROCESS_YIELD();
+
+    if (ev == sensors_event && data == button_sensor) {
+      printf("Button %s\n", button_sensor->value(0) ? "pressed" : "released");
+    }
 
   }
 
   // deactivate (never reached here)
-  SENSORS_DEACTIVATE(*batt_sensor);
+  SENSORS_DEACTIVATE(*button_sensor);
 
   PROCESS_END();
 }
+
 
 

@@ -78,7 +78,7 @@ PROCESS_THREAD(gyro_process, ev, data)
 
   }
 
-  // deactivate
+  // deactivate (never reached here)
   SENSORS_DEACTIVATE(*gyro_sensor);
 
   PROCESS_END();
