@@ -142,7 +142,7 @@ diskio_rw_op(struct diskio_device_info *dev, uint32_t block_start_address, uint8
 
 #ifdef SD_INIT
     case DISKIO_DEVICE_TYPE_SD_CARD:
-    PRINTF("\nSD_INIT OK");
+      PRINTF("\nSD INIT OK");
       switch (op) {
         case DISKIO_OP_READ_BLOCK:
 #ifndef DISKIO_OLD_STYLE
@@ -231,6 +231,7 @@ diskio_rw_op(struct diskio_device_info *dev, uint32_t block_start_address, uint8
 
 #ifdef FLASH_INIT
     case DISKIO_DEVICE_TYPE_GENERIC_FLASH:
+      PRINTF("\nFLASH INIT OK");
       switch (op) {
         case DISKIO_OP_READ_BLOCK:
           FLASH_READ_BLOCK(block_start_address, 0, buffer, 512);

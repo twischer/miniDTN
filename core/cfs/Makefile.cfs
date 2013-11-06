@@ -11,20 +11,20 @@ DISKIO = diskio.c mbr.c
 ifeq ($(CFS),fat)
   CFS_FILES = $(FAT_FS) \
 	       $(DISKIO)
-  CFS_DEFS=-DCFS_FAT=1
+  CFS_DEFS = -DCFS_FAT=1
 else ifeq ($(CFS),fat-coop)
   CFS_FILES = $(FAT_FS) \
 	       $(FAT_COOP) \
 	       $(DISKIO)
-  CFS_DEF=-DCFS_FAT=1
-  CFS_DEFS+=-DFAT_CONF_COOPERATIVE=1
+  CFS_DEFS = -DCFS_FAT=1
+  CFS_DEFS += -DFAT_CONF_COOPERATIVE=1
 else ifeq ($(CFS),coffee)
   CFS_FILES = cfs-coffee.c 
   CFS_FILES += $(DISKIO)
   CFS_DEFS=-DCFS_COFFEE=1
 else ifeq ($(CFS),posix)
   CFS_FILE = cfs-posix.c
-  CFS_DEFS=-DCFS_POSIX=1
+  CFS_DEFS = -DCFS_POSIX=1
 endif
 
 CONTIKI_SOURCEFILES += $(CFS_FILES)

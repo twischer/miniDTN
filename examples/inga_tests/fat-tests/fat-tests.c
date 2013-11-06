@@ -16,6 +16,12 @@
 uint32_t file_sizes[FAT_TEST_CONF_NUM_FILES] = {127, 128, 511, 512, 1023, 1024, 4095, 4096, 12345, 16383, 16384, 32767, 32768U, 65535UL, 65536UL};
 uint8_t file_inits[FAT_TEST_CONF_NUM_FILES] = {5, 12, 80, 3, 76, 13, 123, 42, 23, 200, 255, 7, 99, 12, 77, 31};
 
+#ifdef FAT_TEST_SD
+#define FAT_TEST_DEVICE (DISKIO_DEVICE_TYPE_SD_CARD | DISKIO_DEVICE_TYPE_PARTITION)
+#endif
+#ifdef FAT_TEST_EXTFLASH
+#define FAT_TEST_DEVICE DISKIO_DEVICE_TYPE_GENERIC_FLASH  
+#endif
 
 #define DEBUG 0
 #if DEBUG
@@ -37,7 +43,7 @@ struct diskio_device_info *info = 0;
 
 /*---------------------------------------------------------------------------*/
 void
-test_sdinit()
+test_device_init()
 {
   int initialized = 0, i;
 
@@ -46,7 +52,8 @@ test_sdinit()
 
   info = diskio_devices();
   for (i = 0; i < DISKIO_MAX_DEVICES; i++) {
-    if ((info + i)->type == (DISKIO_DEVICE_TYPE_SD_CARD | DISKIO_DEVICE_TYPE_PARTITION)) {
+    printf("info + 1 type: %d\n", (info + i)->type);
+    if ((info + i)->type == FAT_TEST_DEVICE) {
       info += i;
       initialized = 1;
       break; 
@@ -57,7 +64,7 @@ test_sdinit()
 }
 /*---------------------------------------------------------------------------*/
 void
-test_sd_mkfs()
+test_mkfs()
 {
   struct FAT_Info fat;
 
@@ -281,8 +288,8 @@ PROCESS_THREAD(test_process, ev, data)
   etimer_set(&timer, CLOCK_SECOND);
   PROCESS_WAIT_UNTIL(etimer_expired(&timer));
   
-  RUN_TEST("test_sdinit", test_sdinit);
-  RUN_TEST("test_sd_mkfs", test_sd_mkfs);
+  RUN_TEST("test_device_init", test_device_init);
+  RUN_TEST("test_mkfs", test_mkfs);
   RUN_TEST("cfs_write_files", test_cfs_write_files);
   RUN_TEST("cfs_seek", test_cfs_seek);
   RUN_TEST("cfs_read_files", test_cfs_read_files);
