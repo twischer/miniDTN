@@ -8,6 +8,10 @@ FAT_FS = cfs-fat.c fat_mkfs.c
 FAT_COOP = fat_coop.c
 DISKIO = diskio.c mbr.c
 
+ifndef CFS
+  CFS=coffee
+endif
+
 ifeq ($(CFS),fat)
   CFS_FILES = $(FAT_FS) \
 	       $(DISKIO)
@@ -20,7 +24,6 @@ else ifeq ($(CFS),fat-coop)
   CFS_DEFS += -DFAT_CONF_COOPERATIVE=1
 else ifeq ($(CFS),coffee)
   CFS_FILES = cfs-coffee.c 
-  CFS_FILES += $(DISKIO)
   CFS_DEFS=-DCFS_COFFEE=1
 else ifeq ($(CFS),posix)
   CFS_FILE = cfs-posix.c

@@ -11,6 +11,7 @@ INGA_SENSORS = sensors.c acc-sensor.c adc-sensor.c battery-sensor.c \
 INGA_SOURCEFILES += $(INGA_INTERFACES) $(INGA_DRIVERS) $(INGA_SENSORS)
 
 # Enable profiling if needed
+# TODO: redundant
 ifeq ($(ENABLE_PROFILING),1)
   INGA_SOURCEFILES += profiling.c sprofiling.c
 endif
@@ -36,13 +37,8 @@ endif
 # Enable settings manager
 CFLAGS += -DCONTIKI_CONF_SETTINGS_MANAGER=1
 
-# Use coffee as default file system
-ifndef CFS
-  CFS=coffee
-endif
-
-
-CONTIKI_TARGET_SOURCEFILES += cfs-coffee-arch.c 
+# TODO: find a better solution for diskio.c
+CONTIKI_TARGET_SOURCEFILES += cfs-coffee-arch.c diskio.c mbr.c
 
 # For a coffee file system, the application makefile can define COFFEE_DEVICE=n
 # to select the type and COFFEE_ADDRESS=0xaaaaaaaa as the starting byte address.
@@ -72,7 +68,6 @@ ifdef COFFEE_DEVICE                    # if files are defined force definition o
     else ifeq ($(COFFEE_DEVICE), 6)    # 6 = INGA SDCard slot
       $(info Coffee on SD-Card)
       COFFEE_ADDRESS=$(COFFEE_DEFAULT_ADDR)
-      CONTIKI_TARGET_SOURCEFILES+=diskio.c
     else
       $(error Unsupported coffee file type $(COFFEE_DEVICE), supported are \
         1=EEPROM static, \
