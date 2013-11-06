@@ -55,8 +55,12 @@ PROCESS_THREAD(batt_process, ev, data)
   static const struct sensors_sensor *batt_sensor;
   batt_sensor = sensors_find("Batt");
 
-  // activate
-  SENSORS_ACTIVATE(*batt_sensor);
+  // activate and check status
+  uint8_t status = SENSORS_ACTIVATE(*batt_sensor);
+  if (status == 0) {
+    printf("Error: Failed to init battery sensor, aborting...\n");
+    PROCESS_EXIT();
+  }
   
   while (1) {
 

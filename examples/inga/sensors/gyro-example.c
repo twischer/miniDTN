@@ -55,8 +55,12 @@ PROCESS_THREAD(gyro_process, ev, data)
   static const struct sensors_sensor *gyro_sensor;
   gyro_sensor = sensors_find("Gyro");
 
-  // activate
-  SENSORS_ACTIVATE(*gyro_sensor);
+  // activate and check status
+  uint8_t status = SENSORS_ACTIVATE(*gyro_sensor);
+  if (status == 0) {
+    printf("Error: Failed to init gyroscope, aborting...\n");
+    PROCESS_EXIT();
+  }
   
   // configure
   gyro_sensor->configure(GYRO_CONF_SENSITIVITY, GYRO_250DPS);

@@ -55,8 +55,12 @@ PROCESS_THREAD(acc_process, ev, data)
   static const struct sensors_sensor *acc_sensor;
   acc_sensor = sensors_find("Acc");
 
-  // activate
-  SENSORS_ACTIVATE(*acc_sensor);
+  // activate and check status
+  uint8_t status = SENSORS_ACTIVATE(*acc_sensor);
+  if (status == 0) {
+    printf("Error: Failed to init accelerometer, aborting...\n");
+    PROCESS_EXIT();
+  }
   
   // configure
   acc_sensor->configure(ACC_CONF_SENSITIVITY, ACC_2G);

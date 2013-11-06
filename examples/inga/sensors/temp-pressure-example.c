@@ -55,8 +55,12 @@ PROCESS_THREAD(temppress_process, ev, data)
   static const struct sensors_sensor *temppress_sensor;
   temppress_sensor = sensors_find("Press");
 
-  // activate
-  SENSORS_ACTIVATE(*temppress_sensor);
+  // activate and check status
+  uint8_t status = SENSORS_ACTIVATE(*temppress_sensor);
+  if (status == 0) {
+    printf("Error: Failed to init pressure sensor, aborting...\n");
+    PROCESS_EXIT();
+  }
   
   while (1) {
 
