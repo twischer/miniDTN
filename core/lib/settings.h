@@ -177,7 +177,7 @@ typedef uint16_t settings_length_t;
 /** Fetches the value associated with the given key. */
 extern settings_status_t settings_get(settings_key_t key, uint8_t index,
                                       uint8_t *value,
-                                      settings_length_t * value_size);
+                                      settings_length_t value_size);
 
 /** Adds the given key-value pair to the end of the settings store. */
 extern settings_status_t settings_add(settings_key_t key,

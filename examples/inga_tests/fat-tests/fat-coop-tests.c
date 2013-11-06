@@ -1,12 +1,3 @@
-
-/*
- * set_nodeid.c
- *
- *  Created on: 13.10.2011
- *      Author: Georg von Zengen 
- *
- */
-
 #include "contiki.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,8 +8,12 @@
 #include "dev/watchdog.h"
 #include "clock.h"
 
+#include "../test.h"
+
 #define FILE_SIZE 128
 #define LOOPS 1024
+
+TEST_SUITE("fat-coop-test");
 
 /*---------------------------------------------------------------------------*/
 PROCESS(hello_world_process, "Hello world process");
@@ -55,25 +50,17 @@ PROCESS_THREAD(hello_world_process, ev, data)
   etimer_set(&timer, CLOCK_SECOND * 2);
   PROCESS_WAIT_UNTIL(etimer_expired(&timer));
 
-  while (!initialized) {
-    printf("Detecting devices and partitions...");
-    while ((i = diskio_detect_devices()) != DISKIO_SUCCESS) {
-      watchdog_periodic();
-    }
-    printf("done\n\n");
+  TEST_EQUALS(diskio_detect_devices(), DISKIO_SUCCESS);
 
-    info = diskio_devices();
-    for (i = 0; i < DISKIO_MAX_DEVICES; i++) {
-      print_device_info(info + i);
-      printf("\n");
-
-      if ((info + i)->type == (DISKIO_DEVICE_TYPE_SD_CARD | DISKIO_DEVICE_TYPE_PARTITION)) {
-        info += i;
-        initialized = 1;
-        break;
-      }
+  info = diskio_devices();
+  for (i = 0; i < DISKIO_MAX_DEVICES; i++) {
+    if ((info + i)->type == (DISKIO_DEVICE_TYPE_SD_CARD | DISKIO_DEVICE_TYPE_PARTITION)) {
+      info += i;
+      initialized = 1;
+      break; 
     }
   }
+  TEST_EQUALS(initialized, 1);
 
   printf("Formatting device...");
   cfs_fat_mkfs(info);
@@ -105,6 +92,8 @@ PROCESS_THREAD(hello_world_process, ev, data)
     // Determine the filename
     sprintf(b_file, "%05u.b", cnt);
 
+    printf("Opening file...\n");
+
     // Open the file descriptor
     fd = ccfs_open(b_file, CFS_WRITE, &token);
     // In case something goes wrong, we cannot save this file
@@ -118,6 +107,8 @@ PROCESS_THREAD(hello_world_process, ev, data)
     PROCESS_WAIT_UNTIL(ev == coop_event && ((Event_OperationFinished *) data)->token == token);
     event = (Event_OperationFinished *) data;
 
+    printf("File opened...\n");
+
     // In case something goes wrong, we cannot save this file
     if (event->ret_value == -1) {
       printf("############# STORAGE: open for write failed\n");
@@ -128,6 +119,8 @@ PROCESS_THREAD(hello_world_process, ev, data)
     for (i = 0; i < FILE_SIZE; i++) {
       buffer[i] = (cnt + i) % 0xFF;
     }
+
+    printf("Writing file...\n");
 
     // Write to file
     n = ccfs_write(fd, buffer, FILE_SIZE, &token);
@@ -140,6 +133,8 @@ PROCESS_THREAD(hello_world_process, ev, data)
     // Wait until write is finished
     PROCESS_WAIT_UNTIL(ev == coop_event && ((Event_OperationFinished *) data)->token == token);
     event = (Event_OperationFinished *) data;
+
+    printf("File written...\n");
 
     if (event->ret_value != FILE_SIZE) {
       printf("############# STORAGE: Write failed and returned %d\n", event->ret_value);
@@ -235,7 +230,7 @@ PROCESS_THREAD(hello_world_process, ev, data)
 
   cfs_fat_umount_device();
 
-  printf("PASS\n");
+  TESTS_DONE();
 
   watchdog_stop();
   while (1);

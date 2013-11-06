@@ -10,12 +10,18 @@
 #include "fat/cfs-fat.h"           //tested
 
 /*--- Test parameters ---*/
-#define FAT_TEST_CONF_NUM_FILES     13
+#define FAT_TEST_CONF_NUM_FILES     15
 #define FAT_TEST_CONF_BUF_SIZE      1024
 /*--- ---*/
-uint32_t file_sizes[FAT_TEST_CONF_NUM_FILES] = {42, 128, 512, 1042, 3210, 6789, 12345, 32768L, 35000L, 44444L, 65535L, 65536L, 71315L};
-uint8_t file_inits[FAT_TEST_CONF_NUM_FILES] = {5, 12, 80, 3, 76, 13, 123, 42, 23, 200, 255, 7, 99};
+uint32_t file_sizes[FAT_TEST_CONF_NUM_FILES] = {127, 128, 511, 512, 1023, 1024, 4095, 4096, 12345, 16383, 16384, 32767, 32768U, 65535UL, 65536UL};
+uint8_t file_inits[FAT_TEST_CONF_NUM_FILES] = {5, 12, 80, 3, 76, 13, 123, 42, 23, 200, 255, 7, 99, 12, 77, 31};
 
+#ifdef FAT_TEST_SD
+#define FAT_TEST_DEVICE (DISKIO_DEVICE_TYPE_SD_CARD | DISKIO_DEVICE_TYPE_PARTITION)
+#endif
+#ifdef FAT_TEST_EXTFLASH
+#define FAT_TEST_DEVICE DISKIO_DEVICE_TYPE_GENERIC_FLASH  
+#endif
 
 #define DEBUG 0
 #if DEBUG
@@ -37,7 +43,7 @@ struct diskio_device_info *info = 0;
 
 /*---------------------------------------------------------------------------*/
 void
-test_sdinit()
+test_device_init()
 {
   int initialized = 0, i;
 
@@ -46,7 +52,8 @@ test_sdinit()
 
   info = diskio_devices();
   for (i = 0; i < DISKIO_MAX_DEVICES; i++) {
-    if ((info + i)->type == (DISKIO_DEVICE_TYPE_SD_CARD | DISKIO_DEVICE_TYPE_PARTITION)) {
+    printf("info + 1 type: %d\n", (info + i)->type);
+    if ((info + i)->type == FAT_TEST_DEVICE) {
       info += i;
       initialized = 1;
       break; 
@@ -57,7 +64,7 @@ test_sdinit()
 }
 /*---------------------------------------------------------------------------*/
 void
-test_sd_mkfs()
+test_mkfs()
 {
   struct FAT_Info fat;
 
@@ -72,11 +79,13 @@ test_sd_mkfs()
 
   cfs_fat_get_fat_info( &fat );
 
+  printf("\n");
+  TEST_REPORT("Capacity", 512*fat.BPB_TotSec, 1073741824, "GB");
   // Must be one of 512, 1024, 2048, 4096.
   TEST_REPORT("BytesPerSec", fat.BPB_BytesPerSec, 1, "bytes/sector");
   TEST_REPORT("Reserved sectors", fat.BPB_RsvdSecCnt, 1, "sectors");
   TEST_REPORT("Total sectors", fat.BPB_TotSec, 1, "sectors");
-  TEST_REPORT("FAT size", fat.BPB_NumFATs, 1, "sectors");
+  TEST_REPORT("Num of FATs", fat.BPB_NumFATs, 1, "");
   // Must be one of 1, 2, 4, 8, 16, 32, 64, 128.
   TEST_REPORT("SecPerClus", fat.BPB_SecPerClus, 1, "sectors");
 
@@ -99,7 +108,6 @@ test_cfs_write_files()
   for (idx = 0; idx < FAT_TEST_CONF_NUM_FILES; idx++) {
     sprintf(fnamebuf, "test%02d.dat", idx);
     write_test_bytes(fnamebuf, file_sizes[idx], file_inits[idx]);
-    printf(".");
   }
   printf("\n");
 }
@@ -113,7 +121,6 @@ test_cfs_seek()
   for (idx = 0; idx < FAT_TEST_CONF_NUM_FILES; idx++) {
     sprintf(fnamebuf, "test%02d.dat", idx);
     TEST_EQUALS(get_file_size(fnamebuf), file_sizes[idx]);
-    printf(".");
   }
   printf("\n");
 }
@@ -128,7 +135,6 @@ test_cfs_read_files()
   for (idx = 0; idx < FAT_TEST_CONF_NUM_FILES; idx++) {
     sprintf(fnamebuf, "test%02d.dat", idx);
     read_test_bytes(fnamebuf, file_sizes[idx], file_inits[idx]);
-    printf(".");
   }
   printf("\n");
 }
@@ -150,7 +156,6 @@ test_cfs_remove()
     TEST_POST();
 
     TEST_NEQ(cfs_open(fnamebuf, CFS_READ), 0);
-    printf(".");
   }
   printf("\n");
 }
@@ -283,8 +288,8 @@ PROCESS_THREAD(test_process, ev, data)
   etimer_set(&timer, CLOCK_SECOND);
   PROCESS_WAIT_UNTIL(etimer_expired(&timer));
   
-  RUN_TEST("test_sdinit", test_sdinit);
-  RUN_TEST("test_sd_mkfs", test_sd_mkfs);
+  RUN_TEST("test_device_init", test_device_init);
+  RUN_TEST("test_mkfs", test_mkfs);
   RUN_TEST("cfs_write_files", test_cfs_write_files);
   RUN_TEST("cfs_seek", test_cfs_seek);
   RUN_TEST("cfs_read_files", test_cfs_read_files);

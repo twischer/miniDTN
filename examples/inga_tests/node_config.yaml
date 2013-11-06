@@ -1,16 +1,3 @@
-suite:
-    logbase:   /home/enrico/Hiwi/contiki-inga/log
-    logpattern: date-tag
-    contikibase: /home/enrico/Hiwi/contiki-inga
-    contikiscm: git # Here only git and none are supported at the moment
-    testcases:
-        - sensor-acc
-        - sensor-gyro
-        - sensor-battery
-        - timer-rtimer
-        - fat-default
-        - fat-coop
-
 # List of devices
 # Each device has a name, a class (type of device), a path and an id
 devices:

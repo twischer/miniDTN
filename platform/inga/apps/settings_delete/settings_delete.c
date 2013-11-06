@@ -36,25 +36,36 @@
 
 #include "settings_delete.h"
 
-PROCESS(settings_delete_process, "Burn NodeID Process");
+#define PRINTF printf 
 
-// AUTOSTART_PROCESSES(&nodeid_burn_process);
+PROCESS(settings_delete_process, "Settings delete Process");
+
 /*---------------------------------------------------------------------------*/
 PROCESS_THREAD(settings_delete_process, ev, data)
 {
-	PROCESS_BEGIN();
-	
-	// Delete all Settings if no value is defined
-	//#if !defined(NODE_CONF_ID) && !defined(RADIO_CONF_CHANNEL) && !defined(RADIO_CONF_TX_POWER)
-        printf("Wiping settings...");
-        settings_wipe();
-        printf("done.\n");
+  PROCESS_BEGIN();
 
-	//#elif defined(NODE_CONF_ID)
-	//	printf("[APP.nodeid-burn] Delete Status: %d\n", settings_delete(SETTINGS_KEY_PAN_ID, 0) == SETTINGS_STATUS_OK ? 1 : 0);
-	//#endif
-	
-	process_exit(&settings_delete_process);
-	
-	PROCESS_END();
+  // Delete all Settings if no value is defined
+#if !defined(NODE_CONF_ID) && !defined(RADIO_CONF_PAN_ID) && !defined(RADIO_CONF_CHANNEL) && !defined(RADIO_CONF_TX_POWER)
+  PRINTF("Wiping settings...");
+  settings_wipe();
+  PRINTF("done.\n");
+#else /* !defined(NODE_CONF_ID) && !defined(RADIO_CONF_CHANNEL) && !defined(RADIO_CONF_TX_POWER) */
+#if defined(NODE_CONF_ID)
+  PRINTF("[APP.settings-delete] node id delete status: %d\n", settings_delete(SETTINGS_KEY_PAN_ADDR, 0) == SETTINGS_STATUS_OK ? 1 : 0);
+#endif
+#if defined(RADIO_CONF_PAN_ID)
+  PRINTF("[APP.settings-delete] pan id delete status: %d\n", settings_delete(SETTINGS_KEY_PAN_ID, 0) == SETTINGS_STATUS_OK ? 1 : 0);
+#endif
+#if defined(RADIO_CONF_CHANNEL)
+  PRINTF("[APP.settings-delete] channel delete status: %d\n", settings_delete(SETTINGS_KEY_CHANNEL, 0) == SETTINGS_STATUS_OK ? 1 : 0);
+#endif
+#if defined(RADIO_CONF_TX_POWER)
+  PRINTF("[APP.settings-delete] tx power delete status: %d\n", settings_delete(SETTINGS_KEY_TXPOWER, 0) == SETTINGS_STATUS_OK ? 1 : 0);
+#endif
+#endif /* !defined(NODE_CONF_ID) && !defined(RADIO_CONF_CHANNEL) && !defined(RADIO_CONF_TX_POWER) */
+
+  process_exit(&settings_delete_process);
+
+  PROCESS_END();
 }

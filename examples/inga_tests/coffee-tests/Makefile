@@ -1,9 +1,8 @@
 # FAT tests
-coffee-tests: coffee-tests.c
-
-#PROJECT_SOURCEFILES += ../sensor-tests.c
+all: coffee-tests
 
 TARGET=inga
+CFS=coffee
 
 CONTIKI = ../../..
 include $(CONTIKI)/Makefile.include

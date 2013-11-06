@@ -1,359 +1,200 @@
-#define TESTCOFFEE 1
-#define DEBUG_CFS 1
-#if TESTCOFFEE
-#if DEBUG_CFS
-#include <stdio.h>
-#define PRINTF_CFS(FORMAT,args...) printf_P(PSTR(FORMAT),##args)
-#else
-#define PRINTF_CFS(...)
+/*
+ * Copyright (c) 2006, Swedish Institute of Computer Science.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. Neither the name of the Institute nor the names of its contributors
+ *    may be used to endorse or promote products derived from this software
+ *    without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE INSTITUTE AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE INSTITUTE OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ *
+ * This file is part of the Contiki operating system.
+ *
+ */
+
+#define FILES_IN_STORAGE 20
+#define FILE_SIZE 100
+
+#include "contiki.h"
+#include "test.h"
+#include "../test.h"
+
+#include <stdio.h> /* For printf() */
+#include "cfs/cfs-coffee.h"
+
+TEST_SUITE("coffee-tests");
+
+/*---------------------------------------------------------------------------*/
+PROCESS(coffee_test_process, "Onboard Flash COFFEE Test process");
+AUTOSTART_PROCESSES(&coffee_test_process);
+/*---------------------------------------------------------------------------*/
+struct etimer et;
+#if (COFFEE_DEVICE == 6)
+#include "fat/diskio.h"           //tested
+struct diskio_device_info *info = 0;
 #endif
 
-#include "cfs/cfs.h"
-#include "cfs/cfs-coffee.h"
-#include "lib/crc16.h"
-#include "lib/random.h"
-#include <stdio.h>
-
-#define FAIL(x) error = (x); goto end;
-
-#define FILE_SIZE 512
-
-int
-coffee_file_test(void)
+void fail() {
+  TEST_FAIL("");
+  watchdog_stop();
+  while(1) ;
+}
+/*---------------------------------------------------------------------------*/
+PROCESS_THREAD(coffee_test_process, ev, data)
 {
-  int error;
-  int wfd, rfd, afd;
-  unsigned char buf[256], buf2[11];
-  int32_t r, i, j, total_read;
-  CFS_CONF_OFFSET_TYPE offset;
+  int fd_write, n, i;
+  static int cnt = 0;
+  uint8_t buffer[FILE_SIZE];
+  clock_time_t now;
+  unsigned short now_fine;
+  static uint32_t time_start, time_stop;
 
-  cfs_remove("T1");
-  cfs_remove("T2");
-  cfs_remove("T3");
-  cfs_remove("T4");
-  cfs_remove("T5");
+  printf("###########################################################\n");
 
-  wfd = rfd = afd = -1;
+  PROCESS_BEGIN();
 
-  for(r = 0; r < sizeof(buf); r++) {
-    buf[r] = r;
-  }
+  printf("process running\n");
 
-  /* Test 1: Open for writing. */
-  wfd = cfs_open("T1", CFS_WRITE);
-  if(wfd < 0) {
-    FAIL(-1);
-  }
+  // wait for 5 sec
+  etimer_set(&et, CLOCK_SECOND * 5);
+  PROCESS_YIELD_UNTIL(etimer_expired(&et));
 
-  /* Test 2: Write buffer. */
-  r = cfs_write(wfd, buf, sizeof(buf));
-  if(r < 0) {
-    FAIL(-2);
-  } else if(r < sizeof(buf)) {
-    FAIL(-3);
-  }
+#if (COFFEE_DEVICE == 6)
+  int initialized = 0, i;
 
-  /* Test 3: Deny reading. */
-  r = cfs_read(wfd, buf, sizeof(buf));
-  if(r >= 0) {
-    FAIL(-4);
-  }
+  //--- Detecting devices and partitions
+  TEST_EQUALS(diskio_detect_devices(), DISKIO_SUCCESS);
 
-  /* Test 4: Open for reading. */
-  rfd = cfs_open("T1", CFS_READ);
-  if(rfd < 0) {
-    FAIL(-5);
-  }
-
-  /* Test 5: Write to read-only file. */
-  r = cfs_write(rfd, buf, sizeof(buf));
-  if(r >= 0) {
-    FAIL(-6);
-  }
-
-  /* Test 7: Read the buffer written in Test 2. */
-  memset(buf, 0, sizeof(buf));
-  r = cfs_read(rfd, buf, sizeof(buf));
-  if(r < 0) {
-    FAIL(-8);
-  } else if(r < sizeof(buf)) {
-    PRINTF_CFS("r=%d\n", r);
-    FAIL(-9);
-  }
-
-  /* Test 8: Verify that the buffer is correct. */
-  for(r = 0; r < sizeof(buf); r++) {
-    if(buf[r] != r) {
-      PRINTF_CFS("r=%d. buf[r]=%d\n", r, buf[r]);
-      FAIL(-10);
+  info = diskio_devices();
+  for (i = 0; i < DISKIO_MAX_DEVICES; i++) {
+    if ((info + i)->type == (DISKIO_DEVICE_TYPE_SD_CARD | DISKIO_DEVICE_TYPE_PARTITION)) {
+      info += i;
+      initialized = 1;
+      break; 
     }
   }
+  TEST_EQUALS(initialized, 1);
 
-  /* Test 9: Seek to beginning. */
-  if(cfs_seek(wfd, 0, CFS_SEEK_SET) != 0) {
-    FAIL(-11);
-  }
+  diskio_set_default_device(info);
+#endif
 
-  /* Test 10: Write to the log. */
-  r = cfs_write(wfd, buf, sizeof(buf));
-  if(r < 0) {
-    FAIL(-12);
-  } else if(r < sizeof(buf)) {
-    FAIL(-13);
-  }
+  printf("fomartting...\n");
+  TEST_EQUALS(cfs_coffee_format(), 0);
+  //printf("test starting\n");
 
-  /* Test 11: Read the data from the log. */
-  cfs_seek(rfd, 0, CFS_SEEK_SET);
-  memset(buf, 0, sizeof(buf));
-  r = cfs_read(rfd, buf, sizeof(buf));
-  if(r < 0) {
-    FAIL(-14);
-  } else if(r < sizeof(buf)) {
-    FAIL(-15);
-  }
+  do {
+    now_fine = clock_time();
+    now = clock_seconds();
+  } while (now_fine != clock_time());
+  time_start = ((unsigned long)now)*CLOCK_SECOND + now_fine%CLOCK_SECOND;
 
-  /* Test 12: Verify that the data is correct. */
-  for(r = 0; r < sizeof(buf); r++) {
-    if(buf[r] != r) {
-      FAIL(-16);
-    }
-  }
+  while(1) {
+    // Shortest possible pause
+    PROCESS_PAUSE();
 
-  /* Test 13: Write a reversed buffer to the file. */
-  for(r = 0; r < sizeof(buf); r++) {
-    buf[r] = sizeof(buf) - r - 1;
-  }
-  if(cfs_seek(wfd, 0, CFS_SEEK_SET) != 0) {
-    FAIL(-17);
-  }
-  r = cfs_write(wfd, buf, sizeof(buf));
-  if(r < 0) {
-    FAIL(-18);
-  } else if(r < sizeof(buf)) {
-    FAIL(-19);
-  }
-  if(cfs_seek(rfd, 0, CFS_SEEK_SET) != 0) {
-    FAIL(-20);
-  }
+    // Determine the filename
+    char b_file[8];
+    sprintf(b_file,"%u.b", cnt);
 
-  /* Test 14: Read the reversed buffer. */
-  cfs_seek(rfd, 0, CFS_SEEK_SET);
-  memset(buf, 0, sizeof(buf));
-  r = cfs_read(rfd, buf, sizeof(buf));
-  if(r < 0) {
-    FAIL(-21);
-  } else if(r < sizeof(buf)) {
-    PRINTF_CFS("r = %d\n", r);
-    FAIL(-22);
-  }
+    // Set the file size
+    printf("Reserving '%s'...\n", b_file);
+    TEST_EQUALS(cfs_coffee_reserve(b_file, FILE_SIZE), 0);
 
-  /* Test 15: Verify that the data is correct. */
-  for(r = 0; r < sizeof(buf); r++) {
-    if(buf[r] != sizeof(buf) - r - 1) {
-      FAIL(-23);
-    }
-  }
+      // And open it
+    printf("Opening '%s'...\n", b_file);
+    fd_write = cfs_open(b_file, CFS_WRITE);
+    TEST_NEQ(fd_write, -1);
 
-  cfs_close(rfd);
-  cfs_close(wfd);
-
-  if(cfs_coffee_reserve("T2", FILE_SIZE) < 0) {
-    FAIL(-24);
-  }
-
-  /* Test 16: Test multiple writes at random offset. */
-  for(r = 0; r < 100; r++) {
-    wfd = cfs_open("T2", CFS_WRITE | CFS_READ);
-    if(wfd < 0) {
-      FAIL(-25);
+    // fill buffer
+    for(i=0; i<FILE_SIZE; i++) {
+      buffer[i] = cnt % 0xFF;
     }
 
-    offset = random_rand() % FILE_SIZE;
+    // Open was successful, write has to be successful too since the size has been reserved
+    printf("Writing'%s'...\n", b_file);
+    n = cfs_write(fd_write, buffer, FILE_SIZE);
+    cfs_close(fd_write);
 
-    for(r = 0; r < sizeof(buf); r++) {
-      buf[r] = r;
-    }
+    TEST_EQUALS(n, FILE_SIZE);
 
-    if(cfs_seek(wfd, offset, CFS_SEEK_SET) != offset) {
-      FAIL(-26);
-    }
+    printf("%s written\n", b_file);
 
-    if(cfs_write(wfd, buf, sizeof(buf)) != sizeof(buf)) {
-      FAIL(-27);
-    }
+    if( cnt >= FILES_IN_STORAGE ) {
+      int fd_read;
 
-    if(cfs_seek(wfd, offset, CFS_SEEK_SET) != offset) {
-      FAIL(-28);
-    }
+      // Figure out the filename
+      char r_file[8];
+      sprintf(r_file,"%u.b", cnt - FILES_IN_STORAGE);
 
-    memset(buf, 0, sizeof(buf));
-    if(cfs_read(wfd, buf, sizeof(buf)) != sizeof(buf)) {
-      FAIL(-29);
-    }
-
-    for(i = 0; i < sizeof(buf); i++) {
-      if(buf[i] != i) {
-        PRINTF_CFS("buf[%d] != %d\n", i, buf[i]);
-        FAIL(-30);
+      // Open the bundle file
+      printf("Reopening '%s'...\n", r_file);
+      fd_read = cfs_open(r_file, CFS_READ);
+      if(fd_read == -1) {
+        // Could not open file
+        printf("############# STORAGE: could not open file %s\n", r_file);
+        fail();
       }
-    }
-  }
-  /* Test 17: Append data to the same file many times. */
-#define APPEND_BYTES 3000
-#define BULK_SIZE 10
-  for (i = 0; i < APPEND_BYTES; i += BULK_SIZE) {
-		afd = cfs_open("T3", CFS_WRITE | CFS_APPEND);
-		if (afd < 0) {
-			FAIL(-31);
-		}
-		for (j = 0; j < BULK_SIZE; j++) {
-			buf[j] = 1 + ((i + j) & 0x7f);
-		}
-		if ((r = cfs_write(afd, buf, BULK_SIZE)) != BULK_SIZE) {
-			PRINTF_CFS("Count:%d, r=%d\n", i, r);
-			FAIL(-32);
-		}
-		cfs_close(afd);
-	}
 
-  /* Test 18: Read back the data written in Test 17 and verify that it
-     is correct. */
-  afd = cfs_open("T3", CFS_READ);
-  if(afd < 0) {
-    FAIL(-33);
-  }
-  total_read = 0;
-  while((r = cfs_read(afd, buf2, sizeof(buf2))) > 0) {
-    for(j = 0; j < r; j++) {
-      if(buf2[j] != 1 + ((total_read + j) & 0x7f)) {
-  FAIL(-34);
+      memset(buffer, 0, FILE_SIZE);
+
+      // And now read the bundle back from flash
+      printf("Reading '%s'...\n", b_file);
+      if (cfs_read(fd_read, buffer, FILE_SIZE) == -1){
+        printf("############# STORAGE: cfs_read error\n");
+        cfs_close(fd_read);
+        fail();
       }
-    }
-    total_read += r;
-  }
-  if(r < 0) {
-	  PRINTF_CFS("FAIL:-35 r=%d\n",r);
-    FAIL(-35);
-  }
-  if(total_read != APPEND_BYTES) {
-	  PRINTF_CFS("FAIL:-35 total_read=%d\n",total_read);
-    FAIL(-35);
-  }
-  cfs_close(afd);
+      cfs_close(fd_read);
 
-/***************T4********************/
-/* file T4 and T5 writing forces to use garbage collector in greedy mode
- * this test is designed for 10kb of file system
- * */
-#define APPEND_BYTES_1 2000
-#define BULK_SIZE_1 10
-  for (i = 0; i < APPEND_BYTES_1; i += BULK_SIZE_1) {
-		afd = cfs_open("T4", CFS_WRITE | CFS_APPEND);
-		if (afd < 0) {
-			FAIL(-36);
-		}
-		for (j = 0; j < BULK_SIZE_1; j++) {
-			buf[j] = 1 + ((i + j) & 0x7f);
-		}
-
-
-		if ((r = cfs_write(afd, buf, BULK_SIZE_1)) != BULK_SIZE_1) {
-			PRINTF_CFS("Count:%d, r=%d\n", i, r);
-			FAIL(-37);
-		}
-		cfs_close(afd);
-	}
-
-  afd = cfs_open("T4", CFS_READ);
-  if(afd < 0) {
-    FAIL(-38);
-  }
-  total_read = 0;
-  while((r = cfs_read(afd, buf2, sizeof(buf2))) > 0) {
-    for(j = 0; j < r; j++) {
-      if(buf2[j] != 1 + ((total_read + j) & 0x7f)) {
-    	  PRINTF_CFS("FAIL:-39, total_read=%d r=%d\n",total_read,r);
-  FAIL(-39);
-      }
-    }
-    total_read += r;
-  }
-  if(r < 0) {
-	  PRINTF_CFS("FAIL:-40 r=%d\n",r);
-    FAIL(-40);
-  }
-  if(total_read != APPEND_BYTES_1) {
-	  PRINTF_CFS("FAIL:-41 total_read=%d\n",total_read);
-    FAIL(-41);
-  }
-  cfs_close(afd);
-  /***************T5********************/
-#define APPEND_BYTES_2 1000
-#define BULK_SIZE_2 10
-    for (i = 0; i < APPEND_BYTES_2; i += BULK_SIZE_2) {
-  		afd = cfs_open("T5", CFS_WRITE | CFS_APPEND);
-  		if (afd < 0) {
-  			FAIL(-42);
-  		}
-  		for (j = 0; j < BULK_SIZE_2; j++) {
-  			buf[j] = 1 + ((i + j) & 0x7f);
-  		}
-
-  		if ((r = cfs_write(afd, buf, BULK_SIZE_2)) != BULK_SIZE_2) {
-  			PRINTF_CFS("Count:%d, r=%d\n", i, r);
-  			FAIL(-43);
-  		}
-
-  		cfs_close(afd);
-  	}
-
-    afd = cfs_open("T5", CFS_READ);
-    if(afd < 0) {
-      FAIL(-44);
-    }
-    total_read = 0;
-    while((r = cfs_read(afd, buf2, sizeof(buf2))) > 0) {
-      for(j = 0; j < r; j++) {
-        if(buf2[j] != 1 + ((total_read + j) & 0x7f)) {
-      	  PRINTF_CFS("FAIL:-45, total_read=%d r=%d\n",total_read,r);
-    FAIL(-45);
+      for(i=0; i<FILE_SIZE; i++) {
+        if( buffer[i] != (cnt - FILES_IN_STORAGE) % 0xFF ) {
+          printf("############# STORAGE: verify error\n");
+          fail();
         }
       }
-      total_read += r;
+
+      if( cfs_remove(r_file) == -1 ) {
+        printf("############# STORAGE: unable to remove %s\n", r_file);
+        fail();
+      }
+
+      printf("%s deleted\n", r_file);
     }
-    if(r < 0) {
-  	  PRINTF_CFS("FAIL:-46 r=%d\n",r);
-      FAIL(-46);
-    }
-    if(total_read != APPEND_BYTES_2) {
-  	  PRINTF_CFS("FAIL:-47 total_read=%d\n",total_read);
-      FAIL(-47);
-    }
-    cfs_close(afd);
 
-  error = 0;
-end:
-  cfs_close(wfd); cfs_close(rfd); cfs_close(afd);
+    cnt ++;
 
-  return error;
-}
-#endif /* TESTCOFFEE */
+    if( cnt >= 10 ) {
+      do {
+        now_fine = clock_time();
+        now = clock_seconds();
+      } while (now_fine != clock_time());
+      time_stop = ((unsigned long)now)*CLOCK_SECOND + now_fine%CLOCK_SECOND;
 
-#if 0
-#if TESTCOFFEE
-  /* Defining TESTCOFFEE is a convenient way of testing a new configuration.
-   * It is triggered by an erase of the last sector.
-   * Note this routine will be reentered during the test!                     */
-
-  if ((sector + i) == COFFEE_PAGES - 1) {
-    int j = (int) (COFFEE_START >> 1), k = (int) ((COFFEE_START >> 1)+(COFFEE_SIZE >> 1)), l = (int) (COFFEE_SIZE / 1024UL);
-    printf_P(PSTR("\nTesting coffee filesystem [0x%08x -> 0x%08x (%uKb)] ..."), j, k, l);
-    int r = coffee_file_test();
-    if (r < 0) {
-      printf_P(PSTR("\nFailed with return %d! :-(\n"), r);
-    } else {
-      printf_P(PSTR("Passed! :-)\n"));
+      TEST_REPORT("data written", FILE_SIZE*cnt*CLOCK_SECOND, time_stop-time_start, "bytes/s");
+      TEST_PASS();
+      watchdog_stop();
+      while(1);
     }
   }
-#endif /* TESTCOFFEE */
-#endif
+
+  PROCESS_END();
+}
+/*---------------------------------------------------------------------------*/

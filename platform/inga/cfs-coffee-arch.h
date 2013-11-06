@@ -47,6 +47,10 @@
 //Currently you may choose just one of the following for the coffee file sytem
 //A static file sysstem allows file rewrites but no extensions or new files
 //This allows a static linked list to index into the file system
+#ifndef COFFEE_DEVICE
+#define COFFEE_DEVICE 3
+#endif
+
 #if COFFEE_DEVICE==1             //1=eeprom for static file system
 #define COFFEE_INGA_EEPROM 1
 #define COFFEE_STATIC     1
@@ -61,8 +65,6 @@
 #define COFFEE_INGA_EXTERNAL 1
 #elif COFFEE_DEVICE==6           //6=sdcard flash for full file system
 #define COFFEE_INGA_SDCARD  1
-#else
-#error COFFEE_DEVICE value is undefined
 #endif
 
 #ifdef COFFEE_INGA_EEPROM

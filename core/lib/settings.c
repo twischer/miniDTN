@@ -251,7 +251,7 @@ settings_check(settings_key_t key, uint8_t index)
 /*---------------------------------------------------------------------------*/
 settings_status_t
 settings_get(settings_key_t key, uint8_t index, uint8_t *value,
-             settings_length_t * value_size)
+             settings_length_t value_size)
 {
   settings_status_t ret = SETTINGS_STATUS_NOT_FOUND;
 
@@ -261,9 +261,9 @@ settings_get(settings_key_t key, uint8_t index, uint8_t *value,
     if(settings_iter_get_key(iter) == key) {
       if(!index) {
         /* We found it! */
-        *value_size = settings_iter_get_value_bytes(iter,
+        value_size = settings_iter_get_value_bytes(iter,
                                                     (void *)value,
-                                                    *value_size);
+                                                    value_size);
         ret = SETTINGS_STATUS_OK;
         break;
       } else {
@@ -430,7 +430,7 @@ settings_wipe(void)
   /* Simply making the first item invalid will effectively
    * clear the key-value store.
    */
-  const uint32_t x = 0xFFFFFF;
+  const uint32_t x = 0x000000;
 
   eeprom_write(SETTINGS_TOP_ADDR - sizeof(x), (uint8_t *)&x, sizeof(x));
 }
