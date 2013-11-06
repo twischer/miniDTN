@@ -47,7 +47,7 @@
 #include "diskio.h"
 #include "mbr.h"
 #include <string.h>
-#include "cfs-fat-arch.h"
+#include "diskio-arch.h"
 
 #ifndef DISKIO_DEBUG
 #define DISKIO_DEBUG 0

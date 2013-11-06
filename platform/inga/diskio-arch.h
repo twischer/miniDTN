@@ -32,13 +32,13 @@
 
 /**
  * \file
- *      FAT driver definitions - Platform Specific
+ *      Diskio driver definitions - Platform Specific
  * \author
  *      Wolf-Bastian Poettner <poettner@ibr.cs.tu-bs.de>
  */
 
-#ifndef CFS_FAT_ARCH_H
-#define CFS_FAT_ARCH_H
+#ifndef DISKIO_ARCH_H
+#define DISKIO_ARCH_H
 
 #include "dev/microSD.h"
 #include "dev/at45db.h"
@@ -58,5 +58,5 @@
 #define FLASH_INIT() \
         at45db_init()
 
-#endif /* CFS_FAT_ARCH_H */
+#endif /* DISKIO_ARCH_H */
 

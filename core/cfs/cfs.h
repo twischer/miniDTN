@@ -66,7 +66,7 @@
 #elif defined CFS_COFFEE
 #include "cfs-coffee-arch.h"
 #elif defined CFS_FAT
-#include "cfs-fat-arch.h"
+#include "diskio-arch.h"
 #endif
 
 #ifndef CFS_CONF_OFFSET_TYPE
