@@ -5,5 +5,5 @@ TARGET=inga
 # Only for uip examples
 UIP_CONF_IPV6=1
 
-CONTIKI = ../..
+CONTIKI = ../../..
 include $(CONTIKI)/Makefile.include
