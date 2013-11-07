@@ -1,0 +1,62 @@
+tests:
+### COFFEE test
+  - name: coffee-eeprom-static
+    timeout: 120
+    devices:
+      - name: receiver
+        programdir: examples/inga-regression/coffee-tests
+        program: coffee-tests
+        instrument: []
+        debug: []
+        cflags: "-fno-inline -DCOFFEE_DEVICE=1"
+        graph_options: ""
+  - name: coffee-eeprom-dynamic
+    timeout: 120
+    devices:
+      - name: receiver
+        programdir: examples/inga-regression/coffee-tests
+        program: coffee-tests
+        instrument: []
+        debug: []
+        cflags: "-fno-inline -DCOFFEE_DEVICE=2"
+        graph_options: ""
+  - name: coffee-flash-static
+    timeout: 120
+    devices:
+      - name: receiver
+        programdir: examples/inga-regression/coffee-tests
+        program: coffee-tests
+        instrument: []
+        debug: []
+        cflags: "-fno-inline -DCOFFEE_DEVICE=3"
+        graph_options: ""
+  - name: coffee-flash-dynamic
+    timeout: 120
+    devices:
+      - name: receiver
+        programdir: examples/inga-regression/coffee-tests
+        program: coffee-tests
+        instrument: []
+        debug: []
+        cflags: "-fno-inline -DCOFFEE_DEVICE=4"
+        graph_options: ""
+  - name: coffee-extflash
+    timeout: 120
+    devices:
+      - name: receiver
+        programdir: examples/inga-regression/coffee-tests
+        program: coffee-tests
+        instrument: []
+        debug: []
+        cflags: "-fno-inline -DCOFFEE_DEVICE=5"
+        graph_options: ""
+  - name: coffee-sdcard
+    timeout: 120
+    devices:
+      - name: receiver
+        programdir: examples/inga-regression/coffee-tests
+        program: coffee-tests
+        instrument: []
+        debug: []
+        cflags: "-fno-inline -DCOFFEE_DEVICE=6"
+        graph_options: ""

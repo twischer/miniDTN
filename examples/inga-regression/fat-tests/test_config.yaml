@@ -1,0 +1,37 @@
+tests:
+### FAT test (SD card)
+  - name: fat-sd
+    timeout: 120
+    devices:
+      - name: receiver
+        programdir: examples/inga-regression/fat-tests
+        program: fat-tests
+        instrument: []
+        debug: []
+        cflags: "-fno-inline -DFAT_TEST_SD"
+        makeopts: "CFS=fat"
+        graph_options: ""
+### FAT test (external flash)
+  - name: fat-extflash
+    timeout: 120
+    devices:
+      - name: receiver
+        programdir: examples/inga-regression/fat-tests
+        program: fat-tests
+        instrument: []
+        debug: []
+        cflags: "-fno-inline -DFAT_TEST_EXTFLASH"
+        makeopts: "CFS=fat"
+        graph_options: ""
+### FAT coop test
+  - name: fat-coop
+    timeout: 120
+    devices:
+      - name: receiver
+        programdir: examples/inga-regression/fat-tests
+        program: fat-coop-tests
+        instrument: []
+        debug: []
+        cflags: "-fno-inline"
+        makeopts: "CFS=fat-coop"
+        graph_options: ""
