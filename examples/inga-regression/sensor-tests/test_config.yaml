@@ -1,0 +1,45 @@
+tests:
+### Accelerometer test
+  - name: sensor-acc
+    timeout: 60
+    devices:
+      - name: receiver
+        programdir: examples/inga-regression/sensor-tests
+        program: acc-test
+        instrument: []
+        debug: []
+        cflags: "-fno-inline"
+        graph_options: ""
+### Gyroscope test
+  - name: sensor-gyro
+    timeout: 60
+    devices:
+      - name: receiver
+        programdir: examples/inga-regression/sensor-tests
+        program: gyro-test
+        instrument: []
+        debug: []
+        cflags: "-fno-inline"
+        graph_options: ""
+### Battery test
+  - name: sensor-battery
+    timeout: 60
+    devices:
+      - name: receiver
+        programdir: examples/inga-regression/sensor-tests
+        program: battery-test
+        instrument: []
+        debug: []
+        cflags: "-fno-inline"
+        graph_options: ""
+### Pressure/Temperature test
+  - name: sensor-temppress
+    timeout: 60
+    devices:
+      - name: receiver
+        programdir: examples/inga-regression/sensor-tests
+        program: temppress-test
+        instrument: []
+        debug: []
+        cflags: "-fno-inline"
+        graph_options: ""

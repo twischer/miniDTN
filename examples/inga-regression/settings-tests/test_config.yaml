@@ -1,0 +1,53 @@
+tests:
+### settings app test
+  - name: settings-delete
+    timeout: 100
+    devices:
+      - name: receiver
+        programdir: examples/inga-regression/settings-tests
+        program: settings-test
+        instrument: []
+        debug: []
+        cflags: "-DAPP_SETTINGS_DELETE=1"
+        graph_options: ""
+      - name: sender
+        programdir: examples/inga-regression/settings-tests
+        program: settings-test
+        instrument: []
+        debug: []
+        cflags: "-DAPP_SETTINGS_DELETE=1"
+        graph_options: ""
+  - name: settings-set
+    timeout: 100
+    devices:
+      - name: receiver
+        programdir: examples/inga-regression/settings-tests
+        program: settings-test
+        instrument: []
+        debug: []
+        cflags: "-DAPP_SETTINGS_SET=1 -DNODE_CONF_ID=$RECEIVER -DEUI64=0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 -DRADIO_CONF_PAN_ID=0xABCD -DRADIO_CONF_CHANNEL=0x1A -DRADIO_CONF_TX_POWER=0x00"
+        graph_options: ""
+      - name: sender
+        programdir: examples/inga-regression/settings-tests
+        program: settings-test
+        instrument: []
+        debug: []
+        cflags: "-DAPP_SETTINGS_SET=1 -DNODE_CONF_ID=$SENDER -DEUI64=0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 -DRADIO_CONF_PAN_ID=0xABCD -DRADIO_CONF_CHANNEL=0x1A -DRADIO_CONF_TX_POWER=0x00"
+        graph_options: ""
+  - name: settings-set-chaotic
+    timeout: 100
+    devices:
+      - name: receiver
+        programdir: examples/inga-regression/settings-tests
+        program: settings-test
+        instrument: []
+        debug: []
+        cflags: "-DAPP_SETTINGS_SET=1 -DNODE_CONF_ID=0x1234 -DEUI64=0x12,0x34,0x56,0x67,0x89,0xAB,0xCD,0xEF -DRADIO_CONF_PAN_ID=0x4242 -DRADIO_CONF_CHANNEL=13 -DRADIO_CONF_TX_POWER=42"
+        graph_options: ""
+      - name: sender
+        programdir: examples/inga-regression/settings-tests
+        program: settings-test
+        instrument: []
+        debug: []
+        cflags: "-DAPP_SETTINGS_SET=1 -DNODE_CONF_ID=0x4711 -DEUI64=0x00,0x22,0x44,0x66,0x88,0xAA,0xCC,0xEE -DRADIO_CONF_PAN_ID=0x0190 -DRADIO_CONF_CHANNEL=21 -DRADIO_CONF_TX_POWER=99"
+        graph_options: ""

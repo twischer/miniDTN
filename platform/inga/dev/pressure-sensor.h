@@ -56,12 +56,10 @@
 \code
 #include <sensors.h>
 [...]
-struct sensors_sensor batterysensor = find_sensor("Batt");
-ACTIVATE_SENSOR(batterysensor);
+struct sensors_sensor pressure_sensor = find_sensor("Press");
+ACTIVATE_SENSOR(pressure_sensor);
 [...]
-uint16_t press_h = pressure_sensor.value(PRESS_H);
-uint16_t press_l = pressure_sensor.value(PRESS_L);
-int32_t pressval = ((int32_t) press_h << 16);
+int32_t pressval = ((int32_t) pressure_sensor.value(PRESS_H) << 16);
 pressval |= (pressure_sensor.value(PRESS_L) & 0xFFFF);
 \endcode
  * @{ */

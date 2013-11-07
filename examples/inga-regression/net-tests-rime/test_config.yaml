@@ -1,0 +1,20 @@
+tests:
+### RIME stack test
+  - name: net-rime-unicast
+    timeout: 120
+    devices:
+      - name: receiver
+        programdir: examples/inga-regression/net-tests-rime
+        program: rime_unicast_receiver
+        instrument: []
+        debug: []
+        cflags: "-fno-inline -DNODE_CONF_ID=0x4711 -DAPP_SETTINGS_SET=1"
+        graph_options: ""
+      - name: sender
+        programdir: examples/inga-regression/net-tests-rime
+        program: rime_unicast_sender
+        instrument: []
+        debug: []
+        cflags: "-fno-inline -DNODE_CONF_ID=0x2424 -DAPP_SETTINGS_SET=1"
+        graph_options: ""
+

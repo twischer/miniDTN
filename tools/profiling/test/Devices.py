@@ -29,14 +29,19 @@ class Device(object):
 		self.contikibase = config['contikibase']
 		self.programdir = os.path.join(self.contikibase, config['programdir'])
 		self.program = config['program']
+		self.binary = os.path.join(self.logdir, "%s-%s"%(self.name, self.program))
 		self.instrument = config['instrument']
 		self.debug = config['debug']
 		self.cflags = config.setdefault('cflags', "")
+		self.makeargs = config.setdefault('makeopts', None)
 		self.graph_options = config.setdefault('graph_options', "")
 
 	def build(self,options):
-		ser = serial.Serial(port=self.path, baudrate=1200, timeout=0.5)
-		ser.close()
+#                try:
+#		        ser = serial.Serial(port=self.path, baudrate=1200, timeout=0.5)
+#		        ser.close()
+#                except serial.SerialException as err:
+#                        raise
 		try:
 			os.chdir(self.programdir)
 		except OSError as err:
@@ -44,6 +49,7 @@ class Device(object):
 			raise
 
 		try:
+			# run 'make clean' if its not a dirty build
 			if not options.dirty:
 				self.logger.info("Cleaning %s", self.programdir)
 				output = subprocess.check_output(["make", "TARGET=%s"%(self.platform), "clean"], stderr=subprocess.STDOUT)
@@ -58,13 +64,16 @@ class Device(object):
 			myenv = os.environ.copy()
 			myenv['CFLAGS'] = self.cflags
 			for dev in self.devcfg:
-				myenv['CFLAGS']=myenv['CFLAGS'].replace(str("-DCONF_DEST_NODE=$"+dev['name'].upper()),str("-DCONF_DEST_NODE="+str(dev['id'])))
-				myenv['CFLAGS']=myenv['CFLAGS'].replace(str("-DCONF_SEND_TO_NODE=$"+dev['name'].upper()),str("-DCONF_SEND_TO_NODE="+str(dev['id'])))
+				myenv['CFLAGS']=myenv['CFLAGS'].replace(str("$"+dev['name'].upper()),str(str(dev['id'])))
+			# always add the nodeid of this node as define
+			myenv['CFLAGS']+=str(" -DNODEID="+str(self.id))
 			self.myenv = myenv
-			output = subprocess.check_output(["make", "TARGET=%s"%(self.platform), self.program], stderr=subprocess.STDOUT, env=myenv)
+			output = subprocess.check_output(filter(None, ["make", self.makeargs, "TARGET=%s"%(self.platform), self.program]), stderr=subprocess.STDOUT, env=myenv)
 			self.logger.debug(output)
 			time.sleep(2)
-			if len(just_instrument) > 0: #build file with just instrumentation again
+
+			# build file with just instrumentation again
+			if len(just_instrument) > 0:
 				touchcall = ["touch"]
 				touchcall.extend([os.path.join(self.contikibase, instrpat) for instrpat in just_instrument])
 				self.logger.debug(' '.join(touchcall))
@@ -75,13 +84,12 @@ class Device(object):
 				myenv = os.environ.copy()
 				myenv['CFLAGS'] = '-finstrument-functions %s'%(self.cflags)
 				for dev in self.devcfg:
-					myenv['CFLAGS']=myenv['CFLAGS'].replace(str("-DCONF_DEST_NODE=$"+dev['name'].upper()),str("-DCONF_DEST_NODE="+str(dev['id'])))
-					myenv['CFLAGS']=myenv['CFLAGS'].replace(str("-DCONF_SEND_TO_NODE=$"+dev['name'].upper()),str("-DCONF_SEND_TO_NODE="+str(dev['id'])))
-				output = subprocess.check_output(["make", "TARGET=%s"%(self.platform), self.program], stderr=subprocess.STDOUT, env=myenv)
+					myenv['CFLAGS']=myenv['CFLAGS'].replace(str("$"+dev['name'].upper()),str(str(dev['id'])))
+				output = subprocess.check_output(filter(None, ["make", self.makeargs, "TARGET=%s"%(self.platform), self.program]), stderr=subprocess.STDOUT, env=myenv)
 				self.logger.debug(output)
 
-
-			if len(just_debug) > 0: #build file witch just debug again
+			# build file with just debug again
+			if len(just_debug) > 0: 
 				touchcall = ["touch"]
 				touchcall.extend([os.path.join(self.contikibase, instrpat) for instrpat in just_debug])
 				self.logger.debug(' '.join(touchcall))
@@ -92,13 +100,12 @@ class Device(object):
 				myenv = os.environ.copy()
 				myenv['CFLAGS'] = '-DENABLE_LOGGING %s'%(self.cflags)
 				for dev in self.devcfg:
-					myenv['CFLAGS']=myenv['CFLAGS'].replace(str("-DCONF_DEST_NODE=$"+dev['name'].upper()),str("-DCONF_DEST_NODE="+str(dev['id'])))
-					myenv['CFLAGS']=myenv['CFLAGS'].replace(str("-DCONF_SEND_TO_NODE=$"+dev['name'].upper()),str("-DCONF_SEND_TO_NODE="+str(dev['id'])))
-				output = subprocess.check_output(["make", "TARGET=%s"%(self.platform), self.program], stderr=subprocess.STDOUT, env=myenv)
+					myenv['CFLAGS']=myenv['CFLAGS'].replace(str("$"+dev['name'].upper()),str(str(dev['id'])))
+				output = subprocess.check_output(filter(None, ["make", self.makeargs, "TARGET=%s"%(self.platform), self.program]), stderr=subprocess.STDOUT, env=myenv)
 				self.logger.debug(output)
 
-
-			if len(instrument_and_debug) > 0: #build file with instrumentation and debug
+			# build file with instrumentation and debug
+			if len(instrument_and_debug) > 0: 
 				touchcall = ["touch"]
 				touchcall.extend([os.path.join(self.contikibase, instrpat) for instrpat in instrument_and_debug])
 				self.logger.debug(' '.join(touchcall))
@@ -109,22 +116,26 @@ class Device(object):
 				myenv = os.environ.copy()
 				myenv['CFLAGS'] = '-finstrument-functions -DENABLE_LOGGING %s'%(self.cflags)
 				for dev in self.devcfg:
-					myenv['CFLAGS']=myenv['CFLAGS'].replace(str("-DCONF_DEST_NODE=$"+dev['name'].upper()),str("-DCONF_DEST_NODE="+str(dev['id'])))
-					myenv['CFLAGS']=myenv['CFLAGS'].replace(str("-DCONF_SEND_TO_NODE=$"+dev['name'].upper()),str("-DCONF_SEND_TO_NODE="+str(dev['id'])))
-				output = subprocess.check_output(["make", "TARGET=%s"%(self.platform), self.program], stderr=subprocess.STDOUT, env=myenv)
+					myenv['CFLAGS']=myenv['CFLAGS'].replace(str("$"+dev['name'].upper()),str(str(dev['id'])))
+				output = subprocess.check_output(filter(None, ["make", self.makeargs, "TARGET=%s"%(self.platform), self.program]), stderr=subprocess.STDOUT, env=myenv)
 				self.logger.debug(output)
 		except subprocess.CalledProcessError as err:
 			self.logger.error(err)
 			self.logger.error(err.output)
 			raise
+
 	def upload(self):
 		raise Exception('Unimplemented')
+
 	def reset(self):
 		raise Exception('Unimplemented')
+
 	def dummy(self,testname):
 		raise Exception('Unimplemented')
+
 	def reset_occurred(self):
 		self.abort_by_reset = True
+
 	def recordlog(self, callgraphqueue, queue, controlqueue):
 		logfile = os.path.join(self.logdir, "%s.log"%(self.name))
 
@@ -175,9 +186,10 @@ class Device(object):
 					profiledata += "\n"
 					profilelines -= 1
 				if profilelines == 0:
-					workitem = (profilename, profiledata, self.logdir, self.prefix, self.binary)
-					callgraphqueue.put(workitem)
-					profilelines = -1
+					if not callgraphqueue is None:
+						workitem = (profilename, profiledata, self.logdir, self.prefix, self.binary)
+						callgraphqueue.put(workitem)
+						profilelines = -1
 
 				if line.startswith("TEST"):
 					testdata = line.split(':')
@@ -238,6 +250,7 @@ class SKY(Device):
 			self.logger.error(err)
 			self.logger.error(err.output)
 			raise
+
 	def reset(self):
 		try:
 			self.logger.info( "Resetting")
@@ -246,6 +259,7 @@ class SKY(Device):
 			self.logger.error(err)
 			self.logger.error(err.output)
 			raise
+
 	def dummy(self,testname):
 		self.logger = logging.getLogger("test.%s.%s"%(testname, self.name))
 		output = subprocess.check_output(["msp430-bsl-linux", "--telosb","-c", self.path, "-r"], stderr=subprocess.STDOUT)
@@ -257,8 +271,10 @@ class SKY(Device):
 			self.logger.error(err.output)
 			raise
 
+
 class SkyMonitor(SKY):
 	pass
+
 
 class INGA(Device):
 	"""INGA node"""
@@ -275,7 +291,7 @@ class INGA(Device):
 
 		try:
 			self.logger.info("Uploading %s", os.path.join(self.programdir, self.program))
-			output = subprocess.check_output(["make", "TARGET=inga", "MOTES=%s"%(self.path), "%s.upload"%(self.program)], stderr=subprocess.STDOUT)
+			output = subprocess.check_output(["make", "TARGET=inga", "MOTES=%s"%(self.path), "%s.upload"%(self.program)], stderr=subprocess.STDOUT, env=self.myenv)
 			self.binary = os.path.join(self.logdir, "%s-%s"%(self.name, self.program))
 			shutil.copyfile("%s.inga"%(self.program), self.binary)
 			self.logger.debug(output)
@@ -283,6 +299,7 @@ class INGA(Device):
 			self.logger.error(err)
 			self.logger.error(err.output)
 			raise
+
 	def reset(self):
 		try:
 			self.logger.info( "Resetting")
@@ -291,9 +308,14 @@ class INGA(Device):
 			self.logger.error(err)
 			self.logger.error(err.output)
 			raise
+
 	def dummy(self,testname):
 		self.logger = logging.getLogger("test.%s.%s"%(testname, self.name))
-		self.reset()
+		try:
+			self.reset()
+		except:
+			self.logger.warning("Did not find dummy device. Ignoring it.")
+			return
 		try:
 			self.logger.info( "Uploading DUMMY to %s"%(self.name))
 			output = subprocess.check_output(["avrdude", "-b","230400", "-P", self.path, "-c", "avr109" ,"-p","atmega1284p","-e" ], stderr=subprocess.STDOUT)

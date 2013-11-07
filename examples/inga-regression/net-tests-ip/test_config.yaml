@@ -1,0 +1,19 @@
+tests:
+### RIME stack test
+  - name: net-udp
+    timeout: 120
+    devices:
+      - name: receiver
+        programdir: examples/inga-regression/net-tests-ip
+        program: udp_ipv6_server
+        instrument: []
+        debug: []
+        cflags: "-fno-inline -DNODE_CONF_ID=0x4711 -DEUI64=0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 -DAPP_SETTINGS_SET=1"
+        graph_options: ""
+      - name: sender
+        programdir: examples/inga-regression/net-tests-ip
+        program: udp_ipv6_client
+        instrument: []
+        debug: []
+        cflags: "-fno-inline -DNODE_CONF_ID=0x2424 -DEUI64=0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 -DAPP_SETTINGS_SET=1 -DCONF_DEST_NODE=0x4711"
+        graph_options: ""

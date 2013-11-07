@@ -1,0 +1,13 @@
+# List of devices
+# Each device has a name, a class (type of device), a path and an id
+devices:
+  - name: receiver
+    class: INGA
+    path: /dev/ttyUSB0
+    id: 0x12
+
+  - name: sender
+    class: INGA
+    path: /dev/ttyUSB1
+    id: 0x13
+

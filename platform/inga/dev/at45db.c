@@ -46,6 +46,16 @@
 
 #include "at45db.h"
 
+#define DEBUG 0
+
+#if DEBUG
+#include <avr/pgmspace.h>
+#include <stdio.h>
+#define PRINTF(FORMAT,args...) printf_P(PSTR(FORMAT),##args)
+#else
+#define PRINTF(...)
+#endif
+
 /*!
  * Buffer manager allows it to improve write times, by switching
  * the dual buffer and parallelize flash write operations. (e.g. Write
@@ -77,6 +87,7 @@ at45db_init(void) {
     mspi_chip_release(AT45DB_CS);
     _delay_ms(10);
     if (i++ > 10) {
+      PRINTF("Initialization failed\n");
       initialized = 0;
       return -1;
     }
@@ -165,8 +176,9 @@ at45db_write_page(uint16_t p_addr, uint16_t b_addr, uint8_t *buffer, uint16_t by
   if (!initialized) return;
   /*block erase command consists of 4 byte*/
   uint8_t cmd[4] = {buffer_mgr.page_program[buffer_mgr.active_buffer],
-    (uint8_t) (p_addr >> 6), ((uint8_t) (p_addr << 2) & 0xFC) | ((uint8_t) (b_addr >> 8) & 0x3), (uint8_t) (b_addr)};
-
+    (uint8_t) (p_addr >> 6),
+    ((uint8_t) (p_addr << 2) & 0xFC) | ((uint8_t) (b_addr >> 8) & 0x3),
+    (uint8_t) (b_addr)};
   at45db_write_cmd(&cmd[0]);
 
   for (i = 0; i < bytes; i++) {
@@ -184,7 +196,7 @@ void
 at45db_read_page_buffered(uint16_t p_addr, uint16_t b_addr,
         uint8_t *buffer, uint16_t bytes) {
   if (!initialized) return;
-  /*wait until AT45DB161 is ready again*/
+  /* wait until AT45DB161 is ready again */
   at45db_busy_wait();
   at45db_page_to_buf(p_addr);
   at45db_read_buffer(b_addr, buffer, bytes);
@@ -195,14 +207,16 @@ at45db_read_page_bypassed(uint16_t p_addr, uint16_t b_addr,
         uint8_t *buffer, uint16_t bytes) {
   uint16_t i;
   if (!initialized) return;
-  /*wait until AT45DB161 is ready again*/
+  /* wait until AT45DB161 is ready again */
   at45db_busy_wait();
   /* read bytes directly from page command consists of 4 cmd bytes and
    * 4 don't care */
-  uint8_t cmd[4] = {AT45DB_PAGE_READ, (uint8_t) (p_addr >> 6),
+  uint8_t cmd[4] = {AT45DB_PAGE_READ,
+    (uint8_t) (p_addr >> 6),
     (((uint8_t) (p_addr << 2)) & 0xFC) | ((uint8_t) (b_addr >> 8)),
     (uint8_t) (b_addr)};
   at45db_write_cmd(&cmd[0]);
+
   for (i = 0; i < 4; i++) {
     mspi_transceive(0x00);
   }
@@ -217,9 +231,11 @@ void
 at45db_page_to_buf(uint16_t addr) {
 
   if (!initialized) return;
-  /*write active buffer to page command consists of 4 byte*/
-  uint8_t cmd[4] = {AT45DB_PAGE_TO_BUF, (uint8_t) (addr >> 6),
-    (uint8_t) (addr << 2), 0x00};
+  /* write active buffer to page command consists of 4 byte */
+  uint8_t cmd[4] = {AT45DB_PAGE_TO_BUF,
+    (uint8_t) (addr >> 6),
+    (uint8_t) (addr << 2),
+    0x00};
   at45db_write_cmd(&cmd[0]);
   mspi_chip_release(AT45DB_CS);
   /* switch active buffer to allow the other one to be written,
@@ -262,7 +278,9 @@ at45db_busy_wait(void) {
   mspi_chip_select(AT45DB_CS);
   mspi_transceive(AT45DB_STATUS_REG);
   while ((mspi_transceive(MSPI_DUMMY_BYTE) >> 7) != 0x01) {
+    _delay_ms(1);
     if (i++ > 500) {
+      PRINTF("Error: at45db_busy_wait timeout\n");
       return;
     }
   }

@@ -413,47 +413,18 @@ volatile static uint8_t osccalhigh,osccallow;
 #endif /* defined(DOXYGEN) */
 /*---------------------------------------------------------------------------*/
 /* Debugging aids */
-
-#if 0
 unsigned short
 clock_fine(void)
 {
   return AVR_CLOCK_COUNTER;
 }
-
 /*---------------------------------------------------------------------------*/
 int
 clock_fine_max(void)
 {
   return AVR_CLOCK_MAX;
 }
-
 /*---------------------------------------------------------------------------*/
-unsigned short
-clock_fine(void)
-{
-  return AVR_CLOCK_COUNTER;
-}
-
-/*---------------------------------------------------------------------------*/
-int
-clock_fine_max(void)
-{
-  return AVR_CLOCK_MAX;
-}
-
-/*---------------------------------------------------------------------------*/
-clock_time_t
-clock_time(void)
-{
-  clock_time_t tmp;
-  do {
-    tmp = count;
-  } while(tmp != count);
-  return tmp;
-}
-#endif
-    
     
 #ifdef HANDLE_UNSUPPORTED_INTERRUPTS
 /* Ignore unsupported interrupts, optionally hang for debugging */

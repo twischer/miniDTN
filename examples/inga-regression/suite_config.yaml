@@ -1,0 +1,35 @@
+# Test suite
+suite:
+    logbase:   ../../log/
+    logpattern: date-tag
+    contikibase: ../../
+    contikiscm: git # Here only git and none are supported at the moment
+    #workdir: /foo/bar
+    testdirs:
+        - settings-tests
+        - sensor-tests
+        - net-tests-rime
+        - net-tests-ip
+        - coffee-tests
+        - fat-tests
+        - timer-tests
+        - compile-tests
+    testcases:
+        - settings-set-chaotic
+        - settings-set
+        - sensor-acc
+        - sensor-gyro
+        - sensor-battery
+        - sensor-temppress
+        - net-rime-unicast
+        - net-udp
+        - coffee-eeprom-static
+        - coffee-eeprom-dynamic
+        - coffee-flash-static
+        - coffee-flash-dynamic
+        - coffee-extflash
+        - coffee-sdcard
+        - fat-default
+        - fat-coop
+        - timer-rtimer
+

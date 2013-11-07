@@ -59,7 +59,15 @@
 #define __CFS_H__
 
 #include "contiki.h"
+
+/* Include cfs arch header to have CFS_CONF_OFFSET_TYPE defined properly */
+#ifdef CFS_NONE
+#elif defined CFS_POSIX
+#elif defined CFS_COFFEE
 #include "cfs-coffee-arch.h"
+#elif defined CFS_FAT
+#include "diskio-arch.h"
+#endif
 
 #ifndef CFS_CONF_OFFSET_TYPE
 typedef int cfs_offset_t;
