@@ -51,7 +51,6 @@
 
 #include "microSD.h"
 #include "dev/watchdog.h"
-#include "adxl345.h"
 
 #define DEBUG 0
 #if DEBUG
@@ -143,7 +142,7 @@ microSD_set_CRC(uint8_t enable)
   }
 
   if ((ret = microSD_write_cmd(cmd, NULL)) != 0x00) {
-    PRINTF("microSD_set_CRC(): ret = %u\n", ret);
+    PRINTF("\nmicroSD_set_CRC(): ret = %u", ret);
     return 1;
   }
 
@@ -161,7 +160,7 @@ microSD_read_csd(uint8_t *buffer)
   uint8_t i = 0;
 
   if ((i = microSD_write_cmd(cmd, NULL)) != 0x00) {
-    PRINTF("microSD_read_csd(): CMD9 failure! (%u)\n", i);
+    PRINTF("\nmicroSD_read_csd(): CMD9 failure! (%u)", i);
     return 1;
   }
 
@@ -358,6 +357,7 @@ microSD_init(void)
 
   i = 0;
   while ((ret = microSD_write_cmd(cmd0, NULL)) != 0x01) {
+    _delay_ms(5);
     i++;
     if (i > 200) {
       mspi_chip_release(MICRO_SD_CS);
@@ -522,6 +522,15 @@ microSD_read_block(uint32_t addr, uint8_t *buffer)
   cmd[3] = ((addr & 0x0000FF00) >> 8);
   cmd[4] = ((addr & 0x000000FF));
 
+  mspi_chip_select(MICRO_SD_CS);
+
+  /* Wait until the card is not busy anymore! */
+  i = 0;
+  while ((mspi_transceive(MSPI_DUMMY_BYTE) != 0xff) && (i < 100)) {
+    _delay_ms(5);
+    i++;
+  }
+
   /* send CMD17 with address information. Chip select is done by
    * the microSD_write_cmd method and */
   if ((i = microSD_write_cmd(cmd, NULL)) != 0x00) {
@@ -596,13 +605,27 @@ microSD_write_block(uint32_t addr, uint8_t *buffer)
   cmd[3] = ((addr & 0x0000FF00) >> 8);
   cmd[4] = ((addr & 0x000000FF));
 
+  mspi_chip_select(MICRO_SD_CS);
+
+  /* Wait until the card is not busy anymore! */
+  i = 0;
+  while ((mspi_transceive(MSPI_DUMMY_BYTE) != 0xff) && (i < 100)) {
+    _delay_ms(5);
+    i++;
+  }
+
   /* send CMD24 with address information. Chip select is done by
    * the microSD_write_cmd method and */
   if ((i = microSD_write_cmd(cmd, NULL)) != 0x00) {
     mspi_chip_release(MICRO_SD_CS);
     return 1;
   }
-  mspi_transceive(MSPI_DUMMY_BYTE);
+
+  /* Read response from microSD */
+  uint8_t response = mspi_transceive(MSPI_DUMMY_BYTE);
+  if (response != 0xFF) {
+    PRINTF("\nCard response: %d", response);
+  }
 
   /* send start byte 0xFE to the microSD card to symbolize the beginning
    * of one data block (512byte)*/
@@ -613,22 +636,31 @@ microSD_write_block(uint32_t addr, uint8_t *buffer)
     mspi_transceive(buffer[i]);
   }
 
-  /*write CRC checksum: Dummy*/
+  /* write CRC checksum: Dummy */
   mspi_transceive(MSPI_DUMMY_BYTE);
   mspi_transceive(MSPI_DUMMY_BYTE);
 
-  /*failure check: Data Response XXX00101 = OK*/
-  if (((i = mspi_transceive(MSPI_DUMMY_BYTE)) & 0x1F) != 0x05) {
+  /* failure check: Data Response XXX0RRR1 */
+  i = mspi_transceive(MSPI_DUMMY_BYTE) & 0x1F;
+  /* Data Response XXX00101 = OK */
+  if (i != 0x05) {
+#if DEBUG
+    if (i == 0x0B) {
+      PRINTF("\nWrite response: CRC error");
+    } else if (i == 0x0D) {
+      PRINTF("\nResponse: Write error");
+    } else if (i == 0x1F) {
+      PRINTF("\nResponse: Error token");
+    }
+#endif
     mspi_chip_release(MICRO_SD_CS);
     return 2;
   }
 
-  /*wait while microSD card is busy*/
-  i = 0;
-  while ((mspi_transceive(MSPI_DUMMY_BYTE) != 0xff) && (i < 100)) {
-    i++;
-  }
-  /*release chip select and disable microSD spi*/
+  /* release chip select and disable microSD spi
+   * note: it should not be required to wait for busy response here
+   *       if busy waiting is done before writing/reading
+   */
   mspi_chip_release(MICRO_SD_CS);
 
   return 0;

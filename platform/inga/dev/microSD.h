@@ -48,14 +48,6 @@
  *	\note This sd-card interface is based on the work of Ulrich Radig
  *	      "Connect AVR to MMC/SD" and was a little bit modified plus
  *	      adapted to the mspi-drv
- *
- * <p> Huge memory space is always nice to have, because you don't have to
- * decide which data has to be stored, just store everything! Furthermore you
- * can buffer your data, whenever wireless connection breaks down.
- * An easy and modular way is a SD card. For smaller applications (like
- * sensor nodes), the tiny version "microSD" would be the best choice. Both, the
- * "big" SD-Cards and the microSD-Cards can be interfaced by SPI and use the same
- * Instruction set, so this interface can be used for both SD-Card types.</p>
  * 
  * \author
  *		Christoph Peltz <peltz@ibr.cs.tu-bs.de>
@@ -91,16 +83,14 @@
 /**
  * \brief Powers on and initialize the microSD / SD-Card
  *
- * \return <ul>
- *  		<li> 0 : SD-Card was initialized without an error
- *  		<li> 1 : CMD0 failure!
- *  		<li> 2 : CMD1 failure!
- *			<li> 3 : Failure reading the CSD!
- *			<li> 4 : CMD8 failure!
- *			<li> 5 : CMD16 failure!
- *			<li> 6 : ACMD41 failure!
- *			<li> 7 : CMD58 failure!
- * 		   </ul>
+ * \retval 0 SD-Card was initialized without an error
+ * \retval 1 CMD0 failure!
+ * \retval 2 CMD1 failure!
+ * \retval 3 Failure reading the CSD!
+ * \retval 4 CMD8 failure!
+ * \retval 5 CMD16 failure!
+ * \retval 6 ACMD41 failure!
+ * \retval 7 CMD58 failure!
  */
 uint8_t microSD_init(void);
 
@@ -141,12 +131,11 @@ uint8_t microSD_is_SDSC();
  * \brief This function will read one block (512, 1024, 2048 or 4096Byte) of the SD-Card.
  *
  * \param addr Block address
- * \param *buffer Pointer to a block buffer (needs to be as long es microSD_get_block_size()).
+ * \param *buffer Pointer to a block buffer (needs to be as long as microSD_get_block_size()).
  *
- * \return <ul>
- *  		<li> 0 : SD-Card block read was successful
- *  		<li> 1 : CMD17 failure!
- * 		   </ul>
+ * \retval 0 SD-Card block read was successful
+ * \retval 1 CMD17 failure!
+ * \retval 2 no start byte
  */
 uint8_t microSD_read_block(uint32_t addr, uint8_t *buffer);
 
@@ -154,12 +143,10 @@ uint8_t microSD_read_block(uint32_t addr, uint8_t *buffer);
  * \brief This function will write one block (512, 1024, 2048 or 4096Byte) of the SD-Card.
  *
  * \param addr Block address
- * \param *buffer Pointer to a block buffer (needs to be as long es microSD_get_block_size()).
+ * \param *buffer Pointer to a block buffer (needs to be as long as microSD_get_block_size()).
  *
- * \return <ul>
- *  		<li> 0 : SD-Card block write was successful
- *  		<li> 1 : CMD24 failure!
- * 		   </ul>
+ * \retval 0 SD-Card block write was successful
+ * \retval 1 CMD24 failure!
  */
 uint8_t microSD_write_block(uint32_t addr, uint8_t *buffer);
 
@@ -177,7 +164,7 @@ uint16_t microSD_data_crc(uint8_t *data);
 uint8_t microSD_set_CRC(uint8_t enable);
 uint64_t microSD_get_card_size();
 uint32_t microSD_get_block_num();
-/** @} */ // l3g4200d_interface
+/** @} */ // 
 /** @} */ // inga_device_driver
 
 #endif /* FLASH_MICROSD_H_ */
