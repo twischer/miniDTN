@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, Institute of Operating Systems and Computer Networks (TU Brunswick).
+ * Copyright (c) 2013, Institute of Operating Systems and Computer Networks (TU Brunswick).
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,9 +25,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * Author: Ulf Kulau <kulau@ibr.cs.tu-bs.de>
- *         Christoph Peltz <peltz@ibr.cs.tu-bs.de>
  */
 
 /**
@@ -40,13 +37,13 @@
 
 /**
  * \file
- *      MicroSD Card interface implementation
+ *      microSD card interface implementation
  * \author
- * 		Original source: Ulrich Radig
- * 		<< modified by >>
+ * 	Original source: Ulrich Radig
+ * 	<< modified by >>
  *      Ulf Kulau <kulau@ibr.cs.tu-bs.de>
- *		Christoph Peltz <peltz@ibr.cs.tu-bs.de>
- *
+ *	Christoph Peltz <peltz@ibr.cs.tu-bs.de>
+ *	Enrico Joerns <e.joerns@tu-bs.de>
  */
 
 #include "microSD.h"

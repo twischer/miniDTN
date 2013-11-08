@@ -99,10 +99,8 @@ uint8_t microSD_init(void);
  *
  * \param *buffer Pointer to a block buffer, MUST hold at least 16 Bytes.
  *
- * \return <ul>
- *  		<li> 0 : SD-Card CSD read was successful
- *  		<li> 1 : CMD9 failure!
- * 		   </ul>
+ * \retval  0 SD-Card CSD read was successful
+ * \retval  1 CMD9 failure!
  */
 uint8_t microSD_read_csd(uint8_t *buffer);
 
