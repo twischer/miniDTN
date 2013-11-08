@@ -123,7 +123,7 @@ struct diskio_device_info {
 
  * \param *dev the pointer to the device info struct
  */
-void print_device_info(struct diskio_device_info *dev);
+void diskio_print_device_info(struct diskio_device_info *dev);
 
 /**
  * Reads one block from the specified device and stores it in buffer.

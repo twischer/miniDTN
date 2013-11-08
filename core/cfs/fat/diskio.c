@@ -70,7 +70,7 @@ static struct diskio_device_info devices[DISKIO_MAX_DEVICES];
 int diskio_rw_op(struct diskio_device_info *dev, uint32_t block_start_address, uint8_t num_blocks, uint8_t *buffer, uint8_t op);
 /*----------------------------------------------------------------------------*/
 void
-print_device_info(struct diskio_device_info *dev)
+diskio_print_device_info(struct diskio_device_info *dev)
 {
   printf("DiskIO Device Info\n");
 
@@ -83,7 +83,7 @@ print_device_info(struct diskio_device_info *dev)
       printf("Generic_Flash");
       break;
     default:
-      printf("Unknown");
+      printf("Unknown: %d", dev->type & 0x7F);
       break;
   }
 
@@ -142,7 +142,6 @@ diskio_rw_op(struct diskio_device_info *dev, uint32_t block_start_address, uint8
 
 #ifdef SD_INIT
     case DISKIO_DEVICE_TYPE_SD_CARD:
-      PRINTF("\nSD INIT OK");
       switch (op) {
         case DISKIO_OP_READ_BLOCK:
 #ifndef DISKIO_OLD_STYLE
@@ -231,7 +230,6 @@ diskio_rw_op(struct diskio_device_info *dev, uint32_t block_start_address, uint8
 
 #ifdef FLASH_INIT
     case DISKIO_DEVICE_TYPE_GENERIC_FLASH:
-      PRINTF("\nFLASH INIT OK");
       switch (op) {
         case DISKIO_OP_READ_BLOCK:
           FLASH_READ_BLOCK(block_start_address, 0, buffer, 512);
