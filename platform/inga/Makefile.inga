@@ -10,6 +10,19 @@ INGA_SENSORS = sensors.c acc-sensor.c adc-sensor.c battery-sensor.c \
 	       button-sensor.c gyro-sensor.c pressure-sensor.c radio-sensor.c
 INGA_SOURCEFILES += $(INGA_INTERFACES) $(INGA_DRIVERS) $(INGA_SENSORS)
 
+ifeq ($(REV),)
+  $(info INGA revison not set, defaults to REV=1.4)
+  CFLAGS += -DINGA_CONF_REVISION=INGA_REV_14
+else ifeq ($(REV),1.2)
+  CFLAGS += -DINGA_CONF_REVISION=INGA_REV_12
+else ifeq ($(REV),1.4)
+  CFLAGS += -DINGA_CONF_REVISION=INGA_REV_14
+else ifeq ($(REV),1.5)
+  CFLAGS += -DINGA_CONF_REVISION=INGA_REV_15
+else ifeq ($(REV),2.0)
+  CFLAGS += -DINGA_CONF_REVISION=INGA_REV_20
+endif
+
 # Enable profiling if needed
 # TODO: redundant
 ifeq ($(ENABLE_PROFILING),1)

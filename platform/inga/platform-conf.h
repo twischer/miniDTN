@@ -44,6 +44,8 @@
 
 /** Inga revision 1.2  */
 #define INGA_V12  12
+/** Inga revision 1.4  */
+#define INGA_V14  14
 /** Inga revision 1.5  */
 #define INGA_V15  15
 /** Inga revision 2.0  */
@@ -60,11 +62,8 @@
 
 #define PLATFORM       PLATFORM_AVR
 
-#if INGA_REVISION == INGA_V12
+/** Currently all INGA revisions use same HAL */
 #define RF230_HAL = INGA_12
-#else
-#error INGA revision not supported
-#endif
 
 #define PLATFORM_HAS_LEDS   1
 #define PLATFORM_HAS_BUTTON 1
