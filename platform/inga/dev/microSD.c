@@ -48,6 +48,7 @@
 
 #include "microSD.h"
 #include "dev/watchdog.h"
+#include <util/delay.h>
 
 #define DEBUG 0
 #if DEBUG
@@ -291,16 +292,6 @@ microSD_init(void)
   uint8_t ret = 0;
   microSD_sdsc_card = 1;
 
-  /*set pin for micro sd card power switch to output*/
-  MICRO_SD_PWR_PORT_DDR |= (1 << MICRO_SD_PWR_PIN);
-
-  /*switch off the sd card and tri state buffer whenever this is not done
-   *to avoid initialization failures */
-  microSD_switchoff();
-
-  /*switch on the SD card and the tri state buffer*/
-  microSD_switchon();
-
   /*READY TO INITIALIZE micro SD / SD card*/
   mspi_chip_release(MICRO_SD_CS);
 
@@ -358,10 +349,7 @@ microSD_init(void)
     i++;
     if (i > 200) {
       mspi_chip_release(MICRO_SD_CS);
-      microSD_switchoff();
-
       PRINTF("\nmicroSD_init(): cmd0 timeout -> %d", ret);
-
       return 1;
     }
   }
@@ -381,9 +369,7 @@ microSD_init(void)
     i++;
     if (i > 200) {
       mspi_chip_release(MICRO_SD_CS);
-      microSD_switchoff();
       PRINTF("\nmicroSD_init(): cmd8 timeout -> %d", ret);
-
       return 4;
     }
   }
@@ -398,9 +384,7 @@ microSD_init(void)
       i++;
       if (i > 5500) {
         PRINTF("\nmicroSD_init(): cmd1 timeout reached, last return value was %d", ret);
-
         mspi_chip_release(MICRO_SD_CS);
-        microSD_switchoff();
         return 2;
       }
     }
@@ -411,9 +395,7 @@ microSD_init(void)
       i++;
       if (i > 500) {
         PRINTF("\nmicroSD_init(): cmd16 timeout reached, last return value was %d", ret);
-
         mspi_chip_release(MICRO_SD_CS);
-        microSD_switchoff();
         return 5;
       }
     }
@@ -431,11 +413,8 @@ microSD_init(void)
       while (microSD_write_cmd(cmd55, NULL) != 0x01) {
         i++;
         if (i > 500) {
-
           PRINTF("\nmicroSD_init(): acmd41 timeout reached, last return value was %u", ret);
-
           mspi_chip_release(MICRO_SD_CS);
-          microSD_switchoff();
           return 6;
         }
       }
@@ -455,9 +434,7 @@ microSD_init(void)
       i++;
       if (i > 900) {
         PRINTF("\nmicroSD_init(): cmd58 timeout reached, last return value was %d", ret);
-
         mspi_chip_release(MICRO_SD_CS);
-        microSD_switchoff();
         return 7;
       }
     }
@@ -482,7 +459,7 @@ microSD_init(void)
     i++;
     if (i > 900) {
       mspi_chip_release(MICRO_SD_CS);
-      microSD_switchoff();
+      PRINTF("\nmicroSD_init(): CSD read error");
       return 3;
     }
   }

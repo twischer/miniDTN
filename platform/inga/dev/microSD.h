@@ -59,7 +59,6 @@
 
 #include "mspi.h"
 #include <stdio.h>
-#include <util/delay.h>
 
 /*!
  * SPI device order. The chip select number where the
@@ -67,18 +66,6 @@
  */
 #define MICRO_SD_CS 					5
 
-#define MICRO_SD_PWR_PORT				PORTA
-#define MICRO_SD_PWR_PORT_DDR			DDRA
-#define MICRO_SD_PWR_PIN				PORTA4
-
-/**
- * Powers the microSD card on.
- */
-#define microSD_switchon() MICRO_SD_PWR_PORT |= (1 << MICRO_SD_PWR_PIN)
-/**
- * Powers the microSD card off.
- */
-#define microSD_switchoff() MICRO_SD_PWR_PORT &= ~(1 << MICRO_SD_PWR_PIN)
 
 /**
  * \brief Powers on and initialize the microSD / SD-Card
