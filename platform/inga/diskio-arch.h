@@ -49,6 +49,11 @@
         microSD_write_block( block_start_address, buffer )
 #define SD_INIT() \
         microSD_init()
+#define SD_GET_BLOCK_NUM() \
+        microSD_get_block_num()
+#define SD_GET_BLOCK_SIZE() \
+        microSD_get_block_size()
+
 
 #define FLASH_READ_BLOCK(block_start_address, offset, buffer, length) \
         at45db_read_page_bypassed( block_start_address, offset, buffer, length)

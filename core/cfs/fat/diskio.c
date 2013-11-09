@@ -169,7 +169,7 @@ diskio_rw_op(struct diskio_device_info *dev, uint32_t block_start_address, uint8
               PRINTF("\nReinit");
               tries = 0;
               reinit = 1;
-              microSD_init();
+              SD_INIT();
             }
           }
           PRINTF("\ndiskion_rw_op(): Unrecoverable Read Error!");
@@ -206,7 +206,7 @@ diskio_rw_op(struct diskio_device_info *dev, uint32_t block_start_address, uint8
               PRINTF("\nReinit");
               tries = 0;
               reinit = 1;
-              microSD_init();
+              SD_INIT();
             }
           }
           PRINTF("\ndiskion_rw_op(): Unrecoverable Write Error!");
@@ -305,8 +305,8 @@ diskio_detect_devices()
   if (SD_INIT() == 0) {
     devices[index].type = DISKIO_DEVICE_TYPE_SD_CARD;
     devices[index].number = dev_num;
-    devices[index].num_sectors = microSD_get_block_num();
-    devices[index].sector_size = microSD_get_block_size();
+    devices[index].num_sectors = SD_GET_BLOCK_NUM();
+    devices[index].sector_size = SD_GET_BLOCK_SIZE();
     devices[index].first_sector = 0;
     if (devices[index].sector_size > DISKIO_MAX_SECTOR_SIZE) {
       goto end_of_function;
