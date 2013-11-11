@@ -41,8 +41,8 @@ test_temperature_value()
   int tempval = pressure_sensor.value(TEMP);
   printf("temp: %d\n", tempval);
   TEST_REPORT("Temperature", tempval, 10, "deg C");
-  TEST_LEQ(tempval, TEMPPRESS_TEST_CFG_MAX_TEMP)
-  TEST_GEQ(tempval, TEMPPRESS_TEST_CFG_MIN_TEMP)
+  TEST_LEQ(tempval, TEMPPRESS_TEST_CFG_MAX_TEMP);
+  TEST_GEQ(tempval, TEMPPRESS_TEST_CFG_MIN_TEMP);
 }
 /*---------------------------------------------------------------------------*/
 void
