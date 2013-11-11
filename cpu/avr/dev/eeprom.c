@@ -38,6 +38,7 @@
  */
 
 #include "dev/eeprom.h"
+#include "dev/watchdog.h"
 
 #include <avr/eeprom.h>
 #include <stdio.h>
