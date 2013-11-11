@@ -254,7 +254,7 @@ diskio_rw_op(struct diskio_device_info *dev, uint32_t block_start_address, uint8
 
     case DISKIO_DEVICE_TYPE_NOT_RECOGNIZED:
     default:
-      return DISKIO_ERROR_DEVICE_TYPE_NOT_RECOGNIZED;
+      return DISKIO_ERROR_NO_DEVICE_SELECTED;
   }
   return DISKIO_SUCCESS;
 }
@@ -286,7 +286,7 @@ diskio_detect_devices()
 #define FLASH_ARCH_NUM_SECTORS	4096
 #endif
 #ifndef FLASH_ARCH_SECTOR_SIZE
-    /* A Page is 528 Bytes long, but for easier acces we use only 512 Byte*/
+    /* A Page is 528 Bytes long, but for easier access we use only 512 Byte*/
 #define FLASH_ARCH_SECTOR_SIZE	512
 #endif
 
@@ -315,6 +315,7 @@ diskio_detect_devices()
     mbr_init(&mbr);
     mbr_read(&devices[index], &mbr);
     index += 1;
+    // test for max 5 partitions
     for (i = 0; i < 4; ++i) {
       if (mbr_hasPartition(&mbr, i + 1) != 0) {
         devices[index].type = DISKIO_DEVICE_TYPE_SD_CARD | DISKIO_DEVICE_TYPE_PARTITION;
