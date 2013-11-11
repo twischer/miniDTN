@@ -11,10 +11,12 @@ suite:
         - net-tests-rime
         - net-tests-ip
         - coffee-tests
+        - diskio-tests
         - fat-tests
         - timer-tests
         - compile-tests
     testcases:
+        - settings-delete
         - settings-set-chaotic
         - settings-set
         - sensor-acc
@@ -29,7 +31,10 @@ suite:
         - coffee-flash-dynamic
         - coffee-extflash
         - coffee-sdcard
-        - fat-default
+        - diskio-sd
+        - diskio-extflash
+        - fat-sd
+        - fat-extflash
         - fat-coop
         - timer-rtimer
 
