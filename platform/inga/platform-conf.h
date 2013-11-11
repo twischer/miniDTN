@@ -99,10 +99,11 @@ typedef unsigned long off_t;
  *
  * @note With INGA 1.4 powering on the SD card will unfortunately block SPI MISO.
  */
-#define microSD_switchon() MICRO_SD_PWR_PORT |= (1 << MICRO_SD_PWR_PIN)
+#define SDCARD_POWER_ON()   {MICRO_SD_PWR_PORT |= (1 << MICRO_SD_PWR_PIN); _delay_ms(2);}
+
 /**
  * Powers the microSD card off.
  */
-#define microSD_switchoff() MICRO_SD_PWR_PORT &= ~(1 << MICRO_SD_PWR_PIN)
+#define SDCARD_POWER_OFF()  MICRO_SD_PWR_PORT &= ~(1 << MICRO_SD_PWR_PIN)
 
 #endif /* __PLATFORM_CONF_H__ */
