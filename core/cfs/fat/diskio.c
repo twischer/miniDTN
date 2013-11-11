@@ -169,7 +169,7 @@ diskio_rw_op(struct diskio_device_info *dev, uint32_t block_start_address, uint8
               PRINTF("\nReinit");
               tries = 0;
               reinit = 1;
-              microSD_init();
+              SD_INIT();
             }
           }
           PRINTF("\ndiskion_rw_op(): Unrecoverable Read Error!");
@@ -206,7 +206,7 @@ diskio_rw_op(struct diskio_device_info *dev, uint32_t block_start_address, uint8
               PRINTF("\nReinit");
               tries = 0;
               reinit = 1;
-              microSD_init();
+              SD_INIT();
             }
           }
           PRINTF("\ndiskion_rw_op(): Unrecoverable Write Error!");
@@ -254,7 +254,7 @@ diskio_rw_op(struct diskio_device_info *dev, uint32_t block_start_address, uint8
 
     case DISKIO_DEVICE_TYPE_NOT_RECOGNIZED:
     default:
-      return DISKIO_ERROR_DEVICE_TYPE_NOT_RECOGNIZED;
+      return DISKIO_ERROR_NO_DEVICE_SELECTED;
   }
   return DISKIO_SUCCESS;
 }
@@ -286,7 +286,7 @@ diskio_detect_devices()
 #define FLASH_ARCH_NUM_SECTORS	4096
 #endif
 #ifndef FLASH_ARCH_SECTOR_SIZE
-    /* A Page is 528 Bytes long, but for easier acces we use only 512 Byte*/
+    /* A Page is 528 Bytes long, but for easier access we use only 512 Byte*/
 #define FLASH_ARCH_SECTOR_SIZE	512
 #endif
 
@@ -305,8 +305,8 @@ diskio_detect_devices()
   if (SD_INIT() == 0) {
     devices[index].type = DISKIO_DEVICE_TYPE_SD_CARD;
     devices[index].number = dev_num;
-    devices[index].num_sectors = microSD_get_block_num();
-    devices[index].sector_size = microSD_get_block_size();
+    devices[index].num_sectors = SD_GET_BLOCK_NUM();
+    devices[index].sector_size = SD_GET_BLOCK_SIZE();
     devices[index].first_sector = 0;
     if (devices[index].sector_size > DISKIO_MAX_SECTOR_SIZE) {
       goto end_of_function;
@@ -315,6 +315,7 @@ diskio_detect_devices()
     mbr_init(&mbr);
     mbr_read(&devices[index], &mbr);
     index += 1;
+    // test for max 5 partitions
     for (i = 0; i < 4; ++i) {
       if (mbr_hasPartition(&mbr, i + 1) != 0) {
         devices[index].type = DISKIO_DEVICE_TYPE_SD_CARD | DISKIO_DEVICE_TYPE_PARTITION;

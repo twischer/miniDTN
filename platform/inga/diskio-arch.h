@@ -40,15 +40,20 @@
 #ifndef DISKIO_ARCH_H
 #define DISKIO_ARCH_H
 
-#include "dev/microSD.h"
+#include "dev/sdcard.h"
 #include "dev/at45db.h"
 
 #define SD_READ_BLOCK(block_start_address, buffer) \
-        microSD_read_block( block_start_address, buffer )
+        sdcard_read_block( block_start_address, buffer )
 #define SD_WRITE_BLOCK(block_start_address, buffer) \
-        microSD_write_block( block_start_address, buffer )
+        sdcard_write_block( block_start_address, buffer )
 #define SD_INIT() \
-        microSD_init()
+        sdcard_init()
+#define SD_GET_BLOCK_NUM() \
+        sdcard_get_block_num()
+#define SD_GET_BLOCK_SIZE() \
+        sdcard_get_block_size()
+
 
 #define FLASH_READ_BLOCK(block_start_address, offset, buffer, length) \
         at45db_read_page_bypassed( block_start_address, offset, buffer, length)

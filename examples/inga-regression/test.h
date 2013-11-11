@@ -72,51 +72,70 @@ extern struct test_suite suite;
   suite.test_type = postcond_
 /** @} */
 
-/** Tests a, b for equality.
- * Reports error if failed.
- */
-#define TEST_EQUALS(a, b) \
-  if ((a) != (b)) { \
-    suite.errors++; \
-    report_fail(a, b, #a " != " #b); \
-    return; \
-  }
-
-/** Tests a, b for unequality.
- * Reports error if failed.
- */
-#define TEST_NEQ(a, b) \
-  if ((a) == (b)) { \
-    suite.errors++; \
-    report_fail(a, b, #a " == " #b); \
-    return; \
-  }
-
-/** Tests for a <= b .
- * Reports error if failed.
- */
-#define TEST_LEQ(a, b) \
-  if ((a) > (b)) { \
-    suite.errors++; \
-    report_fail(a, b, #a " > " #b); \
-    return; \
-  }
-
-/** Tests for a >= b .
- * Reports error if failed.
- */
-#define TEST_GEQ(a, b) \
-  if ((a) < (b)) { \
-    suite.errors++; \
-    report_fail(a, b, #a " < " #b); \
-    return; \
-  }
+#define ABORT() while(1) {}
 
 static void report_fail(int a, int b, char *msg) {
   static char buffer_[128];
   sprintf(buffer_, "%s@%s=>%s, %d, %d", suite.test_name, suite.test_type, msg, a, b);
   TEST_FAIL(buffer_); \
 }
+
+/** Tests a, b for equality.
+ * Reports error if failed.
+ */
+#define TEST_EQUALS(a, b) test_eq(a, b, #a " != " #b)
+
+void
+test_eq(uint32_t a, uint32_t b, char* test) {
+  if (!(a == b)) {
+    suite.errors++;
+    report_fail(a, b, test);
+    ABORT();
+  }
+}
+
+/** Tests a, b for unequality.
+ * Reports error if failed.
+ */
+#define TEST_NEQ(a, b) test_neq(a, b, #a " == " #b)
+
+void
+test_neq(uint32_t a, uint32_t b, char* test) {
+  if (!(a != b)) {
+    suite.errors++;
+    report_fail(a, b, test);
+    ABORT();
+  }
+}
+
+/** Tests for a <= b .
+ * Reports error if failed.
+ */
+#define TEST_LEQ(a, b) test_leq(a, b, #a " > " #b)
+
+void
+test_leq(uint32_t a, uint32_t b, char* test) {
+  if (!(a <= b)) {
+    suite.errors++;
+    report_fail(a, b, test);
+    ABORT();
+  }
+}
+
+/** Tests for a >= b .
+ * Reports error if failed.
+ */
+#define TEST_GEQ(a, b) test_geq(a, b, #a " < " #b)
+
+void
+test_geq(uint32_t a, uint32_t b, char* test) {
+  if (!(a >= b)) {
+    suite.errors++;
+    report_fail(a, b, test);
+    ABORT();
+  }
+}
+
 
 /** Indicates end of test bundle. */
 #define TESTS_DONE() \

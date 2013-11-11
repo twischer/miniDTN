@@ -44,6 +44,8 @@
 
 /** Inga revision 1.2  */
 #define INGA_V12  12
+/** Inga revision 1.4  */
+#define INGA_V14  14
 /** Inga revision 1.5  */
 #define INGA_V15  15
 /** Inga revision 2.0  */
@@ -60,13 +62,9 @@
 
 #define PLATFORM       PLATFORM_AVR
 
-#if INGA_REVISION == INGA_V12
+/** Currently all INGA revisions use same HAL */
 #define RF230_HAL = INGA_12
-#else
-#error INGA revision not supported
-#endif
 
-#define PLATFORM_HAS_LEDS   1
 #define PLATFORM_HAS_BUTTON 1
 
 /* CPU target speed in Hz */
@@ -85,10 +83,27 @@ typedef unsigned long clock_time_t;
 typedef unsigned long off_t;
 
 /* LED ports */
-#define LEDS_PxDIR DDRD
-#define LEDS_PxOUT PORTD
-#define LEDS_CONF_GREEN 0x20
-#define LEDS_CONF_YELLOW  0x80
+#define PLATFORM_HAS_LEDS       1
+#define LEDS_PxDIR              DDRD
+#define LEDS_PxOUT              PORTD
+#define LEDS_CONF_GREEN         0x20
+#define LEDS_CONF_YELLOW        0x80
 
+/* micro SD ports */
+#define MICRO_SD_PWR_PORT       PORTA
+#define MICRO_SD_PWR_PORT_DDR   DDRA
+#define MICRO_SD_PWR_PIN        PORTA4
+
+/**
+ * Powers the microSD card on.
+ *
+ * @note With INGA 1.4 powering on the SD card will unfortunately block SPI MISO.
+ */
+#define SDCARD_POWER_ON()   {MICRO_SD_PWR_PORT |= (1 << MICRO_SD_PWR_PIN); _delay_ms(2);}
+
+/**
+ * Powers the microSD card off.
+ */
+#define SDCARD_POWER_OFF()  MICRO_SD_PWR_PORT &= ~(1 << MICRO_SD_PWR_PIN)
 
 #endif /* __PLATFORM_CONF_H__ */

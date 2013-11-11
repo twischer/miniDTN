@@ -502,6 +502,11 @@ init(void)
   /* Flash initialization */
   at45db_init();
 
+#ifdef MICRO_SD_PWR_PIN
+  /* set pin for micro sd card power switch to output */
+  MICRO_SD_PWR_PORT_DDR |= (1 << MICRO_SD_PWR_PIN);
+#endif
+
   /* rtimers needed for radio cycling */
   rtimer_init();
 

@@ -18,9 +18,10 @@ uint8_t file_inits[FAT_TEST_CONF_NUM_FILES] = {5, 12, 80, 3, 76, 13, 123, 42, 23
 
 #ifdef FAT_TEST_SD
 #define FAT_TEST_DEVICE (DISKIO_DEVICE_TYPE_SD_CARD | DISKIO_DEVICE_TYPE_PARTITION)
-#endif
-#ifdef FAT_TEST_EXTFLASH
+#elif defined FAT_TEST_EXTFLASH
 #define FAT_TEST_DEVICE DISKIO_DEVICE_TYPE_GENERIC_FLASH  
+#else
+#error Neither FAT_TEST_SD nor FAT_TEST_EXTFLASH set
 #endif
 
 #define DEBUG 0
@@ -46,6 +47,11 @@ void
 test_device_init()
 {
   int initialized = 0, i;
+
+#ifdef FAT_TEST_SD
+  // power on sd card only if tested to not block flash
+  SDCARD_POWER_ON();
+#endif
 
   //--- Detecting devices and partitions
   TEST_EQUALS(diskio_detect_devices(), DISKIO_SUCCESS);
