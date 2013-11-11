@@ -11,7 +11,7 @@ battery-test: battery-test.c
 temppress-test: temppress-test.c
 
 
-PROJECT_SOURCEFILES += sensor-tests.c
+PROJECT_SOURCEFILES += sensor-tests.c ../test.c
 
 TARGET=inga
 
