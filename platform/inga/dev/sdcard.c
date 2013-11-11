@@ -31,13 +31,13 @@
  * \addtogroup inga_device_driver
  * @{
  *
- * \addtogroup microSD_interface
+ * \addtogroup sdcard_interface
  * @{
  */
 
 /**
  * \file
- *      microSD card interface implementation
+ *      sdcard card interface implementation
  * \author
  * 	Original source: Ulrich Radig
  * 	<< modified by >>
@@ -46,13 +46,20 @@
  *	Enrico Joerns <e.joerns@tu-bs.de>
  */
 
-#include "microSD.h"
+#include "sdcard.h"
 #include "dev/watchdog.h"
 #include <util/delay.h>
 
-#define DEBUG 0
+#define DEBUG 1
+
 #if DEBUG
 #include <stdio.h>
+#define PRINTD(...) printf(__VA_ARGS__)
+#else
+#define PRINTD(...)
+#endif
+// DEBUG > 1 is verbose
+#if DEBUG > 1
 #define PRINTF(...) printf(__VA_ARGS__)
 #else
 #define PRINTF(...)
@@ -73,32 +80,35 @@
 /**
  * \brief The number of bytes in one block on the SD-Card.
  */
-uint16_t microSD_block_size = 512;
+static uint16_t sdcard_block_size = 512;
 
 /**
  * \brief Number of blocks on the SD-Card.
  */
-uint32_t microSD_card_block_count = 0;
+static uint32_t sdcard_card_block_count = 0;
 
 /**
  * \brief Indicates if the inserted card is a SDSC card (!=0) or not (==0).
  */
-uint8_t microSD_sdsc_card = 1;
+static uint8_t sdcard_sdsc_card = 1;
 
 /**
  * \brief Indicates if the cards CRC mode is on (1) or off (0). Default is off.
  */
-uint8_t microSD_crc_enable = 0;
+static uint8_t sdcard_crc_enable = 0;
+
+static void setSDCInfo(uint8_t *csd);
+
 uint64_t
-microSD_get_card_size(void)
+sdcard_get_card_size(void)
 {
-  return ((uint64_t) microSD_card_block_count) * microSD_block_size;
+  return ((uint64_t) sdcard_card_block_count) * sdcard_block_size;
 }
 /*----------------------------------------------------------------------------*/
 uint32_t
-microSD_get_block_num(void)
+sdcard_get_block_num(void)
 {
-  return (microSD_card_block_count / microSD_block_size) * microSD_get_block_size();
+  return (sdcard_card_block_count / sdcard_block_size) * sdcard_get_block_size();
 }
 /*----------------------------------------------------------------------------*/
 /**
@@ -108,26 +118,19 @@ microSD_get_block_num(void)
  * \return Number of Bytes in one Block.
  */
 uint16_t
-microSD_get_block_size(void)
+sdcard_get_block_size(void)
 {
   return 512;
 }
 /*----------------------------------------------------------------------------*/
 uint8_t
-microSD_is_SDSC(void)
+sdcard_is_SDSC(void)
 {
-  return microSD_sdsc_card;
+  return sdcard_sdsc_card;
 }
 /*----------------------------------------------------------------------------*/
-/**
- * Turns crc capabilities of the card on or off.
- *
- * Does not work properly at this time. (FIXME)
- * \param enable 0 if CRC should be disabled, 1 if it should be enabled
- * \return 0 on success, !=0 otherwise
- */
 uint8_t
-microSD_set_CRC(uint8_t enable)
+sdcard_set_CRC(uint8_t enable)
 {
   uint8_t cmd[6] = {0x7A, 0x00, 0x00, 0x00, 0x00, 0xFF};
   uint8_t ret;
@@ -139,26 +142,26 @@ microSD_set_CRC(uint8_t enable)
     cmd[4] = 0xFF;
   }
 
-  if ((ret = microSD_write_cmd(cmd, NULL)) != 0x00) {
-    PRINTF("\nmicroSD_set_CRC(): ret = %u", ret);
+  if ((ret = sdcard_write_cmd(cmd, NULL)) != 0x00) {
+    PRINTF("\nsdcard_set_CRC(): ret = %u", ret);
     return 1;
   }
 
-  microSD_crc_enable = cmd[1];
+  sdcard_crc_enable = cmd[1];
   mspi_chip_release(MICRO_SD_CS);
 
   return 0;
 }
 /*----------------------------------------------------------------------------*/
 uint8_t
-microSD_read_csd(uint8_t *buffer)
+sdcard_read_csd(uint8_t *buffer)
 {
   /*CMD9 this is just a guess, need to verify*/
   uint8_t cmd[6] = {0x49, 0x00, 0x00, 0x00, 0x00, 0xFF};
   uint8_t i = 0;
 
-  if ((i = microSD_write_cmd(cmd, NULL)) != 0x00) {
-    PRINTF("\nmicroSD_read_csd(): CMD9 failure! (%u)", i);
+  if ((i = sdcard_write_cmd(cmd, NULL)) != 0x00) {
+    PRINTD("\nsdcard_read_csd(): CMD9 failure! (%u)", i);
     return 1;
   }
 
@@ -173,7 +176,7 @@ microSD_read_csd(uint8_t *buffer)
   mspi_transceive(MSPI_DUMMY_BYTE);
   mspi_transceive(MSPI_DUMMY_BYTE);
 
-  /*release chip select and disable microSD spi*/
+  /*release chip select and disable sdcard spi*/
   mspi_chip_release(MICRO_SD_CS);
 
   return 0;
@@ -182,10 +185,10 @@ microSD_read_csd(uint8_t *buffer)
 /**
  * Parse the given csd and extract the needed information out of it.
  *
- * \param *csd A Buffer in which the contents of the csd are saved (get them with microSD_read_csd()).
+ * \param *csd A Buffer in which the contents of the csd are saved (get them with sdcard_read_csd()).
  */
-void
-microSD_setSDCInfo(uint8_t *csd)
+static void
+setSDCInfo(uint8_t *csd)
 {
   uint8_t csd_version = ((csd[0] & (12 << 4)) >> 6);
   uint8_t READ_BL_LEN = 0;
@@ -204,23 +207,23 @@ microSD_setSDCInfo(uint8_t *csd)
     C_SIZE_MULT = ((csd[9] & 0x80) >> 7) + ((csd[8] & 0x03) << 1);
 
     mult = (2 << (C_SIZE_MULT + 2));
-    microSD_card_block_count = (C_SIZE + 1) * mult;
-    microSD_block_size = 1 << READ_BL_LEN;
+    sdcard_card_block_count = (C_SIZE + 1) * mult;
+    sdcard_block_size = 1 << READ_BL_LEN;
   } else if (csd_version == 1) {
     /*Bits 80 till 83 are the READ_BL_LEN*/
     READ_BL_LEN = csd[5] & 0x0F;
     C_SIZE = csd[9] + (((uint32_t) csd[8]) << 8) + (((uint32_t) csd[7] & 0x3f) << 16);
-    microSD_card_block_count = (C_SIZE + 1) * 1024;
-    microSD_block_size = 512;
+    sdcard_card_block_count = (C_SIZE + 1) * 1024;
+    sdcard_block_size = 512;
   }
 
-  PRINTF("\nmicroSD_setSDCInfo(): CSD Version = %u", ((csd[0] & (12 << 4)) >> 6));
-  PRINTF("\nmicroSD_setSDCInfo(): READ_BL_LEN = %u", READ_BL_LEN);
-  PRINTF("\nmicroSD_setSDCInfo(): C_SIZE = %lu", C_SIZE);
-  PRINTF("\nmicroSD_setSDCInfo(): C_SIZE_MULT = %u", C_SIZE_MULT);
-  PRINTF("\nmicroSD_setSDCInfo(): mult = %lu", mult);
-  PRINTF("\nmicroSD_setSDCInfo(): microSD_card_block_count  = %lu", microSD_card_block_count);
-  PRINTF("\nmicroSD_setSDCInfo(): microSD_block_size  = %u", microSD_block_size);
+  PRINTF("\nsetSDCInfo(): CSD Version = %u", ((csd[0] & (12 << 4)) >> 6));
+  PRINTF("\nsetSDCInfo(): READ_BL_LEN = %u", READ_BL_LEN);
+  PRINTF("\nsetSDCInfo(): C_SIZE = %lu", C_SIZE);
+  PRINTF("\nsetSDCInfo(): C_SIZE_MULT = %u", C_SIZE_MULT);
+  PRINTF("\nsetSDCInfo(): mult = %lu", mult);
+  PRINTF("\nsetSDCInfo(): sdcard_card_block_count  = %lu", sdcard_card_block_count);
+  PRINTF("\nsetSDCInfo(): sdcard_block_size  = %u", sdcard_block_size);
 }
 /*----------------------------------------------------------------------------*/
 /**
@@ -231,7 +234,7 @@ microSD_setSDCInfo(uint8_t *csd)
  *	cmd array (at the correct position).
  */
 void
-microSD_cmd_crc(uint8_t *cmd)
+sdcard_cmd_crc(uint8_t *cmd)
 {
   uint32_t stream = (((uint32_t) cmd[0]) << 24) +
           (((uint32_t) cmd[1]) << 16) +
@@ -254,14 +257,8 @@ microSD_cmd_crc(uint8_t *cmd)
   cmd[5] = (stream >> 24) + 1;
 }
 /*----------------------------------------------------------------------------*/
-/**
- * \brief This function calculates the CRC16 for a 512 Byte data block.
- *
- * \param *data The array containing the data to be send. Must be 512 Bytes long.
- * \return The CRC16 code for the given data.
- */
 uint16_t
-microSD_data_crc(uint8_t *data)
+sdcard_data_crc(uint8_t *data)
 {
   uint32_t stream = (((uint32_t) data[0]) << 24) +
           (((uint32_t) data[1]) << 16) +
@@ -286,11 +283,11 @@ microSD_data_crc(uint8_t *data)
 }
 /*----------------------------------------------------------------------------*/
 uint8_t
-microSD_init(void)
+sdcard_init(void)
 {
   uint16_t i;
   uint8_t ret = 0;
-  microSD_sdsc_card = 1;
+  sdcard_sdsc_card = 1;
 
   /*READY TO INITIALIZE micro SD / SD card*/
   mspi_chip_release(MICRO_SD_CS);
@@ -341,35 +338,35 @@ microSD_init(void)
   /*Memory for the contents of the csd*/
   uint8_t csd[16];
 
-  PRINTF("\nmicroSD_init(): Writing cmd0");
+  PRINTF("\nsdcard_init(): Writing cmd0");
 
   i = 0;
-  while ((ret = microSD_write_cmd(cmd0, NULL)) != 0x01) {
+  while ((ret = sdcard_write_cmd(cmd0, NULL)) != 0x01) {
     _delay_ms(5);
     i++;
     if (i > 200) {
       mspi_chip_release(MICRO_SD_CS);
-      PRINTF("\nmicroSD_init(): cmd0 timeout -> %d", ret);
+      PRINTD("\nsdcard_init(): cmd0 timeout -> %d", ret);
       return 1;
     }
   }
 
   /*send CMD8*/
-  microSD_cmd_crc(cmd8);
-  PRINTF("\nmicroSD_init(): Writing cmd8");
+  sdcard_cmd_crc(cmd8);
+  PRINTF("\nsdcard_init(): Writing cmd8");
 
   resp[0] = 0x07;
   i = 0;
-  while ((ret = microSD_write_cmd(cmd8, resp)) != 0x01) {
+  while ((ret = sdcard_write_cmd(cmd8, resp)) != 0x01) {
     if ((ret & 0x04) && ret != 0xFF) {
-      PRINTF("\nmicroSD_init(): cmd8 not supported -> legacy card");
+      PRINTD("\nsdcard_init(): cmd8 not supported -> legacy card");
 
       break;
     }
     i++;
     if (i > 200) {
       mspi_chip_release(MICRO_SD_CS);
-      PRINTF("\nmicroSD_init(): cmd8 timeout -> %d", ret);
+      PRINTD("\nsdcard_init(): cmd8 timeout -> %d", ret);
       return 4;
     }
   }
@@ -377,13 +374,13 @@ microSD_init(void)
   /* Illegal command -> Ver 1.X SD Memory Card or Not SD Memory Card*/
   if (ret & SD_R1_ILLEGAL_CMD) {
     /*prepare next 6 data bytes: CMD1*/
-    PRINTF("\nmicroSD_init(): Writing cmd1");
+  PRINTF("\nsdcard_init(): Writing cmd1");
 
-    i = 0;
-    while ((ret = microSD_write_cmd(cmd1, NULL)) != 0) {
-      i++;
-      if (i > 5500) {
-        PRINTF("\nmicroSD_init(): cmd1 timeout reached, last return value was %d", ret);
+  i = 0;
+  while ((ret = sdcard_write_cmd(cmd1, NULL)) != 0) {
+    i++;
+    if (i > 5500) {
+      PRINTD("\nsdcard_init(): cmd1 timeout reached, last return value was %d", ret);
         mspi_chip_release(MICRO_SD_CS);
         return 2;
       }
@@ -391,10 +388,10 @@ microSD_init(void)
     /* Set Block Length to 512 Bytes */
     i = 0;
     /** @todo: Is this command really needed? It does not seem to set anything. */
-    while ((ret = microSD_write_cmd(cmd16, NULL)) != 0x00) {
+    while ((ret = sdcard_write_cmd(cmd16, NULL)) != 0x00) {
       i++;
       if (i > 500) {
-        PRINTF("\nmicroSD_init(): cmd16 timeout reached, last return value was %d", ret);
+        PRINTF("\nsdcard_init(): cmd16 timeout reached, last return value was %d", ret);
         mspi_chip_release(MICRO_SD_CS);
         return 5;
       }
@@ -402,7 +399,7 @@ microSD_init(void)
     /* Ver2.00 or later SD Memory Card */
   } else {
     PRINTF("\nWriting acmd41 (55 + 41)");
-    PRINTF("\nmicroSD_init():\tWriting cmd55");
+    PRINTF("\nsdcard_init():\tWriting cmd55");
 
     resp[0] = 0x01;
     uint16_t j = 0;
@@ -410,30 +407,30 @@ microSD_init(void)
       _delay_ms(10);
       j++;
       i = 0;
-      while (microSD_write_cmd(cmd55, NULL) != 0x01) {
+      while (sdcard_write_cmd(cmd55, NULL) != 0x01) {
         i++;
         if (i > 500) {
-          PRINTF("\nmicroSD_init(): acmd41 timeout reached, last return value was %u", ret);
+          PRINTD("\nsdcard_init(): acmd41 timeout reached, last return value was %u", ret);
           mspi_chip_release(MICRO_SD_CS);
           return 6;
         }
       }
 
-      PRINTF("\nmicroSD_init():\tWriting cmd41");
+      PRINTF("\nsdcard_init():\tWriting cmd41");
 
       if (j > 12000) {
         return 8;
       }
-    } while ((microSD_write_cmd(cmd41, NULL) != 0));
+    } while ((sdcard_write_cmd(cmd41, NULL) != 0));
     resp[0] = 0x03;
     i = 0;
 
-    PRINTF("\nmicroSD_init(): Writing cmd58");
+    PRINTF("\nsdcard_init(): Writing cmd58");
 
-    while ((ret = microSD_write_cmd(cmd58, resp)) != 0x0) {
+    while ((ret = sdcard_write_cmd(cmd58, resp)) != 0x0) {
       i++;
       if (i > 900) {
-        PRINTF("\nmicroSD_init(): cmd58 timeout reached, last return value was %d", ret);
+        PRINTD("\nsdcard_init(): cmd58 timeout reached, last return value was %d", ret);
         mspi_chip_release(MICRO_SD_CS);
         return 7;
       }
@@ -441,36 +438,36 @@ microSD_init(void)
 
     if (resp[1] & 0x80) {
       if (resp[1] & 0x40) {
-        microSD_sdsc_card = 0;
+        sdcard_sdsc_card = 0;
       }
 
-      PRINTF("\nmicroSD_init(): acmd41: Card power up okay!");
+      PRINTF("\nsdcard_init(): acmd41: Card power up okay!");
       if (resp[1] & 0x40) {
-        PRINTF("\nmicroSD_init(): acmd41: Card is SDHC/SDXC");
+        PRINTF("\nsdcard_init(): acmd41: Card is SDHC/SDXC");
       } else {
-        PRINTF("\nmicroSD_init(): acmd41: Card is SDSC");
+        PRINTF("\nsdcard_init(): acmd41: Card is SDSC");
       }
 
     }
   }
 
   i = 0;
-  while (microSD_read_csd(csd) != 0) {
+  while (sdcard_read_csd(csd) != 0) {
     i++;
     if (i > 900) {
       mspi_chip_release(MICRO_SD_CS);
-      PRINTF("\nmicroSD_init(): CSD read error");
+      PRINTD("\nsdcard_init(): CSD read error");
       return 3;
     }
   }
-  microSD_setSDCInfo(csd);
+  setSDCInfo(csd);
   mspi_chip_release(MICRO_SD_CS);
 
   return 0;
 }
 /*----------------------------------------------------------------------------*/
 uint8_t
-microSD_read_block(uint32_t addr, uint8_t *buffer)
+sdcard_read_block(uint32_t addr, uint8_t *buffer)
 {
   uint16_t i;
   uint8_t ret;
@@ -479,11 +476,11 @@ microSD_read_block(uint32_t addr, uint8_t *buffer)
 
   /* calculate the start address: block_addr = addr * 512
    * this is only needed if the card is a SDSC card and uses
-   * byte addressing (Block size of 512 is set in microSD_init()).
+   * byte addressing (Block size of 512 is set in sdcard_init()).
    * SDHC and SDXC card use block-addressing with a block size of
    * 512 Bytes.
    */
-  if (microSD_sdsc_card) {
+  if (sdcard_sdsc_card) {
     addr = addr << 9;
   }
 
@@ -506,9 +503,9 @@ microSD_read_block(uint32_t addr, uint8_t *buffer)
   }
 
   /* send CMD17 with address information. Chip select is done by
-   * the microSD_write_cmd method and */
-  if ((i = microSD_write_cmd(cmd, NULL)) != 0x00) {
-    PRINTF("\nmicroSD_read_block(): CMD17 failure! (%u)", i);
+   * the sdcard_write_cmd method and */
+  if ((i = sdcard_write_cmd(cmd, NULL)) != 0x00) {
+    PRINTD("\nsdcard_read_block(): CMD17 failure! (%u)", i);
     return 1;
   }
 
@@ -521,7 +518,7 @@ microSD_read_block(uint32_t addr, uint8_t *buffer)
     }
   }
   if (success == 0) {
-    PRINTF("\nmicroSD_read_block(): No Start Byte recieved, last was %d", ret);
+    PRINTD("\nsdcard_read_block(): No Start Byte recieved, last was %d", ret);
     return 2;
   }
 
@@ -533,19 +530,20 @@ microSD_read_block(uint32_t addr, uint8_t *buffer)
   mspi_transceive(MSPI_DUMMY_BYTE);
   mspi_transceive(MSPI_DUMMY_BYTE);
 
-  /*release chip select and disable microSD spi*/
+  /*release chip select and disable sdcard spi*/
   mspi_chip_release(MICRO_SD_CS);
 
   return 0;
 }
 /*----------------------------------------------------------------------------*/
+/* @TODO: currently not used in any way */
 uint16_t
-microSD_get_status(void)
+sdcard_get_status(void)
 {
   uint8_t cmd[6] = {0x4D, 0x00, 0x00, 0x00, 0x00, 0xFF};
   uint8_t resp[5] = {0x02, 0x00, 0x00, 0x00, 0x00};
 
-  if (microSD_write_cmd(cmd, resp) != 0x00) {
+  if (sdcard_write_cmd(cmd, resp) != 0x00) {
     return 0;
   }
 
@@ -553,7 +551,7 @@ microSD_get_status(void)
 }
 /*----------------------------------------------------------------------------*/
 uint8_t
-microSD_write_block(uint32_t addr, uint8_t *buffer)
+sdcard_write_block(uint32_t addr, uint8_t *buffer)
 {
   uint16_t i;
 
@@ -562,11 +560,11 @@ microSD_write_block(uint32_t addr, uint8_t *buffer)
 
   /* calculate the start address: block_addr = addr * 512
    * this is only needed if the card is a SDSC card and uses
-   * byte addressing (Block size of 512 is set in microSD_init()).
+   * byte addressing (Block size of 512 is set in sdcard_init()).
    * SDHC and SDXC card use block-addressing with a block size of
    * 512 Bytes.
    */
-  if (microSD_sdsc_card) {
+  if (sdcard_sdsc_card) {
     addr = addr << 9;
   }
 
@@ -589,23 +587,23 @@ microSD_write_block(uint32_t addr, uint8_t *buffer)
   }
 
   /* send CMD24 with address information. Chip select is done by
-   * the microSD_write_cmd method and */
-  if ((i = microSD_write_cmd(cmd, NULL)) != 0x00) {
+   * the sdcard_write_cmd method and */
+  if ((i = sdcard_write_cmd(cmd, NULL)) != 0x00) {
     mspi_chip_release(MICRO_SD_CS);
     return 1;
   }
 
-  /* Read response from microSD */
+  /* Read response from sdcard */
   uint8_t response = mspi_transceive(MSPI_DUMMY_BYTE);
   if (response != 0xFF) {
     PRINTF("\nCard response: %d", response);
   }
 
-  /* send start byte 0xFE to the microSD card to symbolize the beginning
+  /* send start byte 0xFE to the sdcard card to symbolize the beginning
    * of one data block (512byte)*/
   mspi_transceive(0xFE);
 
-  /*send 1 block (512byte) to the microSD card*/
+  /*send 1 block (512byte) to the sdcard card*/
   for (i = 0; i < 512; i++) {
     mspi_transceive(buffer[i]);
   }
@@ -620,18 +618,18 @@ microSD_write_block(uint32_t addr, uint8_t *buffer)
   if (i != 0x05) {
 #if DEBUG
     if (i == 0x0B) {
-      PRINTF("\nWrite response: CRC error");
+      PRINTD("\nWrite response: CRC error");
     } else if (i == 0x0D) {
-      PRINTF("\nResponse: Write error");
+      PRINTD("\nResponse: Write error");
     } else if (i == 0x1F) {
-      PRINTF("\nResponse: Error token");
+      PRINTD("\nResponse: Error token");
     }
 #endif
     mspi_chip_release(MICRO_SD_CS);
     return 2;
   }
 
-  /* release chip select and disable microSD spi
+  /* release chip select and disable sdcard spi
    * note: it should not be required to wait for busy response here
    *       if busy waiting is done before writing/reading
    */
@@ -641,7 +639,7 @@ microSD_write_block(uint32_t addr, uint8_t *buffer)
 }
 /*----------------------------------------------------------------------------*/
 uint8_t
-microSD_write_cmd(uint8_t *cmd, uint8_t *resp)
+sdcard_write_cmd(uint8_t *cmd, uint8_t *resp)
 {
   uint16_t i;
   uint8_t data;
@@ -652,8 +650,8 @@ microSD_write_cmd(uint8_t *cmd, uint8_t *resp)
     resp_type = resp[0];
   }
 
-  if (microSD_crc_enable) {
-    microSD_cmd_crc(cmd);
+  if (sdcard_crc_enable) {
+    sdcard_cmd_crc(cmd);
   }
 
   mspi_chip_release(MICRO_SD_CS);

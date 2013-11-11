@@ -4,7 +4,7 @@ CONTIKI_CORE=contiki-inga-main
 CONTIKI_TARGET_MAIN = ${CONTIKI_CORE}.o
 CONTIKI_TARGET_SOURCEFILES += contiki-inga-main.c
 # INGA platform source files
-INGA_INTERFACES = i2c.c  mspi.c microSD.c 
+INGA_INTERFACES = i2c.c  mspi.c sdcard.c 
 INGA_DRIVERS = leds-arch.c adc.c at45db.c adxl345.c bmp085.c l3g4200d.c mpl115a.c
 INGA_SENSORS = sensors.c acc-sensor.c adc-sensor.c battery-sensor.c \
 	       button-sensor.c gyro-sensor.c pressure-sensor.c radio-sensor.c
