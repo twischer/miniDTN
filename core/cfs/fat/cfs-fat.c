@@ -146,7 +146,6 @@ static uint8_t load_next_sector_of_file(int fd, uint32_t clusters, uint8_t clus_
 static void make_readable_entry(struct dir_entry *dir, struct cfs_dirent *dirent);
 static uint8_t _is_file(struct dir_entry *dir_ent);
 static uint8_t _cfs_flags_ok(int flags, struct dir_entry *dir_ent);
-static void print_sector_buffer(void);
 static int fat_read_write(int fd, const void *buf, unsigned int len, unsigned char write);
 /*----------------------------------------------------------------------------*/
 /* Checks if the given fat entry is EOC (end of clusterchain)
@@ -706,27 +705,6 @@ read_next_sector()
 }
 /*----------------------------------------------------------------------------*/
 /*Mount related Functions*/
-/**
- * Determines the type of the fat by using the BPB.
- */
-static uint8_t
-determine_fat_type(struct FAT_Info *info)
-{
-  uint16_t RootDirSectors = ((info->BPB_RootEntCnt * 32) + (info->BPB_BytesPerSec - 1)) / info->BPB_BytesPerSec;
-  uint32_t DataSec = info->BPB_TotSec - (info->BPB_RsvdSecCnt + (info->BPB_NumFATs * info->BPB_FATSz) + RootDirSectors);
-  uint32_t CountofClusters = DataSec / info->BPB_SecPerClus;
-
-  if (CountofClusters < 4085) {
-    /* Volume is FAT12 */
-    return FAT12;
-  } else if (CountofClusters < 65525) {
-    /* Volume is FAT16 */
-    return FAT16;
-  } else {
-    /* Volume is FAT32 */
-    return FAT32;
-  }
-}
 /*----------------------------------------------------------------------------*/
 /**
  * Parses the Bootsector of a FAT-Filesystem and validates it.
@@ -777,6 +755,23 @@ parse_bootsector(uint8_t *buffer, struct FAT_Info *info)
           (((uint32_t) buffer[46]) << 16) +
           (((uint32_t) buffer[47]) << 24);
 
+  // do we have a FAT12/16 string at pos 54?
+  if ((buffer[54] == 'F') && (buffer[55] == 'A') && (buffer[56] == 'T')) {
+    // check if FAT12 or FAT16
+    if (buffer[58] == '2') {
+      info->type = FAT12;
+    } else if (buffer[58] == '6') {
+      info->type = FAT16;
+    } else {
+      info->type = FAT_INVALID;
+    }
+  // otherwise check for FAT32 at pos 58
+  } else if ((buffer[82] == 'F') && (buffer[83] == 'A') && (buffer[84] == 'T')) {
+    info->type = FAT32;
+  } else {
+    info->type = FAT_INVALID;
+  }
+
   if (is_a_power_of_2(info->BPB_BytesPerSec) != 0) {
     ret += 1;
   }
@@ -824,9 +819,6 @@ cfs_fat_mount_device(struct diskio_device_info *dev)
   if (parse_bootsector(sector_buffer, &(mounted.info)) != 0) {
     return 1;
   }
-
-  //call determine_fat_type
-  mounted.info.type = determine_fat_type(&(mounted.info));
 
   //return 2 if unsupported
   if (mounted.info.type != FAT16 && mounted.info.type != FAT32) {
