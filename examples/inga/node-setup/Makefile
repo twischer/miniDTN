@@ -1,5 +1,5 @@
 CONTIKI_PROJECT = inga-setup
-all: clean $(CONTIKI_PROJECT)
+setup: clean $(CONTIKI_PROJECT).upload
 	
 TARGET=inga
 APPS = settings_set 
