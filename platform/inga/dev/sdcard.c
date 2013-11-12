@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Institute of Operating Systems and Computer Networks (TU Brunswick).
+ * Copyright (c) 2013, Institute of Operating Systems and Computer Networks (TU Braunschweig).
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -37,7 +37,7 @@
 
 /**
  * \file
- *      sdcard card interface implementation
+ *      SD Card interface implementation
  * \author
  * 	Original source: Ulrich Radig
  * 	<< modified by >>

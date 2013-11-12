@@ -87,7 +87,7 @@ at45db_init(void) {
     mspi_chip_release(AT45DB_CS);
     _delay_ms(10);
     if (i++ > 10) {
-      PRINTF("Initialization failed\n");
+      PRINTF("at45db.c: Initialization failed\n");
       initialized = 0;
       return -1;
     }
@@ -280,7 +280,7 @@ at45db_busy_wait(void) {
   while ((mspi_transceive(MSPI_DUMMY_BYTE) >> 7) != 0x01) {
     _delay_ms(1);
     if (i++ > 500) {
-      PRINTF("Error: at45db_busy_wait timeout\n");
+      PRINTF("at45db.c: at45db_busy_wait timeout\n");
       return;
     }
   }
