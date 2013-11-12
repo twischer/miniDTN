@@ -51,11 +51,11 @@
 #define WATCHDOG_CONF_TIMEOUT WDTO_2S
 #endif
 
- /* While balancing start and stop calls is a good idea, an imbalance will cause
-  * resets that can take a lot of time to track down.
-  * Some low power protocols may cause this.
-  * The default is no balance; define WATCHDOG_CONF_BALANCE 1 to override.
-  */
+/* While balancing start and stop calls is a good idea, an imbalance will cause
+ * resets that can take a lot of time to track down.
+ * Some low power protocols may cause this.
+ * The default is no balance; define WATCHDOG_CONF_BALANCE 1 to override.
+ */
 #ifndef WATCHDOG_CONF_BALANCE
 #define WATCHDOG_CONF_BALANCE 0
 #endif
@@ -69,8 +69,8 @@
 #ifdef __AVR_XMEGA__
 #ifndef wdt_disable
 #define wdt_disable() \
-	CCP = CCP_IOREG_gc; \
-	WDT.CTRL = (WDT.CTRL & ~WDT_ENABLE_bm) | WDT_CEN_bm;
+  CCP = CCP_IOREG_gc; \
+  WDT.CTRL = (WDT.CTRL & ~WDT_ENABLE_bm) | WDT_CEN_bm;
 #endif
 #endif
 
@@ -89,84 +89,91 @@ void *watchdog_return_addr __attribute__ ((section (".noinit")));
 static int stopped = 0;
 #endif
 
+/* Only required if we want to examine reset source later on. */
+uint8_t mcusr_mirror __attribute__ ((section (".noinit")));
+
+/* 
+ * Watchdog may remain activated with cleared prescaler (fastest) after reset.
+ * Thus disabling the watchdog during init is required!!
+ */
+void get_mcusr(void) \
+       __attribute__((naked)) \
+       __attribute__((section(".init3")));
+void get_mcusr(void)
+{
+  mcusr_mirror = MCUSR;
+  MCUSR &= ~(1 << WDRF);
+  wdt_disable();
+}
+
 /*---------------------------------------------------------------------------*/
-void
+  void
 watchdog_init(void)
 {
-/*  Clear startup bit and disable the wdt, whether or not it will be used.
-    Random code may have caused the last reset.
- */
-    watchdog_return_addr = 0;
+  watchdog_return_addr = 0;
 
-#ifdef __AVR_XMEGA__
-	
-#else
-	MCUSR&=~(1<<WDRF);
-#endif
-
-    wdt_disable();
 #if WATCHDOG_CONF_BALANCE && WATCHDOG_CONF_TIMEOUT >= 0
-	stopped = 1;
+  stopped = 1;
 #endif
 }
 /*---------------------------------------------------------------------------*/
-void
+  void
 watchdog_start(void)
 {
 #if WATCHDOG_CONF_TIMEOUT >= 0
 #if WATCHDOG_CONF_BALANCE
-	stopped--;
-	if(!stopped)
+  stopped--;
+  if(!stopped)
 #endif
-	{
-		#ifdef __AVR_XMEGA__	
-			// enable watchdog	
-			CCP = CCP_IOREG_gc;
-			WDT.CTRL = WATCHDOG_CONF_TIMEOUT |  WDT_CEN_bm | WDT_ENABLE_bm;
-		#else
-			wdt_enable(WATCHDOG_CONF_TIMEOUT);
-		#endif
+  {
+#ifdef __AVR_XMEGA__	
+    // enable watchdog	
+    CCP = CCP_IOREG_gc;
+    WDT.CTRL = WATCHDOG_CONF_TIMEOUT |  WDT_CEN_bm | WDT_ENABLE_bm;
+#else
+    wdt_enable(WATCHDOG_CONF_TIMEOUT);
+#endif
 
-// Enable Interrupt
+    // Enable WDT Interrupt
 #if defined (__AVR_ATmega1284P__)
-		WDTCSR |= _BV(WDIE);	
+    WDTCSR |= _BV(WDIE);	
 #endif
-	}
+  }
 #endif  
 }
 /*---------------------------------------------------------------------------*/
-void
+  void
 watchdog_periodic(void)
 {
 #if WATCHDOG_CONF_TIMEOUT >= 0
 #if WATCHDOG_CONF_BALANCE
-	if(!stopped)
+  if(!stopped)
 #endif
-		
-	#ifdef __AVR_XMEGA__
-		// reset watchdog
-		CCP = CCP_IOREG_gc;
-		WDT.CTRL = (RST.CTRL & ~WDT_ENABLE_bm) | WDT_CEN_bm;
-		CCP = CCP_IOREG_gc;
-		WDT.CTRL = WATCHDOG_CONF_TIMEOUT |  WDT_CEN_bm | WDT_ENABLE_bm;
-	#else
-		wdt_reset();
-	#endif
+
+#ifdef __AVR_XMEGA__
+  // reset watchdog
+  CCP = CCP_IOREG_gc;
+  WDT.CTRL = (RST.CTRL & ~WDT_ENABLE_bm) | WDT_CEN_bm;
+  CCP = CCP_IOREG_gc;
+  WDT.CTRL = WATCHDOG_CONF_TIMEOUT |  WDT_CEN_bm | WDT_ENABLE_bm;
+#else
+  wdt_reset();
+#endif
 
 #endif
 }
 /*---------------------------------------------------------------------------*/
-void
+  void
 watchdog_stop(void)
 {
 #if WATCHDOG_CONF_TIMEOUT >= 0
 #if WATCHDOG_CONF_BALANCE
-	stopped++;
+  stopped++;
 #endif
-	wdt_disable();
-// Disable Interrupt
+  wdt_disable();
+  // Disable WDT Interrupt
 #if defined (__AVR_ATmega1284P__)
-	WDTCSR &= ~_BV(WDIE);
+  WDTCSR &= ~_BV(WDIE);
 #endif
 #endif
 }
@@ -174,17 +181,17 @@ watchdog_stop(void)
 void
 watchdog_reboot(void)
 {
-	cli();
-	wdt_enable(WDTO_15MS); //wd on,250ms 
-	while(1); //loop
+  cli();
+  wdt_enable(WDTO_15MS); //wd on,250ms 
+  while(1); //loop until watchdog resets
 }
 /*---------------------------------------------------------------------------*/
 /* Not all AVRs implement the wdt interrupt */
 #if defined (__AVR_ATmega1284P__)
 ISR(WDT_vect)
 {
-	/* The address is given in words (16-bit), but all GNU tools use bytes
-	 * so we need to multiply with 2 here. */
-	watchdog_return_addr = (void *)((unsigned int)__builtin_return_address(0)<<1);
+  /* The address is given in words (16-bit), but all GNU tools use bytes
+   * so we need to multiply with 2 here. */
+  watchdog_return_addr = (void *)((unsigned int)__builtin_return_address(0)<<1);
 }
 #endif

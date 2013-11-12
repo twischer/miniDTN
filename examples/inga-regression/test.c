@@ -1,6 +1,10 @@
 #include "test.h"
 
-#define ABORT() while(1) {}
+#define ABORT() \
+  { \
+  watchdog_stop(); \
+  exit(1); \
+  }
 
 static void report_fail(int a, int b, char *msg);
 
