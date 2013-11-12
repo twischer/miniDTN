@@ -436,15 +436,11 @@ platform_radio_init(void)
 void
 init(void)
 {
-
-  _delay_ms(200);
-  uint8_t reason;
   extern void *watchdog_return_addr;
+  extern uint8_t mcusr_mirror;
 
   /* Save the address where the watchdog occurred */
   void *wdt_addr = watchdog_return_addr;
-  /* Save the reset reason for later */
-  reason = MCUSR;
   MCUSR = 0;
 
   watchdog_init();
@@ -455,20 +451,22 @@ init(void)
   /* Redirect stdout to second port */
   rs232_redirect_stdout(RS232_PORT_0);
 
+  _delay_ms(200);
+
   PRINTA("\n*******Booting %s*******\nReset reason: ", CONTIKI_VERSION_STRING);
   /* Print out reset reason */
-  if (reason & _BV(JTRF))
+  if (mcusr_mirror & _BV(JTRF))
     PRINTA("JTAG ");
-  if (reason & _BV(WDRF))
+  if (mcusr_mirror & _BV(WDRF))
     PRINTA("Watchdog ");
-  if (reason & _BV(BORF))
+  if (mcusr_mirror & _BV(BORF))
     PRINTA("Brown-out ");
-  if (reason & _BV(EXTRF))
+  if (mcusr_mirror & _BV(EXTRF))
     PRINTA("External ");
-  if (reason & _BV(PORF))
+  if (mcusr_mirror & _BV(PORF))
     PRINTA("Power-on ");
   PRINTA("\n");
-  if (reason & _BV(WDRF))
+  if (mcusr_mirror & _BV(WDRF))
     PRINTA("Watchdog possibly occured at address %p\n", wdt_addr);
 
   clock_init();
