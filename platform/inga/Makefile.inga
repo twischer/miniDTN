@@ -200,11 +200,15 @@ login:
 AVRDUDE_PORT=$(CMOTES)
 
 %.upload:  %.hex reset
+ifeq ($(MOTES),)
+	$(warning No device connected)
+else
 	@echo Uploading...
 	$(foreach PORT, \
 	  $(MOTES), \
 	  avrdude $(AVRDUDE_OPTIONS) -P $(PORT) $(AVRDUDE_PROGRAMMER) -p $(MCU) -U flash:w:$<& )wait $!
 	@echo Upload done.
+endif
 
 include $(CONTIKIAVR)/Makefile.avr
 include $(CONTIKIAVR)/radio/Makefile.radio
