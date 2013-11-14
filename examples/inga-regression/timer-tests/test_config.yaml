@@ -11,7 +11,7 @@ tests:
         cflags: "-fno-inline"
         graph_options: ""
 ### etimer test
-  - name: eimer-rtimer
+  - name: timer-etimer
     timeout: 120
     devices:
       - name: receiver
