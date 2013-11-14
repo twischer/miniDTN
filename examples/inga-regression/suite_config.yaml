@@ -23,6 +23,8 @@ suite:
         - sensor-gyro
         - sensor-battery
         - sensor-temppress
+        - timer-rtimer
+        - timer-etimer
         - net-rime-unicast
         - net-udp
         - coffee-eeprom-static
@@ -36,5 +38,4 @@ suite:
         - fat-sd
         - fat-extflash
         - fat-coop
-        - timer-rtimer
 
