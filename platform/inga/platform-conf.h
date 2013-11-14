@@ -94,6 +94,8 @@ typedef unsigned long off_t;
 #define MICRO_SD_PWR_PORT_DDR   DDRA
 #define MICRO_SD_PWR_PIN        PORTA4
 
+#include <util/delay.h>
+
 /**
  * Powers the microSD card on.
  *
