@@ -80,6 +80,8 @@ PROCESS_THREAD(coffee_test_process, ev, data)
 #if (COFFEE_DEVICE == 6)
   int initialized = 0, i;
 
+  SDCARD_POWER_ON();
+
   //--- Detecting devices and partitions
   TEST_EQUALS(diskio_detect_devices(), DISKIO_SUCCESS);
 
