@@ -64,18 +64,18 @@ import javax.swing.table.AbstractTableModel;
 import org.apache.log4j.Logger;
 import org.jdom.Element;
 
-import se.sics.cooja.ClassDescription;
-import se.sics.cooja.Cooja;
-import se.sics.cooja.Mote;
-import se.sics.cooja.MotePlugin;
-import se.sics.cooja.PluginType;
-import se.sics.cooja.Simulation;
-import se.sics.cooja.SupportedArguments;
-import se.sics.cooja.VisPlugin;
-import se.sics.cooja.Watchpoint;
-import se.sics.cooja.WatchpointMote;
-import se.sics.cooja.WatchpointMote.WatchpointListener;
-import se.sics.cooja.dialogs.MessageList;
+import org.contikios.cooja.ClassDescription;
+import org.contikios.cooja.Cooja;
+import org.contikios.cooja.Mote;
+import org.contikios.cooja.MotePlugin;
+import org.contikios.cooja.PluginType;
+import org.contikios.cooja.Simulation;
+import org.contikios.cooja.SupportedArguments;
+import org.contikios.cooja.VisPlugin;
+import org.contikios.cooja.Watchpoint;
+import org.contikios.cooja.WatchpointMote;
+import org.contikios.cooja.WatchpointMote.WatchpointListener;
+import org.contikios.cooja.dialogs.MessageList;
 
 @ClassDescription("Souce-level debugger")
 @PluginType(PluginType.MOTE_PLUGIN)

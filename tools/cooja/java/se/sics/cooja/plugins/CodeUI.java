@@ -55,11 +55,11 @@ import jsyntaxpane.components.Markers.SimpleMarker;
 
 import org.apache.log4j.Logger;
 
-import se.sics.cooja.Watchpoint;
-import se.sics.cooja.WatchpointMote;
-import se.sics.cooja.util.JSyntaxAddBreakpoint;
-import se.sics.cooja.util.JSyntaxRemoveBreakpoint;
-import se.sics.cooja.util.StringUtils;
+import org.contikios.cooja.Watchpoint;
+import org.contikios.cooja.WatchpointMote;
+import org.contikios.cooja.util.JSyntaxAddBreakpoint;
+import org.contikios.cooja.util.JSyntaxRemoveBreakpoint;
+import org.contikios.cooja.util.StringUtils;
 
 /**
  * Displays source code and allows a user to add and remove breakpoints.

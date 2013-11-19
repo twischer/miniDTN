@@ -52,9 +52,9 @@ import javax.swing.table.DefaultTableCellRenderer;
 
 import org.apache.log4j.Logger;
 
-import se.sics.cooja.Cooja;
-import se.sics.cooja.Watchpoint;
-import se.sics.cooja.WatchpointMote;
+import org.contikios.cooja.Cooja;
+import org.contikios.cooja.Watchpoint;
+import org.contikios.cooja.WatchpointMote;
 
 /**
  * Displays a set of breakpoints. Used by Debugger.
