@@ -84,17 +84,31 @@ suite_config['suite']['logbase'] = os.path.join(workdir, suite_config['suite']['
 # If this option is not set try to load single test config file
 test_config = {'tests' : []}
 if 'testdirs' in suite_config['suite']:
-	for testdir in suite_config['suite']['testdirs']:
-		loadfile = os.path.join(workdir, testdir, "test_config.yaml")
-		try:
-			test_configfile = open(loadfile, 'r')
-			new_tests = yaml.load(test_configfile)['tests']
-			# add directory information for each test (currently not used)
-			for test in new_tests:
-				test['testdir'] = testdir
-			test_config['tests'] += new_tests #yaml.load(test_configfile)['tests']
-		except IOError:
-			logging.warning("Test configuration file '%s' was not found. Ignoring...", loadfile)
+        if not suite_config['suite']['testdirs']:
+                testdir = ""
+        	loadfile = os.path.join(workdir, testdir, "test_config.yaml")
+        	print loadfile
+        	try:
+        		test_configfile = open(loadfile, 'r')
+        		new_tests = yaml.load(test_configfile)['tests']
+        		# add directory information for each test (currently not used)
+        		for test in new_tests:
+        			test['testdir'] = testdir
+        		test_config['tests'] += new_tests #yaml.load(test_configfile)['tests']
+        	except IOError:
+        		logging.warning("Test configuration file '%s' was not found. Ignoring...", loadfile)
+        else:
+        	for testdir in suite_config['suite']['testdirs']:
+        		loadfile = os.path.join(workdir, testdir, "test_config.yaml")
+        		try:
+        			test_configfile = open(loadfile, 'r')
+        			new_tests = yaml.load(test_configfile)['tests']
+        			# add directory information for each test (currently not used)
+        			for test in new_tests:
+        				test['testdir'] = testdir
+        			test_config['tests'] += new_tests #yaml.load(test_configfile)['tests']
+        		except IOError:
+        			logging.warning("Test configuration file '%s' was not found. Ignoring...", loadfile)
 else:
 	try:
 		test_configfile = open(options.test_configfile, 'r')
