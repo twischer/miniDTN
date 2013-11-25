@@ -284,6 +284,12 @@ unsigned long clock_seconds(void);
 	#define NODE_ID	NODE_CONF_ID
 #endif /* NODE_CONF_ID */
 
+#ifndef NODE_CONF_EUI64
+	#define NODE_EUI64 0, 0, 0, 0, 0, 0, 0, 0
+#else
+	#define NODE_EUI64  NODE_CONF_EUI64
+#endif
+
 // RADIO_CHANNEL
 #ifndef RADIO_CONF_CHANNEL
 	#define RADIO_CHANNEL	26

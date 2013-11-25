@@ -243,14 +243,21 @@ generate_new_eui64(uint8_t eui64[8])
 }
 #endif /* CONTIKI_CONF_RANDOM_MAC */
 /*----------------------------------------------------------------------------*/
+// implements log function from uipopt.h
 void
 uip_log(char *msg)
 {
   printf("%s\n", msg);
 }
 /*----------------------------------------------------------------------------*/
+// config variables, preset with default values
+uint8_t radio_tx_power = RADIO_TX_POWER;
+uint8_t radio_channel = RADIO_CHANNEL;
+uint16_t pan_id = RADIO_PAN_ID;
+uint8_t eui64_addr[8] = {NODE_EUI64};
+/*----------------------------------------------------------------------------*/
 // implement sys/node-id.h interface
-unsigned short node_id;
+unsigned short node_id = NODE_ID;
 /*----------------------------------------------------------------------------*/
 void node_id_restore(void) {
   node_id = settings_get_uint16(SETTINGS_KEY_PAN_ADDR, 0);
@@ -269,49 +276,48 @@ void
 platform_radio_init(void)
 {
 
-  // Using default or project value as default value
-  // NOTE: These variables will always be overwritten when having an eeprom value
-  uint8_t radio_tx_power = RADIO_TX_POWER;
-  uint8_t radio_channel = RADIO_CHANNEL;
-  uint16_t pan_id = RADIO_PAN_ID;
-  node_id = NODE_ID;
-  uint8_t eui64_addr[8] = {0, 0, 0, 0, 0, 0, 0, 0};
-  //rimeaddr_t addr;
-
-
   /*******************************************************************************
-   * Load settings from EEPROM
+   * Load settings from EEPROM if not set manually
    ******************************************************************************/
 
   // PAN_ID
+#ifndef RADIO_CONF_PAN_ID
   if (settings_check(SETTINGS_KEY_PAN_ID, 0) == true) {
     pan_id = settings_get_uint16(SETTINGS_KEY_PAN_ID, 0);
   } else {
     PRINTD("PanID not in EEPROM - using default\n");
   }
+#endif
 
   // PAN_ADDR/NODE_ID
+#ifndef NODE_CONF_ID
   if (settings_check(SETTINGS_KEY_PAN_ADDR, 0) == true) {
     node_id = settings_get_uint16(SETTINGS_KEY_PAN_ADDR, 0);
   } else {
     PRINTD("NodeID/PanAddr not in EEPROM - using default\n");
   }
+#endif
 
   // TX_POWER
+#ifndef RADIO_CONF_TX_POWER
   if (settings_check(SETTINGS_KEY_TXPOWER, 0) == true) {
     radio_tx_power = settings_get_uint8(SETTINGS_KEY_TXPOWER, 0);
   } else {
     PRINTD("Radio TXPower not in EEPROM - using default\n");
   }
+#endif
 
   // CHANNEL
+#ifndef RADIO_CONF_CHANNEL
   if (settings_check(SETTINGS_KEY_CHANNEL, 0) == true) {
     radio_channel = settings_get_uint8(SETTINGS_KEY_CHANNEL, 0);
   } else {
     PRINTD("Radio Channel not in EEPROM - using default\n");
   }
+#endif
 
   // EUI64 ADDR
+#ifndef NODE_CONF_EUI64
   // if setting not set or invalid data - generate ieee_addr from node_id 
   if (settings_check(SETTINGS_KEY_EUI64, 0) != true || settings_get(SETTINGS_KEY_EUI64, 0, (void*) &eui64_addr, sizeof(eui64_addr)) != SETTINGS_STATUS_OK) {
 #if CONTIKI_CONF_RANDOM_MAC
@@ -336,6 +342,7 @@ platform_radio_init(void)
     }
 #endif
   }
+#endif
 
 #if EUI64_BY_NODE_ID
   /* Replace lower 2 bytes with node ID  */
@@ -451,6 +458,7 @@ init(void)
   /* Redirect stdout to second port */
   rs232_redirect_stdout(RS232_PORT_0);
 
+  /* wait here to get a chance to see boot screen. */
   _delay_ms(200);
 
   PRINTA("\n*******Booting %s*******\nReset reason: ", CONTIKI_VERSION_STRING);
