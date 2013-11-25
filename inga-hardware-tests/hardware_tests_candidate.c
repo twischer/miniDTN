@@ -7,12 +7,20 @@
 #include "test-params.h"
 
 #include "dev/acc-sensor.h"
+#include "dev/battery-sensor.h"
 #include "sensor-tests.h"
 #include "clock.h"
 
 /*--- Test parameters ---*/
 #define ACC_TEST_CFG_MIN_ACC    800L
 #define ACC_TEST_CFG_MAX_ACC    1200L
+/*--- ---*/
+/*--- Test parameters ---*/
+#define SENSOR_NAME             "BATTERY"
+#define BATTERY_TEST_CFG_MIN_V  3000
+#define BATTERY_TEST_CFG_MAX_V  4500
+#define BATTERY_TEST_CFG_MIN_I  30
+#define BATTERY_TEST_CFG_MAX_I  100
 /*--- ---*/
 
 static struct unicast_conn uc;
@@ -68,9 +76,9 @@ assert_acc_value()
   // calc ^2 of vec length
   int32_t static_g = x*x + y*y + z*z;
   // test for 1g +/- 10%
-  TEST_REPORT("x-axis", (int16_t) x, 1, "mg");
-  TEST_REPORT("y-axis", (int16_t) y, 1, "mg");
-  TEST_REPORT("z-axis", (int16_t) z, 1, "mg");
+  //TEST_REPORT("x-axis", (int16_t) x, 1, "mg");
+  //TEST_REPORT("y-axis", (int16_t) y, 1, "mg");
+  //TEST_REPORT("z-axis", (int16_t) z, 1, "mg");
 
   if ((static_g > ACC_TEST_CFG_MAX_ACC*ACC_TEST_CFG_MAX_ACC) && 
   		  (static_g <  ACC_TEST_CFG_MIN_ACC*ACC_TEST_CFG_MIN_ACC)){
@@ -135,12 +143,26 @@ PROCESS_THREAD(rime_unicast_sender, ev, data)
 		test_res = (acc_sensor.configure(ACC_CONF_DATA_RATE, ACC_400HZ) && assert_acc_value());
 		TEST_ASSERT("Accelerometer vaule failed for 400HZ",test_res);
 		
-		test_res = SENSORS_DEACTIVATE(acc_sensor) && !acc_sensor.status(SENSORS_ACTIVE) && acc_sensor.status(SENSORS_READY);
+		test_res = SENSORS_DEACTIVATE(acc_sensor) && /*!acc_sensor.status(SENSORS_ACTIVE) &&*/ acc_sensor.status(SENSORS_READY);
 		TEST_ASSERT("Accelerometer failed deactivate",test_res);
 		TESTS_PRINT_RESULT("Accelerometer");
 		test_num++;
-//	}else if (test_num==2){
 
+
+	}else if (test_num==2){
+		uint8_t test_res =battery_sensor.status(SENSORS_READY) && !battery_sensor.status(SENSORS_ACTIVE) && SENSORS_ACTIVATE(battery_sensor) && battery_sensor.status(SENSORS_ACTIVE);
+		TEST_ASSERT("Battery-sensor failed to init",test_res);
+
+		int v = battery_sensor.value(BATTERY_VOLTAGE);
+		int i = battery_sensor.value(BATTERY_CURRENT);
+
+		test_res = v <= BATTERY_TEST_CFG_MAX_V && v >= BATTERY_TEST_CFG_MIN_V && i <= BATTERY_TEST_CFG_MAX_I && i >= BATTERY_TEST_CFG_MIN_I;
+		TEST_ASSERT("Battery-sensor value failed",test_res);
+
+		test_res = SENSORS_DEACTIVATE(battery_sensor) && /*!acc_sensor.status(SENSORS_ACTIVE) &&*/ battery_sensor.status(SENSORS_READY);
+		TEST_ASSERT("Battery-sensor failed deactivate",test_res);
+		TESTS_PRINT_RESULT("Battery-sensor");
+		test_num++;
 	}else{
 		TESTS_DONE();
 	}
