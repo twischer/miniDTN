@@ -37,11 +37,12 @@ recv_uc(struct unicast_conn *c, const rimeaddr_t *from)
 	  unicast_send(&uc, &addr);
 	  printf("send: %s\n",buff_);
 	  rec_count++;
+    TEST_PASS();
   }
   
   // check if done
   if (rec_count == 10) {
-    TEST_PASS();
+  	rec_count=0;
   }
 }
 
