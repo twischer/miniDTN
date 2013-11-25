@@ -8,6 +8,8 @@
 
 #include "dev/acc-sensor.h"
 #include "dev/battery-sensor.h"
+#include "dev/gyro-sensor.h"
+#include "dev/pressure-sensor.h"
 #include "sensor-tests.h"
 #include "clock.h"
 
@@ -163,6 +165,29 @@ PROCESS_THREAD(rime_unicast_sender, ev, data)
 		TEST_ASSERT("Battery-sensor failed deactivate",test_res);
 		TESTS_PRINT_RESULT("Battery-sensor");
 		test_num++;
+
+	}else if(test_num==3){
+		uint8_t test_res = gyro_sensor.status(SENSORS_READY) && !gyro_sensor.status(SENSORS_ACTIVE) && SENSORS_ACTIVATE(gyro_sensor) && gyro_sensor.status(SENSORS_ACTIVE);
+		TEST_ASSERT("Gyro sensor failed to init",test_res);
+
+		//TODO: test values
+
+		test_res = SENSORS_DEACTIVATE(gyro_sensor) && /*!acc_sensor.status(SENSORS_ACTIVE) &&*/ gyro_sensor.status(SENSORS_READY);
+		TEST_ASSERT("Gyro failed deactivate",test_res);
+		TESTS_PRINT_RESULT("Gyro");
+		test_num++;
+
+	}else if(test_num==4){
+		uint8_t test_res = pressure_sensor.status(SENSORS_READY) && !pressure_sensor.status(SENSORS_ACTIVE) && SENSORS_ACTIVATE(pressure_sensor) && pressure_sensor.status(SENSORS_ACTIVE);
+		TEST_ASSERT("Pressure sensor failed to init",test_res);
+
+		//TODO: test values
+
+		test_res = SENSORS_DEACTIVATE(pressure_sensor) && /*!acc_sensor.status(SENSORS_ACTIVE) &&*/ pressure_sensor.status(SENSORS_READY);
+		TEST_ASSERT("Pressure failed deactivate",test_res);
+		TESTS_PRINT_RESULT("Pressure-sensor");
+		test_num++;
+
 	}else{
 		TESTS_DONE();
 	}
