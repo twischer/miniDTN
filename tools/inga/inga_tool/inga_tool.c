@@ -47,6 +47,7 @@
 enum {
 	MODE_RESET,
 	MODE_UPDATE_EEPROM,
+	MODE_READ_SERIAL,
 };
 
 struct config_t {
@@ -235,7 +236,71 @@ out:
     ftdi_usb_close(&ftdic);
     ftdi_deinit(&ftdic);
 }
+void inga_serial(struct config_t *cfg)
+{
+	int rc;
+    struct ftdi_context ftdic;
+    struct usb_device *usbdev;
+    struct ftdi_eeprom eeprom;
+    char buf[FTDI_DEFAULT_EEPROM_SIZE];
 
+    if (ftdi_init(&ftdic) < 0)
+    {
+        fprintf(stderr, "ftdi_init failed\n");
+        exit(EXIT_FAILURE);
+    }
+
+    /* Find the USB device for the path */
+    usbdev = find_matching_usb_dev(cfg);
+    if (!usbdev) {
+	    fprintf(stderr, "Could not find device\n");
+	    exit(EXIT_FAILURE);
+    }
+
+    rc = ftdi_usb_open_dev(&ftdic, usbdev);
+    if (rc < 0)
+    {
+        fprintf(stderr, "unable to open ftdi device: %d (%s)\n", rc, ftdi_get_error_string(&ftdic));
+        exit(EXIT_FAILURE);
+    }
+
+    usbdev = usb_device(ftdic.usb_dev);
+
+	printf("Reading out EEPROM image...");
+	fflush(stdout);
+	rc = ftdi_read_eeprom(&ftdic, buf);
+	if (rc < 0) {
+		fprintf(stderr, "\nCould not read EEPROM: %i\n", rc);
+		exit(EXIT_FAILURE);
+	}
+	printf("done\n");
+
+	rc = ftdi_eeprom_decode(&eeprom, buf, FTDI_DEFAULT_EEPROM_SIZE);
+	if (rc < 0) {
+		fprintf(stderr, "Could not decode EEPROM: %i\n", rc);
+		exit(EXIT_FAILURE);
+	}
+	/* decode fails to set the size which is needed to build an image again */
+	eeprom.size = FTDI_DEFAULT_EEPROM_SIZE;
+
+	if (eeprom.chip_type != ftdic.type) {
+		/* CBUS has not been copied over in this case, we need to do that ourselves */
+		int i, tmp;
+		for (i=0;i<5;i++) {
+			if (i%2 == 0)
+				tmp = buf[0x14 + (i/2)];
+			eeprom.cbus_function[i] = tmp & 0x0f;
+			tmp = tmp >> 4;
+		}
+	}
+
+	printf("Serial: %s\n",eeprom.serial);
+    ftdi_usb_reset(&ftdic);
+    usb_reset(ftdic.usb_dev);
+    ftdi_usb_close(&ftdic);
+    ftdi_deinit(&ftdic);
+
+}
 void inga_eeprom(struct config_t *cfg)
 {
 	int rc;
@@ -392,6 +457,8 @@ void parse_options(int argc, const char **argv, struct config_t *cfg)
 			NULL},
 		{"flash", 'f', POPT_ARG_VAL, &cfg->mode, MODE_UPDATE_EEPROM, "Update FTDI EEPROM of INGA",
 			NULL},
+		{"serial", 's', POPT_ARG_VAL, &cfg->mode, MODE_READ_SERIAL, "Read the FTDI serial from its EEPROM",
+			NULL},
 		{"device", 'd', POPT_ARG_STRING, &cfg->device_path, 0, "Path to the serial device",
 			"pathname"},
 		{"serial", 's', POPT_ARG_STRING, &cfg->device_serial, 0, "Serial of the FTDI",
@@ -483,6 +550,8 @@ int main(int argc, const char **argv)
 		inga_reset(cfg);
 	else if (cfg->mode == MODE_UPDATE_EEPROM)
 		inga_eeprom(cfg);
+	else if (cfg->mode == MODE_READ_SERIAL)
+		inga_serial(cfg);
 
 	exit(EXIT_SUCCESS);
 }
