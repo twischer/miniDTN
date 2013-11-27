@@ -142,7 +142,7 @@ class Testcase(object):
 								time.sleep(2)
 								raise err
 							elif item['status'] == "Result":
-								self.logger.info("\x1b[0;34m Result of Test:\x1b[0m %s: %s \x1b[0m", item['desc'],item['data'])
+								self.logger.info("\x1b[0;34m Result of Test:\x1b[;0m %s: %s \x1b[;0m", item['desc'],item['data'])
 							elif item['status'] == "Completed":
 								self.logger.info("Device %s completed test successfully", item['name'])
 							elif item['status'] == "Report":
