@@ -5,11 +5,13 @@
 #include <stdio.h>
 #include "test.h"
 #include "test-params.h"
+#include "lib/settings.h"
 
 #include "dev/acc-sensor.h"
 #include "dev/battery-sensor.h"
 #include "dev/gyro-sensor.h"
 #include "dev/pressure-sensor.h"
+#include "dev/at45db.h"
 #include "sensor-tests.h"
 #include "clock.h"
 
@@ -109,7 +111,8 @@ PROCESS_THREAD(rime_unicast_sender, ev, data)
   static int8_t idx = 0;
   char buff_[30] = {'\0'};
   static uint8_t test_num =0;
-
+//  TEST_REPORT("NODE_ID", (uint16_t)settings_get_uint16(SETTINGS_KEY_PAN_ADDR, 0), 1, "");
+  printf("TEST:RESULT:NODE_ID:0x%04x\n",(uint16_t)settings_get_uint16(SETTINGS_KEY_PAN_ADDR, 0));
   while (1) {
     etimer_set(&et, CLOCK_SECOND/4);
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
@@ -186,6 +189,29 @@ PROCESS_THREAD(rime_unicast_sender, ev, data)
 		test_res = SENSORS_DEACTIVATE(pressure_sensor) && /*!acc_sensor.status(SENSORS_ACTIVE) &&*/ pressure_sensor.status(SENSORS_READY);
 		TEST_ASSERT("Pressure failed deactivate",test_res);
 		TESTS_PRINT_RESULT("Pressure-sensor");
+		test_num++;
+	//TODO Flash testen
+	}else if(test_num==5){
+		uint8_t test_res = !at45db_init();
+		TEST_ASSERT("Flash failed to init",test_res);
+		uint8_t buffer[512];
+		uint8_t orig_data[512];
+		memset(buffer,1,512);
+		at45db_read_page_bypassed(0,0,orig_data,512);
+		at45db_erase_page(0);
+		at45db_write_page(0,0,buffer,512);
+		memset(buffer,2,512);
+		at45db_read_page_bypassed(0,0,buffer,512);
+		uint16_t i=0;
+		for (;i<512;i++){
+			if (buffer[i]!=1){
+				TEST_ASSERT("Flash failed to read or write",0);
+				break;		
+			}
+		}
+		at45db_erase_page(0);
+		at45db_write_page(0,0,orig_data,512);
+		TESTS_PRINT_RESULT("Flash");
 		test_num++;
 
 	}else{
