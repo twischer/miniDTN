@@ -555,7 +555,7 @@ sdcard_write_block(uint32_t addr, uint8_t *buffer)
 {
   uint16_t i;
 
-  /*CMD24 write block*/
+  /* CMD24 write block */
   uint8_t cmd[6] = {0x58, 0x00, 0x00, 0x00, 0x00, 0xFF};
 
   /* calculate the start address: block_addr = addr * 512
@@ -586,24 +586,25 @@ sdcard_write_block(uint32_t addr, uint8_t *buffer)
     i++;
   }
 
-  /* send CMD24 with address information. Chip select is done by
-   * the sdcard_write_cmd method and */
+  /* send CMD24 with address information.
+   * Chip select is done by the sdcard_write_cmd method */
   if ((i = sdcard_write_cmd(cmd, NULL)) != 0x00) {
     mspi_chip_release(MICRO_SD_CS);
+    PRINTD("\nCMD24 failed");
     return 1;
   }
 
-  /* Read response from sdcard */
+  /* Read command response from sdcard */
   uint8_t response = mspi_transceive(MSPI_DUMMY_BYTE);
   if (response != 0xFF) {
-    PRINTF("\nCard response: %d", response);
+    PRINTD("\nCard response: %d", response);
   }
 
   /* send start byte 0xFE to the sdcard card to symbolize the beginning
    * of one data block (512byte)*/
   mspi_transceive(0xFE);
 
-  /*send 1 block (512byte) to the sdcard card*/
+  /* send 1 block (512byte) to the sdcard card */
   for (i = 0; i < 512; i++) {
     mspi_transceive(buffer[i]);
   }
@@ -614,6 +615,15 @@ sdcard_write_block(uint32_t addr, uint8_t *buffer)
 
   /* failure check: Data Response XXX0RRR1 */
   i = mspi_transceive(MSPI_DUMMY_BYTE) & 0x1F;
+  /* after the response the card requires additional 8 clock cycles. */
+  mspi_transceive(MSPI_DUMMY_BYTE);
+
+  /* release chip select and disable sdcard spi
+   * note: busy waiting is not required here
+   *       becaus it is already done before writing/reading
+   */
+  mspi_chip_release(MICRO_SD_CS);
+
   /* Data Response XXX00101 = OK */
   if (i != 0x05) {
 #if DEBUG
@@ -625,15 +635,8 @@ sdcard_write_block(uint32_t addr, uint8_t *buffer)
       PRINTD("\nResponse: Error token");
     }
 #endif
-    mspi_chip_release(MICRO_SD_CS);
     return 2;
   }
-
-  /* release chip select and disable sdcard spi
-   * note: it should not be required to wait for busy response here
-   *       if busy waiting is done before writing/reading
-   */
-  mspi_chip_release(MICRO_SD_CS);
 
   return 0;
 }
