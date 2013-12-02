@@ -76,6 +76,56 @@
 #define SD_R1_ADDR_ERR      0x20
 #define SD_R1_PARAM_ERR     0x40
 
+/** CMD0  -- GO_IDLE_STATE */
+#define SDCARD_CMD0   0
+/** CMD1  -- SEND_OP_COND */
+#define SDCARD_CMD1   1
+/** CMD8  -- SEND_IF_COND (deprecated?)*/
+#define SDCARD_CMD8   8
+
+/** CMD9  -- SEND_CSD */
+#define SDCARD_CMD9   9
+/** CMD10 -- SEND_CID */
+#define SDCARD_CMD10  10
+/** CMD13 -- SEND_STATUS */
+#define SDCARD_CMD13  13
+
+/** CMD16 -- SET_BLOCKLEN */
+#define SDCARD_CMD16  16
+// -- Read commands
+/** CMD17 -- READ_SINGLE_BLOCK */
+#define SDCARD_CMD17  17
+/** CMD18 -- READ_MULTIPLE_BLOCK */
+#define SDCARD_CMD18  18
+// -- Write commands
+/** CMD24 -- WRITE_BLOCK */
+#define SDCARD_CMD24  24
+/** CMD25 -- WRITE_MULTIPLE_BLOCK */
+#define SDCARD_CMD25  25
+// --
+/** CMD27 -- PROGRAM_CSD */
+#define SDCARD_CMD27  27
+// -- Erase commands
+/** CMD32 -- ERASE_WR_BLK_START_ADDR */
+#define SDCARD_CMD32  32
+/** CMD33 -- ERASE_WR_BLK_END_ADDR */
+#define SDCARD_CMD33  33
+/** CMD38 -- ERASE */
+#define SDCARD_CMD38  38
+// --
+/** CMD58 -- READ_OCR */
+#define SDCARD_CMD58  58
+/** CMD59 -- CRC_ON_OFF */
+#define SDCARD_CMD59  59
+
+/** CMD55 -- APP_CMD */
+#define SDCARD_CMD55  55
+/** ACMD41 -- */
+#define SDCARD_ACMD41 41
+
+#define RESPONSE_R1   0x01
+#define RESPONSE_R3   0x03
+#define RESPONSE_R7   0x07
 
 /**
  * \brief The number of bytes in one block on the SD-Card.
@@ -132,22 +182,15 @@ sdcard_is_SDSC(void)
 uint8_t
 sdcard_set_CRC(uint8_t enable)
 {
-  uint8_t cmd[6] = {0x7A, 0x00, 0x00, 0x00, 0x00, 0xFF};
   uint8_t ret;
+  uint32_t arg = enable ? 1L : 0L;
 
-  if (enable != 0) {
-    cmd[1] = 0xFF;
-    cmd[2] = 0xFF;
-    cmd[3] = 0xFF;
-    cmd[4] = 0xFF;
-  }
-
-  if ((ret = sdcard_write_cmd(cmd, NULL)) != 0x00) {
-    PRINTF("\nsdcard_set_CRC(): ret = %u", ret);
+  if ((ret = sdcard_write_cmd(SDCARD_CMD59, &arg, NULL)) != 0x00) {
+    PRINTD("\nsdcard_set_CRC(): ret = %u", ret);
     return 1;
   }
 
-  sdcard_crc_enable = cmd[1];
+  sdcard_crc_enable = enable;
   mspi_chip_release(MICRO_SD_CS);
 
   return 0;
@@ -156,23 +199,21 @@ sdcard_set_CRC(uint8_t enable)
 uint8_t
 sdcard_read_csd(uint8_t *buffer)
 {
-  /*CMD9 this is just a guess, need to verify*/
-  uint8_t cmd[6] = {0x49, 0x00, 0x00, 0x00, 0x00, 0xFF};
   uint8_t i = 0;
 
-  if ((i = sdcard_write_cmd(cmd, NULL)) != 0x00) {
+  if ((i = sdcard_write_cmd(SDCARD_CMD9, NULL, NULL)) != 0x00) {
     PRINTD("\nsdcard_read_csd(): CMD9 failure! (%u)", i);
     return 1;
   }
 
-  /*wait for the 0xFE start byte*/
+  /* wait for the 0xFE start byte */
   while (mspi_transceive(MSPI_DUMMY_BYTE) != 0xFE);
 
   for (i = 0; i < 16; i++) {
     *buffer++ = mspi_transceive(MSPI_DUMMY_BYTE);
   }
 
-  /*CRC-Byte: don't care*/
+  /* CRC-Byte: don't care */
   mspi_transceive(MSPI_DUMMY_BYTE);
   mspi_transceive(MSPI_DUMMY_BYTE);
 
@@ -195,6 +236,7 @@ setSDCInfo(uint8_t *csd)
   uint32_t C_SIZE = 0;
   uint16_t C_SIZE_MULT = 0;
   uint32_t mult = 0;
+  uint8_t SECTOR_SIZE = 0;
 
   if (csd_version == 0) {
     /*Bits 80 till 83 are the READ_BL_LEN*/
@@ -215,15 +257,17 @@ setSDCInfo(uint8_t *csd)
     C_SIZE = csd[9] + (((uint32_t) csd[8]) << 8) + (((uint32_t) csd[7] & 0x3f) << 16);
     sdcard_card_block_count = (C_SIZE + 1) * 1024;
     sdcard_block_size = 512;
+    SECTOR_SIZE = ((csd[4] >> 7) | ((csd[5] & 0x3F) << 1)) + 1;
   }
 
-  PRINTF("\nsetSDCInfo(): CSD Version = %u", ((csd[0] & (12 << 4)) >> 6));
-  PRINTF("\nsetSDCInfo(): READ_BL_LEN = %u", READ_BL_LEN);
-  PRINTF("\nsetSDCInfo(): C_SIZE = %lu", C_SIZE);
-  PRINTF("\nsetSDCInfo(): C_SIZE_MULT = %u", C_SIZE_MULT);
-  PRINTF("\nsetSDCInfo(): mult = %lu", mult);
-  PRINTF("\nsetSDCInfo(): sdcard_card_block_count  = %lu", sdcard_card_block_count);
-  PRINTF("\nsetSDCInfo(): sdcard_block_size  = %u", sdcard_block_size);
+  printf("\nsetSDCInfo(): CSD Version = %u", ((csd[0] & (12 << 4)) >> 6));
+  printf("\nsetSDCInfo(): READ_BL_LEN = %u", READ_BL_LEN);
+  printf("\nsetSDCInfo(): C_SIZE = %lu", C_SIZE);
+  printf("\nsetSDCInfo(): C_SIZE_MULT = %u", C_SIZE_MULT);
+  printf("\nsetSDCInfo(): mult = %lu", mult);
+  printf("\nsetSDCInfo(): sdcard_card_block_count  = %lu", sdcard_card_block_count);
+  printf("\nsetSDCInfo(): sdcard_block_size  = %u", sdcard_block_size);
+  printf("\nsetSDCInfo(): SECTOR_SIZE = %u", SECTOR_SIZE);
 }
 /*----------------------------------------------------------------------------*/
 /**
@@ -311,37 +355,22 @@ sdcard_init(void)
     mspi_transceive(MSPI_DUMMY_BYTE);
   }
 
-  /*CMD0: set sd card to idle state*/
-  uint8_t cmd0[6] = {0x40, 0x00, 0x00, 0x00, 0x00, 0x95};
-
-  /*CMD1: init CSD Version 1 and MMC cards*/
-  uint8_t cmd1[6] = {0x41, 0x00, 0x00, 0x00, 0x00, 0xFF};
-
-  /*CMD8: Test if the card supports CSD Version 2*/
-  uint8_t cmd8[6] = {0x48, 0x00, 0x00, 0x01, 0xaa, 0x01};
-
-  /*CMD16: Sets the block length, needed for CSD Version 1 cards*/
-  uint8_t cmd16[6] = {0x50, 0x00, 0x00, 0x02, 0x00, 0x01};
-
-  /*CMD41: Second part of ACMD41*/
-  uint8_t cmd41[6] = {0x69, 0x40, 0x00, 0x00, 0x00, 0x01};
-
-  /*CMD55: First part of ACMD41, Initiates a App. Spec. Cmd*/
-  uint8_t cmd55[6] = {0x77, 0x00, 0x00, 0x00, 0x00, 0x01};
-
-  /*CMD58: Gets the OCR-Register to check if card is SDSC or not*/
-  uint8_t cmd58[6] = {0x7a, 0x00, 0x00, 0x00, 0x00, 0x01};
-
+  /* CMD8 payload */
+  uint32_t cmd8_arg = 0x000001AAUL;
+  /* CMD15 payload */
+  uint32_t cmd16_arg = 0x00000200;
+  /* ACMD41 payload */
+  uint32_t acmd41_arg = 0x40000000;
   /*Response Array for the R3 and R7 responses*/
   uint8_t resp[5] = {0x00, 0x00, 0x00, 0x00, 0x00};
 
-  /*Memory for the contents of the csd*/
+  /* Memory for the contents of the csd */
   uint8_t csd[16];
 
+  /* CMD0: set sd card to idle state */
   PRINTF("\nsdcard_init(): Writing cmd0");
-
   i = 0;
-  while ((ret = sdcard_write_cmd(cmd0, NULL)) != 0x01) {
+  while ((ret = sdcard_write_cmd(SDCARD_CMD0, NULL, NULL)) != 0x01) {
     _delay_ms(5);
     i++;
     if (i > 200) {
@@ -351,16 +380,16 @@ sdcard_init(void)
     }
   }
 
-  /*send CMD8*/
-  sdcard_cmd_crc(cmd8);
+  /*CMD8: Test if the card supports CSD Version 2*/
+  /** @todo: is CRC required here? */
+  //sdcard_cmd_crc(cmd8);
   PRINTF("\nsdcard_init(): Writing cmd8");
 
-  resp[0] = 0x07;
   i = 0;
-  while ((ret = sdcard_write_cmd(cmd8, resp)) != 0x01) {
+  resp[0] = 0x07;
+  while ((ret = sdcard_write_cmd(SDCARD_CMD8, &cmd8_arg, resp)) != 0x01) {
     if ((ret & 0x04) && ret != 0xFF) {
       PRINTD("\nsdcard_init(): cmd8 not supported -> legacy card");
-
       break;
     }
     i++;
@@ -373,22 +402,24 @@ sdcard_init(void)
 
   /* Illegal command -> Ver 1.X SD Memory Card or Not SD Memory Card*/
   if (ret & SD_R1_ILLEGAL_CMD) {
-    /*prepare next 6 data bytes: CMD1*/
-  PRINTF("\nsdcard_init(): Writing cmd1");
 
-  i = 0;
-  while ((ret = sdcard_write_cmd(cmd1, NULL)) != 0) {
-    i++;
-    if (i > 5500) {
-      PRINTD("\nsdcard_init(): cmd1 timeout reached, last return value was %d", ret);
+    /* CMD1: init CSD Version 1 and MMC cards*/
+    PRINTF("\nsdcard_init(): Writing cmd1");
+    i = 0;
+    while ((ret = sdcard_write_cmd(SDCARD_CMD1, NULL, NULL)) != 0) {
+      i++;
+      if (i > 5500) {
+        PRINTD("\nsdcard_init(): cmd1 timeout reached, last return value was %d", ret);
         mspi_chip_release(MICRO_SD_CS);
         return 2;
       }
     }
+
+    /* CMD16: Sets the block length, needed for CSD Version 1 cards*/
     /* Set Block Length to 512 Bytes */
     i = 0;
     /** @todo: Is this command really needed? It does not seem to set anything. */
-    while ((ret = sdcard_write_cmd(cmd16, NULL)) != 0x00) {
+    while ((ret = sdcard_write_cmd(SDCARD_CMD16, &cmd16_arg, NULL)) != 0x00) {
       i++;
       if (i > 500) {
         PRINTF("\nsdcard_init(): cmd16 timeout reached, last return value was %d", ret);
@@ -398,16 +429,17 @@ sdcard_init(void)
     }
     /* Ver2.00 or later SD Memory Card */
   } else {
+
     PRINTF("\nWriting acmd41 (55 + 41)");
     PRINTF("\nsdcard_init():\tWriting cmd55");
 
-    resp[0] = 0x01;
     uint16_t j = 0;
     do {
-      _delay_ms(10);
+      _delay_ms(5);
       j++;
+      /* CMD55: First part of ACMD41, Initiates a App. Spec. Cmd */
       i = 0;
-      while (sdcard_write_cmd(cmd55, NULL) != 0x01) {
+      while (ret = sdcard_write_cmd(SDCARD_CMD55, NULL, NULL) != 0x01) {
         i++;
         if (i > 500) {
           PRINTD("\nsdcard_init(): acmd41 timeout reached, last return value was %u", ret);
@@ -419,15 +451,17 @@ sdcard_init(void)
       PRINTF("\nsdcard_init():\tWriting cmd41");
 
       if (j > 12000) {
+        PRINTD("\nwooot?");
         return 8;
       }
-    } while ((sdcard_write_cmd(cmd41, NULL) != 0));
-    resp[0] = 0x03;
+    /* CMD41: Second part of ACMD41 */
+    } while ((sdcard_write_cmd(SDCARD_ACMD41, &acmd41_arg, NULL) != 0));
+
+    /* CMD58: Gets the OCR-Register to check if card is SDSC or not */
     i = 0;
-
+    resp[0] = RESPONSE_R3;
     PRINTF("\nsdcard_init(): Writing cmd58");
-
-    while ((ret = sdcard_write_cmd(cmd58, resp)) != 0x0) {
+    while ((ret = sdcard_write_cmd(SDCARD_CMD58, NULL, resp)) != 0x0) {
       i++;
       if (i > 900) {
         PRINTD("\nsdcard_init(): cmd58 timeout reached, last return value was %d", ret);
@@ -449,8 +483,21 @@ sdcard_init(void)
       }
 
     }
+
+    /* Set Block Length to 512 Bytes */
+    i = 0;
+    /** @todo: Is this command really needed? It does not seem to set anything. */
+    while ((ret = sdcard_write_cmd(SDCARD_CMD16, &cmd16_arg, NULL)) != 0x00) {
+      i++;
+      if (i > 500) {
+        PRINTD("\nsdcard_init(): cmd16 timeout reached, last return value was %d", ret);
+        mspi_chip_release(MICRO_SD_CS);
+        return 5;
+      }
+    }
   }
 
+  /* Read card-specific data (CSD) register */
   i = 0;
   while (sdcard_read_csd(csd) != 0) {
     i++;
@@ -461,18 +508,67 @@ sdcard_init(void)
     }
   }
   setSDCInfo(csd);
+
   mspi_chip_release(MICRO_SD_CS);
 
   return 0;
 }
 /*----------------------------------------------------------------------------*/
 uint8_t
+sdcard_erase_blocks(uint32_t startaddr, uint32_t endaddr)
+{
+  uint16_t i;
+
+  /* calculate the start address: block_addr = addr * 512
+   * this is only needed if the card is a SDSC card and uses
+   * byte addressing (Block size of 512 is set in sdcard_init()).
+   * SDHC and SDXC card use block-addressing with a block size of
+   * 512 Bytes.
+   */
+  if (sdcard_sdsc_card) {
+    startaddr = startaddr << 9;
+    endaddr = endaddr << 9;
+  }
+
+  mspi_chip_select(MICRO_SD_CS);
+
+  /* send CMD32 with address information.
+   * Chip select is done by the sdcard_write_cmd method */
+  if ((i = sdcard_write_cmd(SDCARD_CMD32, &startaddr, NULL)) != 0x00) {
+    mspi_chip_release(MICRO_SD_CS);
+    PRINTD("\nCMD32 failed");
+    return 1;
+  }
+
+  /* send CMD33 with address information.
+   * Chip select is done by the sdcard_write_cmd method */
+  if ((i = sdcard_write_cmd(SDCARD_CMD33, &endaddr, NULL)) != 0x00) {
+    mspi_chip_release(MICRO_SD_CS);
+    PRINTD("\nCMD33 failed");
+    return 1;
+  }
+
+  /* send CMD38 with address information.
+   * Chip select is done by the sdcard_write_cmd method */
+  if ((i = sdcard_write_cmd(SDCARD_CMD38, NULL, NULL)) != 0x00) {
+    mspi_chip_release(MICRO_SD_CS);
+    PRINTD("\nCMD38 failed");
+    return 1;
+  }
+
+  /*release chip select and disable sdcard spi*/
+  mspi_chip_release(MICRO_SD_CS);
+
+  return 0;
+}
+/*----------------------------------------------------------------------------*/
+
+
+uint8_t
 sdcard_read_block(uint32_t addr, uint8_t *buffer)
 {
   uint16_t i;
   uint8_t ret;
-  /*CMD17 read block*/
-  uint8_t cmd[6] = {0x51, 0x00, 0x00, 0x00, 0x00, 0xff};
 
   /* calculate the start address: block_addr = addr * 512
    * this is only needed if the card is a SDSC card and uses
@@ -484,32 +580,16 @@ sdcard_read_block(uint32_t addr, uint8_t *buffer)
     addr = addr << 9;
   }
 
-  /* create cmd bytes according to the address
-   * Note that cmd[4] will always be 0 for SDSC cards,
-   * because of the shift above
-   */
-  cmd[1] = ((addr & 0xFF000000) >> 24);
-  cmd[2] = ((addr & 0x00FF0000) >> 16);
-  cmd[3] = ((addr & 0x0000FF00) >> 8);
-  cmd[4] = ((addr & 0x000000FF));
-
   mspi_chip_select(MICRO_SD_CS);
-
-  /* Wait until the card is not busy anymore! */
-  i = 0;
-  while ((mspi_transceive(MSPI_DUMMY_BYTE) != 0xff) && (i < 100)) {
-    _delay_ms(5);
-    i++;
-  }
 
   /* send CMD17 with address information. Chip select is done by
    * the sdcard_write_cmd method and */
-  if ((i = sdcard_write_cmd(cmd, NULL)) != 0x00) {
+  if ((i = sdcard_write_cmd(SDCARD_CMD17, &addr, NULL)) != 0x00) {
     PRINTD("\nsdcard_read_block(): CMD17 failure! (%u)", i);
     return 1;
   }
 
-  /*wait for the 0xFE start byte*/
+  /* wait for the 0xFE start byte */
   uint8_t success = 0;
   for (i = 0; i < 100; i++) {
     if ((ret = mspi_transceive(MSPI_DUMMY_BYTE)) == 0xFE) {
@@ -526,11 +606,11 @@ sdcard_read_block(uint32_t addr, uint8_t *buffer)
     buffer[i] = mspi_transceive(MSPI_DUMMY_BYTE);
   }
 
-  /*CRC-Byte: don't care*/
+  /* Read CRC-Byte: don't care */
   mspi_transceive(MSPI_DUMMY_BYTE);
   mspi_transceive(MSPI_DUMMY_BYTE);
 
-  /*release chip select and disable sdcard spi*/
+  /* release chip select and disable sdcard spi */
   mspi_chip_release(MICRO_SD_CS);
 
   return 0;
@@ -540,68 +620,46 @@ sdcard_read_block(uint32_t addr, uint8_t *buffer)
 uint16_t
 sdcard_get_status(void)
 {
-  uint8_t cmd[6] = {0x4D, 0x00, 0x00, 0x00, 0x00, 0xFF};
   uint8_t resp[5] = {0x02, 0x00, 0x00, 0x00, 0x00};
 
-  if (sdcard_write_cmd(cmd, resp) != 0x00) {
+  if (sdcard_write_cmd(SDCARD_CMD13, NULL, resp) != 0x00) {
     return 0;
   }
 
   return ((uint16_t) resp[1] << 8) + ((uint16_t) resp[0]);
 }
 /*----------------------------------------------------------------------------*/
+#define SDCARD_WRITE_COMMAND_ERROR  1
+#define SDCARD_WRITE_DATA_ERROR     2
+#define DATA_RESP_ACCEPTED    0x05
+#define DATA_RESP_CRC_REJECT  0x0B
+#define DATA_RESP_WRITE_ERROR 0x0D
 uint8_t
 sdcard_write_block(uint32_t addr, uint8_t *buffer)
 {
   uint16_t i;
 
-  /* CMD24 write block */
-  uint8_t cmd[6] = {0x58, 0x00, 0x00, 0x00, 0x00, 0xFF};
-
-  /* calculate the start address: block_addr = addr * 512
+  /* calculate the start address: byte_addr = block_addr * 512.
    * this is only needed if the card is a SDSC card and uses
    * byte addressing (Block size of 512 is set in sdcard_init()).
-   * SDHC and SDXC card use block-addressing with a block size of
-   * 512 Bytes.
+   * SDHC and SDXC card use block-addressing with a fixed block size
+   * of 512 Bytes.
    */
   if (sdcard_sdsc_card) {
     addr = addr << 9;
   }
 
-  /* create cmd bytes according to the address
-   * Note that cmd[4] will always be 0 for SDSC cards,
-   * because of the shift above
-   */
-  cmd[1] = ((addr & 0xFF000000) >> 24);
-  cmd[2] = ((addr & 0x00FF0000) >> 16);
-  cmd[3] = ((addr & 0x0000FF00) >> 8);
-  cmd[4] = ((addr & 0x000000FF));
-
   mspi_chip_select(MICRO_SD_CS);
-
-  /* Wait until the card is not busy anymore! */
-  i = 0;
-  while ((mspi_transceive(MSPI_DUMMY_BYTE) != 0xff) && (i < 100)) {
-    _delay_ms(5);
-    i++;
-  }
 
   /* send CMD24 with address information.
    * Chip select is done by the sdcard_write_cmd method */
-  if ((i = sdcard_write_cmd(cmd, NULL)) != 0x00) {
+  if ((i = sdcard_write_cmd(SDCARD_CMD24, &addr, NULL)) != 0x00) {
     mspi_chip_release(MICRO_SD_CS);
-    PRINTD("\nCMD24 failed");
     return 1;
   }
 
-  /* Read command response from sdcard */
-  uint8_t response = mspi_transceive(MSPI_DUMMY_BYTE);
-  if (response != 0xFF) {
-    PRINTD("\nCard response: %d", response);
-  }
-
   /* send start byte 0xFE to the sdcard card to symbolize the beginning
-   * of one data block (512byte)*/
+   * of one data block (512byte) */
   mspi_transceive(0xFE);
 
   /* send 1 block (512byte) to the sdcard card */
@@ -609,7 +667,8 @@ sdcard_write_block(uint32_t addr, uint8_t *buffer)
     mspi_transceive(buffer[i]);
   }
 
-  /* write CRC checksum: Dummy */
+  /* write dummy 16 bit CRC checksum */
+  /** @todo: handle crc enabled? */
   mspi_transceive(MSPI_DUMMY_BYTE);
   mspi_transceive(MSPI_DUMMY_BYTE);
 
@@ -627,12 +686,14 @@ sdcard_write_block(uint32_t addr, uint8_t *buffer)
   /* Data Response XXX00101 = OK */
   if (i != 0x05) {
 #if DEBUG
-    if (i == 0x0B) {
+    if (i == DATA_RESP_ACCEPTED) {
       PRINTD("\nWrite response: CRC error");
-    } else if (i == 0x0D) {
+    } else if (i == DATA_RESP_CRC_REJECT) {
       PRINTD("\nResponse: Write error");
-    } else if (i == 0x1F) {
+    } else if (i == DATA_RESP_WRITE_ERROR) {
       PRINTD("\nResponse: Error token");
+    } else {
+      PRINTD("\nResponse unknown");
     }
 #endif
     return 2;
@@ -641,35 +702,142 @@ sdcard_write_block(uint32_t addr, uint8_t *buffer)
   return 0;
 }
 /*----------------------------------------------------------------------------*/
+
+
+#define R1_RSP_IDLE_STATE       0x01
+#define R1_RSP_ERASE_RESET      0x02
+#define R1_RSP_ILLEGAL_CMD      0x04
+#define R1_RSP_COM_CRC_ERROR    0x08
+#define R1_RSP_ERASE_SEQ_ERROR  0x10
+#define R1_RSP_ADDRESS_ERROR    0x20
+#define R1_RSP_PARAMETER_ERROR  0x40
+
+#if DEBUG
+void
+print_r1_resp(uint8_t cmd, uint8_t rsp) {
+  /* everything might be ok */
+  if (rsp == 0x00) {
+    PRINTF("\nCMD%d: ", cmd);
+    PRINTF("\n\tOk");
+    return;
+  /* idle is not really critical */
+  } else if (rsp == R1_RSP_IDLE_STATE) {
+    PRINTF("\nCMD%d: ", cmd);
+    PRINTF("\n\tIdle");
+    return;
+  /* let us see what kind of error(s) we have */
+  } else {
+    PRINTD("\nCMD%d: ", cmd);
+    if (rsp & R1_RSP_IDLE_STATE) {
+      PRINTD("\n\tIdle");
+    }
+    if (rsp & R1_RSP_ERASE_RESET) {
+      PRINTD("\n\tErase Reset");
+    }
+    if (rsp & R1_RSP_ILLEGAL_CMD) {
+      PRINTD("\n\tIllegal Command");
+    }
+    if (rsp & R1_RSP_COM_CRC_ERROR) {
+      PRINTD("\n\tCom CRC Error");
+    }
+    if (rsp & R1_RSP_ERASE_SEQ_ERROR) {
+      PRINTD("\n\tErase Seq Error");
+    }
+    if (rsp & R1_RSP_ADDRESS_ERROR) {
+      PRINTD("\n\tAddress Error");
+    }
+    if (rsp & R1_RSP_PARAMETER_ERROR) {
+      PRINTD("\n\tParameter Error");
+    }
+  }
+}
+/*----------------------------------------------------------------------------*/
+void
+output_response_r1(uint8_t cmd, uint8_t rsp) {
+  print_r1_resp(cmd, rsp);
+}
+/*----------------------------------------------------------------------------*/
+void
+output_response_r2(uint8_t cmd, uint8_t* rsp) {
+  print_r1_resp(cmd, rsp[0]);
+  // todo: byte 2
+}
+/*----------------------------------------------------------------------------*/
+void
+output_response_r3(uint8_t cmd, uint8_t* rsp) {
+  print_r1_resp(cmd, rsp[0]);
+  // todo: OCR
+}
+#else
+#define output_response_r1(a, b)
+#define output_response_r2(a, b)
+#define output_response_r3(a, b)
+#endif
+
+
+/*----------------------------------------------------------------------------*/
 uint8_t
-sdcard_write_cmd(uint8_t *cmd, uint8_t *resp)
+sdcard_write_cmd(uint8_t cmd, uint32_t *arg, uint8_t *resp)
 {
   uint16_t i;
   uint8_t data;
   uint8_t idx = 0;
   uint8_t resp_type = 0x01;
+  static uint8_t cmd_seq[6] = {0x40, 0x00, 0x00, 0x00, 0x00, 0xFF};
+
+  /* Give card chance to raise busy signal while we perform some calculations */
+  mspi_transceive(MSPI_DUMMY_BYTE);
+
+  /* Add host bit to complete command */
+  cmd_seq[0] = cmd | 0x40;
 
   if (resp != NULL) {
     resp_type = resp[0];
   }
 
-  if (sdcard_crc_enable) {
-    sdcard_cmd_crc(cmd);
+  /* If no argument given, send 0's */
+  if (arg == NULL) {
+    cmd_seq[1] = 0x00;
+    cmd_seq[2] = 0x00;
+    cmd_seq[3] = 0x00;
+    cmd_seq[4] = 0x00;
+  /* else create cmd bytes according to the (address) argument */
+  } else {
+    cmd_seq[1] = ((*arg & 0xFF000000) >> 24);
+    cmd_seq[2] = ((*arg & 0x00FF0000) >> 16);
+    cmd_seq[3] = ((*arg & 0x0000FF00) >> 8);
+    cmd_seq[4] = ((*arg & 0x000000FF));
   }
 
-  mspi_chip_release(MICRO_SD_CS);
-  mspi_transceive(MSPI_DUMMY_BYTE);
-
-  /*begin to send 6 command bytes to the sd card*/
-  mspi_chip_select(MICRO_SD_CS);
-
-  for (i = 0; i < 6; i++) {
-    mspi_transceive(*(cmd + i));
+  /* CMD0 is the only command that always requires a valid CRC */
+  if (cmd == SDCARD_CMD0) {
+    cmd_seq[5] = 0x95;
+  /* Calc CRC if enabled */
+  } else if ((sdcard_crc_enable) || (cmd ==SDCARD_CMD8)) {
+    sdcard_cmd_crc(cmd_seq);
+  /* Else set fixed value (last bit must be '1')*/
+  } else {
+    cmd_seq[5] = 0xFF;
   }
 
+  /* Wait until the card is not busy anymore! 
+   * Note: It is always checked twice because
+   *       busy signal becomes high only when clocked before */
   i = 0;
+  while ((mspi_transceive(MSPI_DUMMY_BYTE) != 0xff)
+      && (mspi_transceive(MSPI_DUMMY_BYTE) != 0xff)
+      && (i < 100)) {
+    _delay_ms(1);
+    i++;
+  }
 
-  /*wait for the answer of the sd card*/
+  /* Send the 48 command bits */
+  for (i = 0; i < 6; i++) {
+    mspi_transceive(*(cmd_seq + i));
+  }
+
+  /* wait for the answer of the sd card */
+  i = 0;
   do {
     /*0x01 for acknowledge*/
     data = mspi_transceive(MSPI_DUMMY_BYTE);
@@ -678,27 +846,38 @@ sdcard_write_cmd(uint8_t *cmd, uint8_t *resp)
     }
     watchdog_periodic();
     i++;
-    if (resp != NULL && data != 0xFF) {
-      if (resp_type == 0x01) {
-        resp[0] = data;
-      } else if (resp_type == 0x03 || resp_type == 0x07) {
-        i = 0;
-        resp[idx] = data;
-        idx++;
-        if (idx >= 5 || (resp[0] & 0xFE) != 0) {
-          break;
+    if (data != 0xFF) {
+      if (resp == NULL) {
+        output_response_r1(cmd, data);
+      }
+      else {
+        // R1 format (1 byte)
+        if (resp_type == RESPONSE_R1) {
+          resp[0] = data;
+          output_response_r1(cmd, data);
+          // R3 / R7 forma (5 bytes)
+        } else if (resp_type == RESPONSE_R3 || resp_type == RESPONSE_R7) {
+          i = 0;
+          resp[idx] = data;
+          idx++;
+          if (idx >= 5 || (resp[0] & 0xFE) != 0) {
+            output_response_r3(cmd, resp); // TODO: R7
+            break;
+          }
+          data = 0xFF;
+          continue;
+          // R2 format (2 bytes)
+        } else if (resp_type == 0x02) {
+          i = 0;
+          resp[idx] = data;
+          idx++;
+          if (idx >= 2 || (resp[0] & 0xFE) != 0) {
+            output_response_r2(cmd, resp);
+            break;
+          }
+          data = 0xFF;
+          continue;
         }
-        data = 0xFF;
-        continue;
-      } else if (resp_type == 0x02) {
-        i = 0;
-        resp[idx] = data;
-        idx++;
-        if (idx >= 2 || (resp[0] & 0xFE) != 0) {
-          break;
-        }
-        data = 0xFF;
-        continue;
       }
     }
   } while (data == 0xFF);

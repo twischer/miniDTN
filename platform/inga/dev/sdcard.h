@@ -114,6 +114,10 @@ uint16_t sdcard_get_block_size();
 uint8_t sdcard_is_SDSC();
 
 /**
+ */
+uint8_t sdcard_erase_blocks(uint32_t startaddr, uint32_t endaddr);
+
+/**
  * \brief This function will read one block (512, 1024, 2048 or 4096Byte) of the SD-Card.
  *
  * \param addr Block address
@@ -140,12 +144,13 @@ uint8_t sdcard_write_block(uint32_t addr, uint8_t *buffer);
  * \brief This function sends a command via SPI to the SD-Card. An SPI
  * command consists off 6 bytes
  *
- * \param *cmd Pointer to the command array
- * \param *resp Pointer to the response array. Only needed for responses other than R1. May me NULL if response is R1. Otherwise resp must be long enough for the response (only R3 and R7 are supported yet) and the first byte of the response array must indicate the response that is expected. For Example the first byte should be 0x07 if response type R7 is expected.
+ * \param cmd Command number to send
+ * \param *arg pointer to 32bit argument (addresses etc.)
+ * \param *resp Pointer to the response array. Only needed for responses other than R1. May be NULL if response is R1. Otherwise resp must be long enough for the response (only R3 and R7 are supported yet) and the first byte of the response array must indicate the response that is expected. For Example the first byte should be 0x07 if response type R7 is expected.
  *
  * \return R1 response byte or 0xFF in case of read/write timeout
  */
-uint8_t sdcard_write_cmd(uint8_t *cmd, uint8_t *resp);
+uint8_t sdcard_write_cmd(uint8_t cmd, uint32_t *arg, uint8_t *resp);
 
 /**
  * \brief This function calculates the CRC16 for a 512 Byte data block.
