@@ -260,14 +260,14 @@ setSDCInfo(uint8_t *csd)
     SECTOR_SIZE = ((csd[4] >> 7) | ((csd[5] & 0x3F) << 1)) + 1;
   }
 
-  printf("\nsetSDCInfo(): CSD Version = %u", ((csd[0] & (12 << 4)) >> 6));
-  printf("\nsetSDCInfo(): READ_BL_LEN = %u", READ_BL_LEN);
-  printf("\nsetSDCInfo(): C_SIZE = %lu", C_SIZE);
-  printf("\nsetSDCInfo(): C_SIZE_MULT = %u", C_SIZE_MULT);
-  printf("\nsetSDCInfo(): mult = %lu", mult);
-  printf("\nsetSDCInfo(): sdcard_card_block_count  = %lu", sdcard_card_block_count);
-  printf("\nsetSDCInfo(): sdcard_block_size  = %u", sdcard_block_size);
-  printf("\nsetSDCInfo(): SECTOR_SIZE = %u", SECTOR_SIZE);
+  PRINTF("\nsetSDCInfo(): CSD Version = %u", ((csd[0] & (12 << 4)) >> 6));
+  PRINTF("\nsetSDCInfo(): READ_BL_LEN = %u", READ_BL_LEN);
+  PRINTF("\nsetSDCInfo(): C_SIZE = %lu", C_SIZE);
+  PRINTF("\nsetSDCInfo(): C_SIZE_MULT = %u", C_SIZE_MULT);
+  PRINTF("\nsetSDCInfo(): mult = %lu", mult);
+  PRINTF("\nsetSDCInfo(): sdcard_card_block_count  = %lu", sdcard_card_block_count);
+  PRINTF("\nsetSDCInfo(): sdcard_block_size  = %u", sdcard_block_size);
+  PRINTF("\nsetSDCInfo(): SECTOR_SIZE = %u", SECTOR_SIZE);
 }
 /*----------------------------------------------------------------------------*/
 /**
@@ -333,24 +333,16 @@ sdcard_init(void)
   uint8_t ret = 0;
   sdcard_sdsc_card = 1;
 
-  /*READY TO INITIALIZE micro SD / SD card*/
+  /*READY TO INITIALIZE micro SD / SD card */
   mspi_chip_release(MICRO_SD_CS);
 
-  /*init mspi in mode0, at chip select pin 2 and max baud rate*/
+  /*init mspi in mode0, at chip select pin 2 and max baud rate */
   mspi_init(MICRO_SD_CS, MSPI_MODE_0, MSPI_BAUD_2MBPS);
 
-  /*set SPI mode by chip select (only necessary when mspi manager is active)*/
-
-  /** FIXME: For unknown reasons we have to wait here, otherwise INGA will reset */
-  _delay_ms(2);
-
+  /* set SPI mode by chip select (only necessary when mspi manager is active) */
   mspi_chip_select(MICRO_SD_CS);
-  mspi_chip_release(MICRO_SD_CS);
 
-  /*wait 1ms before initialize sd card*/
-  _delay_ms(1);
-
-  /*send >74 clock cycles to setup spi-mode*/
+  /* send initialization sequence (>74 clock cycles) */
   for (i = 0; i < 16; i++) {
     mspi_transceive(MSPI_DUMMY_BYTE);
   }
@@ -358,17 +350,17 @@ sdcard_init(void)
   /* CMD8 payload */
   uint32_t cmd8_arg = 0x000001AAUL;
   /* CMD15 payload */
-  uint32_t cmd16_arg = 0x00000200;
+  uint32_t cmd16_arg = 0x00000200UL;
   /* ACMD41 payload */
-  uint32_t acmd41_arg = 0x40000000;
+  uint32_t acmd41_arg = 0x40000000UL;
   /*Response Array for the R3 and R7 responses*/
   uint8_t resp[5] = {0x00, 0x00, 0x00, 0x00, 0x00};
 
   /* Memory for the contents of the csd */
   uint8_t csd[16];
 
-  /* CMD0: set sd card to idle state */
-  PRINTF("\nsdcard_init(): Writing cmd0");
+  /* CMD0 with CS asserted enables SPI mode.
+   * Note: Card may hold line low until fully initialized */
   i = 0;
   while ((ret = sdcard_write_cmd(SDCARD_CMD0, NULL, NULL)) != 0x01) {
     _delay_ms(5);
@@ -383,8 +375,6 @@ sdcard_init(void)
   /*CMD8: Test if the card supports CSD Version 2*/
   /** @todo: is CRC required here? */
   //sdcard_cmd_crc(cmd8);
-  PRINTF("\nsdcard_init(): Writing cmd8");
-
   i = 0;
   resp[0] = 0x07;
   while ((ret = sdcard_write_cmd(SDCARD_CMD8, &cmd8_arg, resp)) != 0x01) {
@@ -404,7 +394,6 @@ sdcard_init(void)
   if (ret & SD_R1_ILLEGAL_CMD) {
 
     /* CMD1: init CSD Version 1 and MMC cards*/
-    PRINTF("\nsdcard_init(): Writing cmd1");
     i = 0;
     while ((ret = sdcard_write_cmd(SDCARD_CMD1, NULL, NULL)) != 0) {
       i++;
@@ -427,11 +416,9 @@ sdcard_init(void)
         return 5;
       }
     }
-    /* Ver2.00 or later SD Memory Card */
-  } else {
 
-    PRINTF("\nWriting acmd41 (55 + 41)");
-    PRINTF("\nsdcard_init():\tWriting cmd55");
+  /* Ver2.00 or later SD Memory Card */
+  } else {
 
     uint16_t j = 0;
     do {
@@ -439,7 +426,7 @@ sdcard_init(void)
       j++;
       /* CMD55: First part of ACMD41, Initiates a App. Spec. Cmd */
       i = 0;
-      while (ret = sdcard_write_cmd(SDCARD_CMD55, NULL, NULL) != 0x01) {
+      while ((ret = sdcard_write_cmd(SDCARD_CMD55, NULL, NULL)) != 0x01) {
         i++;
         if (i > 500) {
           PRINTD("\nsdcard_init(): acmd41 timeout reached, last return value was %u", ret);
@@ -447,8 +434,6 @@ sdcard_init(void)
           return 6;
         }
       }
-
-      PRINTF("\nsdcard_init():\tWriting cmd41");
 
       if (j > 12000) {
         PRINTD("\nwooot?");
@@ -460,7 +445,6 @@ sdcard_init(void)
     /* CMD58: Gets the OCR-Register to check if card is SDSC or not */
     i = 0;
     resp[0] = RESPONSE_R3;
-    PRINTF("\nsdcard_init(): Writing cmd58");
     while ((ret = sdcard_write_cmd(SDCARD_CMD58, NULL, resp)) != 0x0) {
       i++;
       if (i > 900) {
@@ -735,19 +719,19 @@ print_r1_resp(uint8_t cmd, uint8_t rsp) {
       PRINTD("\n\tErase Reset");
     }
     if (rsp & R1_RSP_ILLEGAL_CMD) {
-      PRINTD("\n\tIllegal Command");
+      PRINTD("\n\tIllegal Cmd");
     }
     if (rsp & R1_RSP_COM_CRC_ERROR) {
-      PRINTD("\n\tCom CRC Error");
+      PRINTD("\n\tCom CRC Err");
     }
     if (rsp & R1_RSP_ERASE_SEQ_ERROR) {
-      PRINTD("\n\tErase Seq Error");
+      PRINTD("\n\tErase Seq Err");
     }
     if (rsp & R1_RSP_ADDRESS_ERROR) {
-      PRINTD("\n\tAddress Error");
+      PRINTD("\n\tAddr Err");
     }
     if (rsp & R1_RSP_PARAMETER_ERROR) {
-      PRINTD("\n\tParameter Error");
+      PRINTD("\n\tParam Err");
     }
   }
 }
@@ -766,7 +750,7 @@ output_response_r2(uint8_t cmd, uint8_t* rsp) {
 void
 output_response_r3(uint8_t cmd, uint8_t* rsp) {
   print_r1_resp(cmd, rsp[0]);
-  // todo: OCR
+  PRINTF("\nOCR: 0x%04x", rsp[1]);
 }
 #else
 #define output_response_r1(a, b)
@@ -813,9 +797,9 @@ sdcard_write_cmd(uint8_t cmd, uint32_t *arg, uint8_t *resp)
   if (cmd == SDCARD_CMD0) {
     cmd_seq[5] = 0x95;
   /* Calc CRC if enabled */
-  } else if ((sdcard_crc_enable) || (cmd ==SDCARD_CMD8)) {
+  } else if ((sdcard_crc_enable) || (cmd == SDCARD_CMD8)) {
     sdcard_cmd_crc(cmd_seq);
-  /* Else set fixed value (last bit must be '1')*/
+  /* Else set fixed value (last bit must be '1') */
   } else {
     cmd_seq[5] = 0xFF;
   }
@@ -832,6 +816,12 @@ sdcard_write_cmd(uint8_t cmd, uint32_t *arg, uint8_t *resp)
   }
 
   /* Send the 48 command bits */
+#if DEBUG
+  PRINTF("\nSend CMD%d", cmd);
+  if (cmd == 55) {
+    PRINTF(" (->ACMD)");
+  }
+#endif
   for (i = 0; i < 6; i++) {
     mspi_transceive(*(cmd_seq + i));
   }
