@@ -66,30 +66,6 @@
 #endif
 
 
-#define SD_SET_BLOCKLEN cmd16
-
-#define SD_R1_IN_IDLE_STATE 0x01
-#define SD_R1_ERASE_RESET   0x02
-#define SD_R1_ILLEGAL_CMD   0x04
-#define SD_R1_COM_CRC_ERR   0x08
-#define SD_R1_ERASE_SEQ_ERR 0x10
-#define SD_R1_ADDR_ERR      0x20
-#define SD_R1_PARAM_ERR     0x40
-
-#define R1_RSP_IDLE_STATE       0x01
-#define R1_RSP_ERASE_RESET      0x02
-#define R1_RSP_ILLEGAL_CMD      0x04
-#define R1_RSP_COM_CRC_ERROR    0x08
-#define R1_RSP_ERASE_SEQ_ERROR  0x10
-#define R1_RSP_ADDRESS_ERROR    0x20
-#define R1_RSP_PARAMETER_ERROR  0x40
-
-/* Single-Block Read, Single-Block Write and Multiple-Block Read */
-#define START_BLOCK_TOKEN         0xFE
-/* Multiple Block Write Operation */
-#define MULTI_START_BLOCK_TOKEN   0xFC
-#define STOP_TRAN_TOKEN           0xFD
-
 /** CMD0  -- GO_IDLE_STATE */
 #define SDCARD_CMD0   0
 /** CMD1  -- SEND_OP_COND */
@@ -137,10 +113,44 @@
 /** ACMD41 -- */
 #define SDCARD_ACMD41 41
 
-#define RESPONSE_R1   0x01
-#define RESPONSE_R2   0x02
-#define RESPONSE_R3   0x03
-#define RESPONSE_R7   0x07
+/* Response types */
+#define SDCARD_RESP1   0x01
+#define SDCARD_RESP2   0x02
+#define SDCARD_RESP3   0x03
+#define SDCARD_RESP7   0x07
+
+/* Response R1 bits */
+#define SD_R1_IN_IDLE_STATE 0x01
+#define SD_R1_ERASE_RESET   0x02
+#define SD_R1_ILLEGAL_CMD   0x04
+#define SD_R1_COM_CRC_ERR   0x08
+#define SD_R1_ERASE_SEQ_ERR 0x10
+#define SD_R1_ADDR_ERR      0x20
+#define SD_R1_PARAM_ERR     0x40
+
+/* Data response bits */
+#define DATA_ERROR            0x01
+#define DATA_CC_ERROR         0x02
+#define DATA_CARD_ECC_FAILED  0x04
+#define DATA_OUT_OF_RANGE     0x08
+
+/* OCR register bits */
+#define OCR_H_CCS       0x40
+#define OCR_H_POWER_UP  0x80
+
+/* Data response tokens */
+#define DATA_RESP_ACCEPTED    0x05
+#define DATA_RESP_CRC_REJECT  0x0B
+#define DATA_RESP_WRITE_ERROR 0x0D
+
+/* Single-Block Read, Single-Block Write and Multiple-Block Read */
+#define START_BLOCK_TOKEN         0xFE
+/* Multiple Block Write Operation */
+#define MULTI_START_BLOCK_TOKEN   0xFC
+#define STOP_TRAN_TOKEN           0xFD
+
+/* Configures the number of ms to busy wait */
+#define BUSY_WAIT_MS  300
 
 /**
  * \brief The number of bytes in one block on the SD-Card.
@@ -211,12 +221,6 @@ sdcard_set_CRC(uint8_t enable)
   return 0;
 }
 /*----------------------------------------------------------------------------*/
-
-#define DATA_ERROR            0x01
-#define DATA_CC_ERROR         0x02
-#define DATA_CARD_ECC_FAILED  0x04
-#define DATA_OUT_OF_RANGE     0x08
-
 uint8_t
 sdcard_read_csd(uint8_t *buffer)
 {
@@ -384,8 +388,6 @@ sdcard_data_crc(uint8_t *data)
   return (stream >> 16);
 }
 /*----------------------------------------------------------------------------*/
-#define OCR_H_CCS       0x40
-#define OCR_H_POWER_UP  0x80
 uint8_t
 sdcard_init(void)
 {
@@ -432,9 +434,9 @@ sdcard_init(void)
   /*CMD8: Test if the card supports CSD Version 2.
    * Shall be issued before ACMD41. */
   i = 0;
-  resp[0] = RESPONSE_R7;
+  resp[0] = SDCARD_RESP7;
   while ((ret = sdcard_write_cmd(SDCARD_CMD8, &cmd8_arg, resp)) != 0x01) {
-    if ((ret & R1_RSP_ILLEGAL_CMD) && ret != 0xFF) {
+    if ((ret & SD_R1_ILLEGAL_CMD) && ret != 0xFF) {
       PRINTF("\nsdcard_init(): cmd8 not supported -> Ver1.X or no SD Memory Card");
       break;
     }
@@ -504,7 +506,7 @@ sdcard_init(void)
 
     /* CMD58: Gets the OCR-Register to check if card is SDSC or not */
     i = 0;
-    resp[0] = RESPONSE_R3;
+    resp[0] = SDCARD_RESP3;
     while ((ret = sdcard_write_cmd(SDCARD_CMD58, NULL, resp)) != 0x0) {
       i++;
       if (i > 900) {
@@ -650,7 +652,7 @@ sdcard_read_block(uint32_t addr, uint8_t *buffer)
 uint16_t
 sdcard_get_status(void)
 {
-  uint8_t resp[5] = {RESPONSE_R2, 0x00, 0x00, 0x00, 0x00};
+  uint8_t resp[5] = {SDCARD_RESP2, 0x00, 0x00, 0x00, 0x00};
 
   if (sdcard_write_cmd(SDCARD_CMD13, NULL, resp) != 0x00) {
     return 0;
@@ -659,11 +661,6 @@ sdcard_get_status(void)
   return ((uint16_t) resp[1] << 8) + ((uint16_t) resp[0]);
 }
 /*----------------------------------------------------------------------------*/
-#define SDCARD_WRITE_COMMAND_ERROR  1
-#define SDCARD_WRITE_DATA_ERROR     2
-#define DATA_RESP_ACCEPTED    0x05
-#define DATA_RESP_CRC_REJECT  0x0B
-#define DATA_RESP_WRITE_ERROR 0x0D
 uint8_t
 sdcard_write_block(uint32_t addr, uint8_t *buffer)
 {
@@ -716,16 +713,14 @@ sdcard_write_block(uint32_t addr, uint8_t *buffer)
   mspi_chip_release(MICRO_SD_CS);
 
   /* Data Response XXX00101 = OK */
-  if (i != 0x05) {
+  if (i != DATA_RESP_ACCEPTED) {
 #if DEBUG
-    if (i == DATA_RESP_ACCEPTED) {
+    if (i == DATA_RESP_CRC_REJECT) {
       PRINTD("\nWrite response: CRC error");
-    } else if (i == DATA_RESP_CRC_REJECT) {
-      PRINTD("\nData Resp: Write error");
     } else if (i == DATA_RESP_WRITE_ERROR) {
-      PRINTD("\nData Resp: Error token");
+      PRINTD("\nData Resp: Write error");
     } else {
-      PRINTD("\nData Resp %d unknown", i);
+      PRINTD("\nData Resp %02x unknown", i);
     }
 #endif
     return 2;
@@ -746,32 +741,32 @@ print_r1_resp(uint8_t cmd, uint8_t rsp) {
     PRINTF("\n\tOk");
     return;
   /* idle is not really critical */
-  } else if (rsp == R1_RSP_IDLE_STATE) {
+  } else if (rsp == SD_R1_IN_IDLE_STATE) {
     PRINTF("\nCMD%d: ", cmd);
     PRINTF("\n\tIdle");
     return;
   /* let us see what kind of error(s) we have */
   } else {
     PRINTD("\nCMD%d: ", cmd);
-    if (rsp & R1_RSP_IDLE_STATE) {
+    if (rsp & SD_R1_IN_IDLE_STATE) {
       PRINTD("\n\tIdle");
     }
-    if (rsp & R1_RSP_ERASE_RESET) {
+    if (rsp & SD_R1_ERASE_RESET) {
       PRINTD("\n\tErase Reset");
     }
-    if (rsp & R1_RSP_ILLEGAL_CMD) {
+    if (rsp & SD_R1_ILLEGAL_CMD) {
       PRINTD("\n\tIllegal Cmd");
     }
-    if (rsp & R1_RSP_COM_CRC_ERROR) {
+    if (rsp & SD_R1_COM_CRC_ERR) {
       PRINTD("\n\tCom CRC Err");
     }
-    if (rsp & R1_RSP_ERASE_SEQ_ERROR) {
+    if (rsp & SD_R1_ERASE_SEQ_ERR) {
       PRINTD("\n\tErase Seq Err");
     }
-    if (rsp & R1_RSP_ADDRESS_ERROR) {
+    if (rsp & SD_R1_ADDR_ERR) {
       PRINTD("\n\tAddr Err");
     }
-    if (rsp & R1_RSP_PARAMETER_ERROR) {
+    if (rsp & SD_R1_PARAM_ERR) {
       PRINTD("\n\tParam Err");
     }
   }
@@ -801,7 +796,6 @@ output_response_r3(uint8_t cmd, uint8_t* rsp) {
 
 
 /*----------------------------------------------------------------------------*/
-#define BUSY_WAIT_MS  300
 uint8_t
 sdcard_busy_wait()
 {
@@ -909,13 +903,13 @@ sdcard_write_cmd(uint8_t cmd, uint32_t *arg, uint8_t *resp)
 
     switch (resp_type) {
 
-      case RESPONSE_R1:
+      case SDCARD_RESP1:
         resp[0] = data;
         output_response_r1(cmd, data);
         i = 501;
         break;
 
-      case RESPONSE_R2:
+      case SDCARD_RESP2:
         resp[idx] = data;
         idx++;
         if ((idx >= 2) || (resp[0] & 0xFE) != 0) {
@@ -925,8 +919,8 @@ sdcard_write_cmd(uint8_t cmd, uint32_t *arg, uint8_t *resp)
         }
         break;
 
-      case RESPONSE_R3:
-      case RESPONSE_R7:
+      case SDCARD_RESP3:
+      case SDCARD_RESP7:
         resp[idx] = data;
         idx++;
         if ((idx >= 5) || (resp[0] & 0xFE) != 0) {
