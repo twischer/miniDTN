@@ -76,6 +76,12 @@
 #define SD_R1_ADDR_ERR      0x20
 #define SD_R1_PARAM_ERR     0x40
 
+/* Single-Block Read, Single-Block Write and Multiple-Block Read */
+#define START_BLOCK_TOKEN         0xFE
+/* Multiple Block Write Operation */
+#define MULTI_START_BLOCK_TOKEN   0xFC
+#define STOP_TRAN_TOKEN           0xFD
+
 /** CMD0  -- GO_IDLE_STATE */
 #define SDCARD_CMD0   0
 /** CMD1  -- SEND_OP_COND */
@@ -124,6 +130,7 @@
 #define SDCARD_ACMD41 41
 
 #define RESPONSE_R1   0x01
+#define RESPONSE_R2   0x02
 #define RESPONSE_R3   0x03
 #define RESPONSE_R7   0x07
 
@@ -196,18 +203,44 @@ sdcard_set_CRC(uint8_t enable)
   return 0;
 }
 /*----------------------------------------------------------------------------*/
+
+#define DATA_ERROR            0x01
+#define DATA_CC_ERROR         0x02
+#define DATA_CARD_ECC_FAILED  0x04
+#define DATA_OUT_OF_RANGE     0x08
+
 uint8_t
 sdcard_read_csd(uint8_t *buffer)
 {
   uint8_t i = 0;
 
+  /** TODO: mutliple attempts? */
   if ((i = sdcard_write_cmd(SDCARD_CMD9, NULL, NULL)) != 0x00) {
+    // eval data error token
+    if (i & DATA_ERROR) {
+      printf("\ndata error");
+    }
+    if (i & DATA_CC_ERROR) {
+      printf("\ndata CC error");
+    }
+    if (i & DATA_CARD_ECC_FAILED) {
+      printf("\n card EEC failed");
+    }
+    if (i & DATA_OUT_OF_RANGE) {
+      printf("\n data out of range");
+    }
     PRINTD("\nsdcard_read_csd(): CMD9 failure! (%u)", i);
     return 1;
   }
 
   /* wait for the 0xFE start byte */
-  while (mspi_transceive(MSPI_DUMMY_BYTE) != 0xFE);
+  i = 0;
+  while (mspi_transceive(MSPI_DUMMY_BYTE) != START_BLOCK_TOKEN) {
+    if (i > 200) {
+      PRINTD("\nsdcard_read_csd(): No data token");
+      return 2;
+    }
+  }
 
   for (i = 0; i < 16; i++) {
     *buffer++ = mspi_transceive(MSPI_DUMMY_BYTE);
@@ -376,7 +409,7 @@ sdcard_init(void)
   /** @todo: is CRC required here? */
   //sdcard_cmd_crc(cmd8);
   i = 0;
-  resp[0] = 0x07;
+  resp[0] = RESPONSE_R7;
   while ((ret = sdcard_write_cmd(SDCARD_CMD8, &cmd8_arg, resp)) != 0x01) {
     if ((ret & 0x04) && ret != 0xFF) {
       PRINTD("\nsdcard_init(): cmd8 not supported -> legacy card");
@@ -469,16 +502,16 @@ sdcard_init(void)
     }
 
     /* Set Block Length to 512 Bytes */
-    i = 0;
-    /** @todo: Is this command really needed? It does not seem to set anything. */
-    while ((ret = sdcard_write_cmd(SDCARD_CMD16, &cmd16_arg, NULL)) != 0x00) {
-      i++;
-      if (i > 500) {
-        PRINTD("\nsdcard_init(): cmd16 timeout reached, last return value was %d", ret);
-        mspi_chip_release(MICRO_SD_CS);
-        return 5;
-      }
-    }
+    //i = 0;
+    ///** @todo: Is this command really needed? It does not seem to set anything. */
+    //while ((ret = sdcard_write_cmd(SDCARD_CMD16, &cmd16_arg, NULL)) != 0x00) {
+    //  i++;
+    //  if (i > 500) {
+    //    PRINTD("\nsdcard_init(): cmd16 timeout reached, last return value was %d", ret);
+    //    mspi_chip_release(MICRO_SD_CS);
+    //    return 5;
+    //  }
+    //}
   }
 
   /* Read card-specific data (CSD) register */
@@ -574,16 +607,13 @@ sdcard_read_block(uint32_t addr, uint8_t *buffer)
   }
 
   /* wait for the 0xFE start byte */
-  uint8_t success = 0;
-  for (i = 0; i < 100; i++) {
-    if ((ret = mspi_transceive(MSPI_DUMMY_BYTE)) == 0xFE) {
-      success = 1;
-      break;
+  i = 0;
+  while ((ret = mspi_transceive(MSPI_DUMMY_BYTE)) != START_BLOCK_TOKEN) {
+    if (i >= 200) {
+      PORTA ^= (1 << PA1);
+      PRINTD("\nsdcard_read_block(): No Start Byte recieved, last was %d", ret);
+      return 2;
     }
-  }
-  if (success == 0) {
-    PRINTD("\nsdcard_read_block(): No Start Byte recieved, last was %d", ret);
-    return 2;
   }
 
   for (i = 0; i < 512; i++) {
@@ -604,7 +634,7 @@ sdcard_read_block(uint32_t addr, uint8_t *buffer)
 uint16_t
 sdcard_get_status(void)
 {
-  uint8_t resp[5] = {0x02, 0x00, 0x00, 0x00, 0x00};
+  uint8_t resp[5] = {RESPONSE_R2, 0x00, 0x00, 0x00, 0x00};
 
   if (sdcard_write_cmd(SDCARD_CMD13, NULL, resp) != 0x00) {
     return 0;
@@ -644,7 +674,7 @@ sdcard_write_block(uint32_t addr, uint8_t *buffer)
 
   /* send start byte 0xFE to the sdcard card to symbolize the beginning
    * of one data block (512byte) */
-  mspi_transceive(0xFE);
+  mspi_transceive(START_BLOCK_TOKEN);
 
   /* send 1 block (512byte) to the sdcard card */
   for (i = 0; i < 512; i++) {
@@ -673,11 +703,11 @@ sdcard_write_block(uint32_t addr, uint8_t *buffer)
     if (i == DATA_RESP_ACCEPTED) {
       PRINTD("\nWrite response: CRC error");
     } else if (i == DATA_RESP_CRC_REJECT) {
-      PRINTD("\nResponse: Write error");
+      PRINTD("\nData Resp: Write error");
     } else if (i == DATA_RESP_WRITE_ERROR) {
-      PRINTD("\nResponse: Error token");
+      PRINTD("\nData Resp: Error token");
     } else {
-      PRINTD("\nResponse unknown");
+      PRINTD("\nData Resp %d unknown", i);
     }
 #endif
     return 2;
@@ -810,7 +840,7 @@ sdcard_write_cmd(uint8_t cmd, uint32_t *arg, uint8_t *resp)
   i = 0;
   while ((mspi_transceive(MSPI_DUMMY_BYTE) != 0xff)
       && (mspi_transceive(MSPI_DUMMY_BYTE) != 0xff)
-      && (i < 100)) {
+      && (i < 200)) {
     _delay_ms(1);
     i++;
   }
@@ -829,48 +859,51 @@ sdcard_write_cmd(uint8_t cmd, uint32_t *arg, uint8_t *resp)
   /* wait for the answer of the sd card */
   i = 0;
   do {
+    i++;
     /*0x01 for acknowledge*/
     data = mspi_transceive(MSPI_DUMMY_BYTE);
-    if (i > 500) {
+    watchdog_periodic();
+
+    /* If we still wait for the Rx response,
+     * we do not accept 0xFF */
+    if ((data == 0xFF) && (idx == 0)) {
+      continue;
+    }
+
+    /* For R1 with NULL arg (no return buffer) */
+    if (resp == NULL) {
+      output_response_r1(cmd, data);
       break;
     }
-    watchdog_periodic();
-    i++;
-    if (data != 0xFF) {
-      if (resp == NULL) {
+
+    switch (resp_type) {
+
+      case RESPONSE_R1:
+        resp[0] = data;
         output_response_r1(cmd, data);
-      }
-      else {
-        // R1 format (1 byte)
-        if (resp_type == RESPONSE_R1) {
-          resp[0] = data;
-          output_response_r1(cmd, data);
-          // R3 / R7 forma (5 bytes)
-        } else if (resp_type == RESPONSE_R3 || resp_type == RESPONSE_R7) {
-          i = 0;
-          resp[idx] = data;
-          idx++;
-          if (idx >= 5 || (resp[0] & 0xFE) != 0) {
-            output_response_r3(cmd, resp); // TODO: R7
-            break;
-          }
-          data = 0xFF;
-          continue;
-          // R2 format (2 bytes)
-        } else if (resp_type == 0x02) {
-          i = 0;
-          resp[idx] = data;
-          idx++;
-          if (idx >= 2 || (resp[0] & 0xFE) != 0) {
-            output_response_r2(cmd, resp);
-            break;
-          }
-          data = 0xFF;
-          continue;
+        i = 500;
+        break;
+
+      case RESPONSE_R2:
+        resp[idx] = data;
+        idx++;
+        if ((idx >= 2) || (resp[0] & 0xFE) != 0) {
+          output_response_r2(cmd, resp);
+          i = 500;
         }
-      }
+        break;
+
+      case RESPONSE_R3:
+      case RESPONSE_R7:
+        resp[idx] = data;
+        idx++;
+        if ((idx >= 5) || (resp[0] & 0xFE) != 0) {
+          output_response_r3(cmd, resp); // TODO: R7
+          i = 500;
+        }
+        break;
     }
-  } while (data == 0xFF);
+  } while (i < 500);
 
   return data;
 }
