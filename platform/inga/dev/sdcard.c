@@ -76,6 +76,14 @@
 #define SD_R1_ADDR_ERR      0x20
 #define SD_R1_PARAM_ERR     0x40
 
+#define R1_RSP_IDLE_STATE       0x01
+#define R1_RSP_ERASE_RESET      0x02
+#define R1_RSP_ILLEGAL_CMD      0x04
+#define R1_RSP_COM_CRC_ERROR    0x08
+#define R1_RSP_ERASE_SEQ_ERROR  0x10
+#define R1_RSP_ADDRESS_ERROR    0x20
+#define R1_RSP_PARAMETER_ERROR  0x40
+
 /* Single-Block Read, Single-Block Write and Multiple-Block Read */
 #define START_BLOCK_TOKEN         0xFE
 /* Multiple Block Write Operation */
@@ -359,6 +367,8 @@ sdcard_data_crc(uint8_t *data)
   return (stream >> 16);
 }
 /*----------------------------------------------------------------------------*/
+#define OCR_H_CCS       0x40
+#define OCR_H_POWER_UP  0x80
 uint8_t
 sdcard_init(void)
 {
@@ -366,7 +376,17 @@ sdcard_init(void)
   uint8_t ret = 0;
   sdcard_sdsc_card = 1;
 
-  /*READY TO INITIALIZE micro SD / SD card */
+  /* CMD8 payload */
+  uint32_t cmd8_arg = 0x000001AAUL;
+  /* CMD15 payload */
+  uint32_t cmd16_arg = 0x00000200UL;
+  /* ACMD41 payload */
+  uint32_t acmd41_arg = 0x40000000UL;
+  /*Response Array for the R3 and R7 responses*/
+  uint8_t resp[5] = {0x00, 0x00, 0x00, 0x00, 0x00};
+  /* Memory for the contents of the csd */
+  uint8_t csd[16];
+  /* READY TO INITIALIZE micro SD / SD card */
   mspi_chip_release(MICRO_SD_CS);
 
   /*init mspi in mode0, at chip select pin 2 and max baud rate */
@@ -380,23 +400,10 @@ sdcard_init(void)
     mspi_transceive(MSPI_DUMMY_BYTE);
   }
 
-  /* CMD8 payload */
-  uint32_t cmd8_arg = 0x000001AAUL;
-  /* CMD15 payload */
-  uint32_t cmd16_arg = 0x00000200UL;
-  /* ACMD41 payload */
-  uint32_t acmd41_arg = 0x40000000UL;
-  /*Response Array for the R3 and R7 responses*/
-  uint8_t resp[5] = {0x00, 0x00, 0x00, 0x00, 0x00};
-
-  /* Memory for the contents of the csd */
-  uint8_t csd[16];
-
   /* CMD0 with CS asserted enables SPI mode.
    * Note: Card may hold line low until fully initialized */
   i = 0;
   while ((ret = sdcard_write_cmd(SDCARD_CMD0, NULL, NULL)) != 0x01) {
-    _delay_ms(5);
     i++;
     if (i > 200) {
       mspi_chip_release(MICRO_SD_CS);
@@ -405,14 +412,13 @@ sdcard_init(void)
     }
   }
 
-  /*CMD8: Test if the card supports CSD Version 2*/
-  /** @todo: is CRC required here? */
-  //sdcard_cmd_crc(cmd8);
+  /*CMD8: Test if the card supports CSD Version 2.
+   * Shall be issued before ACMD41. */
   i = 0;
   resp[0] = RESPONSE_R7;
   while ((ret = sdcard_write_cmd(SDCARD_CMD8, &cmd8_arg, resp)) != 0x01) {
-    if ((ret & 0x04) && ret != 0xFF) {
-      PRINTD("\nsdcard_init(): cmd8 not supported -> legacy card");
+    if ((ret & R1_RSP_ILLEGAL_CMD) && ret != 0xFF) {
+      PRINTF("\nsdcard_init(): cmd8 not supported -> Ver1.X or no SD Memory Card");
       break;
     }
     i++;
@@ -422,6 +428,9 @@ sdcard_init(void)
       return 4;
     }
   }
+
+  /* NOTE: we could also check voltage range here... */
+
 
   /* Illegal command -> Ver 1.X SD Memory Card or Not SD Memory Card*/
   if (ret & SD_R1_ILLEGAL_CMD) {
@@ -468,8 +477,9 @@ sdcard_init(void)
         }
       }
 
-      if (j > 12000) {
-        PRINTD("\nwooot?");
+      if (j > 200) {
+        PRINTD("\nsdcard_init(): acmd41 timeout reached, last return value was %u", ret);
+        mspi_chip_release(MICRO_SD_CS);
         return 8;
       }
     /* CMD41: Second part of ACMD41 */
@@ -487,31 +497,18 @@ sdcard_init(void)
       }
     }
 
-    if (resp[1] & 0x80) {
-      if (resp[1] & 0x40) {
-        sdcard_sdsc_card = 0;
-      }
-
+    /* Check if power up finished */
+    if (resp[1] & OCR_H_POWER_UP) {
       PRINTF("\nsdcard_init(): acmd41: Card power up okay!");
-      if (resp[1] & 0x40) {
+      /* Check if SDSC or SDHC/SDXC */
+      if (resp[1] & OCR_H_CCS) {
+        sdcard_sdsc_card = 0;
         PRINTF("\nsdcard_init(): acmd41: Card is SDHC/SDXC");
       } else {
         PRINTF("\nsdcard_init(): acmd41: Card is SDSC");
       }
 
     }
-
-    /* Set Block Length to 512 Bytes */
-    //i = 0;
-    ///** @todo: Is this command really needed? It does not seem to set anything. */
-    //while ((ret = sdcard_write_cmd(SDCARD_CMD16, &cmd16_arg, NULL)) != 0x00) {
-    //  i++;
-    //  if (i > 500) {
-    //    PRINTD("\nsdcard_init(): cmd16 timeout reached, last return value was %d", ret);
-    //    mspi_chip_release(MICRO_SD_CS);
-    //    return 5;
-    //  }
-    //}
   }
 
   /* Read card-specific data (CSD) register */
@@ -599,6 +596,8 @@ sdcard_read_block(uint32_t addr, uint8_t *buffer)
 
   mspi_chip_select(MICRO_SD_CS);
 
+  sdcard_busy_wait();
+
   /* send CMD17 with address information. Chip select is done by
    * the sdcard_write_cmd method and */
   if ((i = sdcard_write_cmd(SDCARD_CMD17, &addr, NULL)) != 0x00) {
@@ -665,6 +664,8 @@ sdcard_write_block(uint32_t addr, uint8_t *buffer)
 
   mspi_chip_select(MICRO_SD_CS);
 
+  sdcard_busy_wait();
+
   /* send CMD24 with address information.
    * Chip select is done by the sdcard_write_cmd method */
   if ((i = sdcard_write_cmd(SDCARD_CMD24, &addr, NULL)) != 0x00) {
@@ -718,13 +719,6 @@ sdcard_write_block(uint32_t addr, uint8_t *buffer)
 /*----------------------------------------------------------------------------*/
 
 
-#define R1_RSP_IDLE_STATE       0x01
-#define R1_RSP_ERASE_RESET      0x02
-#define R1_RSP_ILLEGAL_CMD      0x04
-#define R1_RSP_COM_CRC_ERROR    0x08
-#define R1_RSP_ERASE_SEQ_ERROR  0x10
-#define R1_RSP_ADDRESS_ERROR    0x20
-#define R1_RSP_PARAMETER_ERROR  0x40
 
 #if DEBUG
 void
@@ -790,6 +784,27 @@ output_response_r3(uint8_t cmd, uint8_t* rsp) {
 
 
 /*----------------------------------------------------------------------------*/
+#define BUSY_WAIT_MS  300
+uint8_t
+sdcard_busy_wait()
+{
+  /* Wait until the card is not busy anymore! 
+   * Note: It is always checked twice because
+   *       busy signal becomes high only when clocked before */
+  uint16_t i = 0;
+  while ((mspi_transceive(MSPI_DUMMY_BYTE) != 0xff)
+      && (mspi_transceive(MSPI_DUMMY_BYTE) != 0xff)) {
+    _delay_ms(1);
+    i++;
+    if (i >= BUSY_WAIT_MS) {
+      PRINTD("\nsdcard_busy_wait(): Busy wait timeout");
+      return 1;
+    }
+  }
+
+  return 0;
+}
+/*----------------------------------------------------------------------------*/
 uint8_t
 sdcard_write_cmd(uint8_t cmd, uint32_t *arg, uint8_t *resp)
 {
@@ -808,7 +823,6 @@ sdcard_write_cmd(uint8_t cmd, uint32_t *arg, uint8_t *resp)
   if (resp != NULL) {
     resp_type = resp[0];
   }
-
   /* If no argument given, send 0's */
   if (arg == NULL) {
     cmd_seq[1] = 0x00;
@@ -837,13 +851,13 @@ sdcard_write_cmd(uint8_t cmd, uint32_t *arg, uint8_t *resp)
   /* Wait until the card is not busy anymore! 
    * Note: It is always checked twice because
    *       busy signal becomes high only when clocked before */
-  i = 0;
-  while ((mspi_transceive(MSPI_DUMMY_BYTE) != 0xff)
-      && (mspi_transceive(MSPI_DUMMY_BYTE) != 0xff)
-      && (i < 200)) {
-    _delay_ms(1);
-    i++;
-  }
+  //i = 0;
+  //while ((mspi_transceive(MSPI_DUMMY_BYTE) != 0xff)
+  //    && (mspi_transceive(MSPI_DUMMY_BYTE) != 0xff)
+  //    && (i < 100)) {
+  //  _delay_ms(1);
+  //  i++;
+  //}
 
   /* Send the 48 command bits */
 #if DEBUG
@@ -881,7 +895,7 @@ sdcard_write_cmd(uint8_t cmd, uint32_t *arg, uint8_t *resp)
       case RESPONSE_R1:
         resp[0] = data;
         output_response_r1(cmd, data);
-        i = 500;
+        i = 501;
         break;
 
       case RESPONSE_R2:
@@ -889,7 +903,8 @@ sdcard_write_cmd(uint8_t cmd, uint32_t *arg, uint8_t *resp)
         idx++;
         if ((idx >= 2) || (resp[0] & 0xFE) != 0) {
           output_response_r2(cmd, resp);
-          i = 500;
+          data = resp[0];
+          i = 501;
         }
         break;
 
@@ -899,11 +914,18 @@ sdcard_write_cmd(uint8_t cmd, uint32_t *arg, uint8_t *resp)
         idx++;
         if ((idx >= 5) || (resp[0] & 0xFE) != 0) {
           output_response_r3(cmd, resp); // TODO: R7
-          i = 500;
+          data = resp[0];
+          i = 501;
         }
         break;
     }
   } while (i < 500);
+ 
+  /* Loop left at 500 indicates timeout error */
+  if (i == 500) {
+    PRINTD("\nResponse timeout");
+    data = 0xFF;
+  }
 
   return data;
 }

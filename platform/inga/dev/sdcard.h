@@ -141,6 +141,10 @@ uint8_t sdcard_read_block(uint32_t addr, uint8_t *buffer);
 uint8_t sdcard_write_block(uint32_t addr, uint8_t *buffer);
 
 /**
+ */
+uint8_t sdcard_busy_wait();
+
+/**
  * \brief This function sends a command via SPI to the SD-Card. An SPI
  * command consists off 6 bytes
  *
