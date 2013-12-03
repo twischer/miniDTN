@@ -968,7 +968,7 @@ public class Cooja extends Observable {
             boolean active = false;
             Class<? extends RadioMedium>[] radioMediums = newPluginClass.getAnnotation(SupportedArguments.class).radioMediums();
             for (Class<? extends Object> o: radioMediums) {
-              if (o.isAssignableFrom(getSimulation().getRadioMedium().getClass())) {
+              if (getSimulation() != null && o.isAssignableFrom(getSimulation().getRadioMedium().getClass())) {
                 active = true;
                 break;
               }
