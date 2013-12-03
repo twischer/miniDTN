@@ -162,7 +162,7 @@ static uint8_t sdcard_sdsc_card = 1;
  */
 static uint8_t sdcard_crc_enable = 0;
 
-static void setSDCInfo(uint8_t *csd);
+static void get_csd_info(uint8_t *csd);
 
 uint64_t
 sdcard_get_card_size(void)
@@ -244,6 +244,7 @@ sdcard_read_csd(uint8_t *buffer)
   /* wait for the 0xFE start byte */
   i = 0;
   while (mspi_transceive(MSPI_DUMMY_BYTE) != START_BLOCK_TOKEN) {
+    i++;
     if (i > 200) {
       PRINTD("\nsdcard_read_csd(): No data token");
       return 2;
@@ -270,45 +271,61 @@ sdcard_read_csd(uint8_t *buffer)
  * \param *csd A Buffer in which the contents of the csd are saved (get them with sdcard_read_csd()).
  */
 static void
-setSDCInfo(uint8_t *csd)
+get_csd_info(uint8_t *csd)
 {
-  uint8_t csd_version = ((csd[0] & (12 << 4)) >> 6);
+  uint8_t csd_version = 0;
   uint8_t READ_BL_LEN = 0;
   uint32_t C_SIZE = 0;
   uint16_t C_SIZE_MULT = 0;
   uint32_t mult = 0;
   uint8_t SECTOR_SIZE = 0;
+  uint32_t capacity = 0;
 
+  /* First, determine CSD version and layout */
+  csd_version = csd[0] >> 6;
+
+  /* CSD Version 1.0 */
   if (csd_version == 0) {
-    /*Bits 80 till 83 are the READ_BL_LEN*/
+    /* 80:83 (4 Bit) */
     READ_BL_LEN = csd[5] & 0x0F;
+    /* 73:62 (12 Bit) [xxxxxxDD:DDDDDDDD:DDxxxxxx] */
+    C_SIZE = (((uint16_t) (csd[6] & 0x03)) << 10) | (((uint16_t) csd[7]) << 2) | (csd[8] >> 6);
+    /* 49:47 (3 Bit) */
+    C_SIZE_MULT = ((csd[9] & 0x03) << 1) | (csd[10] >> 7);
+    /* 45:39 (7 Bit) */
+    SECTOR_SIZE = ((csd[11] >> 7) | ((csd[10] & 0x3F) << 1)) + 1;
 
-    /*Bits 62 - 73 are C_SIZE*/
-    C_SIZE = ((csd[8] & 07000) >> 6) + (((uint32_t) csd[7]) << 2) + (((uint32_t) csd[6] & 07) << 10);
-
-    /*Bits 47 - 49 are C_SIZE_MULT*/
-    C_SIZE_MULT = ((csd[9] & 0x80) >> 7) + ((csd[8] & 0x03) << 1);
-
-    mult = (2 << (C_SIZE_MULT + 2));
+    mult = (1 << (C_SIZE_MULT + 2));
     sdcard_card_block_count = (C_SIZE + 1) * mult;
     sdcard_block_size = 1 << READ_BL_LEN;
+    capacity = sdcard_card_block_count * sdcard_block_size / 1024 / 1024;
+
+  /* CSD Version 2.0 (SDHC/SDXC) */
   } else if (csd_version == 1) {
-    /*Bits 80 till 83 are the READ_BL_LEN*/
+    /* 80:83, should be fixed to 512 Bytes */
     READ_BL_LEN = csd[5] & 0x0F;
+    /* 69:48 (22 Bit) */
     C_SIZE = csd[9] + (((uint32_t) csd[8]) << 8) + (((uint32_t) csd[7] & 0x3f) << 16);
+    /* 45:39 (7 Bit) */
+    SECTOR_SIZE = ((csd[11] >> 7) | ((csd[10] & 0x3F) << 1)) + 1;
+
     sdcard_card_block_count = (C_SIZE + 1) * 1024;
     sdcard_block_size = 512;
-    SECTOR_SIZE = ((csd[4] >> 7) | ((csd[5] & 0x3F) << 1)) + 1;
+    capacity = C_SIZE * 512 / 1024;
+  } else {
+    PRINTD("\nInvalid CSD version");
+    return;
   }
 
-  PRINTF("\nsetSDCInfo(): CSD Version = %u", ((csd[0] & (12 << 4)) >> 6));
-  PRINTF("\nsetSDCInfo(): READ_BL_LEN = %u", READ_BL_LEN);
-  PRINTF("\nsetSDCInfo(): C_SIZE = %lu", C_SIZE);
-  PRINTF("\nsetSDCInfo(): C_SIZE_MULT = %u", C_SIZE_MULT);
-  PRINTF("\nsetSDCInfo(): mult = %lu", mult);
-  PRINTF("\nsetSDCInfo(): sdcard_card_block_count  = %lu", sdcard_card_block_count);
-  PRINTF("\nsetSDCInfo(): sdcard_block_size  = %u", sdcard_block_size);
-  PRINTF("\nsetSDCInfo(): SECTOR_SIZE = %u", SECTOR_SIZE);
+  PRINTF("\nget_csd_info(): CSD Version = %u", csd_version);
+  PRINTF("\nget_csd_info(): READ_BL_LEN = %u", READ_BL_LEN);
+  PRINTF("\nget_csd_info(): C_SIZE = %lu", C_SIZE);
+  PRINTF("\nget_csd_info(): Capacity = %lu MB", capacity);
+  PRINTF("\nget_csd_info(): C_SIZE_MULT = %u", C_SIZE_MULT);
+  PRINTF("\nget_csd_info(): mult = %lu", mult);
+  PRINTF("\nget_csd_info(): sdcard_card_block_count  = %lu", sdcard_card_block_count);
+  PRINTF("\nget_csd_info(): sdcard_block_size  = %u", sdcard_block_size);
+  PRINTF("\nget_csd_info(): SECTOR_SIZE = %u", SECTOR_SIZE);
 }
 /*----------------------------------------------------------------------------*/
 /**
@@ -521,7 +538,7 @@ sdcard_init(void)
       return 3;
     }
   }
-  setSDCInfo(csd);
+  get_csd_info(csd);
 
   mspi_chip_release(MICRO_SD_CS);
 
