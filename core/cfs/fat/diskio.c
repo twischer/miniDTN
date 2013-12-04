@@ -193,9 +193,11 @@ diskio_rw_op(struct diskio_device_info *dev, uint32_t block_start_address, uint3
           return DISKIO_ERROR_TRY_AGAIN;
 #endif /* !DISKIO_OLD_STYLE */
           break;
+
         case DISKIO_OP_READ_BLOCKS:
           return DISKIO_ERROR_TO_BE_IMPLEMENTED;
           break;
+
         case DISKIO_OP_WRITE_BLOCK:
 #ifndef DISKIO_OLD_STYLE
           for (tries = 0; tries < DISKIO_RW_RETRIES; tries++) {
@@ -230,15 +232,34 @@ diskio_rw_op(struct diskio_device_info *dev, uint32_t block_start_address, uint3
           return DISKIO_ERROR_TRY_AGAIN;
 #endif /* !DISKIO_OLD_STYLE */
           break;
+
         case DISKIO_OP_WRITE_BLOCKS_START:
-          return SD_WRITE_BLOCKS_START(block_start_address, num_blocks);
+          ret_code = SD_WRITE_BLOCKS_START(block_start_address, num_blocks);
+          if (ret_code == 0) {
+            return DISKIO_SUCCESS;
+          } else {
+            return DISKIO_ERROR_INTERNAL_ERROR;
+          }
           break;
+
         case DISKIO_OP_WRITE_BLOCKS_NEXT:
-          return SD_WRITE_BLOCKS_NEXT(buffer);
+          ret_code = SD_WRITE_BLOCKS_NEXT(buffer);
+          if (ret_code == 0) {
+            return DISKIO_SUCCESS;
+          } else {
+            return DISKIO_ERROR_INTERNAL_ERROR;
+          }
           break;
+
         case DISKIO_OP_WRITE_BLOCKS_DONE:
-          return SD_WRITE_BLOCKS_DONE();
+          ret_code = SD_WRITE_BLOCKS_DONE();
+          if (ret_code == 0) {
+            return DISKIO_SUCCESS;
+          } else {
+            return DISKIO_ERROR_INTERNAL_ERROR;
+          }
           break;
+
         default:
           return DISKIO_ERROR_OPERATION_NOT_SUPPORTED;
           break;

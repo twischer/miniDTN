@@ -131,6 +131,16 @@
 #define SD_R1_ADDR_ERR      0x20
 #define SD_R1_PARAM_ERR     0x40
 
+/* Response R2 bits */
+#define R2_OUT_OF_RANGE   0x80
+#define R2_ERASE_PARAM    0x40
+#define R2_WP_VIOLATION   0x20
+#define R2_EEC_FAILED     0x10
+#define R2_CC_ERROR       0x08
+#define R2_ERROR          0x04
+#define R2_ERASE_SKIP     0x02
+#define R2_CARD_LOCKED    0x01
+
 /* Data response bits */
 #define DATA_ERROR            0x01
 #define DATA_CC_ERROR         0x02
@@ -656,7 +666,10 @@ sdcard_get_status(void)
 {
   uint8_t resp[5] = {SDCARD_RESP2, 0x00, 0x00, 0x00, 0x00};
 
+  sdcard_busy_wait();
+
   if (sdcard_write_cmd(SDCARD_CMD13, NULL, resp) != 0x00) {
+    printf("\nFailed to read status");
     return 0;
   }
 
