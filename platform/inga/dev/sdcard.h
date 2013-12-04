@@ -29,7 +29,7 @@
 
 /**
  * \file
- *		MicroSD Card interface definitions
+ *		SD Card interface definitions
  * \author
  * 		Original Source Code:
  * 		Ulrich Radig
@@ -52,6 +52,7 @@
  * 
  * \author
  *		Christoph Peltz <peltz@ibr.cs.tu-bs.de>
+ *		Enrico Joerns <joerns@ibr.cs.tu-bs.de>
  * @{
  */
 
@@ -67,6 +68,30 @@
  */
 #define MICRO_SD_CS 					5
 
+/**
+ * \name Return codes
+ * \{ */
+/** Successfully completed operation */
+#define SDCARD_SUCCESS            0
+#define SDCARD_CMD_ERROR          1
+/** Timeout while trying to send command */
+#define SDCARD_CMD_TIMEOUT        2
+/** Card responds with error */
+#define SDCARD_RESP_ERROR         3
+/** Card did not send a data start byte to indicate beginning of a data block */
+#define SDCARD_DATA_TIMEOUT       4
+/** Card returned error when accessing data */
+#define SDCARD_DATA_ERROR         5
+/** Busy waiting timed out */
+#define SDCARD_BUSY_TIMEOUT       6
+/** \} */
+
+
+#define SDCARD_WRITE_COMMAND_ERROR  1
+#define SDCARD_WRITE_DATA_ERROR     2
+
+#define SDCARD_ERASE_START_ERROR    1
+#define SDCARD_ERASE_END_ERR        2
 
 /**
  * \brief Powers on and initialize the sdcard / SD-Card
@@ -141,6 +166,34 @@ uint8_t sdcard_read_block(uint32_t addr, uint8_t *buffer);
 uint8_t sdcard_write_block(uint32_t addr, uint8_t *buffer);
 
 /**
+ * \brief Prepares to write multiple blocks sequentially.
+ *
+ * \param addr Address of first block
+ * \param num_blocks Number of blocks that should be written (0 means not known yet).
+ *        Givin a number here could speed up writing due to possible sector pre-erase
+ * @return
+ */
+uint8_t sdcard_write_multi_block_start(uint32_t addr, uint32_t num_blocks);
+
+/**
+ * \brief Writes single of multiple sequental blocks.
+ *
+ * \param buffer
+ * \retval 0 successfull
+ */
+uint8_t sdcard_write_multi_block_next(uint8_t *buffer);
+
+/**
+ * \brief Stops multiple block write.
+ * 
+ * \retval 0 successfull
+ */
+uint8_t sdcard_write_multi_block_stop();
+
+/**
+ * Waits for the busy signal to become high.
+ *
+ * \retval 0 successfull
  */
 uint8_t sdcard_busy_wait();
 
