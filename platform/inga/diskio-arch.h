@@ -53,6 +53,12 @@
         sdcard_get_block_num()
 #define SD_GET_BLOCK_SIZE() \
         sdcard_get_block_size()
+#define SD_WRITE_BLOCKS_START(blocks_start_address, num_blocks) \
+        sdcard_write_multi_block_start(blocks_start_address, num_blocks)
+#define SD_WRITE_BLOCKS_NEXT(buffer) \
+        sdcard_write_multi_block_next(buffer)
+#define SD_WRITE_BLOCKS_DONE() \
+        sdcard_write_multi_block_stop()
 
 
 #define FLASH_READ_BLOCK(block_start_address, offset, buffer, length) \
