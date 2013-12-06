@@ -197,13 +197,124 @@ static uint8_t sdcard_crc_enable = 0;
 static void get_csd_info(uint8_t *csd);
 /**
  * Waits for the busy signal to become high.
- *
- * Mainly used internal.
- *
  * \retval 0 successfull
  */
 static uint8_t sdcard_busy_wait();
 
+/* Debugging functions */
+#if DEBUG
+static void
+print_r1_resp(uint8_t cmd, uint8_t rsp) {
+  /* everything might be ok */
+  if (rsp == 0x00) {
+    PRINTF("\nCMD%d: ", cmd);
+    PRINTF("\n\tOk");
+    return;
+  /* idle is not really critical */
+  } else if (rsp == SD_R1_IN_IDLE_STATE) {
+    PRINTF("\nCMD%d: ", cmd);
+    PRINTF("\n\tIdle");
+    return;
+  /* let us see what kind of error(s) we have */
+  } else {
+    PRINTD("\nCMD%d: ", cmd);
+    if (rsp & SD_R1_IN_IDLE_STATE) {
+      PRINTD("\n\tIdle");
+    }
+    if (rsp & SD_R1_ERASE_RESET) {
+      PRINTD("\n\tErase Reset");
+    }
+    if (rsp & SD_R1_ILLEGAL_CMD) {
+      PRINTD("\n\tIllegal Cmd");
+    }
+    if (rsp & SD_R1_COM_CRC_ERR) {
+      PRINTD("\n\tCom CRC Err");
+    }
+    if (rsp & SD_R1_ERASE_SEQ_ERR) {
+      PRINTD("\n\tErase Seq Err");
+    }
+    if (rsp & SD_R1_ADDR_ERR) {
+      PRINTD("\n\tAddr Err");
+    }
+    if (rsp & SD_R1_PARAM_ERR) {
+      PRINTD("\n\tParam Err");
+    }
+  }
+}
+/*----------------------------------------------------------------------------*/
+static void
+dbg_resp_r1(uint8_t cmd, uint8_t rsp) {
+  print_r1_resp(cmd, rsp);
+}
+/*----------------------------------------------------------------------------*/
+static void
+dbg_resp_r2(uint8_t cmd, uint8_t* rsp) {
+  print_r1_resp(cmd, rsp[0]);
+  if(rsp[1] & R2_OUT_OF_RANGE) {
+    PRINTD("\nOut of Range");
+  }
+  if(rsp[1] & R2_ERASE_PARAM) {
+    PRINTD("\nErase param");
+  }
+  if(rsp[1] & R2_WP_VIOLATION) {
+    PRINTD("\nWP violation");
+  }
+  if(rsp[1] & R2_EEC_FAILED) {
+    PRINTD("\nEEC failed");
+  }
+  if(rsp[1] & R2_CC_ERROR) {
+    PRINTD("\nCC error");
+  }
+  if(rsp[1] & R2_ERROR) {
+    PRINTD("\nError");
+  }
+  if(rsp[1] & R2_ERASE_SKIP) {
+    PRINTD("\nErase skip");
+  }
+  if(rsp[1] & R2_CARD_LOCKED) {
+    PRINTD("\nCard locked");
+  }
+}
+/*----------------------------------------------------------------------------*/
+static void
+dbg_resp_r3(uint8_t cmd, uint8_t* rsp) {
+  print_r1_resp(cmd, rsp[0]);
+  PRINTF("\nOCR: 0x%04x", rsp[1]);
+}
+/*----------------------------------------------------------------------------*/
+static void
+dbg_resp_r7(uint8_t cmd, uint8_t* rsp) {
+  print_r1_resp(cmd, rsp[0]);
+  PRINTF("\nR7_DATA: 0x%04x", rsp[1]);
+}
+/*----------------------------------------------------------------------------*/
+static void
+dbg_data_err(uint8_t ret) {
+  if ((ret & 0xF0) == 0) { // error bit mask
+    if(ret & DATA_ERROR) {
+      PRINTD("\nError");
+    }
+    if(ret & DATA_CC_ERROR) {
+      PRINTD("\nCC Error");
+    }
+    if(ret & DATA_CARD_ECC_FAILED) {
+      PRINTD("\nEEC Failed");
+    }
+    if(ret & DATA_OUT_OF_RANGE) {
+      PRINTD("\nOut of range");
+    }
+  }
+}
+/*----------------------------------------------------------------------------*/
+#else
+/* dummy fuctions */
+#define dbg_resp_r1(a, b)
+#define dbg_resp_r2(a, b)
+#define dbg_resp_r3(a, b)
+#define dbg_resp_r7(a, b)
+#define dbg_data_err(ret)
+#endif
+/*----------------------------------------------------------------------------*/
 uint64_t
 sdcard_get_card_size(void)
 {
@@ -255,22 +366,6 @@ sdcard_read_csd(uint8_t *buffer)
   mspi_chip_select(MICRO_SD_CS);
 
   if ((ret = sdcard_write_cmd(SDCARD_CMD9, NULL, NULL)) != 0x00) {
-#if DEBUG
-    // eval data error token
-    if (ret & DATA_ERROR) {
-      printf("\ndata error");
-    }
-    if (ret & DATA_CC_ERROR) {
-      printf("\ndata CC error");
-    }
-    if (ret & DATA_CARD_ECC_FAILED) {
-      printf("\n card EEC failed");
-    }
-    if (ret & DATA_OUT_OF_RANGE) {
-      printf("\n data out of range");
-    }
-    PRINTD("\nsdcard_read_csd(): CMD9 failure! (%u)", ret);
-#endif
     return SDCARD_CMD_ERROR;
   }
 
@@ -283,8 +378,10 @@ sdcard_read_csd(uint8_t *buffer)
       return SDCARD_DATA_TIMEOUT;
     }
   }
+
   /* Check for start block token */
   if (ret != START_BLOCK_TOKEN) {
+    dbg_data_err(ret);
     return SDCARD_DATA_ERROR;
   }
 
@@ -562,12 +659,12 @@ sdcard_init(void)
 
   /* Read card-specific data (CSD) register */
   i = 0;
-  while (sdcard_read_csd(csd) != 0) {
+  while (sdcard_read_csd(csd) != SDCARD_SUCCESS) {
     i++;
-    if (i > 900) {
+    if (i > 100) {
       mspi_chip_release(MICRO_SD_CS);
       PRINTD("\nsdcard_init(): CSD read error");
-      return 3;
+      return SDCARD_CSD_ERROR;
     }
   }
   get_csd_info(csd);
@@ -622,8 +719,6 @@ sdcard_erase_blocks(uint32_t startaddr, uint32_t endaddr)
   return SDCARD_SUCCESS;
 }
 /*----------------------------------------------------------------------------*/
-
-
 uint8_t
 sdcard_read_block(uint32_t addr, uint8_t *buffer)
 {
@@ -649,7 +744,7 @@ sdcard_read_block(uint32_t addr, uint8_t *buffer)
   /* send CMD17 with address information. */ 
   if ((i = sdcard_write_cmd(SDCARD_CMD17, &addr, NULL)) != 0x00) {
     PRINTD("\nsdcard_read_block(): CMD17 failure! (%u)", i);
-    return i;
+    return SDCARD_CMD_ERROR;
   }
 
   /* wait for the 0xFE start byte */
@@ -660,27 +755,15 @@ sdcard_read_block(uint32_t addr, uint8_t *buffer)
       return SDCARD_DATA_TIMEOUT;
     }
   }
+  /* exit on error response */
   if (ret != START_BLOCK_TOKEN) {
-    // exit on error response
 #if DEBUG
-    if ((ret & 0xF0) == 0) {
-      if(ret & DATA_ERROR) {
-        printf("\nError");
-      }
-      if(ret & DATA_CC_ERROR) {
-        printf("\nCC Error");
-      }
-      if(ret & DATA_CARD_ECC_FAILED) {
-        printf("\nEEC Failed");
-      }
-      if(ret & DATA_OUT_OF_RANGE) {
-        printf("\nOut of range");
-      }
-    }
+    dbg_data_err(ret);
 #endif // debug
-    return SDCARD_READ_ERROR;
+    return SDCARD_DATA_ERROR;
   }
 
+  /* transfer block */
   for (i = 0; i < 512; i++) {
     buffer[i] = mspi_transceive(MSPI_DUMMY_BYTE);
   }
@@ -886,97 +969,6 @@ sdcard_write_multi_block_stop()
 
   return SDCARD_SUCCESS;
 }
-/*----------------------------------------------------------------------------*/
-#if DEBUG
-void
-print_r1_resp(uint8_t cmd, uint8_t rsp) {
-  /* everything might be ok */
-  if (rsp == 0x00) {
-    PRINTF("\nCMD%d: ", cmd);
-    PRINTF("\n\tOk");
-    return;
-  /* idle is not really critical */
-  } else if (rsp == SD_R1_IN_IDLE_STATE) {
-    PRINTF("\nCMD%d: ", cmd);
-    PRINTF("\n\tIdle");
-    return;
-  /* let us see what kind of error(s) we have */
-  } else {
-    PRINTD("\nCMD%d: ", cmd);
-    if (rsp & SD_R1_IN_IDLE_STATE) {
-      PRINTD("\n\tIdle");
-    }
-    if (rsp & SD_R1_ERASE_RESET) {
-      PRINTD("\n\tErase Reset");
-    }
-    if (rsp & SD_R1_ILLEGAL_CMD) {
-      PRINTD("\n\tIllegal Cmd");
-    }
-    if (rsp & SD_R1_COM_CRC_ERR) {
-      PRINTD("\n\tCom CRC Err");
-    }
-    if (rsp & SD_R1_ERASE_SEQ_ERR) {
-      PRINTD("\n\tErase Seq Err");
-    }
-    if (rsp & SD_R1_ADDR_ERR) {
-      PRINTD("\n\tAddr Err");
-    }
-    if (rsp & SD_R1_PARAM_ERR) {
-      PRINTD("\n\tParam Err");
-    }
-  }
-}
-/*----------------------------------------------------------------------------*/
-void
-dbg_resp_r1(uint8_t cmd, uint8_t rsp) {
-  print_r1_resp(cmd, rsp);
-}
-/*----------------------------------------------------------------------------*/
-void
-dbg_resp_r2(uint8_t cmd, uint8_t* rsp) {
-  print_r1_resp(cmd, rsp[0]);
-  if(rsp[1] & R2_OUT_OF_RANGE) {
-    PRINTD("\nOut of Range");
-  }
-  if(rsp[1] & R2_ERASE_PARAM) {
-    PRINTD("\nErase param");
-  }
-  if(rsp[1] & R2_WP_VIOLATION) {
-    PRINTD("\nWP violation");
-  }
-  if(rsp[1] & R2_EEC_FAILED) {
-    PRINTD("\nEEC failed");
-  }
-  if(rsp[1] & R2_CC_ERROR) {
-    PRINTD("\nCC error");
-  }
-  if(rsp[1] & R2_ERROR) {
-    PRINTD("\nError");
-  }
-  if(rsp[1] & R2_ERASE_SKIP) {
-    PRINTD("\nErase skip");
-  }
-  if(rsp[1] & R2_CARD_LOCKED) {
-    PRINTD("\nCard locked");
-  }
-}
-/*----------------------------------------------------------------------------*/
-void
-dbg_resp_r3(uint8_t cmd, uint8_t* rsp) {
-  print_r1_resp(cmd, rsp[0]);
-  PRINTF("\nOCR: 0x%04x", rsp[1]);
-}
-/*----------------------------------------------------------------------------*/
-void
-dbg_resp_r7(uint8_t cmd, uint8_t* rsp) {
-  print_r1_resp(cmd, rsp[0]);
-  PRINTF("\nOCR: 0x%04x", rsp[1]);
-}
-#else
-#define dbg_resp_r1(a, b)
-#define dbg_resp_r2(a, b)
-#define dbg_resp_r3(a, b)
-#endif
 /*----------------------------------------------------------------------------*/
 static uint8_t
 sdcard_busy_wait()
