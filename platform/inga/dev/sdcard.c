@@ -874,28 +874,55 @@ print_r1_resp(uint8_t cmd, uint8_t rsp) {
 }
 /*----------------------------------------------------------------------------*/
 void
-output_response_r1(uint8_t cmd, uint8_t rsp) {
+dbg_resp_r1(uint8_t cmd, uint8_t rsp) {
   print_r1_resp(cmd, rsp);
 }
 /*----------------------------------------------------------------------------*/
 void
-output_response_r2(uint8_t cmd, uint8_t* rsp) {
+dbg_resp_r2(uint8_t cmd, uint8_t* rsp) {
   print_r1_resp(cmd, rsp[0]);
-  // todo: byte 2
+  if(rsp[1] & R2_OUT_OF_RANGE) {
+    PRINTD("\nOut of Range");
+  }
+  if(rsp[1] & R2_ERASE_PARAM) {
+    PRINTD("\nErase param");
+  }
+  if(rsp[1] & R2_WP_VIOLATION) {
+    PRINTD("\nWP violation");
+  }
+  if(rsp[1] & R2_EEC_FAILED) {
+    PRINTD("\nEEC failed");
+  }
+  if(rsp[1] & R2_CC_ERROR) {
+    PRINTD("\nCC error");
+  }
+  if(rsp[1] & R2_ERROR) {
+    PRINTD("\nError");
+  }
+  if(rsp[1] & R2_ERASE_SKIP) {
+    PRINTD("\nErase skip");
+  }
+  if(rsp[1] & R2_CARD_LOCKED) {
+    PRINTD("\nCard locked");
+  }
 }
 /*----------------------------------------------------------------------------*/
 void
-output_response_r3(uint8_t cmd, uint8_t* rsp) {
+dbg_resp_r3(uint8_t cmd, uint8_t* rsp) {
+  print_r1_resp(cmd, rsp[0]);
+  PRINTF("\nOCR: 0x%04x", rsp[1]);
+}
+/*----------------------------------------------------------------------------*/
+void
+dbg_resp_r7(uint8_t cmd, uint8_t* rsp) {
   print_r1_resp(cmd, rsp[0]);
   PRINTF("\nOCR: 0x%04x", rsp[1]);
 }
 #else
-#define output_response_r1(a, b)
-#define output_response_r2(a, b)
-#define output_response_r3(a, b)
+#define dbg_resp_r1(a, b)
+#define dbg_resp_r2(a, b)
+#define dbg_resp_r3(a, b)
 #endif
-
-
 /*----------------------------------------------------------------------------*/
 uint8_t
 sdcard_busy_wait()
@@ -991,7 +1018,7 @@ sdcard_write_cmd(uint8_t cmd, uint32_t *arg, uint8_t *resp)
 
     /* For R1 with NULL arg (no return buffer) */
     if (resp == NULL) {
-      output_response_r1(cmd, data);
+      dbg_resp_r1(cmd, data);
       break;
     }
 
@@ -999,7 +1026,7 @@ sdcard_write_cmd(uint8_t cmd, uint32_t *arg, uint8_t *resp)
 
       case SDCARD_RESP1:
         resp[0] = data;
-        output_response_r1(cmd, data);
+        dbg_resp_r1(cmd, data);
         i = 501;
         break;
 
@@ -1007,7 +1034,7 @@ sdcard_write_cmd(uint8_t cmd, uint32_t *arg, uint8_t *resp)
         resp[idx] = data;
         idx++;
         if ((idx >= 2) || (resp[0] & 0xFE) != 0) {
-          output_response_r2(cmd, resp);
+          dbg_resp_r2(cmd, resp);
           data = resp[0];
           i = 501;
         }
@@ -1018,7 +1045,11 @@ sdcard_write_cmd(uint8_t cmd, uint32_t *arg, uint8_t *resp)
         resp[idx] = data;
         idx++;
         if ((idx >= 5) || (resp[0] & 0xFE) != 0) {
-          output_response_r3(cmd, resp); // TODO: R7
+          if (resp_type == SDCARD_RESP3) {
+            dbg_resp_r3(cmd, resp);
+          } else {
+            dbg_resp_r7(cmd, resp);
+          }
           data = resp[0];
           i = 501;
         }
