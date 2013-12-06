@@ -652,7 +652,7 @@ sdcard_read_block(uint32_t addr, uint8_t *buffer)
 
   /* wait for the 0xFE start byte */
   i = 0;
-  while ((ret = mspi_transceive(MSPI_DUMMY_BYTE)) != SD_DATA_HIGH) {
+  while ((ret = mspi_transceive(MSPI_DUMMY_BYTE)) == SD_DATA_HIGH) {
     if (i >= 200) {
       PRINTD("\nsdcard_read_block(): No Start Byte recieved, last was %d", ret);
       return SDCARD_DATA_TIMEOUT;
