@@ -124,13 +124,13 @@ uint8_t sdcard_init(void);
 uint8_t sdcard_read_csd(uint8_t *buffer);
 
 /**
- * \brief This function returns the number of bytes in one block.
+ * Returns the size of one block in bytes.
  *
  * Mainly used to calculated size of the SD-Card together with
  * sdcard_get_card_block_count().
  *
- *
- * \return Number of bytes per block on the SD-Card
+ * \note Currently it's fixed at 512 Bytes.
+ * \return Number of Bytes in one Block.
  */
 uint16_t sdcard_get_block_size();
 
@@ -144,6 +144,25 @@ uint16_t sdcard_get_block_size();
  */
 uint8_t sdcard_is_SDSC();
 
+/**
+ * Turns crc capabilities of the card on or off.
+ *
+ * \note Does not work properly at this time. (FIXME)
+ * \param enable 0 if CRC should be disabled, 1 if it should be enabled
+ * \return 0 on success, !=0 otherwise
+ */
+uint8_t sdcard_set_CRC(uint8_t enable);
+
+/**
+ * Returns card size
+ * @return card size in bytes
+ */
+uint64_t sdcard_get_card_size();
+
+/**
+ * @return number of blocks
+ */
+uint32_t sdcard_get_block_num();
 /**
  */
 uint8_t sdcard_erase_blocks(uint32_t startaddr, uint32_t endaddr);
@@ -196,12 +215,6 @@ uint8_t sdcard_write_multi_block_next(uint8_t *buffer);
  */
 uint8_t sdcard_write_multi_block_stop();
 
-/**
- * Waits for the busy signal to become high.
- *
- * \retval 0 successfull
- */
-uint8_t sdcard_busy_wait();
 
 /**
  * \brief This function sends a command via SPI to the SD-Card. An SPI
@@ -223,25 +236,6 @@ uint8_t sdcard_write_cmd(uint8_t cmd, uint32_t *arg, uint8_t *resp);
  */
 uint16_t sdcard_data_crc(uint8_t *data);
 
-/**
- * Turns crc capabilities of the card on or off.
- *
- * \note Does not work properly at this time. (FIXME)
- * \param enable 0 if CRC should be disabled, 1 if it should be enabled
- * \return 0 on success, !=0 otherwise
- */
-uint8_t sdcard_set_CRC(uint8_t enable);
-
-/**
- * Returns card size
- * @return card size in bytes
- */
-uint64_t sdcard_get_card_size();
-
-/**
- * @return number of blocks
- */
-uint32_t sdcard_get_block_num();
 
 /** @} */ // sdcard_interface
 /** @} */ // inga_device_driver
