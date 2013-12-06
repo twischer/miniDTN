@@ -642,7 +642,9 @@ sdcard_read_block(uint32_t addr, uint8_t *buffer)
 
   mspi_chip_select(MICRO_SD_CS);
 
-  sdcard_busy_wait();
+  if (sdcard_busy_wait() == SDCARD_BUSY_TIMEOUT) {
+    return SDCARD_BUSY_TIMEOUT;
+  }
 
   /* send CMD17 with address information. */ 
   if ((i = sdcard_write_cmd(SDCARD_CMD17, &addr, NULL)) != 0x00) {
@@ -699,7 +701,9 @@ sdcard_get_status(void)
 {
   uint8_t resp[5] = {SDCARD_RESP2, 0x00, 0x00, 0x00, 0x00};
 
-  sdcard_busy_wait();
+  if (sdcard_busy_wait() == SDCARD_BUSY_TIMEOUT) {
+    return SDCARD_BUSY_TIMEOUT;
+  }
 
   if (sdcard_write_cmd(SDCARD_CMD13, NULL, resp) != 0x00) {
     printf("\nFailed to read status");
@@ -726,7 +730,9 @@ sdcard_write_block(uint32_t addr, uint8_t *buffer)
 
   mspi_chip_select(MICRO_SD_CS);
 
-  sdcard_busy_wait();
+  if (sdcard_busy_wait() == SDCARD_BUSY_TIMEOUT) {
+    return SDCARD_BUSY_TIMEOUT;
+  }
 
   /* send CMD24 with address information. */
   if (sdcard_write_cmd(SDCARD_CMD24, &addr, NULL) != 0x00) {
@@ -792,7 +798,9 @@ sdcard_write_multi_block_start(uint32_t addr, uint32_t num_blocks)
 
   mspi_chip_select(MICRO_SD_CS);
 
-  sdcard_busy_wait();
+  if (sdcard_busy_wait() == SDCARD_BUSY_TIMEOUT) {
+    return SDCARD_BUSY_TIMEOUT;
+  }
 
   if (num_blocks != 0) {
     /* Announce number of blocks to write to card for pre-erase
@@ -817,7 +825,9 @@ sdcard_write_multi_block_next(uint8_t *buffer)
 
   mspi_chip_select(MICRO_SD_CS);
 
-  sdcard_busy_wait();
+  if (sdcard_busy_wait() == SDCARD_BUSY_TIMEOUT) {
+    return SDCARD_BUSY_TIMEOUT;
+  }
 
   /* send start byte 0xFC to the sdcard card to symbolize the beginning
    * of one data block (512byte) */
@@ -863,7 +873,9 @@ sdcard_write_multi_block_stop()
 {
   mspi_chip_select(MICRO_SD_CS);
 
-  sdcard_busy_wait();
+  if (sdcard_busy_wait() == SDCARD_BUSY_TIMEOUT) {
+    return SDCARD_BUSY_TIMEOUT;
+  }
 
   mspi_transceive(STOP_TRAN_TOKEN);
   /* after the response the card requires additional 8 clock cycles. */
