@@ -556,73 +556,7 @@ init(void)
 
 #endif /* ANNOUNCE_BOOT */
 
-  /* Autostart other processes */
-  autostart_start(autostart_processes);
-
-  /*---If using coffee file system create initial web content if necessary---*/
-#if COFFEE_FILES
-  int fa = cfs_open("/index.html", CFS_READ);
-  if (fa < 0) { //Make some default web content
-    PRINTA("No index.html file found, creating upload.html!\n");
-    PRINTA("Formatting FLASH file system for coffee...");
-    cfs_coffee_format();
-    PRINTA("Done!\n");
-    fa = cfs_open("/index.html", CFS_WRITE);
-    int r = cfs_write(fa, &"It works!", 9);
-    if (r < 0) printf("Can''t create /index.html!\n");
-    cfs_close(fa);
-    fa = cfs_open("/upload.html", CFS_WRITE);
-    r = cfs_write(fa, &"<html><body><form action=\"upload.html\" enctype=\"multipart/form-data\" method=\"post\"><input name=\"userfile\" type=\"file\" size=\"50\" /><input value=\"Upload\" type=\"submit\" /></form></body></html>  ", 188);
-    if (r < 0) printf("Can''t create /index.html!\n");
-    cfs_close(fa);
-  } else {
-    PRINTF("index.html found\n");
-  }
-#endif /* COFFEE_FILES */
-
-  /*--------------------------Announce the configuration---------------------*/
-#if ANNOUNCE_BOOT
-  {
-#if AVR_WEBSERVER
-    //    uint8_t i;
-    char buf[80] = "dummy";
-    unsigned int size = 4711;
-    //
-    //    for (i = 0; i < UIP_DS6_ADDR_NB; i++) {
-    //      if (uip_ds6_if.addr_list[i].isused) {
-    //        httpd_cgi_sprint_ip6(uip_ds6_if.addr_list[i].ipaddr, buf);
-    //        PRINTA("IPv6 Address: %s\n", buf);
-    //      }
-    //    }
-    //    cli();
-    //    eeprom_read_block(buf, eemem_server_name, sizeof (eemem_server_name));
-    //    sei();
-    //    buf[sizeof (eemem_server_name)] = 0;
-    //    PRINTA("%s", buf);
-    //    cli();
-    //    eeprom_read_block(buf, eemem_domain_name, sizeof (eemem_domain_name));
-    //    sei();
-    //    buf[sizeof (eemem_domain_name)] = 0;
-    //    size = httpd_fs_get_size();
-
-#ifndef COFFEE_FILES
-    PRINTA(".%s online with fixed %u byte web content\n", buf, size);
-#elif COFFEE_FILES==1
-    PRINTA(".%s online with static %u byte EEPROM file system\n", buf, size);
-#elif COFFEE_FILES==2
-    PRINTA(".%s online with dynamic %u KB EEPROM file system\n", buf, size >> 10);
-#elif COFFEE_FILES==3
-    PRINTA(".%s online with static %u byte program memory file system\n", buf, size);
-#elif COFFEE_FILES==4
-    PRINTA(".%s online with dynamic %u KB program memory file system\n", buf, size >> 10);
-#endif /* COFFEE_FILES */
-
-#else
-    PRINTA("Online\n");
-#endif /* AVR_WEBSERVER */
-
-#endif /* ANNOUNCE_BOOT */
-  }
+  PRINTA("Online\n");
 }
 
 #if PER_ROUTES
@@ -750,7 +684,10 @@ int
 main(void)
 {
   init();
+  /* Start sensor init process */
   process_start(&sensors_process, NULL);
+  /* Autostart other processes */
+  autostart_start(autostart_processes);
 
   while (1) {
     process_run();
