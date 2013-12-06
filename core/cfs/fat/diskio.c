@@ -67,7 +67,7 @@
 static struct diskio_device_info *default_device = 0;
 static struct diskio_device_info devices[DISKIO_MAX_DEVICES];
 
-int diskio_rw_op(struct diskio_device_info *dev, uint32_t block_start_address, uint8_t num_blocks, uint8_t *buffer, uint8_t op);
+static int diskio_rw_op(struct diskio_device_info *dev, uint32_t block_start_address, uint32_t num_blocks, uint8_t *buffer, uint8_t op);
 /*----------------------------------------------------------------------------*/
 void
 diskio_print_device_info(struct diskio_device_info *dev)
@@ -106,7 +106,7 @@ diskio_read_block(struct diskio_device_info *dev, uint32_t block_address, uint8_
 }
 /*----------------------------------------------------------------------------*/
 int
-diskio_read_blocks(struct diskio_device_info *dev, uint32_t block_start_address, uint8_t num_blocks, uint8_t *buffer)
+diskio_read_blocks(struct diskio_device_info *dev, uint32_t block_start_address, uint32_t num_blocks, uint8_t *buffer)
 {
   return diskio_rw_op(dev, block_start_address, num_blocks, buffer, DISKIO_OP_READ_BLOCKS);
 }
@@ -118,13 +118,25 @@ diskio_write_block(struct diskio_device_info *dev, uint32_t block_address, uint8
 }
 /*----------------------------------------------------------------------------*/
 int
-diskio_write_blocks(struct diskio_device_info *dev, uint32_t block_start_address, uint8_t num_blocks, uint8_t *buffer)
+diskio_write_blocks_start(struct diskio_device_info *dev, uint32_t block_start_address, uint32_t num_blocks)
 {
-  return diskio_rw_op(dev, block_start_address, num_blocks, buffer, DISKIO_OP_WRITE_BLOCKS);
+  return diskio_rw_op(dev, block_start_address, num_blocks, NULL, DISKIO_OP_WRITE_BLOCKS_START);
 }
 /*----------------------------------------------------------------------------*/
 int
-diskio_rw_op(struct diskio_device_info *dev, uint32_t block_start_address, uint8_t num_blocks, uint8_t *buffer, uint8_t op)
+diskio_write_blocks_next(struct diskio_device_info *dev, uint8_t *buffer)
+{
+  return diskio_rw_op(dev, 0, 1, buffer, DISKIO_OP_WRITE_BLOCKS_NEXT);
+}
+/*----------------------------------------------------------------------------*/
+int
+diskio_write_blocks_done(struct diskio_device_info *dev)
+{
+  return diskio_rw_op(dev, 0, 0, NULL, DISKIO_OP_WRITE_BLOCKS_DONE);
+}
+/*----------------------------------------------------------------------------*/
+static int
+diskio_rw_op(struct diskio_device_info *dev, uint32_t block_start_address, uint32_t num_blocks, uint8_t *buffer, uint8_t op)
 {
   if (dev == NULL) {
     if (default_device == 0) {
@@ -181,9 +193,11 @@ diskio_rw_op(struct diskio_device_info *dev, uint32_t block_start_address, uint8
           return DISKIO_ERROR_TRY_AGAIN;
 #endif /* !DISKIO_OLD_STYLE */
           break;
+
         case DISKIO_OP_READ_BLOCKS:
           return DISKIO_ERROR_TO_BE_IMPLEMENTED;
           break;
+
         case DISKIO_OP_WRITE_BLOCK:
 #ifndef DISKIO_OLD_STYLE
           for (tries = 0; tries < DISKIO_RW_RETRIES; tries++) {
@@ -218,9 +232,34 @@ diskio_rw_op(struct diskio_device_info *dev, uint32_t block_start_address, uint8
           return DISKIO_ERROR_TRY_AGAIN;
 #endif /* !DISKIO_OLD_STYLE */
           break;
-        case DISKIO_OP_WRITE_BLOCKS:
-          return DISKIO_ERROR_TO_BE_IMPLEMENTED;
+
+        case DISKIO_OP_WRITE_BLOCKS_START:
+          ret_code = SD_WRITE_BLOCKS_START(block_start_address, num_blocks);
+          if (ret_code == 0) {
+            return DISKIO_SUCCESS;
+          } else {
+            return DISKIO_ERROR_INTERNAL_ERROR;
+          }
           break;
+
+        case DISKIO_OP_WRITE_BLOCKS_NEXT:
+          ret_code = SD_WRITE_BLOCKS_NEXT(buffer);
+          if (ret_code == 0) {
+            return DISKIO_SUCCESS;
+          } else {
+            return DISKIO_ERROR_INTERNAL_ERROR;
+          }
+          break;
+
+        case DISKIO_OP_WRITE_BLOCKS_DONE:
+          ret_code = SD_WRITE_BLOCKS_DONE();
+          if (ret_code == 0) {
+            return DISKIO_SUCCESS;
+          } else {
+            return DISKIO_ERROR_INTERNAL_ERROR;
+          }
+          break;
+
         default:
           return DISKIO_ERROR_OPERATION_NOT_SUPPORTED;
           break;
@@ -242,7 +281,13 @@ diskio_rw_op(struct diskio_device_info *dev, uint32_t block_start_address, uint8
           FLASH_WRITE_BLOCK(block_start_address, 0, buffer, 512);
           return DISKIO_SUCCESS;
           break;
-        case DISKIO_OP_WRITE_BLOCKS:
+        case DISKIO_OP_WRITE_BLOCKS_START:
+          return DISKIO_ERROR_TO_BE_IMPLEMENTED;
+          break;
+        case DISKIO_OP_WRITE_BLOCKS_NEXT:
+          return DISKIO_ERROR_TO_BE_IMPLEMENTED;
+          break;
+        case DISKIO_OP_WRITE_BLOCKS_DONE:
           return DISKIO_ERROR_TO_BE_IMPLEMENTED;
           break;
         default:

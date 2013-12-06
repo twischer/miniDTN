@@ -83,7 +83,9 @@
 
 #define DISKIO_OP_WRITE_BLOCK  1
 #define DISKIO_OP_READ_BLOCK   2
-#define DISKIO_OP_WRITE_BLOCKS 3
+#define DISKIO_OP_WRITE_BLOCKS_START 10
+#define DISKIO_OP_WRITE_BLOCKS_NEXT  11
+#define DISKIO_OP_WRITE_BLOCKS_DONE  12
 #define DISKIO_OP_READ_BLOCKS  4
 
 
@@ -146,7 +148,7 @@ int diskio_read_block(struct diskio_device_info *dev, uint32_t block_address, ui
  * \param *buffer buffer in which the data is written
  * \return DISKIO_SUCCESS on success, otherwise not 0 for an error
  */
-int diskio_read_blocks(struct diskio_device_info *dev, uint32_t block_start_address, uint8_t num_blocks, uint8_t *buffer);
+int diskio_read_blocks(struct diskio_device_info *dev, uint32_t block_start_address, uint32_t num_blocks, uint8_t *buffer);
 
 /**
  * Writes a single block to the specified device
@@ -159,15 +161,31 @@ int diskio_read_blocks(struct diskio_device_info *dev, uint32_t block_start_addr
 int diskio_write_block(struct diskio_device_info *dev, uint32_t block_address, uint8_t *buffer);
 
 /**
- * Writes multiple blocks to the specified device
+ * Start writing multiple blocks to the specified device
  *
  * \param *dev the pointer to the device info
  * \param block_start_address the address of the first block to be written
  * \param num_blocks number of blocks to be written
- * \param *buffer buffer where the data is stored
  * \return DISKIO_SUCCESS on success, !0 on error
  */
-int diskio_write_blocks(struct diskio_device_info *dev, uint32_t block_start_address, uint8_t num_blocks, uint8_t *buffer);
+int diskio_write_blocks_start(struct diskio_device_info *dev, uint32_t block_start_address, uint32_t num_blocks);
+
+/**
+ * Write next of multiple blocks to the specified device
+ *
+ * \param *dev the pointer to the device info
+ * \param *buffer buffer in which the data is stored
+ * \return DISKIO_SUCCESS on success, !0 on error
+ */
+int diskio_write_blocks_next(struct diskio_device_info *dev, uint8_t *buffer);
+
+/**
+ * Start writing multiple blocks to the specified device
+ *
+ * \param *dev the pointer to the device info
+ * \return DISKIO_SUCCESS on success, !0 on error
+ */
+int diskio_write_blocks_done(struct diskio_device_info *dev);
 
 /**
  * Returns the device-Database.

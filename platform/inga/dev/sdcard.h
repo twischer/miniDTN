@@ -29,12 +29,10 @@
 
 /**
  * \file
- *		MicroSD Card interface definitions
+ *		SD Card interface definitions
  * \author
- * 		Original Source Code:
- * 		Ulrich Radig
- * 		Modified by:
  *              Ulf Kulau <kulau@ibr.cs.tu-bs.de>
+ *		Christoph Peltz <peltz@ibr.cs.tu-bs.de>
  *              Enrico Joerns <joerns@ibr.cs.tu-bs.de>
  */
 
@@ -46,12 +44,21 @@
 /**
  * \defgroup sdcard_interface MicroSD Card Interface
  *
- *	\note This sd-card interface is based on the work of Ulrich Radig
- *	      "Connect AVR to MMC/SD" and was a little bit modified plus
- *	      adapted to the mspi-drv
- * 
+ * This driver provides the following main features:
+ *
+ * - single block read
+ * - single block write
+ * - multi block write
+ *
+ * Note that multiple bock write is faster than single block write
+ * but only writes sequential block numbers
+ *
+ * \note CRC functionality is not fully implemented thus it sould not be used yet.
+ *
  * \author
+ *              Ulf Kulau <kulau@ibr.cs.tu-bs.de>
  *		Christoph Peltz <peltz@ibr.cs.tu-bs.de>
+ *		Enrico Joerns <joerns@ibr.cs.tu-bs.de>
  * @{
  */
 
@@ -67,18 +74,43 @@
  */
 #define MICRO_SD_CS 					5
 
+/**
+ * \name Interface return codes
+ * \{ */
+/** Successfully completed operation */
+#define SDCARD_SUCCESS            0
+/** Indicates the host cannot handle this card,
+ * maybe due to rejected voltage range */
+#define SDCARD_REJECTED           2
+/** Timeout while trying to send command */
+#define SDCARD_CMD_TIMEOUT        4
+/** Card sent an error response */
+#define SDCARD_CMD_ERROR          3
+/** Card did not send a data start byte to indicate beginning of a data block */
+#define SDCARD_DATA_TIMEOUT       6
+/** Card returned error when trying to read or write data.
+ * Obtained from data response (write) or data error response (read) token */
+#define SDCARD_DATA_ERROR         7
+/** Busy waiting timed out (card held down data line too long) */
+#define SDCARD_BUSY_TIMEOUT       8
+/** Failed reading CSD register */
+#define SDCARD_CSD_ERROR          10
+/** \} */
+
+#define SDCARD_WRITE_COMMAND_ERROR  1
+#define SDCARD_WRITE_DATA_ERROR     2
+
+#define SDCARD_ERASE_START_ERROR    1
+#define SDCARD_ERASE_END_ERR        2
 
 /**
- * \brief Powers on and initialize the sdcard / SD-Card
+ * \brief Initializes the SD Card
  *
- * \retval 0 SD-Card was initialized without an error
- * \retval 1 CMD0 failure!
- * \retval 2 CMD1 failure!
- * \retval 3 Failure reading the CSD!
- * \retval 4 CMD8 failure!
- * \retval 5 CMD16 failure!
- * \retval 6 ACMD41 failure!
- * \retval 7 CMD58 failure!
+ * \retval SDCARD_SUCCESS SD-Card was initialized without an error
+ * \retval SDCARD_CMD_ERROR
+ * \retval SDCARD_CMD_TIMEOUT 
+ * \retval SDCARD_REJECTED
+ * \retval SDCARD_CSD_ERROR
  */
 uint8_t sdcard_init(void);
 
@@ -87,19 +119,22 @@ uint8_t sdcard_init(void);
  *
  * \param *buffer Pointer to a block buffer, MUST hold at least 16 Bytes.
  *
- * \retval  0 SD-Card CSD read was successful
- * \retval  1 CMD9 failure!
+ * \retval SDCARD_SUCCESS SD-Card CSD read was successful
+ * \retval SDCARD_CMD_ERROR CMD9 failure.
+ * \retval SDCARD_DATA_TIMEOUT
+ * \retval SDCARD_DATA_ERROR
  */
 uint8_t sdcard_read_csd(uint8_t *buffer);
 
 /**
- * \brief This function returns the number of bytes in one block.
+ * Returns the size of one block in bytes.
  *
  * Mainly used to calculated size of the SD-Card together with
  * sdcard_get_card_block_count().
  *
+ * \note It's fixed at 512 Bytes.
  *
- * \return Number of bytes per block on the SD-Card
+ * \return Number of Bytes in one Block.
  */
 uint16_t sdcard_get_block_size();
 
@@ -112,48 +147,6 @@ uint16_t sdcard_get_block_size();
  * \return Not 0 if the card is SDSC and 0 if SDHC/SDXC
  */
 uint8_t sdcard_is_SDSC();
-
-/**
- * \brief This function will read one block (512, 1024, 2048 or 4096Byte) of the SD-Card.
- *
- * \param addr Block address
- * \param *buffer Pointer to a block buffer (needs to be as long as sdcard_get_block_size()).
- *
- * \retval 0 SD-Card block read was successful
- * \retval 1 CMD17 failure!
- * \retval 2 no start byte
- */
-uint8_t sdcard_read_block(uint32_t addr, uint8_t *buffer);
-
-/**
- * \brief This function will write one block (512, 1024, 2048 or 4096Byte) of the SD-Card.
- *
- * \param addr Block address
- * \param *buffer Pointer to a block buffer (needs to be as long as sdcard_get_block_size()).
- *
- * \retval 0 SD-Card block write was successful
- * \retval 1 CMD24 failure!
- */
-uint8_t sdcard_write_block(uint32_t addr, uint8_t *buffer);
-
-/**
- * \brief This function sends a command via SPI to the SD-Card. An SPI
- * command consists off 6 bytes
- *
- * \param *cmd Pointer to the command array
- * \param *resp Pointer to the response array. Only needed for responses other than R1. May me NULL if response is R1. Otherwise resp must be long enough for the response (only R3 and R7 are supported yet) and the first byte of the response array must indicate the response that is expected. For Example the first byte should be 0x07 if response type R7 is expected.
- *
- * \return R1 response byte or 0xFF in case of read/write timeout
- */
-uint8_t sdcard_write_cmd(uint8_t *cmd, uint8_t *resp);
-
-/**
- * \brief This function calculates the CRC16 for a 512 Byte data block.
- *
- * \param *data The array containing the data to be send. Must be 512 Bytes long.
- * \return The CRC16 code for the given data.
- */
-uint16_t sdcard_data_crc(uint8_t *data);
 
 /**
  * Turns crc capabilities of the card on or off.
@@ -174,6 +167,90 @@ uint64_t sdcard_get_card_size();
  * @return number of blocks
  */
 uint32_t sdcard_get_block_num();
+
+/**
+ * @note Not implemented
+ */
+uint8_t sdcard_erase_blocks(uint32_t startaddr, uint32_t endaddr);
+
+/**
+ * \brief This function will read one block (512, 1024, 2048 or 4096Byte) of the SD-Card.
+ *
+ * \param addr Block address
+ * \param *buffer Pointer to a block buffer (needs to be as long as sdcard_get_block_size()).
+ *
+ * \retval SDCARD_SUCCESS SD-Card block read was successful
+ * \retval SDCARD_CMD_ERROR CMD17 failure
+ * \retval SDCARD_BUSY_TIMEOUT
+ * \retval SDCARD_DATA_TIMEOUT
+ * \retval SDCARD_DATA_ERROR
+ */
+uint8_t sdcard_read_block(uint32_t addr, uint8_t *buffer);
+
+/**
+ * \brief This function will write one block (512, 1024, 2048 or 4096Byte) of the SD-Card.
+ *
+ * \param addr Block address
+ * \param *buffer Pointer to a block buffer (needs to be as long as sdcard_get_block_size()).
+ *
+ * \retval SDCARD_SUCCESS SD-Card block write was successful
+ * \retval SDCARD_CMD_ERROR CMD24 failure
+ * \retval SDCARD_BUSY_TIMEOUT
+ * \retval SDCARD_DATA_ERROR
+ */
+uint8_t sdcard_write_block(uint32_t addr, uint8_t *buffer);
+
+/**
+ * \brief Prepares to write multiple blocks sequentially.
+ *
+ * \param addr Address of first block
+ * \param num_blocks Number of blocks that should be written (0 means not known yet).
+ *        Givin a number here could speed up writing due to possible sector pre-erase
+ * \retval SDCARD_SUCCESS Starting mutli lock write was successful
+ * \retval SDCARD_CMD_ERROR CMD25 failure
+ * \retval SDCARD_BUSY_TIMEOUT
+ */
+uint8_t sdcard_write_multi_block_start(uint32_t addr, uint32_t num_blocks);
+
+/**
+ * \brief Writes single of multiple sequental blocks.
+ *
+ * \param buffer
+ * \retval SDCARD_SUCCESS Successfully wrote block
+ * \retval SDCARD_BUSY_TIMEOUT
+ * \retval SDCARD_DATA_ERROR
+ */
+uint8_t sdcard_write_multi_block_next(uint8_t *buffer);
+
+/**
+ * \brief Stops multiple block write.
+ * 
+ * \retval SDCARD_SUCCESS successfull
+ * \retval SDCARD_BUSY_TIMEOUT
+ */
+uint8_t sdcard_write_multi_block_stop();
+
+
+/**
+ * \brief This function sends a command via SPI to the SD-Card. An SPI
+ * command consists off 6 bytes
+ *
+ * \param cmd Command number to send
+ * \param *arg pointer to 32bit argument (addresses etc.)
+ * \param *resp Pointer to the response array. Only needed for responses other than R1. May be NULL if response is R1. Otherwise resp must be long enough for the response (only R3 and R7 are supported yet) and the first byte of the response array must indicate the response that is expected. For Example the first byte should be 0x07 if response type R7 is expected.
+ *
+ * \return R1 response byte or 0xFF in case of read/write timeout
+ */
+uint8_t sdcard_write_cmd(uint8_t cmd, uint32_t *arg, uint8_t *resp);
+
+/**
+ * \brief This function calculates the CRC16 for a 512 Byte data block.
+ *
+ * \param *data The array containing the data to be send. Must be 512 Bytes long.
+ * \return The CRC16 code for the given data.
+ */
+uint16_t sdcard_data_crc(uint8_t *data);
+
 
 /** @} */ // sdcard_interface
 /** @} */ // inga_device_driver

@@ -77,6 +77,8 @@ PROCESS_THREAD(diskio_test_process, ev, data)
     buffer[i] = i;
   }
 
+  // --- Single block write
+  
   exectime = RTIMER_NOW();
   for(i = 0; i < BLOCKS_TO_WRITE; i++) {
     FANCY_PROGRESS();
@@ -92,7 +94,8 @@ PROCESS_THREAD(diskio_test_process, ev, data)
   //printf("Write Time (1024 blocks): %lu\n", exectime*1000 / RTIMER_SECOND);
   TEST_REPORT("Write speed", 512*BLOCKS_TO_WRITE*RTIMER_SECOND, exectime*1024, "kbyte/second");
 
-  // ---
+
+  // --- Single block read, verify
 
   exectime = RTIMER_NOW();
   for(i = 0; i < BLOCKS_TO_WRITE; i++) {
@@ -118,6 +121,61 @@ PROCESS_THREAD(diskio_test_process, ev, data)
   printf("\n");
   //printf("Read Time (1024 blocks): %lu\n", exectime*1000 / RTIMER_SECOND);
   TEST_REPORT("Read speed", 512*BLOCKS_TO_WRITE*RTIMER_SECOND, exectime*1024, "kbyte/second");
+
+#if DISKIO_TEST_SD
+
+  // --- Multi block write
+ 
+  // refill buffer with inverse sequence to assure not only verifying single block write
+  for (i = 0; i < 512; i++) {
+    buffer[i] = 512 - i;
+  }
+
+  exectime = RTIMER_NOW();
+  diskio_write_blocks_start( info, 0, BLOCKS_TO_WRITE);
+  for(i = 0; i < BLOCKS_TO_WRITE; i++) {
+    FANCY_PROGRESS();
+    retcode = diskio_write_blocks_next( info, buffer );
+    watchdog_periodic();
+    TEST_EQUALS(retcode, DISKIO_SUCCESS);
+    //if (retcode != DISKIO_SUCCESS) {
+    //  printf("Error: retcode %d\n", retcode);
+    //}
+  }
+  diskio_write_blocks_done( info);
+  exectime = RTIMER_NOW() - exectime;
+  printf("\n");
+  //printf("Write Time (1024 blocks): %lu\n", exectime*1000 / RTIMER_SECOND);
+  TEST_REPORT("Write speed", 512*BLOCKS_TO_WRITE*RTIMER_SECOND, exectime*1024, "kbyte/second");
+
+  // --- Single block read, verify
+
+  exectime = RTIMER_NOW();
+  for(i = 0; i < BLOCKS_TO_WRITE; i++) {
+    FANCY_PROGRESS();
+    memset(buffer, 0, 512);
+    retcode = diskio_read_block( info, i, buffer ); 
+    watchdog_periodic();
+    TEST_EQUALS(retcode, DISKIO_SUCCESS);
+    //if (retcode != DISKIO_SUCCESS) {
+    //  printf("Error: retcode %d\n", retcode);
+    //}
+    uint16_t j;
+    for (j = 0; j < 512; j++) {
+      //printf("%d, %d\n", buffer[j], j & 0xFF);
+      if (buffer[j] != ((512 - j) & 0xFF)) {
+        //printf("Error: mismatch in block %d: %u != %u\n", i, buffer[j], j);
+        TEST_EQUALS(buffer[j], j);
+        break;
+      }
+    }
+  }
+  exectime = RTIMER_NOW() - exectime;
+  printf("\n");
+  //printf("Read Time (1024 blocks): %lu\n", exectime*1000 / RTIMER_SECOND);
+  TEST_REPORT("Read speed", 512*BLOCKS_TO_WRITE*RTIMER_SECOND, exectime*1024, "kbyte/second");
+
+#endif
 
   TESTS_DONE();
 
