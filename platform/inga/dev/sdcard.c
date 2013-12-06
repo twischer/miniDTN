@@ -111,10 +111,11 @@
 /** CMD55 -- APP_CMD */
 #define SDCARD_CMD55  55
 
+#define IS_ACMD       0x80
 /** ACMD23 -- SET_WR_BLK_ERASE_COUNT */
-#define SDCARD_ACMD23 23
+#define SDCARD_ACMD23 (IS_ACMD | 23)
 /** ACMD41 -- SD_SEND_OP_COND */
-#define SDCARD_ACMD41 41
+#define SDCARD_ACMD41 (IS_ACMD | 41)
 
 /* Response types */
 #define SDCARD_RESP1   0x01
@@ -497,28 +498,18 @@ sdcard_init(void)
   /* Ver2.00 or later SD Memory Card */
   } else {
 
-    uint16_t j = 0;
-    do {
-      _delay_ms(5);
-      j++;
-      /* CMD55: First part of ACMD41, Initiates a App. Spec. Cmd */
-      i = 0;
-      while ((ret = sdcard_write_cmd(SDCARD_CMD55, NULL, NULL)) != 0x01) {
-        i++;
-        if (i > 500) {
-          PRINTD("\nsdcard_init(): acmd41 timeout reached, last return value was %u", ret);
-          mspi_chip_release(MICRO_SD_CS);
-          return SDCARD_CMD_TIMEOUT;
-        }
-      }
+    i = 0;
+    /* ACMD41 payload [HCS bit set] */
+    cmd_arg = 0x40000000UL;
+    while (sdcard_write_cmd(SDCARD_ACMD41, &cmd_arg, NULL) != 0) {
+      _delay_ms(2);
 
-      if (j > 200) {
+      if (i > 200) {
         PRINTD("\nsdcard_init(): acmd41 timeout reached, last return value was %u", ret);
         mspi_chip_release(MICRO_SD_CS);
         return SDCARD_CMD_TIMEOUT;
       }
-    /* CMD41: Second part of ACMD41 */
-    } while ((sdcard_write_cmd(SDCARD_ACMD41, &acmd41_arg, NULL) != 0));
+    }
 
     /* CMD58: Gets the OCR-Register to check if card is SDSC or not */
     i = 0;
@@ -765,7 +756,6 @@ sdcard_write_multi_block_start(uint32_t addr, uint32_t num_blocks)
     /* Announce number of blocks to write to card for pre-erase
      * Note. */
     PRINTF("\nPre-erasing %ld blocks", num_blocks);
-    sdcard_write_cmd(SDCARD_CMD55, NULL, NULL);
     sdcard_write_cmd(SDCARD_ACMD23, &num_blocks, NULL);
   }
 
@@ -927,6 +917,7 @@ sdcard_busy_wait()
   return SDCARD_SUCCESS;
 }
 /*----------------------------------------------------------------------------*/
+// returns 0xFF as error code, else R1 part if available
 uint8_t
 sdcard_write_cmd(uint8_t cmd, uint32_t *arg, uint8_t *resp)
 {
@@ -936,11 +927,20 @@ sdcard_write_cmd(uint8_t cmd, uint32_t *arg, uint8_t *resp)
   uint8_t resp_type = 0x01;
   static uint8_t cmd_seq[6] = {0x40, 0x00, 0x00, 0x00, 0x00, 0xFF};
 
+  uint8_t ret;
+  /* pre-send CMD55 for ACMD */
+  if (cmd & IS_ACMD) {
+    /* Abort if response has error bit set */
+    if (((ret = sdcard_write_cmd(SDCARD_CMD55, NULL, NULL)) & 0xFE) != 0x00) {
+      return 0xFF;
+    }
+  }
+
   /* Give card chance to raise busy signal while we perform some calculations */
   mspi_transceive(MSPI_DUMMY_BYTE);
 
-  /* Add host bit to complete command */
-  cmd_seq[0] = cmd | 0x40;
+  /* (remove potential ACMD-marker, add host bit to complete command */
+  cmd_seq[0] = (cmd & ~IS_ACMD) | 0x40;
 
   if (resp != NULL) {
     resp_type = resp[0];
@@ -971,12 +971,6 @@ sdcard_write_cmd(uint8_t cmd, uint32_t *arg, uint8_t *resp)
   }
 
   /* Send the 48 command bits */
-#if DEBUG
-  PRINTF("\nSend CMD%d", cmd);
-  if (cmd == 55) {
-    PRINTF(" (->ACMD)");
-  }
-#endif
   for (i = 0; i < 6; i++) {
     mspi_transceive(*(cmd_seq + i));
   }

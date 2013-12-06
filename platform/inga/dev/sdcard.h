@@ -31,9 +31,6 @@
  * \file
  *		SD Card interface definitions
  * \author
- * 		Original Source Code:
- * 		Ulrich Radig
- * 		Modified by:
  *              Ulf Kulau <kulau@ibr.cs.tu-bs.de>
  *              Enrico Joerns <joerns@ibr.cs.tu-bs.de>
  */
@@ -46,10 +43,15 @@
 /**
  * \defgroup sdcard_interface MicroSD Card Interface
  *
- *	\note This sd-card interface is based on the work of Ulrich Radig
- *	      "Connect AVR to MMC/SD" and was a little bit modified plus
- *	      adapted to the mspi-drv
- * 
+ * This driver provides the following main features:
+ *
+ * - single block read
+ * - single block write
+ * - multi block write
+ *
+ * Note that multiple bock write is faster than single block write
+ * but only writes sequential block numbers
+ *
  * \author
  *		Christoph Peltz <peltz@ibr.cs.tu-bs.de>
  *		Enrico Joerns <joerns@ibr.cs.tu-bs.de>
@@ -73,17 +75,21 @@
  * \{ */
 /** Successfully completed operation */
 #define SDCARD_SUCCESS            0
-#define SDCARD_CMD_ERROR          1
+#define SDCARD_READ_ERROR         1
+/** Indicates the host cannot handle this card,
+ * maybe due to rejected voltage range */
+#define SDCARD_REJECTED           2
+#define SDCARD_CMD_ERROR          3
 /** Timeout while trying to send command */
-#define SDCARD_CMD_TIMEOUT        2
+#define SDCARD_CMD_TIMEOUT        4
 /** Card responds with error */
-#define SDCARD_RESP_ERROR         3
+#define SDCARD_RESP_ERROR         5
 /** Card did not send a data start byte to indicate beginning of a data block */
-#define SDCARD_DATA_TIMEOUT       4
+#define SDCARD_DATA_TIMEOUT       6
 /** Card returned error when accessing data */
-#define SDCARD_DATA_ERROR         5
+#define SDCARD_DATA_ERROR         7
 /** Busy waiting timed out */
-#define SDCARD_BUSY_TIMEOUT       6
+#define SDCARD_BUSY_TIMEOUT       8
 /** \} */
 
 
