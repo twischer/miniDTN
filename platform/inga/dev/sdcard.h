@@ -32,6 +32,7 @@
  *		SD Card interface definitions
  * \author
  *              Ulf Kulau <kulau@ibr.cs.tu-bs.de>
+ *		Christoph Peltz <peltz@ibr.cs.tu-bs.de>
  *              Enrico Joerns <joerns@ibr.cs.tu-bs.de>
  */
 
@@ -52,7 +53,10 @@
  * Note that multiple bock write is faster than single block write
  * but only writes sequential block numbers
  *
+ * \note CRC functionality is not fully implemented thus it sould not be used yet.
+ *
  * \author
+ *              Ulf Kulau <kulau@ibr.cs.tu-bs.de>
  *		Christoph Peltz <peltz@ibr.cs.tu-bs.de>
  *		Enrico Joerns <joerns@ibr.cs.tu-bs.de>
  * @{
@@ -71,27 +75,27 @@
 #define MICRO_SD_CS 					5
 
 /**
- * \name Return codes
+ * \name Interface return codes
  * \{ */
 /** Successfully completed operation */
 #define SDCARD_SUCCESS            0
-#define SDCARD_READ_ERROR         1
 /** Indicates the host cannot handle this card,
  * maybe due to rejected voltage range */
 #define SDCARD_REJECTED           2
-#define SDCARD_CMD_ERROR          3
 /** Timeout while trying to send command */
 #define SDCARD_CMD_TIMEOUT        4
-/** Card responds with error */
-#define SDCARD_RESP_ERROR         5
+/** Card sent an error response */
+#define SDCARD_CMD_ERROR          3
 /** Card did not send a data start byte to indicate beginning of a data block */
 #define SDCARD_DATA_TIMEOUT       6
-/** Card returned error when accessing data */
+/** Card returned error when trying to read or write data.
+ * Obtained from data response (write) or data error response (read) token */
 #define SDCARD_DATA_ERROR         7
-/** Busy waiting timed out */
+/** Busy waiting timed out (card held down data line too long) */
 #define SDCARD_BUSY_TIMEOUT       8
+/** Failed reading CSD register */
+#define SDCARD_CSD_ERROR          10
 /** \} */
-
 
 #define SDCARD_WRITE_COMMAND_ERROR  1
 #define SDCARD_WRITE_DATA_ERROR     2
@@ -100,16 +104,13 @@
 #define SDCARD_ERASE_END_ERR        2
 
 /**
- * \brief Powers on and initialize the sdcard / SD-Card
+ * \brief Initializes the SD Card
  *
- * \retval 0 SD-Card was initialized without an error
- * \retval 1 CMD0 failure!
- * \retval 2 CMD1 failure!
- * \retval 3 Failure reading the CSD!
- * \retval 4 CMD8 failure!
- * \retval 5 CMD16 failure!
- * \retval 6 ACMD41 failure!
- * \retval 7 CMD58 failure!
+ * \retval SDCARD_SUCCESS SD-Card was initialized without an error
+ * \retval SDCARD_CMD_ERROR
+ * \retval SDCARD_CMD_TIMEOUT 
+ * \retval SDCARD_REJECTED
+ * \retval SDCARD_CSD_ERROR
  */
 uint8_t sdcard_init(void);
 
@@ -118,8 +119,10 @@ uint8_t sdcard_init(void);
  *
  * \param *buffer Pointer to a block buffer, MUST hold at least 16 Bytes.
  *
- * \retval  0 SD-Card CSD read was successful
- * \retval  1 CMD9 failure!
+ * \retval SDCARD_SUCCESS SD-Card CSD read was successful
+ * \retval SDCARD_CMD_ERROR CMD9 failure.
+ * \retval SDCARD_DATA_TIMEOUT
+ * \retval SDCARD_DATA_ERROR
  */
 uint8_t sdcard_read_csd(uint8_t *buffer);
 
@@ -129,7 +132,8 @@ uint8_t sdcard_read_csd(uint8_t *buffer);
  * Mainly used to calculated size of the SD-Card together with
  * sdcard_get_card_block_count().
  *
- * \note Currently it's fixed at 512 Bytes.
+ * \note It's fixed at 512 Bytes.
+ *
  * \return Number of Bytes in one Block.
  */
 uint16_t sdcard_get_block_size();
@@ -163,7 +167,9 @@ uint64_t sdcard_get_card_size();
  * @return number of blocks
  */
 uint32_t sdcard_get_block_num();
+
 /**
+ * @note Not implemented
  */
 uint8_t sdcard_erase_blocks(uint32_t startaddr, uint32_t endaddr);
 
@@ -173,9 +179,11 @@ uint8_t sdcard_erase_blocks(uint32_t startaddr, uint32_t endaddr);
  * \param addr Block address
  * \param *buffer Pointer to a block buffer (needs to be as long as sdcard_get_block_size()).
  *
- * \retval 0 SD-Card block read was successful
- * \retval 1 CMD17 failure!
- * \retval 2 no start byte
+ * \retval SDCARD_SUCCESS SD-Card block read was successful
+ * \retval SDCARD_CMD_ERROR CMD17 failure
+ * \retval SDCARD_BUSY_TIMEOUT
+ * \retval SDCARD_DATA_TIMEOUT
+ * \retval SDCARD_DATA_ERROR
  */
 uint8_t sdcard_read_block(uint32_t addr, uint8_t *buffer);
 
@@ -185,8 +193,10 @@ uint8_t sdcard_read_block(uint32_t addr, uint8_t *buffer);
  * \param addr Block address
  * \param *buffer Pointer to a block buffer (needs to be as long as sdcard_get_block_size()).
  *
- * \retval 0 SD-Card block write was successful
- * \retval 1 CMD24 failure!
+ * \retval SDCARD_SUCCESS SD-Card block write was successful
+ * \retval SDCARD_CMD_ERROR CMD24 failure
+ * \retval SDCARD_BUSY_TIMEOUT
+ * \retval SDCARD_DATA_ERROR
  */
 uint8_t sdcard_write_block(uint32_t addr, uint8_t *buffer);
 
@@ -196,7 +206,9 @@ uint8_t sdcard_write_block(uint32_t addr, uint8_t *buffer);
  * \param addr Address of first block
  * \param num_blocks Number of blocks that should be written (0 means not known yet).
  *        Givin a number here could speed up writing due to possible sector pre-erase
- * @return
+ * \retval SDCARD_SUCCESS Starting mutli lock write was successful
+ * \retval SDCARD_CMD_ERROR CMD25 failure
+ * \retval SDCARD_BUSY_TIMEOUT
  */
 uint8_t sdcard_write_multi_block_start(uint32_t addr, uint32_t num_blocks);
 
@@ -204,14 +216,17 @@ uint8_t sdcard_write_multi_block_start(uint32_t addr, uint32_t num_blocks);
  * \brief Writes single of multiple sequental blocks.
  *
  * \param buffer
- * \retval 0 successfull
+ * \retval SDCARD_SUCCESS Successfully wrote block
+ * \retval SDCARD_BUSY_TIMEOUT
+ * \retval SDCARD_DATA_ERROR
  */
 uint8_t sdcard_write_multi_block_next(uint8_t *buffer);
 
 /**
  * \brief Stops multiple block write.
  * 
- * \retval 0 successfull
+ * \retval SDCARD_SUCCESS successfull
+ * \retval SDCARD_BUSY_TIMEOUT
  */
 uint8_t sdcard_write_multi_block_stop();
 
