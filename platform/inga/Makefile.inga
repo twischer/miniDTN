@@ -189,9 +189,6 @@ motes:
 reset:
 ifeq ($(UNAME), Linux)
 	@make -C $(CONTIKI)/tools/inga/inga_tool
-else
-	$(warning resetting not supported)
-endif  
 	@echo MOTES: $(MOTES)
 	@$(foreach PORT, \
 	  $(MOTES), \
@@ -200,6 +197,9 @@ endif
 	  fi;)
 	@wait $!
 	@echo Waiting 0.5s; sleep 0.5
+else
+	$(warning resetting not supported)
+endif
 
 
 login:
