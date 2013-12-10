@@ -55,6 +55,12 @@
 #define PRINTF(...)
 #endif
 
+/* specifies divisor of fat size to erase during mkfs, because erasing the whole FAT
+ * may take some time.
+ * e.g. FAT_ERASE_DIV set to 4 means 1/4 of the fat will be erased.
+ */
+#define FAT_ERASE_DIV 2
+
 
 static int mkfs_write_boot_sector(uint8_t *buffer, struct diskio_device_info *dev, struct FAT_Info *fi);
 static void mkfs_write_fats(uint8_t *buffer, struct diskio_device_info *dev, struct FAT_Info *fi);
@@ -440,10 +446,14 @@ mkfs_write_fats(uint8_t *buffer, struct diskio_device_info *dev, struct FAT_Info
   memset(buffer, 0x00, 12);
 
   // Write additional Sectors of the FATs
-  //  for (i = 1; i < fi->BPB_FATSz; ++i) {
-  for (i = 1; i < 128; ++i) {// only reset the first 128 sectors
-    diskio_write_block(dev, fi->BPB_RsvdSecCnt + i, buffer);
+  diskio_write_blocks_start(dev, fi->BPB_RsvdSecCnt + 1, fi->BPB_FATSz / 2);
+  for (i = 1; i < fi->BPB_FATSz / FAT_ERASE_DIV; ++i) {
+    watchdog_periodic();
+    diskio_write_blocks_next(dev, buffer);
+    //diskio_write_block(dev, fi->BPB_RsvdSecCnt + i, buffer);
   }
+  diskio_write_blocks_done(dev);
+
 #if FAT_SYNC
   // Write additional Sectors of the secondary FAT(s)
   for (j = 1; j < fi->BPB_NumFATs; ++j) {
