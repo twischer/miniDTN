@@ -481,7 +481,7 @@ write_fat_entry(uint32_t cluster_num, uint32_t value)
   read_sector(fat_sec_num);
   PRINTF("\nfat.c: write_fat_entry( cluster_num = %lu, value = %lu ) = void", cluster_num, value);
 
-  /* Write value to sector buffer and set dirty flag */
+  /* Write value to sector buffer and set dirty flag (little endian) */
   if (mounted.info.type == FAT16) {
     sector_buffer[ent_offset + 1] = (uint8_t) (value >> 8);
     sector_buffer[ent_offset] = (uint8_t) (value);
@@ -628,7 +628,7 @@ cfs_fat_flush()
 
   PRINTF("\nfat.c: fat_flush(): Flushing sector %lu", sector_buffer_addr);
   if (diskio_write_block(mounted.dev, sector_buffer_addr, sector_buffer) != DISKIO_SUCCESS) {
-    PRINTF("\nfat.c: fat_flush(): DiskIO-Error occured");
+    PRINTERROR("\nfat.c: fat_flush(): DiskIO-Error occured");
   }
 
   sector_buffer_dirty = 0;
@@ -643,7 +643,7 @@ static uint8_t
 read_sector(uint32_t sector_addr)
 {
   if (sector_buffer_addr == sector_addr && sector_addr != 0) {
-    PRINTF("\nfat.c: fat_read_sector( sector_addr = %lu ) = 0", sector_addr);
+    PRINTF("\nfat.c: fat_read_sector( sector_addr = 0x%lX ) = 0", sector_addr);
     return 0;
   }
 
@@ -661,12 +661,12 @@ read_sector(uint32_t sector_addr)
 #endif
 
   if (diskio_read_block(mounted.dev, sector_addr, sector_buffer) != 0) {
-    PRINTERROR("\nfat.c: Error while reading sector %ld", sector_addr);
+    PRINTERROR("\nfat.c: Error while reading sector 0x%lX", sector_addr);
     sector_buffer_addr = 0;
     return 1;
   }
 
-  PRINTF("\nfat.c: read_sector( sector_addr = %lu ) = 0", sector_addr);
+  PRINTF("\nfat.c: read_sector( sector_addr = 0x%lX ) = 0", sector_addr);
   return 0;
 }
 /*----------------------------------------------------------------------------*/
@@ -933,12 +933,12 @@ void
 cfs_close(int fd)
 {
   if (fd < 0 || fd >= FAT_FD_POOL_SIZE) {
-    PRINTF("\nfat.c: cfs_close: Invalid fd");
+    PRINTERROR("\nfat.c: cfs_close: Invalid fd");
     return;
   }
 
   if (fat_fd_pool[fd].file == NULL) {
-    PRINTF("\nfat.c: cfs_close: file not found\n");
+    PRINTERROR("\nfat.c: cfs_close: file not found\n");
     return;
   }
 
@@ -1328,7 +1328,7 @@ remove_dir_entry(uint32_t dir_entry_sector, uint16_t dir_entry_offset)
 {
   PRINTF("\nfat.c: remove_dir_entry( dir_entry_sector = %lu, dir_entry_offset = %u ) = void ", dir_entry_sector, dir_entry_offset);
   if (read_sector(dir_entry_sector) != 0) {
-    PRINTF("\nfat.c: remove_dir_entry(): error reading the sector containing the directory entry");
+    PRINTERROR("\nfat.c: remove_dir_entry(): error reading the sector containing the directory entry");
     return;
   }
 
