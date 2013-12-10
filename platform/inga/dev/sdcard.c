@@ -207,17 +207,17 @@ static void
 print_r1_resp(uint8_t cmd, uint8_t rsp) {
   /* everything might be ok */
   if (rsp == 0x00) {
-    PRINTF("\nCMD%d: ", cmd);
+    PRINTF("\nCMD%d: ", cmd & ~IS_ACMD);
     PRINTF("\n\tOk");
     return;
   /* idle is not really critical */
   } else if (rsp == SD_R1_IN_IDLE_STATE) {
-    PRINTF("\nCMD%d: ", cmd);
+    PRINTF("\nCMD%d: ", cmd & ~IS_ACMD);
     PRINTF("\n\tIdle");
     return;
   /* let us see what kind of error(s) we have */
   } else {
-    PRINTD("\nCMD%d: ", cmd);
+    PRINTD("\nCMD%d: ", cmd & ~IS_ACMD);
     if (rsp & SD_R1_IN_IDLE_STATE) {
       PRINTD("\n\tIdle");
     }
@@ -550,7 +550,7 @@ sdcard_init(void)
   /* CMD0 with CS asserted enables SPI mode.
    * Note: Card may hold line low until fully initialized */
   i = 0;
-  while ((ret = sdcard_write_cmd(SDCARD_CMD0, NULL, NULL)) != 0x01) {
+  while ((ret = sdcard_write_cmd(SDCARD_CMD0, NULL, NULL)) != SD_R1_IN_IDLE_STATE) {
     i++;
     if (i > 200) {
       mspi_chip_release(MICRO_SD_CS);
@@ -565,7 +565,7 @@ sdcard_init(void)
   /* CMD8 payload [ 01 = voltage supplied (2.7-3.6V), 0xAA = any check-pattern ] */
   cmd_arg = 0x000001AAUL;
   resp[0] = SDCARD_RESP7;
-  while ((ret = sdcard_write_cmd(SDCARD_CMD8, &cmd_arg, resp)) != 0x01) {
+  while ((ret = sdcard_write_cmd(SDCARD_CMD8, &cmd_arg, resp)) != SD_R1_IN_IDLE_STATE) {
     if ((ret & SD_R1_ILLEGAL_CMD) && ret != 0xFF) {
       PRINTF("\nsdcard_init(): cmd8 not supported -> Ver1.X or no SD Memory Card");
       break;
@@ -577,15 +577,19 @@ sdcard_init(void)
       return SDCARD_CMD_TIMEOUT;
     }
   }
-  // check voltage 
-  if (resp[3] != ((uint8_t) (cmd_arg >> 8) & 0x0F)) {
-    printf("\nVoltage not accepted");
-    return SDCARD_REJECTED;
-  }
-  // check echo-back pattern
-  if (resp[4] != ((uint8_t) (cmd_arg & 0xFF))) {
-    printf("\nEcho-back pattern wrong, sent %02x, rec: %02x", (uint8_t) (cmd_arg & 0xFF), resp[4]);
-    return SDCARD_CMD_ERROR;
+  /* Check response payload in case of accepted response */
+  if (ret == SD_R1_IN_IDLE_STATE) {
+    // check voltage 
+    if (resp[3] != ((uint8_t) (cmd_arg >> 8) & 0x0F)) {
+      printf("\nsdcard_init(): Voltage not accepted");
+      return SDCARD_REJECTED;
+    }
+    // check echo-back pattern
+    if (resp[4] != ((uint8_t) (cmd_arg & 0xFF))) {
+      printf("\nsdcard_init(): Echo-back pattern wrong, sent %02x, rec: %02x",
+          (uint8_t) (cmd_arg & 0xFF), resp[4]);
+      return SDCARD_CMD_ERROR;
+    }
   }
 
   /* Illegal command -> Ver 1.X SD Memory Card or Not SD Memory Card*/
@@ -622,6 +626,7 @@ sdcard_init(void)
     /* ACMD41 payload [HCS bit set] */
     cmd_arg = 0x40000000UL;
     while (sdcard_write_cmd(SDCARD_ACMD41, &cmd_arg, NULL) != 0) {
+      i++;
       _delay_ms(2);
 
       if (i > 200) {
