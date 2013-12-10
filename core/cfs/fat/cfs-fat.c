@@ -803,6 +803,7 @@ parse_bootsector(uint8_t *buffer, struct FAT_Info *info)
   return ret;
 }
 /*----------------------------------------------------------------------------*/
+#define DIR_ENTRY_SIZE  32
 uint8_t
 cfs_fat_mount_device(struct diskio_device_info *dev)
 {
@@ -831,8 +832,8 @@ cfs_fat_mount_device(struct diskio_device_info *dev)
   //Addendum: Takes so frigging long to do that
   //fat_sync_fats();
 
-  //Calculated the first_data_sector
-  RootDirSectors = ((mounted.info.BPB_RootEntCnt * 32) + (mounted.info.BPB_BytesPerSec - 1)) / mounted.info.BPB_BytesPerSec;
+  //Calculated the first_data_sector (Note: BPB_RootEntCnt is 0 for FAT32)
+  RootDirSectors = ((mounted.info.BPB_RootEntCnt * DIR_ENTRY_SIZE) + (mounted.info.BPB_BytesPerSec - 1)) / mounted.info.BPB_BytesPerSec;
   mounted.first_data_sector = mounted.info.BPB_RsvdSecCnt + (mounted.info.BPB_NumFATs * mounted.info.BPB_FATSz) + RootDirSectors;
 
   return 0;
