@@ -12,6 +12,7 @@
 /*--- Test parameters ---*/
 #define FAT_TEST_CONF_NUM_FILES     15
 #define FAT_TEST_CONF_BUF_SIZE      1024
+#define FAT_TEST_CONF_MANY_FILES    128
 /*--- ---*/
 uint32_t file_sizes[FAT_TEST_CONF_NUM_FILES] = {127, 128, 511, 512, 1023, 1024, 4095, 4096, 12345, 16383, 16384, 32767, 32768U, 65535UL, 65536UL};
 uint8_t file_inits[FAT_TEST_CONF_NUM_FILES] = {5, 12, 80, 3, 76, 13, 123, 42, 23, 200, 255, 7, 99, 12, 77, 31};
@@ -166,6 +167,69 @@ test_cfs_remove()
   printf("\n");
 }
 /*---------------------------------------------------------------------------*/
+void
+test_cfs_write_many_files()
+{
+  int idx;
+  char fnamebuf[12];
+
+  // Write test files....
+  for (idx = 0; idx < FAT_TEST_CONF_MANY_FILES; idx++) {
+    sprintf(fnamebuf, "test%03d.dat", idx);
+    write_test_bytes(fnamebuf, 127, idx);
+  }
+  printf("\n");
+}
+/*---------------------------------------------------------------------------*/
+void
+test_cfs_seek_many()
+{
+  int idx;
+  char fnamebuf[12];
+  // Test file size
+  for (idx = 0; idx < FAT_TEST_CONF_MANY_FILES; idx++) {
+    sprintf(fnamebuf, "test%03d.dat", idx);
+    TEST_EQUALS(get_file_size(fnamebuf), 127);
+  }
+  printf("\n");
+}
+/*---------------------------------------------------------------------------*/
+void
+test_cfs_read_many_files()
+{
+  int idx;
+  char fnamebuf[12];
+
+  // Test file content
+  for (idx = 0; idx < FAT_TEST_CONF_MANY_FILES; idx++) {
+    sprintf(fnamebuf, "test%03d.dat", idx);
+    read_test_bytes(fnamebuf, 127, idx);
+  }
+  printf("\n");
+}
+/*---------------------------------------------------------------------------*/
+void
+test_cfs_remove_many()
+{
+  int idx;
+  char fnamebuf[12];
+
+  // Test file remove
+  for (idx = 0; idx < FAT_TEST_CONF_MANY_FILES; idx++) {
+    sprintf(fnamebuf, "test%03d.dat", idx);
+
+    TEST_CODE();
+
+    TEST_EQUALS(cfs_remove(fnamebuf), 0);
+    PRINTD("Removed file %s\n", fnamebuf);
+
+    TEST_POST();
+
+    TEST_NEQ(cfs_open(fnamebuf, CFS_READ), 0);
+  }
+  printf("\n");
+}
+/*---------------------------------------------------------------------------*/
 /* Writes exactly size bytes of data to file. */
 void
 write_test_bytes(const char* name, uint32_t size, uint8_t fill_offset)
@@ -204,7 +268,7 @@ write_test_bytes(const char* name, uint32_t size, uint8_t fill_offset)
 
     wsize += n;
 
-    PRINTD("%ld left\n", to_write);
+    //PRINTD("%ld left\n", to_write);
   } while (to_write > 0);
 
   TEST_EQUALS(wsize, size);
@@ -225,7 +289,7 @@ get_file_size(const char* name)
   // NOTE: we need a delay here, otherwise test will fail!
   // Reason might be sd card access timing 
   // @TODO: check this!
-  _delay_ms(10);
+  //_delay_ms(10);
 
   // check file size
   unsigned long read_size = cfs_seek(fd, 0L, CFS_SEEK_END) + 1;
@@ -275,7 +339,7 @@ read_test_bytes(const char* name, uint32_t size, uint8_t fill_offset)
     wsize += n;
 
     //    printf(".");
-    PRINTD("%ld left\n", to_read);
+    //PRINTD("%ld left\n", to_read);
   } while (n == buffer_size);
 
   TEST_REPORT("Bytes read from file", wsize, 1, "bytes");
@@ -300,6 +364,10 @@ PROCESS_THREAD(test_process, ev, data)
   RUN_TEST("cfs_seek", test_cfs_seek);
   RUN_TEST("cfs_read_files", test_cfs_read_files);
   RUN_TEST("test_cfs_remove", test_cfs_remove);
+  RUN_TEST("cfs_write_many_files", test_cfs_write_many_files);
+  RUN_TEST("test_cfs_seek_many", test_cfs_seek_many);
+  RUN_TEST("test_cfs_read_many_files", test_cfs_read_many_files);
+  RUN_TEST("test_cfs_remove_many", test_cfs_remove_many);
   
   TESTS_DONE();
 
