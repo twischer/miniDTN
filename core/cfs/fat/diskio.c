@@ -286,7 +286,7 @@ diskio_rw_op(struct diskio_device_info *dev, uint32_t block_start_address, uint3
         // fake multi block write
         case DISKIO_OP_WRITE_BLOCKS_START:
           if (multi_block_nr != 0) {
-            return DISKIO_ERROR_INTERNAL_ERROR
+            return DISKIO_ERROR_INTERNAL_ERROR;
           }
           multi_block_nr = block_start_address;
           return DISKIO_SUCCESS;
