@@ -138,6 +138,8 @@ diskio_write_blocks_done(struct diskio_device_info *dev)
 static int
 diskio_rw_op(struct diskio_device_info *dev, uint32_t block_start_address, uint32_t num_blocks, uint8_t *buffer, uint8_t op)
 {
+  static uint32_t multi_block_nr = 0;
+
   if (dev == NULL) {
     if (default_device == 0) {
       PRINTF("\nNo default device");
@@ -281,14 +283,21 @@ diskio_rw_op(struct diskio_device_info *dev, uint32_t block_start_address, uint3
           FLASH_WRITE_BLOCK(block_start_address, 0, buffer, 512);
           return DISKIO_SUCCESS;
           break;
+        // fake multi block write
         case DISKIO_OP_WRITE_BLOCKS_START:
-          return DISKIO_ERROR_TO_BE_IMPLEMENTED;
+          if (multi_block_nr != 0) {
+            return DISKIO_ERROR_INTERNAL_ERROR
+          }
+          multi_block_nr = block_start_address;
+          return DISKIO_SUCCESS;
           break;
         case DISKIO_OP_WRITE_BLOCKS_NEXT:
-          return DISKIO_ERROR_TO_BE_IMPLEMENTED;
-          break;
+          FLASH_WRITE_BLOCK(multi_block_nr, 0, buffer, 512);
+          multi_block_nr++;
+          return DISKIO_SUCCESS;
         case DISKIO_OP_WRITE_BLOCKS_DONE:
-          return DISKIO_ERROR_TO_BE_IMPLEMENTED;
+          multi_block_nr = 0;
+          return DISKIO_SUCCESS;
           break;
         default:
           return DISKIO_ERROR_OPERATION_NOT_SUPPORTED;
