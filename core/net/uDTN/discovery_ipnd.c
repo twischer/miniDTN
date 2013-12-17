@@ -162,22 +162,54 @@ uint8_t discovery_ipnd_parse_eid(uint32_t * eid, uint8_t * buffer, uint8_t lengt
 }
 
 /**
- * \brief Dummy function that could parse the IPND service block
+ * \brief Function that could parse the IPND service block
  * \param buffer Pointer to the block
  * \param length Length of the block
- * \return dummy
+ * \return the number of decoded bytes
  */
-uint8_t discovery_ipnd_parse_service_block(uint8_t * buffer, uint8_t length) {
-	return 0;
+uint8_t discovery_ipnd_parse_service_block(uint32_t eid, uint8_t * buffer, uint8_t length) {
+	uint32_t offset, num_services, i, sdnv_len, tag_len, data_len;
+	uint8_t *tag_buf;
+
+	// decode the number of services
+	sdnv_len = sdnv_decode(buffer, length, &num_services);
+	offset = sdnv_len;
+	buffer += sdnv_len;
+
+	// iterate through all services
+	for (i = 0; num_services > i; ++i) {
+		// decode service tag length
+		sdnv_len = sdnv_decode(buffer, length - offset, &tag_len);
+		offset += sdnv_len;
+		buffer += sdnv_len;
+
+		// decode service tag string
+		tag_buf = buffer;
+		offset += tag_len;
+		buffer += tag_len;
+
+		// decode service content length
+		sdnv_len = sdnv_decode(buffer, length - offset, &data_len);
+		offset += sdnv_len;
+		buffer += sdnv_len;
+
+		// TODO: insert service block parsing here
+
+		offset += data_len;
+		buffer += data_len;
+	}
+
+	return offset;
 }
 
 /**
  * \brief Dummy function that could parse the IPND bloom filter
+ * \param eid The endpoint which broadcasted this bloomfilter
  * \param buffer Pointer to the filter
  * \param length Length of the filter
  * \return dummy
  */
-uint8_t discovery_ipnd_parse_bloomfilter(uint8_t * buffer, uint8_t length) {
+uint8_t discovery_ipnd_parse_bloomfilter(uint32_t eid, uint8_t * buffer, uint8_t length) {
 	return 0;
 }
 
@@ -226,11 +258,11 @@ void discovery_ipnd_receive(rimeaddr_t * source, uint8_t * payload, uint8_t leng
 	}
 
 	if( flags & IPND_FLAGS_SERVICE_BLOCK ) {
-		offset += discovery_ipnd_parse_service_block(&payload[offset], length - offset);
+		offset += discovery_ipnd_parse_service_block(eid, &payload[offset], length - offset);
 	}
 
 	if( flags & IPND_FLAGS_BLOOMFILTER ) {
-		offset += discovery_ipnd_parse_bloomfilter(&payload[offset], length - offset);
+		offset += discovery_ipnd_parse_bloomfilter(eid, &payload[offset], length - offset);
 	}
 
 	LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "Discovery from %u.%u (ipn:%lu) with flags %02X and seqNo %u", source->u8[0], source->u8[1], eid, flags, sequenceNumber);
