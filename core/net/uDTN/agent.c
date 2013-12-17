@@ -37,6 +37,7 @@
 #include "statistics.h"
 #include "convergence_layer.h"
 #include "hash.h"
+#include "system_clock.h"
 
 #include "agent.h"
 
@@ -72,6 +73,7 @@ PROCESS_THREAD(agent_process, ev, data)
 	PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL);
 
 	mmem_init();
+	udtn_clock_init();
 	convergence_layer_init();
 	BUNDLE_STORAGE.init();
 	REDUNDANCE.init();
