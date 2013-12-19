@@ -269,19 +269,7 @@ void discovery_ipnd_send() {
 	 * Add static Service block
 	 */
 	// We have one static service
-	ipnd_buffer[offset++] = 1; // Number of services
-
-	// The service is called DISCOVERY_IPND_SERVICE
-	len = sprintf(string_buffer, DISCOVERY_IPND_SERVICE);
-	offset += sdnv_encode(len, &ipnd_buffer[offset], DISCOVERY_IPND_BUFFER_LEN - offset);
-	memcpy(&ipnd_buffer[offset], string_buffer, len);
-	offset += len;
-
-	// We exploit ip and port here
-	len = sprintf(string_buffer, "ip=%lu;port=%u;", dtn_node_id, IEEE802154_PANID);
-	offset += sdnv_encode(len, &ipnd_buffer[offset], DISCOVERY_IPND_BUFFER_LEN - offset);
-	memcpy(&ipnd_buffer[offset], string_buffer, len);
-	offset += len;
+	ipnd_buffer[offset++] = 0; // Number of services
 
 	// Now: Send it
 	rimeaddr_t destination = {{0, 0}}; // Broadcast
