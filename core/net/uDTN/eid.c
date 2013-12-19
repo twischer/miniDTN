@@ -56,7 +56,7 @@ int eid_parse_host_length(uint8_t * buffer, uint8_t length, uint32_t * node_id)
 		return -1;
 	}
 
-	return sdnv_length + ret;
+	return sdnv_length + eid_length;
 }
 
 int eid_parse_ssp(char * buffer, uint8_t length, uint32_t * node_id, uint32_t * service_id)
