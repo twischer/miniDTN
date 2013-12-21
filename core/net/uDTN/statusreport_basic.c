@@ -26,6 +26,7 @@
 #include "api.h"
 #include "administrative_record.h"
 #include "eid.h"
+#include "system_clock.h"
 
 #include "statusreport.h"
 
@@ -187,6 +188,7 @@ uint8_t statusreport_basic_send(struct mmem * bundlemem, uint8_t status, uint8_t
 	status_report_t report;
 	uint8_t buffer[BUFFER_LENGTH];
 	int ret;
+	struct udtn_timeval tv;
 
 	// Check if we really should send a report
 	bundle_get_attr(bundlemem, FLAGS, &bundle_flags);
@@ -201,9 +203,10 @@ uint8_t statusreport_basic_send(struct mmem * bundlemem, uint8_t status, uint8_t
 	report.status_flags = status;
 	report.reason_code = reason;
 
-	// FIXME: the time stored here is badly broken but we do not have any better solution ATM
-	report.dtn_time_seconds = clock_seconds();
-	report.dtn_time_nanoseconds = 0;
+	// use system time as reported time
+	udtn_gettimeofday(&tv);
+	report.dtn_time_seconds = tv.tv_sec;
+	report.dtn_time_nanoseconds = tv.tv_usec * 1000;
 
 	// Collect all necessary information to fill out the report
 	bundle_get_attr(bundlemem, SRC_NODE, &report.source_eid_node);
