@@ -94,7 +94,7 @@ void discovery_simple_receive(rimeaddr_t * source, uint8_t * payload, uint8_t le
 
 #ifdef DTN_DISCOVERY_SIMPLE_CONF_TH
     // TH -- throttle discovery when neigbour found
-    discovery_simple_enabled = 0;
+    //discovery_simple_enabled = 0;
 #endif /* DTN_DISCOVERY_SIMPLE_CONF_TH */
 
 
@@ -155,11 +155,15 @@ void discovery_simple_send_discover() {
 
 #ifdef DTN_DISCOVERY_SIMPLE_CONF_FC
   // FC -- Flow Control. Only send discover when we have bundle space left
-  if (discovery_simple_enabled && BUNDLE_STORAGE.free_space(NULL) > 0) {
-#else
-  if (discovery_simple_enabled) {
+  if (BUNDLE_STORAGE.free_space(NULL) < 0) return;
 #endif /* DTN_DISCOVERY_SIMPLE_CONF_FC */
 
+#ifdef DTN_DISCOVERY_SIMPLE_CONF_TH
+  // TH -- throttle discovery when neigbour found
+  if (list_length(neighbour_list)) return;
+#endif /* DTN_DISCOVERY_SIMPLE_CONF_FC */
+
+  if (discovery_simple_enabled) {
     rimeaddr_t br_dest = { { 0, 0 } };
     LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "send discover..");
 

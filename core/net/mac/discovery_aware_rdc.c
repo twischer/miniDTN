@@ -153,7 +153,7 @@ send_packet(mac_callback_t sent, void *ptr)
   } else {
 
 #if DISCOVERY_AWARE_RDC_802154_AUTOACK
-	int is_broadcast;
+    int is_broadcast;
     uint8_t dsn;
     dsn = ((uint8_t *)packetbuf_hdrptr())[2] & 0xff;
 
@@ -288,12 +288,15 @@ packet_input(void)
 #endif /* DISCOVERY_AWARE_RDC_802154_AUTOACK */
 
 #ifdef DISCOVERY_AWARE_RDC_CONF_DYNAMIC_TIMEOUT
-    to_modifier <<= 1;
+    if (!rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_RECEIVER), &rimeaddr_null)) {
+      to_modifier <<= 1;
+    } else {
+      to_modifier++;
+    }
 #endif /* DISCOVERY_AWARE_RDC_CONF_DYNAMIC_TIMEOUT */
 
 
-    rimeaddr_t br_addr = {{0, 0}}; // Broadcast
-    if (!rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_RECEIVER), &br_addr)) {
+    if (!rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_RECEIVER), &rimeaddr_null)) {
       rec_flag = 1;
     }
 
