@@ -42,11 +42,6 @@ ifeq ($(UIP_CONF_IPV6),1)
   CFLAGS += -DWITH_UIP6=1
 endif
 
-# Enable DTN support
-ifeq ($(CONF_DTN),1)
-  CFLAGS += -DWITH_DTN=1
-endif
-
 # Enable settings manager
 CFLAGS += -DCONTIKI_CONF_SETTINGS_MANAGER=1
 
