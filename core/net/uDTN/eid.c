@@ -33,6 +33,7 @@ int eid_parse_host(char * buffer, uint8_t length, uint32_t * node_id)
 	/* Extract the node part of the EID */
 	*node_id = atoi(&buffer[4]);
 
+	/* FIXME: Strings are not null-terminated, strlen does not work */
 	return strlen(buffer);
 }
 
