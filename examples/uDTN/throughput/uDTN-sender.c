@@ -124,8 +124,8 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 
 #ifndef WAITING_TIME
 	/* Wait until a neighbour has been discovered */
-	printf("Waiting for neighbour to appear...\n");
 	destination = convert_eid_to_rime(CONF_SEND_TO_NODE);
+	printf("Waiting for neighbour %u (or %u.%u) to appear...\n", CONF_SEND_TO_NODE, destination.u8[0], destination.u8[1]);
 	while( !DISCOVERY.is_neighbour(&destination) ) {
 		PROCESS_PAUSE();
 	}
