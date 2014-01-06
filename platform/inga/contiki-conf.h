@@ -185,24 +185,7 @@ unsigned long clock_seconds(void);
 /*
  * Network stack setup.
  */
-#if WITH_DTN
-#define NETSTACK_CONF_NETWORK     dtn_network_driver
-#define NETSTACK_CONF_MAC         csma_driver
-#define NETSTACK_CONF_RDC         nullrdc_driver 
-#define NETSTACK_CONF_FRAMER      framer_802154
-#define NETSTACK_CONF_RADIO       rf230_driver
-
-#define RIMEADDR_CONF_SIZE        2
-
-#define CHANNEL_802_15_4          26
-#define RF230_CONF_AUTOACK        1
-#define SICSLOWPAN_CONF_ACK_ALL   0
-#define RF230_CONF_AUTORETRIES    2
-#ifndef QUEUEBUF_CONF_NUM
-#define QUEUEBUF_CONF_NUM         16
-#endif
-
-#elif WITH_UIP6 /* WITH_DTN */
+#if WITH_UIP6
 #define NETSTACK_CONF_NETWORK     sicslowpan_driver
 #define NETSTACK_CONF_MAC         nullmac_driver
 #define NETSTACK_CONF_RDC         nullrdc_driver
@@ -217,7 +200,7 @@ unsigned long clock_seconds(void);
 //#define UIP_CONF_IPV6_RPL       0
 #define SICSLOWPAN_CONF_COMPRESSION SICSLOWPAN_COMPRESSION_HC06
 
-#else /* WITH_DTN */
+#else /* WITH_UIP6 */
 /* ip4 should build but is largely untested */
 #define NETSTACK_CONF_NETWORK     rime_driver
 #define NETSTACK_CONF_MAC         nullmac_driver
@@ -227,7 +210,7 @@ unsigned long clock_seconds(void);
 
 #define RIMEADDR_CONF_SIZE        2
 
-#endif /* WITH_DTN */
+#endif /* WITH_UIP6 */
 
 #ifdef WITH_UIP6
 #define UIP_CONF_IPV6             1
@@ -235,8 +218,6 @@ unsigned long clock_seconds(void);
 #define UIP_CONF_IPV6_QUEUE_PKT   1
 #define UIP_CONF_IPV6_REASSEMBLY  0
 #endif /* WITH_UIP6 */
-
-#ifndef WITH_DTN
 
 #define CHANNEL_802_15_4          26
 #define RADIO_CONF_CALIBRATE_INTERVAL 256
@@ -303,8 +284,6 @@ unsigned long clock_seconds(void);
 #else /* RADIO_CONF_TX_POWER */
 	#define RADIO_TX_POWER	RADIO_CONF_TX_POWER
 #endif /* RADIO_CONF_TX_POWER */
-
-#endif   /* Network setup */
 
 /* Logging adds 200 bytes to program size */
 #define LOG_CONF_ENABLED         1
