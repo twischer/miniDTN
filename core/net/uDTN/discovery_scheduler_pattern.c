@@ -4,7 +4,7 @@
  */
 
 /**
- * \defgroup discovery_pattern Pattern discovery scheduler module
+ * \defgroup discovery_scheduler_pattern Pattern discovery scheduler module
  *
  * @{
  */
@@ -26,8 +26,8 @@
 /**
  * Discovery Timeslot Length in Seconds
  */
-#ifdef DTN_DISCO_TIMESLOT_LENGTH_CONF
-#define DTN_DISCO_TIMESLOT_LENGTH DTN_DISCO_TIMESLOT_LENGTH_CONF
+#ifdef DTN_DISCO_CONF_TIMESLOT_LENGTH
+#define DTN_DISCO_TIMESLOT_LENGTH DTN_DISCO_CONF_TIMESLOT_LENGTH
 #else
 #define DTN_DISCO_TIMESLOT_LENGTH 1
 #endif
@@ -89,7 +89,7 @@ void discovery_scheduler_pattern_func(void * ptr)
 
 void discovery_scheduler_pattern_set_schedule_index(uint8_t index) {
   if (index != schedule_index) {
-    printf("Schedule index WAS: %u      IS: %u\n", schedule_index, index);
+    LOG(LOGD_DTN, LOG_DISCOVERY_SCHEDULER, LOGL_DBG, "Schedule index WAS: %u      IS: %u", schedule_index, index);
     schedule_index = index;
   }
 }

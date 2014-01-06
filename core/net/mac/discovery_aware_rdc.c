@@ -57,8 +57,6 @@
 #define PRINTF(...)
 #endif
 
-#define DISCOVERY_AWARE_RDC_CLEAR_NEIGHBOURS
-
 
 #ifdef DISCOVERY_AWARE_RDC_CONF_ADDRESS_FILTER
 #define DISCOVERY_AWARE_RDC_ADDRESS_FILTER DISCOVERY_AWARE_RDC_CONF_ADDRESS_FILTER
@@ -109,13 +107,13 @@ struct seqno {
 static struct seqno received_seqnos[MAX_SEQNOS];
 #endif /* DISCOVERY_AWARE_RDC_802154_AUTOACK || DISCOVERY_AWARE_RDC_802154_AUTOACK_HW */
 
-#ifndef RADIO_OFF_TIMEOUT
+#ifndef DISCOVERY_AWARE_RDC_CONF_RADIO_OFF_TIMEOUT
 #define RADIO_OFF_SEND_TIMEOUT 0.1
 #define RADIO_OFF_REC_TIMEOUT 0.1
 #else
-#define RADIO_OFF_SEND_TIMEOUT RADIO_OFF_TIMEOUT
-#define RADIO_OFF_REC_TIMEOUT RADIO_OFF_TIMEOUT
-#endif
+#define RADIO_OFF_SEND_TIMEOUT DISCOVERY_AWARE_RDC_CONF_RADIO_OFF_TIMEOUT
+#define RADIO_OFF_REC_TIMEOUT DISCOVERY_AWARE_RDC_CONF_RADIO_OFF_TIMEOUT
+#endif /* DISCOVERY_AWARE_RDC_CONF_RADIO_OFF_TIMEOUT */
 
 PROCESS(discovery_aware_rdc_process, "DISCOVERY_AWARE_RDC process");
 
@@ -127,9 +125,11 @@ static uint8_t radio_status;
 static volatile uint8_t send_lock=0;
 static volatile uint8_t rec_lock=0;
 
-#ifdef DISCOVERY_AWARE_RDC_DYNAMIC_TIMEOUT
 static uint16_t to_modifier = 1;
-#endif
+
+// Enable CLEAR NEIGHBOURS
+#define DISCOVERY_AWARE_RDC_CONF_CLEAR_NEIGHBOURS
+
 
 static int on(void);
 static int off(int);
@@ -239,12 +239,14 @@ send_packet(mac_callback_t sent, void *ptr)
 #endif /* ! DISCOVERY_AWARE_RDC_802154_AUTOACK */
   }
 
+
+#ifdef DISCOVERY_AWARE_RDC_CONF_DYNAMIC_TIMEOUT
   if (!rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_RECEIVER), &rimeaddr_null)
-        &&  ret == MAC_TX_OK) {
-#ifdef DISCOVERY_AWARE_RDC_DYNAMIC_TIMEOUT
+          &&  ret == MAC_TX_OK) {
     to_modifier<<=1;
-#endif
   }
+#endif /* DISCOVERY_AWARE_RDC_CONF_DYNAMIC_TIMEOUT */
+
 
   if (!send_lock) {
     send_lock = 1;
@@ -293,9 +295,9 @@ packet_input(void)
                   packetbuf_addr(PACKETBUF_ADDR_SENDER));
 #endif /* DISCOVERY_AWARE_RDC_802154_AUTOACK */
 
-#ifdef DISCOVERY_AWARE_RDC_DYNAMIC_TIMEOUT
-    to_modifier<<=1;
-#endif
+#ifdef DISCOVERY_AWARE_RDC_CONF_DYNAMIC_TIMEOUT
+    to_modifier <<= 1;
+#endif /* DISCOVERY_AWARE_RDC_CONF_DYNAMIC_TIMEOUT */
 
     if (!rec_lock) {
       rimeaddr_t br_addr = {{0, 0}}; // Broadcast
@@ -327,7 +329,7 @@ off(int keep_radio_on)
     return NETSTACK_RADIO.on();
   } else {
     radio_status = 0;
-    //PRINTF("DISCOVERY_AWARE_RDC: Radio OFF\n");
+    PRINTF("RDC: Radio OFF\n");
     return NETSTACK_RADIO.off();
   }
 }
@@ -365,69 +367,45 @@ PROCESS_THREAD(discovery_aware_rdc_process, ev, data)
     if (dtn_disco_stop_event == ev) {
       PRINTF("RDC: received STOP event\n");
       radio_may_be_turned_off = 1;
-
-#ifdef DISCOVERY_AWARE_RDC_DYNAMIC_TIMEOUT
-      PRINTF("Timeout Modifier: %u\n", to_modifier);
       etimer_set(&radio_off_timeout_timer, RADIO_OFF_SEND_TIMEOUT * to_modifier * CLOCK_SECOND);
-#else
-      etimer_set(&radio_off_timeout_timer, RADIO_OFF_SEND_TIMEOUT * CLOCK_SECOND);
-#endif
-
       continue;
     }
 
     if (dtn_send_event == ev && radio_may_be_turned_off) {
       PRINTF("RDC: Restarting radio timeout timer [send].\n");
       send_lock = 0;
-
-#ifdef DISCOVERY_AWARE_RDC_DYNAMIC_TIMEOUT
-      PRINTF("Timeout Modifier [send]: %u\n", to_modifier);
       etimer_set(&radio_off_timeout_timer, RADIO_OFF_SEND_TIMEOUT * to_modifier * CLOCK_SECOND);
-#else
-      etimer_set(&radio_off_timeout_timer, RADIO_OFF_SEND_TIMEOUT * CLOCK_SECOND);
-#endif
-
       continue;
     }
 
     if (dtn_rec_event == ev && radio_may_be_turned_off) {
       PRINTF("RDC: Restarting radio timeout timer [rec].\n");
       rec_lock = 0;
-
-#ifdef DISCOVERY_AWARE_RDC_DYNAMIC_TIMEOUT
-      PRINTF("Timeout Modifier [rec]: %u\n", to_modifier);
       etimer_set(&radio_off_timeout_timer, RADIO_OFF_REC_TIMEOUT * to_modifier * CLOCK_SECOND);
-#else
-      etimer_set(&radio_off_timeout_timer, RADIO_OFF_REC_TIMEOUT * CLOCK_SECOND);
-#endif
       continue;
     }
 
     if (etimer_expired(&radio_off_timeout_timer) && radio_may_be_turned_off) {
-      PRINTF("RDC: RADIO OFF TIMEOUT REACHED!\n");
+      PRINTF("RDC: Radio off timeout reached!\n");
       if (radio_status) {
         if (NETSTACK_RADIO.pending_packet() || NETSTACK_RADIO.receiving_packet() || !NETSTACK_RADIO.channel_clear()) {
-          PRINTF("RDC: NOT Turning radio OFF because of pending packet.\n");
-#ifdef DISCOVERY_AWARE_RDC_DYNAMIC_TIMEOUT
+          PRINTF("RDC: NOT turning radio OFF because of pending packet.\n");
           etimer_set(&radio_off_timeout_timer, RADIO_OFF_SEND_TIMEOUT * to_modifier * CLOCK_SECOND);
-#else
-          etimer_set(&radio_off_timeout_timer, RADIO_OFF_SEND_TIMEOUT * CLOCK_SECOND);
-#endif
         } else {
           PRINTF("RDC: Turning radio OFF.\n");
           radio_status = 0;
 
-#ifdef DISCOVERY_AWARE_RDC_DYNAMIC_TIMEOUT
+#ifdef DISCOVERY_AWARE_RDC_CONF_DYNAMIC_TIMEOUT
           to_modifier = 1;
-#endif
+#endif /* DISCOVERY_AWARE_RDC_CONF_DYNAMIC_TIMEOUT */
 
           NETSTACK_RADIO.off();
 
-#ifdef DISCOVERY_AWARE_RDC_CLEAR_NEIGHBOURS
+#ifdef DISCOVERY_AWARE_RDC_CONF_CLEAR_NEIGHBOURS
           // empty neightbour list to prevent routing from senseless activity
           PRINTF("Clearing neighbours after radio off\n.");
           DISCOVERY.clear();
-#endif /* DISCOVERY_AWARE_RDC_CLEAR_NEIGHBOURS */
+#endif /* DISCOVERY_AWARE_RDC_CONF_CLEAR_NEIGHBOURS */
         }
       } else {
         PRINTF("RDC: NOT Turning radio off because it is already.\n");
