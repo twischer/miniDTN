@@ -429,6 +429,21 @@ void discovery_ipnd_stop_pending()
 
 }
 
+void discovery_ipnd_start(clock_time_t duration, uint8_t index)
+{
+
+}
+
+void discovery_ipnd_stop()
+{
+
+}
+
+void discovery_ipnd_clear()
+{
+
+}
+
 /**
  * \brief IPND Discovery Persistent Process
  */
@@ -482,6 +497,9 @@ const struct discovery_driver discovery_ipnd = {
 	discovery_ipnd_is_neighbour,
 	discovery_ipnd_list_neighbours,
 	discovery_ipnd_stop_pending,
+	discovery_ipnd_start,
+	discovery_ipnd_stop,
+	discovery_ipnd_clear
 };
 /** @} */
 /** @} */
