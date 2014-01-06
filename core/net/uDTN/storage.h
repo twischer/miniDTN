@@ -56,6 +56,15 @@
 #endif
 
 /**
+ * Should we use simple printf to show how many bundles are in the storage?
+ */
+#ifdef BUNDLE_CONF_STORAGE_STATUS
+#define BUNDLE_STORAGE_STATUS BUNDLE_CONF_STORAGE_STATUS
+#else
+#define BUNDLE_STORAGE_STATUS 0
+#endif
+
+/**
  * Should the storage run out if space, what shall we do?
  */
 // Options

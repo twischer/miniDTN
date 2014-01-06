@@ -362,6 +362,10 @@ uint8_t storage_mmem_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_num
 
 	LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "New Bundle %lu (%lu), Src %lu, Dest %lu, Seq %lu", bundle->bundle_num, entry->bundle_num, bundle->src_node, bundle->dst_node, bundle->tstamp_seq);
 
+#if BUNDLE_STORAGE_STATUS
+	printf("S %u\n", bundles_in_storage);
+#endif
+
 	// Notify the statistics module
 	storage_mmem_update_statistics();
 
@@ -436,6 +440,9 @@ uint16_t storage_mmem_delete_bundle(uint32_t bundle_number, uint8_t reason)
 
 	// Free the storage struct
 	memb_free(&bundle_mem, entry);
+#if BUNDLE_STORAGE_STATUS
+	printf("D %u\n", bundles_in_storage);
+#endif
 
 	return 1;
 }
