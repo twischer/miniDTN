@@ -356,6 +356,9 @@ PROCESS_THREAD(discovery_aware_rdc_process, ev, data)
     if (dtn_disco_start_event == ev) {
       PRINTF("RDC: received START event\n");
       radio_may_be_turned_off = 0;
+      if (!radio_status) {
+        on();
+      }
       continue;
     }
 

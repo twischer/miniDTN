@@ -25,7 +25,9 @@
 #include "discovery.h"
 #include "discovery_scheduler.h"
 
-#define DISCOVERY_PROMPT_RESPOND
+#include "storage.h"
+
+//#define DISCOVERY_PROMPT_RESPOND
 #define DISCOVERY_NEIGHBOUR_CACHE	3
 
 LIST(neighbour_list);
@@ -70,13 +72,16 @@ void discovery_simple_active_disable() {
 }
 
 void discovery_simple_active_receive(rimeaddr_t * source, uint8_t * payload, uint8_t length) {
-  LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "received from %u:%u", source->u8[1], source->u8[0]);
+  LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "received from %u:%u", source->u8[0], source->u8[1]);
 
   if (!discovery_simple_active_is_neighbour(source)) {
 
+    // TH -- throttle discovery when neigbour found
+    //discovery_simple_active_enabled = 0;
+
 #ifdef DTN_DISCO_EVAL
     static uint32_t c = 0;
-    printf("R %lu %lu\n", c++, clock_seconds());
+    if (source->u8[0] == 2 || source->u8[0] == 1) printf("R %lu %lu %u\n", c++, clock_seconds(), source->u8[0]);
 #endif
 
     struct discovery_neighbour_list_entry * entry;
@@ -88,7 +93,7 @@ void discovery_simple_active_receive(rimeaddr_t * source, uint8_t * payload, uin
     rimeaddr_copy(&(entry->neighbour), source);
     list_add(neighbour_list, entry);
 
-
+    // PSO - Phase Shift Optimization
     uint32_t * neigh_id = (uint32_t *) payload;
     //printf("Schedule Index of neighbour %lu: %u      I AM %lu\n", *neigh_id, payload[4], dtn_node_id);
     if (*neigh_id > dtn_node_id) {
@@ -126,20 +131,22 @@ void discovery_simple_active_dead(rimeaddr_t * neighbour) {
 }
 
 void discovery_simple_active_send_discover() {
-  if (discovery_simple_active_enabled) {
-    rimeaddr_t br_dest = { { 0, 0 } };
-    LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "send discover..");
+  // CC -- Congestion Control. Only send discover when we have bundle space left
+  if (BUNDLE_STORAGE.free_space(NULL) > 0) {
+    if (discovery_simple_active_enabled) {
+      rimeaddr_t br_dest = { { 0, 0 } };
+      LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "send discover..");
 
-    //convergence_layer_send_discovery((uint8_t *) "DTN_DISCOVERY", 13, &br_dest);
+      // PSO -- Phase Shift Optimization, send disco schedule index and node id
+      uint8_t payload[5] = {0, 0, 0, 0, sched_index};
+      memcpy(payload, &dtn_node_id, 4);
+      convergence_layer_send_discovery(payload, 5, &br_dest);
 
-    uint8_t payload[5] = {0, 0, 0, 0, sched_index};
-    memcpy(payload, &dtn_node_id, 4);
-    convergence_layer_send_discovery(payload, 5, &br_dest);
-
-    //static uint32_t c = 0;
-    //printf("D %lu\n", c++);
-  } else {
-    LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "send discover.. but disabled");
+      //static uint32_t c = 0;
+      //printf("D %lu\n", c++);
+    } else {
+      LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "send discover.. but disabled");
+    }
   }
 }
 
@@ -175,11 +182,11 @@ void discovery_simple_active_start(clock_time_t duration, uint8_t index) {
   discovery_simple_active_enabled = 1;
   discovery_simple_active_send_discover();
 
-  ctimer_set(&ipt, 0.5 * duration, discovery_simple_active__send_helper, NULL);
+  //ctimer_set(&ipt, 0.5 * duration, discovery_simple_active__send_helper, NULL);
 }
 
 void discovery_simple_active_stop() {
-  ctimer_stop(&ipt);
+  //ctimer_stop(&ipt);
   discovery_simple_active_send_discover();
   discovery_simple_active_enabled = 0;
   LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "End of discovery phase.");
