@@ -254,6 +254,8 @@ uint8_t statusreport_basic_send(struct mmem * bundlemem, uint8_t status, uint8_t
 	// Encode status report
 	ret = statusreport_encode(&report, buffer, BUFFER_LENGTH);
 	if( ret < 0 ) {
+		LOG(LOGD_DTN, LOG_AGENT, LOGL_ERR, "Status Report Encoding failed");
+
 		// Free memory
 		bundle_decrement(report_bundle);
 		return 0;
@@ -262,6 +264,8 @@ uint8_t statusreport_basic_send(struct mmem * bundlemem, uint8_t status, uint8_t
 	// Add status report to bundle
 	ret = bundle_add_block(report_bundle, BUNDLE_BLOCK_TYPE_PAYLOAD, BUNDLE_BLOCK_FLAG_NULL, buffer, ret);
 	if( ret < 0 ) {
+		LOG(LOGD_DTN, LOG_AGENT, LOGL_ERR, "Unable to add payload block to report");
+
 		// Free memory
 		bundle_decrement(report_bundle);
 		return 0;
