@@ -738,7 +738,7 @@ void routing_flooding_bundle_sent(struct transmit_ticket_t * ticket, uint8_t sta
 		return;
 	}
 
-	LOG(LOGD_DTN, LOG_ROUTE, LOGL_DBG, "bundle for %u.%u delivered to %u.%u", dest_n.u8[0], dest_n.u8[1], ticket->neighbour.u8[0], ticket->neighbour.u8[1]);
+	LOG(LOGD_DTN, LOG_ROUTE, LOGL_DBG, "bundle for RIME %u.%u / EID %lu delivered to %u.%u", dest_n.u8[0], dest_n.u8[1], entry->destination_node, ticket->neighbour.u8[0], ticket->neighbour.u8[1]);
 #endif
 
 
