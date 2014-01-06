@@ -152,8 +152,9 @@ endif
 
 ### Forward comma-separated list of arbitrary defines to the compiler
 
-COMMA := ,
-CFLAGS += ${addprefix -D,${subst $(COMMA), ,$(DEFINES)}}
+#COMMA := ,
+#CFLAGS += ${addprefix -D,${subst $(COMMA), ,$(DEFINES)}}
+CFLAGS += ${addprefix -D,$(DEFINES)}
 
 ### Setup directory search path for source and header files
 
