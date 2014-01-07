@@ -7,7 +7,7 @@
 
 #include "system_clock.h"
 
-static struct udtn_timeval udtn_clock_offset;
+static udtn_timeval_t udtn_clock_offset;
 
 void udtn_clock_init() {
 	// set the clock offset to zero
@@ -15,7 +15,7 @@ void udtn_clock_init() {
 }
 
 udtn_time_t udtn_time(udtn_time_t *t) {
-	struct udtn_timeval ret;
+	udtn_timeval_t ret;
 	udtn_gettimeofday(&ret);
 
 	if (t != NULL) {
@@ -25,8 +25,8 @@ udtn_time_t udtn_time(udtn_time_t *t) {
 	return ret.tv_sec;
 }
 
-void udtn_settimeofday(struct udtn_timeval *tv) {
-	struct udtn_timeval ref;
+void udtn_settimeofday(udtn_timeval_t *tv) {
+	udtn_timeval_t ref;
 
 	// get system uptime
 	udtn_uptime(&ref);
@@ -35,8 +35,8 @@ void udtn_settimeofday(struct udtn_timeval *tv) {
 	udtn_timersub(tv, &ref, &udtn_clock_offset);
 }
 
-void udtn_gettimeofday(struct udtn_timeval *tv) {
-	struct udtn_timeval ref;
+void udtn_gettimeofday(udtn_timeval_t *tv) {
+	udtn_timeval_t ref;
 
 	// get system uptime
 	udtn_uptime(&ref);
@@ -45,7 +45,7 @@ void udtn_gettimeofday(struct udtn_timeval *tv) {
 	udtn_timeradd(&ref, &udtn_clock_offset, tv);
 }
 
-void udtn_uptime(struct udtn_timeval *tv) {
+void udtn_uptime(udtn_timeval_t *tv) {
 	do {
 		tv->tv_usec = (uint32_t)clock_time();
 		tv->tv_sec = (uint32_t)clock_seconds();

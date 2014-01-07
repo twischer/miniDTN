@@ -10,10 +10,10 @@
 #ifndef SYSTEM_CLOCK_H_
 #define SYSTEM_CLOCK_H_
 
-struct udtn_timeval {
+typedef struct {
 	long int tv_sec;
 	long int tv_usec;
-};
+} udtn_timeval_t;
 
 typedef unsigned long udtn_time_t;
 
@@ -60,10 +60,10 @@ void udtn_clock_init();
  */
 udtn_time_t udtn_time(udtn_time_t *t);
 
-void udtn_settimeofday(struct udtn_timeval *tv);
+void udtn_settimeofday(udtn_timeval_t *tv);
 
-void udtn_gettimeofday(struct udtn_timeval *tv);
+void udtn_gettimeofday(udtn_timeval_t *tv);
 
-void udtn_uptime(struct udtn_timeval *tv);
+void udtn_uptime(udtn_timeval_t *tv);
 
 #endif /* SYSTEM_CLOCK_H_ */
