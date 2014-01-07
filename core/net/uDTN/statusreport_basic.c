@@ -188,7 +188,7 @@ uint8_t statusreport_basic_send(struct mmem * bundlemem, uint8_t status, uint8_t
 	status_report_t report;
 	uint8_t buffer[BUFFER_LENGTH];
 	int ret;
-	struct udtn_timeval tv;
+	udtn_timeval_t tv;
 
 	// Check if we really should send a report
 	bundle_get_attr(bundlemem, FLAGS, &bundle_flags);
@@ -213,6 +213,7 @@ uint8_t statusreport_basic_send(struct mmem * bundlemem, uint8_t status, uint8_t
 	bundle_get_attr(bundlemem, SRC_SERV, &report.source_eid_service);
 	bundle_get_attr(bundlemem, TIME_STAMP, &report.bundle_creation_timestamp);
 	bundle_get_attr(bundlemem, TIME_STAMP_SEQ_NR, &report.bundle_sequence_number);
+	bundle_get_attr(bundlemem, LIFE_TIME, &lifetime);
 
 	// Collect all necessary information to create report bundle
 	bundle_get_attr(bundlemem, REP_NODE, &report_node_id);
@@ -247,7 +248,6 @@ uint8_t statusreport_basic_send(struct mmem * bundlemem, uint8_t status, uint8_t
 	LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "Report goes to %lu.%lu", report_node_id, report_service_id);
 
 	// Set lifetime
-	lifetime = 3600;
 	bundle_set_attr(report_bundle, LIFE_TIME, &lifetime);
 
 	// Make the outgoing bundle an admin record
