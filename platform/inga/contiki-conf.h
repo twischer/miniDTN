@@ -47,11 +47,6 @@
 #include <stdint.h>
 #include "platform-conf.h"
 
-typedef int32_t s32_t;
-typedef unsigned char u8_t;
-typedef unsigned short u16_t;
-typedef unsigned long u32_t;
-
 #include <avr/eeprom.h>
 
 /* Skip the last four bytes of the EEPROM, to leave room for things
@@ -60,11 +55,6 @@ typedef unsigned long u32_t;
 
 /* @todo: Just a temporary solution... */
 #define CFS_CONF_OFFSET_SIZE  uint32_t
-
-void clock_delay(unsigned int us2);
-//void clock_wait(int ms10);
-void clock_set_seconds(unsigned long s);
-unsigned long clock_seconds(void);
 
 /* Maximum timer interval for 16 bit clock_time_t */
 #define INFINITE_TIME 0xffff
@@ -128,6 +118,63 @@ unsigned long clock_seconds(void);
 #define PACKETBUF_CONF_HDR_SIZE   0            //RF230 combined driver/mac handles headers internally
 #endif /* RF230BB */
 
+/* Replace lower 2 bytes of MAC with node ID  */
+#define EUI64_BY_NODE_ID          1
+
+/* 211 bytes per queue buffer */
+#define QUEUEBUF_CONF_NUM         8
+/* 54 bytes per queue ref buffer */
+#define QUEUEBUF_CONF_REF_NUM     2
+
+/* -- Default network stack */
+
+#ifndef NETSTACK_CONF_MAC
+#define NETSTACK_CONF_MAC     nullmac_driver
+#endif /* NETSTACK_CONF_MAC */
+
+#ifndef NETSTACK_CONF_RDC
+#define NETSTACK_CONF_RDC     nullrdc_driver
+#endif /* NETSTACK_CONF_RDC */
+
+#ifndef NETSTACK_CONF_RADIO
+#define NETSTACK_CONF_RADIO   rf230_driver
+#endif /* NETSTACK_CONF_RADIO */
+
+#ifndef NETSTACK_CONF_FRAMER
+#define NETSTACK_CONF_FRAMER  framer_802154
+#endif /* NETSTACK_CONF_FRAMER */
+
+/*
+ * Network stack setup.
+ */
+#if WITH_UIP6
+#define NETSTACK_CONF_NETWORK     sicslowpan_driver
+
+#define RIMEADDR_CONF_SIZE        8
+
+/* -- UIP IPv6 settings */
+#define UIP_CONF_ICMP6            1
+#define UIP_CONF_IPV6             1
+#define UIP_CONF_IPV6_CHECKS      1
+#define UIP_CONF_IPV6_QUEUE_PKT   1
+#define UIP_CONF_IPV6_REASSEMBLY  0
+/* -- SICSLOWPAN driver settings */
+#define SICSLOWPAN_CONF_COMPRESSION SICSLOWPAN_COMPRESSION_HC06
+/* Allow 6lowpan fragments (needed for large TCP maximum segment size) */
+#define SICSLOWPAN_CONF_FRAG      1
+/* Most browsers reissue GETs after 3 seconds which stops fragment reassembly
+ * so a longer MAXAGE does no good */
+#define SICSLOWPAN_CONF_MAXAGE    3
+/* Request 802.15.4 ACK on all packets sent (else autoretry).
+ * This is primarily for testing. */
+#define SICSLOWPAN_CONF_ACK_ALL   0
+/* 10 bytes per stateful address context - see sicslowpan.c */
+/* Default is 1 context with prefix aaaa::/64 */
+/* These must agree with all the other nodes or there will be a failure to communicate! */
+#define SICSLOWPAN_CONF_MAX_ADDR_CONTEXTS 1
+#define SICSLOWPAN_CONF_ADDR_CONTEXT_0 {addr_contexts[0].prefix[0]=0xaa;addr_contexts[0].prefix[1]=0xaa;}
+#define SICSLOWPAN_CONF_ADDR_CONTEXT_1 {addr_contexts[1].prefix[0]=0xbb;addr_contexts[1].prefix[1]=0xbb;}
+#define SICSLOWPAN_CONF_ADDR_CONTEXT_2 {addr_contexts[2].prefix[0]=0x20;addr_contexts[2].prefix[1]=0x01;addr_contexts[2].prefix[2]=0x49;addr_contexts[2].prefix[3]=0x78,addr_contexts[2].prefix[4]=0x1d;addr_contexts[2].prefix[5]=0xb1;}
 
 /* See uip-ds6.h */
 #define UIP_CONF_DS6_NBR_NBU      20
@@ -138,27 +185,39 @@ unsigned long clock_seconds(void);
 #define UIP_CONF_DS6_MADDR_NBU    0
 #define UIP_CONF_DS6_AADDR_NBU    0
 
-/* uip uses 802.15.2 adresses */
-#define UIP_CONF_LL_802154        1
-/* no link level header */
-#define UIP_CONF_LLH_LEN          0
+#else /* WITH_UIP6 */
+/* ip4 should build but is largely untested */
+#define NETSTACK_CONF_NETWORK     rime_driver
 
-/* Replace lower 2 bytes of MAC with node ID  */
-#define EUI64_BY_NODE_ID          1
+#define RIMEADDR_CONF_SIZE        2
 
-/* 10 bytes per stateful address context - see sicslowpan.c */
-/* Default is 1 context with prefix aaaa::/64 */
-/* These must agree with all the other nodes or there will be a failure to communicate! */
-#define SICSLOWPAN_CONF_MAX_ADDR_CONTEXTS 1
-#define SICSLOWPAN_CONF_ADDR_CONTEXT_0 {addr_contexts[0].prefix[0]=0xaa;addr_contexts[0].prefix[1]=0xaa;}
-#define SICSLOWPAN_CONF_ADDR_CONTEXT_1 {addr_contexts[1].prefix[0]=0xbb;addr_contexts[1].prefix[1]=0xbb;}
-#define SICSLOWPAN_CONF_ADDR_CONTEXT_2 {addr_contexts[2].prefix[0]=0x20;addr_contexts[2].prefix[1]=0x01;addr_contexts[2].prefix[2]=0x49;addr_contexts[2].prefix[3]=0x78,addr_contexts[2].prefix[4]=0x1d;addr_contexts[2].prefix[5]=0xb1;}
+#endif /* WITH_UIP6 */
 
-/* 211 bytes per queue buffer */
-#define QUEUEBUF_CONF_NUM         8
-/* 54 bytes per queue ref buffer */
-#define QUEUEBUF_CONF_REF_NUM     2
+/* -- Radio driver settings */
+#define CHANNEL_802_15_4          26
+#define RADIO_CONF_CALIBRATE_INTERVAL 256
+/* AUTOACK receive mode gives better rssi measurements,
+ * even if ACK is never requested */
+#define RF230_CONF_AUTOACK        1
+/* Number of auto retry attempts+1, 1-16.
+ * Set zero to disable extended TX_ARET_ON mode with CCA) */
+#define RF230_CONF_AUTORETRIES    3
+/* Number of CSMA attempts 0-7. 802.15.4 2003 standard max is 5. */
+#define RF230_CONF_CSMARETRIES    5
+/* CCA theshold energy -91 to -61 dBm (default -77).
+ * Set this smaller than the expected minimum rssi to avoid packet collisions */
+/* The Jackdaw menu 'm' command is helpful for determining the smallest ever received rssi */
+#define RF230_CONF_CCA_THRES    -85
 
+/* -- UIP settings */
+#define UIP_CONF_UDP              1
+#define UIP_CONF_UDP_CHECKSUMS    1
+#ifndef UIP_CONF_TCP
+#define UIP_CONF_TCP              1
+#endif
+/* How long to wait before terminating an idle TCP connection.
+ * Smaller to allow faster sleep. Default is 120 seconds */
+#define UIP_CONF_WAIT_TIMEOUT     5
 /* Take the default TCP maximum segment size for efficiency and simpler wireshark captures */
 /* Use this to prevent 6LowPAN fragmentation (whether or not fragmentation is enabled) */
 //#define UIP_CONF_TCP_MSS      48
@@ -177,116 +236,53 @@ unsigned long clock_seconds(void);
 #define UIP_CONF_IP_FORWARD       0
 #define UIP_CONF_FWCACHE_SIZE     0
 
-
-#define UIP_CONF_UDP_CHECKSUMS    1
-#define UIP_CONF_TCP_SPLIT        1
 #define UIP_CONF_DHCP_LIGHT       1
+/* uip uses 802.15.4 adresses */
+#define UIP_CONF_LL_802154        1
+/* no link level header */
+#define UIP_CONF_LLH_LEN          0
 
-/*
- * Network stack setup.
- */
-#if WITH_UIP6
-#define NETSTACK_CONF_NETWORK     sicslowpan_driver
-#define NETSTACK_CONF_MAC         nullmac_driver
-#define NETSTACK_CONF_RDC         nullrdc_driver
-#define NETSTACK_CONF_FRAMER      framer_802154
-#define NETSTACK_CONF_RADIO       rf230_driver
-
-#define RIMEADDR_CONF_SIZE        8
-
-#define UIP_CONF_ICMP6            1
-#define UIP_CONF_UDP              1
-#define UIP_CONF_TCP              1
-//#define UIP_CONF_IPV6_RPL       0
-#define SICSLOWPAN_CONF_COMPRESSION SICSLOWPAN_COMPRESSION_HC06
-
-#else /* WITH_UIP6 */
-/* ip4 should build but is largely untested */
-#define NETSTACK_CONF_NETWORK     rime_driver
-#define NETSTACK_CONF_MAC         nullmac_driver
-#define NETSTACK_CONF_RDC         nullrdc_driver
-#define NETSTACK_CONF_FRAMER      framer_802154
-#define NETSTACK_CONF_RADIO       rf230_driver
-
-#define RIMEADDR_CONF_SIZE        2
-
-#endif /* WITH_UIP6 */
-
-#ifdef WITH_UIP6
-#define UIP_CONF_IPV6             1
-#define UIP_CONF_IPV6_CHECKS      1
-#define UIP_CONF_IPV6_QUEUE_PKT   1
-#define UIP_CONF_IPV6_REASSEMBLY  0
-#endif /* WITH_UIP6 */
-
-#define CHANNEL_802_15_4          26
-#define RADIO_CONF_CALIBRATE_INTERVAL 256
-/* AUTOACK receive mode gives better rssi measurements,
- * even if ACK is never requested */
-#define RF230_CONF_AUTOACK        1
-/* Request 802.15.4 ACK on all packets sent (else autoretry).
- * This is primarily for testing. */
-#define SICSLOWPAN_CONF_ACK_ALL   0
-/* Number of auto retry attempts+1, 1-16.
- * Set zero to disable extended TX_ARET_ON mode with CCA) */
-#define RF230_CONF_AUTORETRIES    3
-/* Number of CSMA attempts 0-7. 802.15.4 2003 standard max is 5. */
-#define RF230_CONF_CSMARETRIES    5
-/* CCA theshold energy -91 to -61 dBm (default -77).
- * Set this smaller than the expected minimum rssi to avoid packet collisions */
-/* The Jackdaw menu 'm' command is helpful for determining the smallest ever received rssi */
-#define RF230_CONF_CCA_THRES    -85
-/* Allow 6lowpan fragments (needed for large TCP maximum segment size) */
-#define SICSLOWPAN_CONF_FRAG      1
-/* Most browsers reissue GETs after 3 seconds which stops fragment reassembly
- * so a longer MAXAGE does no good */
-#define SICSLOWPAN_CONF_MAXAGE    3
-/* How long to wait before terminating an idle TCP connection.
- * Smaller to allow faster sleep. Default is 120 seconds */
-#define UIP_CONF_WAIT_TIMEOUT     5
+#define UIP_CONF_TCP_SPLIT        1
 
 // RADIO_PAN_ID
 #ifndef RADIO_CONF_PAN_ID
-	#define RADIO_PAN_ID	IEEE802154_PANID
+#define RADIO_PAN_ID	IEEE802154_PANID
 #else /* RADIO_CONF_PAN_ID */
-	#define RADIO_PAN_ID	RADIO_CONF_PAN_ID
+#define RADIO_PAN_ID	RADIO_CONF_PAN_ID
 #endif /* RADIO_CONF_PAN_ID */
 
 /* Assure NODE_ID is not set manually */
 #ifdef NODE_ID
-	#undef NODE_ID
-	#warning Use NODE_CONF_ID to define your NodeId
+#undef NODE_ID
+#warning Use NODE_CONF_ID to define your NodeId
 #endif /* NODE_ID */
 
 // NODE_ID
 #ifndef NODE_CONF_ID
-	#define NODE_ID	0
+#define NODE_ID	0
 #else /* NODE_CONF_ID */
-	#define NODE_ID	NODE_CONF_ID
+#define NODE_ID	NODE_CONF_ID
 #endif /* NODE_CONF_ID */
 
 #ifndef NODE_CONF_EUI64
-	#define NODE_EUI64 0, 0, 0, 0, 0, 0, 0, 0
+#define NODE_EUI64 0, 0, 0, 0, 0, 0, 0, 0
 #else
-	#define NODE_EUI64  NODE_CONF_EUI64
+#define NODE_EUI64  NODE_CONF_EUI64
 #endif
 
 // RADIO_CHANNEL
 #ifndef RADIO_CONF_CHANNEL
-	#define RADIO_CHANNEL	26
+#define RADIO_CHANNEL	26
 #else /* RADIO_CONF_CHANNEL */
-	#define RADIO_CHANNEL	RADIO_CONF_CHANNEL
+#define RADIO_CHANNEL	RADIO_CONF_CHANNEL
 #endif /* RADIO_CONF_CHANNEL */
 
 // RADIO_TX_POWER
 #ifndef RADIO_CONF_TX_POWER
-	#define RADIO_TX_POWER	0
+#define RADIO_TX_POWER	0
 #else /* RADIO_CONF_TX_POWER */
-	#define RADIO_TX_POWER	RADIO_CONF_TX_POWER
+#define RADIO_TX_POWER	RADIO_CONF_TX_POWER
 #endif /* RADIO_CONF_TX_POWER */
-
-/* Logging adds 200 bytes to program size */
-#define LOG_CONF_ENABLED         1
 
 /* ************************************************************************** */
 /* RPL Settings                                                               */
@@ -321,6 +317,9 @@ unsigned long clock_seconds(void);
 #define UIP_CONF_LOGGING         0
 
 #endif /* UIP_CONF_IPV6_RPL */
+
+/* Logging adds 200 bytes to program size */
+#define LOG_CONF_ENABLED         1
 
 /** Contiki Core Interface (has no function here)*/
 #define CCIF
