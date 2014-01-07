@@ -66,7 +66,7 @@ class Device(object):
 			for dev in self.devcfg:
 				myenv['CFLAGS']=myenv['CFLAGS'].replace(str("$"+dev['name'].upper()),str(str(dev['id'])))
 			# always add the nodeid of this node as define
-			myenv['CFLAGS']+=str(" -DNODEID="+str(self.id))
+			myenv['CFLAGS']+=str(" -DNODE_CONF_ID="+str(self.id))
 			self.myenv = myenv
 			output = subprocess.check_output(filter(None, ["make", self.makeargs, "TARGET=%s"%(self.platform), self.program]), stderr=subprocess.STDOUT, env=myenv)
 			self.logger.debug(output)
@@ -85,6 +85,8 @@ class Device(object):
 				myenv['CFLAGS'] = '-finstrument-functions %s'%(self.cflags)
 				for dev in self.devcfg:
 					myenv['CFLAGS']=myenv['CFLAGS'].replace(str("$"+dev['name'].upper()),str(str(dev['id'])))
+				# always add the nodeid of this node as define
+				myenv['CFLAGS']+=str(" -DNODE_CONF_ID="+str(self.id))
 				output = subprocess.check_output(filter(None, ["make", self.makeargs, "TARGET=%s"%(self.platform), self.program]), stderr=subprocess.STDOUT, env=myenv)
 				self.logger.debug(output)
 
@@ -101,6 +103,8 @@ class Device(object):
 				myenv['CFLAGS'] = '-DENABLE_LOGGING %s'%(self.cflags)
 				for dev in self.devcfg:
 					myenv['CFLAGS']=myenv['CFLAGS'].replace(str("$"+dev['name'].upper()),str(str(dev['id'])))
+				# always add the nodeid of this node as define
+				myenv['CFLAGS']+=str(" -DNODE_CONF_ID="+str(self.id))
 				output = subprocess.check_output(filter(None, ["make", self.makeargs, "TARGET=%s"%(self.platform), self.program]), stderr=subprocess.STDOUT, env=myenv)
 				self.logger.debug(output)
 
@@ -117,6 +121,8 @@ class Device(object):
 				myenv['CFLAGS'] = '-finstrument-functions -DENABLE_LOGGING %s'%(self.cflags)
 				for dev in self.devcfg:
 					myenv['CFLAGS']=myenv['CFLAGS'].replace(str("$"+dev['name'].upper()),str(str(dev['id'])))
+				# always add the nodeid of this node as define
+				myenv['CFLAGS']+=str(" -DNODE_CONF_ID="+str(self.id))
 				output = subprocess.check_output(filter(None, ["make", self.makeargs, "TARGET=%s"%(self.platform), self.program]), stderr=subprocess.STDOUT, env=myenv)
 				self.logger.debug(output)
 		except subprocess.CalledProcessError as err:
