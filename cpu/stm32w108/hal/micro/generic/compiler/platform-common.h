@@ -26,8 +26,8 @@
   #error  platform-common.h should not be included directly
 #endif
 
-#ifndef __PLATFORMCOMMON_H__
-#define __PLATFORMCOMMON_H__
+#ifndef PLATFORMCOMMON_H_
+#define PLATFORMCOMMON_H_
 ////////////////////////////////////////////////////////////////////////////////
 // Many of the common definitions must be explicitly enabled by the 
 //  particular PLATFORM_HEADER being used
@@ -349,7 +349,7 @@
 
 
 
-#endif //__PLATFORMCOMMON_H__
+#endif //PLATFORMCOMMON_H_
 
 /** @}  END addtogroup */
 /** @} */
