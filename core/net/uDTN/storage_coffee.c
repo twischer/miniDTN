@@ -643,7 +643,6 @@ uint16_t storage_coffee_delete_bundle(uint32_t bundle_number, uint8_t reason)
  */
 struct mmem * storage_coffee_read_bundle(uint32_t bundle_number)
 {
-	struct bundle_t * bundle = NULL;
 	struct file_list_entry_t * entry = NULL;
 	struct mmem * bundlemem = NULL;
 	char bundle_filename[STORAGE_FILE_NAME_LENGTH];
@@ -712,9 +711,6 @@ struct mmem * storage_coffee_read_bundle(uint32_t bundle_number)
 	cfs_close(fd_read);
 
 	RADIO_SAFE_STATE_OFF();
-
-	/* Get the bundle pointer */
-	bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 
 	return bundlemem;
 }
