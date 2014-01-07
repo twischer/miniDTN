@@ -30,8 +30,8 @@
  *
  */
 
-#ifndef __RTIMER_ARCH_H__
-#define __RTIMER_ARCH_H__
+#ifndef RTIMER_ARCH_H_
+#define RTIMER_ARCH_H_
 
 #include <avr/interrupt.h>
 
@@ -81,4 +81,4 @@
 #endif /* XMEGA */
 
 void rtimer_arch_sleep(rtimer_clock_t howlong);
-#endif /* __RTIMER_ARCH_H__ */
+#endif /* RTIMER_ARCH_H_ */

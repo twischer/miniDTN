@@ -29,8 +29,8 @@
  * This file is part of the Contiki operating system.
  */
 
-#ifndef __SENSORS_H__
-#define __SENSORS_H__
+#ifndef SENSORS_H_
+#define SENSORS_H_
 
 #include "contiki.h"
 
@@ -182,4 +182,4 @@ PROCESS_NAME(sensors_process);
 
 /** @} */
 
-#endif /* __SENSORS_H__ */
+#endif /* SENSORS_H_ */
