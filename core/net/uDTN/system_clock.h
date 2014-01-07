@@ -60,10 +60,25 @@ void udtn_clock_init();
  */
 udtn_time_t udtn_time(udtn_time_t *t);
 
+/**
+ * This method sets the global clock offset used by
+ * udtn_gettimeofday() to calculate the correct global
+ * time.
+ */
 void udtn_settimeofday(udtn_timeval_t *tv);
 
+/**
+ * This method adds the global clock offset to the uptime
+ * of the node and put that into the given timeval struct.
+ * If udtn_settimeofday() has not been called before, this
+ * method returns the same value as udtn_uptime().
+ */
 void udtn_gettimeofday(udtn_timeval_t *tv);
 
+/**
+ * Stores the time since the boot-up of the node in
+ * the timeval struct.
+ */
 void udtn_uptime(udtn_timeval_t *tv);
 
 #endif /* SYSTEM_CLOCK_H_ */
