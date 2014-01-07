@@ -1,6 +1,8 @@
 ifeq ($(UIP_CONF_IPV6),1)
 #RIME_UIP6      = rime-udp.c
 RIME_BASE      = rimeaddr.c timesynch.c rimestats.c
+else ifeq ($(CONF_DTN),1)
+RIME_BASE      = rimeaddr.c
 else
 RIME_CHAMELEON = chameleon.c channel.c chameleon-raw.c chameleon-bitopt.c
 RIME_BASE      = rimeaddr.c rime.c timesynch.c \
