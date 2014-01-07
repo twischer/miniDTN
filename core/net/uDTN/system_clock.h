@@ -10,6 +10,13 @@
 #ifndef SYSTEM_CLOCK_H_
 #define SYSTEM_CLOCK_H_
 
+typedef enum {
+	UDTN_CLOCK_STATE_UNKNOWN,
+	UDTN_CLOCK_STATE_POOR,
+	UDTN_CLOCK_STATE_GOOD,
+	UDTN_CLOCK_STATE_ACCURATE,
+} udtn_clock_state_t;
+
 typedef struct {
 	long int tv_sec;
 	long int tv_usec;
@@ -72,6 +79,10 @@ void udtn_settimeofday(udtn_timeval_t *tv);
  * of the node and put that into the given timeval struct.
  * If udtn_settimeofday() has not been called before, this
  * method returns the same value as udtn_uptime().
+ *
+ * The caller of this method should be aware of the clock
+ * state returned by udtn_getstate() to assess the
+ * statement of the current clock value.
  */
 void udtn_gettimeofday(udtn_timeval_t *tv);
 
@@ -80,5 +91,15 @@ void udtn_gettimeofday(udtn_timeval_t *tv);
  * the timeval struct.
  */
 void udtn_uptime(udtn_timeval_t *tv);
+
+/**
+ * Set the clock state
+ */
+void udtn_setclockstate(udtn_clock_state_t s);
+
+/**
+ * Get the clock state
+ */
+udtn_clock_state_t udtn_getclockstate();
 
 #endif /* SYSTEM_CLOCK_H_ */

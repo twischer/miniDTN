@@ -8,10 +8,14 @@
 #include "system_clock.h"
 
 static udtn_timeval_t udtn_clock_offset;
+static udtn_clock_state_t udtn_clock_state;
 
 void udtn_clock_init() {
 	// set the clock offset to zero
 	udtn_timerclear(&udtn_clock_offset);
+
+	// set initial clock state
+	udtn_setclockstate(UDTN_CLOCK_STATE_UNKNOWN);
 }
 
 udtn_time_t udtn_time(udtn_time_t *t) {
@@ -53,4 +57,12 @@ void udtn_uptime(udtn_timeval_t *tv) {
 
 	// convert to microseconds
 	tv->tv_usec = ((tv->tv_usec % CLOCK_SECOND) * 1000000) / CLOCK_SECOND;
+}
+
+void udtn_setclockstate(udtn_clock_state_t s) {
+	udtn_clock_state = s;
+}
+
+udtn_clock_state_t udtn_getclockstate() {
+	return udtn_clock_state;
 }
