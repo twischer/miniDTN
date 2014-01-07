@@ -43,6 +43,9 @@
 
 uint32_t dtn_node_id;
 uint32_t dtn_seq_nr;
+uint32_t dtn_seq_nr_ab;
+uint32_t dtn_last_time_stamp;
+
 PROCESS(agent_process, "AGENT process");
 AUTOSTART_PROCESSES(&agent_process);
 
@@ -61,12 +64,15 @@ PROCESS_THREAD(agent_process, ev, data)
 {
 	uint32_t * bundle_number_ptr = NULL;
 	struct registration_api * reg;
+	udtn_timeval_t tv;
 
 	PROCESS_BEGIN();
 
 	/* We obtain our dtn_node_id from the RIME address of the node */
 	dtn_node_id = convert_rime_to_eid(&rimeaddr_node_addr);
 	dtn_seq_nr = 0;
+	dtn_seq_nr_ab = 0;
+	dtn_last_time_stamp = 0;
 
 	/* We are initialized quite early - give Contiki some time to do its stuff */
 	process_poll(&agent_process);
@@ -193,11 +199,34 @@ PROCESS_THREAD(agent_process, ev, data)
 				}
 			}
 
-			LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "dtn_send_bundle_event(%p) with seqNo %lu", bundleptr, dtn_seq_nr);
+			// Set time-stamp if clock state is at least "good"
+			if (udtn_getclockstate() >= UDTN_CLOCK_STATE_GOOD) {
+				// Get the global time-stamp
+				udtn_gettimeofday(&tv);
 
-			// Set the outgoing sequence number
-			bundle_set_attr(bundleptr, TIME_STAMP_SEQ_NR, &dtn_seq_nr);
-			dtn_seq_nr++;
+				// Set the time-stamp in the bundle
+				bundle_set_attr(bundleptr, TIME_STAMP, &tv.tv_sec);
+
+				// Reset sequence number if time-stamp has changed since the last call
+				if (dtn_last_time_stamp != tv.tv_sec) {
+					dtn_seq_nr = 0;
+					dtn_last_time_stamp = tv.tv_sec;
+				}
+
+				LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "dtn_send_bundle_event(%p) with seqNo %lu", bundleptr, dtn_seq_nr);
+
+				// Set the outgoing sequence number
+				bundle_set_attr(bundleptr, TIME_STAMP_SEQ_NR, &dtn_seq_nr);
+				dtn_seq_nr++;
+			} else {
+				// clock state is not sufficient
+				// use age block approach and leave time-stamp set to 0
+				LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "dtn_send_bundle_event(%p) with seqNo %lu", bundleptr, dtn_seq_nr_ab);
+
+				// Set the outgoing sequence number
+				bundle_set_attr(bundleptr, TIME_STAMP_SEQ_NR, &dtn_seq_nr_ab);
+				dtn_seq_nr_ab++;
+			}
 
 			// Copy the sending process, because 'bundle' will not be accessible anymore afterwards
 			source_process = bundle->source_process;
@@ -207,12 +236,6 @@ PROCESS_THREAD(agent_process, ev, data)
 
 			// Save the bundle in storage
 			n = BUNDLE_STORAGE.save_bundle(bundleptr, &bundle_number_ptr);
-
-			/* Saving the bundle failed... */
-			if( !n ) {
-				/* Decrement the sequence number */
-				dtn_seq_nr--;
-			}
 
 			// Reset our pointers to avoid using invalid ones
 			bundle = NULL;
