@@ -39,7 +39,16 @@
 #define XMAC_CONF_COMPOWER               1
 #define CXMAC_CONF_COMPOWER              1
 
-#if WITH_UIP6
+#if WITH_DTN
+/* Network setup for uDTN */
+#define NETSTACK_CONF_NETWORK dtn_network_driver
+
+/* Disable as much as possible */
+#define UIP_CONF_IPV6             		 0
+#define UIP_CONF_IPV6_RPL		  		 0
+#define UIP_CONF_ROUTER			  		 0
+
+#elif WITH_UIP6
 /* Network setup for IPv6 */
 #define NETSTACK_CONF_NETWORK sicslowpan_driver
 
