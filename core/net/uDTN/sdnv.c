@@ -143,7 +143,7 @@ int sdnv_decode_long(const uint8_t* bp, size_t len, uint64_t* val)
 
 int sdnv_decode(const uint8_t* bp, size_t len, uint32_t* val)
 {
-	uint8_t * ptr = bp;
+	const uint8_t * ptr = bp;
 
 	LOG(LOGD_DTN, LOG_SDNV, LOGL_DBG, "sdnv_decode");
 	const uint8_t* start = bp;
