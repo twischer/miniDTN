@@ -16,9 +16,11 @@
  * \author André Frambach <frambach@ibr.cs.tu-bs.de>
  */
 #include "logging.h"
+
 #include "discovery_scheduler.h"
 #include "discovery_scheduler_events.h"
 #include "discovery.h"
+#include "agent.h"
 
 #include "net/mac/discovery_aware_rdc.h"
 #include "sys/ctimer.h"
