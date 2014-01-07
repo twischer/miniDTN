@@ -242,9 +242,7 @@ void discovery_ipnd_receive(rimeaddr_t * source, uint8_t * payload, uint8_t leng
  */
 void discovery_ipnd_send() {
 	uint8_t ipnd_buffer[DISCOVERY_IPND_BUFFER_LEN];
-	char string_buffer[20];
 	int offset = 0;
-	int len;
 
 	// Clear the ipnd_buffer
 	memset(ipnd_buffer, 0, DISCOVERY_IPND_BUFFER_LEN);
