@@ -130,10 +130,12 @@ static int on(void);
 static int off(int);
 
 /*---------------------------------------------------------------------------*/
-static void
-send_packet(mac_callback_t sent, void *ptr)
+static int
+send_one_packet(mac_callback_t sent, void *ptr)
 {
 	int ret;
+	int last_sent_ok = 0;
+
 	packetbuf_set_addr(PACKETBUF_ADDR_SENDER, &rimeaddr_node_addr);
 #if DISCOVERY_AWARE_RDC_802154_AUTOACK || DISCOVERY_AWARE_RDC_802154_AUTOACK_HW
 	packetbuf_set_attr(PACKETBUF_ATTR_MAC_ACK, 1);
@@ -242,7 +244,43 @@ send_packet(mac_callback_t sent, void *ptr)
 		to_modifier+=10;
 	}
 
+	if(ret == MAC_TX_OK) {
+		last_sent_ok = 1;
+	}
+
 	mac_call_sent_callback(sent, ptr, ret, 1);
+
+	return last_sent_ok;
+}
+/*---------------------------------------------------------------------------*/
+static void
+send_packet(mac_callback_t sent, void *ptr)
+{
+	send_one_packet(sent, ptr);
+}
+/*---------------------------------------------------------------------------*/
+/* TODO: copied from nullrdc for the moment, check and fix in the future */
+static void
+send_list(mac_callback_t sent, void *ptr, struct rdc_buf_list *buf_list)
+{
+	  while(buf_list != NULL) {
+	    /* We backup the next pointer, as it may be nullified by
+	     * mac_call_sent_callback() */
+	    struct rdc_buf_list *next = buf_list->next;
+	    int last_sent_ok;
+
+	    queuebuf_to_packetbuf(buf_list->buf);
+	    last_sent_ok = send_one_packet(sent, ptr);
+
+	    /* If packet transmission was not successful, we should back off and let
+	     * upper layers retransmit, rather than potentially sending out-of-order
+	     * packet fragments. */
+	    if(!last_sent_ok) {
+	      return;
+	    }
+
+	    buf_list = next;
+	  }
 }
 /*---------------------------------------------------------------------------*/
 static void
@@ -391,6 +429,7 @@ const struct rdc_driver discovery_aware_rdc_driver = {
 		"discovery_aware_rdc",
 		init,
 		send_packet,
+		send_list,
 		packet_input,
 		on,
 		off,
