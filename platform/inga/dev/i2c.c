@@ -63,17 +63,29 @@ i2c_init(void) {
 /*----------------------------------------------------------------------------*/
 int8_t
 _i2c_start(uint8_t addr, uint8_t rep) {
+  uint16_t i = 0;
+
   PRR &= ~(1 << PRTWI);
   i2c_init();
   TWCR = (1 << TWINT) | (1 << TWSTA) | (1 << TWEN);
-  while (!(TWCR & (1 << TWINT)));
+  while (!(TWCR & (1 << TWINT))) {
+    if( i++ > 800 ) {
+      return -3;
+    }
+  }
+
   if ((TWSR & 0xF8) != ((!rep) ? I2C_START : I2C_REP_START))
     return -1;
 
   TWDR = addr;
   TWCR = (1 << TWINT) | (1 << TWEN);
+  i = 0;
 
-  while (!(TWCR & (1 << TWINT)));
+  while (!(TWCR & (1 << TWINT))) {
+    if( i++ > 800 ) {
+      return -4;
+    }
+  }
   if (!(((TWSR & 0xF8) == I2C_MT_SLA_ACK) || ((TWSR & 0xF8) == I2C_MR_SLA_ACK)))
     return -2;
 
@@ -92,10 +104,17 @@ i2c_rep_start(uint8_t addr) {
 /*----------------------------------------------------------------------------*/
 int8_t
 i2c_write(uint8_t data) {
+  uint16_t i = 0;
+
   TWDR = data;
   TWCR = (1 << TWINT) | (1 << TWEN);
 
-  while (!(TWCR & (1 << TWINT)));
+  while (!(TWCR & (1 << TWINT))) {
+    if( i++ > 800 ) {
+      return -2;
+    }
+  }
+
   if ((TWSR & 0xF8) != I2C_MT_DATA_ACK)
     return -1;
 
@@ -129,9 +148,14 @@ i2c_read_nack(uint8_t *data) {
 /*----------------------------------------------------------------------------*/
 void
 i2c_stop(void) {
+  uint16_t i = 0;
 
   TWCR = (1 << TWINT) | (1 << TWEN) | (1 << TWSTO);
-  while (TWCR & (1 << TWSTO));
+  while (TWCR & (1 << TWSTO)) {
+    if (i++ > 800) {
+      return;
+    }
+  }
 
   TWCR &= ~(1 << TWEN);
 
