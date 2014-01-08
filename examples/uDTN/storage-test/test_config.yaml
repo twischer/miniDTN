@@ -8,7 +8,7 @@ tests:
         program: uDTN-storage-test
         instrument: [examples/uDTN/storage-test/uDTN-storage-test.c,platform/inga/*.c,core/net/uDTN/*.c]
         debug: []
-        cflags: "-fno-inline -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30"
+        cflags: "-D__DELAY_BACKWARD_COMPATIBLE__ -fno-inline -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30"
         graph_options: ""
   - name: storage-default-uninstr
     timeout: 1200
@@ -29,7 +29,7 @@ tests:
         program: uDTN-storage-test
         instrument: [examples/uDTN/storage-test/uDTN-storage-test.c,platform/inga/*.c,core/net/uDTN/*.c]
         debug: []
-        cflags: "-DCONF_DISCOVERY=discovery_static -DBUNDLE_CONF_STORAGE_INIT=1 -fno-inline -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30 -DBUNDLE_CONF_STORAGE=storage_coffee"
+        cflags: "-D__DELAY_BACKWARD_COMPATIBLE__ -DCONF_DISCOVERY=discovery_static -DBUNDLE_CONF_STORAGE_INIT=1 -fno-inline -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30 -DBUNDLE_CONF_STORAGE=storage_coffee"
         graph_options: ""
   - name: storage-coffee-uninstr
     timeout: 2400
@@ -50,7 +50,7 @@ tests:
         program: uDTN-persistent-storage-test
         instrument: [examples/uDTN/storage-test/uDTN-persistent-storage-test.c,platform/inga/*.c,core/net/uDTN/*.c]
         debug: []
-        cflags: "-fno-inline -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30 -DBUNDLE_CONF_STORAGE=storage_coffee"
+        cflags: "-D__DELAY_BACKWARD_COMPATIBLE__ -fno-inline -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30 -DBUNDLE_CONF_STORAGE=storage_coffee"
         graph_options: ""
   - name: persistent-storage-coffee-uninstr
     timeout: 2400

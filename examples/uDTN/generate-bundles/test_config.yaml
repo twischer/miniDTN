@@ -8,7 +8,7 @@ tests:
         program: uDTN-generate-bundles
         instrument: [examples/uDTN/generate-bundles/uDTN-generate-bundles.c,core/net/uDTN/bundle.c,core/net/uDTN/sdnv.c]
         debug: []
-        cflags: "-fno-inline -DDATASIZE=20 -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30"
+        cflags: "-D__DELAY_BACKWARD_COMPATIBLE__ -fno-inline -DDATASIZE=20 -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30"
         graph_options: ""
   - name: generate-bundles-80
     timeout: 60
@@ -18,7 +18,7 @@ tests:
         program: uDTN-generate-bundles
         instrument: [examples/uDTN/generate-bundles/uDTN-generate-bundles.c,core/net/uDTN/bundle.c,core/net/uDTN/sdnv.c]
         debug: []
-        cflags: "-fno-inline -DDATASIZE=80 -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30"
+        cflags: "-D__DELAY_BACKWARD_COMPATIBLE__ -fno-inline -DDATASIZE=80 -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30"
         graph_options: ""
   - name: generate-bundles-20-uninstr
     timeout: 60

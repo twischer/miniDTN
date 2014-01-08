@@ -8,7 +8,7 @@ tests:
         program: uDTN-serializer-test
         instrument: [examples/uDTN/serializer-test/uDTN-serializer-test.c,platform/inga/*.c,core/net/uDTN/*.c]
         debug: []
-        cflags: "-fno-inline -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30"
+        cflags: "-D__DELAY_BACKWARD_COMPATIBLE__ -fno-inline -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30"
         graph_options: ""
   - name: serializer-uninstr
     timeout: 1200
