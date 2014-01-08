@@ -8,14 +8,14 @@ tests:
         program: uDTN-pingpong
         instrument: [examples/uDTN/pingpong/uDTN-pingpong.c,platform/inga/*.c,core/net/uDTN/*.c]
         debug: []
-        cflags: "-D__DELAY_BACKWARD_COMPATIBLE__ -fno-inline  -DCONF_MODE=1 -DCONF_DEST_NODE=$RECEIVER -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30"
+        cflags: "-DNETSTACK_CONF_MAC=nullmac_driver -DNETSTACK_CONF_RDC=nullrdc_driver -D__DELAY_BACKWARD_COMPATIBLE__ -fno-inline  -DCONF_MODE=1 -DCONF_DEST_NODE=$RECEIVER -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30"
         graph_options: ""
       - name: receiver
         programdir: examples/uDTN/pingpong
         program: uDTN-pingpong
         instrument: [examples/uDTN/pingpong/uDTN-pingpong.c,platform/inga/*.c,core/net/uDTN/*.c]
         debug: []
-        cflags: "-D__DELAY_BACKWARD_COMPATIBLE__ -fno-inline -DCONF_MODE=0 -DCONF_DEST_NODE=$SENDER -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30"
+        cflags: "-DNETSTACK_CONF_MAC=nullmac_driver -DNETSTACK_CONF_RDC=nullrdc_driver -D__DELAY_BACKWARD_COMPATIBLE__ -fno-inline -DCONF_MODE=0 -DCONF_DEST_NODE=$SENDER -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30"
         graph_options: ""
   - name: pingpong-uninstr
     timeout: 900
@@ -25,14 +25,14 @@ tests:
         program: uDTN-pingpong
         instrument: []
         debug: []
-        cflags: "-fno-inline -DCONF_MODE=1 -DCONF_DEST_NODE=$RECEIVER"
+        cflags: "-DNETSTACK_CONF_MAC=nullmac_driver -DNETSTACK_CONF_RDC=nullrdc_driver -fno-inline -DCONF_MODE=1 -DCONF_DEST_NODE=$RECEIVER"
         graph_options: ""
       - name: receiver
         programdir: examples/uDTN/pingpong
         program: uDTN-pingpong
         instrument: []
         debug: []
-        cflags: "-fno-inline -DCONF_MODE=0 -DCONF_DEST_NODE=$SENDER"
+        cflags: "-DNETSTACK_CONF_MAC=nullmac_driver -DNETSTACK_CONF_RDC=nullrdc_driver -fno-inline -DCONF_MODE=0 -DCONF_DEST_NODE=$SENDER"
         graph_options: ""
 ### Test latency loopback
   - name: pingpong-loopback
@@ -43,7 +43,7 @@ tests:
         program: uDTN-pingpong
         instrument: [examples/uDTN/pingpong/uDTN-pingpong.c,platform/inga/*.c,core/net/uDTN/*.c]
         debug: []
-        cflags: "-D__DELAY_BACKWARD_COMPATIBLE__ -fno-inline -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30"
+        cflags: "-DNETSTACK_CONF_MAC=nullmac_driver -DNETSTACK_CONF_RDC=nullrdc_driver -D__DELAY_BACKWARD_COMPATIBLE__ -fno-inline -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30"
         graph_options: ""
   - name: pingpong-loopback-uninstr
     timeout: 900
@@ -53,5 +53,5 @@ tests:
         program: uDTN-pingpong
         instrument: []
         debug: []
-        cflags: "-fno-inline"
+        cflags: "-DNETSTACK_CONF_MAC=nullmac_driver -DNETSTACK_CONF_RDC=nullrdc_driver -fno-inline"
         graph_options: ""
