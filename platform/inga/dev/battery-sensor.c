@@ -84,6 +84,7 @@ configure(int type, int c)
   switch (type) {
     case SENSORS_HW_INIT:
       ready = 1;
+      return 1;
       break;
     case SENSORS_ACTIVE:
       if (c) {

@@ -87,8 +87,10 @@ configure(int type, int c)
     case SENSORS_HW_INIT:
       if (bmp085_available()) {
         config |= (1 << CFG_READY_);
+        return 1;
       } else {
         config &= (1 << CFG_READY_);
+        return 0;
       }
       break;
     case SENSORS_ACTIVE:

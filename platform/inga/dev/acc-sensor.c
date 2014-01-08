@@ -130,8 +130,10 @@ configure(int type, int c)
     case SENSORS_HW_INIT:
       if (adxl345_available()) {
         ready = 1;
+        return 1;
       } else {
         ready = 0;
+        return 0;
       }
       break;
 
