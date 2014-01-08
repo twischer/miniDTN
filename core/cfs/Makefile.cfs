@@ -9,7 +9,7 @@ FAT_COOP = fat_coop.c
 DISKIO = diskio.c mbr.c
 
 ifndef CFS
-  CFS=coffee
+  CFS=none
 endif
 
 ifeq ($(CFS),fat)
@@ -28,6 +28,8 @@ else ifeq ($(CFS),coffee)
 else ifeq ($(CFS),posix)
   CFS_FILE = cfs-posix.c
   CFS_DEFS = -DCFS_POSIX=1
+else
+  $(warning No CFS implementation selected)
 endif
 
 CONTIKI_SOURCEFILES += $(CFS_FILES)
