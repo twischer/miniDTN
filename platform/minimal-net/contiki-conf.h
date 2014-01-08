@@ -56,6 +56,10 @@ typedef  int32_t s32_t;
 
 typedef unsigned short uip_stats_t;
 
+#if WITH_DTN /* WITH_DTN */
+/* Network setup for uDTN */
+#define NETSTACK_CONF_NETWORK     dtn_network_driver
+#endif
 
 #if UIP_CONF_IPV6
 /* The Windows build uses wpcap to connect to a host interface. It finds the interface by scanning for
