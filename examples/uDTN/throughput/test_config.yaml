@@ -104,6 +104,41 @@ tests:
         debug: []
         cflags: "-DNETSTACK_CONF_MAC=nullmac_driver -DNETSTACK_CONF_RDC=nullrdc_driver -fno-inline -DCONF_REPORTING_INTERVAL=1 -DCONF_BUNDLES=100 -DBUNDLE_CONF_STORAGE_INIT=1 -DBUNDLE_CONF_STORAGE=storage_coffee"
         graph_options: ""
+### Test throughput PDS
+  - name: throughput-pds
+    timeout: 900
+    devices:
+      - name: sender
+        programdir: examples/uDTN/throughput
+        program: uDTN-sender
+        instrument: [examples/uDTN/throughput/uDTN-sender.c,platform/inga/*.c,core/net/uDTN/*.c]
+        debug: []
+        cflags: "-DCONF_DISCOVERY_SCHEDULER=discovery_scheduler_pattern -DNETSTACK_CONF_RDC=discovery_aware_rdc_driver -D__DELAY_BACKWARD_COMPATIBLE__ -fno-inline -DCONF_SEND_TO_NODE=$RECEIVER -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30"
+        graph_options: ""
+      - name: receiver
+        programdir: examples/uDTN/throughput
+        program: uDTN-sink
+        instrument: [examples/uDTN/throughput/uDTN-sink.c,platform/inga/*.c,core/net/uDTN/*.c]
+        debug: []
+        cflags: "-DCONF_DISCOVERY_SCHEDULER=discovery_scheduler_pattern -DNETSTACK_CONF_RDC=discovery_aware_rdc_driver -D__DELAY_BACKWARD_COMPATIBLE__ -fno-inline -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30"
+        graph_options: ""
+  - name: throughput-pds-uninstr
+    timeout: 900
+    devices:
+      - name: sender
+        programdir: examples/uDTN/throughput
+        program: uDTN-sender
+        instrument: []
+        debug: []
+        cflags: "-DCONF_DISCOVERY_SCHEDULER=discovery_scheduler_pattern -DNETSTACK_CONF_RDC=discovery_aware_rdc_driver -fno-inline -DCONF_SEND_TO_NODE=$RECEIVER"
+        graph_options: ""
+      - name: receiver
+        programdir: examples/uDTN/throughput
+        program: uDTN-sink
+        instrument: []
+        debug: []
+        cflags: "-DCONF_DISCOVERY_SCHEDULER=discovery_scheduler_pattern -DNETSTACK_CONF_RDC=discovery_aware_rdc_driver -fno-inline"
+        graph_options: ""
 ### Basically the throughput test with the contiki network stack instrumented
   - name: contiki-net
     timeout: 900
