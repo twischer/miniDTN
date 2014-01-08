@@ -33,6 +33,7 @@
 
 
 #include <string.h>
+#include <stdio.h>
 
 #include "contiki.h"
 
@@ -103,6 +104,7 @@ PROCESS_THREAD(sensors_process, ev, data)
 {
   static int i;
   static int events;
+  int ret;
 
   PROCESS_BEGIN();
 
@@ -110,7 +112,11 @@ PROCESS_THREAD(sensors_process, ev, data)
 
   for(i = 0; sensors[i] != NULL; ++i) {
     sensors_flags[i] = 0;
-    sensors[i]->configure(SENSORS_HW_INIT, 0);
+    ret = sensors[i]->configure(SENSORS_HW_INIT, 0);
+
+    if( ret == 0 ) {
+      printf("Configuration of sensor %s failed (or sensor not present)\n", sensors[i]->type);
+    }
   }
   num_sensors = i;
 
