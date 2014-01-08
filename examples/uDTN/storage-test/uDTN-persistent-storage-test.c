@@ -54,6 +54,14 @@
 #include "net/uDTN/bundle.h"
 #include "net/uDTN/storage.h"
 
+#define DEBUG 0
+#if DEBUG
+#include <stdio.h>
+#define PRINTF(...) printf(__VA_ARGS__)
+#else
+#define PRINTF(...)
+#endif
+
 #define TEST_BUNDLES BUNDLE_STORAGE_SIZE
 
 uint32_t bundle_numbers[TEST_BUNDLES * 3];
@@ -73,13 +81,13 @@ uint8_t my_create_bundle(uint32_t sequence_number, uint32_t * bundle_number, uin
 
 	ptr = bundle_create_bundle();
 	if( ptr == NULL ) {
-		printf("CREATE: Bundle %lu could not be allocated\n", sequence_number);
+		PRINTF("CREATE: Bundle %lu could not be allocated\n", sequence_number);
 		return 0;
 	}
 
 	bundle = (struct bundle_t *) MMEM_PTR(ptr);
 	if( bundle == NULL ) {
-		printf("CREATE: Bundle %lu could not be allocated\n", sequence_number);
+		PRINTF("CREATE: Bundle %lu could not be allocated\n", sequence_number);
 		return 0;
 	}
 
@@ -108,7 +116,7 @@ uint8_t my_create_bundle(uint32_t sequence_number, uint32_t * bundle_number, uin
 	// And tell storage to save the bundle
 	n = BUNDLE_STORAGE.save_bundle(ptr, &bundle_number_ptr);
 	if( !n ) {
-		printf("CREATE: Bundle %lu could not be created\n", sequence_number);
+		PRINTF("CREATE: Bundle %lu could not be created\n", sequence_number);
 		return 0;
 	}
 
@@ -127,13 +135,13 @@ uint8_t my_verify_bundle(uint32_t bundle_number, uint32_t sequence_number) {
 
 	ptr = BUNDLE_STORAGE.read_bundle(bundle_number);
 	if( ptr == NULL ) {
-		printf("VERIFY: MMEM ptr is invalid\n");
+		PRINTF("VERIFY: MMEM ptr is invalid\n");
 		return 0;
 	}
 
 	struct bundle_t * bundle = (struct bundle_t *) MMEM_PTR(ptr);
 	if( bundle == NULL ) {
-		printf("VERIFY: bundle ptr is invalid\n");
+		PRINTF("VERIFY: bundle ptr is invalid\n");
 		return 0;
 	}
 
@@ -149,7 +157,7 @@ uint8_t my_verify_bundle(uint32_t bundle_number, uint32_t sequence_number) {
 		}
 
 		if( attr != i ) {
-			printf("VERIFY: attribute %lu mismatch\n", i);
+			PRINTF("VERIFY: attribute %lu mismatch\n", i);
 			errors ++;
 		}
 	}
@@ -157,19 +165,19 @@ uint8_t my_verify_bundle(uint32_t bundle_number, uint32_t sequence_number) {
 	// Verify the sequence number
 	bundle_get_attr(ptr, TIME_STAMP_SEQ_NR, &attr);
 	if( attr != sequence_number ) {
-		printf("VERIFY: sequence number mismatch\n");
+		PRINTF("VERIFY: sequence number mismatch\n");
 		errors ++;
 	}
 
 	block = bundle_get_payload_block(ptr);
 	if( block == NULL ) {
-		printf("VERIFY: unable to get payload block\n");
+		PRINTF("VERIFY: unable to get payload block\n");
 		errors ++;
 	} else {
 		// Fill the payload
 		for(i=0; i<60; i++) {
 			if( block->payload[i] != (i + (uint8_t) sequence_number) ) {
-				printf("VERIFY: payload byte %lu mismatch\n", i);
+				PRINTF("VERIFY: payload byte %lu mismatch\n", i);
 				errors ++;
 			}
 		}
@@ -195,7 +203,7 @@ PROCESS_THREAD(test_process, ev, data)
 	PROCESS_BEGIN();
 
 	/* Initialize the flash before the storage comes along */
-	printf("Intializing Flash...\n");
+	PRINTF("Intializing Flash...\n");
 	cfs_coffee_format();
 
 	PROCESS_PAUSE();
@@ -215,22 +223,22 @@ PROCESS_THREAD(test_process, ev, data)
 	// Measure the current time
 	time_start = test_precise_timestamp();
 
-	printf("Create and Verify bundles in sequence\n");
+	PRINTF("Create and Verify bundles in sequence\n");
 	for(i=0; i<TEST_BUNDLES; i++) {
 		PROCESS_PAUSE();
 
 		if( my_create_bundle(i, &bundle_numbers[i], 3600) ) {
-			printf("\tBundle %lu created successfully \n", i);
+			PRINTF("\tBundle %lu created successfully \n", i);
 		} else {
-			printf("\tBundle %lu could not be created \n", i);
+			PRINTF("\tBundle %lu could not be created \n", i);
 			errors ++;
 			continue;
 		}
 
 		if( my_verify_bundle(bundle_numbers[i], i) ) {
-			printf("\tBundle %lu read back successfully \n", i);
+			PRINTF("\tBundle %lu read back successfully \n", i);
 		} else {
-			printf("\tBundle %lu could not be read back and verified \n", i);
+			PRINTF("\tBundle %lu could not be read back and verified \n", i);
 			errors ++;
 		}
 	}
@@ -239,21 +247,21 @@ PROCESS_THREAD(test_process, ev, data)
 	/* Reinitialize the storage and see, if the bundles persist */
 	BUNDLE_STORAGE.init();
 
-	printf("Verify and Delete bundles in sequence\n");
+	PRINTF("Verify and Delete bundles in sequence\n");
 	for(i=0; i<TEST_BUNDLES; i++) {
 		if( my_verify_bundle(bundle_numbers[i], i) ) {
-			printf("\tBundle %lu read back successfully \n", i);
+			PRINTF("\tBundle %lu read back successfully \n", i);
 		} else {
-			printf("\tBundle %lu could not be read back and verified \n", i);
+			PRINTF("\tBundle %lu could not be read back and verified \n", i);
 			errors ++;
 		}
 
 		n = BUNDLE_STORAGE.del_bundle(bundle_numbers[i], REASON_DELIVERED);
 
 		if( n ) {
-			printf("\tBundle %lu deleted successfully\n", i);
+			PRINTF("\tBundle %lu deleted successfully\n", i);
 		} else {
-			printf("\tBundle %lu could not be deleted\n", i);
+			PRINTF("\tBundle %lu could not be deleted\n", i);
 			errors++;
 		}
 	}
