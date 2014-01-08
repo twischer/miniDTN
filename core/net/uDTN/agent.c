@@ -65,6 +65,7 @@ PROCESS_THREAD(agent_process, ev, data)
 	uint32_t * bundle_number_ptr = NULL;
 	struct registration_api * reg;
 	udtn_timeval_t tv;
+	uint32_t tmp = 0;
 
 	PROCESS_BEGIN();
 
@@ -205,7 +206,9 @@ PROCESS_THREAD(agent_process, ev, data)
 				udtn_gettimeofday(&tv);
 
 				// Set the time-stamp in the bundle
-				bundle_set_attr(bundleptr, TIME_STAMP, &tv.tv_sec);
+				// FIXME: uint32_t is too small after year 2030 ;)
+				tmp = tv.tv_sec;
+				bundle_set_attr(bundleptr, TIME_STAMP, &tmp);
 
 				// Reset sequence number if time-stamp has changed since the last call
 				if (dtn_last_time_stamp != tv.tv_sec) {
