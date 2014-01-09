@@ -251,7 +251,7 @@ uint8_t statusreport_basic_send(struct mmem * bundlemem, uint8_t status, uint8_t
 	bundle_set_attr(report_bundle, LIFE_TIME, &lifetime);
 
 	// Make the outgoing bundle an admin record
-	flags = BUNDLE_FLAG_ADM_REC;
+	flags = BUNDLE_FLAG_ADM_REC | BUNDLE_FLAG_SINGLETON;
 	bundle_set_attr(report_bundle, FLAGS, &flags);
 
 	// Encode status report
