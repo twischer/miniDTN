@@ -62,6 +62,9 @@ struct mmem * bundle_create_bundle()
 	bundle->num_blocks = 0;
 	bundle->source_process = PROCESS_CURRENT();
 
+	/* Bundles are created as singleton and with normal priority */
+	bundle->flags = BUNDLE_FLAG_SINGLETON | BUNDLE_PRIORITY_NORMAL;
+
 	return &bs->bundle;
 }
 
