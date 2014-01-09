@@ -351,6 +351,12 @@ int convergence_layer_send_ack(rimeaddr_t * destination, uint8_t sequence_number
 		buffer[0] = 0;
 		buffer[0] |= CONVERGENCE_LAYER_TYPE_NACK & CONVERGENCE_LAYER_MASK_TYPE;
 		buffer[0] |= (sequence_number << 2) & CONVERGENCE_LAYER_MASK_SEQNO;
+	} else if( type == CONVERGENCE_LAYER_TYPE_TEMP_NACK ) {
+		// Construct the temporary NACK
+		buffer[0] = 0;
+		buffer[0] |= CONVERGENCE_LAYER_TYPE_NACK & CONVERGENCE_LAYER_MASK_TYPE;
+		buffer[0] |= (sequence_number << 2) & CONVERGENCE_LAYER_MASK_SEQNO;
+		buffer[0] |= (CONVERGENCE_LAYER_FLAGS_FIRST) & CONVERGENCE_LAYER_MASK_FLAGS; // This flag indicates a temporary nack
 	}
 
 	/* Note down our latest attempt */
@@ -380,8 +386,10 @@ int convergence_layer_create_send_ack(rimeaddr_t * destination, uint8_t sequence
 
 		if( type == CONVERGENCE_LAYER_TYPE_ACK ) {
 			ticket->flags |= CONVERGENCE_LAYER_QUEUE_ACK;
-		} else {
+		} else if( type == CONVERGENCE_LAYER_TYPE_NACK ) {
 			ticket->flags |= CONVERGENCE_LAYER_QUEUE_NACK;
+		} else if( type == CONVERGENCE_LAYER_TYPE_TEMP_NACK) {
+			ticket->flags |= CONVERGENCE_LAYER_QUEUE_TEMP_NACK;
 		}
 	}
 
@@ -391,7 +399,7 @@ int convergence_layer_create_send_ack(rimeaddr_t * destination, uint8_t sequence
 int convergence_layer_resend_ack(struct transmit_ticket_t * ticket)
 {
 	/* Check if we really have an ACK/NACK that is currently not beeing transmitted */
-	if( (!(ticket->flags & CONVERGENCE_LAYER_QUEUE_ACK) && !(ticket->flags & CONVERGENCE_LAYER_QUEUE_NACK)) || (ticket->flags & CONVERGENCE_LAYER_QUEUE_IN_TRANSIT) ) {
+	if( (!(ticket->flags & CONVERGENCE_LAYER_QUEUE_ACK) && !(ticket->flags & CONVERGENCE_LAYER_QUEUE_NACK) && !(ticket->flags & CONVERGENCE_LAYER_QUEUE_TEMP_NACK)) || (ticket->flags & CONVERGENCE_LAYER_QUEUE_IN_TRANSIT) ) {
 		return 0;
 	}
 
@@ -406,6 +414,8 @@ int convergence_layer_resend_ack(struct transmit_ticket_t * ticket)
 		type = CONVERGENCE_LAYER_TYPE_ACK;
 	} else if( ticket->flags & CONVERGENCE_LAYER_QUEUE_NACK ) {
 		type = CONVERGENCE_LAYER_TYPE_NACK;
+	} else if( ticket->flags & CONVERGENCE_LAYER_QUEUE_TEMP_NACK ) {
+		type = CONVERGENCE_LAYER_TYPE_TEMP_NACK;
 	} else {
 		LOG(LOGD_DTN, LOG_CL, LOGL_ERR, "Unknown control packet type");
 		return 0;
@@ -416,6 +426,12 @@ int convergence_layer_resend_ack(struct transmit_ticket_t * ticket)
 	return 1;
 }
 
+/**
+ * Return values:
+ *  1 = SUCCESS
+ * -1 = Temporary error
+ * -2 = Permanent error
+ */
 int convergence_layer_parse_dataframe(rimeaddr_t * source, uint8_t * payload, uint8_t length, uint8_t flags, uint8_t sequence_number, packetbuf_attr_t rssi)
 {
 	struct mmem * bundlemem = NULL;
@@ -424,12 +440,17 @@ int convergence_layer_parse_dataframe(rimeaddr_t * source, uint8_t * payload, ui
 
 	if( flags != (CONVERGENCE_LAYER_FLAGS_FIRST | CONVERGENCE_LAYER_FLAGS_LAST ) ) {
 		LOG(LOGD_DTN, LOG_CL, LOGL_ERR, "Bundle received %p from %u.%u with invalid flags %02X", payload, source->u8[0], source->u8[1], flags);
+
+		/* We will never be able to parse that bundle, signal a permanent error */
+		return -2;
 	}
 
 	/* Allocate memory, parse the bundle and set reference counter to 1 */
 	bundlemem = bundle_recover_bundle(payload, length);
 	if( !bundlemem ) {
 		LOG(LOGD_DTN, LOG_CL, LOGL_WRN, "Error recovering bundle");
+
+		/* Possible not enough memory -> temporary error */
 		return -1;
 	}
 
@@ -437,6 +458,8 @@ int convergence_layer_parse_dataframe(rimeaddr_t * source, uint8_t * payload, ui
 	if( !bundle ) {
 		LOG(LOGD_DTN, LOG_CL, LOGL_WRN, "Invalid bundle pointer");
 		bundle_decrement(bundlemem);
+
+		/* Possible not enough memory -> temporary error */
 		return -1;
 	}
 
@@ -456,14 +479,12 @@ int convergence_layer_parse_dataframe(rimeaddr_t * source, uint8_t * payload, ui
 	bundlemem = NULL;
 
 	if( n ) {
-		/* Send out the ACK */
-		convergence_layer_create_send_ack(source, sequence_number + 1, CONVERGENCE_LAYER_TYPE_ACK);
-	} else {
-		/* Send out NACK */
-		convergence_layer_create_send_ack(source, sequence_number, CONVERGENCE_LAYER_TYPE_NACK);
+		/* Dispatching was successfull! */
+		return 1;
 	}
 
-	return 1;
+	/* Temporary error */
+	return -1;
 }
 
 int convergence_layer_parse_ackframe(rimeaddr_t * source, uint8_t * payload, uint8_t length, uint8_t sequence_number, uint8_t type)
@@ -504,6 +525,7 @@ int convergence_layer_parse_ackframe(rimeaddr_t * source, uint8_t * payload, uin
 		}
 	}
 
+	/* TODO: Handle temporary NACKs separately here */
 	if( type == CONVERGENCE_LAYER_TYPE_ACK ) {
 		/* Bundle has been ACKed and is now done */
 		ticket->flags = CONVERGENCE_LAYER_QUEUE_DONE;
@@ -562,9 +584,17 @@ int convergence_layer_incoming_frame(rimeaddr_t * source, uint8_t * payload, uin
 		/* Parse the incoming data frame */
 		ret = convergence_layer_parse_dataframe(source, data_pointer, data_length, flags, sequence_number, rssi);
 
-		/* Send out NACK if parsing fails */
-		if( ret < 0 ) {
-			convergence_layer_create_send_ack(source, sequence_number, CONVERGENCE_LAYER_TYPE_NACK);
+		if( ret >= 0 ) {
+			/* Send ACK */
+			convergence_layer_create_send_ack(source, sequence_number + 1, CONVERGENCE_LAYER_TYPE_ACK);
+		} else if( ret == -1 ) {
+			/* Send temporary NACK */
+			convergence_layer_create_send_ack(source, sequence_number + 1, CONVERGENCE_LAYER_TYPE_TEMP_NACK);
+		} else if( ret == -2 ) {
+			/* Send permanent NACK */
+			convergence_layer_create_send_ack(source, sequence_number + 1, CONVERGENCE_LAYER_TYPE_NACK);
+		} else {
+			/* FAIL */
 		}
 
 		return 1;
@@ -638,7 +668,7 @@ int convergence_layer_status(void * pointer, uint8_t outcome)
 
 	ticket = (struct transmit_ticket_t *) pointer;
 
-	if( (ticket->flags & CONVERGENCE_LAYER_QUEUE_ACK) || (ticket->flags & CONVERGENCE_LAYER_QUEUE_NACK) ) {
+	if( (ticket->flags & CONVERGENCE_LAYER_QUEUE_ACK) || (ticket->flags & CONVERGENCE_LAYER_QUEUE_NACK) || (ticket->flags & CONVERGENCE_LAYER_QUEUE_TEMP_NACK) ) {
 		/* Unset IN_TRANSIT flag */
 		ticket->flags &= ~CONVERGENCE_LAYER_QUEUE_IN_TRANSIT;
 
