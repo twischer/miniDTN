@@ -39,6 +39,7 @@
 #include "sys/test.h"
 #include "sys/profiling.h"
 
+#include "net/uDTN/bundle.h"
 #include "net/uDTN/agent.h"
 #include "net/uDTN/api.h"
 
@@ -49,10 +50,11 @@ AUTOSTART_PROCESSES(&udtn_demo_process);
 PROCESS_THREAD(udtn_demo_process, ev, data)
 {
 	static struct registration_api reg;
+	struct mmem * outgoing_bundle_memory = NULL;
+	uint8_t payload[255];
+	uint32_t tmp;
 
 	PROCESS_BEGIN();
-	profiling_init();
-	profiling_start();
 
 	/* Wait for the agent to be initialized */
 	PROCESS_PAUSE();
@@ -63,7 +65,27 @@ PROCESS_THREAD(udtn_demo_process, ev, data)
 	reg.app_id = 25;
 	process_post(&agent_process, dtn_application_registration_event,&reg);
 
-  TEST_PASS();
+	/* Allocate memory for the outgoing bundle */
+	outgoing_bundle_memory = bundle_create_bundle();
+	if( outgoing_bundle_memory == NULL ) {
+		printf("No memory to send bundle\n");
+		return -1;
+	}
+
+	/* Get the bundle flags */
+	bundle_get_attr(outgoing_bundle_memory, FLAGS, &tmp);
+
+	/* Set the bundle flags to singleton */
+	tmp = BUNDLE_FLAG_SINGLETON;
+	bundle_set_attr(outgoing_bundle_memory, FLAGS, &tmp);
+
+	/* Add the payload block */
+	bundle_add_block(outgoing_bundle_memory, BUNDLE_BLOCK_TYPE_PAYLOAD, BUNDLE_BLOCK_FLAG_NULL, payload, 255);
+
+	/* To send the bundle, we send an event to the agent */
+	process_post(&agent_process, dtn_send_bundle_event, (void *) outgoing_bundle_memory);
+
+	TEST_PASS();
 
 	PROCESS_END();
 }
