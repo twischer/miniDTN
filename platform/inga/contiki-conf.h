@@ -199,11 +199,12 @@
 /* AUTOACK receive mode gives better rssi measurements,
  * even if ACK is never requested */
 #define RF230_CONF_AUTOACK        1
-/* Number of auto retry attempts+1, 1-16.
- * Set zero to disable extended TX_ARET_ON mode with CCA) */
-#define RF230_CONF_AUTORETRIES    3
+/* Make nullrdc wait for the proper ACK before proceeding */
+#define NULLRDC_CONF_802154_AUTOACK 1
+/* Let the RF230 radio driver generate fake acknowledgements to make nullrdc happy */
+#define RF320_CONF_INSERTACK 1
 /* Number of CSMA attempts 0-7. 802.15.4 2003 standard max is 5. */
-#define RF230_CONF_CSMARETRIES    5
+#define RF230_CONF_FRAME_RETRIES    5
 /* CCA theshold energy -91 to -61 dBm (default -77).
  * Set this smaller than the expected minimum rssi to avoid packet collisions */
 /* The Jackdaw menu 'm' command is helpful for determining the smallest ever received rssi */
