@@ -39,11 +39,16 @@
  *         André Frambach <frambach@ibr.cs.tu-bs.de>
  */
 
+#if CONTIKI_TARGET_COOJA
+#include "lib/simEnvChange.h"
+#endif /* CONTIKI_TARGET_COOJA */
+
 #include "net/mac/discovery_aware_rdc.h"
 #include "net/packetbuf.h"
 #include "net/netstack.h"
 #include "sys/process.h"
 #include "sys/etimer.h"
+#include "mac/mac-sequence.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -63,7 +68,6 @@
 #else
 #define DISCOVERY_AWARE_RDC_ADDRESS_FILTER 1
 #endif /* DISCOVERY_AWARE_RDC_CONF_ADDRESS_FILTER */
-#define DISCOVERY_AWARE_RDC_802154_AUTOACK 1
 
 #define DISCOVERY_AWARE_RDC_802154_AUTOACK 1
 
@@ -87,33 +91,38 @@
 #include "sys/rtimer.h"
 #include "dev/watchdog.h"
 
+#ifdef DISCOVERY_AWARE_RDC_CONF_ACK_WAIT_TIME
+#define ACK_WAIT_TIME DISCOVERY_AWARE_RDC_CONF_ACK_WAIT_TIME
+#else /* DISCOVERY_AWARE_RDC_CONF_ACK_WAIT_TIME */
 #define ACK_WAIT_TIME                      RTIMER_SECOND / 2500
+#endif /* DISCOVERY_AWARE_RDC_CONF_ACK_WAIT_TIME */
+
+#ifdef DISCOVERY_AWARE_RDC_CONF_AFTER_ACK_DETECTED_WAIT_TIME
+#define AFTER_ACK_DETECTED_WAIT_TIME DISCOVERY_AWARE_RDC_CONF_AFTER_ACK_DETECTED_WAIT_TIME
+#else /* DISCOVERY_AWARE_RDC_CONF_AFTER_ACK_DETECTED_WAIT_TIME */
 #define AFTER_ACK_DETECTED_WAIT_TIME       RTIMER_SECOND / 1500
-#define ACK_LEN 3
+#endif /* DISCOVERY_AWARE_RDC_CONF_AFTER_ACK_DETECTED_WAIT_TIME */
 #endif /* DISCOVERY_AWARE_RDC_802154_AUTOACK */
 
-#if DISCOVERY_AWARE_RDC_802154_AUTOACK || DISCOVERY_AWARE_RDC_802154_AUTOACK_HW
-struct seqno {
-	rimeaddr_t sender;
-	uint8_t seqno;
-};
+#ifdef DISCOVERY_AWARE_RDC_CONF_SEND_802154_ACK
+#define DISCOVERY_AWARE_RDC_SEND_802154_ACK DISCOVERY_AWARE_RDC_CONF_SEND_802154_ACK
+#else /* DISCOVERY_AWARE_RDC_CONF_SEND_802154_ACK */
+#define DISCOVERY_AWARE_RDC_SEND_802154_ACK 0
+#endif /* DISCOVERY_AWARE_RDC_CONF_SEND_802154_ACK */
 
-#ifdef NETSTACK_CONF_MAC_SEQNO_HISTORY
-#define MAX_SEQNOS NETSTACK_CONF_MAC_SEQNO_HISTORY
-#else /* NETSTACK_CONF_MAC_SEQNO_HISTORY */
-#define MAX_SEQNOS 16
-#endif /* NETSTACK_CONF_MAC_SEQNO_HISTORY */
-
-static struct seqno received_seqnos[MAX_SEQNOS];
-#endif /* DISCOVERY_AWARE_RDC_802154_AUTOACK || DISCOVERY_AWARE_RDC_802154_AUTOACK_HW */
+#if DISCOVERY_AWARE_RDC_SEND_802154_ACK
+#include "net/mac/frame802154.h"
+#endif /* DISCOVERY_AWARE_RDC_SEND_802154_ACK */
 
 #ifndef DISCOVERY_AWARE_RDC_CONF_RADIO_OFF_TIMEOUT
-#define RADIO_OFF_SEND_TIMEOUT 0.1
-#define RADIO_OFF_REC_TIMEOUT 0.1
+#define RADIO_OFF_SEND_TIMEOUT 0.25
+#define RADIO_OFF_REC_TIMEOUT 0.25
 #else
 #define RADIO_OFF_SEND_TIMEOUT DISCOVERY_AWARE_RDC_CONF_RADIO_OFF_TIMEOUT
 #define RADIO_OFF_REC_TIMEOUT DISCOVERY_AWARE_RDC_CONF_RADIO_OFF_TIMEOUT
 #endif /* DISCOVERY_AWARE_RDC_CONF_RADIO_OFF_TIMEOUT */
+
+#define ACK_LEN 3
 
 PROCESS(discovery_aware_rdc_process, "DISCOVERY_AWARE_RDC process");
 
@@ -146,10 +155,15 @@ send_one_packet(mac_callback_t sent, void *ptr)
 	}
 
 
-	if(NETSTACK_FRAMER.create() == 0) {
+	if(NETSTACK_FRAMER.create() < 0) {
 		/* Failed to allocate space for headers */
+	    PRINTF("RDC: send failed, too large header\n");
 		ret = MAC_TX_ERR_FATAL;
 	} else {
+
+#ifdef NETSTACK_ENCRYPT
+		NETSTACK_ENCRYPT();
+#endif /* NETSTACK_ENCRYPT */
 
 #if DISCOVERY_AWARE_RDC_802154_AUTOACK
 		int is_broadcast;
@@ -170,6 +184,10 @@ send_one_packet(mac_callback_t sent, void *ptr)
 			ret = MAC_TX_COLLISION;
 
 		} else {
+  		  if(!is_broadcast) {
+			RIMESTATS_ADD(reliabletx);
+		  }
+
 			switch(NETSTACK_RADIO.transmit(packetbuf_totlen())) {
 			case RADIO_TX_OK:
 				if(is_broadcast) {
@@ -180,7 +198,12 @@ send_one_packet(mac_callback_t sent, void *ptr)
 					/* Check for ack */
 					wt = RTIMER_NOW();
 					watchdog_periodic();
-					while(RTIMER_CLOCK_LT(RTIMER_NOW(), wt + ACK_WAIT_TIME));
+					while(RTIMER_CLOCK_LT(RTIMER_NOW(), wt + ACK_WAIT_TIME)) {
+#if CONTIKI_TARGET_COOJA
+						simProcessRunValue = 1;
+						cooja_mt_yield();
+#endif /* CONTIKI_TARGET_COOJA */
+					}
 
 					ret = MAC_TX_NOACK;
 					if(NETSTACK_RADIO.receiving_packet() ||
@@ -189,21 +212,30 @@ send_one_packet(mac_callback_t sent, void *ptr)
 						int len;
 						uint8_t ackbuf[ACK_LEN];
 
-						wt = RTIMER_NOW();
-						watchdog_periodic();
-						while(RTIMER_CLOCK_LT(RTIMER_NOW(),
-								wt + AFTER_ACK_DETECTED_WAIT_TIME));
+						if(AFTER_ACK_DETECTED_WAIT_TIME > 0) {
+							wt = RTIMER_NOW();
+							watchdog_periodic();
+							while(RTIMER_CLOCK_LT(RTIMER_NOW(), wt + AFTER_ACK_DETECTED_WAIT_TIME)) {
+#if CONTIKI_TARGET_COOJA
+								simProcessRunValue = 1;
+								cooja_mt_yield();
+#endif /* CONTIKI_TARGET_COOJA */
+							}
+						}
 
 						if(NETSTACK_RADIO.pending_packet()) {
 							len = NETSTACK_RADIO.read(ackbuf, ACK_LEN);
 							if(len == ACK_LEN && ackbuf[2] == dsn) {
 								/* Ack received */
+								RIMESTATS_ADD(ackrx);
 								ret = MAC_TX_OK;
 							} else {
 								/* Not an ack or ack not for us: collision */
 								ret = MAC_TX_COLLISION;
 							}
 						}
+					} else {
+						PRINTF("RDC tx noack\n");
 					}
 				}
 				break;
@@ -286,46 +318,66 @@ send_list(mac_callback_t sent, void *ptr, struct rdc_buf_list *buf_list)
 static void
 packet_input(void)
 {
+	int original_datalen;
+	uint8_t *original_dataptr;
+
+	original_datalen = packetbuf_datalen();
+	original_dataptr = packetbuf_dataptr();
+#ifdef NETSTACK_DECRYPT
+	NETSTACK_DECRYPT();
+#endif /* NETSTACK_DECRYPT */
+
 #if DISCOVERY_AWARE_RDC_802154_AUTOACK
 	if(packetbuf_datalen() == ACK_LEN) {
 		/* Ignore ack packets */
+		PRINTF("RDC: ignored ack\n");
 	} else
 #endif /* DISCOVERY_AWARE_RDC_802154_AUTOACK */
-		if(NETSTACK_FRAMER.parse() == 0) {
+		if(NETSTACK_FRAMER.parse() < 0) {
+			PRINTF("RDC: failed to parse %u\n", packetbuf_datalen());
 #if DISCOVERY_AWARE_RDC_ADDRESS_FILTER
 		} else if(!rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_RECEIVER),
 				&rimeaddr_node_addr) &&
 				!rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_RECEIVER),
 						&rimeaddr_null)) {
+			PRINTF("RDC: not for us\n");
 #endif /* DISCOVERY_AWARE_RDC_ADDRESS_FILTER */
 		} else {
+			int duplicate = 0;
+
 #if DISCOVERY_AWARE_RDC_802154_AUTOACK || DISCOVERY_AWARE_RDC_802154_AUTOACK_HW
-			/* Check for duplicate packet by comparing the sequence number
-       of the incoming packet with the last few ones we saw. */
-			int i;
-			for(i = 0; i < MAX_SEQNOS; ++i) {
-				if(packetbuf_attr(PACKETBUF_ATTR_PACKET_ID) == received_seqnos[i].seqno &&
-						rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_SENDER),
-								&received_seqnos[i].sender)) {
-					/* Drop the packet. */
-					return;
-				}
+			/* Check for duplicate packet. */
+			duplicate = mac_sequence_is_duplicate();
+			if(duplicate) {
+				/* Drop the packet. */
+				PRINTF("RDC: drop duplicate link layer packet %u\n",
+						packetbuf_attr(PACKETBUF_ATTR_PACKET_ID));
+			} else {
+				mac_sequence_register_seqno();
 			}
-			for(i = MAX_SEQNOS - 1; i > 0; --i) {
-				memcpy(&received_seqnos[i], &received_seqnos[i - 1],
-						sizeof(struct seqno));
-			}
-			received_seqnos[0].seqno = packetbuf_attr(PACKETBUF_ATTR_PACKET_ID);
-			rimeaddr_copy(&received_seqnos[0].sender,
-					packetbuf_addr(PACKETBUF_ADDR_SENDER));
 #endif /* DISCOVERY_AWARE_RDC_802154_AUTOACK */
 
-			if (!rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_RECEIVER), &rimeaddr_null)) {
-				to_modifier += 10;
-				rec_flag = 1;
-			}
+#if DISCOVERY_AWARE_RDC_SEND_802154_ACK
+			{
+				frame802154_t info154;
+				frame802154_parse(original_dataptr, original_datalen, &info154);
+				if(info154.fcf.frame_type == FRAME802154_DATAFRAME &&
+						info154.fcf.ack_required != 0 &&
+						rimeaddr_cmp((rimeaddr_t *)&info154.dest_addr,
+								&rimeaddr_node_addr)) {
+					uint8_t ackdata[ACK_LEN] = {0, 0, 0};
 
-			NETSTACK_MAC.input();
+					ackdata[0] = FRAME802154_ACKFRAME;
+					ackdata[1] = 0;
+					ackdata[2] = info154.seq;
+					NETSTACK_RADIO.send(ackdata, ACK_LEN);
+				}
+			}
+#endif /* DISCOVERY_AWARE_RDC_SEND_ACK */
+
+			if(!duplicate) {
+				NETSTACK_MAC.input();
+			}
 		}
 }
 /*---------------------------------------------------------------------------*/
