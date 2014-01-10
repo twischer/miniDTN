@@ -686,15 +686,7 @@ void routing_flooding_bundle_sent(struct transmit_ticket_t * ticket, uint8_t sta
 		// NACK = Other side rejected the bundle, try again later
 		// FAIL = Transmission failed
 		// --> note down address in blacklist
-		if( routing_flooding_blacklist_add(&ticket->neighbour) ) {
-			// Node is now past threshold and blacklisted, notify discovery
-			routing_flooding_blacklist_delete(&ticket->neighbour);
-
-			// "dead" will free all tickets, we do not have to do it
-			DISCOVERY.dead(&ticket->neighbour);
-
-			return;
-		}
+		routing_flooding_blacklist_add(&ticket->neighbour);
 
 		/* Free up the ticket */
 		convergence_layer_free_transmit_ticket(ticket);
