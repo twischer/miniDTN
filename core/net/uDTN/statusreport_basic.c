@@ -35,7 +35,7 @@
 /**
  * \brief Encode a bundle status report from the struct to a flat buffer
  */
-int statusreport_encode(status_report_t * report, uint8_t * buffer, uint8_t length)
+int statusreport_basic_encode(status_report_t * report, uint8_t * buffer, uint8_t length)
 {
 	uint8_t offset = 0;
 	int ret = 0;
@@ -100,7 +100,7 @@ int statusreport_encode(status_report_t * report, uint8_t * buffer, uint8_t leng
 	return offset;
 }
 
-int statusreport_decode(status_report_t * report, uint8_t * buffer, uint8_t length)
+int statusreport_basic_decode(status_report_t * report, uint8_t * buffer, uint8_t length)
 {
 	int offset = 0;
 	int ret;
@@ -255,7 +255,7 @@ uint8_t statusreport_basic_send(struct mmem * bundlemem, uint8_t status, uint8_t
 	bundle_set_attr(report_bundle, FLAGS, &flags);
 
 	// Encode status report
-	ret = statusreport_encode(&report, buffer, BUFFER_LENGTH);
+	ret = statusreport_basic_encode(&report, buffer, BUFFER_LENGTH);
 	if( ret < 0 ) {
 		LOG(LOGD_DTN, LOG_AGENT, LOGL_ERR, "Status Report Encoding failed");
 
@@ -283,6 +283,8 @@ uint8_t statusreport_basic_send(struct mmem * bundlemem, uint8_t status, uint8_t
 const struct status_report_driver statusreport_basic = {
 		"STATUSREPORT_BASIC",
 		statusreport_basic_send,
+		statusreport_basic_encode,
+		statusreport_basic_decode
 };
 /** @} */
 /** @} */

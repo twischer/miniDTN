@@ -89,12 +89,22 @@ typedef struct {
  */
 struct status_report_driver {
 	char *name;
+
 	/** sends a status report to the "report to"-node */
 	uint8_t (* send)(struct mmem * bundlemem, uint8_t status, uint8_t reason);
-};
 
-int statusreport_encode(status_report_t * report, uint8_t * buffer, uint8_t length);
-int statusreport_decode(status_report_t * report, uint8_t * buffer, uint8_t length);
+	/* Encode a status report struct into a buffer
+	 * Returns < 0 on error
+	 * Returns >= 0 on scucess
+	 */
+	int (* encode)(status_report_t * report, uint8_t * buffer, uint8_t length);
+
+	/* Decode a status report buffer into the struct
+	 * Returns < 0 on error
+	 * Returns >= 0 on scucess
+	 */
+	int (* decode)(status_report_t * report, uint8_t * buffer, uint8_t length);
+};
 
 extern const struct status_report_driver STATUSREPORT;
 

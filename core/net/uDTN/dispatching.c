@@ -65,7 +65,7 @@ int dispatching_check_report(struct mmem * bundlemem) {
 	}
 
 	/* Decode the status report */
-	ret = statusreport_decode(&report, payload_block->payload, payload_block->block_size);
+	ret = STATUSREPORT.decode(&report, payload_block->payload, payload_block->block_size);
 
 	/* Do not continue on error */
 	if( ret < 0 ) {
