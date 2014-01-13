@@ -1,7 +1,7 @@
 tests:
 ### Test throughput
   - name: throughput
-    timeout: 900
+    timeout: 1000
     devices:
       - name: sender
         programdir: examples/uDTN/throughput
@@ -18,7 +18,7 @@ tests:
         cflags: "-DNETSTACK_CONF_MAC=nullmac_driver -DNETSTACK_CONF_RDC=nullrdc_driver -D__DELAY_BACKWARD_COMPATIBLE__ -fno-inline -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30"
         graph_options: ""
   - name: throughput-uninstr
-    timeout: 900
+    timeout: 1000
     devices:
       - name: sender
         programdir: examples/uDTN/throughput
@@ -36,7 +36,7 @@ tests:
         graph_options: ""
 ### Test delivery-reports
   - name: delivery-reports
-    timeout: 900
+    timeout: 1000
     devices:
       - name: sender
         programdir: examples/uDTN/throughput
@@ -53,7 +53,7 @@ tests:
         cflags: "-DNETSTACK_CONF_MAC=nullmac_driver -DNETSTACK_CONF_RDC=nullrdc_driver -D__DELAY_BACKWARD_COMPATIBLE__ -DBUNDLE_CONF_STORAGE_BEHAVIOUR=BUNDLE_STORAGE_BEHAVIOUR_DO_NOT_DELETE -DCONF_REPORTING_INTERVAL=1 -fno-inline -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30 -DCONF_REPORT=1 -DCONF_BUNDLES=40 "
         graph_options: ""
   - name: delivery-reports-uninstr
-    timeout: 900
+    timeout: 1000
     devices:
       - name: sender
         programdir: examples/uDTN/throughput
@@ -106,7 +106,7 @@ tests:
         graph_options: ""
 ### Test throughput PDS
   - name: throughput-pds
-    timeout: 900
+    timeout: 1000
     devices:
       - name: sender
         programdir: examples/uDTN/throughput
@@ -123,7 +123,7 @@ tests:
         cflags: "-DCONF_DISCOVERY_SCHEDULER=discovery_scheduler_pattern -DNETSTACK_CONF_RDC=discovery_aware_rdc_driver -D__DELAY_BACKWARD_COMPATIBLE__ -fno-inline -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30"
         graph_options: ""
   - name: throughput-pds-uninstr
-    timeout: 900
+    timeout: 1000
     devices:
       - name: sender
         programdir: examples/uDTN/throughput
@@ -141,7 +141,7 @@ tests:
         graph_options: ""
 ### Test throughput ContikiMAC
   - name: throughput-contikimac
-    timeout: 900
+    timeout: 1000
     devices:
       - name: sender
         programdir: examples/uDTN/throughput
@@ -158,7 +158,7 @@ tests:
         cflags: "-DNETSTACK_CONF_MAC=csma_driver -DNETSTACK_CONF_RDC=contikimac_driver -D__DELAY_BACKWARD_COMPATIBLE__ -fno-inline -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30"
         graph_options: ""
   - name: throughput-contikimac-uninstr
-    timeout: 900
+    timeout: 1000
     devices:
       - name: sender
         programdir: examples/uDTN/throughput
@@ -176,7 +176,7 @@ tests:
         graph_options: ""
 ### Basically the throughput test with the contiki network stack instrumented
   - name: contiki-net
-    timeout: 900
+    timeout: 1000
     devices:
       - name: sender
         programdir: examples/uDTN/throughput
@@ -193,7 +193,7 @@ tests:
         cflags: "-DNETSTACK_CONF_MAC=nullmac_driver -DNETSTACK_CONF_RDC=nullrdc_driver -D__DELAY_BACKWARD_COMPATIBLE__ -fno-inline -finstrument-functions-exclude-function-list=radio_get_trx_state,rf230_isidle,rf230_waitidle,rf230_set_promiscuous_mode,rf230_is_ready_to_send,flushrx,RELEASE_LOCK,set_txpower,calibrate_rc_osc_32k,rf230_off,rf230_on,rf230_get_channel,rf230_set_channel,rf230_listen_channel,rf230_set_pan_addr,rf230_interrupt,rf230_set_txpower,rf230_get_txpower,rf230_get_raw_rssi,rf230_receiving_packet,rf230_pending_packet -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30"
         graph_options: ""
   - name: contiki-net-uninstr
-    timeout: 900
+    timeout: 1000
     devices:
       - name: sender
         programdir: examples/uDTN/throughput
@@ -211,7 +211,7 @@ tests:
         graph_options: ""
 ### Test delay-tolerant
   - name: delay-tolerant
-    timeout: 900
+    timeout: 1000
     devices:
       - name: sender
         programdir: examples/uDTN/throughput
@@ -228,7 +228,7 @@ tests:
         cflags: "-DNETSTACK_CONF_MAC=nullmac_driver -DNETSTACK_CONF_RDC=nullrdc_driver -D__DELAY_BACKWARD_COMPATIBLE__ -fno-inline -DCONF_WAITING_TIME=30"
         graph_options: ""
   - name: delay-tolerant-uninstr
-    timeout: 900
+    timeout: 1000
     devices:
       - name: sender
         programdir: examples/uDTN/throughput
@@ -245,7 +245,7 @@ tests:
         cflags: "-DNETSTACK_CONF_MAC=nullmac_driver -DNETSTACK_CONF_RDC=nullrdc_driver -fno-inline -DCONF_WAITING_TIME=30"
         graph_options: ""
   - name: delay-tolerant-coffee
-    timeout: 900
+    timeout: 1000
     devices:
       - name: sender
         programdir: examples/uDTN/throughput
@@ -262,7 +262,7 @@ tests:
         cflags: "-DNETSTACK_CONF_MAC=nullmac_driver -DNETSTACK_CONF_RDC=nullrdc_driver -D__DELAY_BACKWARD_COMPATIBLE__ -DCONF_REPORTING_INTERVAL=1 -DCONF_BUNDLES=50 -DBUNDLE_CONF_STORAGE_INIT=1 -fno-inline -DBUNDLE_CONF_STORAGE=storage_coffee -DCONF_WAITING_TIME=200"
         graph_options: ""
   - name: delay-tolerant-coffee-uninstr
-    timeout: 900
+    timeout: 1000
     devices:
       - name: sender
         programdir: examples/uDTN/throughput
