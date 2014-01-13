@@ -101,6 +101,8 @@ uint8_t convergence_layer_pending;
 struct etimer convergence_layer_backoff;
 uint8_t convergence_layer_backoff_pending = 0;
 
+void convergence_layer_show_tickets();
+
 int convergence_layer_init(void)
 {
 	// Start CL process
@@ -924,6 +926,20 @@ int convergence_layer_neighbour_down(rimeaddr_t * neighbour) {
 	convergence_layer_set_unblocked(neighbour);
 
 	return 1;
+}
+
+void convergence_layer_show_tickets() {
+	struct transmit_ticket_t * ticket = NULL;
+
+	printf("--- TICKET LIST\n");
+	for(ticket = list_head(transmission_ticket_list);
+		ticket != NULL;
+		ticket = list_item_next(ticket) ) {
+
+		printf("B %10lu to %02u.%02u with SeqNo %u and Flags %02X\n", ticket->bundle_number, ticket->neighbour.u8[0], ticket->neighbour.u8[1], ticket->sequence_number, ticket->flags);
+	}
+
+	printf("---\n");
 }
 
 PROCESS_THREAD(convergence_layer_process, ev, data)
