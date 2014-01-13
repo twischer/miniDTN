@@ -909,6 +909,11 @@ int convergence_layer_neighbour_down(rimeaddr_t * neighbour) {
 			ticket != NULL;
 			ticket = list_item_next(ticket) ) {
 
+			/* Do not delete tickets for which we are currently awaiting an ACK */
+			if( ticket->flags & CONVERGENCE_LAYER_QUEUE_ACK_PEND ) {
+				continue;
+			}
+
 			if( rimeaddr_cmp(neighbour, &ticket->neighbour) ) {
 				/* Notify routing module */
 				ROUTING.sent(ticket, ROUTING_STATUS_FAIL);
