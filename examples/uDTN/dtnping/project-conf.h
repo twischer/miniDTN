@@ -9,8 +9,4 @@
 #undef IEEE802154_CONF_PANID
 #define IEEE802154_CONF_PANID 0x780
 
-// Disable the CSMA retransmission buffers
-#undef QUEUEBUF_CONF_NUM
-#define QUEUEBUF_CONF_NUM 0
-
 #endif /* __PROJECT_CONF_H__ */
