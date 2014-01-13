@@ -133,7 +133,7 @@ i2c_stop(void) {
   TWCR = (1 << TWINT) | (1 << TWEN) | (1 << TWSTO);
   while (TWCR & (1 << TWSTO));
 
-  TWCR &= ~(TWEN);
+  TWCR &= ~(1 << TWEN);
 
   PRR |= (1 << PRTWI);
   DDRC &= ~((1 << PC0) | (1 << PC1));
