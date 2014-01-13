@@ -47,7 +47,9 @@
 /**
  * How long shall we wait for an app-layer ACK or NACK? [in seconds]
  */
+#ifndef CONVERGENCE_LAYER_TIMEOUT
 #define CONVERGENCE_LAYER_TIMEOUT				5
+#endif
 
 /**
  * How long shell we wait before retransmitting an app-layer ACK or NACK? [in seconds]
