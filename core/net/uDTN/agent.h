@@ -53,6 +53,8 @@ process_event_t dtn_send_bundle_to_node_event;
 */
 void agent_init(void);
 void agent_delete_bundle(uint32_t bundle_number);
+uint32_t agent_get_sequence_number();
+void agent_set_sequence_number(uint32_t);
 
 /**
  * \brief uDTN log domains

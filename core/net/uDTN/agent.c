@@ -320,6 +320,16 @@ PROCESS_THREAD(agent_process, ev, data)
 	PROCESS_END();
 }
 
+uint32_t agent_get_sequence_number()
+{
+	return dtn_seq_nr_ab;
+}
+
+void agent_set_sequence_number(uint32_t seqno)
+{
+	dtn_seq_nr_ab = seqno;
+}
+
 void agent_delete_bundle(uint32_t bundle_number){
 	LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "Agent deleting bundle no %lu", bundle_number);
 
