@@ -107,6 +107,8 @@ PROCESS_THREAD(simple_transceiver_process, ev, data)
 	static struct registration_api registration;
 	static struct etimer timer;
 	static int create_bundles;
+	struct bundle_block_t * block = NULL;
+	struct mmem * incoming_bundle_memory = NULL;
 	int n;
 
 	PROCESS_BEGIN();
@@ -167,10 +169,7 @@ PROCESS_THREAD(simple_transceiver_process, ev, data)
 		/* Incoming bundle */
 		if( ev == submit_data_to_application_event ) {
 			/* data contains a pointer to the bundle memory */
-			struct mmem * incoming_bundle_memory = (struct mmem *) data;
-
-			/* with MMEM_PTR we can reconstruct the original bundle structure */
-			struct bundle_t * incoming_bundle = (struct bundle_t *) MMEM_PTR(incoming_bundle_memory);
+			incoming_bundle_memory = (struct mmem *) data;
 
 			/* We can read several attributes as defined in bundle.h */
 			uint32_t source_node;
@@ -179,16 +178,19 @@ PROCESS_THREAD(simple_transceiver_process, ev, data)
 			bundle_get_attr(incoming_bundle_memory, SRC_SERV, &source_service);
 
 			/* We can obtain the bundle payload block like so: */
-			struct bundle_block_t * block = bundle_get_payload_block(incoming_bundle_memory);
+			block = bundle_get_payload_block(incoming_bundle_memory);
 
-			printf("Bundle received from ipn:%lu.%lu with %u bytes\n", source_node, source_service, block->block_size);
+			printf("Bundle received from ipn:%lu.%lu with %u bytes: ", source_node, source_service, block->block_size);
+			for(n=0; n<block->block_size; n++) {
+				printf("%02X ", block->payload[n]);
+			}
+			printf("\n");
 
 			/* After processing the bundle, we have to notify the agent to free up the memory */
 			process_post(&agent_process, dtn_processing_finished, incoming_bundle_memory);
 
 			/* Afterwards, we should void our pointer to not get confused */
 			incoming_bundle_memory = NULL;
-			incoming_bundle = NULL;
 		}
 
 	}
