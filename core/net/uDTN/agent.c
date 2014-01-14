@@ -38,6 +38,7 @@
 #include "convergence_layer.h"
 #include "hash.h"
 #include "system_clock.h"
+#include "dtn_apps.h"
 
 #include "agent.h"
 
@@ -105,6 +106,9 @@ PROCESS_THREAD(agent_process, ev, data)
 
 	// We use printf here, to make this message visible in every case!
 	printf("Starting DTN Bundle Protocol Agent with EID ipn:%lu\n", dtn_node_id);
+
+	// Start all dtn apps
+	dtn_apps_start();
 
 	while(1) {
 		PROCESS_WAIT_EVENT_UNTIL(ev);
