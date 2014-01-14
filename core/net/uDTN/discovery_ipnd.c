@@ -27,6 +27,7 @@
 #include "logging.h"
 #include "sys/ctimer.h"
 
+#include "dtn_apps.h"
 #include "dtn_network.h"
 #include "agent.h"
 #include "sdnv.h"
@@ -170,6 +171,7 @@ uint8_t discovery_ipnd_parse_eid(uint32_t * eid, uint8_t * buffer, uint8_t lengt
 uint8_t discovery_ipnd_parse_service_block(uint32_t eid, uint8_t * buffer, uint8_t length) {
 	uint32_t offset, num_services, i, sdnv_len, tag_len, data_len;
 	uint8_t *tag_buf;
+	int h;
 
 	// decode the number of services
 	sdnv_len = sdnv_decode(buffer, length, &num_services);
@@ -193,7 +195,14 @@ uint8_t discovery_ipnd_parse_service_block(uint32_t eid, uint8_t * buffer, uint8
 		offset += sdnv_len;
 		buffer += sdnv_len;
 
-		// TODO: insert service block parsing here
+		// Allow all registered DTN APPs to parse the IPND service block
+		for(h=0; dtn_apps[h] != NULL; h++) {
+			if( dtn_apps[h]->parse_ipnd_service_block == NULL ) {
+				continue;
+			}
+
+			dtn_apps[h]->parse_ipnd_service_block(eid, tag_buf, tag_len, buffer, data_len);
+		}
 
 		offset += data_len;
 		buffer += data_len;
@@ -274,6 +283,8 @@ void discovery_ipnd_receive(rimeaddr_t * source, uint8_t * payload, uint8_t leng
 void discovery_ipnd_send() {
 	uint8_t ipnd_buffer[DISCOVERY_IPND_BUFFER_LEN];
 	int offset = 0;
+	int h = 0;
+	uint8_t * services = NULL;
 
 	// Clear the ipnd_buffer
 	memset(ipnd_buffer, 0, DISCOVERY_IPND_BUFFER_LEN);
@@ -297,8 +308,17 @@ void discovery_ipnd_send() {
 	/**
 	 * Add static Service block
 	 */
-	// We have one static service
-	ipnd_buffer[offset++] = 0; // Number of services
+	services = &ipnd_buffer[offset++]; // This is a pointer onto the location of the service counter in the outgoing buffer
+	*services = 0; // Start with 0 services
+
+	// Allow all registered DTN APPs to add an IPND service block
+	for(h=0; dtn_apps[h] != NULL; h++) {
+		if( dtn_apps[h]->add_ipnd_service_block == NULL ) {
+			continue;
+		}
+
+		services += dtn_apps[h]->add_ipnd_service_block(&ipnd_buffer[offset], DISCOVERY_IPND_BUFFER_LEN, &offset);
+	}
 
 	// Now: Send it
 	rimeaddr_t destination = {{0, 0}}; // Broadcast
