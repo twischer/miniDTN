@@ -1,8 +1,11 @@
 CFLAGS += -DPROJECT_CONF_H=\"project-conf.h\"
-CONTIKI_PROJECT = dtnpingecho
+
+CONTIKI_PROJECT = dtnpingsender
 all: $(CONTIKI_PROJECT)
 
-#UIP_CONF_IPV6=1
+DTN_APPS += dtnpingecho
+
 CONF_DTN=1
+
 CONTIKI = ../../..
 include $(CONTIKI)/Makefile.include

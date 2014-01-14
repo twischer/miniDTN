@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006, Swedish Institute of Computer Science.
+ * Copyright (c) 2014, Wolf-Bastian Pšttner.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,35 +25,31 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * This file is part of the Contiki operating system.
- *
- * $Id: hello-world.c,v 1.1 2006/10/02 21:46:46 adamdunkels Exp $
  */
 
 #include <stdio.h>
 #include <string.h>
 
 #include "contiki.h"
-#include "watchdog.h"
 #include "process.h"
-#include "net/netstack.h"
-#include "net/packetbuf.h"
-#include "dev/leds.h"
 
+#include "dtn_apps.h"
 #include "net/uDTN/api.h"
 #include "net/uDTN/agent.h"
 #include "net/uDTN/bundle.h"
-#include "net/uDTN/sdnv.h"
 
 #define DTN_PING_ENDPOINT	11
 
 /*---------------------------------------------------------------------------*/
-PROCESS(dtnping_process, "DTN PING process");
-AUTOSTART_PROCESSES(&dtnping_process);
+PROCESS(dtnpingecho_process, "DTN Ping Echo process");
 static struct registration_api reg;
 /*---------------------------------------------------------------------------*/
-PROCESS_THREAD(dtnping_process, ev, data)
+int dtnpingecho_init(void) {
+	process_start(&dtnpingecho_process, NULL);
+	return 1;
+}
+/*---------------------------------------------------------------------------*/
+PROCESS_THREAD(dtnpingecho_process, ev, data)
 {
 	static uint32_t bundles_recv = 0;
 	uint32_t tmp;
@@ -77,6 +73,8 @@ PROCESS_THREAD(dtnping_process, ev, data)
 	reg.application_process = PROCESS_CURRENT();;
 	reg.app_id = DTN_PING_ENDPOINT;
 	process_post(&agent_process, dtn_application_registration_event,&reg);
+
+	printf("DTNPing Responder running on ipn:%lu.%lu\n", dtn_node_id, reg.app_id);
 
 	while (1) {
 		PROCESS_WAIT_EVENT_UNTIL(ev == submit_data_to_application_event);
@@ -151,4 +149,9 @@ PROCESS_THREAD(dtnping_process, ev, data)
 
 	PROCESS_END();
 }
+/*---------------------------------------------------------------------------*/
+const struct dtn_app dtnpingecho = {
+		.name = "DTN Ping Echo",
+		.init = dtnpingecho_init,
+};
 /*---------------------------------------------------------------------------*/
