@@ -211,7 +211,7 @@ PROCESS_THREAD(agent_process, ev, data)
 
 				// Set the time-stamp in the bundle
 				// FIXME: uint32_t is too small after year 2030 ;)
-				tmp = tv.tv_sec;
+				tmp = tv.tv_sec - UDTN_CLOCK_DTN_EPOCH_OFFSET;
 				bundle_set_attr(bundleptr, TIME_STAMP, &tmp);
 
 				// Reset sequence number if time-stamp has changed since the last call
