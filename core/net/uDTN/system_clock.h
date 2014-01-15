@@ -52,6 +52,7 @@ typedef unsigned long udtn_time_t;
     }									      \
   } while (0)
 
+#define UDTN_CLOCK_DTN_EPOCH_OFFSET 946684800ul
 
 /**
  * initialize the system clock
