@@ -56,12 +56,14 @@ PROCESS_THREAD(dtnpingecho_process, ev, data)
 
 	uint32_t source_node;
 	uint32_t source_service;
-	uint32_t incoming_timestamp;
 	uint32_t incoming_lifetime;
 
 	struct mmem * bundlemem = NULL;
-	struct bundle_t * bundle = NULL;
 	struct bundle_block_t * block = NULL;
+
+	// preserve the payload to send it back
+	uint8_t payload_buffer[64];
+	uint8_t payload_length;
 
 	PROCESS_BEGIN();
 
@@ -74,18 +76,13 @@ PROCESS_THREAD(dtnpingecho_process, ev, data)
 	reg.app_id = DTN_PING_ENDPOINT;
 	process_post(&agent_process, dtn_application_registration_event,&reg);
 
-	printf("DTNPing Responder running on ipn:%lu.%lu\n", dtn_node_id, reg.app_id);
+	printf("DTN Ping Echo running on ipn:%lu.%lu\n", dtn_node_id, reg.app_id);
 
 	while (1) {
 		PROCESS_WAIT_EVENT_UNTIL(ev == submit_data_to_application_event);
 
 		// Reconstruct the bundle struct from the event
 		bundlemem = (struct mmem *) data;
-		bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
-
-		// preserve the payload to send it back
-		uint8_t payload_buffer[64];
-		uint8_t payload_length;
 
 		block = bundle_get_payload_block(bundlemem);
 		if( block == NULL ) {
@@ -105,17 +102,16 @@ PROCESS_THREAD(dtnpingecho_process, ev, data)
 		bundle_get_attr(bundlemem, SRC_NODE, &source_node);
 		bundle_get_attr(bundlemem, SRC_SERV, &source_service);
 
-		// Extract timestamp and lifetime from incoming bundle
-		bundle_get_attr(bundlemem, TIME_STAMP, &incoming_timestamp);
+		// Extract lifetime from incoming bundle
 		bundle_get_attr(bundlemem, LIFE_TIME, &incoming_lifetime);
+
+		bundles_recv++;
+		printf("PING %lu of %u bytes received from ipn:%lu.%lu\n", bundles_recv, block->block_size, source_node, source_service);
 
 		// Tell the agent, that have processed the bundle
 		process_post(&agent_process, dtn_processing_finished, bundlemem);
 		bundlemem = NULL;
-		bundle = NULL;
-
-		bundles_recv++;
-		printf("PING %lu received\n", bundles_recv);
+		block = NULL;
 
 		// Create the reply bundle
 		bundlemem = bundle_create_bundle();
@@ -138,7 +134,6 @@ PROCESS_THREAD(dtnpingecho_process, ev, data)
 
 		// Set the same lifetime and timestamp as the incoming bundle
 		bundle_set_attr(bundlemem, LIFE_TIME, &incoming_lifetime);
-		bundle_set_attr(bundlemem, TIME_STAMP, &incoming_timestamp);
 
 		// Copy payload from incoming bundle
 		bundle_add_block(bundlemem, BUNDLE_BLOCK_TYPE_PAYLOAD, BUNDLE_BLOCK_FLAG_NULL, payload_buffer, payload_length);
