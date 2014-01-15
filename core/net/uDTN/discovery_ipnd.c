@@ -317,7 +317,7 @@ void discovery_ipnd_send() {
 			continue;
 		}
 
-		*services += dtn_apps[h]->add_ipnd_service_block(&ipnd_buffer[offset], DISCOVERY_IPND_BUFFER_LEN, &offset);
+		*services += dtn_apps[h]->add_ipnd_service_block(ipnd_buffer, DISCOVERY_IPND_BUFFER_LEN, &offset);
 	}
 
 	// Now: Send it

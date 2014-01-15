@@ -44,7 +44,7 @@ struct dtn_app {
 	/**
 	 * \brief Add IPND service blocks, returns number of added blocks
 	 *
-	 * \param ipnd_buffer Pointer to the outgoing buffer where the app can write its service block
+	 * \param ipnd_buffer Pointer to the begin of the outgoing IPND buffer (offset contains the position to write)
 	 * \param buffer_length Total length of the buffer
 	 * \param offset Absolute offset within the total buffer (may never be larger than buffer_length)
 	 *
