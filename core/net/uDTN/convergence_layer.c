@@ -465,6 +465,15 @@ int convergence_layer_parse_dataframe(rimeaddr_t * source, uint8_t * payload, ui
 		return -1;
 	}
 
+	/* Check for bundle expiration */
+	if( bundle_ageing_is_expired(bundlemem) ) {
+		LOG(LOGD_DTN, LOG_CL, LOGL_ERR, "Bundle received from %u.%u with SeqNo %u is expired", source->u8[0], source->u8[1], sequence_number);
+		bundle_decrement(bundlemem);
+
+		/* Send permanent rejection */
+		return -2;
+	}
+
 	/* Mark the bundle as "internal" */
 	bundle->source_process = &agent_process;
 
