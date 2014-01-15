@@ -12,6 +12,7 @@
 
 #include <string.h>
 
+#include "system_clock.h"
 #include "bundle.h"
 #include "agent.h"
 #include "sdnv.h"
@@ -23,6 +24,7 @@
  */
 uint32_t bundle_ageing_get_age(struct mmem * bundlemem) {
 	struct bundle_t *bundle;
+	udtn_timeval_t tv;
 
 	if( bundlemem == NULL ) {
 		return 0;
@@ -33,6 +35,19 @@ uint32_t bundle_ageing_get_age(struct mmem * bundlemem) {
 		return 0;
 	}
 
+	// Bundle has a timestamp and we have time sync
+	if( bundle->tstamp != 0 && udtn_getclockstate() >= UDTN_CLOCK_STATE_GOOD ) {
+		// Get current time
+		udtn_gettimeofday(&tv);
+
+		// Convert into DTN time
+		tv.tv_sec -= UDTN_CLOCK_DTN_EPOCH_OFFSET;
+
+		// Calculate age based on timestamp and current time
+		return (tv.tv_sec - bundle->tstamp) * 1000 + tv.tv_usec / 1000;
+	}
+
+	// We have to rely on the age block information
 	return bundle->aeb_value_ms + (((uint32_t) clock_time() - bundle->rec_time) * 1000) / CLOCK_SECOND;
 }
 
@@ -44,7 +59,6 @@ uint32_t bundle_ageing_get_age(struct mmem * bundlemem) {
 uint8_t bundle_ageing_is_expired(struct mmem * bundlemem) {
 	struct bundle_t *bundle;
 	uint32_t age = 0;
-	uint32_t lifetime = 0;
 
 	if( bundlemem == NULL ) {
 		return 0;
@@ -55,10 +69,10 @@ uint8_t bundle_ageing_is_expired(struct mmem * bundlemem) {
 		return 0;
 	}
 
+	/* Check age based on age block */
 	age = bundle_ageing_get_age(bundlemem);
-	lifetime = bundle->lifetime;
 
-	if( (age / 1000) >= lifetime ) {
+	if( (age / 1000) >= bundle->lifetime ) {
 		return 1;
 	}
 
