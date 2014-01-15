@@ -106,7 +106,7 @@ tests:
         graph_options: ""
 ### Test throughput PDS
   - name: throughput-pds
-    timeout: 1000
+    timeout: 7200
     devices:
       - name: sender
         programdir: examples/uDTN/throughput
@@ -123,7 +123,7 @@ tests:
         cflags: "-DCONF_DISCOVERY_SCHEDULER=discovery_scheduler_pattern -DNETSTACK_CONF_RDC=discovery_aware_rdc_driver -D__DELAY_BACKWARD_COMPATIBLE__ -fno-inline -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30"
         graph_options: ""
   - name: throughput-pds-uninstr
-    timeout: 1000
+    timeout: 7200
     devices:
       - name: sender
         programdir: examples/uDTN/throughput
