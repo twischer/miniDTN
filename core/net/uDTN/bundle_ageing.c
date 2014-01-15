@@ -72,7 +72,7 @@ uint8_t bundle_ageing_is_expired(struct mmem * bundlemem) {
 	/* Check age based on age block */
 	age = bundle_ageing_get_age(bundlemem);
 
-	if( (age / 1000) >= bundle->lifetime ) {
+	if( (age / 1000) > bundle->lifetime ) {
 		return 1;
 	}
 
