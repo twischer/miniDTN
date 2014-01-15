@@ -53,13 +53,13 @@ int statusreport_basic_encode(status_report_t * report, uint8_t * buffer, uint8_
 		buffer[0] |= ADMIN_FLAGS_IS_FOR_FRAGMENT;
 
 		/* Fragment offset */
-		ret = sdnv_encode(report->dtn_time_seconds, &buffer[offset], length - offset);
+		ret = sdnv_encode(report->fragment_offset, &buffer[offset], length - offset);
 		if (ret < 0)
 			return -1;
 		offset += ret;
 
 		/* Fragment length */
-		ret = sdnv_encode(report->dtn_time_seconds, &buffer[offset], length - offset);
+		ret = sdnv_encode(report->fragment_length, &buffer[offset], length - offset);
 		if (ret < 0)
 			return -1;
 		offset += ret;
@@ -125,13 +125,13 @@ int statusreport_basic_decode(status_report_t * report, uint8_t * buffer, uint8_
 	// Recover fragment offset and length (if present)
 	if( report->fragment ) {
 		/* Fragment offset */
-		ret = sdnv_decode(&buffer[offset], length - offset, &report->dtn_time_seconds);
+		ret = sdnv_decode(&buffer[offset], length - offset, &report->fragment_offset);
 		if( ret < 0 )
 			return -1;
 		offset += ret;
 
 		/* Fragment length */
-		ret = sdnv_decode(&buffer[offset], length - offset, &report->dtn_time_seconds);
+		ret = sdnv_decode(&buffer[offset], length - offset, &report->fragment_length);
 		if( ret < 0 )
 			return -1;
 		offset += ret;
