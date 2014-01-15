@@ -770,24 +770,32 @@ int convergence_layer_status(void * pointer, uint8_t outcome)
 int convergence_layer_delete_bundle(uint32_t bundle_number)
 {
 	struct transmit_ticket_t * ticket = NULL;
+	int changed = 1;
 
 	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Deleting tickets for bundle %lu", bundle_number);
 
-	for(ticket = list_head(transmission_ticket_list);
-		ticket != NULL;
-		ticket = list_item_next(ticket) ) {
-		if( ticket->bundle_number == bundle_number ) {
-			break;
+	while(changed) {
+		changed = 0;
+
+		for(ticket = list_head(transmission_ticket_list);
+			ticket != NULL;
+			ticket = list_item_next(ticket) ) {
+			if( ticket->bundle_number == bundle_number ) {
+				break;
+			}
 		}
+
+		/* Unable to find that bundle */
+		if( ticket == NULL ) {
+			return -1;
+		}
+
+		/* free the ticket's memory */
+		convergence_layer_free_transmit_ticket(ticket);
+
+		changed = 1;
 	}
 
-	/* Unable to find that bundle */
-	if( ticket == NULL ) {
-		return -1;
-	}
-
-	/* free the ticket's memory */
-	convergence_layer_free_transmit_ticket(ticket);
 
 	return 1;
 }
