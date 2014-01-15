@@ -468,7 +468,7 @@ int convergence_layer_parse_dataframe(rimeaddr_t * source, uint8_t * payload, ui
 	/* Mark the bundle as "internal" */
 	bundle->source_process = &agent_process;
 
-	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Bundle received from %u.%u with SeqNo %u", source->u8[0], source->u8[1], sequence_number);
+	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Bundle from ipn:%lu.%lu (to ipn:%lu.%lu) received from %u.%u with SeqNo %u", bundle->src_node, bundle->src_srv, bundle->dst_node, bundle->dst_srv, source->u8[0], source->u8[1], sequence_number);
 
 	/* Store the node from which we received the bundle */
 	rimeaddr_copy(&bundle->msrc, source);
