@@ -296,8 +296,8 @@ void discovery_ipnd_send() {
 	ipnd_buffer[offset++] = IPND_FLAGS_SOURCE_EID | IPND_FLAGS_SERVICE_BLOCK;
 
 	// Beacon Sequence Number
-	ipnd_buffer[offset++] = (discovery_sequencenumber & 0xFF00) << 8;
-	ipnd_buffer[offset++] = (discovery_sequencenumber & 0x00FF) << 0;
+	ipnd_buffer[offset++] = (discovery_sequencenumber & 0xFF00) >> 8;
+	ipnd_buffer[offset++] = (discovery_sequencenumber & 0x00FF) >> 0;
 	discovery_sequencenumber ++;
 
 	/**
