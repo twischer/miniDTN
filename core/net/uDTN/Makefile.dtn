@@ -7,7 +7,7 @@ HASH=hash_xor.c hash_xxfast.c
 DISCOVERY=discovery_basic.c discovery_ipnd.c discovery_static.c discovery_simple.c
 DISCOVERY_SCHEDULER=discovery_scheduler_pattern.c discovery_scheduler_periodic.c
 REDUNDANCY=redundancy_basic.c redundancy_bloomfilter.c redundancy_null.c
-ROUTING=routing_flooding.c routing_chain.c
+ROUTING=routing_flooding.c routing_chain.c routing_null.c
 
 CONTIKI_SOURCEFILES += $(STORAGE) $(BUNDLE) $(NETWORK) $(CUSTODY) $(AGENT) $(HASH) $(DISCOVERY) $(DISCOVERY_SCHEDULER) $(REDUNDANCY) $(ROUTING)
 
