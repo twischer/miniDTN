@@ -89,6 +89,7 @@
 #define PRINTF(...)
 #endif
 
+#define PING_TIMEOUT 10
 /*---------------------------------------------------------------------------*/
 PROCESS(ping_process, "Ping");
 PROCESS(pong_process, "Pong");
@@ -207,7 +208,7 @@ PROCESS_THREAD(ping_process, ev, data)
 
 	/* Transfer */
 	while(1) {
-		etimer_set(&timer, CLOCK_SECOND*5);
+		etimer_set(&timer, CLOCK_SECOND * PING_TIMEOUT);
 		PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&timer) ||
 				ev == submit_data_to_application_event);
 
@@ -232,9 +233,11 @@ PROCESS_THREAD(ping_process, ev, data)
 
 			PRINTF("PING: send sync\n");
 			bundlemem = bundle_convenience(CONF_DEST_NODE, 7, 5, userdata, PAYLOAD_LEN);
-			if (bundlemem)
+			if (bundlemem) {
 				process_post(&agent_process, dtn_send_bundle_event, (void *) bundlemem);
-
+			} else {
+				printf("PING: unable to send sync\n");
+			}
 		}
 
 		if( ev == submit_data_to_application_event ) {
@@ -270,7 +273,6 @@ PROCESS_THREAD(ping_process, ev, data)
 					/* Calculate RTT */
 					bundle_recvd++;
 					diff -= *u32_ptr;
-					// printf("Latency: %lu\n", diff);
 
 					if (bundle_recvd % 50 == 0)
 						printf("PING: %u\n", bundle_recvd);
@@ -298,6 +300,8 @@ PROCESS_THREAD(ping_process, ev, data)
 			if (bundlemem) {
 				process_post(&agent_process, dtn_send_bundle_event, (void *) bundlemem);
 				bundle_sent++;
+			} else {
+				printf("PING: unable to send bundle\n");
 			}
 		}
 	}
@@ -381,8 +385,11 @@ PROCESS_THREAD(pong_process, ev, data)
 		/* Send PONG */
 		PRINTF("PONG: send\n");
 		bundlemem = bundle_convenience(CONF_DEST_NODE, 5, 7, (uint8_t *) u32_ptr, 4);
-		if (bundlemem)
+		if (bundlemem) {
 			process_post(&agent_process, dtn_send_bundle_event, (void *) bundlemem);
+		} else {
+			printf("PONG: unable to send bundle\n");
+		}
 
 		bundle_sent++;
 		if (bundle_sent % 50 == 0)
