@@ -173,7 +173,7 @@ int dtntp_discovery_add_service(uint8_t * ipnd_buffer, int length, int * offset)
 	int len;
 
 	len = sprintf(string_buffer, DTNTP_SERVICE_TAG);
-	(*offset) += sdnv_encode(len, ipnd_buffer, length - (*offset));
+	(*offset) += sdnv_encode(len, ipnd_buffer + (*offset), length - (*offset));
 	memcpy(ipnd_buffer + (*offset), string_buffer, len);
 	(*offset) += len;
 
@@ -187,12 +187,12 @@ int dtntp_discovery_add_service(uint8_t * ipnd_buffer, int length, int * offset)
 	tv.tv_sec -= UDTN_CLOCK_DTN_EPOCH_OFFSET;
 
 	if (rating < 1.0f) {
-		len = sprintf(string_buffer, "version=2;quality=0.%lu;timestamp=%lu;", \
-				(unsigned long)(rating * 1000000), (unsigned long)tv.tv_sec);
+		len = sprintf(string_buffer, "version=2;quality=0.%lu;timestamp=%li;", \
+				(unsigned long)(rating * 1000000), tv.tv_sec);
 	}
 	else {
-		len = sprintf(string_buffer, "version=2;quality=1.0;timestamp=%lu;", \
-				(unsigned long)tv.tv_sec);
+		len = sprintf(string_buffer, "version=2;quality=1.0;timestamp=%li;", \
+				tv.tv_sec);
 	}
 
 	(*offset) += sdnv_encode(len, ipnd_buffer + (*offset), length - (*offset));
