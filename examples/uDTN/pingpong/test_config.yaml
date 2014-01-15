@@ -36,7 +36,7 @@ tests:
         graph_options: ""
 ### Test latency PDS
   - name: pingpong-pds
-    timeout: 900
+    timeout: 1800
     devices:
       - name: sender
         programdir: examples/uDTN/pingpong
@@ -53,7 +53,7 @@ tests:
         cflags: "-DCONF_DISCOVERY_SCHEDULER=discovery_scheduler_pattern -DNETSTACK_CONF_RDC=discovery_aware_rdc_driver -D__DELAY_BACKWARD_COMPATIBLE__ -fno-inline -DCONF_MODE=0 -DCONF_DEST_NODE=$SENDER -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30"
         graph_options: ""
   - name: pingpong-pds-uninstr
-    timeout: 900
+    timeout: 1800
     devices:
       - name: sender
         programdir: examples/uDTN/pingpong
