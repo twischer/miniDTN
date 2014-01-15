@@ -43,6 +43,11 @@ uint32_t bundle_ageing_get_age(struct mmem * bundlemem) {
 		// Convert into DTN time
 		tv.tv_sec -= UDTN_CLOCK_DTN_EPOCH_OFFSET;
 
+		// If our clock is ahead of the bundle timestamp the age seems to be 0
+		if( tv.tv_sec < bundle->tstamp ) {
+			return 0;
+		}
+
 		// Calculate age based on timestamp and current time
 		return (tv.tv_sec - bundle->tstamp) * 1000 + tv.tv_usec / 1000;
 	}
