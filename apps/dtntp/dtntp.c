@@ -183,6 +183,9 @@ int dtntp_discovery_add_service(uint8_t * ipnd_buffer, int length, int * offset)
 	udtn_timeval_t tv;
 	udtn_gettimeofday(&tv);
 
+	// Convert timestamp into DTN time
+	tv.tv_sec -= UDTN_CLOCK_DTN_EPOCH_OFFSET;
+
 	if (rating < 1.0f) {
 		len = sprintf(string_buffer, "version=2;quality=0.%lu;timestamp=%lu;", \
 				(unsigned long)(rating * 1000000), (unsigned long)tv.tv_sec);
@@ -225,7 +228,7 @@ void dtntp_discovery_parse_service(uint32_t eid, uint8_t * tag_buf, uint8_t tag_
 			else if (strcmp(pch, "timestamp") == 0) {
 				// get version number
 				pch = strtok(NULL, ";");
-				dtntp_ongoing_peer.timestamp = atol(pch);
+				dtntp_ongoing_peer.timestamp = atol(pch) + UDTN_CLOCK_DTN_EPOCH_OFFSET;
 			}
 
 			pch = strtok(NULL, "=");
