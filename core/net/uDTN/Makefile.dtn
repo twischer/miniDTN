@@ -1,4 +1,4 @@
-STORAGE=storage_coffee.c storage_mmem.c
+STORAGE=storage_coffee.c storage_mmem.c storage_flash.c
 BUNDLE=sdnv.c bundle.c bundleslot.c
 NETWORK=convergence_layer.c dtn_network.c
 CUSTODY=custody_basic.c custody_null.c custody_signal.c
