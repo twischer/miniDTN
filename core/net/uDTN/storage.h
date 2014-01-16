@@ -100,7 +100,7 @@ struct storage_driver {
 	/** saves a bundle */
 	uint8_t (* save_bundle)(struct mmem *bundlemem, uint32_t ** bundle_number);
 	/** deletes a bundle */
-	uint16_t (* del_bundle)(uint32_t bundle_num, uint8_t reason);
+	uint8_t (* del_bundle)(uint32_t bundle_num, uint8_t reason);
 	/** reads a bundle */
 	struct mmem *(* read_bundle)(uint32_t bundle_num);
 	/** Marks a bundle as locked so it will not be deleted until it is unlocked */
@@ -113,6 +113,8 @@ struct storage_driver {
 	uint16_t (* get_bundle_num)(void);
 	/** returns pointer to list of bundles */
 	struct storage_entry_t * (* get_bundles)(void);
+	/** initializes the underlying medium to delete everything */
+	void (* format)();
 };
 extern const struct storage_driver BUNDLE_STORAGE;
 #endif
