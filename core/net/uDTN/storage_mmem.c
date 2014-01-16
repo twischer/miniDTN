@@ -417,6 +417,11 @@ uint8_t storage_mmem_delete_bundle(uint32_t bundle_number, uint8_t reason)
 		return 0;
 	}
 
+	if( entry->flags & STORAGE_MMEM_FLAGS_LOCKED ) {
+		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "Cannot delete locked bundle %lu", bundle_number);
+		return 0;
+	}
+
 	// Figure out the source to send status report
 	bundle = (struct bundle_t *) MMEM_PTR(entry->bundle);
 	bundle->del_reason = reason;
