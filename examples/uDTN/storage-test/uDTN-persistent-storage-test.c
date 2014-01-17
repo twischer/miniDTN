@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Wolf-Bastian Pšttner <poettner@ibr.cs.tu-bs.de>
+ * Copyright (c) 2012, Wolf-Bastian PÃ¶ttner <poettner@ibr.cs.tu-bs.de>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -34,7 +34,7 @@
  * \file
  *         A test to verify the persistence of the storage implementation
  * \author
- *         Wolf-Bastian Pšttner <poettner@ibr.cs.tu-bs.de>
+ *         Wolf-Bastian PÃ¶ttner <poettner@ibr.cs.tu-bs.de>
  */
 
 #include <stdio.h>
@@ -204,7 +204,7 @@ PROCESS_THREAD(test_process, ev, data)
 
 	/* Initialize the flash before the storage comes along */
 	PRINTF("Intializing Flash...\n");
-	cfs_coffee_format();
+	BUNDLE_STORAGE.format();
 
 	PROCESS_PAUSE();
 
