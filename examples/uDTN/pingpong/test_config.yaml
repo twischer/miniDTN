@@ -34,6 +34,76 @@ tests:
         debug: []
         cflags: "-DNETSTACK_CONF_MAC=nullmac_driver -DNETSTACK_CONF_RDC=nullrdc_driver -fno-inline -DCONF_MODE=0 -DCONF_DEST_NODE=$SENDER"
         graph_options: ""
+### Test latency COFFEE
+  - name: pingpong-coffee
+    timeout: 900
+    devices:
+      - name: sender
+        programdir: examples/uDTN/pingpong
+        program: uDTN-pingpong
+        instrument: [examples/uDTN/pingpong/uDTN-pingpong.c,platform/inga/*.c,core/net/uDTN/*.c]
+        debug: []
+        cflags: "-DBUNDLE_CONF_STORAGE_INIT=1 -DBUNDLE_CONF_STORAGE=storage_coffee -DNETSTACK_CONF_MAC=nullmac_driver -DNETSTACK_CONF_RDC=nullrdc_driver -D__DELAY_BACKWARD_COMPATIBLE__ -fno-inline  -DCONF_MODE=1 -DCONF_DEST_NODE=$RECEIVER -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30"
+        graph_options: ""
+      - name: receiver
+        programdir: examples/uDTN/pingpong
+        program: uDTN-pingpong
+        instrument: [examples/uDTN/pingpong/uDTN-pingpong.c,platform/inga/*.c,core/net/uDTN/*.c]
+        debug: []
+        cflags: "-DBUNDLE_CONF_STORAGE_INIT=1 -DBUNDLE_CONF_STORAGE=storage_coffee -DNETSTACK_CONF_MAC=nullmac_driver -DNETSTACK_CONF_RDC=nullrdc_driver -D__DELAY_BACKWARD_COMPATIBLE__ -fno-inline -DCONF_MODE=0 -DCONF_DEST_NODE=$SENDER -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30"
+        graph_options: ""
+  - name: pingpong-coffee-uninstr
+    timeout: 900
+    devices:
+      - name: sender
+        programdir: examples/uDTN/pingpong
+        program: uDTN-pingpong
+        instrument: []
+        debug: []
+        cflags: "-DBUNDLE_CONF_STORAGE_INIT=1 -DBUNDLE_CONF_STORAGE=storage_coffee -DNETSTACK_CONF_MAC=nullmac_driver -DNETSTACK_CONF_RDC=nullrdc_driver -fno-inline -DCONF_MODE=1 -DCONF_DEST_NODE=$RECEIVER"
+        graph_options: ""
+      - name: receiver
+        programdir: examples/uDTN/pingpong
+        program: uDTN-pingpong
+        instrument: []
+        debug: []
+        cflags: "-DBUNDLE_CONF_STORAGE_INIT=1 -DBUNDLE_CONF_STORAGE=storage_coffee -DNETSTACK_CONF_MAC=nullmac_driver -DNETSTACK_CONF_RDC=nullrdc_driver -fno-inline -DCONF_MODE=0 -DCONF_DEST_NODE=$SENDER"
+        graph_options: ""
+### Test latency FLASH
+  - name: pingpong-flash
+    timeout: 900
+    devices:
+      - name: sender
+        programdir: examples/uDTN/pingpong
+        program: uDTN-pingpong
+        instrument: [examples/uDTN/pingpong/uDTN-pingpong.c,platform/inga/*.c,core/net/uDTN/*.c]
+        debug: []
+        cflags: "-DBUNDLE_CONF_STORAGE_INIT=1 -DBUNDLE_CONF_STORAGE=storage_flash -DNETSTACK_CONF_MAC=nullmac_driver -DNETSTACK_CONF_RDC=nullrdc_driver -D__DELAY_BACKWARD_COMPATIBLE__ -fno-inline  -DCONF_MODE=1 -DCONF_DEST_NODE=$RECEIVER -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30"
+        graph_options: ""
+      - name: receiver
+        programdir: examples/uDTN/pingpong
+        program: uDTN-pingpong
+        instrument: [examples/uDTN/pingpong/uDTN-pingpong.c,platform/inga/*.c,core/net/uDTN/*.c]
+        debug: []
+        cflags: "-DBUNDLE_CONF_STORAGE_INIT=1 -DBUNDLE_CONF_STORAGE=storage_flash -DNETSTACK_CONF_MAC=nullmac_driver -DNETSTACK_CONF_RDC=nullrdc_driver -D__DELAY_BACKWARD_COMPATIBLE__ -fno-inline -DCONF_MODE=0 -DCONF_DEST_NODE=$SENDER -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30"
+        graph_options: ""
+  - name: pingpong-flash-uninstr
+    timeout: 900
+    devices:
+      - name: sender
+        programdir: examples/uDTN/pingpong
+        program: uDTN-pingpong
+        instrument: []
+        debug: []
+        cflags: "-DBUNDLE_CONF_STORAGE_INIT=1 -DBUNDLE_CONF_STORAGE=storage_flash -DNETSTACK_CONF_MAC=nullmac_driver -DNETSTACK_CONF_RDC=nullrdc_driver -fno-inline -DCONF_MODE=1 -DCONF_DEST_NODE=$RECEIVER"
+        graph_options: ""
+      - name: receiver
+        programdir: examples/uDTN/pingpong
+        program: uDTN-pingpong
+        instrument: []
+        debug: []
+        cflags: "-DBUNDLE_CONF_STORAGE_INIT=1 -DBUNDLE_CONF_STORAGE=storage_flash -DNETSTACK_CONF_MAC=nullmac_driver -DNETSTACK_CONF_RDC=nullrdc_driver -fno-inline -DCONF_MODE=0 -DCONF_DEST_NODE=$SENDER"
+        graph_options: ""
 ### Test latency PDS
   - name: pingpong-pds
     timeout: 3600
