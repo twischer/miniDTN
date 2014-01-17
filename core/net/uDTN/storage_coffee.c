@@ -257,6 +257,11 @@ void storage_coffee_reconstruct_bundles()
 void storage_coffee_prune()
 {
 	struct file_list_entry_t * entry = NULL;
+	uint32_t * deletion[BUNDLE_STORAGE_SIZE];
+	int pointer = 0;
+	int h = 0;
+
+	memset(deletion, 0, sizeof(deletion));
 
 	// Delete expired bundles from storage
 	for(entry = list_head(bundle_list);
@@ -264,8 +269,12 @@ void storage_coffee_prune()
 			entry = list_item_next(entry)) {
 		if( entry->lifetime < (clock_time() - entry->rec_time) / CLOCK_SECOND ) {
 			LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "bundle lifetime expired of bundle %lu", entry->bundle_num);
-			storage_coffee_delete_bundle(entry->bundle_num, REASON_LIFETIME_EXPIRED);
+			deletion[pointer++] = &entry->bundle_num;
 		}
+	}
+
+	for(h=0; h<pointer; h++) {
+		storage_coffee_delete_bundle(*deletion[h], REASON_LIFETIME_EXPIRED);
 	}
 
 	// Restart the timer
