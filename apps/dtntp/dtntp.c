@@ -171,20 +171,28 @@ const struct dtn_app dtntp = {
 int dtntp_discovery_add_service(uint8_t * ipnd_buffer, int length, int * offset) {
 	char string_buffer[60];
 	int len;
+	udtn_timeval_t tv;
+	float rating;
+
+	// get local clock rating
+	rating = dtntp_get_rating();
+
+	// do not send sync beacons if clock rating is zero
+	if (rating == 0.0) return 0;
+
+	// get local time
+	udtn_gettimeofday(&tv);
+
+	// do not send sync beacons if the clock timestamp is wrong
+	if (tv.tv_sec < UDTN_CLOCK_DTN_EPOCH_OFFSET) return 0;
+
+	// Convert timestamp into DTN time
+	tv.tv_sec -= UDTN_CLOCK_DTN_EPOCH_OFFSET;
 
 	len = sprintf(string_buffer, DTNTP_SERVICE_TAG);
 	(*offset) += sdnv_encode(len, ipnd_buffer + (*offset), length - (*offset));
 	memcpy(ipnd_buffer + (*offset), string_buffer, len);
 	(*offset) += len;
-
-	// get local clock rating
-	float rating = dtntp_get_rating();
-
-	udtn_timeval_t tv;
-	udtn_gettimeofday(&tv);
-
-	// Convert timestamp into DTN time
-	tv.tv_sec -= UDTN_CLOCK_DTN_EPOCH_OFFSET;
 
 	if (rating < 1.0f) {
 		len = sprintf(string_buffer, "version=2;quality=0.%lu;timestamp=%li;", \
