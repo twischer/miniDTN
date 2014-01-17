@@ -41,7 +41,28 @@ tests:
         debug: []
         cflags: "-DCONF_ROUTING=routing_null -DCONF_REDUNDANCE=redundancy_null -DCONF_STATUSREPORT=statusreport_null -DCONF_DISCOVERY=discovery_static -DBUNDLE_CONF_STORAGE_INIT=1 -fno-inline -DBUNDLE_CONF_STORAGE=storage_coffee"
         graph_options: ""
-### uDTN persistent Storage test
+### uDTN flash Storage test
+  - name: storage-flash
+    timeout: 2400
+    devices:
+      - name: receiver
+        programdir: examples/uDTN/storage-test
+        program: uDTN-storage-test
+        instrument: [examples/uDTN/storage-test/uDTN-storage-test.c,platform/inga/*.c,core/net/uDTN/*.c]
+        debug: []
+        cflags: "-DCONF_ROUTING=routing_null -DCONF_REDUNDANCE=redundancy_null -DCONF_STATUSREPORT=statusreport_null -D__DELAY_BACKWARD_COMPATIBLE__ -DCONF_DISCOVERY=discovery_static -DBUNDLE_CONF_STORAGE_INIT=1 -fno-inline -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30 -DBUNDLE_CONF_STORAGE=storage_flash"
+        graph_options: ""
+  - name: storage-flash-uninstr
+    timeout: 2400
+    devices:
+      - name: receiver
+        programdir: examples/uDTN/storage-test
+        program: uDTN-storage-test
+        instrument: []
+        debug: []
+        cflags: "-DCONF_ROUTING=routing_null -DCONF_REDUNDANCE=redundancy_null -DCONF_STATUSREPORT=statusreport_null -DCONF_DISCOVERY=discovery_static -DBUNDLE_CONF_STORAGE_INIT=1 -fno-inline -DBUNDLE_CONF_STORAGE=storage_flash"
+        graph_options: ""
+### uDTN persistent Storage test coffee
   - name: persistent-storage-coffee
     timeout: 2400
     devices:
@@ -62,3 +83,25 @@ tests:
         debug: []
         cflags: "-DCONF_ROUTING=routing_null -DCONF_REDUNDANCE=redundancy_null -DCONF_STATUSREPORT=statusreport_null -fno-inline -DBUNDLE_CONF_STORAGE=storage_coffee"
         graph_options: ""
+### uDTN persistent Storage test flash
+  - name: persistent-storage-flash
+    timeout: 2400
+    devices:
+      - name: receiver
+        programdir: examples/uDTN/storage-test
+        program: uDTN-persistent-storage-test
+        instrument: [examples/uDTN/storage-test/uDTN-persistent-storage-test.c,platform/inga/*.c,core/net/uDTN/*.c]
+        debug: []
+        cflags: "-DCONF_ROUTING=routing_null -DCONF_REDUNDANCE=redundancy_null -DCONF_STATUSREPORT=statusreport_null -D__DELAY_BACKWARD_COMPATIBLE__ -fno-inline -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30 -DBUNDLE_CONF_STORAGE=storage_flash"
+        graph_options: ""
+  - name: persistent-storage-flash-uninstr
+    timeout: 2400
+    devices:
+      - name: receiver
+        programdir: examples/uDTN/storage-test
+        program: uDTN-persistent-storage-test
+        instrument: []
+        debug: []
+        cflags: "-DCONF_ROUTING=routing_null -DCONF_REDUNDANCE=redundancy_null -DCONF_STATUSREPORT=statusreport_null -fno-inline -DBUNDLE_CONF_STORAGE=storage_flash"
+        graph_options: ""
+        
