@@ -34,6 +34,7 @@
 #include "statusreport.h"
 #include "agent.h"
 #include "hash.h"
+#include "bundle_ageing.h"
 
 #include "storage.h"
 
@@ -485,7 +486,7 @@ uint8_t storage_coffee_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_n
 	entry->rec_time = bundle->rec_time;
 
 	/* Reduce the lifetime by the age of the bundle to ensure that the bundle will "timeout" when appropriate */
-	entry->lifetime = bundle->lifetime - bundle->aeb_value_ms / 1000;
+	entry->lifetime = bundle->lifetime - bundle_ageing_get_age(bundlemem) / 1000;
 	entry->file_size = bundlemem->size;
 	entry->bundle_flags = bundle->flags;
 
