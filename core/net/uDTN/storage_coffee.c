@@ -368,7 +368,7 @@ uint8_t storage_coffee_make_room(struct mmem * bundlemem)
 		}
 
 		/* Delete Bundle */
-		storage_coffee_delete_bundle(entry->bundle_num, REASON_DEPLETED_STORAGE);
+		storage_coffee_delete_bundle(deletor->bundle_num, REASON_DEPLETED_STORAGE);
 	}
 #elif (BUNDLE_STORAGE_BEHAVIOUR == BUNDLE_STORAGE_BEHAVIOUR_DELETE_OLDER || BUNDLE_STORAGE_BEHAVIOUR == BUNDLE_STORAGE_BEHAVIOUR_DELETE_YOUNGER )
 	struct bundle_t * bundle = NULL;
@@ -404,7 +404,7 @@ uint8_t storage_coffee_make_room(struct mmem * bundlemem)
 			}
 #elif BUNDLE_STORAGE_BEHAVIOUR == BUNDLE_STORAGE_BEHAVIOUR_DELETE_YOUNGER
 			/* Delete youngest bundle in storage */
-			if( bundle->lifetime - (clock_time() - bundle->rec_time) / CLOCK_SECOND >= entry->lifetime - (clock_time() - entry->rec_time) / CLOCK_SECOND ) {
+			if( bundle->lifetime - (clock_time() - bundle->rec_time) / CLOCK_SECOND < entry->lifetime - (clock_time() - entry->rec_time) / CLOCK_SECOND ) {
 				break;
 			}
 #endif
