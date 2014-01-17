@@ -98,9 +98,19 @@ static uint8_t bundle_list_changed = 0;
  * "Internal" functions
  */
 void storage_coffee_prune();
-uint16_t storage_coffee_delete_bundle(uint32_t bundle_number, uint8_t reason);
+uint8_t storage_coffee_delete_bundle(uint32_t bundle_number, uint8_t reason);
 struct mmem * storage_coffee_read_bundle(uint32_t bundle_number);
 void storage_coffee_reconstruct_bundles();
+
+void storage_coffee_format(void)
+{
+	RADIO_SAFE_STATE_ON();
+
+	LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "Formatting flash");
+	cfs_coffee_format();
+
+	RADIO_SAFE_STATE_OFF();
+}
 
 /**
  * \brief called by agent at startup
@@ -117,12 +127,7 @@ void storage_coffee_init(void)
 	bundle_list_changed = 0;
 
 #if BUNDLE_STORAGE_INIT
-	RADIO_SAFE_STATE_ON();
-
-	LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "Formatting flash");
-	cfs_coffee_format();
-
-	RADIO_SAFE_STATE_OFF();
+	storage_coffee_format();
 #else
 	// Try to restore our bundle list from the file system
 	storage_coffee_reconstruct_bundles();
@@ -561,7 +566,7 @@ uint8_t storage_coffee_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_n
  * \param reason reason code
  * \return 1 on success or 0 on error
  */
-uint16_t storage_coffee_delete_bundle(uint32_t bundle_number, uint8_t reason)
+uint8_t storage_coffee_delete_bundle(uint32_t bundle_number, uint8_t reason)
 {
 	struct bundle_t * bundle = NULL;
 	struct file_list_entry_t * entry = NULL;
@@ -805,6 +810,7 @@ const struct storage_driver storage_coffee = {
 	storage_coffee_get_free_space,
 	storage_coffee_get_bundle_numbers,
 	storage_coffee_get_bundles,
+	storage_coffee_format,
 };
 /** @} */
 /** @} */
