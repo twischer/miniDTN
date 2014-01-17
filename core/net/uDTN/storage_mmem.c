@@ -83,7 +83,7 @@ static struct ctimer r_store_timer;
  */
 void storage_mmem_prune();
 void storage_mmem_reinit(void);
-uint16_t storage_mmem_delete_bundle(uint32_t bundle_number, uint8_t reason);
+uint8_t storage_mmem_delete_bundle(uint32_t bundle_number, uint8_t reason);
 void storage_mmem_update_statistics();
 
 /**
@@ -92,6 +92,12 @@ void storage_mmem_update_statistics();
 void storage_mmem_update_statistics() {
 	statistics_storage_bundles(bundles_in_storage);
 	statistics_storage_memory(avail_memory);
+}
+
+void storage_mmem_format(void)
+{
+	/* We cannot delete everything in MMEM, so do nothing here */
+	return;
 }
 
 /**
@@ -388,7 +394,7 @@ uint8_t storage_mmem_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_num
  * \param reason reason code
  * \return 1 on success or 0 on error
  */
-uint16_t storage_mmem_delete_bundle(uint32_t bundle_number, uint8_t reason)
+uint8_t storage_mmem_delete_bundle(uint32_t bundle_number, uint8_t reason)
 {
 	struct bundle_t * bundle = NULL;
 	struct bundle_list_entry_t * entry = NULL;
@@ -574,6 +580,7 @@ const struct storage_driver storage_mmem = {
 	storage_mmem_get_free_space,
 	storage_mmem_get_bundle_numbers,
 	storage_mmem_get_bundles,
+	storage_mmem_format,
 };
 
 /** @} */
