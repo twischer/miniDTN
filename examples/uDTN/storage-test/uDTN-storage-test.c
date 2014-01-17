@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Wolf-Bastian Pšttner <poettner@ibr.cs.tu-bs.de>
+ * Copyright (c) 2012, Wolf-Bastian PÃ¶ttner <poettner@ibr.cs.tu-bs.de>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -34,7 +34,7 @@
  * \file
  *         A test to verify the (currently selected) storage implementation
  * \author
- *         Wolf-Bastian Pšttner <poettner@ibr.cs.tu-bs.de>
+ *         Wolf-Bastian PÃ¶ttner <poettner@ibr.cs.tu-bs.de>
  */
 
 #include <stdio.h>
@@ -571,7 +571,7 @@ PROCESS_THREAD(test_process, ev, data)
 		PROCESS_PAUSE();
 
 		if( BUNDLE_STORAGE.get_bundle_num() != ((TEST_BUNDLES*2) - i) ) {
-			PRINTF("Storage erroneously reports %u bundles, expected %u\n", BUNDLE_STORAGE.get_bundle_num(), ((TEST_BUNDLES*2) - i));
+			PRINTF("Storage erroneously reports %u bundles, expected %lu\n", BUNDLE_STORAGE.get_bundle_num(), ((TEST_BUNDLES*2) - i));
 			errors ++;
 		}
 
