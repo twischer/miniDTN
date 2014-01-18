@@ -81,6 +81,12 @@
 #define PAYLOAD_LEN 80
 #endif
 
+#ifdef CONF_PING_COUNT
+#define PING_COUNT CONF_PING_COUNT
+#else
+#define PING_COUNT 1000
+#endif
+
 #define DEBUG 0
 #if DEBUG
 #include <stdio.h>
@@ -285,7 +291,7 @@ PROCESS_THREAD(ping_process, ev, data)
 			process_post(&agent_process, dtn_processing_finished, recv);
 
 			/* We're done */
-			if (bundle_recvd >= 1000)
+			if (bundle_recvd >= PING_COUNT)
 				break;
 
 			/* Send PING */
@@ -307,7 +313,7 @@ PROCESS_THREAD(ping_process, ev, data)
 	}
 
 	TEST_REPORT("timeout", timeouts, bundle_sent, "lost/sent");
-	TEST_REPORT("average latency", latency*1000/bundle_recvd, CLOCK_SECOND, "ms");
+	TEST_REPORT("average latency", latency*PING_COUNT/bundle_recvd, CLOCK_SECOND, "ms");
 
 	PROCESS_END();
 }
