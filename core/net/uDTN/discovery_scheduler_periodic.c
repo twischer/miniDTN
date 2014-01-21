@@ -13,21 +13,12 @@
  * \file
  * \brief Pattern discovery scheduler module
  *
- * \author Wolf-Bastian Pšttner <poettner@ibr.cs.tu-bs.de>
+ * \author Wolf-Bastian PÃ¶ttner <poettner@ibr.cs.tu-bs.de>
  */
 #include "discovery_scheduler.h"
 #include "discovery.h"
 
 #include "sys/ctimer.h"
-
-/**
- * How often should we send discovery messages?
- */
-#ifdef DISCOVERY_CONF_CYCLE
-#define DISCOVERY_CYCLE DISCOVERY_CONF_CYCLE
-#else
-#define DISCOVERY_CYCLE 5
-#endif
 
 static struct ctimer dst;
 process_event_t dtn_disco_start_event;

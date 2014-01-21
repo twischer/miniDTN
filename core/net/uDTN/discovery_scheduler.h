@@ -21,6 +21,14 @@
 #define DISCOVERY_SCHEDULER discovery_scheduler_periodic
 #endif
 
+/**
+ * How often should we send discovery messages?
+ */
+#ifdef DISCOVERY_CONF_CYCLE
+#define DISCOVERY_CYCLE DISCOVERY_CONF_CYCLE
+#else
+#define DISCOVERY_CYCLE 1
+#endif
 
 /** interface for discovery scheduler modules **/
 struct discovery_scheduler_driver {
