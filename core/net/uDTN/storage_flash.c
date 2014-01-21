@@ -22,7 +22,7 @@
 #include "lib/list.h"
 #include "logging.h"
 #include "watchdog.h"
-#include "flash_arch.h"
+#include <flash_arch.h>
 
 #include "bundle.h"
 #include "sdnv.h"
