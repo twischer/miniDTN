@@ -34,6 +34,7 @@
 #include "statistics.h"
 #include "convergence_layer.h"
 #include "eid.h"
+#include "discovery_scheduler.h"
 
 #include "discovery.h"
 
@@ -43,7 +44,7 @@ void discovery_ipnd_remove_stale_neighbours(void * ptr);
 void discovery_ipnd_print_list();
 
 #define DISCOVERY_NEIGHBOUR_CACHE	3
-#define DISCOVERY_NEIGHBOUR_TIMEOUT	25
+#define DISCOVERY_NEIGHBOUR_TIMEOUT	(5 * DISCOVERY_CYCLE)
 #define DISCOVERY_IPND_SERVICE		"lowpancl"
 #define DISCOVERY_IPND_BUFFER_LEN 	70
 #define DISCOVERY_IPND_WHITELIST	0
