@@ -26,6 +26,7 @@
 
 #include "dtn_network.h"
 #include "agent.h"
+#include "discovery_scheduler.h"
 
 #include "discovery.h"
 
@@ -35,8 +36,7 @@ void discovery_basic_save_neighbour(rimeaddr_t * neighbour);
 void discovery_basic_stop_pending();
 
 #define DISCOVERY_NEIGHBOUR_CACHE	3
-#define DISCOVERY_NEIGHBOUR_TIMEOUT	5
-#define DISCOVERY_CYCLE 			0.2
+#define DISCOVERY_NEIGHBOUR_TIMEOUT	(5 * DISCOVERY_CYCLE)
 #define DISCOVERY_TRIES				5
 
 /**
