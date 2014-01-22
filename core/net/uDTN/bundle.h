@@ -112,10 +112,8 @@ struct bundle_block_t {
 
 	/* FIXME: EID References are unsupported */
 
-	/* Variable array at the end to hold the payload
-	 * Size is uint8 despite being an SDNV because
-	 * IEEE-805.15.4 limits the size here. */
-	uint8_t block_size;
+	/* Variable array at the end to hold the payload */
+	int block_size;
 	uint8_t payload[];
 } __attribute__((packed));
 
@@ -216,7 +214,7 @@ uint16_t bundle_delete_bundle(struct mmem * bundlemem);
  * \param d_len length of the block payload
  * \return 1 on success or 0 on error
  */
-int bundle_add_block(struct mmem * bundlemem, uint8_t type, uint8_t flags, uint8_t * data, uint8_t d_len);
+int bundle_add_block(struct mmem * bundlemem, uint8_t type, uint8_t flags, uint8_t * data, int d_len);
 
 /**
  * \brief Returns a pointer a bundle block

@@ -33,7 +33,7 @@
  * "Internal" functions
  */
 static uint8_t bundle_decode_block(struct mmem *bundlemem, uint8_t *buffer, int max_len);
-static int bundle_encode_block(struct bundle_block_t *block, uint8_t *buffer, uint8_t max_len);
+static int bundle_encode_block(struct bundle_block_t *block, uint8_t *buffer, int max_len);
 
 
 struct mmem * bundle_create_bundle()
@@ -68,7 +68,7 @@ struct mmem * bundle_create_bundle()
 	return &bs->bundle;
 }
 
-int bundle_add_block(struct mmem *bundlemem, uint8_t type, uint8_t flags, uint8_t *data, uint8_t d_len)
+int bundle_add_block(struct mmem *bundlemem, uint8_t type, uint8_t flags, uint8_t *data, int d_len)
 {
 	struct bundle_t *bundle;
 	struct bundle_block_t *block;
@@ -401,8 +401,8 @@ static uint8_t bundle_decode_block(struct mmem *bundlemem, uint8_t *buffer, int 
 
 int bundle_encode_bundle(struct mmem *bundlemem, uint8_t *buffer, int max_len)
 {
-	uint32_t value;
-	uint8_t offs = 0, blklen_offs, i;
+	uint8_t i;
+	uint32_t value, offs = 0, blklen_offs;
 	int ret, blklen_size;
 	struct bundle_t *bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 	struct bundle_block_t *block;
@@ -531,9 +531,9 @@ int bundle_encode_bundle(struct mmem *bundlemem, uint8_t *buffer, int max_len)
 	return offs;
 }
 
-static int bundle_encode_block(struct bundle_block_t *block, uint8_t *buffer, uint8_t max_len)
+static int bundle_encode_block(struct bundle_block_t *block, uint8_t *buffer, int max_len)
 {
-	uint8_t offs = 0;
+	uint32_t offs = 0;
 	int ret;
 	uint32_t value;
 
