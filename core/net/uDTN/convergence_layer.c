@@ -551,25 +551,133 @@ int convergence_layer_resend_ack(struct transmit_ticket_t * ticket)
  * -1 = Temporary error
  * -2 = Permanent error
  */
-int convergence_layer_parse_dataframe(rimeaddr_t * source, uint8_t * payload, uint8_t length, uint8_t flags, uint8_t sequence_number, packetbuf_attr_t rssi)
+int convergence_layer_parse_dataframe(rimeaddr_t * source, uint8_t * payload, uint8_t payload_length, uint8_t flags, uint8_t sequence_number, packetbuf_attr_t rssi)
 {
 	struct mmem * bundlemem = NULL;
 	struct bundle_t * bundle = NULL;
+	struct transmit_ticket_t * ticket = NULL;
 	int n;
+	int ret;
+	int length;
+
+	/* Note down the payload length */
+	length = payload_length;
 
 	if( flags != (CONVERGENCE_LAYER_FLAGS_FIRST | CONVERGENCE_LAYER_FLAGS_LAST ) ) {
-		LOG(LOGD_DTN, LOG_CL, LOGL_ERR, "Bundle received %p from %u.%u with invalid flags %02X", payload, source->u8[0], source->u8[1], flags);
+		/* We have a multipart bundle here */
+		if( flags == CONVERGENCE_LAYER_FLAGS_FIRST ) {
+			/* Beginning of a new bundle from a peer, remove old tickets */
+			for( ticket = list_head(transmission_ticket_list);
+				 ticket != NULL;
+				 ticket = list_item_next(ticket) ) {
+				if( rimeaddr_cmp(&ticket->neighbour, source) && (ticket->flags & CONVERGENCE_LAYER_QUEUE_MULTIPART_RECV) ) {
+					break;
+				}
+			}
 
-		/* We will never be able to parse that bundle, signal a permanent error */
-		return -2;
+			/* We found a ticket, remove it */
+			if( ticket != NULL ) {
+				LOG(LOGD_DTN, LOG_CL, LOGL_WRN, "Resynced to peer %u.%u, throwing away old buffer", source->u8[0], source->u8[1]);
+				convergence_layer_free_transmit_ticket(ticket);
+				ticket = NULL;
+			}
+
+			/* Allocate a new ticket for the incoming bundle */
+			ticket = convergence_layer_get_transmit_ticket_priority(CONVERGENCE_LAYER_PRIORITY_HIGH);
+
+			if( ticket == NULL ) {
+				LOG(LOGD_DTN, LOG_CL, LOGL_ERR, "Unable to allocate multipart receive ticket");
+				return -1;
+			}
+
+			/* Fill the fields of the ticket */
+			rimeaddr_copy(&ticket->neighbour, source);
+			ticket->flags = CONVERGENCE_LAYER_QUEUE_MULTIPART_RECV;
+			ticket->timestamp = clock_time();
+			ticket->sequence_number = sequence_number;
+
+			/* Now allocate some memory */
+			ret = mmem_alloc(&ticket->buffer, length);
+
+			if( ret < 1 ) {
+				LOG(LOGD_DTN, LOG_CL, LOGL_ERR, "Unable to allocate multipart receive buffer of %u bytes", length);
+				convergence_layer_free_transmit_ticket(ticket);
+				ticket = NULL;
+				return -1;
+			}
+
+			/* Copy the payload into the buffer */
+			memcpy(MMEM_PTR(&ticket->buffer), payload, length);
+
+			/* We are waiting for more segments, return now */
+			return 1;
+		} else {
+			/* Either the middle of the end of a bundle, go look for the ticket */
+			for( ticket = list_head(transmission_ticket_list);
+				 ticket != NULL;
+				 ticket = list_item_next(ticket) ) {
+				if( rimeaddr_cmp(&ticket->neighbour, source) && (ticket->flags & CONVERGENCE_LAYER_QUEUE_MULTIPART_RECV) ) {
+					break;
+				}
+			}
+
+			/* Cannot find a ticket, discard segment */
+			if( ticket == NULL ) {
+				LOG(LOGD_DTN, LOG_CL, LOGL_WRN, "Segment from peer %u.%u does not match any bundles in progress, discarding", source->u8[0], source->u8[1]);
+				return -1;
+			}
+
+			if( sequence_number != (ticket->sequence_number + 1) % 4 ) {
+				LOG(LOGD_DTN, LOG_CL, LOGL_WRN, "Segment from peer %u.%u is out of sequence. Recv %u, Exp %u", source->u8[0], source->u8[1], sequence_number, (ticket->sequence_number + 1) % 4);
+				return 1;
+			}
+
+			/* Store the last received and valid sequence number */
+			ticket->sequence_number = sequence_number;
+
+			/* Note down the old length to know where to start */
+			n = ticket->buffer.size;
+
+			/* Allocate more memory */
+			ret = mmem_realloc(&ticket->buffer, ticket->buffer.size + length);
+
+			if( ret < 1 ) {
+				LOG(LOGD_DTN, LOG_CL, LOGL_ERR, "Unable to re-allocate multipart receive buffer of %u bytes", ticket->buffer.size + length);
+				convergence_layer_free_transmit_ticket(ticket);
+				return -1;
+			}
+
+			/* Update timestamp to avoid the ticket from timing out */
+			ticket->timestamp = clock_time();
+
+			/* And append the payload */
+			memcpy(((uint8_t *) MMEM_PTR(&ticket->buffer)) + n, payload, length);
+		}
+
+		if( flags & CONVERGENCE_LAYER_FLAGS_LAST ) {
+			/* We have the last segment, change pointer so that the rest of the function works as planned */
+			payload = (uint8_t *) MMEM_PTR(&ticket->buffer);
+			length = ticket->buffer.size;
+			LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "%u byte multipart bundle received from %u.%u, parsing", length, source->u8[0], source->u8[1]);
+		} else {
+			/* We are waiting for more segments, return now */
+			return 1;
+		}
 	}
 
 	/* Allocate memory, parse the bundle and set reference counter to 1 */
 	bundlemem = bundle_recover_bundle(payload, length);
+
+	/* We do not need the ticket anymore if there was one, deallocate it */
+	if( ticket != NULL ) {
+		convergence_layer_free_transmit_ticket(ticket);
+		ticket = NULL;
+	}
+
 	if( !bundlemem ) {
 		LOG(LOGD_DTN, LOG_CL, LOGL_WRN, "Error recovering bundle");
 
-		/* Possible not enough memory -> temporary error */
+		/* Possibly not enough memory -> temporary error */
 		return -1;
 	}
 
@@ -578,7 +686,7 @@ int convergence_layer_parse_dataframe(rimeaddr_t * source, uint8_t * payload, ui
 		LOG(LOGD_DTN, LOG_CL, LOGL_WRN, "Invalid bundle pointer");
 		bundle_decrement(bundlemem);
 
-		/* Possible not enough memory -> temporary error */
+		/* Possibly not enough memory -> temporary error */
 		return -1;
 	}
 
@@ -727,7 +835,7 @@ int convergence_layer_incoming_frame(rimeaddr_t * source, uint8_t * payload, uin
 		flags = (header & CONVERGENCE_LAYER_MASK_FLAGS) >> 0;
 		sequence_number = (header & CONVERGENCE_LAYER_MASK_SEQNO) >> 2;
 
-		LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Incoming data frame from %u.%u with SeqNo %u", source->u8[0], source->u8[1], sequence_number);
+		LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Incoming data frame from %u.%u with SeqNo %u and Flags %02X", source->u8[0], source->u8[1], sequence_number, flags);
 
 		/* Parse the incoming data frame */
 		ret = convergence_layer_parse_dataframe(source, data_pointer, data_length, flags, sequence_number, rssi);
@@ -1050,6 +1158,32 @@ void check_blocked_neighbours() {
 	}
 }
 
+void check_blocked_tickets() {
+	struct transmit_ticket_t * ticket = NULL;
+	int changed = 1;
+
+	while(changed) {
+		changed = 0;
+
+		for( ticket = list_head(transmission_ticket_list);
+			 ticket != NULL;
+			 ticket = list_item_next(ticket) ) {
+
+			/* Only multipart receiver tickets can time out */
+			if( !(ticket->flags & CONVERGENCE_LAYER_QUEUE_MULTIPART_RECV) ) {
+				continue;
+			}
+
+			if( (clock_time() - ticket->timestamp) > CONVERGENCE_LAYER_MULTIPART_TIMEOUT * CLOCK_SECOND ) {
+				LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Multipart receiving ticket for peer %u.%u timed out, removing", ticket->neighbour.u8[0], ticket->neighbour.u8[1]);
+				changed = 1;
+				convergence_layer_free_transmit_ticket(ticket);
+				break;
+			}
+		}
+	}
+}
+
 int convergence_layer_neighbour_down(rimeaddr_t * neighbour) {
 	struct transmit_ticket_t * ticket = NULL;
 	int changed = 1;
@@ -1069,6 +1203,18 @@ int convergence_layer_neighbour_down(rimeaddr_t * neighbour) {
 			/* Do not delete tickets for which we are currently awaiting an ACK */
 			if( ticket->flags & CONVERGENCE_LAYER_QUEUE_ACK_PEND ) {
 				continue;
+			}
+
+			/* Multipart receiving tickets must not be signalled to routing */
+			if( ticket->flags & CONVERGENCE_LAYER_QUEUE_MULTIPART_RECV ) {
+				/* Mark as changed */
+				changed = 1;
+
+				/* Free ticket */
+				convergence_layer_free_transmit_ticket(ticket);
+
+				/* Stop look and start over again */
+				break;
 			}
 
 			if( rimeaddr_cmp(neighbour, &ticket->neighbour) ) {
@@ -1136,6 +1282,7 @@ PROCESS_THREAD(convergence_layer_process, ev, data)
 
 		if( etimer_expired(&stale_timer) ) {
 			check_blocked_neighbours();
+			check_blocked_tickets();
 			etimer_restart(&stale_timer);
 		}
 

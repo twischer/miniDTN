@@ -52,6 +52,11 @@
 #endif
 
 /**
+ * How long shall we wait for the completion of a multipart bundle when receiving? [in seconds]
+ */
+#define CONVERGENCE_LAYER_MULTIPART_TIMEOUT		10
+
+/**
  * How long shell we wait before retransmitting an app-layer ACK or NACK? [in seconds]
  */
 #define CONVERGENCE_LAYER_RETRANSMIT_TIMEOUT	0.5
@@ -83,6 +88,7 @@
 #define CONVERGENCE_LAYER_QUEUE_NACK		0x40
 #define CONVERGENCE_LAYER_QUEUE_TEMP_NACK	0x80
 #define CONVERGENCE_LAYER_QUEUE_MULTIPART	0x100
+#define CONVERGENCE_LAYER_QUEUE_MULTIPART_RECV	0x200
 
 /**
  * CL COMPAT VALUES
