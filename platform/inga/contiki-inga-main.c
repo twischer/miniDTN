@@ -200,22 +200,12 @@ SIGNATURE = {
 };
 #endif
 
-/** Fuse-settings:
- * JTAG, SPI enabled, Internal RC osc, Boot flash size 4K,
- * 6CK+65msec delay, brownout disabled
- */
-FUSES = {
-  .low = 0xe2,
-  .high = 0x99, // default
-  .extended = 0xff, // default
-};
-
 #if CONTIKI_CONF_RANDOM_MAC
 /** Get a pseudo random number using the ADC */
 static uint8_t
 rng_get_uint8(void)
 {
-  uint8_t i, j;
+  uint8_t i, j = 0;
   ADCSRA = 1 << ADEN; //Enable ADC, not free running, interrupt disabled, fastest clock
   for (i = 0; i < 4; i++) {
     ADMUX = 0; //toggle reference to increase noise
@@ -229,6 +219,8 @@ rng_get_uint8(void)
   return j;
 }
 /*----------------------------------------------------------------------------*/
+// NOTE: fixed parts are for 802.15.4 -> Ethernet MAC address matching
+// according to [RFC 2373, Appendix A].
 static void
 generate_new_eui64(uint8_t eui64[8])
 {
@@ -318,20 +310,27 @@ platform_radio_init(void)
 
   // EUI64 ADDR
 #ifndef NODE_CONF_EUI64
-  // if setting not set or invalid data - generate ieee_addr from node_id 
+  /* Tries to load EUI64 from settings.
+   * If not found depending on CONTIKI_CONF_RANDOM_MAC
+   * a new EUI64 is automatically generated either by using the node_id
+   * or by using the random number generator.
+   *
+   * If WRITE_EUI64 is set, the new mac will be saved in settings manager.*/
   if (settings_check(SETTINGS_KEY_EUI64, 0) != true || settings_get(SETTINGS_KEY_EUI64, 0, (void*) &eui64_addr, sizeof(eui64_addr)) != SETTINGS_STATUS_OK) {
 #if CONTIKI_CONF_RANDOM_MAC
     generate_new_eui64(eui64_addr);
     PRINTD("Radio IEEE Addr not in EEPROM - generated random\n");
 #else /* CONTIKI_CONF_RANDOM_MAC */
-    eui64_addr[0] = node_id & 0xFF;
-    eui64_addr[1] = (node_id >> 8) & 0xFF;
-    eui64_addr[2] = 0;
-    eui64_addr[3] = 0;
-    eui64_addr[4] = 0;
-    eui64_addr[5] = 0;
-    eui64_addr[6] = 0;
-    eui64_addr[7] = 0;
+    // address generation described in [RFC 4944, Sec. 6]
+    // note: use pan id?
+    eui64_addr[0] = 0x02; // pan id
+    eui64_addr[1] = 0x00; // here?
+    eui64_addr[2] = 0x00;
+    eui64_addr[3] = 0xFF;
+    eui64_addr[4] = 0xFE;
+    eui64_addr[5] = 0x00;
+    eui64_addr[6] = node_id & 0xFF;
+    eui64_addr[7] = (node_id >> 8) & 0xFF;
     PRINTD("Radio IEEE Addr not in EEPROM - using default\n");
 #endif /* CONTIKI_CONF_RANDOM_MAC */
 #if WRITE_EUI64
@@ -340,21 +339,20 @@ platform_radio_init(void)
     } else {
       PRINTD("Failed writing IEEE Addr to EEPROM.\n");
     }
-#endif
+#endif /* WRITE_EUI64 */
   }
-#endif
+#endif /* NODE_CONF_EUI64 */
 
-#if EUI64_BY_NODE_ID
+#if EUI64_BY_NODE_ID // TODO: remove here?
   /* Replace lower 2 bytes with node ID  */
-  eui64_addr[0] = node_id & 0xFF;
-  eui64_addr[1] = (node_id >> 8) & 0xFF;
+  eui64_addr[6] = node_id & 0xFF;
+  eui64_addr[7] = (node_id >> 8) & 0xFF;
 #endif
 
-  PRINTA("Network ID (pan_id): 0x%04X\n", pan_id);
-  PRINTA("Node ID (pan_addr): 0x%04X\n", node_id);
-  PRINTA("Radio TX power: 0x%02X\n", radio_tx_power);
-  PRINTA("Radio channel: 0x%02X\n", radio_channel);
-  PRINTA("MAC(EUI64) address %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x\n\r",
+  PRINTA("WPAN Info:\n");
+  PRINTA("  PAN ID:   0x%04X\n", pan_id);
+  PRINTA("  PAN ADDR: 0x%04X\n", node_id);
+  PRINTA("  EUI-64:   %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x\n\r",
           eui64_addr[0],
           eui64_addr[1],
           eui64_addr[2],
@@ -369,19 +367,21 @@ platform_radio_init(void)
   /* Start radio and radio receive process */
   NETSTACK_RADIO.init();
 
+#if !WITH_UIP6
   //--- Set Rime address based on eui64
   {
     rimeaddr_t addr;
     memcpy(addr.u8, eui64_addr, sizeof (rimeaddr_t));
-    PRINTF("rime address: ");
+    PRINTA("rime address: ");
     int i;
     for (i = 0; i < sizeof (rimeaddr_t); i++) {
-      PRINTF("%02x.", addr.u8[i]);
+      PRINTA("%02x.", addr.u8[i]);
     }
-    PRINTF("\n");
+    PRINTA("\n");
 
     rimeaddr_set_node_addr(&addr);
   }
+#endif /* !WITH_UIP */
 
   //--- Radio address settings
   {
@@ -403,39 +403,25 @@ platform_radio_init(void)
   NETSTACK_MAC.init();
   NETSTACK_NETWORK.init();
 
-  printf("%s %s, channel check rate %lu Hz, radio channel %u, power %u\n",
-          NETSTACK_MAC.name, NETSTACK_RDC.name,
-          CLOCK_SECOND / (NETSTACK_RDC.channel_check_interval() == 0 ? 1 :
-          NETSTACK_RDC.channel_check_interval()),
-          rf230_get_channel(),
-          rf230_get_txpower());
+  PRINTA("Netstack info:\n");
+  PRINTA("  NET: %s\n  MAC: %s\n  RDC: %s\n",
+      NETSTACK_NETWORK.name,
+      NETSTACK_MAC.name,
+      NETSTACK_RDC.name);
+  PRINTA("Radio info:\n");
+  PRINTA("  Check rate %lu Hz\n  Channel: %u\n  Power: %u\n",
+      CLOCK_SECOND / (NETSTACK_RDC.channel_check_interval() == 0 ? 1 :
+      NETSTACK_RDC.channel_check_interval()), // radio??
+      rf230_get_channel(),
+      rf230_get_txpower());
 
 #else /* RF230BB */
 
   /* Original RF230 combined mac/radio driver */
   /* mac process must be started before tcpip process! */
   process_start(&mac_process, NULL);
-#endif
+#endif /* RF230BB */
 
-#if UIP_CONF_IPV6
-  // Copy EUI64 to the link local address
-  memcpy(&uip_lladdr.addr, &eui64_addr, sizeof (uip_lladdr.addr));
-
-  process_start(&tcpip_process, NULL);
-
-  printf("Tentative link-local IPv6 address ");
-  {
-    uip_ds6_addr_t *lladdr;
-    int i;
-    lladdr = uip_ds6_get_link_local(-1);
-    for (i = 0; i < 7; ++i) {
-      printf("%02x%02x:", lladdr->ipaddr.u8[i * 2],
-              lladdr->ipaddr.u8[i * 2 + 1]);
-    }
-    printf("%02x%02x\n", lladdr->ipaddr.u8[14], lladdr->ipaddr.u8[15]);
-  }
-
-#endif /* UIP_CONF_IPV6 */
 }
 
 /*-------------------------Low level initialization------------------------*/
@@ -537,26 +523,34 @@ init(void)
   platform_radio_init();
 #endif
 
-#if ANNOUNCE_BOOT
-  PRINTA("%s %s, channel %u power %u", NETSTACK_MAC.name, NETSTACK_RDC.name, rf230_get_channel(), rf230_get_txpower());
-  if (NETSTACK_RDC.channel_check_interval) {//function pointer is zero for sicslowmac
-    unsigned short tmp;
-    tmp = CLOCK_SECOND / (NETSTACK_RDC.channel_check_interval == 0 ? 1 : \
- NETSTACK_RDC.channel_check_interval());
-    if (tmp < 65535) PRINTA(", check rate %u Hz", tmp);
+#if UIP_CONF_IPV6
+  // Copy EUI64 to the link local address
+  memcpy(&uip_lladdr.addr, &eui64_addr, sizeof (uip_lladdr.addr));
+
+  process_start(&tcpip_process, NULL);
+
+  PRINTA("IPv6 info:\n");
+  PRINTA("  Tentative link-local IPv6 address ");
+  {
+    uip_ds6_addr_t *lladdr;
+    int i;
+    lladdr = uip_ds6_get_link_local(-1);
+    for (i = 0; i < 7; ++i) {
+      PRINTA("%02x%02x:", lladdr->ipaddr.u8[i * 2],
+              lladdr->ipaddr.u8[i * 2 + 1]);
+    }
+    PRINTA("%02x%02x\n", lladdr->ipaddr.u8[14], lladdr->ipaddr.u8[15]);
   }
-  PRINTA("\n");
 
 #if UIP_CONF_IPV6_RPL
-  PRINTA("RPL Enabled\n");
+  PRINTA("  RPL Enabled\n");
 #endif
 #if UIP_CONF_ROUTER
-  PRINTA("Routing Enabled, TCP_MSS: %u\n", UIP_TCP_MSS);
+  PRINTA("  Routing Enabled, TCP_MSS: %u\n", UIP_TCP_MSS);
 #endif
+#endif /* UIP_CONF_IPV6 */
 
-#endif /* ANNOUNCE_BOOT */
-
-  PRINTA("Online\n");
+  PRINTA("******* Online *******\n\n");
 }
 
 #if PER_ROUTES
