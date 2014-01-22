@@ -103,7 +103,7 @@ PROCESS(coordinator_process, "Coordinator");
 
 AUTOSTART_PROCESSES(&coordinator_process);
 
-struct bundle_t bundle;
+uint16_t pings_received = 0;
 /*---------------------------------------------------------------------------*/
 
 static clock_time_t get_time()
@@ -149,7 +149,6 @@ static inline struct mmem *bundle_convenience(uint16_t dest, uint16_t dst_srv, u
 
 PROCESS_THREAD(coordinator_process, ev, data)
 {
-	static struct etimer timer;
 	PROCESS_BEGIN();
 
 	profiling_init();
@@ -168,12 +167,19 @@ PROCESS_THREAD(coordinator_process, ev, data)
 	process_start(&pong_process, NULL);
 #endif
 
-	/* The pong process doesn't collect anything, so PASS device directly.
-	 * Otherwise wait for ping to finish. */
+	/* Otherwise wait for ping to finish. */
 	PROCESS_WAIT_UNTIL(!process_is_running(&ping_process));
 
-	etimer_set(&timer, CLOCK_SECOND*120);
-	PROCESS_WAIT_UNTIL(etimer_expired(&timer));
+	/* If pong is running, wait until enough pings have been received */
+	if( process_is_running(&pong_process) ) {
+		while(1) {
+			PROCESS_PAUSE();
+
+			if( pings_received >= PING_COUNT ) {
+				break;
+			}
+		}
+	}
 
 	profiling_stop();
 	watchdog_stop();
@@ -364,6 +370,7 @@ PROCESS_THREAD(pong_process, ev, data)
 		}
 
 		PRINTF("PONG: recv\n");
+		pings_received++;
 
 		/* Verify the content of the bundle */
 		block = bundle_get_payload_block(recv);
