@@ -242,7 +242,7 @@ settings_get_cstr(settings_key_t key, uint8_t index, char *c_str,
   /* Save room for the zero termination. */
   c_str_size--;
 
-  if(settings_get(key, index, (uint8_t *)c_str, &c_str_size) == SETTINGS_STATUS_OK) {
+  if(settings_get(key, index, (uint8_t *)c_str, c_str_size) == SETTINGS_STATUS_OK) {
     /* Zero terminate. */
     c_str[c_str_size] = 0;
   } else {
@@ -268,9 +268,8 @@ settings_get_bool_with_default(settings_key_t key, uint8_t index,
                                uint8_t default_value)
 {
   uint8_t ret = default_value;
-  settings_length_t sizeof_uint8 = sizeof(uint8_t);
 
-  settings_get(key, index, (uint8_t *)&ret, &sizeof_uint8);
+  settings_get(key, index, (uint8_t *)&ret, sizeof(uint8_t));
   return !!ret;
 }
 
@@ -278,9 +277,8 @@ static CC_INLINE uint8_t
 settings_get_uint8(settings_key_t key, uint8_t index)
 {
   uint8_t ret = 0;
-  settings_length_t sizeof_uint8 = sizeof(uint8_t);
 
-  settings_get(key, index, (uint8_t *)&ret, &sizeof_uint8);
+  settings_get(key, index, (uint8_t *)&ret, sizeof(uint8_t));
   return ret;
 }
 
@@ -300,9 +298,8 @@ static CC_INLINE uint16_t
 settings_get_uint16(settings_key_t key, uint8_t index)
 {
   uint16_t ret = 0;
-  settings_length_t sizeof_uint16 = sizeof(uint16_t);
 
-  settings_get(key, index, (uint8_t *)&ret, &sizeof_uint16);
+  settings_get(key, index, (uint8_t *)&ret, sizeof(uint16_t));
   return ret;
 }
 
@@ -324,7 +321,7 @@ settings_get_uint32(settings_key_t key, uint8_t index)
   uint32_t ret = 0;
   settings_length_t sizeof_uint32 = sizeof(uint32_t);
 
-  settings_get(key, index, (uint8_t *)&ret, &sizeof_uint32);
+  settings_get(key, index, (uint8_t *)&ret, sizeof_uint32);
   return ret;
 }
 
@@ -347,7 +344,7 @@ settings_get_uint64(settings_key_t key, uint8_t index)
   uint64_t ret = 0;
   settings_length_t sizeof_uint64 = sizeof(uint64_t);
 
-  settings_get(key, index, (uint8_t *)&ret, &sizeof_uint64);
+  settings_get(key, index, (uint8_t *)&ret, sizeof_uint64);
   return ret;
 }
 
