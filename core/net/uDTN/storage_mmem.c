@@ -33,6 +33,7 @@
 #include "statistics.h"
 #include "hash.h"
 #include "bundle_ageing.h"
+#include "convergence_layer.h"
 
 #include "storage.h"
 
@@ -339,6 +340,17 @@ uint8_t storage_mmem_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_num
 		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "Cannot store bundle, no room");
 
 		/* Throw away bundle to not take up RAM */
+		bundle_decrement(bundlemem);
+
+		return 0;
+	}
+
+	/* Always keep at least the maximum size of a bundle free to allow the CL to
+	 * serialize bundles
+	 */
+	if( avail_memory < CONVERGENCE_LAYER_MAX_SIZE ) {
+		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "Cannot store bundle, memory below threshold");
+
 		bundle_decrement(bundlemem);
 
 		return 0;
