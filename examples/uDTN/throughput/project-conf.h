@@ -3,7 +3,7 @@
 
 // Set our MMEM size
 #undef MMEM_CONF_SIZE
-#define MMEM_CONF_SIZE 2000
+#define MMEM_CONF_SIZE 4000
 
 // Avoid deleting bundles in storage
 // 3 = BUNDLE_STORAGE_BEHAVIOUR_DO_NOT_DELETE
