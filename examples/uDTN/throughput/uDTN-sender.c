@@ -92,7 +92,7 @@ AUTOSTART_PROCESSES(&udtn_sender_process);
 /*---------------------------------------------------------------------------*/
 PROCESS_THREAD(udtn_sender_process, ev, data)
 {
-	uint8_t i;
+	int i;
 	int n;
 	static struct etimer timer;
 	static struct registration_api reg;
