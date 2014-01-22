@@ -132,8 +132,6 @@
 #define CONVERGENCE_LAYER_PRIORITY_NORMAL	0x01
 #define CONVERGENCE_LAYER_PRIORITY_HIGH		0x02
 
-#define CONVERGENCE_LAYER_VALID_FLAG		0x7a03ab12UL
-
 /**
  * Maximum payload length of one outgoing frame
  *
