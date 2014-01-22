@@ -34,6 +34,23 @@ tests:
         debug: []
         cflags: "-DNETSTACK_CONF_MAC=nullmac_driver -DNETSTACK_CONF_RDC=nullrdc_driver -fno-inline -DCONF_MODE=0 -DCONF_DEST_NODE=$SENDER"
         graph_options: ""
+  - name: pingpong-256-uninstr
+    timeout: 900
+    devices:
+      - name: sender
+        programdir: examples/uDTN/pingpong
+        program: uDTN-pingpong
+        instrument: []
+        debug: []
+        cflags: "-DCONF_PAYLOAD_LEN=256 -DNETSTACK_CONF_MAC=nullmac_driver -DNETSTACK_CONF_RDC=nullrdc_driver -fno-inline -DCONF_MODE=1 -DCONF_DEST_NODE=$RECEIVER"
+        graph_options: ""
+      - name: receiver
+        programdir: examples/uDTN/pingpong
+        program: uDTN-pingpong
+        instrument: []
+        debug: []
+        cflags: "-DCONF_PAYLOAD_LEN=256 -DNETSTACK_CONF_MAC=nullmac_driver -DNETSTACK_CONF_RDC=nullrdc_driver -fno-inline -DCONF_MODE=0 -DCONF_DEST_NODE=$SENDER"
+        graph_options: ""
 ### Test latency COFFEE
   - name: pingpong-coffee
     timeout: 3600

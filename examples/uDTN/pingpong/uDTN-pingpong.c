@@ -199,7 +199,7 @@ PROCESS_THREAD(ping_process, ev, data)
 	struct mmem *bundlemem, *recv;
 	struct bundle_block_t *block;
 	static struct registration_api reg_ping;
-	uint8_t i;
+	int i;
 	uint8_t userdata[PAYLOAD_LEN];
 	uint32_t *u32_ptr;
 	uint8_t sent = 0;
