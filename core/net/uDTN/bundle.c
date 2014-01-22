@@ -32,7 +32,7 @@
 /**
  * "Internal" functions
  */
-static uint8_t bundle_decode_block(struct mmem *bundlemem, uint8_t *buffer, int max_len);
+static int bundle_decode_block(struct mmem *bundlemem, uint8_t *buffer, int max_len);
 static int bundle_encode_block(struct bundle_block_t *block, uint8_t *buffer, int max_len);
 
 
@@ -256,10 +256,10 @@ uint8_t bundle_get_attr(struct mmem *bundlemem, uint8_t attr, uint32_t *val)
 struct mmem *bundle_recover_bundle(uint8_t *buffer, int size)
 {
 	uint32_t primary_size, value;
-	uint8_t offs = 0;
+	int offs = 0;
 	struct mmem *bundlemem;
 	struct bundle_t *bundle;
-	uint8_t ret = 0;
+	int ret = 0;
 
 	bundlemem = bundle_create_bundle();
 	if (!bundlemem)
@@ -351,9 +351,10 @@ err:
 
 }
 
-static uint8_t bundle_decode_block(struct mmem *bundlemem, uint8_t *buffer, int max_len)
+static int bundle_decode_block(struct mmem *bundlemem, uint8_t *buffer, int max_len)
 {
-	uint8_t type, block_offs, offs = 0;
+	uint8_t type;
+	int block_offs, offs = 0;
 	uint32_t flags, size;
 	struct bundle_t *bundle;
 	struct bundle_block_t *block;
@@ -368,7 +369,7 @@ static uint8_t bundle_decode_block(struct mmem *bundlemem, uint8_t *buffer, int 
 	/* Payload Size */
 	offs += sdnv_decode(&buffer[offs], max_len-offs, &size);
 	if (size > max_len-offs) {
-		LOG(LOGD_DTN, LOG_BUNDLE, LOGL_ERR, "Bundle payload length too big.");
+		LOG(LOGD_DTN, LOG_BUNDLE, LOGL_ERR, "Bundle payload length too big: %lu > %lu", size, max_len-offs);
 		return 0;
 	}
 
