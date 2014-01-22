@@ -82,6 +82,7 @@
 #define CONVERGENCE_LAYER_QUEUE_ACK			0x20
 #define CONVERGENCE_LAYER_QUEUE_NACK		0x40
 #define CONVERGENCE_LAYER_QUEUE_TEMP_NACK	0x80
+#define CONVERGENCE_LAYER_QUEUE_MULTIPART	0x100
 
 /**
  * CL COMPAT VALUES
@@ -158,7 +159,7 @@ PROCESS_NAME(convergence_layer_process);
 struct transmit_ticket_t {
 	struct transmit_ticket_t * next;
 
-	uint8_t flags;
+	uint16_t flags;
 	uint8_t tries;
 	uint8_t failed_tries;
 	rimeaddr_t neighbour;
@@ -166,7 +167,11 @@ struct transmit_ticket_t {
 	uint8_t sequence_number;
 	clock_time_t timestamp;
 
+	int offset_sent;
+	int offset_acked;
+
 	struct mmem * bundle;
+	struct mmem buffer;
 };
 
 int convergence_layer_init(void);
