@@ -78,7 +78,7 @@ int dispatching_check_report(struct mmem * bundlemem) {
 	}
 
 	/* Calculate bundle number */
-	bundle_number = HASH.hash_convenience(report.bundle_sequence_number, report.bundle_creation_timestamp, report.source_eid_node, report.fragment_offset, report.fragment_length);
+	bundle_number = HASH.hash_convenience(report.bundle_sequence_number, report.bundle_creation_timestamp, report.source_eid_node, report.source_eid_service, report.fragment_offset, report.fragment_length);
 
 	LOG(LOGD_DTN, LOG_AGENT, LOGL_INF, "Received delivery report for bundle %lu from ipn:%lu, deleting", bundle_number, bundle->src_node);
 
@@ -94,6 +94,7 @@ int dispatching_dispatch_bundle(struct mmem *bundlemem) {
 	uint32_t bundle_number = 0;
 	int n;
 	uint8_t received_report = 0;
+	uint32_t payload_length = 0;
 
 	/* If we receive a delivery report for a bundle, delete the corresponding bundle from storage */
 	if( bundle->flags & BUNDLE_FLAG_ADM_REC ) {
@@ -152,8 +153,14 @@ int dispatching_dispatch_bundle(struct mmem *bundlemem) {
 		return 1;
 	}
 
+	// To uniquely identify fragments, we need the length of the payload block
+	if( bundle->flags & BUNDLE_FLAG_FRAGMENT ) {
+		struct bundle_block_t * payload_block = bundle_get_payload_block(bundlemem);
+		payload_length = payload_block->block_size;
+	}
+
 	// Calculate the bundle number
-	bundle_number = HASH.hash_convenience(bundle->tstamp_seq, bundle->tstamp, bundle->src_node, bundle->frag_offs, bundle->app_len);
+	bundle_number = HASH.hash_convenience(bundle->tstamp_seq, bundle->tstamp, bundle->src_node, bundle->src_srv, bundle->frag_offs, payload_length);
 	bundle->bundle_num = bundle_number;
 
 	// Check if the bundle has been delivered before

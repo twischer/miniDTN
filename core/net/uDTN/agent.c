@@ -150,6 +150,7 @@ PROCESS_THREAD(agent_process, ev, data)
 			struct process * source_process = NULL;
 			struct mmem * bundleptr;
 			uint32_t bundle_flags = 0;
+			uint32_t payload_length = 0;
 
 			bundleptr = (struct mmem *) data;
 			if( bundleptr == NULL ) {
@@ -238,8 +239,14 @@ PROCESS_THREAD(agent_process, ev, data)
 			// Copy the sending process, because 'bundle' will not be accessible anymore afterwards
 			source_process = bundle->source_process;
 
+			// To uniquely identify fragments, we need the length of the payload block
+			if( bundle->flags & BUNDLE_FLAG_FRAGMENT ) {
+				struct bundle_block_t * payload_block = bundle_get_payload_block(bundleptr);
+				payload_length = payload_block->block_size;
+			}
+
 			// Calculate the bundle number
-			bundle->bundle_num = HASH.hash_convenience(bundle->tstamp_seq, bundle->tstamp, bundle->src_node, bundle->frag_offs, bundle->app_len);
+			bundle->bundle_num = HASH.hash_convenience(bundle->tstamp_seq, bundle->tstamp, bundle->src_node, bundle->src_srv, bundle->frag_offs, payload_length);
 
 			// Save the bundle in storage
 			n = BUNDLE_STORAGE.save_bundle(bundleptr, &bundle_number_ptr);
