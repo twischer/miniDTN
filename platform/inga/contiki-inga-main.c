@@ -370,22 +370,6 @@ platform_radio_init(void)
   /* Start radio and radio receive process */
   NETSTACK_RADIO.init();
 
-#if !WITH_UIP6
-  //--- Set Rime address based on eui64
-  {
-    rimeaddr_t addr;
-    memcpy(addr.u8, eui64_addr, sizeof (rimeaddr_t));
-    PRINTA("rime address: ");
-    int i;
-    for (i = 0; i < sizeof (rimeaddr_t); i++) {
-      PRINTA("%02x.", addr.u8[i]);
-    }
-    PRINTA("\n");
-
-    rimeaddr_set_node_addr(&addr);
-  }
-#endif /* !WITH_UIP */
-
   //--- Radio address settings
   {
     /* change order of bytes for rf23x */
@@ -526,6 +510,11 @@ init(void)
   platform_radio_init();
 #endif
 
+  //--- Set Rime address based on eui64
+  rimeaddr_t addr;
+  memcpy(addr.u8, eui64_addr, sizeof (rimeaddr_t));
+  rimeaddr_set_node_addr(&addr);
+
 #if UIP_CONF_IPV6
   // Copy EUI64 to the link local address
   memcpy(&uip_lladdr.addr, &eui64_addr, sizeof (uip_lladdr.addr));
@@ -549,6 +538,15 @@ init(void)
 #if UIP_CONF_ROUTER
   PRINTA("  Routing Enabled, TCP_MSS: %u\n", UIP_TCP_MSS);
 #endif
+#else /* UIP_CONF_IPV6 */
+
+  PRINTA("rime address:\n  ");
+  int i;
+  for (i = 0; i < sizeof (rimeaddr_t); i++) {
+    PRINTA("%02x.", addr.u8[i]);
+  }
+  PRINTA("\n");
+
 #endif /* UIP_CONF_IPV6 */
 
   PRINTA("******* Online *******\n\n");
