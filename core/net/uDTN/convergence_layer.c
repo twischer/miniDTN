@@ -923,9 +923,13 @@ int convergence_layer_status(void * pointer, uint8_t outcome)
 
 	/* Notify the process to commence transmitting outgoing bundles */
 	if( convergence_layer_pending == 0 ) {
-		if( outcome == CONVERGENCE_LAYER_STATUS_NOSEND ) {
-			/* Send event to slow the stuff down */
-			etimer_set(&convergence_layer_backoff, 0.5 * CLOCK_SECOND);
+		/* If we did not send (channel busy) and it was a bundle, then slow
+		 * the transmission rate down a bit by using a timer. Otherwise:
+		 * poll the process.
+		 */
+		if( outcome == CONVERGENCE_LAYER_STATUS_NOSEND && pointer != NULL ) {
+			/* Use timer to slow the stuff down */
+			etimer_set(&convergence_layer_backoff, 0.1 * CLOCK_SECOND);
 			convergence_layer_backoff_pending = 1;
 		} else {
 			/* Poll to make it faster */
