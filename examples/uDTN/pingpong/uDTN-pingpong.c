@@ -48,11 +48,12 @@
 #include "sys/test.h"
 #include "sys/profiling.h"
 
-#include "net/uDTN/bundle.h"
-#include "net/uDTN/agent.h"
-#include "net/uDTN/sdnv.h"
-#include "net/uDTN/api.h"
-#include "net/uDTN/storage.h"
+#include "bundle.h"
+#include "agent.h"
+#include "sdnv.h"
+#include "api.h"
+#include "storage.h"
+#include "discovery.h"
 
 #define MODE_PASSIVE 0
 #define MODE_ACTIVE 1
@@ -193,15 +194,18 @@ PROCESS_THREAD(coordinator_process, ev, data)
 PROCESS_THREAD(ping_process, ev, data)
 {
 	static uint16_t timeouts = 0, bundle_sent = 0, bundle_recvd = 0;
-	static uint32_t diff = 0, latency = 0;
+	static uint32_t diff = 0, latency = 0, latency_min = 0xFFFFFFFF, latency_max = 0;
 	static uint8_t synced = 0;
 	static struct etimer timer;
 	struct mmem *bundlemem, *recv;
 	struct bundle_block_t *block;
 	static struct registration_api reg_ping;
+	static uint32_t sequence_sent = 0;
+	static rimeaddr_t destination;
 	int i;
 	uint8_t userdata[PAYLOAD_LEN];
-	uint32_t *u32_ptr;
+	uint32_t * timestamp;
+	uint32_t * sequence;
 	uint8_t sent = 0;
 
 	PROCESS_BEGIN();
@@ -212,9 +216,14 @@ PROCESS_THREAD(ping_process, ev, data)
 	reg_ping.app_id = 5;
 	process_post(&agent_process, dtn_application_registration_event, &reg_ping);
 
-	/* Wait a second */
-	etimer_set(&timer,  CLOCK_SECOND);
-	PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&timer));
+#if CONF_MODE != MODE_LOOPBACK
+	/* Wait until a neighbour has been discovered */
+	destination = convert_eid_to_rime(CONF_DEST_NODE);
+	printf("Waiting for neighbour %u (or %u.%u) to appear...\n", CONF_DEST_NODE, destination.u8[0], destination.u8[1]);
+	while( !DISCOVERY.is_neighbour(&destination) ) {
+		PROCESS_PAUSE();
+	}
+#endif
 
 	printf("PING: Init done, starting test\n");
 
@@ -225,21 +234,25 @@ PROCESS_THREAD(ping_process, ev, data)
 				ev == submit_data_to_application_event);
 
 		if (etimer_expired(&timer)) {
-			u32_ptr = (uint32_t *)&userdata[0];
+			timestamp = (uint32_t *) &userdata[0];
+			sequence  = (uint32_t *) &userdata[4];
 
 			/* Sync pattern */
 			if (!synced) {
 				if( sent )
 					printf("PING: Timeout waiting for sync\n");
 				sent = 1;
-				*u32_ptr = 0xfdfdfdfd;
+				*timestamp = 0xfdfdfdfd;
 			} else {
 				timeouts++;
 				printf("PING: Timeouts: %u\n", timeouts);
-				*u32_ptr = get_time();
+				*timestamp = get_time();
 			}
 
-			for (i=4;i<PAYLOAD_LEN;i++) {
+			/* Set a sequence number in all outgoing packets */
+			*sequence = sequence_sent ++;
+
+			for (i=8;i<PAYLOAD_LEN;i++) {
 				userdata[i] = i;
 			}
 
@@ -256,8 +269,6 @@ PROCESS_THREAD(ping_process, ev, data)
 			/* We received a bundle - handle it */
 			recv = (struct mmem *) data;
 
-			PRINTF("PING: recv\n");
-
 			diff = get_time();
 
 			/* Check receiver */
@@ -266,11 +277,12 @@ PROCESS_THREAD(ping_process, ev, data)
 			if( block == NULL ) {
 				printf("PING: No Payload\n");
 			} else {
-				u32_ptr = (uint32_t *)block->payload;
+				timestamp = (uint32_t *) &block->payload[0];
+				sequence  = (uint32_t *) &block->payload[4];
 
 				if (!synced) {
 					/* We're synced */
-					if (block->payload[0] == 0xfd && block->payload[1] == 0xfd && block->payload[2] == 0xfd && block->payload[3] == 0xfd) {
+					if (*timestamp == 0xfdfdfdfd) {
 						synced = 1;
 						printf("PING: synced\n");
 					} else {
@@ -282,12 +294,31 @@ PROCESS_THREAD(ping_process, ev, data)
 						continue;
 					}
 				} else {
+					if( *sequence != (sequence_sent - 1) ) {
+						printf("PING: Unexpected or duplicate Pong (exp %lu, recv %lu), ignoring\n", *sequence, (sequence_sent - 1));
+
+						// Tell the agent, that we have processed the bundle
+						process_post(&agent_process, dtn_processing_finished, recv);
+
+						continue;
+					} else {
+						PRINTF("PING: Received SeqNo %lu\n", *sequence);
+					}
+
 					/* Calculate RTT */
 					bundle_recvd++;
-					diff -= *u32_ptr;
+					diff -= *timestamp;
 
 					if (bundle_recvd % 50 == 0)
-						printf("PING: %u\n", bundle_recvd);
+						printf("PING: %u with Latency %lu ms\n", bundle_recvd, diff * 1000 / CLOCK_SECOND);
+
+					if( diff < latency_min ) {
+						latency_min = diff;
+					}
+
+					if( diff > latency_max ) {
+						latency_max = diff;
+					}
 
 					latency += diff;
 				}
@@ -301,13 +332,20 @@ PROCESS_THREAD(ping_process, ev, data)
 				break;
 
 			/* Send PING */
-			u32_ptr = (uint32_t *)&userdata[0];
-			*u32_ptr = get_time();
-			for (i=4;i<PAYLOAD_LEN;i++) {
+			timestamp = (uint32_t *) &userdata[0];
+			sequence  = (uint32_t *) &userdata[4];
+
+			/* Send timestamp in each bundle */
+			*timestamp = get_time();
+
+			/* Set a sequence number in all outgoing bundles */
+			*sequence = sequence_sent ++;
+
+			for (i=8;i<PAYLOAD_LEN;i++) {
 				userdata[i] = i;
 			}
 
-			PRINTF("PING: send ping\n");
+			PRINTF("PING: Ping %lu sent\n", *sequence);
 			bundlemem = bundle_convenience(CONF_DEST_NODE, 7, 5, userdata, PAYLOAD_LEN);
 			if (bundlemem) {
 				process_post(&agent_process, dtn_send_bundle_event, (void *) bundlemem);
@@ -318,8 +356,10 @@ PROCESS_THREAD(ping_process, ev, data)
 		}
 	}
 
-	TEST_REPORT("timeout", timeouts, bundle_sent, "lost/sent");
-	TEST_REPORT("average latency", latency*PING_COUNT/bundle_recvd, CLOCK_SECOND, "ms");
+	TEST_REPORT("timeouts", timeouts, bundle_sent, "lost/sent");
+	TEST_REPORT("average latency", latency*1000/bundle_recvd, CLOCK_SECOND, "ms");
+	TEST_REPORT("minimum latency", latency_min*1000, CLOCK_SECOND, "ms");
+	TEST_REPORT("maximum latency", latency_max*1000, CLOCK_SECOND, "ms");
 
 	PROCESS_END();
 }
@@ -332,7 +372,9 @@ PROCESS_THREAD(pong_process, ev, data)
 	struct mmem *bundlemem, *recv;
 	struct bundle_block_t *block;
 	static struct registration_api reg_pong;
-	uint32_t *u32_ptr, tmp;
+	uint32_t tmp;
+	uint32_t * sequence;
+	int i;
 
 	PROCESS_BEGIN();
 
@@ -369,12 +411,15 @@ PROCESS_THREAD(pong_process, ev, data)
 			continue;
 		}
 
-		PRINTF("PONG: recv\n");
-		pings_received++;
-
 		/* Verify the content of the bundle */
 		block = bundle_get_payload_block(recv);
-		int i;
+		sequence = (uint32_t *) &block->payload[4];
+
+		/* Prevent compiler warning about unused variable */
+		(void) sequence;
+
+		PRINTF("PONG: Ping %lu received\n", *sequence);
+		pings_received++;
 
 		if( block == NULL ) {
 			printf("PONG: Payload: no block\n");
@@ -383,21 +428,18 @@ PROCESS_THREAD(pong_process, ev, data)
 				printf("PONG: Payload: length is %d, should be %d\n", block->block_size, PAYLOAD_LEN);
 			}
 
-			for(i=4; i<PAYLOAD_LEN; i++) {
+			for(i=8; i<PAYLOAD_LEN; i++) {
 				if( block->payload[i] != i ) {
 					printf("PONG: Payload: byte %d mismatch. Should be %02X, is %02X\n", i, i, block->payload[i]);
 				}
 			}
 		}
 
-		u32_ptr = (uint32_t *) block->payload;
-
 		/* Tell the agent, that have processed the bundle */
 		process_post(&agent_process, dtn_processing_finished, recv);
 
 		/* Send PONG */
-		PRINTF("PONG: send\n");
-		bundlemem = bundle_convenience(CONF_DEST_NODE, 5, 7, (uint8_t *) u32_ptr, 4);
+		bundlemem = bundle_convenience(CONF_DEST_NODE, 5, 7, block->payload, block->block_size);
 		if (bundlemem) {
 			process_post(&agent_process, dtn_send_bundle_event, (void *) bundlemem);
 		} else {
