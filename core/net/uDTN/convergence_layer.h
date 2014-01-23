@@ -77,6 +77,15 @@
 #endif
 
 /**
+ * Shall we support segmentation?
+ */
+#ifdef CONVERGENCE_LAYER_CONF_SEGMENTATION
+#define CONVERGENCE_LAYER_SEGMENTATION CONVERGENCE_LAYER_CONF_SEGMENTATION
+#else
+#define CONVERGENCE_LAYER_SEGMENTATION 1
+#endif
+
+/**
  * Bundle queue flags
  */
 #define CONVERGENCE_LAYER_QUEUE_ACTIVE 		0x01
@@ -171,11 +180,13 @@ struct transmit_ticket_t {
 	uint8_t sequence_number;
 	clock_time_t timestamp;
 
+#if CONVERGENCE_LAYER_SEGMENTATION
 	int offset_sent;
 	int offset_acked;
+	struct mmem buffer;
+#endif
 
 	struct mmem * bundle;
-	struct mmem buffer;
 };
 
 int convergence_layer_init(void);

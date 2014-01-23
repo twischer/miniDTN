@@ -163,11 +163,13 @@ int convergence_layer_free_transmit_ticket(struct transmit_ticket_t * ticket)
 		ticket->bundle = NULL;
 	}
 
+#if CONVERGENCE_LAYER_SEGMENTATION
 	/* Also free MMEM if it was allocate to serialize the bundle */
 	if( ticket->buffer.ptr != NULL ) {
 		mmem_free(&ticket->buffer);
 		ticket->buffer.ptr = NULL;
 	}
+#endif /* CONVERGENCE_LAYER_SEGMENTATION */
 
 	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Freeing ticket %p", ticket);
 
@@ -215,8 +217,10 @@ int convergence_layer_send_bundle(struct transmit_ticket_t * ticket)
 	uint16_t length = 0;
 	uint8_t * buffer = NULL;
 	uint8_t buffer_length = 0;
+#if CONVERGENCE_LAYER_SEGMENTATION
 	int ret;
 	int segments;
+#endif /* CONVERGENCE_LAYER_SEGMENTATION */
 
 	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Sending bundle %lu to %u.%u with ticket %p", ticket->bundle_number, ticket->neighbour.u8[0], ticket->neighbour.u8[1], ticket);
 
@@ -265,6 +269,7 @@ int convergence_layer_send_bundle(struct transmit_ticket_t * ticket)
 	/* Get the buffer length */
 	buffer_length = dtn_network_get_buffer_length();
 
+#if CONVERGENCE_LAYER_SEGMENTATION
 	/* We have to use a heuristic to estimate if the bundle will be a multipart bundle */
 	if( ticket->bundle->size > CONVERGENCE_LAYER_MAX_LENGTH && !(ticket->flags & CONVERGENCE_LAYER_QUEUE_MULTIPART) ) {
 		/* This is a bundle for multiple segments and we have our first look at it */
@@ -373,6 +378,7 @@ int convergence_layer_send_bundle(struct transmit_ticket_t * ticket)
 			}
 		}
 	} else {
+#endif /* CONVERGENCE_LAYER_SEGMENTATION */
 		/* one byte for the CL header */
 		length = 1;
 
@@ -388,7 +394,9 @@ int convergence_layer_send_bundle(struct transmit_ticket_t * ticket)
 		/* Initialize the sequence number */
 		ticket->sequence_number = outgoing_sequence_number;
 		outgoing_sequence_number = (outgoing_sequence_number + 1) % 4;
+#if CONVERGENCE_LAYER_SEGMENTATION
 	}
+#endif /* CONVERGENCE_LAYER_SEGMENTATION */
 
 	/* Put the sequence number for this bundle into the outgoing header */
 	buffer[0] |= (ticket->sequence_number << 2) & CONVERGENCE_LAYER_MASK_SEQNO;
@@ -557,13 +565,16 @@ int convergence_layer_parse_dataframe(rimeaddr_t * source, uint8_t * payload, ui
 	struct bundle_t * bundle = NULL;
 	struct transmit_ticket_t * ticket = NULL;
 	int n;
-	int ret;
 	int length;
+#if CONVERGENCE_LAYER_SEGMENTATION
+	int ret;
+#endif /* CONVERGENCE_LAYER_SEGMENTATION */
 
 	/* Note down the payload length */
 	length = payload_length;
 
 	if( flags != (CONVERGENCE_LAYER_FLAGS_FIRST | CONVERGENCE_LAYER_FLAGS_LAST ) ) {
+#if CONVERGENCE_LAYER_SEGMENTATION
 		/* We have a multipart bundle here */
 		if( flags == CONVERGENCE_LAYER_FLAGS_FIRST ) {
 			/* Beginning of a new bundle from a peer, remove old tickets */
@@ -663,6 +674,11 @@ int convergence_layer_parse_dataframe(rimeaddr_t * source, uint8_t * payload, ui
 			/* We are waiting for more segments, return now */
 			return 1;
 		}
+#else /* CONVERGENCE_LAYER_SEGMENTATION */
+		/* We will never be able to parse that bundle, signal a permanent error */
+		return -2;
+#endif /* CONVERGENCE_LAYER_SEGMENTATION */
+
 	}
 
 	/* Allocate memory, parse the bundle and set reference counter to 1 */
@@ -763,6 +779,7 @@ int convergence_layer_parse_ackframe(rimeaddr_t * source, uint8_t * payload, uin
 
 	/* TODO: Handle temporary NACKs separately here */
 	if( type == CONVERGENCE_LAYER_TYPE_ACK ) {
+#if CONVERGENCE_LAYER_SEGMENTATION
 		if( ticket->flags & CONVERGENCE_LAYER_QUEUE_MULTIPART ) {
 			if( sequence_number == (ticket->sequence_number + 1) % 4 ) {
 				// ACK received
@@ -782,6 +799,7 @@ int convergence_layer_parse_ackframe(rimeaddr_t * source, uint8_t * payload, uin
 				return 1;
 			}
 		}
+#endif /* CONVERGENCE_LAYER_SEGMENTATION */
 
 		/* Bundle has been ACKed and is now done */
 		ticket->flags = CONVERGENCE_LAYER_QUEUE_DONE;
