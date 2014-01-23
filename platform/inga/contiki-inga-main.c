@@ -125,6 +125,9 @@ uint8_t debugflowsize, debugflow[DEBUGFLOWSIZE];
 
 #if WITH_UIP6
 #include "net/uip-ds6.h"
+// function declaration for net/uip-debug.c
+void uip_debug_ipaddr_print(const uip_ipaddr_t *addr);
+void uip_debug_lladdr_print(const uip_lladdr_t *addr);
 #endif /* WITH_UIP6 */
 
 #include "net/rime.h"
@@ -531,16 +534,14 @@ init(void)
 
   PRINTA("IPv6 info:\n");
   PRINTA("  Tentative link-local IPv6 address ");
-  {
-    uip_ds6_addr_t *lladdr;
-    int i;
-    lladdr = uip_ds6_get_link_local(-1);
-    for (i = 0; i < 7; ++i) {
-      PRINTA("%02x%02x:", lladdr->ipaddr.u8[i * 2],
-              lladdr->ipaddr.u8[i * 2 + 1]);
-    }
-    PRINTA("%02x%02x\n", lladdr->ipaddr.u8[14], lladdr->ipaddr.u8[15]);
+  uip_ds6_addr_t *lladdr;
+  int i;
+  lladdr = uip_ds6_get_link_local(-1);
+  for (i = 0; i < 7; ++i) {
+    PRINTA("%02x%02x:", lladdr->ipaddr.u8[i * 2],
+            lladdr->ipaddr.u8[i * 2 + 1]);
   }
+  PRINTA("%02x%02x\n", lladdr->ipaddr.u8[14], lladdr->ipaddr.u8[15]);
 
 #if UIP_CONF_IPV6_RPL
   PRINTA("  RPL Enabled\n");
@@ -553,27 +554,6 @@ init(void)
   PRINTA("******* Online *******\n\n");
 }
 
-#if PER_ROUTES
-static void
-ipaddr_add(const uip_ipaddr_t *addr)
-{
-  uint16_t a;
-  int8_t i, f;
-  for (i = 0, f = 0; i < sizeof (uip_ipaddr_t); i += 2) {
-    a = (addr->u8[i] << 8) + addr->u8[i + 1];
-    if (a == 0 && f >= 0) {
-      if (f++ == 0) PRINTF("::");
-    } else {
-      if (f > 0) {
-        f = -1;
-      } else if (i > 0) {
-        PRINTF(":");
-      }
-      PRINTF("%04x", a);
-    }
-  }
-}
-#endif
 /*---------------------------------------------------------------------------*/
 #if PERIODICPRINTS
 static void
@@ -610,43 +590,49 @@ periodic_prints()
 #if PER_ROUTES
     if ((clocktime % PER_ROUTES) == 2) {
 
-      extern uip_ds6_nbr_t uip_ds6_nbr_cache[];
-      extern uip_ds6_route_t uip_ds6_routing_table[];
       extern uip_ds6_netif_t uip_ds6_if;
+      uint8_t i, any;
+      uip_ds6_nbr_t *nbr;
 
-      uint8_t i, j;
-      PRINTF("\nAddresses [%u max]\n", UIP_DS6_ADDR_NB);
+      PRINTA("\nAddresses [%u max]\n", UIP_DS6_ADDR_NB);
       for (i = 0; i < UIP_DS6_ADDR_NB; i++) {
         if (uip_ds6_if.addr_list[i].isused) {
-          ipaddr_add(&uip_ds6_if.addr_list[i].ipaddr);
-          PRINTF("\n");
+          PRINTA("  ");
+          uip_debug_ipaddr_print(&uip_ds6_if.addr_list[i].ipaddr);
+          PRINTA("\n");
         }
       }
-      PRINTF("\nNeighbors [%u max]\n", UIP_DS6_NBR_NB);
-      for (i = 0, j = 1; i < UIP_DS6_NBR_NB; i++) {
-        if (uip_ds6_nbr_cache[i].isused) {
-          ipaddr_add(&uip_ds6_nbr_cache[i].ipaddr);
-          PRINTF("\n");
-          j = 0;
-        }
+
+      PRINTA("\nNeighbors [%u max]\n",NBR_TABLE_MAX_NEIGHBORS);
+      any = 0;
+      for(nbr = nbr_table_head(ds6_neighbors);
+          nbr != NULL;
+          nbr = nbr_table_next(ds6_neighbors, nbr)) {
+        PRINTA("  ");
+        uip_debug_ipaddr_print(&nbr->ipaddr);
+        PRINTA("\n");
+        any = 1;
       }
-      if (j) PRINTF("  <none>");
-      PRINTF("\nRoutes [%u max]\n", UIP_DS6_ROUTE_NB);
-      for (i = 0, j = 1; i < UIP_DS6_ROUTE_NB; i++) {
-        if (uip_ds6_routing_table[i].isused) {
-          ipaddr_add(&uip_ds6_routing_table[i].ipaddr);
-          PRINTF("/%u (via ", uip_ds6_routing_table[i].length);
-          ipaddr_add(&uip_ds6_routing_table[i].nexthop);
-          //     if(uip_ds6_routing_table[i].state.lifetime < 600) {
-          PRINTF(") %lus\n", uip_ds6_routing_table[i].state.lifetime);
-          //     } else {
-          //       PRINTF(")\n");
-          //     }
-          j = 0;
-        }
+      if (!any) PRINTA("  <none>\n");
+
+      PRINTA("\nRoutes [%u max]\n",UIP_DS6_ROUTE_NB);
+      uip_ds6_route_t *r;
+      any = 0;
+      for(r = uip_ds6_route_head();
+          r != NULL;
+          r = uip_ds6_route_next(r)) {
+          uip_debug_ipaddr_print(&r->ipaddr);
+          PRINTA("/%u (via ", r->length);
+          uip_debug_ipaddr_print(uip_ds6_route_nexthop(r));
+     //     if(r->state.lifetime < 600) {
+            PRINTA(") %lus\n", r->state.lifetime);
+     //     } else {
+     //       PRINTA(")\n");
+     //     }
+          any = 1;
       }
-      if (j) PRINTF("  <none>");
-      PRINTF("\n---------\n");
+      if (!any) PRINTA("  <none>\n");
+      PRINTA("\n---------\n");
     }
 #endif /* PER_ROUTES */
 
