@@ -43,30 +43,32 @@ uint32_t hash_xor_buffer(uint8_t * buffer, uint16_t length)
 	return hash;
 }
 
-uint32_t hash_xor_convenience(uint32_t one, uint32_t two, uint32_t three, uint32_t four, uint32_t five)
+uint32_t hash_xor_convenience(uint32_t one, uint32_t two, uint32_t three, uint32_t four, uint32_t five, uint32_t six)
 {
-	uint8_t buffer[20];
+	uint8_t buffer[24];
 
 	memcpy(buffer + 0, &one, sizeof(uint32_t));
 	memcpy(buffer + 4, &two, sizeof(uint32_t));
 	memcpy(buffer + 8, &three, sizeof(uint32_t));
 	memcpy(buffer + 12, &four, sizeof(uint32_t));
 	memcpy(buffer + 16, &five, sizeof(uint32_t));
+	memcpy(buffer + 20, &six, sizeof(uint32_t));
 
-	return hash_xor_buffer(buffer, 16);
+	return hash_xor_buffer(buffer, 24);
 }
 
-uint32_t hash_xor_convenience_ptr(uint32_t * one, uint32_t * two, uint32_t * three, uint32_t * four, uint32_t * five)
+uint32_t hash_xor_convenience_ptr(uint32_t * one, uint32_t * two, uint32_t * three, uint32_t * four, uint32_t * five, uint32_t * six)
 {
-	uint8_t buffer[20];
+	uint8_t buffer[24];
 
 	memcpy(buffer + 0, one, sizeof(uint32_t));
 	memcpy(buffer + 4, two, sizeof(uint32_t));
 	memcpy(buffer + 8, three, sizeof(uint32_t));
 	memcpy(buffer + 12, four, sizeof(uint32_t));
 	memcpy(buffer + 16, five, sizeof(uint32_t));
+	memcpy(buffer + 20, six, sizeof(uint32_t));
 
-	return hash_xor_buffer(buffer, 16);
+	return hash_xor_buffer(buffer, 24);
 }
 
 const struct hash_driver hash_xor = {
