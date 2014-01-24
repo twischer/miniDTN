@@ -51,6 +51,23 @@ tests:
         debug: []
         cflags: "-DCONF_BUNDLE_SIZE=256 -DNETSTACK_CONF_MAC=nullmac_driver -DNETSTACK_CONF_RDC=nullrdc_driver -fno-inline"
         graph_options: ""
+  - name: throughput-noseg-uninstr
+    timeout: 1000
+    devices:
+      - name: sender
+        programdir: examples/uDTN/throughput
+        program: uDTN-sender
+        instrument: []
+        debug: []
+        cflags: "-DCONVERGENCE_LAYER_CONF_SEGMENTATION=0 -DNETSTACK_CONF_MAC=nullmac_driver -DNETSTACK_CONF_RDC=nullrdc_driver -fno-inline -DCONF_SEND_TO_NODE=$RECEIVER"
+        graph_options: ""
+      - name: receiver
+        programdir: examples/uDTN/throughput
+        program: uDTN-sink
+        instrument: []
+        debug: []
+        cflags: "-DCONVERGENCE_LAYER_CONF_SEGMENTATION=0 -DNETSTACK_CONF_MAC=nullmac_driver -DNETSTACK_CONF_RDC=nullrdc_driver -fno-inline"
+        graph_options: ""
 ### Test delivery-reports
   - name: delivery-reports
     timeout: 1000
