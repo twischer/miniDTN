@@ -152,13 +152,22 @@ uint8_t
 mspi_transceive(uint8_t data)
 {
   uint8_t receive_data;
+  uint16_t cnt = 0;
 
   /*wait while transmit buffer is empty*/
-  while (!(*(usart_ports[mspi_uart_port].UCSRnA) & (1 << UDRE0)));
+  cnt = 0;
+  while (!(*(usart_ports[mspi_uart_port].UCSRnA) & (1 << UDRE0))) {
+    cnt++;
+    if(cnt > 500) return 0xFF;
+  }
   *(usart_ports[mspi_uart_port].UDRn) = data;
 
   /*wait to readout the MSPI data register*/
-  while (!(*(usart_ports[mspi_uart_port].UCSRnA) & (1 << RXC0)));
+  cnt = 0;
+  while (!(*(usart_ports[mspi_uart_port].UCSRnA) & (1 << RXC0))) {
+    cnt++;
+    if(cnt > 500) return 0xFF;
+  }
   receive_data = *(usart_ports[mspi_uart_port].UDRn);
 
   return receive_data;
