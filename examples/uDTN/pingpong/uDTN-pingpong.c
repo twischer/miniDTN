@@ -96,7 +96,11 @@
 #define PRINTF(...)
 #endif
 
+#ifdef CONF_PING_TIMEOUT
+#define PING_TIMEOUT CONF_PING_TIMEOUT
+#else
 #define PING_TIMEOUT 10
+#endif
 /*---------------------------------------------------------------------------*/
 PROCESS(ping_process, "Ping");
 PROCESS(pong_process, "Pong");
