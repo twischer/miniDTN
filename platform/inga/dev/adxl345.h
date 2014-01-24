@@ -298,7 +298,7 @@ uint8_t adxl345_get_fifo_level();
  *
  * \return current x-axis acceleration value
  */
-int16_t adxl345_get_x_acceleration(void);
+int16_t adxl345_get_x(void);
 
 /**
  * \brief This function returns the current measured acceleration
@@ -306,7 +306,7 @@ int16_t adxl345_get_x_acceleration(void);
  *
  * \return current y-axis acceleration value
  */
-int16_t adxl345_get_y_acceleration(void);
+int16_t adxl345_get_y(void);
 
 /**
  * \brief This function returns the current measured acceleration
@@ -314,7 +314,7 @@ int16_t adxl345_get_y_acceleration(void);
  *
  * \return current z-axis acceleration value
  */
-int16_t adxl345_get_z_acceleration(void);
+int16_t adxl345_get_z(void);
 
 /**
  * \brief This function returns the current measured acceleration
@@ -323,7 +323,7 @@ int16_t adxl345_get_z_acceleration(void);
  *
  * \return current acceleration value of all axis
  */
-acc_data_t adxl345_get_acceleration(void);
+acc_data_t adxl345_get(void);
 
 /** Convert raw value to mg value */
 #define adxl345_raw_to_mg(raw) (raw * 62) / 16; // approx 3.9 scale factor

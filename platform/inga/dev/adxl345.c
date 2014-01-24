@@ -133,7 +133,7 @@ adxl345_get_fifo_level()
 }
 /*----------------------------------------------------------------------------*/
 int16_t
-adxl345_get_x_acceleration(void)
+adxl345_get_x(void)
 {
   uint8_t byteLow;
   uint8_t byteHigh;
@@ -144,7 +144,7 @@ adxl345_get_x_acceleration(void)
 }
 /*----------------------------------------------------------------------------*/
 int16_t
-adxl345_get_y_acceleration(void)
+adxl345_get_y(void)
 {
   uint8_t byteLow;
   uint8_t byteHigh;
@@ -154,7 +154,7 @@ adxl345_get_y_acceleration(void)
 }
 /*----------------------------------------------------------------------------*/
 int16_t
-adxl345_get_z_acceleration(void)
+adxl345_get_z(void)
 {
   uint8_t byteLow;
   uint8_t byteHigh;
@@ -164,7 +164,7 @@ adxl345_get_z_acceleration(void)
 }
 /*----------------------------------------------------------------------------*/
 acc_data_t
-adxl345_get_acceleration(void)
+adxl345_get(void)
 {
   acc_data_t adxl345_data;
   uint8_t lsb = 0, msb = 0;
@@ -190,7 +190,7 @@ adxl345_get_acceleration_fifo(acc_data_t* ret)
   uint8_t fifolevel = adxl345_read(ADXL345_FIFO_STATUS_REG) & 0x3F;
 
   for (idx = 0; idx < fifolevel; idx++) {
-    ret[idx] = adxl345_get_acceleration();
+    ret[idx] = adxl345_get();
   }
 
   return fifolevel;

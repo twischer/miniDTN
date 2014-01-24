@@ -66,7 +66,7 @@ cond_update_acc_data(int ch)
    * set. I.e. the channels value has been used already.
    * Then all obsolete flags are reset to zero. */
   if (acc_data_obsolete_vec & (1 << ch)) {
-    acc_data = adxl345_get_acceleration();
+    acc_data = adxl345_get();
     acc_data_obsolete_vec = 0x00;
   }
   /* set obsolete flag for current channel */
