@@ -168,12 +168,12 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 			struct mmem *recv = NULL;
 			recv = (struct mmem *) data;
 
-                        /* We can read several attributes as defined in bundle.h */
-                        uint32_t source_node;
-                        bundle_get_attr(recv, SRC_NODE, &source_node);
+			/* We can read several attributes as defined in bundle.h */
+			uint32_t source_node;
+			bundle_get_attr(recv, SRC_NODE, &source_node);
 
-                        /* We can obtain the bundle payload block like so: */
-                        struct bundle_block_t * block = bundle_get_payload_block(recv);
+			/* We can obtain the bundle payload block like so: */
+			struct bundle_block_t * block = bundle_get_payload_block(recv);
 
 			/* Tell the agent, that we have processed the bundle */
 			process_post(&agent_process, dtn_processing_finished, recv);
