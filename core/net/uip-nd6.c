@@ -754,7 +754,7 @@ uip_nd6_rs_output(void)
   UIP_ICMP_BUF->icmpchksum = ~uip_icmp6chksum();
 
   UIP_STAT(++uip_stat.nd6.sent);
-  PRINTF("Sendin RS to ");
+  PRINTF("Sending RS to ");
   PRINT6ADDR(&UIP_IP_BUF->destipaddr);
   PRINTF(" from ");
   PRINT6ADDR(&UIP_IP_BUF->srcipaddr);

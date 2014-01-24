@@ -29,7 +29,6 @@
  * This file is part of the Contiki operating system.
  *
  */
-/* exeperimental code, will be renamed to sensors.c when done */
 
 
 #include <string.h>

@@ -49,7 +49,11 @@ PROCESS_THREAD(udp_client_process, ev, data)
   PROCESS_BEGIN();
 
   /* NOTE: Use IPv6 address of server here. */
-  uip_ip6addr(&ipaddr, 0xfe80, 0x0000, 0x0000, 0x0000, 0x2f00, 0x22ff, 0xfe33, 0x4455);
+#define UIP_SENDTO 0xfe80, 0x0000, 0x0000, 0x0000, 0x2f00, 0x22ff, 0xfe33, 0x4455
+#ifndef UIP_SENDTO
+#error UIP_SENDTO not defined, set to link-local address of server
+#endif
+  uip_ip6addr(&ipaddr, UIP_SENDTO);
 
   /* new connection with remote host */
   client_conn = udp_new(&ipaddr, UIP_HTONS(3000), NULL);

@@ -171,8 +171,9 @@ const struct sensors_sensor *sensors_next(const struct sensors_sensor *s);
  */
 const struct sensors_sensor *sensors_first(void);
 
-/** Waits for updates from sensor?
- * @param s
+/** To be called from sensor readout interrupt.
+ * Polls sensor process.
+ * @param s Reference to the sensor that updated
  */
 void sensors_changed(const struct sensors_sensor *s);
 

@@ -5,6 +5,7 @@
 *.log
 *.elf
 *.d
+*.o
 *.ihex
 *.pyc
 *.redbee-econotag
@@ -32,6 +33,9 @@ summary
 *.orig
 *.difference
 *.swp
+*.swm
+*.swn
+*.swo
 *~
 .DS_Store
 obj_*
@@ -53,6 +57,8 @@ tools/cooja/apps/serial_socket/lib/
 tools/coffee-manager/coffee.jar
 tools/cooja/apps/avrora/lib/cooja_avrora.jar
 tools/cooja/apps/collect-view/cooja-collect-view.jar
+log/
+nbproject/
 
 # sdcc build artifacts
 contiki-sensinode.lib

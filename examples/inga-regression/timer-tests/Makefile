@@ -1,5 +1,5 @@
 # rtimer Test
-rtimer-test: rtimer-test.c
+all: rtimer-test
 	
 
 #PROJECT_SOURCEFILES += ../sensor-tests.c

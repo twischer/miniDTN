@@ -244,7 +244,7 @@ uip_ds6_prefix_add(uip_ipaddr_t *ipaddr, uint8_t ipaddrlen,
     locprefix->plifetime = ptime;
     PRINTF("Adding prefix ");
     PRINT6ADDR(&locprefix->ipaddr);
-    PRINTF("length %u, flags %x, Valid lifetime %lx, Preffered lifetime %lx\n",
+    PRINTF(" length %u, flags %x, Valid lifetime %lx, Preffered lifetime %lx\n",
        ipaddrlen, flags, vtime, ptime);
     return locprefix;
   } else {

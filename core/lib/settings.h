@@ -64,37 +64,14 @@
  *  EEPROM.
  *
  *  Each key-value pair is stored in memory in the following format:
- * <table>
- *  <thead>
- *   <td>Order</td>
- *   <td>Size<small> (in bytes)</small></td>
- *   <td>Name</td>
- *   <td>Description</td>
- *  </thead>
- *  <tr>
- *   <td>0</td>
- *   <td>2</td>
- *   <td>key</td>
- *   <td></td>
- *  </tr>
- *  <tr>
- *   <td>-2</td>
- *   <td>1</td>
- *   <td>size_check</td>
- *   <td>One's-complement of next byte</td>
- *  </tr>
- *  <tr>
- *   <td>-3</td>
- *   <td>1 or 2</td>
- *   <td>size</td>
- *   <td>The size of the value, in bytes.</td>
- *  </tr>
- *  <tr>
- *   <td>-4 or -5</td>
- *   <td>variable</td>
- *   <td>value</td>
- *  </tr>
- * </table>
+ *  
+ *  | Order   | Size     | Name       | Description                     |
+ *  | -----   | ----     | ----       | ------------------------------- |
+ *  | 0       | 2        | key        |                                 |
+ *  | -2      | 1        | size_check | One's-complement of next byte   |
+ *  | -3      | 1 or 2   | size       | The size of the value, in bytes |
+ *  | -4 or 5 | variable | value      |                                 |
+ *
  *
  *  The end of the key-value pairs is denoted by the first invalid entry.
  *  An invalid entry has any of the following attributes:
@@ -184,7 +161,11 @@ extern settings_status_t settings_add(settings_key_t key,
                                       const uint8_t *value,
                                       settings_length_t value_size);
 
-/** Checks to see if the given key exists. */
+/** Checks to see if the given key exists.
+ *
+ * @retval 0 not found
+ * @retval 1 found
+ */
 extern uint8_t settings_check(settings_key_t key, uint8_t index);
 
 /** Reinitializes all of the EEPROM used by settings. */
