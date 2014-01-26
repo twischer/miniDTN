@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, TU Braunschweig
+ * Copyright (c) 2014, TU Braunschweig
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -48,31 +48,34 @@
 
 #include "settings_set.h"
 
+/**
+ * Sets settings depending on defines and terminates.
+ */
 PROCESS(settings_set_process, "Settings Set Process");
 
 /*---------------------------------------------------------------------------*/
 PROCESS_THREAD(settings_set_process, ev, data)
 {
   PROCESS_BEGIN();
+#if (SETTINGS_SET_LOAD == 1)
 
-  // define comes from our contiki-conf.h based on NODE_CONF_ID
 #ifdef NODE_CONF_ID
   if (settings_set_uint16(SETTINGS_KEY_PAN_ADDR, (uint16_t) NODE_ID) == SETTINGS_STATUS_OK) {
     uint16_t settings_nodeid = settings_get_uint16(SETTINGS_KEY_PAN_ADDR, 0);
-    PRINTF("[APP.settings_set] New Node ID:  0x%04X\n", settings_nodeid);
+    PRINTF("[APP.settings_set] New PAN Addr:  0x%04X\n", settings_nodeid);
   } else {
     PRINTD("[APP.settings_set] Error: Failed writing NodeID to EEPROM\n");
   }
-#endif
+#endif /* NODE_CONF_ID */
 
 #ifdef RADIO_CONF_PAN_ID
   if (settings_set_uint16(SETTINGS_KEY_PAN_ID, (uint16_t) RADIO_PAN_ID) == SETTINGS_STATUS_OK) {
     uint16_t settings_panid = settings_get_uint16(SETTINGS_KEY_PAN_ID, 0);
-    PRINTF("[APP.settings_set] New Pan ID:   0x%04X\n", settings_panid);
+    PRINTF("[APP.settings_set] New PAN ID:   0x%04X\n", settings_panid);
   } else {
     PRINTD("[APP.settings_set] Error: Failed writing PanID to EEPROM\n");
   }
-#endif
+#endif /* RADIO_CONF_PAN_ID */
 
 #ifdef RADIO_CONF_CHANNEL
   if (settings_set_uint8(SETTINGS_KEY_CHANNEL, (uint8_t) RADIO_CHANNEL) == SETTINGS_STATUS_OK) {
@@ -81,7 +84,7 @@ PROCESS_THREAD(settings_set_process, ev, data)
   } else {
     PRINTD("[APP.settings_set] Error: Failed writing channel to EEPROM\n");
   }
-#endif
+#endif /* RADIO_CONF_CHANNEL */
 
 #ifdef RADIO_CONF_TX_POWER
   if (settings_set_uint8(SETTINGS_KEY_TXPOWER, (uint8_t) RADIO_TX_POWER) == SETTINGS_STATUS_OK) {
@@ -90,7 +93,7 @@ PROCESS_THREAD(settings_set_process, ev, data)
   } else {
     PRINTD("[APP.settings_set] Error: Failed writing TX power to EEPROM\n");
   }
-#endif
+#endif /* RADIO_CONF_TX_POWER */
 
 #ifdef NODE_CONF_EUI64
   uint8_t settings_eui64[8] = {NODE_CONF_EUI64};
@@ -106,11 +109,11 @@ PROCESS_THREAD(settings_set_process, ev, data)
             settings_eui64[6],
             settings_eui64[7]);
   } else {
-    PRINTD("[APP.settings_set] Error: Failed writing to EEPROM\n");
+    PRINTD("[APP.settings_set] Error: Failed writing EUI64 to EEPROM\n");
   }
-#endif
+#endif /* NODE_CONF_EUI64 */
 
-  process_exit(&settings_set_process);
+#endif /* (SETTINGS_SET_LOAD == 1)  */
 
   PROCESS_END();
 }

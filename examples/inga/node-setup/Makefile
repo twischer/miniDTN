@@ -18,24 +18,22 @@ setup: test $(CONTIKI_PROJECT).upload
 
 delete: SETTINGS_SET_LOAD = 0
 delete: SETTINGS_DELETE_LOAD = 1
-delete: $(CONTIKI_PROJECT).upload
+delete: test-single $(CONTIKI_PROJECT).upload
 
 # Note: currently, deleting single items is not fully supported by the settings library!
 #delete: #TODO
 
 # tests for var NODE_ID set
-test: 
+test: test-single
 	@echo NODE_ID is $(NODE_ID)
-	@test ! -z $(NODE_ID) || (echo "Error: You must specify a node id with NODE_ID=<value>" && false)
+	@test ! -z $(NODE_ID) || (echo "*** You must specify a node id with NODE_ID=<value>" && false)
+
+# tests for single MOTE
+test-single: NR_OF_MOTES = $(shell echo $(MOTES) | wc -w)
+test-single:
+	@test ! $(NR_OF_MOTES) -eq 0 || (echo "*** At least one MOTE required. Specify with MOTES=<device>" && false)
+	@test $(NR_OF_MOTES) -eq 1 || (echo "*** Only single MOTE allowed. Specify with MOTES=<device>" && false)
 
 CONTIKI = ../../..
 include $(CONTIKI)/Makefile.include
-
-# Assure exactly one single mote is programmed
-NR_OF_MOTES=$(shell echo $(MOTES) | wc -w)
-ifeq ($(NR_OF_MOTES),0)
-$(error At least one MOTE required. Specify with MOTES=<device>)
-else ifneq ($(NR_OF_MOTES),1)
-$(error Only single MOTE allowed. Specify with MOTES=<device>)
-endif
 

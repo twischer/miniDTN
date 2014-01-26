@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, TU Braunschweig
+ * Copyright (c) 2014, TU Braunschweig
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -38,13 +38,21 @@
 
 #define PRINTF printf 
 
+/**
+ * Deletes settings depending on defines and terminates.
+ */
 PROCESS(settings_delete_process, "Settings delete Process");
 
+//static void _do_delete(char* descr, settings_key_t key) {
+//  uint8_t ret = settings_delete(key, 0);
+//  PRINTF("[APP.settings-delete] %s delete status: %s\n", descr, ret ? "OK" : "FAILED");
+//}
 /*---------------------------------------------------------------------------*/
 PROCESS_THREAD(settings_delete_process, ev, data)
 {
   PROCESS_BEGIN();
 
+#if (APP_SETTINGS_DELETE == 1)
   // Delete all Settings if no value is defined
 #if !defined(NODE_CONF_ID) && !defined(RADIO_CONF_PAN_ID) && !defined(RADIO_CONF_CHANNEL) && !defined(RADIO_CONF_TX_POWER) && !defined(NODE_CONF_EUI64)
   PRINTF("Wiping settings...");
@@ -54,24 +62,25 @@ PROCESS_THREAD(settings_delete_process, ev, data)
 // NOTE: currently deleting single items is disabled as the library does not provide it!
 // TODO: Check Roberts implementation for delete function
 #error Settings manager does not support deleting single items yet. Try wipe instead.
-#if defined(NODE_CONF_ID)
+#ifdef NODE_CONF_ID
   PRINTF("[APP.settings-delete] node id delete status: %s\n", settings_delete(SETTINGS_KEY_PAN_ADDR, 0) == SETTINGS_STATUS_OK ? "OK" : "FAILED");
+  //_do_delete("node id", SETTINGS_KEY_PAN_ADDR);
 #endif
-#if defined(RADIO_CONF_PAN_ID)
+#ifdef RADIO_CONF_PAN_ID
   PRINTF("[APP.settings-delete] pan id delete status: %d\n", settings_delete(SETTINGS_KEY_PAN_ID, 0) == SETTINGS_STATUS_OK ? 1 : 0);
 #endif
-#if defined(RADIO_CONF_CHANNEL)
+#ifdef RADIO_CONF_CHANNEL
   PRINTF("[APP.settings-delete] channel delete status: %d\n", settings_delete(SETTINGS_KEY_CHANNEL, 0) == SETTINGS_STATUS_OK ? 1 : 0);
 #endif
-#if defined(RADIO_CONF_TX_POWER)
+#ifdef RADIO_CONF_TX_POWER
   PRINTF("[APP.settings-delete] tx power delete status: %d\n", settings_delete(SETTINGS_KEY_TXPOWER, 0) == SETTINGS_STATUS_OK ? 1 : 0);
 #endif
-#if defined(NODE_CONF_EUI64)
+#ifdef NODE_CONF_EUI64
   PRINTF("[APP.settings-delete] EUI64 delete status: %d\n", settings_delete(SETTINGS_KEY_EUI64, 0) == SETTINGS_STATUS_OK ? 1 : 0);
 #endif
-#endif /* !defined(NODE_CONF_ID) && !defined(RADIO_CONF_CHANNEL) && !defined(RADIO_CONF_TX_POWER) */
+#endif /* !defined(NODE_CONF_ID) && !defined(RADIO_CONF_PAN_ID) && !defined(RADIO_CONF_CHANNEL) && !defined(RADIO_CONF_TX_POWER) && !defined(NODE_CONF_EUI64) */
 
-  process_exit(&settings_delete_process);
+#endif /* (APP_SETTINGS_DELETE == 1) */
 
   PROCESS_END();
 }

@@ -1,35 +1,34 @@
 settings_set_src = settings_set.c
 
+# Note: this variable can be modified by setting target-specific variable
+SETTINGS_SET_LOAD=1
+
 # NODEID
 ifdef NODE_ID
  CFLAGS += -DNODE_CONF_ID=$(NODE_ID)
- # Note: this variable can be modified by setting target-specific variable
- SETTINGS_SET_LOAD=1
+else ifdef PAN_ADDR
+ CFLAGS += -DNODE_CONF_ID=$(PAN_ADDR)
 endif
 
 # PANID
 ifdef PAN_ID
  CFLAGS += -DRADIO_CONF_PAN_ID=$(PAN_ID)
- SETTINGS_SET_LOAD=1
 endif
 
 # RADIO CHANNEL
 ifdef RADIO_CHANNEL
  CFLAGS += -DRADIO_CONF_CHANNEL=$(RADIO_CHANNEL)
- SETTINGS_SET_LOAD=1
 endif
 
 # RADIO TX POWER
 ifdef RADIO_TX_POWER
  CFLAGS += -DRADIO_CONF_TX_POWER=$(RADIO_TX_POWER)
- SETTINGS_SET_LOAD=1
 endif
 
 # EUI64
 ifdef EUI64
   CONF_EUI64 := $(shell echo $(EUI64) | sed 's/\([0-9a-fA-F]\{2\}\)/0x\1/g' | sed 's/:/,/g')
   CFLAGS += -DNODE_CONF_EUI64=$(CONF_EUI64)
-  SETTINGS_SET_LOAD=1
 endif
 
 # Inform about loading of app
