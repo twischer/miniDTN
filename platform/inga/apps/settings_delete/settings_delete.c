@@ -46,13 +46,16 @@ PROCESS_THREAD(settings_delete_process, ev, data)
   PROCESS_BEGIN();
 
   // Delete all Settings if no value is defined
-#if !defined(NODE_CONF_ID) && !defined(RADIO_CONF_PAN_ID) && !defined(RADIO_CONF_CHANNEL) && !defined(RADIO_CONF_TX_POWER)
+#if !defined(NODE_CONF_ID) && !defined(RADIO_CONF_PAN_ID) && !defined(RADIO_CONF_CHANNEL) && !defined(RADIO_CONF_TX_POWER) && !defined(NODE_CONF_EUI64)
   PRINTF("Wiping settings...");
   settings_wipe();
   PRINTF("done.\n");
 #else /* !defined(NODE_CONF_ID) && !defined(RADIO_CONF_CHANNEL) && !defined(RADIO_CONF_TX_POWER) */
+// NOTE: currently deleting single items is disabled as the library does not provide it!
+// TODO: Check Roberts implementation for delete function
+#error Settings manager does not support deleting single items yet. Try wipe instead.
 #if defined(NODE_CONF_ID)
-  PRINTF("[APP.settings-delete] node id delete status: %d\n", settings_delete(SETTINGS_KEY_PAN_ADDR, 0) == SETTINGS_STATUS_OK ? 1 : 0);
+  PRINTF("[APP.settings-delete] node id delete status: %s\n", settings_delete(SETTINGS_KEY_PAN_ADDR, 0) == SETTINGS_STATUS_OK ? "OK" : "FAILED");
 #endif
 #if defined(RADIO_CONF_PAN_ID)
   PRINTF("[APP.settings-delete] pan id delete status: %d\n", settings_delete(SETTINGS_KEY_PAN_ID, 0) == SETTINGS_STATUS_OK ? 1 : 0);
@@ -62,6 +65,9 @@ PROCESS_THREAD(settings_delete_process, ev, data)
 #endif
 #if defined(RADIO_CONF_TX_POWER)
   PRINTF("[APP.settings-delete] tx power delete status: %d\n", settings_delete(SETTINGS_KEY_TXPOWER, 0) == SETTINGS_STATUS_OK ? 1 : 0);
+#endif
+#if defined(NODE_CONF_EUI64)
+  PRINTF("[APP.settings-delete] EUI64 delete status: %d\n", settings_delete(SETTINGS_KEY_EUI64, 0) == SETTINGS_STATUS_OK ? 1 : 0);
 #endif
 #endif /* !defined(NODE_CONF_ID) && !defined(RADIO_CONF_CHANNEL) && !defined(RADIO_CONF_TX_POWER) */
 

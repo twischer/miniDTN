@@ -133,9 +133,9 @@ void uip_debug_lladdr_print(const uip_lladdr_t *addr);
 #include "net/rime.h"
 
 // Apps 
-#if defined(APP_SETTINGS_DELETE)
+#if (APP_SETTINGS_DELETE == 1)
 #include "settings_delete.h"
-#elif defined(APP_SETTINGS_SET)
+#elif (APP_SETTINGS_SET == 1)
 #include "settings_set.h"
 #endif
 
@@ -497,11 +497,11 @@ init(void)
 
   ctimer_init();
 
-#if defined(APP_SETTINGS_SET)
+#if (APP_SETTINGS_SET == 1)
   process_start(&settings_set_process, NULL);
 #endif
 
-#if defined(APP_SETTINGS_DELETE)
+#if (APP_SETTINGS_DELETE == 1)
   process_start(&settings_delete_process, NULL);
 #endif    
 

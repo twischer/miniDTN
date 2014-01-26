@@ -3,52 +3,43 @@ settings_set_src = settings_set.c
 # NODEID
 ifdef NODE_ID
  CFLAGS += -DNODE_CONF_ID=$(NODE_ID)
- ifndef settings_set_load
-  settings_set_load=1
- endif
+ # Note: this variable can be modified by setting target-specific variable
+ SETTINGS_SET_LOAD=1
 endif
 
 # PANID
 ifdef PAN_ID
  CFLAGS += -DRADIO_CONF_PAN_ID=$(PAN_ID)
- ifndef settings_set_load
-  settings_set_load=1
- endif
+ SETTINGS_SET_LOAD=1
 endif
 
 # RADIO CHANNEL
 ifdef RADIO_CHANNEL
  CFLAGS += -DRADIO_CONF_CHANNEL=$(RADIO_CHANNEL)
- ifndef settings_set_load
-  settings_set_load=1
- endif
+ SETTINGS_SET_LOAD=1
 endif
 
 # RADIO TX POWER
 ifdef RADIO_TX_POWER
  CFLAGS += -DRADIO_CONF_TX_POWER=$(RADIO_TX_POWER)
- ifndef settings_set_load
-  settings_set_load=1
- endif
+ SETTINGS_SET_LOAD=1
 endif
 
 # EUI64
 ifdef EUI64
   CONF_EUI64 := $(shell echo $(EUI64) | sed 's/\([0-9a-fA-F]\{2\}\)/0x\1/g' | sed 's/:/,/g')
   CFLAGS += -DNODE_CONF_EUI64=$(CONF_EUI64)
-  ifndef settings_set_load
-   settings_set_load=1
-  endif
+  SETTINGS_SET_LOAD=1
 endif
 
-# Load app if needed
-ifdef settings_set_load
- $(info [APP.settings_set] loaded)
- CFLAGS+=-DAPP_SETTINGS_SET=1
-endif
+# Inform about loading of app
+$(info [APP.settings_set] loaded)
+# Activate app if needed
+CFLAGS+=-DAPP_SETTINGS_SET=$(SETTINGS_SET_LOAD)
 
-all:
-	$(info doing all)
-
-.PHONY: all
+# Force recompilation of settings because they may change with every arg
+.FORCE: 
+$(OBJECTDIR)/settings_delete.o: .FORCE
+$(OBJECTDIR)/settings_set.o: .FORCE
+$(OBJECTDIR)/contiki-inga-main.o: .FORCE
 

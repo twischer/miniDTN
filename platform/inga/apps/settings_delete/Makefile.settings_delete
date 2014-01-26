@@ -1,6 +1,16 @@
 settings_delete_src = settings_delete.c
 
-ifdef SETTINGS_DELETE
- $(info [APP.settings_delete] loaded)
- CFLAGS+=-DAPP_SETTINGS_DELETE=1
-endif
+# Note: this variable can be modified by setting target-specific variable
+SETTINGS_DELETE_LOAD=1
+
+# Inform about loading of app
+$(info [APP.settings_delete] loaded)
+# Activate app if needed
+CFLAGS+=-DAPP_SETTINGS_DELETE=$(SETTINGS_DELETE_LOAD)
+
+# Force recompilation of settings because they may change with every arg
+.FORCE: 
+$(OBJECTDIR)/settings_delete.o: .FORCE
+$(OBJECTDIR)/settings_set.o: .FORCE
+$(OBJECTDIR)/contiki-inga-main.o: .FORCE
+
