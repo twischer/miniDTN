@@ -57,7 +57,7 @@ PROCESS(settings_set_process, "Settings Set Process");
 PROCESS_THREAD(settings_set_process, ev, data)
 {
   PROCESS_BEGIN();
-#if (SETTINGS_SET_LOAD == 1)
+#if (APP_SETTINGS_SET == 1)
 
 #ifdef NODE_CONF_ID
   if (settings_set_uint16(SETTINGS_KEY_PAN_ADDR, (uint16_t) NODE_ID) == SETTINGS_STATUS_OK) {
