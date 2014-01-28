@@ -135,7 +135,8 @@ void uip_debug_lladdr_print(const uip_lladdr_t *addr);
 // Apps 
 #if (APP_SETTINGS_DELETE == 1)
 #include "settings_delete.h"
-#elif (APP_SETTINGS_SET == 1)
+#endif
+#if (APP_SETTINGS_SET == 1)
 #include "settings_set.h"
 #endif
 
