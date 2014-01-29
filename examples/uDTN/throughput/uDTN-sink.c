@@ -94,6 +94,7 @@ PROCESS_THREAD(udtn_sink_process, ev, data)
 	static uint8_t userdata[2];
 	uint32_t tmp;
 	static uint32_t seqno;
+	static uint32_t old_seqno = 0xFFFFFFFF;
 	struct mmem * bundle_incoming;
 	static struct mmem * bundle_outgoing;
 
@@ -191,6 +192,17 @@ PROCESS_THREAD(udtn_sink_process, ev, data)
 
 		bundle_get_attr(bundle_incoming, TIME_STAMP_SEQ_NR, &seqno);
 		bundle_get_attr(bundle_incoming, SRC_NODE, &tmp);
+
+		if( seqno == old_seqno ) {
+			printf("Duplicate bundle, ignoring\n");
+
+			/* Tell the agent, that we have processed the bundle */
+			process_post(&agent_process, dtn_processing_finished, bundle_incoming);
+
+			continue;
+		}
+
+		old_seqno = seqno;
 
 		/* Tell the agent, that we have processed the bundle */
 		process_post(&agent_process, dtn_processing_finished, bundle_incoming);
