@@ -188,6 +188,7 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 			watchdog_start();
 
 			TEST_REPORT("throughput", BUNDLES*CLOCK_SECOND, time_stop-time_start, "bundles/s");
+			TEST_REPORT("throughput_bytes", BUNDLES * BUNDLE_SIZE * CLOCK_SECOND, time_stop-time_start, "bytes/s");
 			TEST_PASS();
 
 			PROCESS_EXIT();
@@ -206,7 +207,7 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 		}
 
 		/* Only proceed, when we have enough storage left */
-		if( BUNDLE_STORAGE.free_space(NULL) < 3 ) {
+		if( BUNDLE_STORAGE.free_space(NULL) < (BUNDLE_STORAGE_SIZE-1) ) {
 			process_post(&udtn_sender_process, PROCESS_EVENT_CONTINUE, NULL);
 			continue;
 		}
@@ -249,7 +250,7 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 
 		/* Add the payload */
 		for(i=0; i<BUNDLE_SIZE; i++)
-			userdata[i] = i;
+			userdata[i] = (i % 0xFF);
 
 		n = bundle_add_block(bundle_outgoing, BUNDLE_BLOCK_TYPE_PAYLOAD, BUNDLE_BLOCK_FLAG_NULL, userdata, BUNDLE_SIZE);
 		if( n == -1 ) {

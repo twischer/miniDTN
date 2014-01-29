@@ -173,7 +173,7 @@ PROCESS_THREAD(udtn_sink_process, ev, data)
 			}
 
 			for(i=0; i<BUNDLE_SIZE; i++) {
-				if( block->payload[i] != i ) {
+				if( block->payload[i] != (i % 255) ) {
 					printf("Payload: byte %d mismatch. Should be %02X, is %02X\n", i, i, block->payload[i]);
 					error = 1;
 				}
@@ -216,6 +216,7 @@ PROCESS_THREAD(udtn_sink_process, ev, data)
 			profiling_report("recv-bundles", 0);
 			TEST_REPORT("throughput", BUNDLES*CLOCK_SECOND, time_stop-time_start, "bundles/s");
 			TEST_REPORT("errors", bundles_error, 1, "erronous bundles");
+			TEST_REPORT("throughput_bytes", BUNDLES * BUNDLE_SIZE * CLOCK_SECOND, time_stop-time_start, "bytes/s");
 
 			/* Packet loss in percent
 			   We received 1000 bundles, if seqno is 999 bundleloss is 0%
