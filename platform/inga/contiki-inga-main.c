@@ -609,6 +609,26 @@ periodic_prints()
           nbr = nbr_table_next(ds6_neighbors, nbr)) {
         PRINTA("  ");
         uip_debug_ipaddr_print(&nbr->ipaddr);
+        PRINTA(" lladdr ");
+        uip_debug_lladdr_print(uip_ds6_nbr_get_ll(&nbr->ipaddr));
+        if (&nbr->isrouter) PRINTA(" router ");
+        switch (nbr->state) {
+          case NBR_INCOMPLETE:
+            PRINTA("INCOMPLETE");
+            break;
+          case NBR_REACHABLE:
+            PRINTA("REACHABLE");
+            break;
+          case NBR_STALE:
+            PRINTA("STALE");
+            break;
+          case NBR_DELAY:
+            PRINTA("DELAY");
+            break;
+          case NBR_PROBE:
+            PRINTA("PROBE");
+            break;
+        }
         PRINTA("\n");
         any = 1;
       }
@@ -620,15 +640,12 @@ periodic_prints()
       for(r = uip_ds6_route_head();
           r != NULL;
           r = uip_ds6_route_next(r)) {
-          uip_debug_ipaddr_print(&r->ipaddr);
-          PRINTA("/%u (via ", r->length);
-          uip_debug_ipaddr_print(uip_ds6_route_nexthop(r));
-     //     if(r->state.lifetime < 600) {
-            PRINTA(") %lus\n", r->state.lifetime);
-     //     } else {
-     //       PRINTA(")\n");
-     //     }
-          any = 1;
+        PRINTA("  ");
+        uip_debug_ipaddr_print(&r->ipaddr);
+        PRINTA("/%u (via ", r->length);
+        uip_debug_ipaddr_print(uip_ds6_route_nexthop(r));
+        PRINTA(") %lus\n", r->state.lifetime);
+        any = 1;
       }
       if (!any) PRINTA("  <none>\n");
       PRINTA("\n---------\n");
