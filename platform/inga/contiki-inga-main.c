@@ -268,6 +268,25 @@ void node_id_burn(unsigned short node_id) {
   }
 }
 /*----------------------------------------------------------------------------*/
+#define CONVERTTXPOWER 1
+#if CONVERTTXPOWER  //adds ~120 bytes to program flash size
+// NOTE: values for AT86RF231
+const char txonesdigit[16]   PROGMEM = {'3','2','2','1','1','0','0','1','2','3','4','5','7','9','2','7'};
+const char txtenthsdigit[16] PROGMEM = {'0','8','3','8','3','7','0','0','0','0','0','0','0','0','0','0'};
+static void printtxpower(void) {
+  uint8_t power = rf230_get_txpower() & 0xf;
+  char sign = (power < 0x7 ? '+' : '-');
+  char tens = (power > 0xD ? '1' : '0');
+  char ones = pgm_read_byte(&txonesdigit[power]);
+  char tenths = pgm_read_byte(&txtenthsdigit[power]);
+  if (tens == '0') {
+    printf_P(PSTR("%c%c.%cdBm"), sign, ones, tenths);
+  } else {
+    printf_P(PSTR("%c%c%c.%cdBm"), sign, tens, ones, tenths);
+  }
+}
+#endif
+/*----------------------------------------------------------------------------*/
 void
 platform_radio_init(void)
 {
@@ -397,11 +416,17 @@ platform_radio_init(void)
       NETSTACK_MAC.name,
       NETSTACK_RDC.name);
   PRINTA("Radio info:\n");
-  PRINTA("  Check rate %lu Hz\n  Channel: %u\n  Power: %u\n",
+  PRINTA("  Check rate %lu Hz\n  Channel: %u\n  Power: %u",
       CLOCK_SECOND / (NETSTACK_RDC.channel_check_interval() == 0 ? 1 :
       NETSTACK_RDC.channel_check_interval()), // radio??
       rf230_get_channel(),
       rf230_get_txpower());
+#if CONVERTTXPOWER
+      printf(" (");
+      printtxpower();
+      printf(")");
+#endif /* CONVERTTXPOWER */
+      printf("\n");
 
 #else /* RF230BB */
 
