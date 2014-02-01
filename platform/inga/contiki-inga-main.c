@@ -287,6 +287,11 @@ static void printtxpower(void) {
 }
 #endif
 /*----------------------------------------------------------------------------*/
+const char msg_ok[6]   PROGMEM = "[OK]\n";
+const char msg_err[7]  PROGMEM = "[N/A]\n";
+#define CHECK_SENSOR(name, sensor) \
+  printf_P(PSTR("  " name ": ")); \
+  printf_P(sensor.status(SENSORS_READY) ? msg_ok : msg_err);
 void
 platform_radio_init(void)
 {
@@ -302,7 +307,7 @@ platform_radio_init(void)
   } else {
     PRINTD("PanID not in EEPROM - using default\n");
   }
-#endif
+#endif /* RADIO_CONF_PAN_ID */
 
   // PAN_ADDR/NODE_ID
 #ifndef NODE_CONF_ID
@@ -311,7 +316,7 @@ platform_radio_init(void)
   } else {
     PRINTD("NodeID/PanAddr not in EEPROM - using default\n");
   }
-#endif
+#endif /* NODE_CONF_ID */
 
   // TX_POWER
 #ifndef RADIO_CONF_TX_POWER
@@ -320,7 +325,7 @@ platform_radio_init(void)
   } else {
     PRINTD("Radio TXPower not in EEPROM - using default\n");
   }
-#endif
+#endif /* RADIO_CONF_TX_POWER */
 
   // CHANNEL
 #ifndef RADIO_CONF_CHANNEL
@@ -329,7 +334,7 @@ platform_radio_init(void)
   } else {
     PRINTD("Radio Channel not in EEPROM - using default\n");
   }
-#endif
+#endif /* RADIO_CONF_CHANNEL */
 
   // EUI64 ADDR
 #ifndef NODE_CONF_EUI64
@@ -577,6 +582,15 @@ init(void)
 
 #endif /* UIP_CONF_IPV6 */
 
+  /* Start sensor init process */
+  process_start(&sensors_process, NULL);
+
+  PRINTA("Sensors:\n");
+  CHECK_SENSOR("Button", button_sensor);
+  CHECK_SENSOR("Accelerometer", acc_sensor);
+  CHECK_SENSOR("Gyroscope", acc_sensor);
+  CHECK_SENSOR("Pressure", pressure_sensor);
+  CHECK_SENSOR("Battery", battery_sensor);
   PRINTA("******* Online *******\n\n");
 }
 
@@ -707,8 +721,7 @@ int
 main(void)
 {
   init();
-  /* Start sensor init process */
-  process_start(&sensors_process, NULL);
+
   /* Autostart other processes */
   autostart_start(autostart_processes);
 
