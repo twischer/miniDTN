@@ -31,25 +31,13 @@
 /**
  * \file
  *      Contiki system setup
- * \author
- *      Robert Hartung
- *      Enrico Joerns <e.joerns@tu-bs.de>
+ * \author Robert Hartung
+ * \author Enrico Joerns <joerns@ibr.cs.tu-bs.de>
  */
 
 #define PRINTF(FORMAT,args...) printf_P(PSTR(FORMAT),##args)
 
-/* If defined 1, prints boot screen informations.
- * @note: Adds about 600 bytes to program size
- */
-#ifndef ANNOUNCE_BOOT
-#define ANNOUNCE_BOOT 1
-#endif
-
-#if ANNOUNCE_BOOT
 #define PRINTA(FORMAT,args...) printf_P(PSTR(FORMAT),##args)
-#else
-#define PRINTA(...)
-#endif
 
 /* If defined 1, prints debug infos. */
 #ifndef DEBUG
@@ -287,11 +275,55 @@ static void printtxpower(void) {
 }
 #endif
 /*----------------------------------------------------------------------------*/
+
+// -- Bootscreen define parameters
+
+#ifndef INGA_CONF_BOOTSCREEN
+#define INGA_BOOTSCREEN 1
+#else /* INGA_CONF_BOOTSCREEN */
+#define INGA_BOOTSCREEN INGA_CONF_BOOTSCREEN
+#endif /* INGA_CONF_BOOTSCREEN */
+
+#if INGA_BOOTSCREEN
+#ifndef INGA_CONF_BOOTSCREEN_NET
+#define INGA_BOOTSCREEN_NET 1
+#else /* INGA_CONF_BOOTSCREEN_NET */
+#define INGA_BOOTSCREEN_NET INGA_CONF_BOOTSCREEN_NET
+#endif /* INGA_CONF_BOOTSCREEN_NET */
+
+#ifndef INGA_CONF_BOOTSCREEN_NETSTACK
+#define INGA_BOOTSCREEN_NETSTACK 1
+#else /* INGA_CONF_BOOTSCREEN_NETSTACK */
+#define INGA_BOOTSCREEN_NETSTACK INGA_CONF_BOOTSCREEN_NETSTACK
+#endif /* INGA_CONF_BOOTSCREEN_NETSTACK */
+
+#ifndef INGA_CONF_BOOTSCREEN_RADIO
+#define INGA_BOOTSCREEN_RADIO 1
+#else /* INGA_CONF_BOOTSCREEN_RADIO */
+#define INGA_BOOTSCREEN_RADIO INGA_CONF_BOOTSCREEN_RADIO
+#endif /* INGA_CONF_BOOTSCREEN_RADIO */
+
+#ifndef INGA_CONF_BOOTSCREEN_SENSORS
+#define INGA_BOOTSCREEN_SENSORS 1
+#else /* INGA_CONF_BOOTSCREEN_SENSORS */
+#define INGA_BOOTSCREEN_SENSORS INGA_CONF_BOOTSCREEN_SENSORS
+#endif /* INGA_CONF_BOOTSCREEN_SENSORS */
+
+#else /* INGA_BOOTSCREEN */
+#define INGA_BOOTSCREEN_NET 0
+#define INGA_BOOTSCREEN_NETSTACK 0
+#define INGA_BOOTSCREEN_RADIO 0
+#define INGA_BOOTSCREEN_SENSORS 0
+#endif /* INGA_BOOTSCREEN */
+
+#if INGA_BOOTSCREEN_SENSORS
 const char msg_ok[6]   PROGMEM = "[OK]\n";
 const char msg_err[7]  PROGMEM = "[N/A]\n";
 #define CHECK_SENSOR(name, sensor) \
   printf_P(PSTR("  " name ": ")); \
   printf_P(sensor.status(SENSORS_READY) ? msg_ok : msg_err);
+#endif
+/*----------------------------------------------------------------------------*/
 void
 platform_radio_init(void)
 {
@@ -383,6 +415,7 @@ platform_radio_init(void)
 #endif
 #endif
 
+#if INGA_BOOTSCREEN_NET
   PRINTA("WPAN Info:\n");
   PRINTA("  PAN ID:   0x%04X\n", pan_id);
   PRINTA("  PAN ADDR: 0x%04X\n", node_id);
@@ -395,6 +428,7 @@ platform_radio_init(void)
           eui64_addr[5],
           eui64_addr[6],
           eui64_addr[7]);
+#endif /* INGA_BOOTSCREEN_NET */
 
 #if RF230BB
 
@@ -421,11 +455,15 @@ platform_radio_init(void)
   NETSTACK_MAC.init();
   NETSTACK_NETWORK.init();
 
+#if INGA_BOOTSCREEN_NETSTACK
   PRINTA("Netstack info:\n");
   PRINTA("  NET: %s\n  MAC: %s\n  RDC: %s\n",
       NETSTACK_NETWORK.name,
       NETSTACK_MAC.name,
       NETSTACK_RDC.name);
+#endif /* INGA_BOOTSCREEN_NETSTACK */
+
+#if INGA_BOOTSCREEN_RADIO
   PRINTA("Radio info:\n");
   PRINTA("  Check rate %lu Hz\n  Channel: %u\n  Power: %u",
       CLOCK_SECOND / (NETSTACK_RDC.channel_check_interval() == 0 ? 1 :
@@ -438,6 +476,7 @@ platform_radio_init(void)
       printf(")");
 #endif /* CONVERTTXPOWER */
       printf("\n");
+#endif /* INGA_BOOTSCREEN_RADIO */
 
 #else /* RF230BB */
 
@@ -471,6 +510,7 @@ init(void)
   /* wait here to get a chance to see boot screen. */
   _delay_ms(200);
 
+#if INGA_BOOTSCREEN
   PRINTA("\n*******Booting %s*******\nReset reason: ", CONTIKI_VERSION_STRING);
   /* Print out reset reason */
   if (mcusr_mirror & _BV(JTRF))
@@ -486,6 +526,7 @@ init(void)
   PRINTA("\n");
   if (mcusr_mirror & _BV(WDRF))
     PRINTA("Watchdog possibly occured at address %p\n", wdt_addr);
+#endif /* INGA_BOOTSCREEN */
 
   clock_init();
 
@@ -558,6 +599,7 @@ init(void)
 
   process_start(&tcpip_process, NULL);
 
+#if INGA_BOOTSCREEN_NET
   PRINTA("IPv6 info:\n");
   PRINTA("  Tentative link-local IPv6 address ");
   uip_ds6_addr_t *lladdr;
@@ -571,27 +613,36 @@ init(void)
 #if UIP_CONF_ROUTER
   PRINTA("  Routing Enabled, TCP_MSS: %u\n", UIP_TCP_MSS);
 #endif
+#endif /* INGA_BOOTSCREEN_NET */
+
 #else /* UIP_CONF_IPV6 */
 
+#if INGA_BOOTSCREEN_NET
   PRINTA("rime address:\n  ");
   int i;
   for (i = 0; i < sizeof (rimeaddr_t); i++) {
     PRINTA("%02x.", addr.u8[i]);
   }
   PRINTA("\n");
+#endif /* INGA_BOOTSCREEN_NET */
 
 #endif /* UIP_CONF_IPV6 */
 
   /* Start sensor init process */
   process_start(&sensors_process, NULL);
 
+#if INGA_BOOTSCREEN_SENSORS
   PRINTA("Sensors:\n");
   CHECK_SENSOR("Button", button_sensor);
   CHECK_SENSOR("Accelerometer", acc_sensor);
   CHECK_SENSOR("Gyroscope", acc_sensor);
   CHECK_SENSOR("Pressure", pressure_sensor);
   CHECK_SENSOR("Battery", battery_sensor);
+#endif
+
+#if INGA_BOOTSCREEN
   PRINTA("******* Online *******\n\n");
+#endif
 }
 
 /*---------------------------------------------------------------------------*/
