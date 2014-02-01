@@ -131,39 +131,32 @@ void uip_debug_lladdr_print(const uip_lladdr_t *addr);
 /* Get periodic prints from idle loop, from clock seconds or rtimer interrupts */
 /* Use of rtimer will conflict with other rtimer interrupts such as contikimac radio cycling */
 /* STAMPS will print ENERGEST outputs if that is enabled. */
-#ifndef PERIODIC_ENABLE
-#define PERIODICPRINTS 1
+#ifndef INGA_CONF_PERIODIC
+#define INGA_PERIODIC 1
 #else
-#define PERIODICPRINTS PERIODIC_ENABLE
+#define INGA_PERIODIC INGA_CONF_PERIODIC
 #endif
 
-/** Enables pings with given interval [seconds] */
-#ifndef PERIODIC_CONF_PINGS
-#define PER_PINGS 0
-#else
-#define PER_PINGS PERIODIC_CONF_PINGS
-#if PER_PINGS > 0 && !UIP_CONF_IPV6
-#error Periodic ping only supported for IPv6
-#endif
-#endif
 /** Enables route prints with given interval [seconds] */
-#ifndef PERIODIC_CONF_ROUTES
-#define PER_ROUTES 0
+#ifndef INGA_CONF_PERIODIC_ROUTES
+#define INGA_PERIODIC_ROUTES 0
 #else
-#define PER_ROUTES PERIODIC_CONF_ROUTES
-#if PER_ROUTES > 0 && !UIP_CONF_IPV6
+#define INGA_PERIODIC_ROUTES INGA_CONF_PERIODIC_ROUTES
+#if INGA_PERIODIC_ROUTES > 0 && !UIP_CONF_IPV6
 #error Periodic routes only supported for IPv6
 #endif
 #endif
 /** Enables time stamps with given interval [seconds] */
-#ifndef PERIODIC_CONF_STAMPS
+#ifndef INGA_CONF_PERIODIC_STAMPS
 #define PER_STAMPS 60
 #else
-#define PER_STAMPS PERIODIC_CONF_STAMPS
+#define PER_STAMPS INGA_CONF_PERIODIC_STAMPS
 #endif
 /** Activates stack monitor with given interval [seconds] */
-#ifndef STACKMONITOR
-#define STACKMONITOR 60
+#ifndef INGA_CONF_PERIODIC_STACK
+#define INGA_PERIODIC_STACK 60
+#else
+#define INGA_PERIODIC_STACK INGA_CONF_PERIODIC_STACK
 #endif
 
 
@@ -530,12 +523,12 @@ init(void)
 
   clock_init();
 
-#if STACKMONITOR
+#if INGA_PERIODIC_STACK
 #define STACK_FREE_MARK 0x4242
   /* Simple stack pointer highwater monitor.
    * Places magic numbers in free RAM that are checked in the main loop.
-   * In conjuction with PERIODICPRINTS, never-used stack will be printed
-   * every STACKMONITOR seconds.
+   * In conjuction with INGA_PERIODIC, never-used stack will be printed
+   * every INGA_PERIODIC_STACK seconds.
    */
   {
     extern uint16_t __bss_end;
@@ -646,7 +639,7 @@ init(void)
 }
 
 /*---------------------------------------------------------------------------*/
-#if PERIODICPRINTS
+#if INGA_PERIODIC
 static void
 periodic_prints()
 {
@@ -670,16 +663,8 @@ periodic_prints()
     }
 #endif /* PER_STAMPS */
 
-#if PER_PINGS&&0
-    extern void raven_ping6(void);
-    if ((clocktime % PER_PINGS) == 1) {
-      PRINTF("**Ping\n");
-      raven_ping6();
-    }
-#endif /* PER_PINGS */
-
-#if PER_ROUTES
-    if ((clocktime % PER_ROUTES) == 2) {
+#if INGA_PERIODIC_ROUTES
+    if ((clocktime % INGA_PERIODIC_ROUTES) == 2) {
 
       extern uip_ds6_netif_t uip_ds6_if;
       uint8_t i, any;
@@ -742,11 +727,11 @@ periodic_prints()
       if (!any) PRINTA("  <none>\n");
       PRINTA("\n---------\n");
     }
-#endif /* PER_ROUTES */
+#endif /* INGA_PERIODIC_ROUTES */
 
-#if STACKMONITOR
+#if INGA_PERIODIC_STACK
     /* Checks for highest address with STACK_FREE_MARKs in RAM */
-    if ((clocktime % STACKMONITOR) == 3) {
+    if ((clocktime % INGA_PERIODIC_STACK) == 3) {
       extern uint16_t __bss_end;
       uint16_t p = (uint16_t) & __bss_end;
       do {
@@ -757,10 +742,10 @@ periodic_prints()
         p += 10;
       } while (p < RAMEND - 10);
     }
-#endif /* STACKMONITOR */
+#endif /* INGA_PERIODIC_STACK */
   }
 }
-#endif /* PERIODICPRINTS */
+#endif /* INGA_PERIODIC */
 /*-------------------------------------------------------------------------*/
 /*------------------------- Main Scheduler loop----------------------------*/
 /*-------------------------------------------------------------------------*/
@@ -790,9 +775,9 @@ main(void)
 
     watchdog_periodic();
 
-#if PERIODICPRINTS
+#if INGA_PERIODIC
     periodic_prints();
-#endif /* PERIODICPRINTS */
+#endif /* INGA_PERIODIC */
 
   }
   return 0;
