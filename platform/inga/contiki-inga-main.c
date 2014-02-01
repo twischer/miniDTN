@@ -202,7 +202,7 @@ SIGNATURE = {
   .B1 = 0x97, //SIGNATURE_1, //128KB flash
   .B0 = 0x1E, //SIGNATURE_0, //Atmel
 };
-#endif
+#endif /* (__AVR_LIBC_VERSION__ >= 10700UL) */
 
 #if CONTIKI_CONF_RANDOM_MAC
 /** Get a pseudo random number using the ADC */
@@ -352,8 +352,8 @@ platform_radio_init(void)
     eui64_addr[3] = 0xFF;
     eui64_addr[4] = 0xFE;
     eui64_addr[5] = 0x00;
-    eui64_addr[6] = node_id & 0xFF;
-    eui64_addr[7] = (node_id >> 8) & 0xFF;
+    eui64_addr[6] = (node_id >> 8);
+    eui64_addr[7] = node_id & 0xFF;
     PRINTD("Radio IEEE Addr not in EEPROM - using default\n");
 #endif /* CONTIKI_CONF_RANDOM_MAC */
 #if WRITE_EUI64
@@ -367,9 +367,15 @@ platform_radio_init(void)
 #endif /* NODE_CONF_EUI64 */
 
 #if EUI64_BY_NODE_ID // TODO: remove here?
+// TODO: node_id not required, when eui64 is replaced by addr
+#if UIP_CONF_IPV6
   /* Replace lower 2 bytes with node ID  */
-  eui64_addr[6] = node_id & 0xFF;
-  eui64_addr[7] = (node_id >> 8) & 0xFF;
+  eui64_addr[6] = (node_id >> 8);
+  eui64_addr[7] = node_id & 0xFF;
+#else
+  eui64_addr[0] = node_id & 0xFF;
+  eui64_addr[1] = (node_id >> 8);
+#endif
 #endif
 
   PRINTA("WPAN Info:\n");
@@ -550,13 +556,9 @@ init(void)
   PRINTA("IPv6 info:\n");
   PRINTA("  Tentative link-local IPv6 address ");
   uip_ds6_addr_t *lladdr;
-  int i;
   lladdr = uip_ds6_get_link_local(-1);
-  for (i = 0; i < 7; ++i) {
-    PRINTA("%02x%02x:", lladdr->ipaddr.u8[i * 2],
-            lladdr->ipaddr.u8[i * 2 + 1]);
-  }
-  PRINTA("%02x%02x\n", lladdr->ipaddr.u8[14], lladdr->ipaddr.u8[15]);
+  uip_debug_ipaddr_print(lladdr->ipaddr.u8);
+  PRINTA("\n");
 
 #if UIP_CONF_IPV6_RPL
   PRINTA("  RPL Enabled\n");
