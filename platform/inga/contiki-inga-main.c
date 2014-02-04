@@ -78,13 +78,13 @@ uint8_t debugflowsize, debugflow[DEBUGFLOWSIZE];
 #include "dev/battery-sensor.h"
 #include "dev/at45db.h"
 
-#include "uip.h"
+#include "ip/uip.h"
 
 #if RF230BB        //radio driver using contiki core mac
 #include "radio/rf230bb/rf230bb.h"
 #include "net/mac/frame802154.h"
 #include "net/mac/framer-802154.h"
-#include "net/sicslowpan.h"
+#include "net/ipv6/sicslowpan.h"
 
 #else              //radio driver using Atmel/Cisco 802.15.4'ish MAC
 #include "mac.h"
@@ -112,13 +112,13 @@ uint8_t debugflowsize, debugflow[DEBUGFLOWSIZE];
 #endif
 
 #if WITH_UIP6
-#include "net/uip-ds6.h"
+#include "net/ipv6/uip-ds6.h"
 // function declaration for net/uip-debug.c
 void uip_debug_ipaddr_print(const uip_ipaddr_t *addr);
 void uip_debug_lladdr_print(const uip_lladdr_t *addr);
 #endif /* WITH_UIP6 */
 
-#include "net/rime.h"
+#include "net/rime/rime.h"
 
 // Apps 
 #if (APP_SETTINGS_DELETE == 1)
@@ -589,9 +589,9 @@ init(void)
 #endif
 
   //--- Set Rime address based on eui64
-  rimeaddr_t addr;
-  memcpy(addr.u8, eui64_addr, sizeof (rimeaddr_t));
-  rimeaddr_set_node_addr(&addr);
+  linkaddr_t addr;
+  memcpy(addr.u8, eui64_addr, sizeof (linkaddr_t));
+  linkaddr_set_node_addr(&addr);
 
 #if UIP_CONF_IPV6
   // Copy EUI64 to the link local address
@@ -620,7 +620,7 @@ init(void)
 #if INGA_BOOTSCREEN_NET
   PRINTA("rime address:\n  ");
   int i;
-  for (i = 0; i < sizeof (rimeaddr_t); i++) {
+  for (i = 0; i < sizeof (linkaddr_t); i++) {
     PRINTA("%02x.", addr.u8[i]);
   }
   PRINTA("\n");
