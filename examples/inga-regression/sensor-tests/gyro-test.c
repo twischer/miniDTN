@@ -43,6 +43,7 @@ channel_test() {
   printf("x-axis: %d\n", gyro_sensor.value(GYRO_X));
   printf("y-axis: %d\n", gyro_sensor.value(GYRO_Y));
   printf("z-axis: %d\n", gyro_sensor.value(GYRO_Z));
+  printf("temp: %d\n", gyro_sensor.value(GYRO_TEMP));
 
   TEST_LEQ(abs(gyro_sensor.value(GYRO_X_RAW)), GYRO_TEST_CFG_MAX_ZERO_G_RAW);
   TEST_LEQ(abs(gyro_sensor.value(GYRO_Y_RAW)), GYRO_TEST_CFG_MAX_ZERO_G_RAW);
