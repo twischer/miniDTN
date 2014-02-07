@@ -407,7 +407,10 @@ public class SectionMoteMemory implements MoteMemory, AddressMemory {
     }
   }
   
-  public boolean addMemoryMonitor(int address, int size, MemoryMonitor mm) {
+  public boolean addMemoryMonitor(MonitorType type, int address, int size, MemoryMonitor mm) {
+    if (type != MonitorType.RW) {
+      logger.warn("r/w type option ignored");
+    }
     PolledMemorySegments t = new PolledMemorySegments(mm, address, size);
     polledMemories.add(t);
     return true;

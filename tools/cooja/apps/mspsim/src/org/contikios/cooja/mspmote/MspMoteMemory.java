@@ -193,7 +193,7 @@ public class MspMoteMemory implements MoteMemory, AddressMemory {
     setMemorySegment(varAddr, data);
   }
 
-  private ArrayList<MemoryCPUMonitor> cpuMonitorArray = new ArrayList<MemoryCPUMonitor>();
+  private final ArrayList<MemoryCPUMonitor> cpuMonitorArray = new ArrayList<MemoryCPUMonitor>();
   class MemoryCPUMonitor extends se.sics.mspsim.core.MemoryMonitor.Adapter {
     public final MemoryMonitor mm;
     public final int address;
@@ -216,7 +216,10 @@ public class MspMoteMemory implements MoteMemory, AddressMemory {
     }
   }
 
-  public boolean addMemoryMonitor(int address, int size, MemoryMonitor mm) {
+  public boolean addMemoryMonitor(MonitorType type, int address, int size, MemoryMonitor mm) {
+    if (type != MonitorType.RW) {
+      logger.warn("r/w type option ignored");
+    }
     MemoryCPUMonitor t = new MemoryCPUMonitor(mm, address, size);
     cpuMonitorArray.add(t);
 

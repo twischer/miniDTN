@@ -35,6 +35,7 @@ import org.apache.log4j.Logger;
 import org.contikios.cooja.Mote;
 import org.contikios.cooja.MoteMemory;
 import org.contikios.cooja.MoteMemory.MemoryEventType;
+import org.contikios.cooja.MoteMemory.MonitorType;
 import org.contikios.cooja.interfaces.MoteID;
 
 /**
@@ -128,7 +129,7 @@ public class AvroraMoteID extends MoteID {
       return;
     }
     int address = moteMem.getVariableAddress(variable);
-    moteMem.addMemoryMonitor(address, moteMem.getIntegerLength(), monitor);
+    moteMem.addMemoryMonitor(MonitorType.RW, address, moteMem.getIntegerLength(), monitor);
   }
 
   private void removeMonitor(String variable, org.contikios.cooja.MoteMemory.MemoryMonitor monitor) {

@@ -177,7 +177,7 @@ public class AvrMoteMemory implements MoteMemory, AddressMemory {
   }
   private ArrayList<AvrMemoryMonitor> memoryMonitors = new ArrayList<AvrMemoryMonitor>();
 
-  public boolean addMemoryMonitor(int address, int size, MemoryMonitor mm) {
+  public boolean addMemoryMonitor(MonitorType flag, int address, int size, MemoryMonitor mm) {
     final AvrMemoryMonitor mon = new AvrMemoryMonitor();
     mon.address = address;
     mon.size = size;

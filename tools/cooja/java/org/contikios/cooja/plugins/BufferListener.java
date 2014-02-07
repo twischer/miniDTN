@@ -721,7 +721,7 @@ public class BufferListener extends VisPlugin {
       this.size = size;
 
       if (address != 0) {
-        if (!mote.getMemory().addMemoryMonitor(address, size, this)) {
+        if (!mote.getMemory().addMemoryMonitor(MoteMemory.MonitorType.R, address, size, this)) {
           throw new Exception("Could not register memory monitor on: " + mote);
         }
       }

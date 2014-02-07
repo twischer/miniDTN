@@ -81,10 +81,35 @@ public interface MoteMemory extends AddressMemory {
 
   public enum MemoryEventType { READ, WRITE };
 
+  /**
+   * Monitor to listen for memory updates.
+   */
   public interface MemoryMonitor {
     public void memoryChanged(MoteMemory memory, MemoryEventType type, int address);
   }
+  
+  /**
+   * Memory access type to listen for.
+   */
+  public enum MonitorType {R, W, RW};
 
-  public boolean addMemoryMonitor(int address, int size, MemoryMonitor mm);
+  /**
+   * Adds a MemoryMonitor for the specified address region.
+   * 
+   * @param flag Select memory operation(s) to listen for (read, write, read/write)
+   * @param address Start address of monitored data region
+   * @param size Size of monitored data region
+   * @param mm MemoryMonitor to add
+   * @return 
+   */
+  public boolean addMemoryMonitor(MonitorType flag, int address, int size, MemoryMonitor mm);
+  
+  /**
+   * Removes MemoryMonitor assigned to the specified region.
+   * 
+   * @param address Start address of Monitor data region
+   * @param size Size of Monitor data region
+   * @param mm MemoryMonitor to remove
+   */
   public void removeMemoryMonitor(int address, int size, MemoryMonitor mm);
 }

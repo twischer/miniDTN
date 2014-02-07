@@ -46,6 +46,7 @@ import org.contikios.cooja.MoteInterface;
 import org.contikios.cooja.MoteMemory;
 import org.contikios.cooja.MoteMemory.MemoryEventType;
 import org.contikios.cooja.MoteMemory.MemoryMonitor;
+import org.contikios.cooja.MoteMemory.MonitorType;
 
 /**
  * Read-only interface to Rime address read from Contiki variable: linkaddr_node_addr.
@@ -76,7 +77,7 @@ public class RimeAddress extends MoteInterface {
         }
       };
       /* TODO XXX Timeout? */
-      moteMem.addMemoryMonitor(moteMem.getVariableAddress("linkaddr_node_addr"), RIME_ADDR_LENGTH, memMonitor);
+      moteMem.addMemoryMonitor(MonitorType.W, moteMem.getVariableAddress("linkaddr_node_addr"), RIME_ADDR_LENGTH, memMonitor);
     }
   }
 
