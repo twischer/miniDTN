@@ -75,9 +75,16 @@ public class MspMoteMemory implements MoteMemory, AddressMemory {
     throw new UnknownVariableException(varName);
   }
 
+  @Override
   public int getVariableAddress(String varName) throws UnknownVariableException {
     MapEntry entry = getMapEntry(varName);
     return entry.getAddress();
+  }
+
+  @Override
+  public int getVariableSize(String varName) throws UnknownVariableException {
+    MapEntry entry = getMapEntry(varName);
+    return entry.getSize();
   }
 
   public int getIntegerLength() {

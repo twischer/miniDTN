@@ -70,6 +70,7 @@ public class SectionMoteMemory implements MoteMemory, AddressMemory {
     return addresses.keySet().toArray(new String[0]);
   }
 
+  @Override
   public int getVariableAddress(String varName) throws UnknownVariableException {
     /* Cooja address space */
     if (!addresses.containsKey(varName)) {
@@ -77,6 +78,11 @@ public class SectionMoteMemory implements MoteMemory, AddressMemory {
     }
     
     return addresses.get(varName).intValue() + offset;
+  }
+
+  @Override
+  public int getVariableSize(String varName) throws UnknownVariableException {
+    throw new UnsupportedOperationException("Not implemented yet!");
   }
 
   public int getIntegerLength() {

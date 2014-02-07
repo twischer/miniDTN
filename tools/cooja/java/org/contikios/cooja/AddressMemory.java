@@ -53,6 +53,14 @@ public interface AddressMemory {
   public int getVariableAddress(String varName) throws UnknownVariableException;
 
   /**
+   * Returns size of variable with given name.
+   * @param varName Variable name
+   * @return Variable size
+   * @throws org.contikios.cooja.AddressMemory.UnknownVariableException 
+   */
+  public int getVariableSize(String varName) throws UnknownVariableException;
+  
+  /**
    * Returns a value of the byte variable with the given name.
    *
    * @param varName Name of byte variable

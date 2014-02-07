@@ -57,10 +57,12 @@ public class AvrMoteMemory implements MoteMemory, AddressMemory {
     this.interpreter = interpreter;
   }
 
+    @Override
   public void clearMemory() {
     logger.fatal("clearMemory() not implemented");
   }
 
+    @Override
   public byte[] getMemorySegment(int address, int size) {
     /*logger.info("getMemorySegment(" + String.format("0x%04x", address) +
         ", " + size + ")");*/
@@ -100,15 +102,18 @@ public class AvrMoteMemory implements MoteMemory, AddressMemory {
     return getMemorySegment(getVariableAddress(varName), 1)[0];
   }
 
+    @Override
   public int getIntValueOf(String varName) throws UnknownVariableException {
     byte[] arr = getMemorySegment(getVariableAddress(varName), getIntegerLength());
     return parseInt(arr);
   }
 
+    @Override
   public int getIntegerLength() {
     return 2; /* XXX */
   }
 
+    @Override
   public int getVariableAddress(String varName)
   throws UnknownVariableException {
     /* RAM addresses start at 0x800000 in Avrora */
@@ -119,7 +124,14 @@ public class AvrMoteMemory implements MoteMemory, AddressMemory {
         ", returned address: " + String.format("0x%04x", ret));*/
     return ret;
   }
+  
+    @Override
+    public int getVariableSize(String varName)
+            throws UnknownVariableException {
+        throw new UnsupportedOperationException();
+    }
 
+    @Override
   public String[] getVariableNames() {
     ArrayList<String> symbols = new ArrayList<String>();
     for (Iterator i = memoryMap.getIterator(); i.hasNext();) {
@@ -128,16 +140,19 @@ public class AvrMoteMemory implements MoteMemory, AddressMemory {
     return symbols.toArray(new String[0]);
   }
 
+    @Override
   public void setByteArray(String varName, byte[] data)
   throws UnknownVariableException {
     setMemorySegment(getVariableAddress(varName), data);
   }
 
+    @Override
   public void setByteValueOf(String varName, byte newVal)
   throws UnknownVariableException {
     setMemorySegment(getVariableAddress(varName), new byte[] {newVal});
   }
 
+    @Override
   public void setIntValueOf(String varName, int newVal)
   throws UnknownVariableException {
     int varAddr = getVariableAddress(varName);
@@ -149,6 +164,7 @@ public class AvrMoteMemory implements MoteMemory, AddressMemory {
     setMemorySegment(varAddr, varData);
   }
 
+    @Override
   public boolean variableExists(String varName) {
     return memoryMap.getLocation(varName) != null;
   }
@@ -186,6 +202,7 @@ public class AvrMoteMemory implements MoteMemory, AddressMemory {
     return true;
   }
 
+    @Override
   public void removeMemoryMonitor(int address, int size, MemoryMonitor mm) {
     for (AvrMemoryMonitor mcm: memoryMonitors) {
       if (mcm.mm != mm || mcm.address != address || mcm.size != size) {
@@ -196,6 +213,7 @@ public class AvrMoteMemory implements MoteMemory, AddressMemory {
     }
   }
 
+    @Override
   public int parseInt(byte[] memorySegment) {
     if (memorySegment.length < 2) {
       return -1;
