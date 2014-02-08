@@ -120,8 +120,11 @@ public class AvrMoteMemory implements MoteMemory, AddressMemory {
   public int getVariableAddress(String varName)
           throws UnknownVariableException {
     /* RAM addresses start at 0x800000 in Avrora */
-    int vma = memoryMap.getLocation(varName).vma_addr;
-    int ret = vma & 0x7fffff;
+    Location loc = memoryMap.getLocation(varName);
+    if (loc == null) {
+      throw new UnknownVariableException(varName);
+    }
+    int ret = loc.vma_addr & 0x7fffff;
     /*logger.info("Symbol '" + memoryMap.getLocation(varName).name +
      "': vma_addr: " + String.format("0x%04x", vma) +
      ", returned address: " + String.format("0x%04x", ret));*/
