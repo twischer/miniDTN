@@ -121,7 +121,7 @@ public class AvrMoteMemory implements MoteMemory, AddressMemory {
           throws UnknownVariableException {
     /* RAM addresses start at 0x800000 in Avrora */
     Location loc = memoryMap.getLocation(varName);
-    if (loc == null) {
+    if (loc == null || (loc.section.equals(".text"))) {
       throw new UnknownVariableException(varName);
     }
     int ret = loc.vma_addr & 0x7fffff;
@@ -135,14 +135,22 @@ public class AvrMoteMemory implements MoteMemory, AddressMemory {
   public int getVariableSize(String varName)
   throws UnknownVariableException {
     /* RAM addresses start at 0x800000 in Avrora */
-    return memoryMap.getLocation(varName).size;
+    Location loc = memoryMap.getLocation(varName);
+    if (loc == null || (loc.section.equals(".text"))) {
+      throw new UnknownVariableException(varName);
+    }
+    return loc.size;
   }
 
   @Override
   public String[] getVariableNames() {
     ArrayList<String> symbols = new ArrayList<String>();
     for (Iterator i = memoryMap.getIterator(); i.hasNext();) {
-      symbols.add(((Location) i.next()).name);
+      Location loc = (Location) i.next();
+      /* Skip '.text' code section symbols */
+      if (!loc.section.equals(".text")) {
+        symbols.add(loc.name);
+      }
     }
     return symbols.toArray(new String[0]);
   }
