@@ -27,26 +27,26 @@
  * SUCH DAMAGE.
  *
  */
-
 package org.contikios.cooja.plugins;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
-import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 import java.awt.event.FocusListener;
-import java.awt.event.KeyEvent;
+import java.awt.event.ItemEvent;
+import java.awt.event.ItemListener;
 import java.awt.event.KeyListener;
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
 import java.text.NumberFormat;
+import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Vector;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -57,12 +57,13 @@ import javax.swing.JFormattedTextField;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
-import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.text.AttributeSet;
 import javax.swing.text.BadLocationException;
+import javax.swing.text.DefaultFormatterFactory;
+import javax.swing.text.DocumentFilter;
 import javax.swing.text.JTextComponent;
 import javax.swing.text.PlainDocument;
 
@@ -77,6 +78,7 @@ import org.contikios.cooja.PluginType;
 import org.contikios.cooja.Simulation;
 import org.contikios.cooja.VisPlugin;
 import org.contikios.cooja.AddressMemory.UnknownVariableException;
+import org.contikios.cooja.util.StringUtils;
 
 /**
  * Variable Watcher enables a user to watch mote variables during a simulation.
@@ -89,11 +91,12 @@ import org.contikios.cooja.AddressMemory.UnknownVariableException;
 @ClassDescription("Variable Watcher")
 @PluginType(PluginType.MOTE_PLUGIN)
 public class VariableWatcher extends VisPlugin implements MotePlugin {
+
   private static final long serialVersionUID = 1L;
 
   private AddressMemory moteMemory;
 
-  private final static int LABEL_WIDTH = 170;
+  private final static int LABEL_WIDTH = 120;
   private final static int LABEL_HEIGHT = 15;
 
   private final static int BYTE_INDEX = 0;
@@ -101,25 +104,91 @@ public class VariableWatcher extends VisPlugin implements MotePlugin {
   private final static int ARRAY_INDEX = 2;
   private final static int CHAR_ARRAY_INDEX = 3;
 
-  private JPanel lengthPane;
   private JPanel valuePane;
-  private JPanel charValuePane;
-  private JComboBox varName;
-  private JComboBox varType;
+//  private JPanel charValuePane;
+  private JComboBox varNameCombo;
+  private JComboBox varTypeCombo;
+  private JComboBox varDispCombo;
   private JFormattedTextField[] varValues;
-  private JTextField[] charValues;
-  private JFormattedTextField varLength;
+  private byte[] bufferedBytes;
   private JButton writeButton;
+  private JButton monitorButton; // TODO: implement continous monitoring
   private JLabel debuglbl;
   private KeyListener charValueKeyListener;
   private FocusListener charValueFocusListener;
-  private KeyListener varValueKeyListener;
-  private FocusAdapter jFormattedTextFocusAdapter;
 
   private NumberFormat integerFormat;
+  private ValueFormatter hf;
 
   private Mote mote;
-  
+
+  public enum VarTypes {
+
+    BYTE("byte", 1),
+    SHORT("short", 2),
+    INT("int", 2),
+    LONG("long", 4);
+
+    String mRep;
+    int mSize;
+
+    VarTypes(String rep, int size) {
+      mRep = rep;
+      mSize = size;
+    }
+
+    /**
+     * Returns the number of bytes for this data type.
+     *
+     * @return Size in bytes
+     */
+    public int getBytes() {
+      return mSize;
+    }
+
+    protected void setBytes(int size) {
+      mSize = size;
+    }
+
+    /**
+     * Returns String name of this variable type.
+     *
+     * @return Type name
+     */
+    @Override
+    public String toString() {
+      return mRep;
+    }
+  }
+
+  public enum VarFormats {
+
+    CHAR("Char", 0),
+    DEC("Decimal", 10),
+    HEX("Hex", 16);
+
+    String mRep;
+    int mBase;
+
+    VarFormats(String rep, int base) {
+      mRep = rep;
+      mBase = base;
+    }
+
+    /**
+     * Returns String name of this variable representation.
+     *
+     * @return Type name
+     */
+    @Override
+    public String toString() {
+      return mRep;
+    }
+  }
+
+  VarFormats[] valueFormas = {VarFormats.CHAR, VarFormats.DEC, VarFormats.HEX};
+  VarTypes[] valueTypes = {VarTypes.BYTE, VarTypes.SHORT, VarTypes.INT, VarTypes.LONG};
+
   /**
    * @param moteToView Mote
    * @param simulation Simulation
@@ -140,132 +209,138 @@ public class VariableWatcher extends VisPlugin implements MotePlugin {
     // Variable name
     smallPane = new JPanel(new BorderLayout());
     label = new JLabel("Variable name");
-    label.setPreferredSize(new Dimension(LABEL_WIDTH,LABEL_HEIGHT));
+    label.setPreferredSize(new Dimension(LABEL_WIDTH, LABEL_HEIGHT));
     smallPane.add(BorderLayout.WEST, label);
 
-    varName = new JComboBox();
-    varName.setEditable(true);
-    varName.setSelectedItem("[enter or pick name]");
+    varNameCombo = new JComboBox();
+    varNameCombo.setEditable(true);
+    varNameCombo.setSelectedItem("[enter or pick name]");
 
     String[] allPotentialVarNames = moteMemory.getVariableNames();
     Arrays.sort(allPotentialVarNames);
-    for (String aVarName: allPotentialVarNames) {
-      varName.addItem(aVarName);
+    for (String aVarName : allPotentialVarNames) {
+      varNameCombo.addItem(aVarName);
     }
 
     /* Reset variable read feedbacks if variable name was changed */
-    final JTextComponent tc = (JTextComponent) varName.getEditor().getEditorComponent();
+    final JTextComponent tc = (JTextComponent) varNameCombo.getEditor().getEditorComponent();
     tc.getDocument().addDocumentListener(new DocumentListener() {
 
       @Override
       public void insertUpdate(DocumentEvent e) {
         writeButton.setEnabled(false);
-        ((JTextField) varName.getEditor().getEditorComponent()).setForeground(UIManager.getColor("TextField.foreground"));
+        ((JTextField) varNameCombo.getEditor().getEditorComponent()).setForeground(UIManager.getColor("TextField.foreground"));
       }
 
       @Override
       public void removeUpdate(DocumentEvent e) {
         writeButton.setEnabled(false);
-        ((JTextField) varName.getEditor().getEditorComponent()).setForeground(UIManager.getColor("TextField.foreground"));
+        ((JTextField) varNameCombo.getEditor().getEditorComponent()).setForeground(UIManager.getColor("TextField.foreground"));
       }
 
       @Override
       public void changedUpdate(DocumentEvent e) {
         writeButton.setEnabled(false);
-        ((JTextField) varName.getEditor().getEditorComponent()).setForeground(UIManager.getColor("TextField.foreground"));
+        ((JTextField) varNameCombo.getEditor().getEditorComponent()).setForeground(UIManager.getColor("TextField.foreground"));
       }
     });
 
-    smallPane.add(BorderLayout.EAST, varName);
+    varNameCombo.addItemListener(new ItemListener() {
+
+      @Override
+      public void itemStateChanged(ItemEvent e) {
+        System.out.println("Item State Changed: " + e.getStateChange());
+        if (e.getStateChange() == ItemEvent.SELECTED) {
+          try {
+            /* invalidate byte field */
+            bufferedBytes = null;
+            /* calculate number of elements required to show the value in the given size */
+            updateNumberOfValues();
+          }
+          catch (UnknownVariableException ex) {
+            ((JTextField) varNameCombo.getEditor().getEditorComponent()).setForeground(Color.RED);
+            writeButton.setEnabled(false);
+          }
+        }
+      }
+    });
+
+    smallPane.add(BorderLayout.EAST, varNameCombo);
     mainPane.add(smallPane);
 
     // Variable type
     smallPane = new JPanel(new BorderLayout());
     label = new JLabel("Variable type");
-    label.setPreferredSize(new Dimension(LABEL_WIDTH,LABEL_HEIGHT));
+    label.setPreferredSize(new Dimension(LABEL_WIDTH, LABEL_HEIGHT));
     smallPane.add(BorderLayout.WEST, label);
 
-    varType = new JComboBox();
-    varType.addItem("Byte (1 byte)"); // BYTE_INDEX = 0
-    varType.addItem("Integer (" + moteMemory.getIntegerLength() + " bytes)"); // INT_INDEX = 1
-    varType.addItem("Byte array (x bytes)"); // ARRAY_INDEX = 2
-    varType.addItem("Char array (x bytes)"); // CHAR_ARRAY_INDEX = 3
+    /* set correct integer size */
+    valueTypes[2].setBytes(moteMemory.getIntegerLength());
 
-    varType.addActionListener(new ActionListener() {
-      public void actionPerformed(ActionEvent e) {
-        int selectedIndex = varType.getSelectedIndex();  
-        if (selectedIndex == ARRAY_INDEX || selectedIndex == CHAR_ARRAY_INDEX) {
-          lengthPane.setVisible(true);
-          setNumberOfValues(((Number) varLength.getValue()).intValue());
-          if(selectedIndex == CHAR_ARRAY_INDEX) {
-            charValuePane.setVisible(true);
-            setNumberOfCharValues(((Number) varLength.getValue()).intValue());
-          } else {
-            charValuePane.setVisible(false);
-            setNumberOfCharValues(1);  
-          }
-        } else {
-          lengthPane.setVisible(false);
-          charValuePane.setVisible(false);
-          setNumberOfValues(1);
-          setNumberOfCharValues(1);
+    JPanel reprPanel = new JPanel(new BorderLayout());
+    varTypeCombo = new JComboBox(valueTypes);
+    varTypeCombo.addItemListener(new ItemListener() {
+
+      @Override
+      public void itemStateChanged(ItemEvent e) {
+        if (e.getStateChange() == ItemEvent.SELECTED) {
+          System.out.println("VarType changed to: " + (VarTypes) e.getItem());
+          hf.setType((VarTypes) e.getItem());
+          updateNumberOfValues(); // number of elements should have changed
         }
-        pack();
       }
     });
 
-    smallPane.add(BorderLayout.EAST, varType);
+    varDispCombo = new JComboBox(valueFormas);
+    varDispCombo.setSelectedItem(VarFormats.HEX);
+    varDispCombo.addItemListener(new ItemListener() {
+
+      @Override
+      public void itemStateChanged(ItemEvent e) {
+        if (e.getStateChange() == ItemEvent.SELECTED) {
+
+          System.out.println("VarFormat changed to: " + (VarFormats) e.getItem());
+          hf.setFormat((VarFormats) e.getItem());
+          refreshValues(); // format of elements should have changed
+        }
+      }
+    });
+
+    reprPanel.add(BorderLayout.WEST, varTypeCombo);
+    reprPanel.add(BorderLayout.EAST, varDispCombo);
+
+    smallPane.add(BorderLayout.EAST, reprPanel);
     mainPane.add(smallPane);
 
     /* The recommended fix for the bug #4740914
      * Synopsis : Doing selectAll() in a JFormattedTextField on focusGained
      * event doesn't work. 
      */
-    jFormattedTextFocusAdapter = new FocusAdapter() {
-      public void focusGained(final FocusEvent ev) {
-        SwingUtilities.invokeLater(new Runnable() {
-          public void run() {
-            JTextField jtxt = (JTextField)ev.getSource();
-            jtxt.selectAll();
-          }
-        });
-      }
-    };
-
-    // Variable length
-    lengthPane = new JPanel(new BorderLayout());
-    label = new JLabel("Variable length");
-    label.setPreferredSize(new Dimension(LABEL_WIDTH,LABEL_HEIGHT));
-    lengthPane.add(BorderLayout.WEST, label);
-
-    varLength = new JFormattedTextField(integerFormat);
-    varLength.setValue(new Integer(1));
-    varLength.setColumns(4);
-    varLength.addPropertyChangeListener("value", new PropertyChangeListener() {
-      public void propertyChange(PropertyChangeEvent e) {
-        setNumberOfValues(((Number) varLength.getValue()).intValue());
-        if(varType.getSelectedIndex() == CHAR_ARRAY_INDEX) {
-          setNumberOfCharValues(((Number) varLength.getValue()).intValue());    
-        }
-      }
-    });
-    varLength.addFocusListener(jFormattedTextFocusAdapter);
-
-    lengthPane.add(BorderLayout.EAST, varLength);
-    mainPane.add(lengthPane);
-    mainPane.add(Box.createRigidArea(new Dimension(0,5)));
-
-    lengthPane.setVisible(false);
+//    jFormattedTextFocusAdapter = new FocusAdapter() {
+//      public void focusGained(final FocusEvent ev) {
+//        SwingUtilities.invokeLater(new Runnable() {
+//          public void run() {
+//            JTextField jtxt = (JTextField)ev.getSource();
+//            jtxt.selectAll();
+//          }
+//        });
+//      }
+//    };
+    mainPane.add(Box.createRigidArea(new Dimension(0, 5)));
 
     // Variable value label
     label = new JLabel("Variable value");
     label.setAlignmentX(JLabel.CENTER_ALIGNMENT);
-    label.setPreferredSize(new Dimension(LABEL_WIDTH,LABEL_HEIGHT));
+    label.setPreferredSize(new Dimension(LABEL_WIDTH, LABEL_HEIGHT));
     mainPane.add(label);
 
     // Variable value(s)
     valuePane = new JPanel();
     valuePane.setLayout(new BoxLayout(valuePane, BoxLayout.X_AXIS));
+
+    hf = new ValueFormatter(
+            (VarTypes) varTypeCombo.getSelectedItem(),
+            (VarFormats) varDispCombo.getSelectedItem());
 
     varValues = new JFormattedTextField[1];
     varValues[0] = new JFormattedTextField(integerFormat);
@@ -273,220 +348,50 @@ public class VariableWatcher extends VisPlugin implements MotePlugin {
     varValues[0].setColumns(3);
     varValues[0].setText("?");
 
-    for (JFormattedTextField varValue: varValues) {
-      valuePane.add(varValue);
-
-    }
-    charValuePane = new JPanel();
-    charValuePane.setLayout(new BoxLayout(charValuePane, BoxLayout.X_AXIS));
-    charValues = new JTextField[1];
-    charValues[0] = new JTextField();
-    charValues[0].setText("?");
-    charValues[0].setColumns(1);
-    charValues[0].setDocument(new JTextFieldLimit(1, false));
-
-    /* Key Listener for char value changes. */
-    charValueKeyListener = new KeyListener(){
-      @Override
-      public void keyPressed(KeyEvent arg0) {
-        Component comp = arg0.getComponent();
-        JTextField jtxt = (JTextField)comp;
-        int index = comp.getParent().getComponentZOrder(comp);
-        if(jtxt.getText().trim().length() != 0) {
-          char ch = jtxt.getText().trim().charAt(0);
-          varValues[index].setValue(new Integer(ch));
-        } else {
-          varValues[index].setValue(new Integer(0));  
-        }
-      }
-
-      @Override
-      public void keyReleased(KeyEvent arg0) {
-        Component comp = arg0.getComponent();
-        JTextField jtxt = (JTextField)comp;
-        int index = comp.getParent().getComponentZOrder(comp);
-        if(jtxt.getText().trim().length() != 0) {
-          char ch = jtxt.getText().trim().charAt(0);
-          varValues[index].setValue(new Integer(ch));
-        } else {
-          varValues[index].setValue(new Integer(0));
-        }
-      }
-
-      @Override
-      public void keyTyped(KeyEvent arg0) {
-        Component comp = arg0.getComponent();
-        JTextField jtxt = (JTextField)comp;
-        int index = comp.getParent().getComponentZOrder(comp);
-        if(jtxt.getText().trim().length() != 0) {
-          char ch = jtxt.getText().trim().charAt(0);
-          varValues[index].setValue(new Integer(ch));
-        } else {
-          varValues[index].setValue(new Integer(0));
-        }
-      }           
-    };
-
-    /* Key Listener for value changes. */  
-    varValueKeyListener = new KeyListener() {
-      @Override
-      public void keyPressed(KeyEvent arg0) {
-        Component comp = arg0.getComponent();
-        JFormattedTextField fmtTxt = (JFormattedTextField)comp;
-        int index = comp.getParent().getComponentZOrder(comp);
-        try {
-          int value = Integer.parseInt(fmtTxt.getText().trim());
-          char ch = (char)(0xFF & value);
-          charValues[index].setText(Character.toString(ch));
-        } catch(Exception e) {
-          charValues[index].setText(Character.toString((char)0));
-        }
-      }
-
-      @Override
-      public void keyReleased(KeyEvent arg0) {
-        Component comp = arg0.getComponent();
-        JFormattedTextField fmtTxt = (JFormattedTextField)comp;
-        int index = comp.getParent().getComponentZOrder(comp);
-        try {
-          int value = Integer.parseInt(fmtTxt.getText().trim());
-          char ch = (char)(0xFF & value);
-          charValues[index].setText(Character.toString(ch));
-        } catch(Exception e) {
-          charValues[index].setText(Character.toString((char)0));
-        }               
-      }  
-
-      @Override
-      public void keyTyped(KeyEvent arg0) {
-        Component comp = arg0.getComponent();
-        JFormattedTextField fmtTxt = (JFormattedTextField)comp;
-        int index = comp.getParent().getComponentZOrder(comp);
-        try {
-          int value = Integer.parseInt(fmtTxt.getText().trim());
-          char ch = (char)(0xFF & value);
-          charValues[index].setText(Character.toString(ch));
-        } catch(Exception e) {
-          charValues[index].setText(Character.toString((char)0));
-        }
-      }
-
-    };
-
+    /* ??? */
     charValueFocusListener = new FocusListener() {
       @Override
       public void focusGained(FocusEvent arg0) {
-        JTextField jtxt = (JTextField)arg0.getComponent();
+        JTextField jtxt = (JTextField) arg0.getComponent();
         jtxt.selectAll();
       }
+
       @Override
       public void focusLost(FocusEvent arg0) {
 
       }
     };
 
-
-    for (JTextField charValue: charValues) {
-      charValuePane.add(charValue);     
-    }
-
     mainPane.add(valuePane);
-    mainPane.add(Box.createRigidArea(new Dimension(0,5)));
-    charValuePane.setVisible(false);
-    mainPane.add(charValuePane);
-    mainPane.add(Box.createRigidArea(new Dimension(0,5)));
+    mainPane.add(Box.createRigidArea(new Dimension(0, 5)));
 
     debuglbl = new JLabel();
     mainPane.add(new JPanel().add(debuglbl));
-    mainPane.add(Box.createRigidArea(new Dimension(0,5)));
+    mainPane.add(Box.createRigidArea(new Dimension(0, 5)));
 
     // Read/write buttons
     smallPane = new JPanel(new BorderLayout());
     JButton button = new JButton("Read");
     button.addActionListener(new ActionListener() {
+      @Override
       public void actionPerformed(ActionEvent e) {
-        if (varType.getSelectedIndex() == BYTE_INDEX) {
-          try {
-            byte val = moteMemory.getByteValueOf((String) varName.getSelectedItem());
-            varValues[0].setValue(new Integer(0xFF & val));
-            varName.setBackground(Color.WHITE);
-            writeButton.setEnabled(true);
-          } catch (UnknownVariableException ex) {
-            ((JTextField) varName.getEditor().getEditorComponent()).setForeground(Color.RED);
-            writeButton.setEnabled(false);
-          }
-        } else if (varType.getSelectedIndex() == INT_INDEX) {
-          try {
-            int val = moteMemory.getIntValueOf((String) varName.getSelectedItem());
-            varValues[0].setValue(new Integer(val));
-            varName.setBackground(Color.WHITE);
-            writeButton.setEnabled(true);
-          } catch (UnknownVariableException ex) {
-            ((JTextField) varName.getEditor().getEditorComponent()).setForeground(Color.RED);
-            writeButton.setEnabled(false);
-          }
-        } else if (varType.getSelectedIndex() == ARRAY_INDEX || 
-            varType.getSelectedIndex() == CHAR_ARRAY_INDEX) {
-          try {
-            int length = ((Number) varLength.getValue()).intValue();
-            byte[] vals = moteMemory.getByteArray((String) varName.getSelectedItem(), length);
-            for (int i=0; i < length; i++) {
-              varValues[i].setValue(new Integer(0xFF & vals[i]));
-            }
-            if(varType.getSelectedIndex() == CHAR_ARRAY_INDEX) {
-              for (int i=0; i < length; i++) {
-                char ch = (char)(0xFF & vals[i]);  
-                charValues[i].setText(Character.toString(ch));  
-                varValues[i].addKeyListener(varValueKeyListener);
-              } 
-            }
-            varName.setBackground(Color.WHITE);
-            writeButton.setEnabled(true);
-          } catch (UnknownVariableException ex) {
-            ((JTextField) varName.getEditor().getEditorComponent()).setForeground(Color.RED);
-            writeButton.setEnabled(false);
-          }
-        }
+        System.out.println("Reading data of " + (String) varNameCombo.getSelectedItem() + " ...");
+        bufferedBytes = moteMemory.getByteArray(
+                (String) varNameCombo.getSelectedItem(),
+                moteMemory.getVariableSize((String) varNameCombo.getSelectedItem()));
+        System.out.println(StringUtils.hexDump(bufferedBytes));
+        System.out.println("Updating fields...");
+        refreshValues();
+
       }
     });
     smallPane.add(BorderLayout.WEST, button);
 
     button = new JButton("Write");
     button.addActionListener(new ActionListener() {
+      @Override
       public void actionPerformed(ActionEvent e) {
-        if (varType.getSelectedIndex() == BYTE_INDEX) {
-          try {
-            byte val = (byte) ((Number) varValues[0].getValue()).intValue();
-            moteMemory.setByteValueOf((String) varName.getSelectedItem(), val);
-            varName.setBackground(Color.WHITE);
-          } catch (UnknownVariableException ex) {
-            varName.setBackground(Color.RED);
-          }
-        } else if (varType.getSelectedIndex() == INT_INDEX) {
-          try {
-            int val = ((Number) varValues[0].getValue()).intValue();
-            moteMemory.setIntValueOf((String) varName.getSelectedItem(), val);
-            varName.setBackground(Color.WHITE);
-          } catch (UnknownVariableException ex) {
-            varName.setBackground(Color.RED);
-          }
-        } else if (varType.getSelectedIndex() == ARRAY_INDEX || 
-            varType.getSelectedIndex() == CHAR_ARRAY_INDEX) {
-          try {
-            int length = ((Number) varLength.getValue()).intValue();
-            byte[] vals = new byte[length];
-            for (int i=0; i < length; i++) {
-              vals[i] = (byte) ((Number) varValues[i].getValue()).intValue();
-            }
-
-            moteMemory.setByteArray((String) varName.getSelectedItem(), vals);
-            varName.setBackground(Color.WHITE);
-            writeButton.setEnabled(true);
-          } catch (UnknownVariableException ex) {
-            varName.setBackground(Color.RED);
-            writeButton.setEnabled(false);
-          }
-        }
+        throw new UnsupportedOperationException("Writing is not supported yet.");
       }
     });
     smallPane.add(BorderLayout.EAST, button);
@@ -498,113 +403,252 @@ public class VariableWatcher extends VisPlugin implements MotePlugin {
     pack();
   }
 
-  private void setNumberOfValues(int nr) {
+  /**
+   * Simple String to Hex to String conversion.
+   */
+  public class ValueFormatter extends JFormattedTextField.AbstractFormatter {
+
+    final String TEXT_NOT_TO_TOUCH;
+
+    private VarTypes mType;
+    private VarFormats mFormat;
+
+    public ValueFormatter(VarTypes type, VarFormats format) {
+      mType = type;
+      mFormat = format;
+      if (mFormat == VarFormats.HEX) {
+        TEXT_NOT_TO_TOUCH = "0x";
+      }
+      else {
+        TEXT_NOT_TO_TOUCH = "";
+      }
+    }
+
+    public void setType(VarTypes type) {
+      mType = type;
+    }
+
+    public void setFormat(VarFormats format) {
+      mFormat = format;
+    }
+
+    @Override
+    public Object stringToValue(String text) throws ParseException {
+//      System.out.println("HexFormatter stringToValue('" + text + "')");
+      Object ret;
+      switch (mFormat) {
+        case CHAR:
+          ret = text.charAt(0);
+          break;
+        case DEC:
+        case HEX:
+          try {
+            ret = Integer.decode(text);
+          }
+          catch (NumberFormatException ex) {
+            ret = 0;
+          }
+          break;
+        default:
+          ret = null;
+      }
+      return ret;
+    }
+
+    @Override
+    public String valueToString(Object value) throws ParseException {
+//      System.out.println("ValueFormatter valueToStrign(" + value + ")");
+      if (value == null) {
+        return "?";
+      }
+
+      switch (mFormat) {
+        case CHAR:
+          return String.format("%c", value);
+        case DEC:
+          return String.format("%d", value);
+        case HEX:
+          return String.format("0x%x", value);
+        default:
+          return "";
+      }
+    }
+
+    /* Do not override TEXT_NOT_TO_TOUCH */
+    @Override
+    public DocumentFilter getDocumentFilter() {
+      return new DocumentFilter() {
+
+        @Override
+        public void insertString(DocumentFilter.FilterBypass fb, int offset, String string, AttributeSet attr) throws BadLocationException {
+          System.out.println("insertString!");
+          if (offset < TEXT_NOT_TO_TOUCH.length()) {
+            return;
+          }
+          super.insertString(fb, offset, string, attr);
+        }
+
+        @Override
+        public void replace(DocumentFilter.FilterBypass fb, int offset, int length, String text, AttributeSet attrs) throws BadLocationException {
+          System.out.println("replace!");
+          if (offset < TEXT_NOT_TO_TOUCH.length()) {
+            length = Math.max(0, length - TEXT_NOT_TO_TOUCH.length());
+            offset = TEXT_NOT_TO_TOUCH.length();
+          }
+          super.replace(fb, offset, length, text, attrs);
+        }
+
+        @Override
+        public void remove(DocumentFilter.FilterBypass fb, int offset, int length) throws BadLocationException {
+          System.out.println("remove!");
+          if (offset < TEXT_NOT_TO_TOUCH.length()) {
+            length = Math.max(0, length + offset - TEXT_NOT_TO_TOUCH.length());
+            offset = TEXT_NOT_TO_TOUCH.length();
+          }
+          if (length > 0) {
+            super.remove(fb, offset, length);
+          }
+        }
+      };
+    }
+
+  }
+
+  /**
+   * Updates all value fields based on buffered data.
+   */
+  private void refreshValues() {
+    int bytes = moteMemory.getVariableSize((String) varNameCombo.getSelectedItem());
+    int typeSize = ((VarTypes) varTypeCombo.getSelectedItem()).getBytes();
+    int elements = (int) Math.ceil((double) bytes / typeSize);
+//    System.out.println("bytes: " + bytes);
+//    System.out.println("typeSize: " + typeSize);
+//    System.out.println("elements: " + elements);
+
+    /* Skip if we have no data to set */
+    if ((bufferedBytes == null) || (bufferedBytes.length < bytes)) {
+      return;
+    }
+
+    /* Set values based on buffered data */
+    for (int i = 0; i < elements; i += 1) {
+      int val = 0;
+      for (int j = 0; j < typeSize; j++) {
+        val += ((bufferedBytes[i * typeSize + j] & 0xFF) << (j * 8));
+      }
+      varValues[i].setValue(val);
+      try {
+        varValues[i].commitEdit();
+      }
+      catch (ParseException ex) {
+        Logger.getLogger(VariableWatcher.class.getName()).log(Level.SEVERE, null, ex);
+      }
+    }
+
+  }
+
+  /**
+   * Updates number of value fields.
+   */
+  private void updateNumberOfValues() {
     valuePane.removeAll();
 
-    if (nr > 0) {
-      varValues = new JFormattedTextField[nr];
-      for (int i=0; i < nr; i++) {
-        varValues[i] = new JFormattedTextField(integerFormat);
-        varValues[i] .setValue(new Integer(0));
-        varValues[i] .setColumns(3);
-        varValues[i] .setText("?");
-        varValues[i].addFocusListener(jFormattedTextFocusAdapter);
+    DefaultFormatterFactory defac = new DefaultFormatterFactory(hf);
+    int bytes = moteMemory.getVariableSize((String) varNameCombo.getSelectedItem());
+    int typeSize = ((VarTypes) varTypeCombo.getSelectedItem()).getBytes();
+    int elements = (int) Math.ceil((double) bytes / typeSize);
+//    System.out.println("bytes: " + bytes);
+//    System.out.println("typeSize: " + typeSize);
+//    System.out.println("elements: " + elements);
+
+    if (elements > 0) {
+      varValues = new JFormattedTextField[elements];
+      for (int i = 0; i < elements; i++) {
+        varValues[i] = new JFormattedTextField(defac);
         valuePane.add(varValues[i]);
       }
     }
+
+    refreshValues();
+
     pack();
   }
 
-  private void setNumberOfCharValues(int nr) {
-    charValuePane.removeAll();
-
-    if (nr > 0) {
-      charValues = new JTextField[nr];
-      for (int i=0; i < nr; i++) {
-        charValues[i] = new JTextField();
-        charValues[i] .setColumns(1);
-        charValues[i] .setText("?");
-        charValues[i].setDocument(new JTextFieldLimit(1, false));
-        charValues[i].addKeyListener(charValueKeyListener);
-        charValues[i].addFocusListener(charValueFocusListener);
-        charValuePane.add(charValues[i]);
-      }
-    }
-    pack();
-  }
-
+  @Override
   public void closePlugin() {
   }
 
+  @Override
   public Collection<Element> getConfigXML() {
     // Return currently watched variable and type
-    Vector<Element> config = new Vector<Element>();
+    Vector<Element> config = new Vector<>();
 
     Element element;
 
     // Selected variable name
     element = new Element("varname");
-    element.setText((String) varName.getSelectedItem());
+    element.setText((String) varNameCombo.getSelectedItem());
     config.add(element);
 
     // Selected variable type
-    if (varType.getSelectedIndex() == BYTE_INDEX) {
+    if (varTypeCombo.getSelectedIndex() == BYTE_INDEX) {
       element = new Element("vartype");
       element.setText("byte");
       config.add(element);
-    } else if (varType.getSelectedIndex() == INT_INDEX) {
+    }
+    else if (varTypeCombo.getSelectedIndex() == INT_INDEX) {
       element = new Element("vartype");
       element.setText("int");
       config.add(element);
-    } else if (varType.getSelectedIndex() == ARRAY_INDEX) {
+    }
+    else if (varTypeCombo.getSelectedIndex() == ARRAY_INDEX) {
       element = new Element("vartype");
       element.setText("array");
       config.add(element);
-      element = new Element("array_length");
-      element.setText(varLength.getValue().toString());
       config.add(element);
-    } else if (varType.getSelectedIndex() == CHAR_ARRAY_INDEX) {
+    }
+    else if (varTypeCombo.getSelectedIndex() == CHAR_ARRAY_INDEX) {
       element = new Element("vartype");
       element.setText("chararray");
       config.add(element);
-      element = new Element("array_length");
-      element.setText(varLength.getValue().toString());
       config.add(element);
     }
 
     return config;
   }
 
+  @Override
   public boolean setConfigXML(Collection<Element> configXML, boolean visAvailable) {
-    lengthPane.setVisible(false);
-    setNumberOfValues(1);
-    varLength.setValue(1);
+    updateNumberOfValues();
 
     for (Element element : configXML) {
       if (element.getName().equals("varname")) {
-        varName.setSelectedItem(element.getText());
-      } else if (element.getName().equals("vartype")) {
+        varNameCombo.setSelectedItem(element.getText());
+      }
+      else if (element.getName().equals("vartype")) {
         if (element.getText().equals("byte")) {
-          varType.setSelectedIndex(BYTE_INDEX);
-        } else if (element.getText().equals("int")) {
-          varType.setSelectedIndex(INT_INDEX);
-        } else if (element.getText().equals("array")) {
-          varType.setSelectedIndex(ARRAY_INDEX);
-          lengthPane.setVisible(true);
-        } else if (element.getText().equals("chararray")) {
-          varType.setSelectedIndex(CHAR_ARRAY_INDEX);
-          lengthPane.setVisible(true);
+          varTypeCombo.setSelectedIndex(BYTE_INDEX);
         }
-      } else if (element.getName().equals("array_length")) {
+        else if (element.getText().equals("int")) {
+          varTypeCombo.setSelectedIndex(INT_INDEX);
+        }
+        else if (element.getText().equals("array")) {
+          varTypeCombo.setSelectedIndex(ARRAY_INDEX);
+        }
+        else if (element.getText().equals("chararray")) {
+          varTypeCombo.setSelectedIndex(CHAR_ARRAY_INDEX);
+        }
+      }
+      else if (element.getName().equals("array_length")) {
         int nrValues = Integer.parseInt(element.getText());
-        setNumberOfValues(nrValues);
-        varLength.setValue(nrValues);
+        updateNumberOfValues();
       }
     }
 
     return true;
   }
 
+  @Override
   public Mote getMote() {
     return mote;
   }
@@ -629,8 +673,9 @@ class JTextFieldLimit extends PlainDocument {
     toUppercase = upper;
   }
 
-  public void insertString(int offset, String  str, AttributeSet attr)
-  throws BadLocationException {
+  @Override
+  public void insertString(int offset, String str, AttributeSet attr)
+          throws BadLocationException {
     if (str == null) {
       return;
     }
