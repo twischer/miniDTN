@@ -50,7 +50,7 @@ import org.contikios.cooja.plugins.Debugger;
 import avrora.sim.AtmelInterpreter;
 import avrora.sim.mcu.AtmelMicrocontroller;
 
-@ClassDescription("Souce-level debugger")
+@ClassDescription("Source-level debugger")
 @PluginType(PluginType.MOTE_PLUGIN)
 @SupportedArguments(motes = {AvroraMote.class})
 public class NewAvrDebugger extends Debugger {
