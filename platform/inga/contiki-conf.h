@@ -150,7 +150,7 @@
 #if WITH_UIP6
 #define NETSTACK_CONF_NETWORK     sicslowpan_driver
 
-#define RIMEADDR_CONF_SIZE        8
+#define LINKADDR_CONF_SIZE        8
 
 /* -- UIP IPv6 settings */
 #define UIP_CONF_ICMP6            1
@@ -189,7 +189,7 @@
 /* ip4 should build but is largely untested */
 #define NETSTACK_CONF_NETWORK     rime_driver
 
-#define RIMEADDR_CONF_SIZE        2
+#define LINKADDR_CONF_SIZE        2
 
 #endif /* WITH_UIP6 */
 
