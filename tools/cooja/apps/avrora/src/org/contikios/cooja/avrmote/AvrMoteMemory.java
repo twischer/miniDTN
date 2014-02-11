@@ -45,15 +45,16 @@ import avrora.sim.State;
  * @author Joakim Eriksson, Fredrik Osterlind, David Kopf
  */
 public class AvrMoteMemory implements MoteMemory, AddressMemory {
-  private static Logger logger = Logger.getLogger(AvrMoteMemory.class);
+  private static final Logger logger = Logger.getLogger(AvrMoteMemory.class);
 
-  private SourceMapping memoryMap;
-  private AtmelInterpreter interpreter;
+  private final SourceMapping memoryMap;
+  private final AtmelInterpreter interpreter;
+  private final ArrayList<AvrMemoryMonitor> memoryMonitors = new ArrayList<>();
 
   private boolean coojaIsAccessingMemory;
 
   public AvrMoteMemory(SourceMapping map, AVRProperties avrProperties, AtmelInterpreter interpreter) {
-    memoryMap = map;
+    this.memoryMap = map;
     this.interpreter = interpreter;
   }
 
@@ -144,7 +145,7 @@ public class AvrMoteMemory implements MoteMemory, AddressMemory {
 
   @Override
   public String[] getVariableNames() {
-    ArrayList<String> symbols = new ArrayList<String>();
+    ArrayList<String> symbols = new ArrayList<>();
     for (Iterator i = memoryMap.getIterator(); i.hasNext();) {
       Location loc = (Location) i.next();
       /* Skip '.text' code section symbols */
@@ -185,75 +186,81 @@ public class AvrMoteMemory implements MoteMemory, AddressMemory {
   }
 
   class AvrMemoryMonitor {
-    private int lastAddr;
+
     int address;
-    int size; /** @TODO: param seems to be ignored! */
+    int size;
     MemoryMonitor mm;
     Watch watch;
   }
-  private final ArrayList<AvrMemoryMonitor> memoryMonitors = new ArrayList<>();
+  
 
   @Override
   public boolean addMemoryMonitor(MonitorType flag, int address, int size, MemoryMonitor mm) {
+    final AvrMemoryMonitor mon = new AvrMemoryMonitor();
+    mon.address = address;
+    mon.size = size;
+    mon.mm = mm;
+    if (flag == MonitorType.R) {
+      mon.watch = new Watch.Empty() {
+        @Override
+        public void fireAfterRead(State state, int data_addr, byte value) {
+          if (coojaIsAccessingMemory) {
+            return;
+          }
+          mon.mm.memoryChanged(AvrMoteMemory.this, MemoryEventType.READ, data_addr);
+        }
+      };
+    }
+    else if (flag == MonitorType.W) {
+      mon.watch = new Watch.Empty() {
+        @Override
+        public void fireAfterWrite(State state, int data_addr, byte value) {
+          if (coojaIsAccessingMemory) {
+            return;
+          }
+          mon.mm.memoryChanged(AvrMoteMemory.this, MemoryEventType.WRITE, data_addr);
+        }
+      };
+    }
+    else {
+      mon.watch = new Watch.Empty() {
+        @Override
+        public void fireAfterRead(State state, int data_addr, byte value) {
+          if (coojaIsAccessingMemory) {
+            return;
+          }
+          mon.mm.memoryChanged(AvrMoteMemory.this, MemoryEventType.READ, data_addr);
+        }
+
+        @Override
+        public void fireAfterWrite(State state, int data_addr, byte value) {
+          if (coojaIsAccessingMemory) {
+            return;
+          }
+          mon.mm.memoryChanged(AvrMoteMemory.this, MemoryEventType.WRITE, data_addr);
+        }
+      };
+    }
+    memoryMonitors.add(mon);
+    /* logger.debug("Added AvrMemoryMonitor " + Integer.toString(mon.hashCode()) + " for addr " + mon.address + " size " + mon.size + " with watch" + mon.watch); */
+
     /* Add a watch for every byte in range */
-    for (int idx = 0; idx < size; idx++) {
-      final AvrMemoryMonitor mon = new AvrMemoryMonitor();
-      mon.address = address;
-      mon.size = size;
-      mon.mm = mm;
-      if (flag == MonitorType.R) {
-        mon.watch = new Watch.Empty() {
-          @Override
-          public void fireAfterRead(State state, int data_addr, byte value) {
-            if (coojaIsAccessingMemory) {
-              return;
-            }
-            mon.mm.memoryChanged(AvrMoteMemory.this, MemoryEventType.READ, data_addr);
-          }
-        };
-      }
-      else if (flag == MonitorType.W) {
-        mon.watch = new Watch.Empty() {
-          @Override
-          public void fireAfterWrite(State state, int data_addr, byte value) {
-            if (coojaIsAccessingMemory) {
-              return;
-            }
-            mon.mm.memoryChanged(AvrMoteMemory.this, MemoryEventType.WRITE, data_addr);
-          }
-        };
-      }
-      else {
-        mon.watch = new Watch.Empty() {
-          @Override
-          public void fireAfterRead(State state, int data_addr, byte value) {
-            if (coojaIsAccessingMemory) {
-              return;
-            }
-            mon.mm.memoryChanged(AvrMoteMemory.this, MemoryEventType.READ, data_addr);
-          }
-
-          @Override
-          public void fireAfterWrite(State state, int data_addr, byte value) {
-            if (coojaIsAccessingMemory) {
-              return;
-            }
-            mon.mm.memoryChanged(AvrMoteMemory.this, MemoryEventType.WRITE, data_addr);
-          }
-        };
-      }
-
+    for (int idx = 0; idx < mon.size; idx++) {
       interpreter.getSimulator().insertWatch(mon.watch, mon.address + idx);
-      memoryMonitors.add(mon);
+      /* logger.debug("Inserted watch " + Integer.toString(mon.watch.hashCode()) + " for " + (mon.address + idx)); */
     }
     return true;
-  }  
+  }
   
   @Override
   public void removeMemoryMonitor(int address, int size, MemoryMonitor mm) {
     for (AvrMemoryMonitor mcm: memoryMonitors) {
       if (mcm.mm != mm || mcm.address != address || mcm.size != size) {
         continue;
+      }
+      for (int idx = 0; idx < mcm.size; idx++) {
+        interpreter.getSimulator().removeWatch(mcm.watch, mcm.address + idx);
+        /* logger.debug("Removed watch " + Integer.toString(mcm.watch.hashCode()) + " for " + (mcm.address + idx)); */
       }
       memoryMonitors.remove(mcm);
       break;
