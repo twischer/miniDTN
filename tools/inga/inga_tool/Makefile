@@ -39,8 +39,8 @@ LDLIBS=${FTDI_LDLIBS} ${POPT_LDLIBS} ${LIBUDEV_LDLIBS}
 # Standard recipes to make inga_tool
 
 NAME    := inga_tool
-SOURCES := inga_tool.c
-HEADERS :=
+SOURCES := inga_usb.c inga_tool.c
+HEADERS := inga_usb.h
 OBJECTS := $(shell echo "${SOURCES}" | sed -e 's/\.c/\.o/g')
 
 all: ${NAME}

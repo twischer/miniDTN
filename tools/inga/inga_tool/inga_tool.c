@@ -1,6 +1,7 @@
 /* Reset INGA nodes and configure their FTDI
  *
  * (C) 2011 Daniel Willmann <daniel@totalueberwachung.de>
+ * (C) 2014 Sven Hesse <drmccoy@drmccoy.de>
  * All Rights Reserved
  *
  * Redistribution and use in source and binary forms, with or without
@@ -34,15 +35,14 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
-#include <libgen.h>
-#include <libudev.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <stdlib.h>
 #include <unistd.h>
 
-#include <ftdi.h>
 #include <popt.h>
-#include <usb.h>
+
+#include "inga_usb.h"
 
 enum {
 	MODE_RESET,
@@ -51,12 +51,9 @@ enum {
 };
 
 struct config_t {
+	struct inga_usb_config_t usb;
+
 	int mode;
-	char *device_path;
-	char *device_serial;
-	char *device_id;
-	int busnum;
-	int devnum;
 	int verbose;
 	/* EEPROM configuration */
 	int eep_cbusio;
@@ -72,211 +69,93 @@ struct config_t {
 	if (cfg->verbose)\
 		fprintf(stderr, ##args)
 
-void resolve_usb_device(struct config_t *cfg)
-{
-	int rc;
-	struct udev *udev;
-	struct udev_device *dev;
-	char *devpath;
-	const char *devnum, *busnum;
-
-	if (cfg->device_path) {
-		udev = udev_new();
-		if (!udev) {
-			fprintf(stderr, "Failed to initialize udev\n");
-			exit(EXIT_FAILURE);
-		}
-
-		rc = asprintf(&devpath, "/sys/class/tty/%s", basename(cfg->device_path));
-		if (rc < 0) {
-			fprintf(stderr, "Failed to generate sysfs path\n");
-			exit(EXIT_FAILURE);
-		}
-
-		dev = udev_device_new_from_syspath(udev, devpath);
-		free(devpath);
-		if (!dev) {
-			fprintf(stderr, "Failed get udev device\n");
-			exit(EXIT_FAILURE);
-		}
-
-		while (dev) {
-			busnum = udev_device_get_sysattr_value(dev, "busnum");
-			devnum = udev_device_get_sysattr_value(dev, "devnum");
-
-			if (busnum && devnum) {
-				/* TODO: Check conversion errors */
-				cfg->busnum = atoi(busnum);
-				cfg->devnum = atoi(devnum);
-				VERBOSE("Device %s resolved to USB device %i:%i\n", cfg->device_path, cfg->busnum, cfg->devnum);
-				break;
-			}
-
-			dev = udev_device_get_parent(dev);
-		}
-		udev_unref(udev);
-
-		if (cfg->busnum == 0 || cfg->devnum == 0) {
-			fprintf(stderr, "Failed to resolve %s to USB device\n", cfg->device_path);
-			exit(EXIT_FAILURE);
-		}
-	}
-}
-
-struct usb_device *find_matching_usb_dev(struct config_t *cfg)
-{
-	int rc;
-	struct usb_bus *bus;
-	struct usb_device *usbdev;
-	struct usb_dev_handle *ufd;
-	long int busnum;
-	char *bus_end, buf[256];
-
-	resolve_usb_device(cfg);
-
-	usb_init();
-	usb_find_busses();
-	usb_find_devices();
-
-	bus = usb_get_busses();
-
-	/* Iterate over all devices in all busses and see if it matches */
-	for (;bus != NULL; bus = bus->next) {
-		for (usbdev = bus->devices; usbdev != NULL; usbdev = usbdev->next) {
-			/* Check if busnumber and devicenumber match */
-			if (cfg->busnum != 0 && cfg->devnum != 0) {
-				if (usbdev->devnum != cfg->devnum)
-					continue;
-				/* Convert the bus number */
-				busnum = strtol(usbdev->bus->dirname, &bus_end, 10);
-				if (bus_end[0] == 0 && usbdev->bus->dirname[0] != 0) {
-					if (busnum != cfg->busnum)
-						continue;
-				}
-				VERBOSE("Found USB device matching %i:%i\n", cfg->busnum, cfg->devnum);
-			}
-
-			/* Check if USB serial matches */
-			if (cfg->device_serial) {
-				ufd = usb_open(usbdev);
-				if (!ufd)
-					continue;
-				if (!usbdev->descriptor.iSerialNumber) {
-					usb_close(ufd);
-					continue;
-				}
-				rc = usb_get_string_simple(ufd, usbdev->descriptor.iSerialNumber, buf, sizeof(buf));
-				usb_close(ufd);
-
-				if (rc <= 0 || strcmp(buf, cfg->device_serial))
-					continue;
-
-				VERBOSE("Found USB serial %s on USB device %s:%i\n", cfg->device_serial, usbdev->bus->dirname, usbdev->devnum);
-			}
-
-			VERBOSE("All requirements match, using %i:%i as target device\n", atoi(usbdev->bus->dirname), usbdev->devnum);
-			return usbdev;
-		}
-	}
-
-	return NULL;
-}
-
 void inga_reset(struct config_t *cfg)
 {
 	int rc;
 	struct ftdi_context ftdic;
-	struct usb_device *usbdev;
+	struct inga_usb_device_t *usbdev = NULL;
 
-	if (ftdi_init(&ftdic) < 0)
-	{
+	if (inga_usb_ftdi_init(&ftdic) < 0) {
 		fprintf(stderr, "ftdi_init failed\n");
 		exit(EXIT_FAILURE);
 	}
 
 	/* Find the USB device for the path */
-	usbdev = find_matching_usb_dev(cfg);
+	usbdev = inga_usb_find_device(&cfg->usb, cfg->verbose);
 	if (!usbdev) {
 		fprintf(stderr, "Could not find device\n");
 		exit(EXIT_FAILURE);
 	}
 
-	rc = ftdi_usb_open_dev(&ftdic, usbdev);
-	if (rc < 0)
-	{
-		rintf(stderr, "unable to open ftdi device: %d (%s)\n", rc, ftdi_get_error_string(&ftdic));
-		it(EXIT_FAILURE);
+	rc = inga_usb_ftdi_open(&ftdic, usbdev);
+	if (rc < 0) {
+		fprintf(stderr, "unable to open ftdi device: %d (%s)\n", rc, ftdi_get_error_string(&ftdic));
+		exit(EXIT_FAILURE);
 	}
-
-	usbdev = usb_device(ftdic.usb_dev);
 
 	printf("Resetting INGA node...");
 	fflush(stdout);
 
 	/* Set CBUS3 to output and high */
-	ftdi_set_bitmode(&ftdic, 0x88, BITMODE_CBUS);
+	inga_usb_ftdi_set_bitmode(&ftdic, 0x88, BITMODE_CBUS);
 
-	//sleep(1);
+	/* sleep(1); */
 
 	/* Set CBUS3 to output and low */
-	ftdi_set_bitmode(&ftdic, 0x80, BITMODE_CBUS);
+	inga_usb_ftdi_set_bitmode(&ftdic, 0x80, BITMODE_CBUS);
 
 	printf("done\n");
 
-	ftdi_set_bitmode(&ftdic, 0, BITMODE_RESET);
+	inga_usb_ftdi_set_bitmode(&ftdic, 0, BITMODE_RESET);
 
 out:
 
-	if (cfg->verbose)
-		fprintf(stderr, "Resetting USB device\n");
+	VERBOSE("Resetting USB device\n");
 
-	/* USB reset is necessary in order to get the serial device back */
-	ftdi_usb_reset(&ftdic);
-	usb_reset(ftdic.usb_dev);
-	ftdi_usb_close(&ftdic);
-	ftdi_deinit(&ftdic);
+	inga_usb_ftdi_reset(&ftdic);
+	inga_usb_ftdi_close(&ftdic);
+	inga_usb_ftdi_deinit(&ftdic);
+
+	inga_usb_free_device(usbdev);
 }
 
+#if FTDI_VERSION == 0
 void inga_serial(struct config_t *cfg)
 {
 	int rc;
 	struct ftdi_context ftdic;
-	struct usb_device *usbdev;
+	struct inga_usb_device_t *usbdev = NULL;
 	struct ftdi_eeprom eeprom;
 	char buf[FTDI_DEFAULT_EEPROM_SIZE];
 
-	if (ftdi_init(&ftdic) < 0)
-	{
+	if (inga_usb_ftdi_init(&ftdic) < 0) {
 		fprintf(stderr, "ftdi_init failed\n");
 		exit(EXIT_FAILURE);
 	}
 
 	/* Find the USB device for the path */
-	usbdev = find_matching_usb_dev(cfg);
+	usbdev = inga_usb_find_device(&cfg->usb, cfg->verbose);
 	if (!usbdev) {
 		fprintf(stderr, "Could not find device\n");
 		exit(EXIT_FAILURE);
 	}
 
-	rc = ftdi_usb_open_dev(&ftdic, usbdev);
-	if (rc < 0)
-	{
-		fprintf(stderr, "unable to open ftdi device: %d (%s)\n", rc, ftdi_get_error_string(&ftdic));
+	rc = inga_usb_ftdi_open(&ftdic, usbdev);
+	if (rc < 0) {
+		fprintf(stderr, "unable to open ftdi device: %d (%s)\n", rc, inga_usb_ftdi_get_error_string(&ftdic));
 		exit(EXIT_FAILURE);
 	}
 
-	usbdev = usb_device(ftdic.usb_dev);
-
 	printf("Reading out EEPROM image...");
 	fflush(stdout);
-	rc = ftdi_read_eeprom(&ftdic, buf);
+	rc = inga_usb_ftdi_read_eeprom(&ftdic, buf);
 	if (rc < 0) {
 		fprintf(stderr, "\nCould not read EEPROM: %i\n", rc);
 		exit(EXIT_FAILURE);
 	}
 	printf("done\n");
 
-	rc = ftdi_eeprom_decode(&eeprom, buf, FTDI_DEFAULT_EEPROM_SIZE);
+	rc = inga_usb_ftdi_eeprom_decode(&eeprom, buf, FTDI_DEFAULT_EEPROM_SIZE);
 	if (rc < 0) {
 		fprintf(stderr, "Could not decode EEPROM: %i\n", rc);
 		exit(EXIT_FAILURE);
@@ -296,52 +175,52 @@ void inga_serial(struct config_t *cfg)
 	}
 
 	printf("Serial: %s\n",eeprom.serial);
-	ftdi_usb_reset(&ftdic);
-	usb_reset(ftdic.usb_dev);
-	ftdi_usb_close(&ftdic);
-	ftdi_deinit(&ftdic);
+
+	VERBOSE("Resetting USB device\n");
+
+	inga_usb_ftdi_reset(&ftdic);
+	inga_usb_ftdi_close(&ftdic);
+	inga_usb_ftdi_deinit(&ftdic);
+
+	inga_usb_free_device(usbdev);
 }
 
 void inga_eeprom(struct config_t *cfg)
 {
 	int rc;
 	struct ftdi_context ftdic;
-	struct usb_device *usbdev;
+	struct inga_usb_device_t *usbdev = NULL;
 	struct ftdi_eeprom eeprom;
 	char buf[FTDI_DEFAULT_EEPROM_SIZE];
 
-	if (ftdi_init(&ftdic) < 0)
-	{
+	if (inga_usb_ftdi_init(&ftdic) < 0) {
 		fprintf(stderr, "ftdi_init failed\n");
 		exit(EXIT_FAILURE);
 	}
 
 	/* Find the USB device for the path */
-	usbdev = find_matching_usb_dev(cfg);
+	usbdev = inga_usb_find_device(&cfg->usb, cfg->verbose);
 	if (!usbdev) {
 		fprintf(stderr, "Could not find device\n");
 		exit(EXIT_FAILURE);
 	}
 
-	rc = ftdi_usb_open_dev(&ftdic, usbdev);
-	if (rc < 0)
-	{
-		fprintf(stderr, "unable to open ftdi device: %d (%s)\n", rc, ftdi_get_error_string(&ftdic));
+	rc = inga_usb_ftdi_open(&ftdic, usbdev);
+	if (rc < 0) {
+		fprintf(stderr, "unable to open ftdi device: %d (%s)\n", rc, inga_usb_ftdi_get_error_string(&ftdic));
 		exit(EXIT_FAILURE);
 	}
 
-	usbdev = usb_device(ftdic.usb_dev);
-
 	printf("Reading out EEPROM image...");
 	fflush(stdout);
-	rc = ftdi_read_eeprom(&ftdic, buf);
+	rc = inga_usb_ftdi_read_eeprom(&ftdic, buf);
 	if (rc < 0) {
 		fprintf(stderr, "\nCould not read EEPROM: %i\n", rc);
 		exit(EXIT_FAILURE);
 	}
 	printf("done\n");
 
-	rc = ftdi_eeprom_decode(&eeprom, buf, FTDI_DEFAULT_EEPROM_SIZE);
+	rc = inga_usb_ftdi_eeprom_decode(&eeprom, buf, FTDI_DEFAULT_EEPROM_SIZE);
 	if (rc < 0) {
 		fprintf(stderr, "Could not decode EEPROM: %i\n", rc);
 		exit(EXIT_FAILURE);
@@ -412,7 +291,7 @@ void inga_eeprom(struct config_t *cfg)
 			eeprom.cbus_function[3], eeprom.cbus_function[4]);
 
 	eeprom.chip_type = ftdic.type;
-	rc = ftdi_eeprom_build(&eeprom, buf);
+	rc = inga_usb_ftdi_eeprom_build(&eeprom, buf);
 	if (rc < 0) {
 		fprintf(stderr, "Could not build EEPROM: %i\n", rc);
 		exit(EXIT_FAILURE);
@@ -420,7 +299,7 @@ void inga_eeprom(struct config_t *cfg)
 
 	printf("Writing updated EEPROM image...");
 	fflush(stdout);
-	rc = ftdi_write_eeprom(&ftdic, buf);
+	rc = inga_usb_ftdi_write_eeprom(&ftdic, buf);
 	if (rc < 0) {
 		fprintf(stderr, "\nCould not write EEPROM: %i\n", rc);
 		exit(EXIT_FAILURE);
@@ -430,15 +309,15 @@ void inga_eeprom(struct config_t *cfg)
 
 out:
 
-	if (cfg->verbose)
-	fprintf(stderr, "Resetting USB device\n");
+	VERBOSE("Resetting USB device\n");
 
-	/* USB reset is necessary in order to get the serial device back */
-	ftdi_usb_reset(&ftdic);
-	usb_reset(ftdic.usb_dev);
-	ftdi_usb_close(&ftdic);
-	ftdi_deinit(&ftdic);
+	inga_usb_ftdi_reset(&ftdic);
+	inga_usb_ftdi_close(&ftdic);
+	inga_usb_ftdi_deinit(&ftdic);
+
+	inga_usb_free_device(usbdev);
 }
+#endif
 
 void usage(poptContext poptc, int exitcode, char *error, char *addl)
 {
@@ -460,11 +339,11 @@ void parse_options(int argc, const char **argv, struct config_t *cfg)
 			NULL},
 		{"serial", 's', POPT_ARG_VAL, &cfg->mode, MODE_READ_SERIAL, "Read the FTDI serial from its EEPROM",
 			NULL},
-		{"device", 'd', POPT_ARG_STRING, &cfg->device_path, 0, "Path to the serial device",
+		{"device", 'd', POPT_ARG_STRING, &cfg->usb.device_path, 0, "Path to the serial device",
 			"pathname"},
-		{"serial", 's', POPT_ARG_STRING, &cfg->device_serial, 0, "Serial of the FTDI",
-			"usb_serial"},
-		{"id", 'i', POPT_ARG_STRING, &cfg->device_id, 0, "Limit choice to USB device id",
+		{"usbserial", 'u', POPT_ARG_STRING, &cfg->usb.device_serial, 0, "Serial of the FTDI to use",
+			"usbserial"},
+		{"id", 'i', POPT_ARG_STRING, &cfg->usb.device_id, 0, "Limit choice to USB device id",
 			"device_id"},
 		{"verbose", 'v', POPT_ARG_NONE, &cfg->verbose, 0, "Be verbose",
 			NULL},
@@ -491,25 +370,25 @@ void parse_options(int argc, const char **argv, struct config_t *cfg)
 		exit(EXIT_FAILURE);
 	}
 
-	if (!cfg->device_path && !cfg->device_serial)
+	if (!cfg->usb.device_path && !cfg->usb.device_serial)
 		usage(poptc, 1, "At least one of --device or --serial has to be set", "");
 
 	poptFreeContext(poptc);
 
-	if (!cfg->device_path)
+	if (!cfg->usb.device_path)
 		return;
 
 	/* Resolve symlinks/relative paths */
-	tmp = realpath(cfg->device_path, NULL);
+	tmp = realpath(cfg->usb.device_path, NULL);
 	if (!tmp) {
 		perror("Could not open device");
 		exit(EXIT_FAILURE);
 	}
 
-	VERBOSE("Resolving path %s to %s\n", cfg->device_path, tmp);
+	VERBOSE("Resolving path %s to %s\n", cfg->usb.device_path, tmp);
 
-	free(cfg->device_path);
-	cfg->device_path = tmp;
+	free(cfg->usb.device_path);
+	cfg->usb.device_path = tmp;
 }
 
 struct config_t *init_config(void)
@@ -544,15 +423,16 @@ int main(int argc, const char **argv)
 
 	parse_options(argc, argv, cfg);
 
-	if (cfg->verbose)
-		fprintf(stderr, "Config: path: %s, serial: %s, id: %s\n", cfg->device_path, cfg->device_serial, cfg->device_id);
+	VERBOSE("Config: path: %s, serial: %s, id: %s\n", cfg->usb.device_path, cfg->usb.device_serial, cfg->usb.device_id);
 
 	if (cfg->mode == MODE_RESET)
 		inga_reset(cfg);
+#if FTDI_VERSION == 0
 	else if (cfg->mode == MODE_UPDATE_EEPROM)
 		inga_eeprom(cfg);
 	else if (cfg->mode == MODE_READ_SERIAL)
 		inga_serial(cfg);
+#endif
 
 	exit(EXIT_SUCCESS);
 }
