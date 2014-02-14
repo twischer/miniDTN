@@ -185,86 +185,87 @@ struct usb_device *find_matching_usb_dev(struct config_t *cfg)
 void inga_reset(struct config_t *cfg)
 {
 	int rc;
-    struct ftdi_context ftdic;
-    struct usb_device *usbdev;
+	struct ftdi_context ftdic;
+	struct usb_device *usbdev;
 
-    if (ftdi_init(&ftdic) < 0)
-    {
-        fprintf(stderr, "ftdi_init failed\n");
-        exit(EXIT_FAILURE);
-    }
+	if (ftdi_init(&ftdic) < 0)
+	{
+		fprintf(stderr, "ftdi_init failed\n");
+		exit(EXIT_FAILURE);
+	}
 
-    /* Find the USB device for the path */
-    usbdev = find_matching_usb_dev(cfg);
-    if (!usbdev) {
-	    fprintf(stderr, "Could not find device\n");
-	    exit(EXIT_FAILURE);
-    }
+	/* Find the USB device for the path */
+	usbdev = find_matching_usb_dev(cfg);
+	if (!usbdev) {
+		fprintf(stderr, "Could not find device\n");
+		exit(EXIT_FAILURE);
+	}
 
-    rc = ftdi_usb_open_dev(&ftdic, usbdev);
-    if (rc < 0)
-    {
-        fprintf(stderr, "unable to open ftdi device: %d (%s)\n", rc, ftdi_get_error_string(&ftdic));
-        exit(EXIT_FAILURE);
-    }
+	rc = ftdi_usb_open_dev(&ftdic, usbdev);
+	if (rc < 0)
+	{
+		rintf(stderr, "unable to open ftdi device: %d (%s)\n", rc, ftdi_get_error_string(&ftdic));
+		it(EXIT_FAILURE);
+	}
 
-    usbdev = usb_device(ftdic.usb_dev);
+	usbdev = usb_device(ftdic.usb_dev);
 
 	printf("Resetting INGA node...");
 	fflush(stdout);
 
-    /* Set CBUS3 to output and high */
-    ftdi_set_bitmode(&ftdic, 0x88, BITMODE_CBUS);
+	/* Set CBUS3 to output and high */
+	ftdi_set_bitmode(&ftdic, 0x88, BITMODE_CBUS);
 
-    //sleep(1);
+	//sleep(1);
 
-    /* Set CBUS3 to output and low */
-    ftdi_set_bitmode(&ftdic, 0x80, BITMODE_CBUS);
+	/* Set CBUS3 to output and low */
+	ftdi_set_bitmode(&ftdic, 0x80, BITMODE_CBUS);
 
 	printf("done\n");
 
-    ftdi_set_bitmode(&ftdic, 0, BITMODE_RESET);
+	ftdi_set_bitmode(&ftdic, 0, BITMODE_RESET);
 
 out:
 
-    if (cfg->verbose)
-	    fprintf(stderr, "Resetting USB device\n");
+	if (cfg->verbose)
+		fprintf(stderr, "Resetting USB device\n");
 
-    /* USB reset is necessary in order to get the serial device back */
-    ftdi_usb_reset(&ftdic);
-    usb_reset(ftdic.usb_dev);
-    ftdi_usb_close(&ftdic);
-    ftdi_deinit(&ftdic);
+	/* USB reset is necessary in order to get the serial device back */
+	ftdi_usb_reset(&ftdic);
+	usb_reset(ftdic.usb_dev);
+	ftdi_usb_close(&ftdic);
+	ftdi_deinit(&ftdic);
 }
+
 void inga_serial(struct config_t *cfg)
 {
 	int rc;
-    struct ftdi_context ftdic;
-    struct usb_device *usbdev;
-    struct ftdi_eeprom eeprom;
-    char buf[FTDI_DEFAULT_EEPROM_SIZE];
+	struct ftdi_context ftdic;
+	struct usb_device *usbdev;
+	struct ftdi_eeprom eeprom;
+	char buf[FTDI_DEFAULT_EEPROM_SIZE];
 
-    if (ftdi_init(&ftdic) < 0)
-    {
-        fprintf(stderr, "ftdi_init failed\n");
-        exit(EXIT_FAILURE);
-    }
+	if (ftdi_init(&ftdic) < 0)
+	{
+		fprintf(stderr, "ftdi_init failed\n");
+		exit(EXIT_FAILURE);
+	}
 
-    /* Find the USB device for the path */
-    usbdev = find_matching_usb_dev(cfg);
-    if (!usbdev) {
-	    fprintf(stderr, "Could not find device\n");
-	    exit(EXIT_FAILURE);
-    }
+	/* Find the USB device for the path */
+	usbdev = find_matching_usb_dev(cfg);
+	if (!usbdev) {
+		fprintf(stderr, "Could not find device\n");
+		exit(EXIT_FAILURE);
+	}
 
-    rc = ftdi_usb_open_dev(&ftdic, usbdev);
-    if (rc < 0)
-    {
-        fprintf(stderr, "unable to open ftdi device: %d (%s)\n", rc, ftdi_get_error_string(&ftdic));
-        exit(EXIT_FAILURE);
-    }
+	rc = ftdi_usb_open_dev(&ftdic, usbdev);
+	if (rc < 0)
+	{
+		fprintf(stderr, "unable to open ftdi device: %d (%s)\n", rc, ftdi_get_error_string(&ftdic));
+		exit(EXIT_FAILURE);
+	}
 
-    usbdev = usb_device(ftdic.usb_dev);
+	usbdev = usb_device(ftdic.usb_dev);
 
 	printf("Reading out EEPROM image...");
 	fflush(stdout);
@@ -295,41 +296,41 @@ void inga_serial(struct config_t *cfg)
 	}
 
 	printf("Serial: %s\n",eeprom.serial);
-    ftdi_usb_reset(&ftdic);
-    usb_reset(ftdic.usb_dev);
-    ftdi_usb_close(&ftdic);
-    ftdi_deinit(&ftdic);
-
+	ftdi_usb_reset(&ftdic);
+	usb_reset(ftdic.usb_dev);
+	ftdi_usb_close(&ftdic);
+	ftdi_deinit(&ftdic);
 }
+
 void inga_eeprom(struct config_t *cfg)
 {
 	int rc;
-    struct ftdi_context ftdic;
-    struct usb_device *usbdev;
-    struct ftdi_eeprom eeprom;
-    char buf[FTDI_DEFAULT_EEPROM_SIZE];
+	struct ftdi_context ftdic;
+	struct usb_device *usbdev;
+	struct ftdi_eeprom eeprom;
+	char buf[FTDI_DEFAULT_EEPROM_SIZE];
 
-    if (ftdi_init(&ftdic) < 0)
-    {
-        fprintf(stderr, "ftdi_init failed\n");
-        exit(EXIT_FAILURE);
-    }
+	if (ftdi_init(&ftdic) < 0)
+	{
+		fprintf(stderr, "ftdi_init failed\n");
+		exit(EXIT_FAILURE);
+	}
 
-    /* Find the USB device for the path */
-    usbdev = find_matching_usb_dev(cfg);
-    if (!usbdev) {
-	    fprintf(stderr, "Could not find device\n");
-	    exit(EXIT_FAILURE);
-    }
+	/* Find the USB device for the path */
+	usbdev = find_matching_usb_dev(cfg);
+	if (!usbdev) {
+		fprintf(stderr, "Could not find device\n");
+		exit(EXIT_FAILURE);
+	}
 
-    rc = ftdi_usb_open_dev(&ftdic, usbdev);
-    if (rc < 0)
-    {
-        fprintf(stderr, "unable to open ftdi device: %d (%s)\n", rc, ftdi_get_error_string(&ftdic));
-        exit(EXIT_FAILURE);
-    }
+	rc = ftdi_usb_open_dev(&ftdic, usbdev);
+	if (rc < 0)
+	{
+		fprintf(stderr, "unable to open ftdi device: %d (%s)\n", rc, ftdi_get_error_string(&ftdic));
+		exit(EXIT_FAILURE);
+	}
 
-    usbdev = usb_device(ftdic.usb_dev);
+	usbdev = usb_device(ftdic.usb_dev);
 
 	printf("Reading out EEPROM image...");
 	fflush(stdout);
@@ -429,14 +430,14 @@ void inga_eeprom(struct config_t *cfg)
 
 out:
 
-    if (cfg->verbose)
-	    fprintf(stderr, "Resetting USB device\n");
+	if (cfg->verbose)
+	fprintf(stderr, "Resetting USB device\n");
 
-    /* USB reset is necessary in order to get the serial device back */
-    ftdi_usb_reset(&ftdic);
-    usb_reset(ftdic.usb_dev);
-    ftdi_usb_close(&ftdic);
-    ftdi_deinit(&ftdic);
+	/* USB reset is necessary in order to get the serial device back */
+	ftdi_usb_reset(&ftdic);
+	usb_reset(ftdic.usb_dev);
+	ftdi_usb_close(&ftdic);
+	ftdi_deinit(&ftdic);
 }
 
 void usage(poptContext poptc, int exitcode, char *error, char *addl)
