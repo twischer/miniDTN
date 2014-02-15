@@ -1,115 +1,238 @@
-/*
- * Copyright (c) 2006, Swedish Institute of Computer Science.
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. Neither the name of the Institute nor the names of its contributors
- *    may be used to endorse or promote products derived from this software
- *    without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE INSTITUTE AND CONTRIBUTORS ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE INSTITUTE OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- *
- */
-
 package org.contikios.cooja;
 
+/**
+ * @TODO: move...
+ */
+import java.util.HashMap;
+import java.util.Map;
+import org.contikios.cooja.MoteMemory.UnknownVariableException;
+import org.contikios.cooja.MemMonitor.MonitorType;
 
 /**
- * This interface represents a mote memory.
- * 
- * Mote memory is represented by byte arrays and this
- * interface provides a few of basic operations.
- * 
- * Note that this memory internally may consist of several
- * different memory sections, not covering the entire range
- * between the start address and the end address of this memory.
  *
- * @see org.contikios.cooja.SectionMoteMemory
- * @author Fredrik Osterlind
+ * @author Enrico Joerns
  */
-public interface MoteMemory extends AddressMemory {
+public abstract class MoteMemory extends NewAddressMemory {
+
+  public MoteMemory(MemoryLayout layout) {
+    super(layout);
+  }
 
   /**
-   * Clears the entire memory.
+   * @return All variable names known and residing in this memory
    */
-  public void clearMemory();
+  public abstract String[] getVariableNames();
 
   /**
-   * Returns a memory segment.
+   * Checks if given variable exists in memory.
+   *
+   * @param varName Variable name
+   * @return True if variable exists, false otherwise
+   */
+  public abstract boolean variableExists(String varName);
+
+  /**
+   * Returns address of variable with given name.
+   *
+   * @param varName Variable name
+   * @return Variable address
+   */
+  public abstract long getVariableAddress(String varName) throws UnknownVariableException;
+
+  /**
+   *
+   * @param varName
+   * @return
+   * @throws org.contikios.cooja.AddressMemory.UnknownVariableException
+   */
+  public abstract int getVariableSize(String varName) throws UnknownVariableException;
+
+  /**
+   *
+   * @param varName
+   * @return
+   */
+  public byte getByteValueOf(String varName)
+          throws UnknownVariableException {
+    return getByteValueOf(getVariableAddress(varName));
+  }
+
+  /**
+   *
+   * @param varName
+   * @return
+   */
+  public short getShortValueOf(String varName)
+          throws UnknownVariableException {
+    return getShortValueOf(getVariableAddress(varName));
+  }
+
+  /**
+   *
+   * @param varName
+   * @return
+   */
+  public int getIntValueOf(String varName)
+          throws UnknownVariableException {
+    return getIntValueOf(getVariableAddress(varName));
+  }
+
+  /**
+   *
+   * @param varName
+   * @return
+   */
+  public long getLongValueOf(String varName)
+          throws UnknownVariableException {
+    return getLongValueOf(getVariableAddress(varName));
+  }
+
+  /**
+   *
+   * @param varName
+   * @return
+   */
+  public long getAddrValueOf(String varName)
+          throws UnknownVariableException {
+    return getAddrValueOf(getVariableAddress(varName));
+  }
+  
+  /**
    * 
-   * @param address Start address of memory segment
-   * @param size Size of memory segment
-   * @return Memory segment or null if segment not available
+   * @param varName
+   * @param length
+   * @return
+   * @throws org.contikios.cooja.AddressMemory.UnknownVariableException 
    */
-  public byte[] getMemorySegment(int address, int size);
+  public byte[] getByteArray(String varName, int length)
+      throws UnknownVariableException {
+    return getMemorySegment(getVariableAddress(varName), length);
+  }
+  
+  /**
+   *
+   * @param varName
+   * @param value
+   */
+  public void setByteValueOf(String varName, byte value)
+          throws UnknownVariableException {
+    setByteValueOf(getVariableAddress(varName), value);
+  }
 
   /**
-   * Sets a memory segment.
-   * 
-   * @param address Start address of memory segment
-   * @param data Data
+   *
+   * @param varName
+   * @param value
    */
-  public void setMemorySegment(int address, byte[] data);
+  public void setShortValueOf(String varName, short value)
+          throws UnknownVariableException {
+    setShortValueOf(getVariableAddress(varName), value);
+  }
 
   /**
-   * Returns the sum of all byte array sizes in this memory.
-   * This is not neccessarily the the same as the total memory range,
-   * since the entire memory range may not be handled by this memory.
-   * 
-   * @return Total size
+   *
+   * @param varName
+   * @param value
    */
-  public int getTotalSize();
+  public void setIntValueOf(String varName, int value)
+          throws UnknownVariableException {
+    setIntValueOf(getVariableAddress(varName), value);
+  }
 
-  public abstract int parseInt(byte[] memorySegment);
+  /**
+   *
+   * @param varName
+   * @param value
+   */
+  public void setLongValueOf(String varName, long value)
+          throws UnknownVariableException {
+    setLongValueOf(getVariableAddress(varName), value);
+  }
 
-  public enum MemoryEventType { READ, WRITE };
+  /**
+   *
+   * @param varName
+   * @param value
+   */
+  public void setAddrValueOf(String varName, long value)
+          throws UnknownVariableException {
+    setAddrValueOf(getVariableAddress(varName), value);
+  }
+
+  /**
+   * 
+   * @param varName
+   * @param data
+   * @throws org.contikios.cooja.AddressMemory.UnknownVariableException 
+   */
+  public void setByteArray(String varName, byte[] data)
+          throws UnknownVariableException {
+    setMemorySegment(getVariableAddress(varName), data);
+  }
+
+
+  /**
+   * Unknown variable name exception.
+   */
+  public class UnknownVariableException extends RuntimeException {
+
+    public UnknownVariableException(String varName) {
+      super("Unknown variable name: " + varName);
+    }
+  }
+  
+  
+    
+//  public enum MemoryEventType {
+//
+//    READ, WRITE
+//  };
 
   /**
    * Monitor to listen for memory updates.
    */
-  public interface MemoryMonitor {
-    public void memoryChanged(MoteMemory memory, MemoryEventType type, int address);
+  public interface VarMonitor extends MemMonitor {
+
+    public void varChanged(MoteMemory memory, MemoryEventType type, String varName);
   }
-  
-  /**
-   * Memory access type to listen for.
-   */
-  public enum MonitorType {R, W, RW};
 
   /**
-   * Adds a MemoryMonitor for the specified address region.
-   * 
-   * @param flag Select memory operation(s) to listen for (read, write, read/write)
-   * @param address Start address of monitored data region
-   * @param size Size of monitored data region
-   * @param mm MemoryMonitor to add
-   * @return 
+   * Maps VarMonitor to their internal created AddressMonitor.
+   * Require for removing appropriate monitor.
    */
-  public boolean addMemoryMonitor(MonitorType flag, int address, int size, MemoryMonitor mm);
+  Map<VarMonitor, AddressMonitor> monitorMapping = new HashMap<>();
   
   /**
-   * Removes MemoryMonitor assigned to the specified region.
-   * 
-   * @param address Start address of Monitor data region
-   * @param size Size of Monitor data region
-   * @param mm MemoryMonitor to remove
+   * Adds a AddressMonitor for the specified address region.
+   *
+   * @param flag Select memory operation(s) to listen for (read, write,
+   * read/write)
+   * @param varName
+   * @param vm
+   * @return
    */
-  public void removeMemoryMonitor(int address, int size, MemoryMonitor mm);
+  public boolean addVarMonitor(MonitorType flag, final String varName, final VarMonitor vm) {
+    AddressMonitor mm = new AddressMonitor() {
+      @Override
+      public void memoryChanged(NewAddressMemory memory, MemoryEventType type, long address) {
+        vm.varChanged(MoteMemory.this, type, varName);
+      }
+    };
+    monitorMapping.put(vm, mm);
+    return addMemoryMonitor(
+            flag,
+            getVariableAddress(varName),
+            getVariableSize(varName),
+            mm);
+  }
+
+  /**
+   * Removes AddressMonitor assigned to the specified region.
+   *
+   * @param varName
+   * @param mm AddressMonitor to remove
+   */
+  public void removeVarMonitor(String varName, VarMonitor mm) {
+    removeMemoryMonitor(getVariableAddress(varName), getVariableSize(varName), monitorMapping.get(mm));
+  }
 }
