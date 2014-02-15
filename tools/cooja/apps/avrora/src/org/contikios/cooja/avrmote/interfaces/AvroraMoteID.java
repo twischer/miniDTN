@@ -29,32 +29,43 @@
  */
 
 package org.contikios.cooja.avrmote.interfaces;
+
+import java.util.Observable;
+import java.util.Observer;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
 import org.apache.log4j.Logger;
 
+import org.contikios.cooja.MemMonitor.MonitorType;
 import org.contikios.cooja.Mote;
 import org.contikios.cooja.MoteMemory;
-import org.contikios.cooja.MoteMemory.MemoryEventType;
-import org.contikios.cooja.MoteMemory.MonitorType;
 import org.contikios.cooja.interfaces.MoteID;
 
 /**
  * @author Fredrik Osterlind
  */
 public class AvroraMoteID extends MoteID {
-  private static Logger logger = Logger.getLogger(AvroraMoteID.class);
+  private static final Logger logger = Logger.getLogger(AvroraMoteID.class);
+  
+  // Contiki stuff...
+  private static final String VARNAME_MOTE_ID = "node_id";
+  private static final String VARNAME_RSEED = "rseed";
+  // TinyOS stuff...
+  private static final String VARNAME_TOS_NODE_ID = "TOS_NODE_ID";
+  private static final String VARNAME_ACT_MSG_ADDRC__ = "ActiveMessageAddressC__addr";
+  private static final String VARNAME_ACT_MSG_ADDRC = "ActiveMessageAddressC$addr";
 
-  private Mote mote;
+  private final Mote mote;
   private MoteMemory moteMem = null;
 
   private int moteID = -1;
 
-  private org.contikios.cooja.MoteMemory.MemoryMonitor memoryMonitor;
+  private MoteMemory.VarMonitor memoryMonitor;
 
   /**
    * Creates an interface to the mote ID at mote.
    *
-   * @param mote
+   * @param m
    * @see Mote
    * @see org.contikios.cooja.MoteInterfaceHandler
    */
@@ -63,10 +74,12 @@ public class AvroraMoteID extends MoteID {
     this.moteMem = mote.getMemory();
   }
 
+  @Override
   public int getMoteID() {
     return moteID;
   }
 
+  @Override
   public void setMoteID(int newID) {
     if (moteID != newID) {
       setChanged();
@@ -74,19 +87,29 @@ public class AvroraMoteID extends MoteID {
     moteID = newID;
 
     writeID();
+    
+    /** Monitor used to overwrite id memorywith fixed id if modified externally */
     if (memoryMonitor == null) {
-      memoryMonitor = new org.contikios.cooja.MoteMemory.MemoryMonitor() {
-        public void memoryChanged(MoteMemory memory, MemoryEventType type, int address) {
-          if (type != MemoryEventType.WRITE) {
-            return;
-          }
+      memoryMonitor = new MoteMemory.VarMonitor() {
+
+        @Override
+        public void varChanged(MoteMemory memory, MemoryEventType type, String varName) {
+          System.out.println("varChanged! " + type);
           writeID();
         }
       };
-      addMonitor("node_id", memoryMonitor);
-      addMonitor("TOS_NODE_ID", memoryMonitor);
-      addMonitor("ActiveMessageAddressC__addr", memoryMonitor);
-      addMonitor("ActiveMessageAddressC$addr", memoryMonitor);
+      if (moteMem.variableExists(VARNAME_MOTE_ID)) {
+        moteMem.addVarMonitor(MonitorType.W, VARNAME_MOTE_ID, memoryMonitor);
+      }
+      if (moteMem.variableExists(VARNAME_TOS_NODE_ID)) {
+        moteMem.addVarMonitor(MonitorType.W, VARNAME_TOS_NODE_ID, memoryMonitor);
+      }
+      if (moteMem.variableExists(VARNAME_ACT_MSG_ADDRC__)) {
+        moteMem.addVarMonitor(MonitorType.W, VARNAME_ACT_MSG_ADDRC__, memoryMonitor);
+      }
+      if (moteMem.variableExists(VARNAME_ACT_MSG_ADDRC)) {
+        moteMem.addVarMonitor(MonitorType.W, VARNAME_ACT_MSG_ADDRC, memoryMonitor);
+      }
     }
 
     notifyObservers();
@@ -94,55 +117,67 @@ public class AvroraMoteID extends MoteID {
 
   private void writeID() {
     int id = getMoteID();
-    if (moteMem.variableExists("node_id")) {
-      moteMem.setIntValueOf("node_id", id);
+    if (moteMem.variableExists(VARNAME_MOTE_ID)) {
+      System.out.println("Set MoteID to " + id);
+      moteMem.setIntValueOf(VARNAME_MOTE_ID, id);
 
       /* Set Contiki random seed variable if it exists */
-      if (moteMem.variableExists("rseed")) {
-        moteMem.setIntValueOf("rseed", (int) (mote.getSimulation().getRandomSeed() + id));
+      if (moteMem.variableExists(VARNAME_RSEED)) {
+        moteMem.setIntValueOf(VARNAME_RSEED, (int) (mote.getSimulation().getRandomSeed() + id));
       }
     }
-    if (moteMem.variableExists("TOS_NODE_ID")) {
-      moteMem.setIntValueOf("TOS_NODE_ID", id);
+    if (moteMem.variableExists(VARNAME_TOS_NODE_ID)) {
+      moteMem.setIntValueOf(VARNAME_TOS_NODE_ID, id);
     }
-    if (moteMem.variableExists("ActiveMessageAddressC__addr")) {
-      moteMem.setIntValueOf("ActiveMessageAddressC__addr", id);
+    if (moteMem.variableExists(VARNAME_ACT_MSG_ADDRC__)) {
+      moteMem.setIntValueOf(VARNAME_ACT_MSG_ADDRC__, id);
     }
-    if (moteMem.variableExists("ActiveMessageAddressC$addr")) {
-      moteMem.setIntValueOf("ActiveMessageAddressC$addr", id);
+    if (moteMem.variableExists(VARNAME_ACT_MSG_ADDRC)) {
+      moteMem.setIntValueOf(VARNAME_ACT_MSG_ADDRC, id);
     }
   }
 
+  @Override
   public void removed() {
     super.removed();
     if (memoryMonitor != null) {
-      removeMonitor("node_id", memoryMonitor);
-      removeMonitor("TOS_NODE_ID", memoryMonitor);
-      removeMonitor("ActiveMessageAddressC__addr", memoryMonitor);
-      removeMonitor("ActiveMessageAddressC$addr", memoryMonitor);
+      if (moteMem.variableExists(VARNAME_MOTE_ID)) {
+        moteMem.removeVarMonitor(VARNAME_MOTE_ID, memoryMonitor);
+      }
+      if (moteMem.variableExists(VARNAME_TOS_NODE_ID)) {
+        moteMem.removeVarMonitor(VARNAME_TOS_NODE_ID, memoryMonitor);
+      }
+      if (moteMem.variableExists(VARNAME_ACT_MSG_ADDRC__)) {
+        moteMem.removeVarMonitor(VARNAME_ACT_MSG_ADDRC__, memoryMonitor);
+      }
+      if (moteMem.variableExists(VARNAME_ACT_MSG_ADDRC)) {
+        moteMem.removeVarMonitor(VARNAME_ACT_MSG_ADDRC, memoryMonitor);
+      }
       memoryMonitor = null;
     }
   }
 
-  private void addMonitor(String variable, org.contikios.cooja.MoteMemory.MemoryMonitor monitor) {
-    if (!moteMem.variableExists(variable)) {
-      return;
-    }
-    int address = moteMem.getVariableAddress(variable);
-    moteMem.addMemoryMonitor(MonitorType.RW, address, moteMem.getIntegerLength(), monitor);
-  }
-
-  private void removeMonitor(String variable, org.contikios.cooja.MoteMemory.MemoryMonitor monitor) {
-    if (!moteMem.variableExists(variable)) {
-      return;
-    }
-    int address = moteMem.getVariableAddress(variable);
-    moteMem.removeMemoryMonitor(address, moteMem.getIntegerLength(), monitor);
-  }
-
   @Override
   public JPanel getInterfaceVisualizer() {
-    return null;
+
+    JPanel panel = new JPanel();
+    final JLabel idLabel = new JLabel();
+
+    idLabel.setText("Mote ID: " + getMoteID());
+
+    panel.add(idLabel);
+
+    Observer observer;
+    this.addObserver(observer = new Observer() {
+      @Override
+      public void update(Observable obs, Object obj) {
+        idLabel.setText("Mote ID: " + getMoteID());
+      }
+    });
+
+    panel.putClientProperty("intf_obs", observer);
+
+    return panel;
   }
 
   @Override

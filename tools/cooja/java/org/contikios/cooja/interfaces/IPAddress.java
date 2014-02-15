@@ -71,11 +71,12 @@ import org.apache.log4j.Logger;
 import org.jdom.Element;
 
 import org.contikios.cooja.ClassDescription;
+import org.contikios.cooja.MemMonitor.MonitorType;
 import org.contikios.cooja.Mote;
 import org.contikios.cooja.MoteInterface;
 import org.contikios.cooja.MoteMemory;
-import org.contikios.cooja.MoteMemory.MemoryEventType;
-import org.contikios.cooja.MoteMemory.MemoryMonitor;
+import org.contikios.cooja.NewAddressMemory;
+import org.contikios.cooja.NewAddressMemory.AddressMonitor;
 
 /**
  * Read-only interface to IPv4 or IPv6 address.
@@ -101,7 +102,7 @@ public class IPAddress extends MoteInterface {
   private final MoteMemory moteMem;
   private IPContainer localIPAddr = null;
 
-  private final MemoryMonitor memMonitor;
+  private final AddressMonitor memMonitor;
 
   private List<IPContainer> ipList = new LinkedList<>();
   
@@ -113,11 +114,11 @@ public class IPAddress extends MoteInterface {
 
     /* If the ip memory sections changed, we recalculate addresses
      * and notify our observers.*/
-    memMonitor = new MemoryMonitor() {
+    memMonitor = new AddressMonitor() {
       int accessCount = 0;
-      int lastAccess = 0;
+      long lastAccess = 0;
       @Override
-      public void memoryChanged(MoteMemory memory, MemoryEventType type, int address) {
+      public void memoryChanged(NewAddressMemory memory, MemoryEventType type, long address) {
         if (type != MemoryEventType.WRITE) {
           return;
         }
@@ -133,13 +134,13 @@ public class IPAddress extends MoteInterface {
         /* Wait until size and offsest values are set initially,
          * then add memory monitor for each ip field */
         if ((ipv6_addr_list_offset == 0) || (ipv6_addr_size == 0)) {
-          ipv6_addr_list_offset = memory.getByteValueOf("uip_ds6_netif_addr_list_offset");
-          ipv6_addr_size = memory.getByteValueOf("uip_ds6_addr_size");
+          ipv6_addr_list_offset = moteMem.getByteValueOf("uip_ds6_netif_addr_list_offset");
+          ipv6_addr_size = moteMem.getByteValueOf("uip_ds6_addr_size");
           /* If the variables just updated, add the final ip listeners */
           if ((ipv6_addr_list_offset != 0) && (ipv6_addr_size != 0)) {
             /* Monitor for each IP reagion */
             for (int i = 0; i < IPv6_MAX_ADDRESSES; i++) {
-              int addr_of_ip = moteMem.getVariableAddress("uip_ds6_if") // start address of interface
+              long addr_of_ip = moteMem.getVariableAddress("uip_ds6_if") // start address of interface
                       + ipv6_addr_list_offset // offset to ip address region
                       + i * ipv6_addr_size // offset to ith ip address 
                       + 1; // skip 'isused'

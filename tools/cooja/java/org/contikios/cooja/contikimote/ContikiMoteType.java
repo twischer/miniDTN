@@ -38,6 +38,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.reflect.Method;
+import java.nio.ByteOrder;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -58,6 +59,7 @@ import org.contikios.cooja.AbstractionLevelDescription;
 import org.contikios.cooja.ClassDescription;
 import org.contikios.cooja.CoreComm;
 import org.contikios.cooja.Cooja;
+import org.contikios.cooja.MemoryLayout;
 import org.contikios.cooja.Mote;
 import org.contikios.cooja.MoteInterface;
 import org.contikios.cooja.MoteType;
@@ -123,6 +125,7 @@ public class ContikiMoteType implements MoteType {
     DEFAULT, MANUAL;
     public String manualHeader = "netstack-conf-example.h";
 
+    @Override
     public String toString() {
       if (this == DEFAULT) {
         return "Default (from contiki-conf.h)";
@@ -196,7 +199,7 @@ public class ContikiMoteType implements MoteType {
 
   // Initial memory for all motes of this type
   private SectionMoteMemory initialMemory = null;
-
+  
   /**
    * Creates a new uninitialized Cooja mote type. This mote type needs to load
    * a library file and parse a map file before it can be used.
@@ -501,7 +504,7 @@ public class ContikiMoteType implements MoteType {
      * Contiki's and Cooja's address spaces */
     int offset;
     {
-      SectionMoteMemory tmp = new SectionMoteMemory(addresses, 0);
+      SectionMoteMemory tmp = new SectionMoteMemory(MemoryLayout.getNative(), addresses, 0);
       byte[] data = new byte[dataSectionSize];
       getCoreMemory(dataSectionAddr, dataSectionSize, data);
       tmp.setMemorySegment(dataSectionAddr, data);
@@ -515,7 +518,7 @@ public class ContikiMoteType implements MoteType {
     }
 
     /* Create initial memory: data+bss+optional common */
-    initialMemory = new SectionMoteMemory(addresses, offset);
+    initialMemory = new SectionMoteMemory(MemoryLayout.getNative(), addresses, offset);
 
     byte[] initialDataSection = new byte[dataSectionSize];
     getCoreMemory(dataSectionAddr, dataSectionSize, initialDataSection);
@@ -568,7 +571,7 @@ public class ContikiMoteType implements MoteType {
   public void setCoreMemory(SectionMoteMemory mem) {
     for (int i = 0; i < mem.getNumberOfSections(); i++) {
       setCoreMemory(
-          mem.getSectionNativeAddress(i) /* native address space */,
+          (int) mem.getSectionNativeAddress(i) /* native address space */,
           mem.getSizeOfSection(i), mem.getDataOfSection(i));
     }
   }
@@ -658,7 +661,7 @@ public class ContikiMoteType implements MoteType {
    */
   public void getCoreMemory(SectionMoteMemory mem) {
     for (int i = 0; i < mem.getNumberOfSections(); i++) {
-      int startAddr = mem.getSectionNativeAddress(i); /* native address space */
+      int startAddr = (int) mem.getSectionNativeAddress(i); /* native address space */
       int size = mem.getSizeOfSection(i);
       byte[] data = mem.getDataOfSection(i);
       getCoreMemory(startAddr, size, data);

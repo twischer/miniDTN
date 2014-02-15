@@ -77,7 +77,7 @@ public class MspDebugOutput extends Log {
       /* Disabled */
       return;
     }
-    this.mote.getCPU().addWatchPoint(mem.getVariableAddress(CONTIKI_POINTER),
+    this.mote.getCPU().addWatchPoint((int) mem.getVariableAddress(CONTIKI_POINTER),
         memoryMonitor = new MemoryMonitor.Adapter() {
         @Override
         public void notifyWriteAfter(int adr, int data, Memory.AccessMode mode) {
@@ -136,7 +136,7 @@ public class MspDebugOutput extends Log {
     super.removed();
 
     if (memoryMonitor != null) {
-      mote.getCPU().removeWatchPoint(mem.getVariableAddress(CONTIKI_POINTER), memoryMonitor);
+      mote.getCPU().removeWatchPoint((int)mem.getVariableAddress(CONTIKI_POINTER), memoryMonitor);
     }
   }
 }

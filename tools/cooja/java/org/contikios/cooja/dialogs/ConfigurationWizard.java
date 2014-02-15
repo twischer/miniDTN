@@ -65,6 +65,7 @@ import javax.swing.JScrollPane;
 
 import org.contikios.cooja.CoreComm;
 import org.contikios.cooja.Cooja;
+import org.contikios.cooja.MemoryLayout;
 import org.contikios.cooja.MoteType.MoteTypeCreationException;
 import org.contikios.cooja.SectionMoteMemory;
 import org.contikios.cooja.contikimote.ContikiMoteType;
@@ -943,7 +944,7 @@ public class ConfigurationWizard extends JDialog {
     byte[] initialBssSection = new byte[bssSectionSize];
     javaLibrary.getMemory(relDataSectionAddr, dataSectionSize, initialDataSection);
     javaLibrary.getMemory(relBssSectionAddr, bssSectionSize, initialBssSection);
-    SectionMoteMemory memory = new SectionMoteMemory(addresses, 0);
+    SectionMoteMemory memory = new SectionMoteMemory(MemoryLayout.getNative(), addresses, 0); /** TODO: check memory layout */
     memory.setMemorySegment(relDataSectionAddr, initialDataSection);
     memory.setMemorySegment(relBssSectionAddr, initialBssSection);
 

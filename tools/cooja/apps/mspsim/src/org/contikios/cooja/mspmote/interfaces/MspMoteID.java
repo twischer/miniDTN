@@ -201,7 +201,7 @@ public class MspMoteID extends MoteID {
 
 	private void addMonitor(String variable, MemoryMonitor monitor) {
 	    if (moteMem.variableExists(variable)) {
-	        int address = moteMem.getVariableAddress(variable);
+	        int address = (int) moteMem.getVariableAddress(variable);
 	        if ((address & 1) != 0) {
 	            // Variable can not be a word - must be a byte
 	        } else {
@@ -213,7 +213,7 @@ public class MspMoteID extends MoteID {
 
         private void removeMonitor(String variable, MemoryMonitor monitor) {
             if (moteMem.variableExists(variable)) {
-                int address = moteMem.getVariableAddress(variable);
+                int address = (int) moteMem.getVariableAddress(variable);
                 mote.getCPU().removeWatchPoint(address, monitor);
                 mote.getCPU().removeWatchPoint(address + 1, monitor);
             }

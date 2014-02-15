@@ -32,6 +32,10 @@ import java.util.Arrays;
 import java.util.HashMap;
 
 import org.apache.log4j.Logger;
+import org.contikios.cooja.MoteMemory.UnknownVariableException;
+import org.contikios.cooja.MemMonitor.MemoryEventType;
+import org.contikios.cooja.MemMonitor.MonitorType;
+import org.contikios.cooja.NewAddressMemory.AddressMonitor;
 
 /**
  * Represents a mote memory consisting of non-overlapping memory sections with
@@ -43,7 +47,7 @@ import org.apache.log4j.Logger;
  *
  * @author Fredrik Osterlind
  */
-public class SectionMoteMemory implements MoteMemory, AddressMemory {
+public class SectionMoteMemory extends MoteMemory {
   private static Logger logger = Logger.getLogger(SectionMoteMemory.class);
 
   private ArrayList<MoteMemorySection> sections = new ArrayList<MoteMemorySection>();
@@ -57,21 +61,27 @@ public class SectionMoteMemory implements MoteMemory, AddressMemory {
   /* used to map Cooja's address space to native (Contiki's) addresses */
   private final int offset;
   
+  private final MemoryLayout layout;
+  
   /**
+   * @param layout
    * @param addresses Symbol addresses
    * @param offset Offset for internally used addresses
    */
-  public SectionMoteMemory(HashMap<String, Integer> addresses, int offset) {
+  public SectionMoteMemory(MemoryLayout layout, HashMap<String, Integer> addresses, int offset) {
+    super(layout);
+    this.layout = layout;
     this.addresses = addresses;
     this.offset = offset;
   }
 
+  @Override
   public String[] getVariableNames() {
     return addresses.keySet().toArray(new String[0]);
   }
 
   @Override
-  public int getVariableAddress(String varName) throws UnknownVariableException {
+  public long getVariableAddress(String varName) throws UnknownVariableException {
     /* Cooja address space */
     if (!addresses.containsKey(varName)) {
       throw new UnknownVariableException(varName);
@@ -89,11 +99,13 @@ public class SectionMoteMemory implements MoteMemory, AddressMemory {
     return 4;
   }
 
+  @Override
   public void clearMemory() {
     sections.clear();
   }
 
-  public byte[] getMemorySegment(int address, int size) {
+  @Override
+  public byte[] getMemorySegment(long address, int size) {
     /* Cooja address space */
     address -= offset;
    
@@ -115,11 +127,12 @@ public class SectionMoteMemory implements MoteMemory, AddressMemory {
     return null;
   }
 
-  public void setMemorySegmentNative(int address, byte[] data) {
+  public void setMemorySegmentNative(long address, byte[] data) {
     setMemorySegment(address+offset, data);
   }
 
-  public void setMemorySegment(int address, byte[] data) {
+  @Override
+  public void setMemorySegment(long address, byte[] data) {
     /* Cooja address space */
     address -= offset;
 
@@ -164,7 +177,7 @@ public class SectionMoteMemory implements MoteMemory, AddressMemory {
    * @param sectionNr Section position
    * @return Start address of section
    */
-  public int getSectionNativeAddress(int sectionNr) {
+  public long getSectionNativeAddress(int sectionNr) {
     if (sectionNr >= sections.size()) {
       return -1;
     }
@@ -203,63 +216,65 @@ public class SectionMoteMemory implements MoteMemory, AddressMemory {
     return addresses.containsKey(varName);
   }
 
-  public int getIntValueOf(String varName) throws UnknownVariableException {
-    int varAddr = getVariableAddress(varName);
-    byte[] varData = getMemorySegment(varAddr, 4);
+//  public int getIntValueOf(String varName) throws UnknownVariableException {
+//    int varAddr = getVariableAddress(varName);
+//    byte[] varData = getMemorySegment(varAddr, 4);
+//
+//    if (varData == null) {
+//      throw new UnknownVariableException(varName);
+//    }
+//
+//    return parseInt(varData);
+//  }
 
-    if (varData == null) {
-      throw new UnknownVariableException(varName);
-    }
+//  public void setIntValueOf(String varName, int newVal) throws UnknownVariableException {
+//    int varAddr = getVariableAddress(varName);
+//
+//    /* TODO Correct for all platforms? */
+//    int newValToSet = Integer.reverseBytes(newVal);
+//
+//    int pos = 0;
+//
+//    byte[] varData = new byte[4];
+//    varData[pos++] = (byte) ((newValToSet & 0xFF000000) >> 24);
+//    varData[pos++] = (byte) ((newValToSet & 0xFF0000) >> 16);
+//    varData[pos++] = (byte) ((newValToSet & 0xFF00) >> 8);
+//    varData[pos++] = (byte) ((newValToSet & 0xFF) >> 0);
+//
+//    setMemorySegment(varAddr, varData);
+//  }
 
-    return parseInt(varData);
-  }
+//  public byte getByteValueOf(String varName) throws UnknownVariableException {
+//    int varAddr = getVariableAddress(varName);
+//    byte[] varData = getMemorySegment(varAddr, 1);
+//
+//    if (varData == null) {
+//      throw new UnknownVariableException(varName);
+//    }
+//
+//    return varData[0];
+//  }
+//
+//  public void setByteValueOf(String varName, byte newVal) throws UnknownVariableException {
+//    int varAddr = getVariableAddress(varName);
+//    byte[] varData = new byte[1];
+//
+//    varData[0] = newVal;
+//
+//    setMemorySegment(varAddr, varData);
+//  }
 
-  public void setIntValueOf(String varName, int newVal) throws UnknownVariableException {
-    int varAddr = getVariableAddress(varName);
-
-    /* TODO Correct for all platforms? */
-    int newValToSet = Integer.reverseBytes(newVal);
-
-    int pos = 0;
-
-    byte[] varData = new byte[4];
-    varData[pos++] = (byte) ((newValToSet & 0xFF000000) >> 24);
-    varData[pos++] = (byte) ((newValToSet & 0xFF0000) >> 16);
-    varData[pos++] = (byte) ((newValToSet & 0xFF00) >> 8);
-    varData[pos++] = (byte) ((newValToSet & 0xFF) >> 0);
-
-    setMemorySegment(varAddr, varData);
-  }
-
-  public byte getByteValueOf(String varName) throws UnknownVariableException {
-    int varAddr = getVariableAddress(varName);
-    byte[] varData = getMemorySegment(varAddr, 1);
-
-    if (varData == null) {
-      throw new UnknownVariableException(varName);
-    }
-
-    return varData[0];
-  }
-
-  public void setByteValueOf(String varName, byte newVal) throws UnknownVariableException {
-    int varAddr = getVariableAddress(varName);
-    byte[] varData = new byte[1];
-
-    varData[0] = newVal;
-
-    setMemorySegment(varAddr, varData);
-  }
-
-  public byte[] getByteArray(String varName, int length) throws UnknownVariableException {
-    int varAddr = getVariableAddress(varName);
-    return getMemorySegment(varAddr, length);
-  }
-
-  public void setByteArray(String varName, byte[] data) throws UnknownVariableException {
-    int varAddr = getVariableAddress(varName);
-    setMemorySegment(varAddr, data);
-  }
+//  @Override
+//  public byte[] getByteArray(String varName, int length) throws UnknownVariableException {
+//    long varAddr = getVariableAddress(varName);
+//    return getMemorySegment(varAddr, length);
+//  }
+//
+//  @Override
+//  public void setByteArray(String varName, byte[] data) throws UnknownVariableException {
+//    long varAddr = getVariableAddress(varName);
+//    setMemorySegment(varAddr, data);
+//  }
 
   /**
    * A memory section contains a byte array and a start address.
@@ -268,7 +283,7 @@ public class SectionMoteMemory implements MoteMemory, AddressMemory {
    */
   private static class MoteMemorySection {
     private byte[] data = null;
-    private final int startAddr;
+    private final long startAddr;
 
     /**
      * Create a new memory section.
@@ -278,7 +293,7 @@ public class SectionMoteMemory implements MoteMemory, AddressMemory {
      * @param data
      *          Data of section
      */
-    public MoteMemorySection(int startAddr, byte[] data) {
+    public MoteMemorySection(long startAddr, byte[] data) {
       this.startAddr = startAddr;
       this.data = data;
     }
@@ -288,7 +303,7 @@ public class SectionMoteMemory implements MoteMemory, AddressMemory {
      *
      * @return Start address
      */
-    public int getStartAddr() {
+    public long getStartAddr() {
       return startAddr;
     }
 
@@ -318,7 +333,7 @@ public class SectionMoteMemory implements MoteMemory, AddressMemory {
      * @return True if given address is part of this memory section, false
      *         otherwise
      */
-    public boolean includesAddr(int addr) {
+    public boolean includesAddr(long addr) {
       if (data == null) {
         return false;
       }
@@ -335,9 +350,9 @@ public class SectionMoteMemory implements MoteMemory, AddressMemory {
      *          Size of memory segment
      * @return Memory segment
      */
-    public byte[] getMemorySegment(int addr, int size) {
+    public byte[] getMemorySegment(long addr, int size) {
       byte[] ret = new byte[size];
-      System.arraycopy(data, addr - startAddr, ret, 0, size);
+      System.arraycopy(data, (int) (addr - startAddr), ret, 0, size);
       return ret;
     }
 
@@ -349,10 +364,11 @@ public class SectionMoteMemory implements MoteMemory, AddressMemory {
      * @param data
      *          Data of memory segment
      */
-    public void setMemorySegment(int addr, byte[] data) {
-      System.arraycopy(data, 0, this.data, addr - startAddr, data.length);
+    public void setMemorySegment(long addr, byte[] data) {
+      System.arraycopy(data, 0, this.data, (int) (addr - startAddr), data.length);
     }
 
+    @Override
     public MoteMemorySection clone() {
       byte[] dataClone = new byte[data.length];
       System.arraycopy(data, 0, dataClone, 0, data.length);
@@ -362,20 +378,21 @@ public class SectionMoteMemory implements MoteMemory, AddressMemory {
     }
   }
 
+  @Override
   public SectionMoteMemory clone() {
-    ArrayList<MoteMemorySection> sectionsClone = new ArrayList<MoteMemorySection>();
+    ArrayList<MoteMemorySection> sectionsClone = new ArrayList<>();
     for (MoteMemorySection section : sections) {
       sectionsClone.add(section.clone());
     }
 
-    SectionMoteMemory clone = new SectionMoteMemory(addresses, offset);
+    SectionMoteMemory clone = new SectionMoteMemory(layout, addresses, offset);
     clone.sections = sectionsClone;
     clone.readonlySections = readonlySections;
 
     return clone;
   }
 
-  private ArrayList<PolledMemorySegments> polledMemories = new ArrayList<PolledMemorySegments>();
+  private final ArrayList<PolledMemorySegments> polledMemories = new ArrayList<>();
   public void pollForMemoryChanges() {
     for (PolledMemorySegments mem: polledMemories.toArray(new PolledMemorySegments[0])) {
       mem.notifyIfChanged();
@@ -383,12 +400,12 @@ public class SectionMoteMemory implements MoteMemory, AddressMemory {
   }
 
   private class PolledMemorySegments {
-    public final MemoryMonitor mm;
+    public final AddressMonitor mm;
     public final int address;
     public final int size;
     private byte[] oldMem;
 
-    public PolledMemorySegments(MemoryMonitor mm, int address, int size) {
+    public PolledMemorySegments(AddressMonitor mm, int address, int size) {
       this.mm = mm;
       this.address = address;
       this.size = size;
@@ -407,34 +424,37 @@ public class SectionMoteMemory implements MoteMemory, AddressMemory {
     }
   }
   
-  public boolean addMemoryMonitor(MonitorType type, int address, int size, MemoryMonitor mm) {
+  @Override
+  public boolean addMemoryMonitor(MonitorType type, long address, int size, AddressMonitor mm) {
     if (type != MonitorType.RW) {
       logger.warn("r/w type option ignored");
     }
-    PolledMemorySegments t = new PolledMemorySegments(mm, address, size);
+    PolledMemorySegments t = new PolledMemorySegments(mm, (int) address, size);
     polledMemories.add(t);
     return true;
   }
 
-  public void removeMemoryMonitor(int address, int size, MemoryMonitor mm) {
+  @Override
+  public boolean removeMemoryMonitor(long address, int size, AddressMonitor mm) {
     for (PolledMemorySegments mcm: polledMemories) {
       if (mcm.mm != mm || mcm.address != address || mcm.size != size) {
         continue;
       }
       polledMemories.remove(mcm);
-      break;
+      return true;
     }
+    return false;
   }
 
-  public int parseInt(byte[] memorySegment) {
-    int retVal = 0;
-    int pos = 0;
-    retVal += ((memorySegment[pos++] & 0xFF)) << 24;
-    retVal += ((memorySegment[pos++] & 0xFF)) << 16;
-    retVal += ((memorySegment[pos++] & 0xFF)) << 8;
-    retVal += ((memorySegment[pos++] & 0xFF)) << 0;
-
-    retVal = Integer.reverseBytes(retVal);
-    return retVal;
-  }
+//  public int parseInt(byte[] memorySegment) {
+//    int retVal = 0;
+//    int pos = 0;
+//    retVal += ((memorySegment[pos++] & 0xFF)) << 24;
+//    retVal += ((memorySegment[pos++] & 0xFF)) << 16;
+//    retVal += ((memorySegment[pos++] & 0xFF)) << 8;
+//    retVal += ((memorySegment[pos++] & 0xFF)) << 0;
+//
+//    retVal = Integer.reverseBytes(retVal);
+//    return retVal;
+//  }
 }

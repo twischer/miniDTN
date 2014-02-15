@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  */
-
 package org.contikios.cooja.interfaces;
 
 import java.util.Collection;
@@ -41,15 +40,16 @@ import org.apache.log4j.Logger;
 import org.jdom.Element;
 
 import org.contikios.cooja.ClassDescription;
+import org.contikios.cooja.MemMonitor.MonitorType;
 import org.contikios.cooja.Mote;
 import org.contikios.cooja.MoteInterface;
 import org.contikios.cooja.MoteMemory;
-import org.contikios.cooja.MoteMemory.MemoryEventType;
-import org.contikios.cooja.MoteMemory.MemoryMonitor;
-import org.contikios.cooja.MoteMemory.MonitorType;
+import org.contikios.cooja.NewAddressMemory;
+import org.contikios.cooja.NewAddressMemory.AddressMonitor;
 
 /**
- * Read-only interface to Rime address read from Contiki variable: linkaddr_node_addr.
+ * Read-only interface to Rime address read from Contiki variable:
+ * linkaddr_node_addr.
  * XXX Assuming Rime address is 2 bytes.
  *
  * @see #RIME_ADDR_LENGTH
@@ -57,18 +57,20 @@ import org.contikios.cooja.MoteMemory.MonitorType;
  */
 @ClassDescription("Rime address")
 public class RimeAddress extends MoteInterface {
-  private static Logger logger = Logger.getLogger(RimeAddress.class);
+
+  private static final Logger logger = Logger.getLogger(RimeAddress.class);
   private MoteMemory moteMem;
 
   public static final int RIME_ADDR_LENGTH = 2;
 
-  private MemoryMonitor memMonitor = null;
+  private AddressMonitor memMonitor = null;
 
   public RimeAddress(final Mote mote) {
     moteMem = mote.getMemory();
     if (hasRimeAddress()) {
-      memMonitor = new MemoryMonitor() {
-        public void memoryChanged(MoteMemory memory, MemoryEventType type, int address) {
+      memMonitor = new AddressMonitor() {
+        @Override
+        public void memoryChanged(NewAddressMemory memory, MemoryEventType type, long address) {
           if (type != MemoryEventType.WRITE) {
             return;
           }
@@ -81,7 +83,7 @@ public class RimeAddress extends MoteInterface {
     }
   }
 
-  public boolean hasRimeAddress() {
+  private boolean hasRimeAddress() {
     return moteMem.variableExists("linkaddr_node_addr");
   }
 
@@ -92,13 +94,14 @@ public class RimeAddress extends MoteInterface {
 
     String addrString = "";
     byte[] addr = moteMem.getByteArray("linkaddr_node_addr", RIME_ADDR_LENGTH);
-    for (int i=0; i < RIME_ADDR_LENGTH-1; i++) {
+    for (int i = 0; i < RIME_ADDR_LENGTH - 1; i++) {
       addrString += (0xFF & addr[i]) + ".";
     }
-    addrString += (0xFF & addr[RIME_ADDR_LENGTH-1]);
+    addrString += (0xFF & addr[RIME_ADDR_LENGTH - 1]);
     return addrString;
   }
 
+  @Override
   public JPanel getInterfaceVisualizer() {
     JPanel panel = new JPanel();
     final JLabel ipLabel = new JLabel();
@@ -109,6 +112,7 @@ public class RimeAddress extends MoteInterface {
 
     Observer observer;
     this.addObserver(observer = new Observer() {
+      @Override
       public void update(Observable obs, Object obj) {
         ipLabel.setText("Rime address: " + getAddressString());
       }
@@ -119,6 +123,7 @@ public class RimeAddress extends MoteInterface {
     return panel;
   }
 
+  @Override
   public void releaseInterfaceVisualizer(JPanel panel) {
     Observer observer = (Observer) panel.getClientProperty("intf_obs");
     if (observer == null) {
@@ -129,6 +134,7 @@ public class RimeAddress extends MoteInterface {
     this.deleteObserver(observer);
   }
 
+  @Override
   public void removed() {
     super.removed();
     if (memMonitor != null) {
@@ -136,10 +142,12 @@ public class RimeAddress extends MoteInterface {
     }
   }
 
+  @Override
   public Collection<Element> getConfigXML() {
     return null;
   }
 
+  @Override
   public void setConfigXML(Collection<Element> configXML, boolean visAvailable) {
   }
 }

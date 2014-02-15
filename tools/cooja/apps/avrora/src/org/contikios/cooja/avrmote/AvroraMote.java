@@ -59,6 +59,9 @@ import avrora.sim.mcu.EEPROM;
 import avrora.sim.platform.Platform;
 import avrora.sim.platform.PlatformFactory;
 import avrora.sim.types.SingleSimulation;
+import java.nio.ByteOrder;
+import org.contikios.cooja.MemoryLayout;
+import org.contikios.cooja.MoteMemory;
 
 /**
  * @author Joakim Eriksson, Fredrik Osterlind, David Kopf
@@ -73,6 +76,7 @@ public abstract class AvroraMote extends AbstractEmulatedMote implements Watchpo
   private Platform platform = null;
   private EEPROM EEPROM = null;
   private AtmelInterpreter interpreter = null;
+  private MemoryLayout memLayout;
   private AvrMoteMemory memory = null;
 
   public Simulator sim;
@@ -101,7 +105,8 @@ public abstract class AvroraMote extends AbstractEmulatedMote implements Watchpo
       AVRProperties avrProperties = (AVRProperties) cpu.getProperties();
       sim = cpu.getSimulator();
       interpreter = (AtmelInterpreter) sim.getInterpreter();
-      memory = new AvrMoteMemory(program.getProgram().getSourceMapping(), avrProperties, interpreter);
+      memLayout = new MemoryLayout(ByteOrder.LITTLE_ENDIAN, 2, 2);
+      memory = new AvrMoteMemory(memLayout, program.getProgram().getSourceMapping(), avrProperties, interpreter);
     } catch (Exception e) {
       logger.fatal("Error when initializing Avora mote: " + e.getMessage(), e);
       return false;

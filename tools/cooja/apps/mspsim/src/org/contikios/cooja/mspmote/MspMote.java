@@ -34,6 +34,7 @@ import java.awt.Component;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Hashtable;
@@ -42,6 +43,7 @@ import org.apache.log4j.Logger;
 import org.jdom.Element;
 import org.contikios.cooja.ContikiError;
 import org.contikios.cooja.Cooja;
+import org.contikios.cooja.MemoryLayout;
 import org.contikios.cooja.Mote;
 import org.contikios.cooja.MoteInterface;
 import org.contikios.cooja.MoteInterfaceHandler;
@@ -92,6 +94,7 @@ public abstract class MspMote extends AbstractEmulatedMote implements Mote, Watc
 
   private CommandHandler commandHandler;
   private MSP430 myCpu = null;
+  private final MemoryLayout memLayout;
   private MspMoteType myMoteType = null;
   private MspMoteMemory myMemory = null;
   private MoteInterfaceHandler myMoteInterfaceHandler = null;
@@ -105,6 +108,7 @@ public abstract class MspMote extends AbstractEmulatedMote implements Mote, Watc
   public MspMote(MspMoteType moteType, Simulation simulation) {
     this.simulation = simulation;
     myMoteType = moteType;
+    memLayout = new MemoryLayout(ByteOrder.LITTLE_ENDIAN, 2, 2); /** @TODO: check! */
 
     /* Schedule us immediately */
     requestImmediateWakeup();
@@ -239,7 +243,7 @@ public abstract class MspMote extends AbstractEmulatedMote implements Mote, Watc
     /* Create mote address memory */
     MapTable map = ((MspMoteType)getType()).getELF().getMap();
     MapEntry[] allEntries = map.getAllEntries();
-    myMemory = new MspMoteMemory(this, allEntries, myCpu);
+    myMemory = new MspMoteMemory(memLayout, this, allEntries, myCpu);
 
     myCpu.reset();
   }
