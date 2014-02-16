@@ -751,8 +751,6 @@ public class VariableWatcher extends VisPlugin implements MotePlugin {
 
   @Override
   public boolean setConfigXML(Collection<Element> configXML, boolean visAvailable) {
-    updateNumberOfValues();
-
     for (Element element : configXML) {
       switch (element.getName()) {
         case "varname":
@@ -766,6 +764,7 @@ public class VariableWatcher extends VisPlugin implements MotePlugin {
           break;
       }
     }
+    updateNumberOfValues();
 
     return true;
   }
