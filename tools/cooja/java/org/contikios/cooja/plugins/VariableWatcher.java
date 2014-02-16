@@ -34,7 +34,6 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.FocusEvent;
 import java.awt.event.FocusListener;
 import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
@@ -44,8 +43,6 @@ import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Vector;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.swing.AbstractButton;
 
 import javax.swing.BorderFactory;
@@ -58,15 +55,14 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.JToggleButton;
-import javax.swing.UIManager;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
+import javax.swing.event.PopupMenuEvent;
+import javax.swing.event.PopupMenuListener;
 import javax.swing.text.AttributeSet;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.DefaultFormatterFactory;
 import javax.swing.text.DocumentFilter;
-import javax.swing.text.JTextComponent;
 import javax.swing.text.PlainDocument;
+import org.apache.log4j.Logger;
 
 import org.jdom.Element;
 
@@ -83,6 +79,7 @@ import org.contikios.cooja.MemMonitor.MonitorType;
 import org.contikios.cooja.MoteMemory;
 import org.contikios.cooja.NewAddressMemory;
 import org.contikios.cooja.NewAddressMemory.AddressMonitor;
+import org.jdesktop.swingx.autocomplete.AutoCompleteDecorator;
 
 /**
  * Variable Watcher enables a user to watch mote variables during a simulation.
@@ -97,6 +94,7 @@ import org.contikios.cooja.NewAddressMemory.AddressMonitor;
 public class VariableWatcher extends VisPlugin implements MotePlugin {
 
   private static final long serialVersionUID = 1L;
+  private static final Logger logger = Logger.getLogger(VariableWatcher.class.getName());
 
   private final static int LABEL_WIDTH = 120;
   private final static int LABEL_HEIGHT = 15;
@@ -218,57 +216,60 @@ public class VariableWatcher extends VisPlugin implements MotePlugin {
     label.setPreferredSize(new Dimension(LABEL_WIDTH, LABEL_HEIGHT));
     smallPane.add(BorderLayout.WEST, label);
 
-    varNameCombo = new JComboBox();
-    varNameCombo.setEditable(true);
-    varNameCombo.setSelectedItem("[enter or pick name]");
-
     String[] allPotentialVarNames = moteMemory.getVariableNames();
     Arrays.sort(allPotentialVarNames);
-    for (String aVarName : allPotentialVarNames) {
-      varNameCombo.addItem(aVarName);
+
+    varNameCombo = new JComboBox(allPotentialVarNames);
+    AutoCompleteDecorator.decorate(varNameCombo);
+    varNameCombo.setEditable(true);
+    varNameCombo.setSelectedItem("");
+ 
+    // use longest variable name as prototye for width
+    String longestVarname = "";
+    int maxLength = 0;
+    for (String w : allPotentialVarNames) {
+      if (w.length() > maxLength) {
+        maxLength = w.length();
+        longestVarname = w;
+      }
     }
+    varNameCombo.setPrototypeDisplayValue(longestVarname);
 
-    /* Reset variable read feedbacks if variable name was changed */
-    final JTextComponent tc = (JTextComponent) varNameCombo.getEditor().getEditorComponent();
-    tc.getDocument().addDocumentListener(new DocumentListener() {
+    varNameCombo.addPopupMenuListener(new PopupMenuListener() {
+      
+      String lastItem = "";
 
       @Override
-      public void insertUpdate(DocumentEvent e) {
-        writeButton.setEnabled(false);
-        ((JTextField) varNameCombo.getEditor().getEditorComponent()).setForeground(UIManager.getColor("TextField.foreground"));
+      public void popupMenuWillBecomeVisible(PopupMenuEvent e) {
       }
 
+      // apply new variable name if popup is closed
       @Override
-      public void removeUpdate(DocumentEvent e) {
-        writeButton.setEnabled(false);
-        ((JTextField) varNameCombo.getEditor().getEditorComponent()).setForeground(UIManager.getColor("TextField.foreground"));
-      }
-
-      @Override
-      public void changedUpdate(DocumentEvent e) {
-        writeButton.setEnabled(false);
-        ((JTextField) varNameCombo.getEditor().getEditorComponent()).setForeground(UIManager.getColor("TextField.foreground"));
-      }
-    });
-
-    varNameCombo.addItemListener(new ItemListener() {
-
-      @Override
-      public void itemStateChanged(ItemEvent e) {
-        if (e.getStateChange() == ItemEvent.SELECTED) {
-          try {
-            /* invalidate byte field */
-            bufferedBytes = null;
-            /* calculate number of elements required to show the value in the given size */
-            updateNumberOfValues();
-            varAddressField.setText(String.format("0x%04x", moteMemory.getVariableAddress((String) e.getItem())));
-            varSizeField.setText(String.valueOf(moteMemory.getVariableSize((String) e.getItem())));
-          }
-          catch (UnknownVariableException ex) {
-            ((JTextField) varNameCombo.getEditor().getEditorComponent()).setForeground(Color.RED);
-            writeButton.setEnabled(false);
-          }
+      public void popupMenuWillBecomeInvisible(PopupMenuEvent e) {
+        String currentItem = (String)varNameCombo.getSelectedItem();
+        
+        /* If item did not changed, skip! */
+        if (currentItem.equals(lastItem)) {
+          return;
         }
+        lastItem = currentItem;
+
+        try {
+          /* invalidate byte field */
+          bufferedBytes = null;
+          /* calculate number of elements required to show the value in the given size */
+          updateNumberOfValues();
+          varAddressField.setText(String.format("0x%04x", moteMemory.getVariableAddress(currentItem)));
+          varSizeField.setText(String.valueOf(moteMemory.getVariableSize(currentItem)));
+        }
+        catch (UnknownVariableException ex) {
+          ((JTextField) varNameCombo.getEditor().getEditorComponent()).setForeground(Color.RED);
+          writeButton.setEnabled(false);
+        }
+      }
+
+      @Override
+      public void popupMenuCanceled(PopupMenuEvent e) {
       }
     });
 
@@ -660,7 +661,7 @@ public class VariableWatcher extends VisPlugin implements MotePlugin {
         varValues[i].commitEdit();
       }
       catch (ParseException ex) {
-        Logger.getLogger(VariableWatcher.class.getName()).log(Level.SEVERE, null, ex);
+        logger.error(ex);
       }
     }
 

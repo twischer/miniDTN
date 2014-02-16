@@ -146,7 +146,7 @@ public class IPAddress extends MoteInterface {
                       + 1; // skip 'isused'
               /* logger.info("addIPMonitor for addr " + addr_of_ip + " with size " + 16); */
               moteMem.addMemoryMonitor(
-                      MoteMemory.MonitorType.W,
+                      MonitorType.W,
                       addr_of_ip,
                       16, /* Size of ip address in byte */
                       memMonitor);
@@ -189,7 +189,7 @@ public class IPAddress extends MoteInterface {
       logger.debug("IPv4 detected");
       ipVersion = IPv.IPv4;
       moteMem.addMemoryMonitor(
-              MoteMemory.MonitorType.W,
+              MonitorType.W,
               moteMem.getVariableAddress("uip_hostaddr"),
               moteMem.getVariableSize("uip_hostaddr"),
               memMonitor);
@@ -200,12 +200,12 @@ public class IPAddress extends MoteInterface {
       logger.debug("IPv6 detected");
       ipVersion = IPv.IPv6;
       moteMem.addMemoryMonitor(
-              MoteMemory.MonitorType.W,
+              MonitorType.W,
               moteMem.getVariableAddress("uip_ds6_netif_addr_list_offset"),
               1,
               memMonitor);
       moteMem.addMemoryMonitor(
-              MoteMemory.MonitorType.W,
+              MonitorType.W,
               moteMem.getVariableAddress("uip_ds6_addr_size"),
               1,
               memMonitor);
