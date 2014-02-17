@@ -56,6 +56,13 @@ struct inga_usb_device_t {
 	struct usb_device *usbdev;
 };
 
+struct inga_usb_ftdi_t {
+	struct ftdi_context ctx;
+
+	struct ftdi_eeprom eeprom;
+	unsigned char eeprom_data[FTDI_DEFAULT_EEPROM_SIZE];
+};
+
 struct inga_usb_device_t *inga_usb_find_device(struct inga_usb_config_t *cfg, int verbose)
 {
 	int rc;
@@ -121,55 +128,294 @@ struct inga_usb_device_t *inga_usb_find_device(struct inga_usb_config_t *cfg, in
 	return NULL;
 }
 
-int inga_usb_ftdi_reset(struct ftdi_context *ftdi)
+int inga_usb_ftdi_reset(struct inga_usb_ftdi_t *ftdi)
 {
-	if (ftdi_usb_reset(ftdi) < 0)
+	if (ftdi_usb_reset(&ftdi->ctx) < 0)
 		return -1;
 
-	if (usb_reset(ftdi->usb_dev) < 0)
+	if (usb_reset(ftdi->ctx.usb_dev) < 0)
 		return -1;
 
 	return 0;
 }
 
-int inga_usb_ftdi_close(struct ftdi_context *ftdi)
+int inga_usb_ftdi_close(struct inga_usb_ftdi_t *ftdi)
 {
-	return ftdi_usb_close(ftdi);
+	return ftdi_usb_close(&ftdi->ctx);
 }
 
 void inga_usb_free_device(struct inga_usb_device_t *usb) {
 	free(usb);
 }
 
-int inga_usb_ftdi_read_eeprom(struct ftdi_context *ftdi, unsigned char *eeprom)
+
+int inga_usb_ftdi_eeprom_read(struct inga_usb_ftdi_t *ftdi)
 {
-	return ftdi_read_eeprom(ftdi, eeprom);
+	int rc;
+
+	if ((rc = ftdi_read_eeprom(&ftdi->ctx, ftdi->eeprom_data)) < 0)
+		return rc;
+
+	if ((rc = ftdi_eeprom_decode(&ftdi->eeprom, ftdi->eeprom_data, sizeof(ftdi->eeprom_data))) < 0)
+		return rc;
+
+	/* Decode fails to set the size which is needed to build an image again */
+	ftdi->eeprom.size = FTDI_DEFAULT_EEPROM_SIZE;
+
+	if (ftdi->eeprom.chip_type != ftdi->ctx.type)
+		fprintf(stderr, "WARNING: eeprom.chip_type (%d) != ctx.type (%d)\n", ftdi->eeprom.chip_type, ftdi->ctx.type);
+
+	return 0;
 }
 
-int inga_usb_ftdi_write_eeprom(struct ftdi_context *ftdi, unsigned char *eeprom)
+int inga_usb_ftdi_eeprom_write(struct inga_usb_ftdi_t *ftdi)
 {
-	return ftdi_write_eeprom(ftdi, eeprom);
+	int rc;
+
+	if ((rc = ftdi_eeprom_build(&ftdi->eeprom, ftdi->eeprom_data)) < 0)
+		return rc;
+
+	if ((rc = ftdi_write_eeprom(&ftdi->ctx, ftdi->eeprom_data)) < 0)
+		return rc;
+
+	return 0;
 }
 
-int inga_usb_ftdi_eeprom_decode(struct ftdi_eeprom *eeprom, unsigned char *output, int size)
+int inga_usb_ftdi_eeprom_get_value(struct inga_usb_ftdi_t *ftdi, enum ftdi_eeprom_value value_name, int *value)
 {
-	return ftdi_eeprom_decode(eeprom, output, size);
+	switch (value_name) {
+		case VENDOR_ID:
+			*value = ftdi->eeprom.vendor_id;
+			break;
+		case PRODUCT_ID:
+			*value = ftdi->eeprom.product_id;
+			break;
+		case SELF_POWERED:
+			*value = ftdi->eeprom.self_powered;
+			break;
+		case REMOTE_WAKEUP:
+			*value = ftdi->eeprom.remote_wakeup;
+			break;
+		case IN_IS_ISOCHRONOUS:
+			*value = ftdi->eeprom.in_is_isochronous;
+			break;
+		case OUT_IS_ISOCHRONOUS:
+			*value = ftdi->eeprom.out_is_isochronous;
+			break;
+		case SUSPEND_PULL_DOWNS:
+			*value = ftdi->eeprom.suspend_pull_downs;
+			break;
+		case USE_SERIAL:
+			*value = ftdi->eeprom.use_serial;
+			break;
+		case USB_VERSION:
+			*value = ftdi->eeprom.usb_version;
+			break;
+		case MAX_POWER:
+			*value = ftdi->eeprom.max_power;
+			break;
+		case CBUS_FUNCTION_0:
+			*value = ftdi->eeprom.cbus_function[0];
+			break;
+		case CBUS_FUNCTION_1:
+			*value = ftdi->eeprom.cbus_function[1];
+			break;
+		case CBUS_FUNCTION_2:
+			*value = ftdi->eeprom.cbus_function[2];
+			break;
+		case CBUS_FUNCTION_3:
+			*value = ftdi->eeprom.cbus_function[3];
+			break;
+		case CBUS_FUNCTION_4:
+			*value = ftdi->eeprom.cbus_function[4];
+			break;
+		case CBUS_FUNCTION_5:
+			*value = 0;
+			break;
+		case CBUS_FUNCTION_6:
+			*value = 0;
+			break;
+		case CBUS_FUNCTION_7:
+			*value = 0;
+			break;
+		case CBUS_FUNCTION_8:
+			*value = 0;
+			break;
+		case CBUS_FUNCTION_9:
+			*value = 0;
+			break;
+		case INVERT:
+			*value = ftdi->eeprom.invert;
+			break;
+	 case CHIP_TYPE:
+			*value = ftdi->eeprom.chip_type;
+			break;
+		case CHIP_SIZE:
+			*value = ftdi->eeprom.size;
+			break;
+		default:
+			return -1;
+	}
+	return 0;
 }
 
-int inga_usb_ftdi_eeprom_build(struct ftdi_eeprom *eeprom, unsigned char *output)
+int inga_usb_ftdi_eeprom_set_value(struct inga_usb_ftdi_t *ftdi, enum ftdi_eeprom_value value_name, int value)
 {
-	return ftdi_eeprom_build(eeprom, output);
+	switch (value_name) {
+		case VENDOR_ID:
+			ftdi->eeprom.vendor_id = value;
+			break;
+		case PRODUCT_ID:
+			ftdi->eeprom.product_id = value;
+			break;
+		case SELF_POWERED:
+			ftdi->eeprom.self_powered = value;
+			break;
+		case REMOTE_WAKEUP:
+			ftdi->eeprom.remote_wakeup = value;
+			break;
+		case IN_IS_ISOCHRONOUS:
+			ftdi->eeprom.in_is_isochronous = value;
+			break;
+		case OUT_IS_ISOCHRONOUS:
+			ftdi->eeprom.out_is_isochronous = value;
+			break;
+		case SUSPEND_PULL_DOWNS:
+			ftdi->eeprom.suspend_pull_downs = value;
+			break;
+		case USE_SERIAL:
+			ftdi->eeprom.use_serial = value;
+			break;
+		case USB_VERSION:
+			ftdi->eeprom.usb_version = value;
+			break;
+		case MAX_POWER:
+			ftdi->eeprom.max_power = value;
+			break;
+		case CBUS_FUNCTION_0:
+			ftdi->eeprom.cbus_function[0] = value;
+			break;
+		case CBUS_FUNCTION_1:
+			ftdi->eeprom.cbus_function[1] = value;
+			break;
+		case CBUS_FUNCTION_2:
+			ftdi->eeprom.cbus_function[2] = value;
+			break;
+		case CBUS_FUNCTION_3:
+			ftdi->eeprom.cbus_function[3] = value;
+			break;
+		case CBUS_FUNCTION_4:
+			ftdi->eeprom.cbus_function[4] = value;
+			break;
+		case CBUS_FUNCTION_5:
+			ftdi->eeprom.cbus_function[5] = value;
+			break;
+		case CBUS_FUNCTION_6:
+			ftdi->eeprom.cbus_function[6] = value;
+			break;
+		case CBUS_FUNCTION_7:
+			ftdi->eeprom.cbus_function[7] = value;
+			break;
+		case CBUS_FUNCTION_8:
+			ftdi->eeprom.cbus_function[8] = value;
+			break;
+		case CBUS_FUNCTION_9:
+			ftdi->eeprom.cbus_function[9] = value;
+			break;
+		case INVERT:
+			ftdi->eeprom.invert = value;
+			break;
+		case CHIP_TYPE:
+			ftdi->eeprom.chip_type = value;
+			break;
+		case CHIP_SIZE:
+			return -1;
+		default:
+			return -1;
+	}
+	return 0;
 }
+
+int inga_usb_ftdi_eeprom_get_string(struct inga_usb_ftdi_t *ftdi, enum ftdi_eeprom_string string_name, const char **str)
+{
+	*str = NULL;
+
+	switch (string_name) {
+		case MANUFACTURER_STRING:
+			*str = ftdi->eeprom.manufacturer;
+			break;
+
+		case PRODUCT_STRING:
+			*str = ftdi->eeprom.product;
+			break;
+
+		case SERIAL_STRING:
+			*str = ftdi->eeprom.serial;
+			break;
+
+		default:
+			return -1;
+	}
+
+	return 0;
+}
+
+int inga_usb_ftdi_eeprom_set_string(struct inga_usb_ftdi_t *ftdi, enum ftdi_eeprom_string string_name, const char *str)
+{
+	char **dst = NULL;
+
+	switch (string_name) {
+		case MANUFACTURER_STRING:
+			dst = &ftdi->eeprom.manufacturer;
+			break;
+
+		case PRODUCT_STRING:
+			dst = &ftdi->eeprom.product;
+			break;
+
+		case SERIAL_STRING:
+			dst = &ftdi->eeprom.serial;
+			break;
+
+		default:
+			return -1;
+	}
+
+	if (*dst == str)
+		return 0;
+
+	free (*dst);
+	*dst = NULL;
+
+	if (str)
+		*dst = strdup(str);
+
+	return 0;
+}
+
 
 #elif FTDI_VERSION == 1
 /* Code specific to libftdi 1.x / libusb-1.x */
 
 #include <libusb.h>
 
+#define FTDI_DEFAULT_EEPROM_SIZE 256
+#define FTDI_EEPROM_VALUES CHANNEL_D_RS485
+
 struct inga_usb_device_t {
 	libusb_context *usbctx;
 
 	struct libusb_device *usbdev;
+};
+
+struct inga_usb_ftdi_t {
+	struct ftdi_context ctx;
+
+	char *eeprom_manufacturer;
+	char *eeprom_product;
+	char *eeprom_serial;
+
+	int eeprom_values[FTDI_EEPROM_VALUES];
 };
 
 struct inga_usb_device_t *inga_usb_find_device(struct inga_usb_config_t *cfg, int verbose)
@@ -240,30 +486,30 @@ struct inga_usb_device_t *inga_usb_find_device(struct inga_usb_config_t *cfg, in
 	return NULL;
 }
 
-int inga_usb_ftdi_reset(struct ftdi_context *ftdi)
+int inga_usb_ftdi_reset(struct inga_usb_ftdi_t *ftdi)
 {
-	if (ftdi_usb_reset(ftdi) < 0)
+	if (ftdi_usb_reset(&ftdi->ctx) < 0)
 		return -1;
 
-	if (libusb_reset_device(ftdi->usb_dev) < 1)
+	if (libusb_reset_device(ftdi->ctx.usb_dev) < 1)
 		return -1;
 
 	return 0;
 }
 
-int inga_usb_ftdi_close(struct ftdi_context *ftdi)
+int inga_usb_ftdi_close(struct inga_usb_ftdi_t *ftdi)
 {
 	libusb_device *dev = NULL;
 	int interface;
 
 	/* Remember the USB device and ftdi_sio interface */
-	if (ftdi->usb_dev) {
-		dev = libusb_get_device(ftdi->usb_dev);
-		interface = ftdi->interface;
+	if (ftdi->ctx.usb_dev) {
+		dev = libusb_get_device(ftdi->ctx.usb_dev);
+		interface = ftdi->ctx.interface;
 	}
 
 	/* Close the FTDI */
-	if (ftdi_usb_close(ftdi) < 0)
+	if (ftdi_usb_close(&ftdi->ctx) < 0)
 		return -1;
 
 	/* Reattach the ftdi_sio kernel module to the USB device */
@@ -289,24 +535,165 @@ void inga_usb_free_device(struct inga_usb_device_t *usb) {
 	free(usb);
 }
 
-int inga_usb_ftdi_read_eeprom(struct ftdi_context *ftdi, unsigned char *eeprom)
-{
-	return -1;
+static void inga_usb_read_eeprom_string(char **str, const char *buf, int offset, int length) {
+	int i;
+
+	free(*str);
+	*str = NULL;
+
+	if (length > 0) {
+		*str = malloc(length);
+
+		for (i = 0; i < length - 1; i++)
+			(*str)[i] = buf[2 + offset + 2 * i];
+		(*str)[i] = '\0';
+	}
 }
 
-int inga_usb_ftdi_write_eeprom(struct ftdi_context *ftdi, unsigned char *eeprom)
+int inga_usb_ftdi_eeprom_read(struct inga_usb_ftdi_t *ftdi)
 {
-	return -1;
+	int rc;
+	char buf[FTDI_DEFAULT_EEPROM_SIZE];
+	int string_size, eeprom_size, i;
+
+	if ((rc = ftdi_read_eeprom(&ftdi->ctx)) < 0)
+		return rc;
+
+	if ((rc = ftdi_eeprom_decode(&ftdi->ctx, 0)) < 0)
+		return rc;
+
+	if ((rc = ftdi_get_eeprom_buf(&ftdi->ctx, buf, sizeof(buf))) < 0)
+		return rc;
+
+	if ((rc = ftdi_get_eeprom_value(&ftdi->ctx, CHIP_SIZE, &eeprom_size)) < 0)
+		return rc;
+
+	inga_usb_read_eeprom_string(&ftdi->eeprom_manufacturer, buf, buf[0x0E] & (eeprom_size - 1), buf[0x0F] / 2);
+	inga_usb_read_eeprom_string(&ftdi->eeprom_product     , buf, buf[0x10] & (eeprom_size - 1), buf[0x11] / 2);
+	inga_usb_read_eeprom_string(&ftdi->eeprom_serial      , buf, buf[0x12] & (eeprom_size - 1), buf[0x13] / 2);
+
+	return 0;
 }
 
-int inga_usb_ftdi_eeprom_decode(struct ftdi_eeprom *eeprom, unsigned char *output, int size)
+static void inga_usb_ftdi_read_eeprom_values(struct inga_usb_ftdi_t *ftdi)
 {
-	return -1;
+	int i;
+
+	for (i = 0; i < FTDI_EEPROM_VALUES; i++)
+		ftdi_get_eeprom_value(&ftdi->ctx, i, &ftdi->eeprom_values[i]);
 }
 
-int inga_usb_ftdi_eeprom_build(struct ftdi_eeprom *eeprom, unsigned char *output)
+static void inga_usb_ftdi_write_eeprom_values(struct inga_usb_ftdi_t *ftdi)
 {
-	return -1;
+	int i;
+
+	for (i = 0; i < FTDI_EEPROM_VALUES; i++)
+		ftdi_set_eeprom_value(&ftdi->ctx, i, ftdi->eeprom_values[i]);
+}
+
+int inga_usb_ftdi_eeprom_write(struct inga_usb_ftdi_t *ftdi)
+{
+	int rc;
+
+	/* ftdi_eeprom_initdefaults() is the only way to change the manufacturer, product and serial strings,
+	   but that function also clobbers everything else. Therefore, we save all EEPROM values beforehand
+	   and restore them afterwards.
+	*/
+
+	inga_usb_ftdi_read_eeprom_values(ftdi);
+
+	if ((rc = ftdi_eeprom_initdefaults(&ftdi->ctx,
+			ftdi->eeprom_manufacturer, ftdi->eeprom_product, ftdi->eeprom_serial)) < 0)
+		return rc;
+
+	inga_usb_ftdi_write_eeprom_values(ftdi);
+
+
+	if ((rc = ftdi_eeprom_build(&ftdi->ctx)) < 0)
+		return rc;
+
+	if ((rc = ftdi_write_eeprom(&ftdi->ctx)) < 0)
+		return rc;
+
+	return 0;
+}
+
+int inga_usb_ftdi_eeprom_get_value(struct inga_usb_ftdi_t *ftdi, enum ftdi_eeprom_value value_name, int *value)
+{
+	int rc;
+
+	if ((rc = ftdi_get_eeprom_value(&ftdi->ctx, value_name, value) < 0))
+		return rc;
+
+	if (value_name == MAX_POWER)
+		*value /= 2;
+
+	return rc;
+}
+
+int inga_usb_ftdi_eeprom_set_value(struct inga_usb_ftdi_t *ftdi, enum ftdi_eeprom_value value_name, int value)
+{
+	if (value_name == MAX_POWER)
+		value *= 2;
+
+	return ftdi_set_eeprom_value(&ftdi->ctx, value_name, value);
+}
+
+int inga_usb_ftdi_eeprom_get_string(struct inga_usb_ftdi_t *ftdi, enum ftdi_eeprom_string string_name, const char **str)
+{
+	*str = NULL;
+
+	switch (string_name) {
+		case MANUFACTURER_STRING:
+			*str = ftdi->eeprom_manufacturer;
+			break;
+
+		case PRODUCT_STRING:
+			*str = ftdi->eeprom_product;
+			break;
+
+		case SERIAL_STRING:
+			*str = ftdi->eeprom_serial;
+			break;
+
+		default:
+			return -1;
+	}
+
+	return 0;
+}
+
+int inga_usb_ftdi_eeprom_set_string(struct inga_usb_ftdi_t *ftdi, enum ftdi_eeprom_string string_name, const char *str)
+{
+	char **dst = NULL;
+
+	switch (string_name) {
+		case MANUFACTURER_STRING:
+			dst = &ftdi->eeprom_manufacturer;
+			break;
+
+		case PRODUCT_STRING:
+			dst = &ftdi->eeprom_product;
+			break;
+
+		case SERIAL_STRING:
+			dst = &ftdi->eeprom_serial;
+			break;
+
+		default:
+			return -1;
+	}
+
+	if (*dst == str)
+		return 0;
+
+	free (*dst);
+	*dst = NULL;
+
+	if (str)
+		*dst = strdup(str);
+
+	return 0;
 }
 
 #else
@@ -368,29 +755,41 @@ static void inga_usb_resolve(struct inga_usb_config_t *cfg, int verbose)
 	}
 }
 
-int inga_usb_ftdi_init(struct ftdi_context *ftdi)
+int inga_usb_ftdi_init(struct inga_usb_ftdi_t **ftdi)
 {
-	return ftdi_init(ftdi);
+	*ftdi = (struct inga_usb_ftdi_t *) malloc(sizeof(struct inga_usb_ftdi_t));
+	memset(*ftdi, 0, sizeof(struct inga_usb_ftdi_t));
+
+	return ftdi_init(&(*ftdi)->ctx);
 }
 
-void inga_usb_ftdi_deinit(struct ftdi_context *ftdi)
+void inga_usb_ftdi_deinit(struct inga_usb_ftdi_t *ftdi)
 {
-	ftdi_deinit(ftdi);
+	if (!ftdi)
+		return;
+
+	ftdi_deinit(&ftdi->ctx);
+
+	free(ftdi);
+}
+
+int inga_usb_ftdi_open(struct inga_usb_ftdi_t *ftdi, struct inga_usb_device_t *usb)
+{
+	return ftdi_usb_open_dev(&ftdi->ctx, usb->usbdev);
+}
+
+int inga_usb_ftdi_set_bitmode(struct inga_usb_ftdi_t *ftdi, unsigned char bitmask, unsigned char mode)
+{
+	return ftdi_set_bitmode(&ftdi->ctx, bitmask, mode);
+}
+
+int inga_usb_ftdi_get_chip_type(struct inga_usb_ftdi_t *ftdi)
+{
+	return ftdi->ctx.type;
 }
 
 
-int inga_usb_ftdi_open(struct ftdi_context *ftdi, struct inga_usb_device_t *usb)
+char *inga_usb_ftdi_get_error_string(struct inga_usb_ftdi_t *ftdi)
 {
-	return ftdi_usb_open_dev(ftdi, usb->usbdev);
-}
-
-int inga_usb_ftdi_set_bitmode(struct ftdi_context *ftdi, unsigned char bitmask, unsigned char mode)
-{
-	return ftdi_set_bitmode(ftdi, bitmask, mode);
-}
-
-
-char *inga_usb_ftdi_get_error_string(struct ftdi_context *ftdi)
-{
-	return ftdi_get_error_string(ftdi);
+	return ftdi_get_error_string(&ftdi->ctx);
 }

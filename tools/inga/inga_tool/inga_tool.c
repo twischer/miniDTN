@@ -72,10 +72,10 @@ struct config_t {
 void inga_reset(struct config_t *cfg)
 {
 	int rc;
-	struct ftdi_context ftdic;
+	struct inga_usb_ftdi_t *ftdi;
 	struct inga_usb_device_t *usbdev = NULL;
 
-	if (inga_usb_ftdi_init(&ftdic) < 0) {
+	if (inga_usb_ftdi_init(&ftdi) < 0) {
 		fprintf(stderr, "ftdi_init failed\n");
 		exit(EXIT_FAILURE);
 	}
@@ -87,9 +87,9 @@ void inga_reset(struct config_t *cfg)
 		exit(EXIT_FAILURE);
 	}
 
-	rc = inga_usb_ftdi_open(&ftdic, usbdev);
+	rc = inga_usb_ftdi_open(ftdi, usbdev);
 	if (rc < 0) {
-		fprintf(stderr, "unable to open ftdi device: %d (%s)\n", rc, ftdi_get_error_string(&ftdic));
+		fprintf(stderr, "unable to open ftdi device: %d (%s)\n", rc, inga_usb_ftdi_get_error_string(ftdi));
 		exit(EXIT_FAILURE);
 	}
 
@@ -97,38 +97,37 @@ void inga_reset(struct config_t *cfg)
 	fflush(stdout);
 
 	/* Set CBUS3 to output and high */
-	inga_usb_ftdi_set_bitmode(&ftdic, 0x88, BITMODE_CBUS);
+	inga_usb_ftdi_set_bitmode(ftdi, 0x88, BITMODE_CBUS);
 
 	/* sleep(1); */
 
 	/* Set CBUS3 to output and low */
-	inga_usb_ftdi_set_bitmode(&ftdic, 0x80, BITMODE_CBUS);
+	inga_usb_ftdi_set_bitmode(ftdi, 0x80, BITMODE_CBUS);
 
 	printf("done\n");
 
-	inga_usb_ftdi_set_bitmode(&ftdic, 0, BITMODE_RESET);
+	inga_usb_ftdi_set_bitmode(ftdi, 0, BITMODE_RESET);
 
 out:
 
 	VERBOSE("Resetting USB device\n");
 
-	inga_usb_ftdi_reset(&ftdic);
-	inga_usb_ftdi_close(&ftdic);
-	inga_usb_ftdi_deinit(&ftdic);
+	inga_usb_ftdi_reset(ftdi);
+	inga_usb_ftdi_close(ftdi);
+	inga_usb_ftdi_deinit(ftdi);
 
 	inga_usb_free_device(usbdev);
 }
 
-#if FTDI_VERSION == 0
 void inga_serial(struct config_t *cfg)
 {
 	int rc;
-	struct ftdi_context ftdic;
+	struct inga_usb_ftdi_t *ftdi;
 	struct inga_usb_device_t *usbdev = NULL;
-	struct ftdi_eeprom eeprom;
-	char buf[FTDI_DEFAULT_EEPROM_SIZE];
+	const char *manufacturer = NULL, *product = NULL, *serial = NULL;
+	int chip_type, vid, pid, max_power, cbus[5];
 
-	if (inga_usb_ftdi_init(&ftdic) < 0) {
+	if (inga_usb_ftdi_init(&ftdi) < 0) {
 		fprintf(stderr, "ftdi_init failed\n");
 		exit(EXIT_FAILURE);
 	}
@@ -140,47 +139,60 @@ void inga_serial(struct config_t *cfg)
 		exit(EXIT_FAILURE);
 	}
 
-	rc = inga_usb_ftdi_open(&ftdic, usbdev);
+	rc = inga_usb_ftdi_open(ftdi, usbdev);
 	if (rc < 0) {
-		fprintf(stderr, "unable to open ftdi device: %d (%s)\n", rc, inga_usb_ftdi_get_error_string(&ftdic));
+		fprintf(stderr, "unable to open ftdi device: %d (%s)\n", rc, inga_usb_ftdi_get_error_string(ftdi));
 		exit(EXIT_FAILURE);
 	}
 
 	printf("Reading out EEPROM image...");
 	fflush(stdout);
-	rc = inga_usb_ftdi_read_eeprom(&ftdic, buf);
+	rc = inga_usb_ftdi_eeprom_read(ftdi);
 	if (rc < 0) {
-		fprintf(stderr, "\nCould not read EEPROM: %i\n", rc);
+		fprintf(stderr, "\nCould not read and decode EEPROM: %i\n", rc);
 		exit(EXIT_FAILURE);
 	}
-	printf("done\n");
+	printf("done\n\n");
 
-	rc = inga_usb_ftdi_eeprom_decode(&eeprom, buf, FTDI_DEFAULT_EEPROM_SIZE);
-	if (rc < 0) {
-		fprintf(stderr, "Could not decode EEPROM: %i\n", rc);
+	if ((inga_usb_ftdi_eeprom_get_value(ftdi, CHIP_TYPE, &chip_type) < 0) ||
+	    (inga_usb_ftdi_eeprom_get_value(ftdi, VENDOR_ID, &vid) < 0) ||
+	    (inga_usb_ftdi_eeprom_get_value(ftdi, PRODUCT_ID, &pid) < 0) ||
+	    (inga_usb_ftdi_eeprom_get_value(ftdi, MAX_POWER, &max_power) < 0) ||
+	    (inga_usb_ftdi_eeprom_get_value(ftdi, CBUS_FUNCTION_0, &cbus[0]) < 0) ||
+	    (inga_usb_ftdi_eeprom_get_value(ftdi, CBUS_FUNCTION_1, &cbus[1]) < 0) ||
+	    (inga_usb_ftdi_eeprom_get_value(ftdi, CBUS_FUNCTION_2, &cbus[2]) < 0) ||
+	    (inga_usb_ftdi_eeprom_get_value(ftdi, CBUS_FUNCTION_3, &cbus[3]) < 0) ||
+	    (inga_usb_ftdi_eeprom_get_value(ftdi, CBUS_FUNCTION_4, &cbus[4]) < 0)) {
+
+		fprintf(stderr, "Could not read the EEPROM values\n");
 		exit(EXIT_FAILURE);
 	}
-	/* decode fails to set the size which is needed to build an image again */
-	eeprom.size = FTDI_DEFAULT_EEPROM_SIZE;
 
-	if (eeprom.chip_type != ftdic.type) {
-		/* CBUS has not been copied over in this case, we need to do that ourselves */
-		int i, tmp;
-		for (i=0;i<5;i++) {
-			if (i%2 == 0)
-				tmp = buf[0x14 + (i/2)];
-			eeprom.cbus_function[i] = tmp & 0x0f;
-			tmp = tmp >> 4;
-		}
+	if ((inga_usb_ftdi_eeprom_get_string(ftdi, MANUFACTURER_STRING, &manufacturer) < 0) ||
+	    (inga_usb_ftdi_eeprom_get_string(ftdi, PRODUCT_STRING, &product) < 0) ||
+	    (inga_usb_ftdi_eeprom_get_string(ftdi, SERIAL_STRING, &serial) < 0)) {
+
+		fprintf(stderr, "Could not read the EEPROM manufacturer, product and serial strings\n");
+		exit(EXIT_FAILURE);
 	}
 
-	printf("Serial: %s\n",eeprom.serial);
+	printf("EEPROM config:\n"
+		"Chip type:    %i\n"
+		"VID:          0x%04x\n"
+		"PID:          0x%04x\n"
+		"Manufacturer: %s\n"
+		"Product:      %s\n"
+		"Serial:       %s\n"
+		"Max power:    %i\n"
+		"CBUS:         %1x%1x %1x%1x 0%1x\n\n",
+			chip_type, vid, pid, manufacturer, product, serial, max_power * 2,
+			cbus[1], cbus[0], cbus[3], cbus[2], cbus[4]);
 
 	VERBOSE("Resetting USB device\n");
 
-	inga_usb_ftdi_reset(&ftdic);
-	inga_usb_ftdi_close(&ftdic);
-	inga_usb_ftdi_deinit(&ftdic);
+	inga_usb_ftdi_reset(ftdi);
+	inga_usb_ftdi_close(ftdi);
+	inga_usb_ftdi_deinit(ftdi);
 
 	inga_usb_free_device(usbdev);
 }
@@ -188,12 +200,12 @@ void inga_serial(struct config_t *cfg)
 void inga_eeprom(struct config_t *cfg)
 {
 	int rc;
-	struct ftdi_context ftdic;
+	struct inga_usb_ftdi_t *ftdi;
 	struct inga_usb_device_t *usbdev = NULL;
-	struct ftdi_eeprom eeprom;
-	char buf[FTDI_DEFAULT_EEPROM_SIZE];
+	const char *manufacturer = NULL, *product = NULL, *serial = NULL;
+	int chip_type, vid, pid, max_power, cbus[5];
 
-	if (inga_usb_ftdi_init(&ftdic) < 0) {
+	if (inga_usb_ftdi_init(&ftdi) < 0) {
 		fprintf(stderr, "ftdi_init failed\n");
 		exit(EXIT_FAILURE);
 	}
@@ -205,38 +217,41 @@ void inga_eeprom(struct config_t *cfg)
 		exit(EXIT_FAILURE);
 	}
 
-	rc = inga_usb_ftdi_open(&ftdic, usbdev);
+	rc = inga_usb_ftdi_open(ftdi, usbdev);
 	if (rc < 0) {
-		fprintf(stderr, "unable to open ftdi device: %d (%s)\n", rc, inga_usb_ftdi_get_error_string(&ftdic));
+		fprintf(stderr, "unable to open ftdi device: %d (%s)\n", rc, inga_usb_ftdi_get_error_string(ftdi));
 		exit(EXIT_FAILURE);
 	}
 
 	printf("Reading out EEPROM image...");
 	fflush(stdout);
-	rc = inga_usb_ftdi_read_eeprom(&ftdic, buf);
+	rc = inga_usb_ftdi_eeprom_read(ftdi);
 	if (rc < 0) {
-		fprintf(stderr, "\nCould not read EEPROM: %i\n", rc);
+		fprintf(stderr, "\nCould not read and decode EEPROM: %i\n", rc);
 		exit(EXIT_FAILURE);
 	}
-	printf("done\n");
+	printf("done\n\n");
 
-	rc = inga_usb_ftdi_eeprom_decode(&eeprom, buf, FTDI_DEFAULT_EEPROM_SIZE);
-	if (rc < 0) {
-		fprintf(stderr, "Could not decode EEPROM: %i\n", rc);
+	if ((inga_usb_ftdi_eeprom_get_value(ftdi, CHIP_TYPE, &chip_type) < 0) ||
+	    (inga_usb_ftdi_eeprom_get_value(ftdi, VENDOR_ID, &vid) < 0) ||
+	    (inga_usb_ftdi_eeprom_get_value(ftdi, PRODUCT_ID, &pid) < 0) ||
+	    (inga_usb_ftdi_eeprom_get_value(ftdi, MAX_POWER, &max_power) < 0) ||
+	    (inga_usb_ftdi_eeprom_get_value(ftdi, CBUS_FUNCTION_0, &cbus[0]) < 0) ||
+	    (inga_usb_ftdi_eeprom_get_value(ftdi, CBUS_FUNCTION_1, &cbus[1]) < 0) ||
+	    (inga_usb_ftdi_eeprom_get_value(ftdi, CBUS_FUNCTION_2, &cbus[2]) < 0) ||
+	    (inga_usb_ftdi_eeprom_get_value(ftdi, CBUS_FUNCTION_3, &cbus[3]) < 0) ||
+	    (inga_usb_ftdi_eeprom_get_value(ftdi, CBUS_FUNCTION_4, &cbus[4]) < 0)) {
+
+		fprintf(stderr, "Could not read the EEPROM values\n");
 		exit(EXIT_FAILURE);
 	}
-	/* decode fails to set the size which is needed to build an image again */
-	eeprom.size = FTDI_DEFAULT_EEPROM_SIZE;
 
-	if (eeprom.chip_type != ftdic.type) {
-		/* CBUS has not been copied over in this case, we need to do that ourselves */
-		int i, tmp;
-		for (i=0;i<5;i++) {
-			if (i%2 == 0)
-				tmp = buf[0x14 + (i/2)];
-			eeprom.cbus_function[i] = tmp & 0x0f;
-			tmp = tmp >> 4;
-		}
+	if ((inga_usb_ftdi_eeprom_get_string(ftdi, MANUFACTURER_STRING, &manufacturer) < 0) ||
+	    (inga_usb_ftdi_eeprom_get_string(ftdi, PRODUCT_STRING, &product) < 0) ||
+	    (inga_usb_ftdi_eeprom_get_string(ftdi, SERIAL_STRING, &serial) < 0)) {
+
+		fprintf(stderr, "Could not read the EEPROM manufacturer, product and serial strings\n");
+		exit(EXIT_FAILURE);
 	}
 
 	VERBOSE("\nEEPROM config:\n"
@@ -247,33 +262,26 @@ void inga_eeprom(struct config_t *cfg)
 		"Product:      %s\n"
 		"Serial:       %s\n"
 		"Max power:    %i\n"
-		"CBUS:         %1x%1x %1x%1x 0%1x\n\n", eeprom.chip_type,
-			eeprom.vendor_id, eeprom.product_id, eeprom.manufacturer,
-			eeprom.product, eeprom.serial, eeprom.max_power*2,
-			eeprom.cbus_function[1],
-			eeprom.cbus_function[0], eeprom.cbus_function[3],
-			eeprom.cbus_function[2], eeprom.cbus_function[4]);
+		"CBUS:         %1x%1x %1x%1x 0%1x\n\n",
+			chip_type, vid, pid, manufacturer, product, serial, max_power * 2,
+			cbus[1], cbus[0], cbus[3], cbus[2], cbus[4]);
 
-	if (cfg->eep_vendor_id)
-		eeprom.vendor_id = cfg->eep_vendor_id;
-	if (cfg->eep_product_id)
-		eeprom.product_id = cfg->eep_product_id;
-	if (cfg->eep_manuf)
-		eeprom.manufacturer = cfg->eep_manuf;
-	if (cfg->eep_prod)
-		eeprom.product = cfg->eep_prod;
-	if (cfg->eep_serial)
-		eeprom.serial = cfg->eep_serial;
+	vid = cfg->eep_vendor_id ? cfg->eep_vendor_id : vid;
+	pid = cfg->eep_product_id ? cfg->eep_product_id : pid;
+
+	manufacturer = cfg->eep_manuf ? cfg->eep_manuf : manufacturer;
+	product = cfg->eep_prod ? cfg->eep_prod : product;
+	serial = cfg->eep_serial ? cfg->eep_serial : serial;
+
+	max_power = (cfg->eep_max_power > 0) ? (cfg->eep_max_power / 2) : max_power;
+
 	if (cfg->eep_cbusio) {
-		eeprom.cbus_function[0] = CBUS_TXLED;
-		eeprom.cbus_function[1] = CBUS_RXLED;
-		eeprom.cbus_function[2] = CBUS_TXDEN;
-		eeprom.cbus_function[3] = CBUS_IOMODE;
-		eeprom.cbus_function[4] = CBUS_SLEEP;
+		cbus[0] = CBUS_TXLED;
+		cbus[1] = CBUS_RXLED;
+		cbus[2] = CBUS_TXDEN;
+		cbus[3] = CBUS_IOMODE;
+		cbus[4] = CBUS_SLEEP;
 	}
-	if (cfg->eep_max_power > 0)
-		eeprom.max_power = cfg->eep_max_power/2;
-
 
 	VERBOSE("\nUpdating with EEPROM config:\n"
 		"Chip type:    %i\n"
@@ -283,25 +291,38 @@ void inga_eeprom(struct config_t *cfg)
 		"Product:      %s\n"
 		"Serial:       %s\n"
 		"Max power:    %i\n"
-		"CBUS:         %1x%1x %1x%1x 0%1x\n\n", eeprom.chip_type,
-			eeprom.vendor_id, eeprom.product_id, eeprom.manufacturer,
-			eeprom.product, eeprom.serial, eeprom.max_power*2,
-			eeprom.cbus_function[0],
-			eeprom.cbus_function[1], eeprom.cbus_function[2],
-			eeprom.cbus_function[3], eeprom.cbus_function[4]);
+		"CBUS:         %1x%1x %1x%1x 0%1x\n\n",
+			chip_type, vid, pid, manufacturer, product, serial, max_power * 2,
+			cbus[1], cbus[0], cbus[3], cbus[2], cbus[4]);
 
-	eeprom.chip_type = ftdic.type;
-	rc = inga_usb_ftdi_eeprom_build(&eeprom, buf);
-	if (rc < 0) {
-		fprintf(stderr, "Could not build EEPROM: %i\n", rc);
+	if ((inga_usb_ftdi_eeprom_set_value(ftdi, CHIP_TYPE, chip_type) < 0) ||
+	    (inga_usb_ftdi_eeprom_set_value(ftdi, VENDOR_ID, vid) < 0) ||
+	    (inga_usb_ftdi_eeprom_set_value(ftdi, PRODUCT_ID, pid) < 0) ||
+	    (inga_usb_ftdi_eeprom_set_value(ftdi, MAX_POWER, max_power) < 0) ||
+	    (inga_usb_ftdi_eeprom_set_value(ftdi, CBUS_FUNCTION_0, cbus[0]) < 0) ||
+	    (inga_usb_ftdi_eeprom_set_value(ftdi, CBUS_FUNCTION_1, cbus[1]) < 0) ||
+	    (inga_usb_ftdi_eeprom_set_value(ftdi, CBUS_FUNCTION_2, cbus[2]) < 0) ||
+	    (inga_usb_ftdi_eeprom_set_value(ftdi, CBUS_FUNCTION_3, cbus[3]) < 0) ||
+	    (inga_usb_ftdi_eeprom_set_value(ftdi, CBUS_FUNCTION_4, cbus[4]) < 0)) {
+
+		fprintf(stderr, "Could not write the EEPROM values\n");
+		exit(EXIT_FAILURE);
+	}
+
+	if ((inga_usb_ftdi_eeprom_set_string(ftdi, MANUFACTURER_STRING, manufacturer) < 0) ||
+	    (inga_usb_ftdi_eeprom_set_string(ftdi, PRODUCT_STRING, product) < 0) ||
+	    (inga_usb_ftdi_eeprom_set_string(ftdi, SERIAL_STRING, serial) < 0)) {
+
+		fprintf(stderr, "Could not write the EEPROM manufacturer, product and serial strings\n");
 		exit(EXIT_FAILURE);
 	}
 
 	printf("Writing updated EEPROM image...");
 	fflush(stdout);
-	rc = inga_usb_ftdi_write_eeprom(&ftdic, buf);
+
+	rc = inga_usb_ftdi_eeprom_write(ftdi);
 	if (rc < 0) {
-		fprintf(stderr, "\nCould not write EEPROM: %i\n", rc);
+		fprintf(stderr, "Could not build and write EEPROM: %i\n", rc);
 		exit(EXIT_FAILURE);
 	}
 	sleep(10);
@@ -311,13 +332,12 @@ out:
 
 	VERBOSE("Resetting USB device\n");
 
-	inga_usb_ftdi_reset(&ftdic);
-	inga_usb_ftdi_close(&ftdic);
-	inga_usb_ftdi_deinit(&ftdic);
+	inga_usb_ftdi_reset(ftdi);
+	inga_usb_ftdi_close(ftdi);
+	inga_usb_ftdi_deinit(ftdi);
 
 	inga_usb_free_device(usbdev);
 }
-#endif
 
 void usage(poptContext poptc, int exitcode, char *error, char *addl)
 {
@@ -427,12 +447,10 @@ int main(int argc, const char **argv)
 
 	if (cfg->mode == MODE_RESET)
 		inga_reset(cfg);
-#if FTDI_VERSION == 0
 	else if (cfg->mode == MODE_UPDATE_EEPROM)
 		inga_eeprom(cfg);
 	else if (cfg->mode == MODE_READ_SERIAL)
 		inga_serial(cfg);
-#endif
 
 	exit(EXIT_SUCCESS);
 }

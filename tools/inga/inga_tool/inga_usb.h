@@ -35,6 +35,40 @@
 
 #include <ftdi.h>
 
+#if FTDI_VERSION == 0
+enum ftdi_eeprom_value {
+	VENDOR_ID          = 0,
+	PRODUCT_ID         = 1,
+	SELF_POWERED       = 2,
+	REMOTE_WAKEUP      = 3,
+	IN_IS_ISOCHRONOUS  = 6,
+	OUT_IS_ISOCHRONOUS = 7,
+	SUSPEND_PULL_DOWNS = 8,
+	USE_SERIAL         = 9,
+	USB_VERSION        = 10,
+	MAX_POWER          = 12,
+	CBUS_FUNCTION_0    = 17,
+	CBUS_FUNCTION_1    = 18,
+	CBUS_FUNCTION_2    = 19,
+	CBUS_FUNCTION_3    = 20,
+	CBUS_FUNCTION_4    = 21,
+	CBUS_FUNCTION_5    = 22,
+	CBUS_FUNCTION_6    = 23,
+	CBUS_FUNCTION_7    = 24,
+	CBUS_FUNCTION_8    = 25,
+	CBUS_FUNCTION_9    = 26,
+	INVERT             = 30,
+	CHIP_SIZE          = 43,
+	CHIP_TYPE          = 44,
+};
+#endif /* FTDI_VERSION == 0 */
+
+enum ftdi_eeprom_string {
+	MANUFACTURER_STRING = 0,
+	PRODUCT_STRING      = 1,
+	SERIAL_STRING       = 2
+};
+
 struct inga_usb_config_t {
 	char *device_path;
 	char *device_serial;
@@ -45,27 +79,33 @@ struct inga_usb_config_t {
 };
 
 struct inga_usb_device_t;
+struct inga_usb_ftdi_t;
 
 struct inga_usb_device_t *inga_usb_find_device(struct inga_usb_config_t *cfg, int verbose);
 
 void inga_usb_free_device(struct inga_usb_device_t *usb);
 
-int inga_usb_ftdi_init(struct ftdi_context *ftdi);
-void inga_usb_ftdi_deinit(struct ftdi_context *ftdi);
+int inga_usb_ftdi_init(struct inga_usb_ftdi_t **ftdi);
+void inga_usb_ftdi_deinit(struct inga_usb_ftdi_t *ftdi);
 
-int inga_usb_ftdi_open(struct ftdi_context *ftdi, struct inga_usb_device_t *usb);
-int inga_usb_ftdi_close(struct ftdi_context *ftdi);
+int inga_usb_ftdi_open(struct inga_usb_ftdi_t *ftdi, struct inga_usb_device_t *usb);
+int inga_usb_ftdi_close(struct inga_usb_ftdi_t *ftdi);
 
-int inga_usb_ftdi_reset(struct ftdi_context *ftdi);
+int inga_usb_ftdi_reset(struct inga_usb_ftdi_t *ftdi);
 
-int inga_usb_ftdi_read_eeprom(struct ftdi_context *ftdi, unsigned char *eeprom);
-int inga_usb_ftdi_write_eeprom(struct ftdi_context *ftdi, unsigned char *eeprom);
+int inga_usb_ftdi_eeprom_read(struct inga_usb_ftdi_t *ftdi);
+int inga_usb_ftdi_eeprom_write(struct inga_usb_ftdi_t *ftdi);
 
-int inga_usb_ftdi_eeprom_decode(struct ftdi_eeprom *eeprom, unsigned char *output, int size);
-int inga_usb_ftdi_eeprom_build(struct ftdi_eeprom *eeprom, unsigned char *output);
+int inga_usb_ftdi_eeprom_get_value(struct inga_usb_ftdi_t *ftdi, enum ftdi_eeprom_value value_name, int *value);
+int inga_usb_ftdi_eeprom_set_value(struct inga_usb_ftdi_t *ftdi, enum ftdi_eeprom_value value_name, int value);
 
-int inga_usb_ftdi_set_bitmode(struct ftdi_context *ftdi, unsigned char bitmask, unsigned char mode);
+int inga_usb_ftdi_eeprom_get_string(struct inga_usb_ftdi_t *ftdi, enum ftdi_eeprom_string string_name, const char **str);
+int inga_usb_ftdi_eeprom_set_string(struct inga_usb_ftdi_t *ftdi, enum ftdi_eeprom_string string_name, const char *str);
 
-char *inga_usb_ftdi_get_error_string(struct ftdi_context *ftdi);
+int inga_usb_ftdi_set_bitmode(struct inga_usb_ftdi_t *ftdi, unsigned char bitmask, unsigned char mode);
+
+int inga_usb_ftdi_get_chip_type(struct inga_usb_ftdi_t *ftdi);
+
+char *inga_usb_ftdi_get_error_string(struct inga_usb_ftdi_t *ftdi);
 
 #endif /* INGA_USB_H */
