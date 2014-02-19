@@ -8,13 +8,16 @@ should build the binary. I might add autotools support eventually.
 
 
 Use it like this to reset an INGA node:
-./inga_tool -d <usbserial> -r
+./inga_tool -d /path/to/usb/serial/device -r
 
 The following will flash the EEPROM (WARNING, not extensively tested):
-./inga_tool -d <usbserial> -f -v
+./inga_tool -d /path/to/usb/serial/device -f -v
 
-It is also possible to choose a device based on the USB serial:
-./inga_tool -s <serial>
+You can also read out the EEPROM:
+./inga_tool -d /path/to/usb/serial/device -s
+
+It is also possible to choose a device based on the USB serial ID:
+./inga_tool -u <serial> -r
 
 Reset:
 This is used to go into the bootloader without the need to reset the device
