@@ -77,6 +77,7 @@ import org.contikios.cooja.MoteInterface;
 import org.contikios.cooja.MoteMemory;
 import org.contikios.cooja.NewAddressMemory;
 import org.contikios.cooja.NewAddressMemory.AddressMonitor;
+import org.contikios.cooja.util.IPUtils;
 
 /**
  * Read-only interface to IPv4 or IPv6 address.
@@ -447,92 +448,6 @@ public class IPAddress extends MoteInterface {
       else {
         return "";
       }
-    }
-  }
-
-  /**
-   * Holds some IP byte to string conversion functions etc.
-   */
-  public static class IPUtils {
-
-    /**
-     * Convert IPv6 Byte-array in compressed IPv6-Address String.
-     * 
-     * @param ip byte array holding IPv6 address information
-     * @return compressed IPv6 representation string
-     */
-    public static String getCompressedIPv6AddressString(byte[] ip) {
-      int startMax = 0, startCurr = 0, zeroMax = 0, zeroCurr = 0;
-      for (int i = 0; i < 16; i += 2) {
-        if ((ip[i] | ip[i + 1]) == 0x00) {
-          if (zeroCurr == 0) {
-            startCurr = i;
-          }
-          zeroCurr++;
-        }
-        else {
-          if (zeroCurr > zeroMax) {
-            zeroMax = zeroCurr;
-            startMax = startCurr;
-            zeroCurr = 0;
-          }
-        }
-      }
-      if (zeroCurr > zeroMax) {
-        zeroMax = zeroCurr;
-        startMax = startCurr;
-      }
-      StringBuilder out = new StringBuilder();
-      short a;
-      for (int i = 0, f = 0; i < 16; i += 2) {
-        a = (short) (((ip[i] & 0xFF) << 8) + (ip[i + 1] & 0xFF));
-        if ((i >= startMax) && (i < startMax + zeroMax * 2)) {
-          if (f++ == 0) {
-            out.append("::");
-          }
-        }
-        else {
-          if (f > 0) {
-            f = -1;
-          }
-          else if (i > 0) {
-            out.append(':');
-          }
-          out.append(String.format("%x", a));
-        }
-      }
-      return out.toString();
-    }
-
-    /**
-     * Convert IPv6 Byte-array in uncompressed IPv6-Address String.
-     * 
-     * @param ip byte array holding IPv6 address information
-     * @return uncompressed IPv6 representation string
-     */
-    public static String getUncompressedIPv6AddressString(byte[] ip) {
-      StringBuilder ipBuilder = new StringBuilder();
-      for (int i = 0; i < 14; i += 2) {
-        ipBuilder.append(String.format("%02x%02x:", 0xFF & ip[i + 0], 0xFF & ip[i + 1]));
-      }
-      ipBuilder.append(String.format("%02x%02x", 0xFF & ip[14], 0xFF & ip[15]));
-      return ipBuilder.toString();
-    }
-
-    /**
-     * Convert IPv4 Byte-array in IPv6-Address String.
-     *
-     * @param addr byte array holding IPv4 address information
-     * @return IPv4 representation string
-     */
-    static String getIPv4AddressString(byte[] ip) {
-      StringBuilder ipBuilder = new StringBuilder();
-      for (int i = 0; i < 3; i++) {
-        ipBuilder.append(0xFF & ip[i]);
-        ipBuilder.append('.');
-      }
-      ipBuilder.append(0xFF & ip[3]);
-      return ipBuilder.toString();
     }
   }
 }
