@@ -362,7 +362,7 @@ uint8_t storage_coffee_make_room(struct mmem * bundlemem)
 		}
 
 		/* Either the for loop did nothing or did not break */
-		if( entry == NULL ) {
+		if( deletor == NULL ) {
 			/* We do not have deletable bundles in storage, stop deleting them */
 			return 0;
 		}
