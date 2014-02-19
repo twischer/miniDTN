@@ -447,6 +447,7 @@ uint8_t storage_flash_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_nu
 		return 0;
 	}
 
+	/* This function call may actually change the location of our bundle in memory, so be careful! */
 	if( !storage_flash_make_room(bundlemem) ) {
 		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "Cannot store bundle, no room");
 
@@ -455,6 +456,9 @@ uint8_t storage_flash_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_nu
 
 		return 0;
 	}
+
+	// Update the pointer to our bundle
+	bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 
 	// Normally we would store a bundle in his own slot
 	page = bundle->bundle_num % FLASH_PAGES_IN_USE;
@@ -492,7 +496,7 @@ uint8_t storage_flash_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_nu
 		return 0;
 	}
 
-	LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "New Bundle %lu, Src %lu, Dest %lu, Seq %lu", bundle->bundle_num, bundle->src_node, bundle->dst_node, bundle->tstamp_seq);
+	LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "New Bundle %lu, Src %lu, Dest %lu, Seq %lu on Page %d", bundle->bundle_num, bundle->src_node, bundle->dst_node, bundle->tstamp_seq, page);
 
 	// Fill the struct of the bundle
 	n->page = page;
@@ -649,7 +653,7 @@ struct mmem *storage_flash_read_bundle(uint32_t bundle_number)
 
 	// Check if the page really contains a bundle
 	if( page_buffer.tag != (STORAGE_FLASH_TAG + n->page) ) {
-		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "Bundle %lu should be on page %lu but is not", bundle_number, n->page);
+		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "Bundle %lu should be on page %u but is not", bundle_number, n->page);
 		return NULL;
 	}
 
