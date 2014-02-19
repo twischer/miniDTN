@@ -422,7 +422,7 @@ struct inga_usb_device_t *inga_usb_find_device(struct inga_usb_config_t *cfg, in
 {
 	struct inga_usb_device_t *usb;
 	libusb_device **dev_list = NULL;
-	ssize_t dev_count, i;
+	ssize_t dev_count, i, j;
 
 	inga_usb_resolve(cfg, verbose);
 
@@ -477,7 +477,12 @@ struct inga_usb_device_t *inga_usb_find_device(struct inga_usb_config_t *cfg, in
 		VERBOSE("All requirements match, using %i:%i as target device\n",
 				libusb_get_bus_number(usb->usbdev), libusb_get_device_address(usb->usbdev));
 
-		libusb_free_device_list(dev_list, 1);
+		/* Unreference the devices we are not going to use */
+		for (j = 0; j < dev_count; j++)
+			if (dev_list[j] != usb->usbdev)
+				libusb_unref_device(dev_list[j]);
+
+		libusb_free_device_list(dev_list, 0);
 		return usb;
 	}
 
@@ -528,6 +533,9 @@ int inga_usb_ftdi_close(struct inga_usb_ftdi_t *ftdi)
 void inga_usb_free_device(struct inga_usb_device_t *usb) {
 	if (!usb)
 		return;
+
+	if (usb->usbdev)
+		libusb_unref_device(usb->usbdev);
 
 	if (usb->usbctx)
 		libusb_exit(usb->usbctx);
