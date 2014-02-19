@@ -22,6 +22,8 @@
 #include "lib/list.h"
 #include "logging.h"
 #include "watchdog.h"
+
+/* <> is necessary to include the header in the platform (instead of our fake header) */
 #include <flash_arch.h>
 
 #include "bundle.h"
@@ -61,6 +63,9 @@ struct storage_flash_page_t {
 	uint32_t size;
 	uint8_t bundle[FLASH_PAGE_SIZE - 8];
 };
+
+struct mmem * last_bundle = NULL;
+uint32_t last_bundle_number = 0;
 
 struct storage_flash_page_t page_buffer;
 
@@ -517,8 +522,13 @@ uint8_t storage_flash_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_nu
 	// the caller can stick it into an event
 	*bundle_number_ptr = &n->bundle_num;
 
-	// Deallocate bundle
-	bundle_decrement(bundlemem);
+	/* Always keep a pointer to the last written bundle for faster read access to it */
+	if( last_bundle != NULL ) {
+		bundle_decrement(last_bundle);
+	}
+
+	last_bundle = bundlemem;
+	last_bundle_number = n->bundle_num;
 
 	return 1;
 }
@@ -550,6 +560,12 @@ uint8_t storage_flash_delete_bundle(uint32_t bundle_number, uint8_t reason)
 	if( n == NULL ) {
 		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "Could not find bundle %lu on storage_flash_delete_bundle", bundle_number);
 		return 0;
+	}
+
+	if( bundle_number == last_bundle_number ) {
+		bundle_decrement(last_bundle);
+		last_bundle = NULL;
+		last_bundle_number = 0;
 	}
 
 	if( n->storage_flags & STORAGE_FLASH_FLAGS_LOCKED ) {
@@ -604,6 +620,12 @@ struct mmem *storage_flash_read_bundle(uint32_t bundle_number)
 	struct mmem * bundlemem = NULL;
 	int ret = 0;
 
+	if( last_bundle != NULL && bundle_number == last_bundle_number ) {
+		LOG(LOGD_DTN, LOG_STORE, LOGL_DBG, "Reading bundle %lu from cache", bundle_number);
+		bundle_increment(last_bundle);
+		return last_bundle;
+	}
+
 	LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "Reading bundle %lu from flash", bundle_number);
 
 	// Look for the bundle we are talking about
@@ -648,6 +670,15 @@ struct mmem *storage_flash_read_bundle(uint32_t bundle_number)
 
 	// Copy data into MMEM
 	memcpy(MMEM_PTR(bundlemem), page_buffer.bundle, page_buffer.size);
+
+	/* Always keep a pointer to the last read bundle for faster re-read access to it */
+	if( last_bundle != NULL ) {
+		bundle_decrement(last_bundle);
+	}
+
+	last_bundle = bundlemem;
+	last_bundle_number = n->bundle_num;
+	bundle_increment(last_bundle);
 
 	return bundlemem;
 }
