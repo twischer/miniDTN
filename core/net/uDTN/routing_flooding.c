@@ -681,9 +681,9 @@ void routing_flooding_bundle_sent(struct transmit_ticket_t * ticket, uint8_t sta
 	/* Bundle is not busy anymore */
 	entry->flags &= ~ROUTING_FLAG_IN_TRANSIT;
 
-	if( status == ROUTING_STATUS_NACK ||
-		status == ROUTING_STATUS_FAIL ) {
-		// NACK = Other side rejected the bundle, try again later
+	if( status == ROUTING_STATUS_FAIL ||
+		status == ROUTING_STATUS_TEMP_NACK ) {
+		// temporary NACK = Other side rejected the bundle, try again later
 		// FAIL = Transmission failed
 		// --> note down address in blacklist
 		routing_flooding_blacklist_add(&ticket->neighbour);
@@ -709,13 +709,14 @@ void routing_flooding_bundle_sent(struct transmit_ticket_t * ticket, uint8_t sta
 	}
 
 	// Here: status == ROUTING_STATUS_OK
+	// Or:   status == ROUTING_STATUS_NACK (which we handle as an ACK to avoid sending the bundle again)
 	statistics_bundle_outgoing(1);
 
 	routing_flooding_blacklist_delete(&ticket->neighbour);
 
 #ifndef TEST_DO_NOT_DELETE_ON_DIRECT_DELIVERY
 	rimeaddr_t dest_n = convert_eid_to_rime(entry->destination_node);
-	if (rimeaddr_cmp(&ticket->neighbour, &dest_n)) {
+	if (rimeaddr_cmp(&ticket->neighbour, &dest_n) && status != ROUTING_STATUS_NACK) {
 		LOG(LOGD_DTN, LOG_ROUTE, LOGL_DBG, "bundle sent to destination node");
 		uint32_t bundle_number = ticket->bundle_number;
 
