@@ -1,6 +1,7 @@
 inga_tool is a utility to reset the INGA and update the FTDI EEPROM
 
-To build it you need at least libftdi version 0.19, libusb, libudev and libpopt.
+To build it, you need libudev and lipopt; and either libftdi 0.19 (or later)
+with libusb 0.1, or libftdi 1.0 (or later) with libusb 1.0.
 Just typing
  $ make
 should build the binary. I might add autotools support eventually.
