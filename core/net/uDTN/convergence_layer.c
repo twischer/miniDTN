@@ -736,7 +736,7 @@ int convergence_layer_parse_dataframe(rimeaddr_t * source, uint8_t * payload, ui
 	return -1;
 }
 
-int convergence_layer_parse_ackframe(rimeaddr_t * source, uint8_t * payload, uint8_t length, uint8_t sequence_number, uint8_t type)
+int convergence_layer_parse_ackframe(rimeaddr_t * source, uint8_t * payload, uint8_t length, uint8_t sequence_number, uint8_t type, uint8_t flags)
 {
 	struct transmit_ticket_t * ticket = NULL;
 	struct bundle_t * bundle = NULL;
@@ -808,7 +808,13 @@ int convergence_layer_parse_ackframe(rimeaddr_t * source, uint8_t * payload, uin
 		ticket->flags = CONVERGENCE_LAYER_QUEUE_FAIL;
 
 		/* Notify routing module */
-		ROUTING.sent(ticket, ROUTING_STATUS_NACK);
+		if( flags & CONVERGENCE_LAYER_FLAGS_FIRST ) {
+			/* Temporary NACK */
+			ROUTING.sent(ticket, ROUTING_STATUS_TEMP_NACK);
+		} else {
+			/* Permanent NACK */
+			ROUTING.sent(ticket, ROUTING_STATUS_NACK);
+		}
 	}
 
 	/* We can free the bundle memory */
@@ -882,26 +888,30 @@ int convergence_layer_incoming_frame(rimeaddr_t * source, uint8_t * payload, uin
 
 	if( (header & CONVERGENCE_LAYER_MASK_TYPE) == CONVERGENCE_LAYER_TYPE_ACK ) {
 		/* is ACK */
+		int flags = 0;
 		int sequence_number = 0;
 
+		flags = (header & CONVERGENCE_LAYER_MASK_FLAGS) >> 0;
 		sequence_number = (header & CONVERGENCE_LAYER_MASK_SEQNO) >> 2;
 
 		LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Incoming Ack frame from %u.%u with SeqNo %u", source->u8[0], source->u8[1], sequence_number);
 
-		convergence_layer_parse_ackframe(source, data_pointer, data_length, sequence_number, CONVERGENCE_LAYER_TYPE_ACK);
+		convergence_layer_parse_ackframe(source, data_pointer, data_length, sequence_number, CONVERGENCE_LAYER_TYPE_ACK, flags);
 
 		return 1;
 	}
 
 	if( (header & CONVERGENCE_LAYER_MASK_TYPE) == CONVERGENCE_LAYER_TYPE_NACK ) {
 		/* is NACK */
+		int flags = 0;
 		int sequence_number = 0;
 
+		flags = (header & CONVERGENCE_LAYER_MASK_FLAGS) >> 0;
 		sequence_number = (header & CONVERGENCE_LAYER_MASK_SEQNO) >> 2;
 
 		LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Incoming Nack frame from %u.%u with SeqNo %u", source->u8[0], source->u8[1], sequence_number);
 
-		convergence_layer_parse_ackframe(source, data_pointer, data_length, sequence_number, CONVERGENCE_LAYER_TYPE_NACK);
+		convergence_layer_parse_ackframe(source, data_pointer, data_length, sequence_number, CONVERGENCE_LAYER_TYPE_NACK, flags);
 
 		return 1;
 	}
