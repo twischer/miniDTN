@@ -298,9 +298,6 @@ int convergence_layer_send_bundle(struct transmit_ticket_t * ticket)
 			return -1;
 		}
 
-		/* We need 1 byte for the CL header */
-		length += 1;
-
 		/* Decrease memory size to what is actually needed */
 		ret = mmem_realloc(&ticket->buffer, length);
 
