@@ -48,6 +48,18 @@ enum {
 	MODE_RESET,
 	MODE_UPDATE_EEPROM,
 	MODE_READ_SERIAL,
+	MODE_EUI64,
+};
+
+struct ftdi_eemem_info {
+	const char *manufacturer;
+	const char *product;
+	const char *serial;
+	int chip_type;
+	int vendor_id; 
+	int product_id;
+	int max_power;
+	int cbus[5];
 };
 
 struct config_t {
@@ -55,19 +67,14 @@ struct config_t {
 
 	int mode;
 	int verbose;
-	/* EEPROM configuration */
 	int eep_cbusio;
-	uint16_t eep_vendor_id;
-	uint16_t eep_product_id;
-	char *eep_manuf;
-	char *eep_prod;
-	char *eep_serial;
-	int eep_max_power;
+	struct ftdi_eemem_info eep;
 };
 
 #define VERBOSE(args...)\
 	if (cfg->verbose)\
 		fprintf(stderr, ##args)
+
 
 void inga_reset(struct config_t *cfg)
 {
@@ -104,7 +111,7 @@ void inga_reset(struct config_t *cfg)
 	/* Set CBUS3 to output and low */
 	inga_usb_ftdi_set_bitmode(ftdi, 0x80, BITMODE_CBUS);
 
-	printf("done\n");
+	VERBOSE("done\n");
 
 	inga_usb_ftdi_set_bitmode(ftdi, 0, BITMODE_RESET);
 
@@ -119,13 +126,10 @@ out:
 	inga_usb_free_device(usbdev);
 }
 
-void inga_serial(struct config_t *cfg)
+void inga_read_eeprom(struct config_t *cfg, struct inga_usb_ftdi_t *ftdi, struct ftdi_eemem_info *info)
 {
 	int rc;
-	struct inga_usb_ftdi_t *ftdi;
 	struct inga_usb_device_t *usbdev = NULL;
-	const char *manufacturer = NULL, *product = NULL, *serial = NULL;
-	int chip_type, vid, pid, max_power, cbus[5];
 
 	if (inga_usb_ftdi_init(&ftdi) < 0) {
 		fprintf(stderr, "ftdi_init failed\n");
@@ -145,48 +149,36 @@ void inga_serial(struct config_t *cfg)
 		exit(EXIT_FAILURE);
 	}
 
-	printf("Reading out EEPROM image...");
+	VERBOSE("Reading out EEPROM image...");
 	fflush(stdout);
 	rc = inga_usb_ftdi_eeprom_read(ftdi);
 	if (rc < 0) {
 		fprintf(stderr, "\nCould not read and decode EEPROM: %i\n", rc);
 		exit(EXIT_FAILURE);
 	}
-	printf("done\n\n");
+	VERBOSE("done\n\n");
 
-	if ((inga_usb_ftdi_eeprom_get_value(ftdi, CHIP_TYPE, &chip_type) < 0) ||
-	    (inga_usb_ftdi_eeprom_get_value(ftdi, VENDOR_ID, &vid) < 0) ||
-	    (inga_usb_ftdi_eeprom_get_value(ftdi, PRODUCT_ID, &pid) < 0) ||
-	    (inga_usb_ftdi_eeprom_get_value(ftdi, MAX_POWER, &max_power) < 0) ||
-	    (inga_usb_ftdi_eeprom_get_value(ftdi, CBUS_FUNCTION_0, &cbus[0]) < 0) ||
-	    (inga_usb_ftdi_eeprom_get_value(ftdi, CBUS_FUNCTION_1, &cbus[1]) < 0) ||
-	    (inga_usb_ftdi_eeprom_get_value(ftdi, CBUS_FUNCTION_2, &cbus[2]) < 0) ||
-	    (inga_usb_ftdi_eeprom_get_value(ftdi, CBUS_FUNCTION_3, &cbus[3]) < 0) ||
-	    (inga_usb_ftdi_eeprom_get_value(ftdi, CBUS_FUNCTION_4, &cbus[4]) < 0)) {
+	if ((inga_usb_ftdi_eeprom_get_value(ftdi, CHIP_TYPE, &info->chip_type) < 0) ||
+			(inga_usb_ftdi_eeprom_get_value(ftdi, VENDOR_ID, &info->vendor_id) < 0) ||
+			(inga_usb_ftdi_eeprom_get_value(ftdi, PRODUCT_ID, &info->product_id) < 0) ||
+			(inga_usb_ftdi_eeprom_get_value(ftdi, MAX_POWER, &info->max_power) < 0) ||
+			(inga_usb_ftdi_eeprom_get_value(ftdi, CBUS_FUNCTION_0, &info->cbus[0]) < 0) ||
+			(inga_usb_ftdi_eeprom_get_value(ftdi, CBUS_FUNCTION_1, &info->cbus[1]) < 0) ||
+			(inga_usb_ftdi_eeprom_get_value(ftdi, CBUS_FUNCTION_2, &info->cbus[2]) < 0) ||
+			(inga_usb_ftdi_eeprom_get_value(ftdi, CBUS_FUNCTION_3, &info->cbus[3]) < 0) ||
+			(inga_usb_ftdi_eeprom_get_value(ftdi, CBUS_FUNCTION_4, &info->cbus[4]) < 0)) {
 
 		fprintf(stderr, "Could not read the EEPROM values\n");
 		exit(EXIT_FAILURE);
 	}
 
-	if ((inga_usb_ftdi_eeprom_get_string(ftdi, MANUFACTURER_STRING, &manufacturer) < 0) ||
-	    (inga_usb_ftdi_eeprom_get_string(ftdi, PRODUCT_STRING, &product) < 0) ||
-	    (inga_usb_ftdi_eeprom_get_string(ftdi, SERIAL_STRING, &serial) < 0)) {
+	if ((inga_usb_ftdi_eeprom_get_string(ftdi, MANUFACTURER_STRING, &info->manufacturer) < 0) ||
+			(inga_usb_ftdi_eeprom_get_string(ftdi, PRODUCT_STRING, &info->product) < 0) ||
+			(inga_usb_ftdi_eeprom_get_string(ftdi, SERIAL_STRING, &info->serial) < 0)) {
 
 		fprintf(stderr, "Could not read the EEPROM manufacturer, product and serial strings\n");
 		exit(EXIT_FAILURE);
 	}
-
-	printf("EEPROM config:\n"
-		"Chip type:    %i\n"
-		"VID:          0x%04x\n"
-		"PID:          0x%04x\n"
-		"Manufacturer: %s\n"
-		"Product:      %s\n"
-		"Serial:       %s\n"
-		"Max power:    %i\n"
-		"CBUS:         %1x%1x %1x%1x 0%1x\n\n",
-			chip_type, vid, pid, manufacturer, product, serial, max_power * 2,
-			cbus[1], cbus[0], cbus[3], cbus[2], cbus[4]);
 
 	VERBOSE("Resetting USB device\n");
 
@@ -195,6 +187,78 @@ void inga_serial(struct config_t *cfg)
 	inga_usb_ftdi_deinit(ftdi);
 
 	inga_usb_free_device(usbdev);
+}
+
+void inga_print_eeinfo(struct config_t *cfg)
+{
+	struct inga_usb_ftdi_t *ftdi;
+	struct ftdi_eemem_info info;
+
+	inga_read_eeprom(cfg, ftdi, &info);
+
+
+	printf("EEPROM config:\n"
+			"Chip type:    %i\n"
+			"VID:          0x%04x\n"
+			"PID:          0x%04x\n"
+			"Manufacturer: %s\n"
+			"Product:      %s\n"
+			"Serial:       %s\n"
+			"Max power:    %i\n"
+			"CBUS:         %1x%1x %1x%1x 0%1x\n\n",
+			info.chip_type, info.vendor_id, info.product_id, info.manufacturer, info.product, info.serial, info.max_power * 2,
+			info.cbus[1], info.cbus[0], info.cbus[3], info.cbus[2], info.cbus[4]);
+}
+
+uint64_t inga_serial_to_id(const char * serial)
+{
+	int i = 0;
+	int character = 0;
+	uint64_t return_value = 0;
+
+	for(i=0; i<8; i++) {
+		character = serial[i] - 48; // "0" == 48, Z == 42
+
+		if( character > 42 ) {
+			character = 42;
+		}
+
+		return_value = (return_value << 6) | (character & 0x3F);
+	}
+
+	/* Insert FFFE as required by http://msdn.microsoft.com/en-us/library/aa915616.aspx */
+	return_value = ((return_value & 0xFFFFFF000000) << 16) | (((uint64_t) 0xFEFF) << 24) | (return_value & 0x00000000FFFFF);
+
+	/* Insert 00 */
+	return_value &= 0xFFFFFFFFFFFFFF7F;
+
+	return return_value;
+}
+
+void inga_eui64(struct config_t *cfg)
+{
+	struct inga_usb_ftdi_t *ftdi;
+	struct ftdi_eemem_info info;
+
+	const char *serial = NULL;
+	uint8_t * pointer = NULL;
+
+	inga_read_eeprom(cfg, ftdi, &info);
+
+	/* Obtain EUI64 */
+	uint64_t id = inga_serial_to_id(info.serial);
+	pointer = (uint8_t *) &id;
+
+	printf("EUI64: ");
+	int i;
+	for(i = 0; i < 8; i++) {
+		printf("%02X", pointer[i]);
+
+		if( i < 7 ) {
+			printf(":");
+		}
+	}
+	printf("\n");
 }
 
 void inga_eeprom(struct config_t *cfg)
@@ -230,7 +294,7 @@ void inga_eeprom(struct config_t *cfg)
 		fprintf(stderr, "\nCould not read and decode EEPROM: %i\n", rc);
 		exit(EXIT_FAILURE);
 	}
-	printf("done\n\n");
+	VERBOSE("done\n\n");
 
 	if ((inga_usb_ftdi_eeprom_get_value(ftdi, CHIP_TYPE, &chip_type) < 0) ||
 	    (inga_usb_ftdi_eeprom_get_value(ftdi, VENDOR_ID, &vid) < 0) ||
@@ -266,22 +330,20 @@ void inga_eeprom(struct config_t *cfg)
 			chip_type, vid, pid, manufacturer, product, serial, max_power * 2,
 			cbus[1], cbus[0], cbus[3], cbus[2], cbus[4]);
 
-	vid = cfg->eep_vendor_id ? cfg->eep_vendor_id : vid;
-	pid = cfg->eep_product_id ? cfg->eep_product_id : pid;
+	vid = cfg->eep.vendor_id ? cfg->eep.vendor_id : vid;
+	pid = cfg->eep.product_id ? cfg->eep.product_id : pid;
 
-	manufacturer = cfg->eep_manuf ? cfg->eep_manuf : manufacturer;
-	product = cfg->eep_prod ? cfg->eep_prod : product;
-	serial = cfg->eep_serial ? cfg->eep_serial : serial;
+	manufacturer = cfg->eep.manufacturer ? cfg->eep.manufacturer : manufacturer;
+	product = cfg->eep.product ? cfg->eep.product : product;
+	serial = cfg->eep.serial ? cfg->eep.serial : serial;
 
-	max_power = (cfg->eep_max_power > 0) ? (cfg->eep_max_power / 2) : max_power;
+	max_power = (cfg->eep.max_power > 0) ? (cfg->eep.max_power / 2) : max_power;
 
-	if (cfg->eep_cbusio) {
-		cbus[0] = CBUS_TXLED;
-		cbus[1] = CBUS_RXLED;
-		cbus[2] = CBUS_TXDEN;
-		cbus[3] = CBUS_IOMODE;
-		cbus[4] = CBUS_SLEEP;
-	}
+	cbus[0] = cfg->eep.cbus[0];
+	cbus[1] = cfg->eep.cbus[1];
+	cbus[2] = cfg->eep.cbus[2];
+	cbus[3] = cfg->eep.cbus[3];
+	cbus[4] = cfg->eep.cbus[4];
 
 	VERBOSE("\nUpdating with EEPROM config:\n"
 		"Chip type:    %i\n"
@@ -326,7 +388,7 @@ void inga_eeprom(struct config_t *cfg)
 		exit(EXIT_FAILURE);
 	}
 	sleep(10);
-	printf("done\n");
+	VERBOSE("done\n");
 
 out:
 
@@ -367,8 +429,10 @@ void parse_options(int argc, const char **argv, struct config_t *cfg)
 			"device_id"},
 		{"verbose", 'v', POPT_ARG_NONE, &cfg->verbose, 0, "Be verbose",
 			NULL},
-		{"max-power", 'p', POPT_ARG_INT, &cfg->eep_max_power, 0, "Maximum current to draw from USB (mA)",
+		{"max-power", 'p', POPT_ARG_INT, &cfg->eep.max_power, 0, "Maximum current to draw from USB (mA)",
 			"current"},
+		{"eui64", 'e', POPT_ARG_VAL, &cfg->mode, MODE_EUI64, "Print out INGAs EUI64",
+			NULL},
 		POPT_AUTOHELP
 		{ NULL, 0, 0, NULL, 0}
 	};
@@ -423,10 +487,14 @@ struct config_t *init_config(void)
 	 * Enable CBUS3 IO, keep vendor/product ID as is,
 	 * set manufacturer to IBR and product string to INGA,
 	 * keep serial, don't change the max power setting */
-	cfg->eep_cbusio = 1;
-	cfg->eep_manuf = "IBR";
-	cfg->eep_prod = "INGA";
-	cfg->eep_max_power = -1;
+	cfg->eep.cbus[0] = CBUS_TXLED;
+	cfg->eep.cbus[1] = CBUS_RXLED;
+	cfg->eep.cbus[2] = CBUS_TXDEN;
+	cfg->eep.cbus[3] = CBUS_IOMODE;
+	cfg->eep.cbus[4] = CBUS_SLEEP;
+	cfg->eep.manufacturer = "IBR";
+	cfg->eep.product = "INGA";
+	cfg->eep.max_power = -1;
 
 	return cfg;
 }
@@ -450,7 +518,9 @@ int main(int argc, const char **argv)
 	else if (cfg->mode == MODE_UPDATE_EEPROM)
 		inga_eeprom(cfg);
 	else if (cfg->mode == MODE_READ_SERIAL)
-		inga_serial(cfg);
+		inga_print_eeinfo(cfg);
+	else if (cfg->mode == MODE_EUI64)
+		inga_eui64(cfg);
 
 	exit(EXIT_SUCCESS);
 }
