@@ -1,3 +1,6 @@
 [submodule "tools/mspsim"]
 	path = tools/mspsim
 	url = https://github.com/contiki-os/mspsim.git
+[submodule "tools/avrora"]
+	path = tools/avrora
+	url = https://github.com/ibr-cm/avrora.git
