@@ -1628,7 +1628,7 @@ public class BufferListener extends VisPlugin {
       } else {
         mem = ba.mem;
       }
-      return IPAddress.compressIPv6Address(StringUtils.toHex(mem, 2).replaceAll(" ", ":"));
+      return IPAddress.IPUtils.getCompressedIPv6AddressString(mem);
     }
   }
 
