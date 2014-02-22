@@ -52,11 +52,13 @@ public class IngaMote extends AvroraMote {
   }
 
   // Return unique Mote name
+  @Override
   public String toString() {
     return "Inga " + getID();
   }
 
   // Return CPU frequency TODO:get current frequency
+  @Override
   public int getCPUFrequency() {
     return F_CPU;
   }

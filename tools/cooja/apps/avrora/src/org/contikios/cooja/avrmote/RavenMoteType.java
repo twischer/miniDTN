@@ -77,6 +77,7 @@ public class RavenMoteType extends AvroraMoteType {
    * the Clock interface. The clock would then show zero drift.
    */
   @SuppressWarnings("unchecked")
+  @Override
   public Class<? extends MoteInterface>[] getAllMoteInterfaceClasses() {
     return new Class[] {
         Position.class,

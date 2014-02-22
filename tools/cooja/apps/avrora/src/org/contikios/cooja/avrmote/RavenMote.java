@@ -52,11 +52,13 @@ public class RavenMote extends AvroraMote {
   }
 
   // Return unique Mote name
+  @Override
   public String toString() {
     return "Raven " + getID();
   }
 
   // Return CPU frequency TODO:get current frequency
+  @Override
   public int getCPUFrequency() {
     return F_CPU;
   }
