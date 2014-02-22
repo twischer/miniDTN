@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006, Swedish Institute of Computer Science.
+ * Copyright (c) 2012, Swedish Institute of Computer Science.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,12 +28,18 @@
  *
  */
 
-#ifndef __DUMMY_INTF_H__
-#define __DUMMY_INTF_H__
+package org.contikios.cooja.avrmote.interfaces;
+import org.contikios.cooja.Mote;
 
-// Interface needs to include something?
+public class ATTiny85ID extends AvroraMoteID {
 
-#define DUMMY_NR_1 1
-#define DUMMY_NR_2 2
+    public ATTiny85ID(Mote mote) {
+      super(mote);
 
-#endif /* __DUMMY_INTF_H__ */
+      /* TODO Write EEPROM? */
+//      mote.setEEPROM(0, 0xad);
+//      mote.setEEPROM(1, 0xde);
+//      mote.setEEPROM(2, newID);
+//      mote.setEEPROM(3, newID >> 8);
+    }
+}

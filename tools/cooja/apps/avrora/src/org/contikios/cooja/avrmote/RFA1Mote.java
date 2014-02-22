@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006, Swedish Institute of Computer Science.
+ * Copyright (c) 2012, Swedish Institute of Computer Science.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,12 +28,36 @@
  *
  */
 
-#ifndef __DUMMY_INTF_H__
-#define __DUMMY_INTF_H__
+package org.contikios.cooja.avrmote;
 
-// Interface needs to include something?
+import org.contikios.cooja.Simulation;
+import avrora.sim.platform.RFA1;
 
-#define DUMMY_NR_1 1
-#define DUMMY_NR_2 2
+/**
+ * Bare AVR atmega128rfa1 mote emulated in Avrora.
+ *
+ * @author David Kopf
+ */
+public class RFA1Mote extends AvroraMote {
+  // 8MHz in the default Contiki build
+  public static int F_CPU = 8000000;
 
-#endif /* __DUMMY_INTF_H__ */
+  // Delegate the mote production to the AvroraMote class
+  public RFA1Mote(Simulation simulation, RFA1MoteType type) {
+    super(simulation, type, new RFA1.Factory());
+  }
+
+  public RFA1 getRFA1() {
+    return (RFA1) getPlatform();
+  }
+
+  // Return unique Mote name
+  public String toString() {
+    return "RFA1 " + getID();
+  }
+
+  // Return CPU frequency TODO:get current frequency
+  public int getCPUFrequency() {
+    return F_CPU;
+  }
+}

@@ -1,7 +1,6 @@
 package org.contikios.cooja.plugins.analyzers;
 
 import java.io.IOException;
-import java.io.File;
 
 import org.contikios.cooja.util.StringUtils;
 
@@ -35,17 +34,6 @@ public class IEEE802154Analyzer extends PacketAnalyzer {
         } catch (IOException e) {
             e.printStackTrace();
         }
-    }
-
-    public void setPcapFile(File pcapFile) {
-      if (pcapExporter != null) {
-        try {
-          pcapExporter.openPcap(pcapFile);
-        } catch (IOException e) {
-          System.err.println("Could not open pcap file");
-          e.printStackTrace();
-        }
-      }
     }
 
     public boolean matchPacket(Packet packet) {

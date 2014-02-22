@@ -157,16 +157,16 @@ public class TR1001Radio extends Radio implements USARTListener, CustomDataRadio
   }
 
   /* Custom data radio support */
-  public Object getLastCustomDataTransmitted() {
+  public byte getLastCustomDataTransmitted() {
     return sentByte;
   }
 
-  public Object getLastCustomDataReceived() {
+  public byte getLastCustomDataReceived() {
     return receivedByte;
   }
 
-  public void receiveCustomData(Object data) {
-    if (!(data instanceof Byte)) {
+  public void receiveCustomData(byte data) {
+    /*if (!(data instanceof Byte)) {
       logger.fatal("Received bad custom data: " + data);
       return;
     }
@@ -179,14 +179,15 @@ public class TR1001Radio extends Radio implements USARTListener, CustomDataRadio
         super.execute(t);
 
         if (radioUSART.isReceiveFlagCleared()) {
-          /*logger.info("----- TR1001 RECEIVED BYTE -----");*/
+          //logger.info("----- TR1001 RECEIVED BYTE -----");
           radioUSART.byteReceived(finalByte);
         } else {
           logger.warn(mote.getSimulation().getSimulationTime() + ": ----- TR1001 RECEIVED BYTE DROPPED -----");
         }
         mote.requestImmediateWakeup();
       }
-    }, mote.getSimulation().getSimulationTime());
+    }, mote.getSimulation().getSimulationTime());*/
+    //TODO: implement me
   }
 
   /* USART listener support */

@@ -2,16 +2,18 @@
 
 <project name="Avrora COOJA support" default="jar" basedir=".">
   <property name="src" location="src"/>
+  <property name="avrora_src" location="../../../avrora/src"/>
   <property name="build" location="build"/>
   <property name="lib" location="lib"/>
   <property name="javadoc" location="javadoc"/>
 	<property name="cooja" location="../.."/>
 
 	<property name="cooja_jar" value="${cooja}/dist/cooja.jar"/>
-  <property name="avrora_jar" value="${lib}/avrora-small.jar"/>
+  <property name="avrora_jar" value="${lib}/avrora.jar"/>
   <property name="cooja_avrora_jar" value="${lib}/cooja_avrora.jar"/>
 
   <target name="init">
+    <javac srcdir="${avrora_src}" destdir="${build}" debug="on" includeantruntime="false"></javac>
     <tstamp/>
     <mkdir dir="${build}"/>
     <mkdir dir="${lib}"/>

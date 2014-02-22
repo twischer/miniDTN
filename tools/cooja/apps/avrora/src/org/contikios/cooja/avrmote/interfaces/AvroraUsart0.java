@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006, Swedish Institute of Computer Science.
+ * Copyright (c) 2012, The Contiki OS (www.contiki-os.org).
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,15 +25,18 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
  */
 
-#ifndef __DUMMY_INTF_H__
-#define __DUMMY_INTF_H__
+package org.contikios.cooja.avrmote.interfaces;
 
-// Interface needs to include something?
+import org.contikios.cooja.Mote;
 
-#define DUMMY_NR_1 1
-#define DUMMY_NR_2 2
+public class AvroraUsart0 extends AvroraUsart1 {
+  public AvroraUsart0(Mote mote) {
+    super(mote);
+  }
 
-#endif /* __DUMMY_INTF_H__ */
+  public String getUsart() {
+    return "usart0";
+  }
+}

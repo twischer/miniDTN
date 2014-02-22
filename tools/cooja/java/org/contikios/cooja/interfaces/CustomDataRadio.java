@@ -26,6 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
+ * $Id: CustomDataRadio.java,v 1.1 2008/03/18 12:58:59 fros4943 Exp $
  */
 
 package org.contikios.cooja.interfaces;
@@ -38,13 +39,10 @@ package org.contikios.cooja.interfaces;
  * @author Fredrik Osterlind
  */
 public interface CustomDataRadio {
+  public void receiveCustomData(byte data);
 
-  public boolean canReceiveFrom(CustomDataRadio radio);
-  
-  public void receiveCustomData(Object data);
+  public byte getLastCustomDataTransmitted();
 
-  public Object getLastCustomDataTransmitted();
-
-  public Object getLastCustomDataReceived();
+  public byte getLastCustomDataReceived();
 
 }

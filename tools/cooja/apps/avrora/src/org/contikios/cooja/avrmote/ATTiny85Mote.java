@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006, Swedish Institute of Computer Science.
+ * Copyright (c) 2012, Swedish Institute of Computer Science.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,12 +28,35 @@
  *
  */
 
-#ifndef __DUMMY_INTF_H__
-#define __DUMMY_INTF_H__
+package org.contikios.cooja.avrmote;
 
-// Interface needs to include something?
+import org.contikios.cooja.Simulation;
+import avrora.sim.platform.Tiny85;
 
-#define DUMMY_NR_1 1
-#define DUMMY_NR_2 2
+/**
+ * AVR-based ATTiny85 chip emulated in Avrora.
+ *
+ * @author David Kopf
+ */
+public class ATTiny85Mote extends AvroraMote {
+  public static int F_CPU = 1000000;
 
-#endif /* __DUMMY_INTF_H__ */
+  // Delegate the mote production to the AvroraMote class
+  public ATTiny85Mote(Simulation simulation, ATTiny85MoteType type) {
+    super(simulation, type, new Tiny85.Factory());
+  }
+
+  public Tiny85 getTiny85() {
+    return (Tiny85) getPlatform();
+  }
+
+  // Return unique Mote name
+  public String toString() {
+    return "Tiny85 " + getID();
+  }
+
+  // Return CPU frequency TODO:get current frequency
+  public int getCPUFrequency() {
+    return F_CPU;
+  }
+}
