@@ -57,12 +57,12 @@ public class AvrMoteMemory implements MoteMemory, AddressMemory {
     this.interpreter = interpreter;
   }
 
-    @Override
+  @Override
   public void clearMemory() {
     logger.fatal("clearMemory() not implemented");
   }
 
-    @Override
+  @Override
   public byte[] getMemorySegment(int address, int size) {
     /*logger.info("getMemorySegment(" + String.format("0x%04x", address) +
         ", " + size + ")");*/
@@ -80,11 +80,13 @@ public class AvrMoteMemory implements MoteMemory, AddressMemory {
     return data;
   }
 
+  @Override
   public int getTotalSize() {
     logger.warn("getTotalSize() not implemented");
     return -1;
   }
 
+  @Override
   public void setMemorySegment(int address, byte[] data) {
     coojaIsAccessingMemory = true;
     /*logger.info("setMemorySegment(" + String.format("0x%04x", address) +
@@ -98,40 +100,42 @@ public class AvrMoteMemory implements MoteMemory, AddressMemory {
     coojaIsAccessingMemory = false;
   }
 
+  @Override
   public byte getByteValueOf(String varName) throws UnknownVariableException {
     return getMemorySegment(getVariableAddress(varName), 1)[0];
   }
 
-    @Override
+  @Override
   public int getIntValueOf(String varName) throws UnknownVariableException {
     byte[] arr = getMemorySegment(getVariableAddress(varName), getIntegerLength());
     return parseInt(arr);
   }
 
-    @Override
+  @Override
   public int getIntegerLength() {
     return 2; /* XXX */
   }
 
-    @Override
+  @Override
   public int getVariableAddress(String varName)
-  throws UnknownVariableException {
+          throws UnknownVariableException {
     /* RAM addresses start at 0x800000 in Avrora */
     int vma = memoryMap.getLocation(varName).vma_addr;
     int ret = vma & 0x7fffff;
     /*logger.info("Symbol '" + memoryMap.getLocation(varName).name +
-        "': vma_addr: " + String.format("0x%04x", vma) +
-        ", returned address: " + String.format("0x%04x", ret));*/
+     "': vma_addr: " + String.format("0x%04x", vma) +
+     ", returned address: " + String.format("0x%04x", ret));*/
     return ret;
   }
   
-    @Override
-    public int getVariableSize(String varName)
-            throws UnknownVariableException {
-        throw new UnsupportedOperationException();
-    }
+  @Override
+  public int getVariableSize(String varName)
+  throws UnknownVariableException {
+    /* RAM addresses start at 0x800000 in Avrora */
+    return memoryMap.getLocation(varName).size;
+  }
 
-    @Override
+  @Override
   public String[] getVariableNames() {
     ArrayList<String> symbols = new ArrayList<String>();
     for (Iterator i = memoryMap.getIterator(); i.hasNext();) {
@@ -140,19 +144,19 @@ public class AvrMoteMemory implements MoteMemory, AddressMemory {
     return symbols.toArray(new String[0]);
   }
 
-    @Override
+  @Override
   public void setByteArray(String varName, byte[] data)
   throws UnknownVariableException {
     setMemorySegment(getVariableAddress(varName), data);
   }
 
-    @Override
+  @Override
   public void setByteValueOf(String varName, byte newVal)
   throws UnknownVariableException {
     setMemorySegment(getVariableAddress(varName), new byte[] {newVal});
   }
 
-    @Override
+  @Override
   public void setIntValueOf(String varName, int newVal)
   throws UnknownVariableException {
     int varAddr = getVariableAddress(varName);
@@ -164,45 +168,77 @@ public class AvrMoteMemory implements MoteMemory, AddressMemory {
     setMemorySegment(varAddr, varData);
   }
 
-    @Override
+  @Override
   public boolean variableExists(String varName) {
     return memoryMap.getLocation(varName) != null;
   }
 
   class AvrMemoryMonitor {
+    private int lastAddr;
     int address;
-    int size;
+    int size; /** @TODO: param seems to be ignored! */
     MemoryMonitor mm;
     Watch watch;
   }
-  private ArrayList<AvrMemoryMonitor> memoryMonitors = new ArrayList<AvrMemoryMonitor>();
+  private final ArrayList<AvrMemoryMonitor> memoryMonitors = new ArrayList<>();
 
+  @Override
   public boolean addMemoryMonitor(MonitorType flag, int address, int size, MemoryMonitor mm) {
-    final AvrMemoryMonitor mon = new AvrMemoryMonitor();
-    mon.address = address;
-    mon.size = size;
-    mon.mm = mm;
-    mon.watch = new Watch.Empty() {
-      public void fireAfterRead(State state, int data_addr, byte value) {
-        if (coojaIsAccessingMemory) {
-          return;
-        }
-        mon.mm.memoryChanged(AvrMoteMemory.this, MemoryEventType.READ, data_addr);
+    /* Add a watch for every byte in range */
+    for (int idx = 0; idx < size; idx++) {
+      final AvrMemoryMonitor mon = new AvrMemoryMonitor();
+      mon.address = address;
+      mon.size = size;
+      mon.mm = mm;
+      if (flag == MonitorType.R) {
+        mon.watch = new Watch.Empty() {
+          @Override
+          public void fireAfterRead(State state, int data_addr, byte value) {
+            if (coojaIsAccessingMemory) {
+              return;
+            }
+            mon.mm.memoryChanged(AvrMoteMemory.this, MemoryEventType.READ, data_addr);
+          }
+        };
       }
-      public void fireAfterWrite(State state, int data_addr, byte value) {
-        if (coojaIsAccessingMemory) {
-          return;
-        }
-        mon.mm.memoryChanged(AvrMoteMemory.this, MemoryEventType.WRITE, data_addr);
+      else if (flag == MonitorType.W) {
+        mon.watch = new Watch.Empty() {
+          @Override
+          public void fireAfterWrite(State state, int data_addr, byte value) {
+            if (coojaIsAccessingMemory) {
+              return;
+            }
+            mon.mm.memoryChanged(AvrMoteMemory.this, MemoryEventType.WRITE, data_addr);
+          }
+        };
       }
-    };
+      else {
+        mon.watch = new Watch.Empty() {
+          @Override
+          public void fireAfterRead(State state, int data_addr, byte value) {
+            if (coojaIsAccessingMemory) {
+              return;
+            }
+            mon.mm.memoryChanged(AvrMoteMemory.this, MemoryEventType.READ, data_addr);
+          }
 
-    interpreter.getSimulator().insertWatch(mon.watch, mon.address);
-    memoryMonitors.add(mon);
+          @Override
+          public void fireAfterWrite(State state, int data_addr, byte value) {
+            if (coojaIsAccessingMemory) {
+              return;
+            }
+            mon.mm.memoryChanged(AvrMoteMemory.this, MemoryEventType.WRITE, data_addr);
+          }
+        };
+      }
+
+      interpreter.getSimulator().insertWatch(mon.watch, mon.address + idx);
+      memoryMonitors.add(mon);
+    }
     return true;
-  }
-
-    @Override
+  }  
+  
+  @Override
   public void removeMemoryMonitor(int address, int size, MemoryMonitor mm) {
     for (AvrMemoryMonitor mcm: memoryMonitors) {
       if (mcm.mm != mm || mcm.address != address || mcm.size != size) {
@@ -213,7 +249,7 @@ public class AvrMoteMemory implements MoteMemory, AddressMemory {
     }
   }
 
-    @Override
+  @Override
   public int parseInt(byte[] memorySegment) {
     if (memorySegment.length < 2) {
       return -1;
@@ -222,11 +258,12 @@ public class AvrMoteMemory implements MoteMemory, AddressMemory {
     int retVal = 0;
     int pos = 0;
     retVal += ((memorySegment[pos++] & 0xFF)) << 8;
-    retVal += ((memorySegment[pos++] & 0xFF)) << 0;
+    retVal += ((memorySegment[pos++] & 0xFF));
 
     return Integer.reverseBytes(retVal) >> 16;
   }
 
+  @Override
   public byte[] getByteArray(String varName, int length)
       throws UnknownVariableException {
     return getMemorySegment(getVariableAddress(varName), length);

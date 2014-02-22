@@ -76,7 +76,7 @@ public class SectionMoteMemory implements MoteMemory, AddressMemory {
     if (!addresses.containsKey(varName)) {
       throw new UnknownVariableException(varName);
     }
-    
+
     return addresses.get(varName).intValue() + offset;
   }
 
