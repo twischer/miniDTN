@@ -12,7 +12,6 @@
   <property name="cooja_avrora_jar" value="${lib}/cooja_avrora.jar"/>
 
   <target name="init">
-    <javac srcdir="${avrora_src}" destdir="${build}" debug="on" includeantruntime="false"></javac>
     <tstamp/>
     <mkdir dir="${build}"/>
     <mkdir dir="${lib}"/>
@@ -24,6 +23,7 @@
   </target>
 
   <target name="compile" depends="init">
+    <javac srcdir="${avrora_src}" destdir="${build}" debug="on" includeantruntime="false"></javac>
     <javac srcdir="${src}" destdir="${build}" debug="on" includeantruntime="false">
       <classpath>
         <pathelement location="${cooja_jar}"/>
