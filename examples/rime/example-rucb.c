@@ -28,7 +28,6 @@
  *
  * This file is part of the Contiki operating system.
  *
- * $Id: example-rucb.c,v 1.7 2010/01/15 10:24:37 nifi Exp $
  */
 
 /**
@@ -47,7 +46,6 @@
 
 #include "cfs/cfs.h"
 #include "lib/print-stats.h"
-#include "sys/profile.h"
 
 #include <stdio.h>
 
@@ -61,7 +59,6 @@
 static unsigned long bytecount;
 static clock_time_t start_time;
 
-extern int profile_max_queuelen;
 
 /*---------------------------------------------------------------------------*/
 PROCESS(example_rucb_process, "Rucb example");
@@ -93,8 +90,6 @@ read_chunk(struct rucb_conn *c, int offset, char *to, int maxsize)
 
   if(bytecount == FILESIZE) {
     printf("Completion time %lu / %u\n", (unsigned long)clock_time() - start_time, CLOCK_SECOND);
-    /*     profile_aggregates_print(); */
-/*     profile_print_stats(); */
     print_stats();
   }
 
@@ -105,7 +100,7 @@ const static struct rucb_callbacks rucb_call = {write_chunk, read_chunk,
 						NULL};
 static struct rucb_conn rucb;
 /*---------------------------------------------------------------------------*/
-#include "node-id.h"
+#include "sys/node-id.h"
 
 PROCESS_THREAD(example_rucb_process, ev, data)
 {

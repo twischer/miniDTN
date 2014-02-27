@@ -37,6 +37,7 @@ import se.sics.cooja.Mote;
 import se.sics.cooja.avrmote.RavenMote;
 import avrora.sim.radio.AT86RF231Radio;
 import avrora.sim.radio.Radio;
+import se.sics.cooja.interfaces.CustomDataRadio;
 
 /**
  * Cooja support for Avrora's Atmel AT86RF230 radio (AT86RF231).

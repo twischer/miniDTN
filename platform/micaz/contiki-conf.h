@@ -71,7 +71,6 @@
 
 #define NETSTACK_CONF_NETWORK rime_driver
 #define NETSTACK_CONF_MAC     csma_driver
-#define NETSTACK_CONF_MAC     nullmac_driver
 #define NETSTACK_CONF_RDC     cxmac_driver
 #define NETSTACK_CONF_FRAMER  framer_802154
 
@@ -85,15 +84,23 @@
 #define CONTIKIMAC_CONF_ANNOUNCEMENTS    0
 #define CONTIKIMAC_CONF_COMPOWER         1
 
-#define COLLECT_NEIGHBOR_CONF_MAX_NEIGHBORS      32
+#define COLLECT_NBR_TABLE_CONF_MAX_NEIGHBORS      32
 
 #endif /* WITH_UIP6 */
 
 #define PACKETBUF_CONF_ATTRS_INLINE 1
 
-#ifndef RF_CHANNEL
-#define RF_CHANNEL              26
-#endif /* RF_CHANNEL */
+#ifdef RF_CHANNEL
+#define CC2420_CONF_CHANNEL RF_CHANNEL
+#endif
+
+#ifndef CC2420_CONF_CHANNEL
+#define CC2420_CONF_CHANNEL              26
+#endif /* CC2420_CONF_CHANNEL */
+
+#ifndef CC2420_CONF_CCA_THRESH
+#define CC2420_CONF_CCA_THRESH              -45
+#endif /* CC2420_CONF_CCA_THRESH */
 
 #define CONTIKIMAC_CONF_BROADCAST_RATE_LIMIT 0
 
@@ -116,14 +123,14 @@
 #define UIP_CONF_LLH_LEN                0
 
 #define UIP_CONF_ROUTER                 0
-#define UIP_CONF_IPV6_RPL               0
+#define UIP_CONF_IPV6_RPL               1
 
 /* configure number of neighbors and routes */
-#define UIP_CONF_DS6_NBR_NBU     5
-#define UIP_CONF_DS6_ROUTE_NBU   5
+#define NBR_TABLE_CONF_MAX_NEIGHBORS     5
+#define UIP_CONF_MAX_ROUTES   5
 
 #define RPL_CONF_MAX_PARENTS         4
-#define NEIGHBOR_CONF_MAX_NEIGHBORS  8
+#define NBR_TABLE_CONF_MAX_NEIGHBORS  8
 
 #define UIP_CONF_ND6_SEND_RA		0
 #define UIP_CONF_ND6_REACHABLE_TIME     600000
@@ -135,7 +142,6 @@
 #define UIP_CONF_IPV6_REASSEMBLY        0
 #define UIP_CONF_NETIF_MAX_ADDRESSES    3
 #define UIP_CONF_ND6_MAX_PREFIXES       3
-#define UIP_CONF_ND6_MAX_NEIGHBORS      4
 #define UIP_CONF_ND6_MAX_DEFROUTERS     2
 #define UIP_CONF_IP_FORWARD             0
 #define UIP_CONF_BUFFER_SIZE		    240

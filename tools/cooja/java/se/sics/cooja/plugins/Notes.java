@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: Notes.java,v 1.1 2010/03/11 22:11:10 fros4943 Exp $
  */
 
 package se.sics.cooja.plugins;
@@ -51,7 +50,7 @@ import org.apache.log4j.Logger;
 import org.jdom.Element;
 
 import se.sics.cooja.ClassDescription;
-import se.sics.cooja.GUI;
+import se.sics.cooja.Cooja;
 import se.sics.cooja.PluginType;
 import se.sics.cooja.Simulation;
 import se.sics.cooja.VisPlugin;
@@ -65,7 +64,7 @@ public class Notes extends VisPlugin {
   private JTextArea notes = new JTextArea("Enter notes here");
   private boolean decorationsVisible = true;
 
-  public Notes(Simulation simulation, GUI gui) {
+  public Notes(Simulation simulation, Cooja gui) {
     super("Notes", gui);
 
     add(BorderLayout.CENTER, new JScrollPane(notes));

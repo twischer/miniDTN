@@ -155,11 +155,11 @@ HMODULE wpcap;
 
 static struct pcap *pcap;
 
-/* uip_ethaddr is defined in uip.c. It is not used in uip6.c. 
+/* uip_lladdr is defined in uip.c. It is not used in uip6.c. 
  * If needed for some purpose it can be defined here
  */
 #if UIP_CONF_IPV6
-//struct uip_eth_addr uip_ethaddr;
+//struct uip_eth_addr uip_lladdr;
 #endif
 
 static int (* pcap_findalldevs)(struct pcap_if **, char *);
@@ -185,7 +185,7 @@ init(void)
 /* Nothing to do here */
 }
 /*---------------------------------------------------------------------------*/
-uint8_t wfall_send(uip_lladdr_t *lladdr);
+uint8_t wfall_send(const uip_lladdr_t *lladdr);
 #if FALLBACK_HAS_ETHERNET_HEADERS
 #undef IPBUF
 #define IPBUF ((struct uip_tcpip_hdr *)&uip_buf[14])
@@ -266,7 +266,7 @@ set_ethaddr(struct in_addr addr)
           adapters->PhysicalAddress[4], adapters->PhysicalAddress[5]);
         log_message("set_ethaddr:  ethernetaddr: ", buffer);
 #if UIP_CONF_IPV6
-//      int i;for (i=0;i<6;i++) uip_ethaddr.addr[i] = adapters->PhysicalAddress[i];
+//      int i;for (i=0;i<6;i++) uip_lladdr.addr[i] = adapters->PhysicalAddress[i];
 #else
         uip_setethaddr((*(struct uip_eth_addr *)adapters->PhysicalAddress));
 #endif
@@ -328,7 +328,7 @@ set_ethaddr6(struct in_addr6 addr)
           adapters->PhysicalAddress[4], adapters->PhysicalAddress[5]);
         log_message("set_ethaddr:  ethernetaddr: ", buffer);
 #if UIP_CONF_IPV6
-//      int i;for (i=0;i<6;i++) uip_ethaddr.addr[i] = adapters->PhysicalAddress[i]; //does this need doing?
+//      int i;for (i=0;i<6;i++) uip_lladdr.addr[i] = adapters->PhysicalAddress[i]; //does this need doing?
 #else
         uip_setethaddr((*(struct uip_eth_addr *)adapters->PhysicalAddress));
 #endif
@@ -708,7 +708,7 @@ wfall_poll(void)
 /*---------------------------------------------------------------------------*/
 #if UIP_CONF_IPV6
 uint8_t
-wpcap_send(uip_lladdr_t *lladdr)
+wpcap_send(const uip_lladdr_t *lladdr)
 {
   if(lladdr == NULL) {
 /* the dest must be multicast*/
@@ -745,7 +745,7 @@ return 0;
 }
 #ifdef UIP_FALLBACK_INTERFACE
 uint8_t
-wfall_send(uip_lladdr_t *lladdr)
+wfall_send(const uip_lladdr_t *lladdr)
 {
 #if FALLBACK_HAS_ETHERNET_HEADERS
 	//make room for ethernet header

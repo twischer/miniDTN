@@ -149,7 +149,7 @@ public abstract class Watchpoint<T extends WatchpointMote> {
     config.add(element);
 
     element = new Element("codefile");
-    File file = watchpointMote.getSimulation().getGUI().createPortablePath(codeFile);
+    File file = watchpointMote.getSimulation().getCooja().createPortablePath(codeFile);
     element.setText(file.getPath().replaceAll("\\\\", "/"));
     config.add(element);
 
@@ -184,7 +184,7 @@ public abstract class Watchpoint<T extends WatchpointMote> {
     for (Element element : configXML) {
       if (element.getName().equals("codefile")) {
         File file = new File(element.getText());
-        file = watchpointMote.getSimulation().getGUI().restorePortablePath(file);
+        file = watchpointMote.getSimulation().getCooja().restorePortablePath(file);
 
         try {
           codeFile = file.getCanonicalFile();

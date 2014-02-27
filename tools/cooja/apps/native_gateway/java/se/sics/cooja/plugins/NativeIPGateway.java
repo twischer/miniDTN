@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: NativeIPGateway.java,v 1.12 2010/01/15 10:55:21 fros4943 Exp $
  */
 
 package se.sics.cooja.plugins;
@@ -68,8 +67,8 @@ import org.apache.log4j.Logger;
 import org.jdom.Element;
 
 import se.sics.cooja.ClassDescription;
-import se.sics.cooja.GUI;
-import se.sics.cooja.GUI.RunnableInEDT;
+import se.sics.cooja.Cooja;
+import se.sics.cooja.Cooja.RunnableInEDT;
 import se.sics.cooja.Mote;
 import se.sics.cooja.MotePlugin;
 import se.sics.cooja.PluginType;

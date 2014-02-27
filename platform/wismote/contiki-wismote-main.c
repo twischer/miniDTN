@@ -50,9 +50,8 @@
 
 #include "net/rime.h"
 
-#include "node-id.h"
+#include "sys/node-id.h"
 #include "sys/autostart.h"
-#include "sys/profile.h"
 
 #if UIP_CONF_ROUTER
 
@@ -203,11 +202,15 @@ main(int argc, char **argv)
 
   leds_on(LEDS_RED);
 
+  clock_wait(2);
+
   uart1_init(115200); /* Must come before first printf */
 
 #if WITH_UIP
   slip_arch_init(115200);
 #endif /* WITH_UIP */
+
+  clock_wait(1);
 
   leds_on(LEDS_GREEN);
   //ds2411_init();
@@ -348,10 +351,6 @@ main(int argc, char **argv)
   serial_line_init();
 #endif
 
-#if PROFILE_CONF_ON
-  profile_init();
-#endif /* PROFILE_CONF_ON */
-
   leds_off(LEDS_GREEN);
 
 #if TIMESYNCH_CONF_ENABLED
@@ -408,17 +407,11 @@ main(int argc, char **argv)
   while(1) {
 
     int r;
-#if PROFILE_CONF_ON
-    profile_episode_start();
-#endif /* PROFILE_CONF_ON */
     do {
       /* Reset watchdog. */
       watchdog_periodic();
       r = process_run();
     } while(r > 0);
-#if PROFILE_CONF_ON
-    profile_episode_end();
-#endif /* PROFILE_CONF_ON */
 
     /*
      * Idle processing.

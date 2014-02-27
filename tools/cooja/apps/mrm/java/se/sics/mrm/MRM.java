@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: MRM.java,v 1.12 2010/12/02 15:25:50 fros4943 Exp $
  */
 
 package se.sics.mrm;
@@ -119,8 +118,8 @@ public class MRM extends AbstractRadioMedium {
     });
     
     /* Register plugins */
-    sim.getGUI().registerPlugin(AreaViewer.class);
-    sim.getGUI().registerPlugin(FormulaViewer.class);
+    sim.getCooja().registerPlugin(AreaViewer.class);
+    sim.getCooja().registerPlugin(FormulaViewer.class);
     Visualizer.registerVisualizerSkin(MRMVisualizerSkin.class);
   }
 
@@ -128,8 +127,8 @@ public class MRM extends AbstractRadioMedium {
     super.removed();
 
     /* Unregister plugins */
-    sim.getGUI().unregisterPlugin(AreaViewer.class);
-    sim.getGUI().unregisterPlugin(FormulaViewer.class);
+    sim.getCooja().unregisterPlugin(AreaViewer.class);
+    sim.getCooja().unregisterPlugin(FormulaViewer.class);
     Visualizer.unregisterVisualizerSkin(MRMVisualizerSkin.class);
 
     currentChannelModel.deleteSettingsObserver(channelModelObserver);

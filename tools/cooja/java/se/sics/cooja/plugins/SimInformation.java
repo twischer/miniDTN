@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: SimInformation.java,v 1.6 2009/05/26 14:27:00 fros4943 Exp $
  */
 
 package se.sics.cooja.plugins;
@@ -67,7 +66,7 @@ public class SimInformation extends VisPlugin {
    *
    * @param simulationToView Simulation to view
    */
-  public SimInformation(Simulation simulationToView, GUI gui) {
+  public SimInformation(Simulation simulationToView, Cooja gui) {
     super("Simulation Information", gui);
 
     simulation = simulationToView;
@@ -181,7 +180,7 @@ public class SimInformation extends VisPlugin {
     smallPane.add(Box.createHorizontalGlue());
 
     Class<? extends RadioMedium> radioMediumClass = simulation.getRadioMedium().getClass();
-    String description = GUI.getDescriptionOf(radioMediumClass);
+    String description = Cooja.getDescriptionOf(radioMediumClass);
     label = new JLabel(description);
 
     smallPane.add(label);

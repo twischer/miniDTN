@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: LogScriptEngine.java,v 1.25 2010/11/10 13:05:18 fros4943 Exp $
  */
 
 package se.sics.cooja.plugins;
@@ -45,7 +44,7 @@ import javax.script.ScriptException;
 
 import org.apache.log4j.Logger;
 
-import se.sics.cooja.GUI;
+import se.sics.cooja.Cooja;
 import se.sics.cooja.Mote;
 import se.sics.cooja.SimEventCentral.LogOutputEvent;
 import se.sics.cooja.SimEventCentral.LogOutputListener;
@@ -102,6 +101,8 @@ public class LogScriptEngine {
   private long startRealTime;
   private long nextProgress;
 
+  private int exitCode = 0;
+  
   public LogScriptEngine(Simulation simulation) {
     this.simulation = simulation;
   }
@@ -156,8 +157,8 @@ public class LogScriptEngine {
       stepScript();
     } catch (UndeclaredThrowableException e) {
       logger.fatal("Exception: " + e.getMessage(), e);
-      if (GUI.isVisualized()) {
-        GUI.showErrorDialog(GUI.getTopParentContainer(),
+      if (Cooja.isVisualized()) {
+        Cooja.showErrorDialog(Cooja.getTopParentContainer(),
             e.getMessage(),
             e, false);
       }
@@ -307,7 +308,7 @@ public class LogScriptEngine {
               throwable.getMessage().contains("test script killed") ) {
             logger.info("Test script finished");
           } else {
-            if (!GUI.isVisualized()) {
+            if (!Cooja.isVisualized()) {
               logger.fatal("Test script error, terminating Cooja.");
               logger.fatal("Script error:", e);
               System.exit(1);
@@ -316,8 +317,8 @@ public class LogScriptEngine {
             logger.fatal("Script error:", e);
             deactivateScript();
             simulation.stopSimulation();
-            if (GUI.isVisualized()) {
-              GUI.showErrorDialog(GUI.getTopParentContainer(),
+            if (Cooja.isVisualized()) {
+              Cooja.showErrorDialog(Cooja.getTopParentContainer(),
                   "Script error", e, false);
             }
           }
@@ -339,7 +340,8 @@ public class LogScriptEngine {
     Hashtable<Object, Object> hash = new Hashtable<Object, Object>();
     engine.put("global", hash);
     engine.put("sim", simulation);
-    engine.put("gui", simulation.getGUI());
+    engine.put("gui", simulation.getCooja());
+    engine.put("msg", new String(""));
 
     scriptMote = new ScriptMote();
     engine.put("node", scriptMote);
@@ -369,6 +371,7 @@ public class LogScriptEngine {
       if (!scriptActive) {
         return;
       }
+      exitCode = 2;
       logger.info("Timeout event @ " + t);
       engine.put("TIMEOUT", true);
       stepScript();
@@ -398,14 +401,14 @@ public class LogScriptEngine {
       new Thread() {
         public void run() {
           try { Thread.sleep(500); } catch (InterruptedException e) { }
-          simulation.getGUI().doQuit(false);
+          simulation.getCooja().doQuit(false, exitCode);
         };
       }.start();
       new Thread() {
         public void run() {
           try { Thread.sleep(2000); } catch (InterruptedException e) { }
           logger.warn("Killing Cooja");
-          System.exit(1);
+          System.exit(exitCode);
         };
       }.start();
     }
@@ -439,17 +442,19 @@ public class LogScriptEngine {
     }
 
     public void testOK() {
+      exitCode = 0;
       log("TEST OK\n");
       deactive();
     }
     public void testFailed() {
+      exitCode = 1;
       log("TEST FAILED\n");
       deactive();
     }
     private void deactive() {
       deactivateScript();
 
-      if (GUI.isVisualized()) {
+      if (Cooja.isVisualized()) {
         log("[if test was run without visualization, Cooja would now have been terminated]\n");
         stopSimulation = true;
         simulation.invokeSimulationThread(stopSimulationRunnable);

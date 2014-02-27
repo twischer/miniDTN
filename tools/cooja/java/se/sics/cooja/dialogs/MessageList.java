@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: MessageList.java,v 1.15 2009/11/13 14:27:46 fros4943 Exp $
  *
  * -----------------------------------------------------------------
  *
@@ -66,7 +65,7 @@ import javax.swing.JSeparator;
 import javax.swing.ListModel;
 import javax.swing.ListSelectionModel;
 
-import se.sics.cooja.GUI;
+import se.sics.cooja.Cooja;
 
 public class MessageList extends JList {
 
@@ -179,7 +178,7 @@ public class MessageList extends JList {
   }
 
   public void addMessage(final String message, final int type) {
-    GUI.setProgressMessage(message, type);
+    Cooja.setProgressMessage(message, type);
 
     MessageContainer msg = new MessageContainer(message, type);
     messages.add(msg);

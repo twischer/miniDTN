@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: SkyCoffeeFilesystem.java,v 1.3 2010/02/05 08:44:57 fros4943 Exp $
  */
 
 package se.sics.cooja.mspmote.interfaces;
@@ -56,7 +55,7 @@ import org.jdom.Element;
 import se.sics.coffee.CoffeeFS;
 import se.sics.coffee.CoffeeFile;
 import se.sics.cooja.ClassDescription;
-import se.sics.cooja.GUI;
+import se.sics.cooja.Cooja;
 import se.sics.cooja.Mote;
 import se.sics.cooja.MoteInterface;
 import se.sics.cooja.dialogs.TableColumnAdjuster;
@@ -168,7 +167,7 @@ public class SkyCoffeeFilesystem extends MoteInterface {
       public void actionPerformed(ActionEvent e) {
         
         JFileChooser fileChooser = new JFileChooser();
-        int reply = fileChooser.showOpenDialog(GUI.getTopParentContainer());
+        int reply = fileChooser.showOpenDialog(Cooja.getTopParentContainer());
         if (reply != JFileChooser.APPROVE_OPTION) {
           return;
         }
@@ -227,7 +226,7 @@ public class SkyCoffeeFilesystem extends MoteInterface {
     public void setValueAt(Object value, final int row, int col) {
       if (col == COLUMN_SAVE) {
         JFileChooser fc = new JFileChooser();
-        int returnVal = fc.showSaveDialog(GUI.getTopParentContainer());
+        int returnVal = fc.showSaveDialog(Cooja.getTopParentContainer());
         if (returnVal != JFileChooser.APPROVE_OPTION) {
           return;
         }
@@ -238,7 +237,7 @@ public class SkyCoffeeFilesystem extends MoteInterface {
           String s2 = "Cancel";
           Object[] options = { s1, s2 };
           int n = JOptionPane.showOptionDialog(
-              GUI.getTopParentContainer(),
+              Cooja.getTopParentContainer(),
               "A file with the same name already exists.\nDo you want to remove it?",
               "Overwrite existing file?", JOptionPane.YES_NO_OPTION,
               JOptionPane.QUESTION_MESSAGE, null, options, s1);
@@ -271,7 +270,7 @@ public class SkyCoffeeFilesystem extends MoteInterface {
       
       if (col == COLUMN_REMOVE) {
         int reply = JOptionPane.showConfirmDialog(
-            GUI.getTopParentContainer(),
+            Cooja.getTopParentContainer(),
             "Remove \"" + files[row].getName() + "\" from filesystem?");
         if (reply != JOptionPane.YES_OPTION) {
           return;

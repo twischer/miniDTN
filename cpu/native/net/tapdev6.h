@@ -31,7 +31,6 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: tapdev6.h,v 1.1 2008/10/14 09:47:15 julienabeille Exp $
  *
  */
 #ifndef __TAPDEV_H__
@@ -40,7 +39,7 @@
 #include "contiki-net.h"
 
 void tapdev_init(void);
-uint8_t tapdev_send(uip_lladdr_t *lladdr);
+uint8_t tapdev_send(const uip_lladdr_t *lladdr);
 uint16_t tapdev_poll(void);
 void tapdev_do_send(void);
 void tapdev_exit(void); //math

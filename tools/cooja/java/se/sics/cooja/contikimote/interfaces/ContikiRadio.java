@@ -26,22 +26,12 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: ContikiRadio.java,v 1.32 2010/03/09 08:11:05 fros4943 Exp $
  */
 
 package se.sics.cooja.contikimote.interfaces;
 
-import java.awt.BorderLayout;
-import java.awt.GridLayout;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
+import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Observable;
-import java.util.Observer;
-
-import javax.swing.JButton;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
 
 import org.apache.log4j.Logger;
 import org.jdom.Element;
@@ -106,7 +96,7 @@ public class ContikiRadio extends Radio implements ContikiMoteInterface, PolledA
   /**
    * Transmission bitrate (kbps).
    */
-  public final double RADIO_TRANSMISSION_RATE_kbps;
+  private double RADIO_TRANSMISSION_RATE_kbps;
 
   private RadioPacket packetToMote = null;
 
@@ -125,6 +115,8 @@ public class ContikiRadio extends Radio implements ContikiMoteInterface, PolledA
   private long lastEventTime = 0;
 
   private int oldOutputPowerIndicator = -1;
+
+  private int oldRadioChannel = -1;
 
   /**
    * Creates an interface to the radio at mote.
@@ -258,6 +250,24 @@ public class ContikiRadio extends Radio implements ContikiMoteInterface, PolledA
     myMoteMemory.setIntValueOf("simSignalStrength", (int) signalStrength);
   }
 
+  /** Set LQI to a value between 0 and 255.
+   * 
+   * @see se.sics.cooja.interfaces.Radio#setLQI(int)
+   */
+  public void setLQI(int lqi){
+    if(lqi<0) {
+      lqi=0;
+    }
+    else if(lqi>0xff) {
+      lqi=0xff;
+    }
+    myMoteMemory.setIntValueOf("simLQI", lqi);
+  }
+
+  public int getLQI(){
+    return myMoteMemory.getIntValueOf("simLQI");
+  }
+
   public Position getPosition() {
     return mote.getInterfaces().getPosition();
   }
@@ -290,6 +300,14 @@ public class ContikiRadio extends Radio implements ContikiMoteInterface, PolledA
     /* Check if radio output power changed */
     if (myMoteMemory.getByteValueOf("simPower") != oldOutputPowerIndicator) {
       oldOutputPowerIndicator = myMoteMemory.getByteValueOf("simPower");
+      lastEvent = RadioEvent.UNKNOWN;
+      this.setChanged();
+      this.notifyObservers();
+    }
+
+    /* Check if radio channel changed */
+    if (getChannel() != oldRadioChannel) {
+      oldRadioChannel = getChannel();
       lastEvent = RadioEvent.UNKNOWN;
       this.setChanged();
       this.notifyObservers();
@@ -346,10 +364,26 @@ public class ContikiRadio extends Radio implements ContikiMoteInterface, PolledA
   }
 
   public Collection<Element> getConfigXML() {
-    return null;
+           ArrayList<Element> config = new ArrayList<Element>();
+
+           Element element;
+
+           /* Radio bitrate */
+           element = new Element("bitrate");
+           element.setText("" + RADIO_TRANSMISSION_RATE_kbps);
+           config.add(element);
+
+           return config;
   }
 
-  public void setConfigXML(Collection<Element> configXML, boolean visAvailable) {
+  public void setConfigXML(Collection<Element> configXML,
+                 boolean visAvailable) {
+         for (Element element : configXML) {
+                 if (element.getName().equals("bitrate")) {
+                         RADIO_TRANSMISSION_RATE_kbps = Double.parseDouble(element.getText());
+                         logger.info("Radio bitrate reconfigured to (kbps): " + RADIO_TRANSMISSION_RATE_kbps);
+                 }
+         }
   }
 
   public Mote getMote() {

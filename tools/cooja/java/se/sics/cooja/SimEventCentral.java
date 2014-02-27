@@ -24,7 +24,6 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $Id: SimEventCentral.java,v 1.4 2010/03/26 09:12:20 fros4943 Exp $
  */
 
 package se.sics.cooja;
@@ -62,7 +61,7 @@ public class SimEventCentral {
     this.simulation = simulation;
 
     /* Default buffer sizes */
-    logOutputBufferSize = Integer.parseInt(GUI.getExternalToolsSetting("BUFFERSIZE_LOGOUTPUT", "" + 40000));
+    logOutputBufferSize = Integer.parseInt(Cooja.getExternalToolsSetting("BUFFERSIZE_LOGOUTPUT", "" + 40000));
 
     
     moteObservations = new ArrayList<MoteObservation>();

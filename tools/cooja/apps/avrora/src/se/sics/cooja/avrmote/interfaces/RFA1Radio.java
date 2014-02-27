@@ -37,6 +37,7 @@ import se.sics.cooja.Mote;
 import se.sics.cooja.avrmote.RFA1Mote;
 import avrora.sim.radio.ATmega128RFA1Radio;
 import avrora.sim.radio.Radio;
+import se.sics.cooja.interfaces.CustomDataRadio;
 
 /**
  * Cooja support for Avrora's ATMega128RFA1.

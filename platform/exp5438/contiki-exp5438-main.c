@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * @(#)$Id: contiki-z1-main.c,v 1.4 2010/08/26 22:08:11 nifi Exp $
  */
 
 #include "contiki.h"
@@ -49,9 +48,8 @@
 #include "net/netstack.h"
 #include "net/rime.h"
 #include "sys/autostart.h"
-#include "sys/profile.h"
 
-#include "node-id.h"
+#include "sys/node-id.h"
 #include "lcd.h"
 #include "duty-cycle-scroller.h"
 
@@ -68,11 +66,9 @@
 #define PRINTF(...)
 #endif
 
+extern unsigned char node_mac[8];
+
 //SENSORS(&button_sensor);
-/*---------------------------------------------------------------------------*/
-#ifndef RF_CHANNEL
-#define RF_CHANNEL              26
-#endif
 /*---------------------------------------------------------------------------*/
 static void
 set_rime_addr(void)
@@ -199,8 +195,6 @@ main(int argc, char **argv)
     cc2420_set_pan_addr(IEEE802154_PANID, shortaddr, longaddr);
   }
 
-  cc2420_set_channel(RF_CHANNEL);
-
   leds_off(LEDS_ALL);
 
   if(node_id > 0) {
@@ -223,7 +217,7 @@ main(int argc, char **argv)
          NETSTACK_RDC.name,
          CLOCK_SECOND / (NETSTACK_RDC.channel_check_interval() == 0 ? 1:
                          NETSTACK_RDC.channel_check_interval()),
-         RF_CHANNEL);
+         CC2420_CONF_CHANNEL);
 
   process_start(&tcpip_process, NULL);
 
@@ -264,7 +258,7 @@ main(int argc, char **argv)
          NETSTACK_RDC.name,
          CLOCK_SECOND / (NETSTACK_RDC.channel_check_interval() == 0? 1:
                          NETSTACK_RDC.channel_check_interval()),
-         RF_CHANNEL);
+         CC2420_CONF_CHANNEL);
 #endif /* WITH_UIP6 */
 
 #if !WITH_UIP6

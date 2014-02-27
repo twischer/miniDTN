@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: VisPlugin.java,v 1.12 2010/01/15 10:47:36 fros4943 Exp $
  */
 
 package se.sics.cooja;
@@ -55,14 +54,14 @@ import se.sics.cooja.plugins.SimControl;
  */
 public abstract class VisPlugin extends JInternalFrame implements Plugin {
 
-  public VisPlugin(String title, final GUI gui) {
+  public VisPlugin(String title, final Cooja gui) {
     this(title, gui, true);
   }
 
-  public VisPlugin(String title, final GUI gui, boolean requiresVis) {
+  public VisPlugin(String title, final Cooja gui, boolean requiresVis) {
     super(title, true, true, true, true);
 
-    if (requiresVis && !GUI.isVisualized()) {
+    if (requiresVis && !Cooja.isVisualized()) {
       throw new PluginRequiresVisualizationException();
     }
 
@@ -84,7 +83,7 @@ public abstract class VisPlugin extends JInternalFrame implements Plugin {
     );
   }
 
-  public JInternalFrame getGUI() {
+  public JInternalFrame getCooja() {
     return this;
   }
 

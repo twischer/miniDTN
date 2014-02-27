@@ -52,7 +52,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
 import se.sics.cooja.ClassDescription;
-import se.sics.cooja.GUI;
+import se.sics.cooja.Cooja;
 import se.sics.cooja.HasQuickHelp;
 import se.sics.cooja.PluginType;
 import se.sics.cooja.Simulation;
@@ -83,7 +83,7 @@ public class SimControl extends VisPlugin implements HasQuickHelp {
    *
    * @param simulation Simulation to control
    */
-  public SimControl(Simulation simulation, GUI gui) {
+  public SimControl(Simulation simulation, Cooja gui) {
     super("Simulation control", gui);
     this.simulation = simulation;
 
@@ -120,9 +120,13 @@ public class SimControl extends VisPlugin implements HasQuickHelp {
     speedlimitButtonGroup.add(limitMenuItem2);
     speedMenu.add(limitMenuItem2);
     JRadioButtonMenuItem limitMenuItem3 = new JRadioButtonMenuItem(
-        new ChangeMaxSpeedLimitAction("100%", 1.0));
-    speedlimitButtonGroup.add(limitMenuItem3);
-    speedMenu.add(limitMenuItem3);
+            new ChangeMaxSpeedLimitAction("100%", 1.0));
+        speedlimitButtonGroup.add(limitMenuItem3);
+        speedMenu.add(limitMenuItem3);
+        JRadioButtonMenuItem limitMenuItem200 = new JRadioButtonMenuItem(
+                new ChangeMaxSpeedLimitAction("200%", 2.0));
+            speedlimitButtonGroup.add(limitMenuItem200);
+            speedMenu.add(limitMenuItem200);
     JRadioButtonMenuItem limitMenuItem4 = new JRadioButtonMenuItem(
         new ChangeMaxSpeedLimitAction("1000%", 10.0));
     speedlimitButtonGroup.add(limitMenuItem4);
@@ -135,7 +139,9 @@ public class SimControl extends VisPlugin implements HasQuickHelp {
     } else if (simulation.getSpeedLimit().doubleValue() == 0.10) {
       limitMenuItem2.setSelected(true);
     } else if (simulation.getSpeedLimit().doubleValue() == 1.0) {
-      limitMenuItem3.setSelected(true);
+        limitMenuItem3.setSelected(true);
+    } else if (simulation.getSpeedLimit().doubleValue() == 2.0) {
+        limitMenuItem200.setSelected(true);
     } else if (simulation.getSpeedLimit().doubleValue() == 10) {
       limitMenuItem4.setSelected(true);
     }
@@ -317,7 +323,7 @@ public class SimControl extends VisPlugin implements HasQuickHelp {
   };
   private Action reloadAction = new AbstractAction("Reload") {
     public void actionPerformed(ActionEvent e) {
-      simulation.getGUI().reloadCurrentSimulation(simulation.isRunning());
+      simulation.getCooja().reloadCurrentSimulation(simulation.isRunning());
     }
   };
 

@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: MspCLI.java,v 1.5 2010/01/15 10:55:03 fros4943 Exp $
  */
 
 package se.sics.cooja.mspmote.plugins;
@@ -47,7 +46,7 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 
 import se.sics.cooja.ClassDescription;
-import se.sics.cooja.GUI;
+import se.sics.cooja.Cooja;
 import se.sics.cooja.HasQuickHelp;
 import se.sics.cooja.Mote;
 import se.sics.cooja.MotePlugin;
@@ -75,7 +74,7 @@ public class MspCLI extends VisPlugin implements MotePlugin, HasQuickHelp {
   private int historyPos = 0;
   private int historyCount = 0;
 
-  public MspCLI(Mote mote, Simulation simulationToVisualize, GUI gui) {
+  public MspCLI(Mote mote, Simulation simulationToVisualize, Cooja gui) {
     super("Msp CLI (" + mote.getID() + ')', gui);
     this.mspMote = (MspMote) mote;
 

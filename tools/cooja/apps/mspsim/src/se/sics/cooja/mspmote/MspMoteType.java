@@ -37,8 +37,9 @@ import java.util.Hashtable;
 import org.apache.log4j.Logger;
 
 import se.sics.cooja.ClassDescription;
-import se.sics.cooja.GUI;
+import se.sics.cooja.Cooja;
 import se.sics.cooja.Mote;
+import se.sics.cooja.MoteInterface;
 import se.sics.cooja.MoteType;
 import se.sics.cooja.Simulation;
 import se.sics.cooja.motes.AbstractMoteType;
@@ -65,6 +66,7 @@ public abstract class MspMoteType extends AbstractMoteType implements MoteType {
 
   protected abstract MspMote createMote(Simulation simulation);
 
+  public abstract Class<? extends MoteInterface>[] getDefaultMoteInterfaceClasses();
   private static ELF loadELF(String filepath) throws IOException {
     return ELF.readELF(filepath);
   }
@@ -72,7 +74,7 @@ public abstract class MspMoteType extends AbstractMoteType implements MoteType {
   private ELF elf; /* cached */
   public ELF getELF() throws IOException {
     if (elf == null) {
-      if (GUI.isVisualizedInApplet()) {
+      if (Cooja.isVisualizedInApplet()) {
         logger.warn("ELF loading in applet not implemented");
       }
       elf = loadELF(getContikiFirmwareFile().getPath());

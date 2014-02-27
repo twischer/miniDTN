@@ -35,10 +35,10 @@ import org.apache.log4j.Logger;
 import se.sics.cooja.ClassDescription;
 import se.sics.cooja.Mote;
 import se.sics.cooja.avrmote.MicaZMote;
+import se.sics.cooja.interfaces.CustomDataRadio;
 import se.sics.cooja.avrmote.MicaZMoteType;
 import avrora.sim.radio.CC2420Radio;
 import avrora.sim.radio.Radio;
-
 /**
  * Cooja support for Avrora's CC2420Radio.
  *

@@ -43,7 +43,7 @@ import org.apache.log4j.Logger;
 
 import se.sics.cooja.AbstractionLevelDescription;
 import se.sics.cooja.ClassDescription;
-import se.sics.cooja.GUI;
+import se.sics.cooja.Cooja;
 import se.sics.cooja.MoteInterface;
 import se.sics.cooja.MoteType;
 import se.sics.cooja.Simulation;
@@ -61,6 +61,9 @@ import se.sics.cooja.mspmote.interfaces.MspClock;
 import se.sics.cooja.mspmote.interfaces.MspDebugOutput;
 import se.sics.cooja.mspmote.interfaces.MspMoteID;
 import se.sics.cooja.mspmote.interfaces.UsciA1Serial;
+
+import com.thingsquare.cooja.mspsim.CC1101Radio;
+import com.thingsquare.cooja.mspsim.CC1120Radio;
 
 @ClassDescription("EXP430F5438 mote")
 @AbstractionLevelDescription("Emulated level")
@@ -165,20 +168,36 @@ public class Exp5438MoteType extends MspMoteType {
     Toolkit toolkit = Toolkit.getDefaultToolkit();
     URL imageURL = this.getClass().getClassLoader().getResource("exp5438.png");
     Image image = toolkit.getImage(imageURL);
-    MediaTracker tracker = new MediaTracker(GUI.getTopParentContainer());
+    MediaTracker tracker = new MediaTracker(Cooja.getTopParentContainer());
     tracker.addImage(image, 1);
     try {
       tracker.waitForAll();
     } catch (InterruptedException ex) {
     }
-    if (image.getHeight(GUI.getTopParentContainer()) > 0 && image.getWidth(GUI.getTopParentContainer()) > 0) {
-      image = image.getScaledInstance((200*image.getWidth(GUI.getTopParentContainer())/image.getHeight(GUI.getTopParentContainer())), 200, Image.SCALE_DEFAULT);
+    if (image.getHeight(Cooja.getTopParentContainer()) > 0 && image.getWidth(Cooja.getTopParentContainer()) > 0) {
+      image = image.getScaledInstance((200*image.getWidth(Cooja.getTopParentContainer())/image.getHeight(Cooja.getTopParentContainer())), 200, Image.SCALE_DEFAULT);
       return new ImageIcon(image);
     }
 
     return null;
   }
 
+  public Class<? extends MoteInterface>[] getDefaultMoteInterfaceClasses() {
+	    return new Class[] {
+	            Position.class,
+	            RimeAddress.class,
+	            IPAddress.class,
+	            Mote2MoteRelations.class,
+	            MoteAttributes.class,
+	            MspClock.class,
+	            MspMoteID.class,
+	            Msp802154Radio.class,
+	            UsciA1Serial.class,
+	            Exp5438LED.class,
+	            /*Exp5438LCD.class,*/ /* TODO */
+	            MspDebugOutput.class
+	        };
+  }
   public Class<? extends MoteInterface>[] getAllMoteInterfaceClasses() {
     return new Class[] {
         Position.class,
@@ -189,6 +208,8 @@ public class Exp5438MoteType extends MspMoteType {
         MspClock.class,
         MspMoteID.class,
         Msp802154Radio.class,
+        CC1101Radio.class,
+        CC1120Radio.class,
         UsciA1Serial.class,
         Exp5438LED.class,
         /*Exp5438LCD.class,*/ /* TODO */

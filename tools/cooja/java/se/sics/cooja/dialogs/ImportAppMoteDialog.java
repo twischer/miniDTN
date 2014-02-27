@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: ImportAppMoteDialog.java,v 1.1 2010/01/24 20:06:16 nifi Exp $
  */
 
 package se.sics.cooja.dialogs;
@@ -55,7 +54,7 @@ import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.KeyStroke;
 import javax.swing.filechooser.FileFilter;
-import se.sics.cooja.GUI;
+import se.sics.cooja.Cooja;
 import se.sics.cooja.Mote;
 import se.sics.cooja.Simulation;
 import se.sics.cooja.motes.ImportAppMoteType;
@@ -127,8 +126,8 @@ public class ImportAppMoteDialog extends JDialog {
         } else if (name.length() > 0) {
           fc.setSelectedFile(new File(new File(path), name.replace(".", "/") + ".class"));
         } else {
-          File fp = simulation.getGUI()
-              .restorePortablePath(new File(GUI.getExternalToolsSetting("IMPORT_APP_LAST",
+          File fp = simulation.getCooja()
+              .restorePortablePath(new File(Cooja.getExternalToolsSetting("IMPORT_APP_LAST",
                   "mymote.class")));
           if (path.length() > 0 && !fp.getAbsolutePath().startsWith(path)) {
             fc.setCurrentDirectory(new File(path));
@@ -250,8 +249,8 @@ public class ImportAppMoteDialog extends JDialog {
       } else {
         pathField.setText(loader.getTestClassPath().getPath());
         classField.setText(loader.getTestClassName());
-        GUI.setExternalToolsSetting("IMPORT_APP_LAST",
-            simulation.getGUI().createPortablePath(classFile).getPath());
+        Cooja.setExternalToolsSetting("IMPORT_APP_LAST",
+            simulation.getCooja().createPortablePath(classFile).getPath());
         return true;
       }
     } catch (FileNotFoundException e1) {

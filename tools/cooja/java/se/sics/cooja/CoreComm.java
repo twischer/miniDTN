@@ -24,7 +24,6 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $Id: CoreComm.java,v 1.16 2010/02/03 16:06:04 fros4943 Exp $
  */
 
 package se.sics.cooja;
@@ -135,7 +134,7 @@ public abstract class CoreComm {
 
     try {
       Reader reader;
-      String mainTemplate = GUI
+      String mainTemplate = Cooja
           .getExternalToolsSetting("CORECOMM_TEMPLATE_FILENAME");
 
       if ((new File(mainTemplate)).exists()) {
@@ -214,7 +213,7 @@ public abstract class CoreComm {
 
     try {
       int b;
-      String[] cmd = new String[] { GUI.getExternalToolsSetting("PATH_JAVAC"),
+      String[] cmd = new String[] { Cooja.getExternalToolsSetting("PATH_JAVAC"),
           "-version", "se/sics/cooja/corecomm/" + className + ".java" };
 
       Process p = Runtime.getRuntime().exec(cmd, null, null);
@@ -234,11 +233,11 @@ public abstract class CoreComm {
 
       // Try including cooja.jar
       cmd = new String[] {
-          GUI.getExternalToolsSetting("PATH_JAVAC"),
+          Cooja.getExternalToolsSetting("PATH_JAVAC"),
           "-version",
           "se/sics/cooja/corecomm/" + className + ".java",
           "-cp",
-          GUI.getExternalToolsSetting("PATH_CONTIKI")
+          Cooja.getExternalToolsSetting("PATH_CONTIKI")
               + "/tools/cooja/dist/cooja.jar" };
 
       p = Runtime.getRuntime().exec(cmd, null, null);

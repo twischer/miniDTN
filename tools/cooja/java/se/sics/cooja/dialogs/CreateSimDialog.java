@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: CreateSimDialog.java,v 1.18 2010/01/15 14:00:43 fros4943 Exp $
  */
 
 package se.sics.cooja.dialogs;
@@ -61,7 +60,7 @@ import javax.swing.KeyStroke;
 
 import org.apache.log4j.Logger;
 
-import se.sics.cooja.GUI;
+import se.sics.cooja.Cooja;
 import se.sics.cooja.RadioMedium;
 import se.sics.cooja.Simulation;
 
@@ -95,7 +94,7 @@ public class CreateSimDialog extends JDialog {
    * @return True if simulation configured correctly
    */
   public static boolean showDialog(Container parent, Simulation simulation) {
-    final CreateSimDialog dialog = new CreateSimDialog((Window) parent, simulation.getGUI());
+    final CreateSimDialog dialog = new CreateSimDialog((Window) parent, simulation.getCooja());
     dialog.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
     dialog.addWindowListener(new WindowAdapter() {
       public void windowClosing(WindowEvent e) {
@@ -119,7 +118,7 @@ public class CreateSimDialog extends JDialog {
       Class<? extends RadioMedium> radioMediumClass =
         simulation.getRadioMedium().getClass();
 
-      String currentDescription = GUI.getDescriptionOf(radioMediumClass);
+      String currentDescription = Cooja.getDescriptionOf(radioMediumClass);
 
       for (int i=0; i < dialog.radioMediumBox.getItemCount(); i++) {
         String menuDescription = (String) dialog.radioMediumBox.getItemAt(i);
@@ -168,7 +167,7 @@ public class CreateSimDialog extends JDialog {
     return false;
   }
 
-  private CreateSimDialog(Window window, GUI gui) {
+  private CreateSimDialog(Window window, Cooja gui) {
     super(window, "Create new simulation", ModalityType.APPLICATION_MODAL);
     Box vertBox = Box.createVerticalBox();
 
@@ -237,7 +236,7 @@ public class CreateSimDialog extends JDialog {
 
     Vector<String> radioMediumDescriptions = new Vector<String>();
     for (Class<? extends RadioMedium> radioMediumClass: gui.getRegisteredRadioMediums()) {
-      String description = GUI.getDescriptionOf(radioMediumClass);
+      String description = Cooja.getDescriptionOf(radioMediumClass);
       radioMediumDescriptions.add(description);
     }
 
@@ -341,8 +340,8 @@ public class CreateSimDialog extends JDialog {
       mySimulation.setTitle(title.getText());
 
       String currentRadioMediumDescription = (String) radioMediumBox.getSelectedItem();
-      for (Class<? extends RadioMedium> radioMediumClass: mySimulation.getGUI().getRegisteredRadioMediums()) {
-        String radioMediumDescription = GUI.getDescriptionOf(radioMediumClass);
+      for (Class<? extends RadioMedium> radioMediumClass: mySimulation.getCooja().getRegisteredRadioMediums()) {
+        String radioMediumDescription = Cooja.getDescriptionOf(radioMediumClass);
 
         if (currentRadioMediumDescription.equals(radioMediumDescription)) {
           try {

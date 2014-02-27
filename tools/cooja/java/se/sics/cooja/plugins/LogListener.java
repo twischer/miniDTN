@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: LogListener.java,v 1.36 2010/11/10 13:03:49 fros4943 Exp $
  */
 
 package se.sics.cooja.plugins;
@@ -84,7 +83,7 @@ import org.apache.log4j.Logger;
 import org.jdom.Element;
 
 import se.sics.cooja.ClassDescription;
-import se.sics.cooja.GUI;
+import se.sics.cooja.Cooja;
 import se.sics.cooja.HasQuickHelp;
 import se.sics.cooja.Mote;
 import se.sics.cooja.Plugin;
@@ -109,6 +108,19 @@ public class LogListener extends VisPlugin implements HasQuickHelp {
   private static final long serialVersionUID = 3294595371354857261L;
   private static Logger logger = Logger.getLogger(LogListener.class);
 
+  private final Color[] BG_COLORS = new Color[] {
+      new Color(200, 200, 200),
+      new Color(200, 200, 255),
+      new Color(200, 255, 200),
+      new Color(200, 255, 255),
+      new Color(255, 200, 200),
+      new Color(255, 255, 200),
+      new Color(255, 255, 255),
+      new Color(255, 220, 200),
+      new Color(220, 255, 220),
+      new Color(255, 200, 255),
+  };
+
   private final static int COLUMN_TIME = 0;
   private final static int COLUMN_FROM = 1;
   private final static int COLUMN_DATA = 2;
@@ -120,11 +132,11 @@ public class LogListener extends VisPlugin implements HasQuickHelp {
     "#"
   };
 
-  private static final long TIME_SECOND = 1000*Simulation.MILLISECOND;
-  private static final long TIME_MINUTE = 60*TIME_SECOND;
-  private static final long TIME_HOUR = 60*TIME_MINUTE;
+  public static final long TIME_SECOND = 1000*Simulation.MILLISECOND;
+  public static final long TIME_MINUTE = 60*TIME_SECOND;
+  public static final long TIME_HOUR = 60*TIME_MINUTE;
 
-  private boolean formatTimeString = false;
+  private boolean formatTimeString = true;
   private boolean hasHours = false;
 
   private final JTable logTable;
@@ -141,7 +153,7 @@ public class LogListener extends VisPlugin implements HasQuickHelp {
 
   private LogOutputListener logOutputListener;
 
-  private boolean backgroundColors = false;
+  private boolean backgroundColors = true;
   private JCheckBoxMenuItem colorCheckbox;
 
   private boolean inverseFilter = false;
@@ -194,7 +206,7 @@ public class LogListener extends VisPlugin implements HasQuickHelp {
    * @param simulation Simulation
    * @param gui GUI
    */
-  public LogListener(final Simulation simulation, final GUI gui) {
+  public LogListener(final Simulation simulation, final Cooja gui) {
     super("Mote output", gui);
     this.simulation = simulation;
 
@@ -220,7 +232,7 @@ public class LogListener extends VisPlugin implements HasQuickHelp {
     appendCheckBox = new JCheckBoxMenuItem(appendAction);
     fileMenu.add(appendCheckBox);
 
-    colorCheckbox = new JCheckBoxMenuItem("Mote-specific coloring");
+    colorCheckbox = new JCheckBoxMenuItem("Mote-specific coloring", backgroundColors);
     showMenu.add(colorCheckbox);
     colorCheckbox.addActionListener(new ActionListener() {
       public void actionPerformed(ActionEvent e) {
@@ -310,18 +322,6 @@ public class LogListener extends VisPlugin implements HasQuickHelp {
     };
     DefaultTableCellRenderer cellRenderer = new DefaultTableCellRenderer() {
       private static final long serialVersionUID = -340743275865216182L;
-      private final Color[] BG_COLORS = new Color[] {
-          new Color(200, 200, 200),
-          new Color(200, 200, 255),
-          new Color(200, 255, 200),
-          new Color(200, 255, 255),
-          new Color(255, 200, 200),
-          new Color(255, 255, 200),
-          new Color(255, 255, 255),
-          new Color(255, 220, 200),
-          new Color(220, 255, 220),
-          new Color(255, 200, 255),
-      };
       public Component getTableCellRendererComponent(JTable table,
           Object value, boolean isSelected, boolean hasFocus, int row,
           int column) {
@@ -332,12 +332,8 @@ public class LogListener extends VisPlugin implements HasQuickHelp {
 
       	if (backgroundColors) {
           LogData d = logs.get(logTable.getRowSorter().convertRowIndexToModel(row));
-          char last = d.getID().charAt(d.getID().length()-1);
-          if (last >= '0' && last <= '9') {
-            setBackground(BG_COLORS[last - '0']);
-          } else {
-            setBackground(null);
-          }
+          int color = (10+d.ev.getMote().getID())%10;
+          setBackground(BG_COLORS[color]);
         } else {
           setBackground(null);
         }
@@ -391,7 +387,7 @@ public class LogListener extends VisPlugin implements HasQuickHelp {
         if (d == null) {
         	return;
         }
-        simulation.getGUI().signalMoteHighlight(d.ev.getMote());
+        simulation.getCooja().signalMoteHighlight(d.ev.getMote());
     	}
 		});
 
@@ -615,7 +611,7 @@ public class LogListener extends VisPlugin implements HasQuickHelp {
     }
     if (appendToFile) {
       element = new Element("append");
-      element.setText(simulation.getGUI().createPortablePath(appendStreamFile).getPath());
+      element.setText(simulation.getCooja().createPortablePath(appendStreamFile).getPath());
       config.add(element);
     }
     return config;
@@ -645,7 +641,7 @@ public class LogListener extends VisPlugin implements HasQuickHelp {
       	repaintTimeColumn();
       } else if ("append".equals(name)) {
         appendToFile = true;
-        appendStreamFile = simulation.getGUI().restorePortablePath(new File(element.getText()));
+        appendStreamFile = simulation.getCooja().restorePortablePath(new File(element.getText()));
         appendCheckBox.setSelected(true);
         if (!appendStreamFile.exists()) {
           try {
@@ -675,7 +671,7 @@ public class LogListener extends VisPlugin implements HasQuickHelp {
       }
     	RowFilter<Object, Object> wrapped = new RowFilter<Object, Object>() {
     		public boolean include(RowFilter.Entry<? extends Object, ? extends Object> entry) {
-    			if (regexp != null) {
+    		  if (regexp != null) {
     				boolean pass = regexp.include(entry);
     				if (inverseFilter && pass) {
     					return false;
@@ -699,6 +695,7 @@ public class LogListener extends VisPlugin implements HasQuickHelp {
       filterTextField.setBackground(Color.red);
       filterTextField.setToolTipText("Syntax error in regular expression: " + e.getMessage());
     }
+    simulation.getCooja().getDesktopPane().repaint();
   }
 
   public void trySelectTime(final long time) {
@@ -733,19 +730,7 @@ public class LogListener extends VisPlugin implements HasQuickHelp {
 
     public String getTime() {
       if (formatTimeString) {
-        long t = ev.getTime();
-        long h = (t / TIME_HOUR);
-        t -= (t / TIME_HOUR)*TIME_HOUR;
-        long m = (t / TIME_MINUTE);
-        t -= (t / TIME_MINUTE)*TIME_MINUTE;
-        long s = (t / TIME_SECOND);
-        t -= (t / TIME_SECOND)*TIME_SECOND;
-        long ms = t / Simulation.MILLISECOND;
-        if (hasHours) {
-          return String.format("%d:%02d:%02d.%03d", h,m,s,ms);
-        } else {
-          return String.format("%02d:%02d.%03d", m,s,ms);
-        }
+        return getFormattedTime(ev.getTime());
       } else {
         return "" + ev.getTime() / Simulation.MILLISECOND;
       }
@@ -757,9 +742,9 @@ public class LogListener extends VisPlugin implements HasQuickHelp {
 
     public void actionPerformed(ActionEvent e) {
       JFileChooser fc = new JFileChooser();
-      File suggest = new File(GUI.getExternalToolsSetting("LOG_LISTENER_SAVEFILE", "loglistener.txt"));
+      File suggest = new File(Cooja.getExternalToolsSetting("LOG_LISTENER_SAVEFILE", "loglistener.txt"));
       fc.setSelectedFile(suggest);
-      int returnVal = fc.showSaveDialog(GUI.getTopParentContainer());
+      int returnVal = fc.showSaveDialog(Cooja.getTopParentContainer());
       if (returnVal != JFileChooser.APPROVE_OPTION) {
         return;
       }
@@ -770,7 +755,7 @@ public class LogListener extends VisPlugin implements HasQuickHelp {
         String s2 = "Cancel";
         Object[] options = { s1, s2 };
         int n = JOptionPane.showOptionDialog(
-            GUI.getTopParentContainer(),
+            Cooja.getTopParentContainer(),
             "A file with the same name already exists.\nDo you want to remove it?",
             "Overwrite existing file?", JOptionPane.YES_NO_OPTION,
             JOptionPane.QUESTION_MESSAGE, null, options, s1);
@@ -779,7 +764,7 @@ public class LogListener extends VisPlugin implements HasQuickHelp {
         }
       }
 
-      GUI.setExternalToolsSetting("LOG_LISTENER_SAVEFILE", saveFile.getPath());
+      Cooja.setExternalToolsSetting("LOG_LISTENER_SAVEFILE", saveFile.getPath());
       if (saveFile.exists() && !saveFile.canWrite()) {
         logger.fatal("No write access to file: " + saveFile);
         return;
@@ -853,9 +838,9 @@ public class LogListener extends VisPlugin implements HasQuickHelp {
       }
 
       JFileChooser fc = new JFileChooser();
-      File suggest = new File(GUI.getExternalToolsSetting("LOG_LISTENER_APPENDFILE", "loglistener_append.txt"));
+      File suggest = new File(Cooja.getExternalToolsSetting("LOG_LISTENER_APPENDFILE", "loglistener_append.txt"));
       fc.setSelectedFile(suggest);
-      int returnVal = fc.showSaveDialog(GUI.getTopParentContainer());
+      int returnVal = fc.showSaveDialog(Cooja.getTopParentContainer());
       if (returnVal != JFileChooser.APPROVE_OPTION) {
         appendToFile = false;
         cb.setSelected(appendToFile);
@@ -863,7 +848,7 @@ public class LogListener extends VisPlugin implements HasQuickHelp {
       }
 
       File saveFile = fc.getSelectedFile();
-      GUI.setExternalToolsSetting("LOG_LISTENER_APPENDFILE", saveFile.getPath());
+      Cooja.setExternalToolsSetting("LOG_LISTENER_APPENDFILE", saveFile.getPath());
       if (saveFile.exists() && !saveFile.canWrite()) {
         logger.fatal("No write access to file: " + saveFile);
         appendToFile = false;
@@ -891,7 +876,7 @@ public class LogListener extends VisPlugin implements HasQuickHelp {
       int model = logTable.convertRowIndexToModel(view);
       long time = logs.get(model).ev.getTime();
 
-      Plugin[] plugins = simulation.getGUI().getStartedPlugins();
+      Plugin[] plugins = simulation.getCooja().getStartedPlugins();
       for (Plugin p: plugins) {
       	if (!(p instanceof TimeLine)) {
       		continue;
@@ -914,7 +899,7 @@ public class LogListener extends VisPlugin implements HasQuickHelp {
       int model = logTable.convertRowIndexToModel(view);
       long time = logs.get(model).ev.getTime();
 
-      Plugin[] plugins = simulation.getGUI().getStartedPlugins();
+      Plugin[] plugins = simulation.getCooja().getStartedPlugins();
       for (Plugin p: plugins) {
       	if (!(p instanceof RadioLogger)) {
       		continue;
@@ -1030,6 +1015,62 @@ public class LogListener extends VisPlugin implements HasQuickHelp {
         "<br><br>Hello$<br><i>logs ending with 'Hello'</i>" +
         "<br><br>^ID:[2-5]$<br><i>logs from motes 2 to 5</i>" +
         "<br><br>^ID:[2-5] Contiki<br><i>logs from motes 2 to 5 starting with 'Contiki'</i>";
+  }
+
+  /* Experimental feature: let other plugins learn if a log output would be filtered or not */
+  public boolean filterWouldAccept(LogOutputEvent ev) {
+    RowFilter<? super TableModel, ? super Integer> rowFilter = logFilter.getRowFilter();
+    if (rowFilter == null) {
+      /* No filter */
+      return true;
+    }
+
+    final LogData ld = new LogData(ev);
+    RowFilter.Entry<? extends TableModel, ? extends Integer> entry = new RowFilter.Entry<TableModel, Integer>() {
+      public TableModel getModel() {
+        return model;
+      }
+      public int getValueCount() {
+        return model.getColumnCount();
+      }
+      public Object getValue(int index) {
+        if (index == COLUMN_TIME) {
+          return ld.getTime();
+        } else if (index == COLUMN_FROM) {
+          return ld.getID();
+        } else if (index == COLUMN_DATA) {
+          return ld.ev.getMessage();
+        } else if (index == COLUMN_CONCAT) {
+          return ld.getID() + ' ' + ld.ev.getMessage();
+        }
+        return null;
+      }
+      public Integer getIdentifier() {
+        return null;
+      }
+    };
+    boolean show;
+    show = rowFilter.include(entry);
+    return show;
+  }
+  public Color getColorOfEntry(LogOutputEvent logEvent) {
+    int color = (10+logEvent.getMote().getID())%10;
+    return BG_COLORS[color];
+  }
+
+  public static String getFormattedTime(long t) {
+    long h = (t / LogListener.TIME_HOUR);
+    t -= (t / TIME_HOUR)*TIME_HOUR;
+    long m = (t / TIME_MINUTE);
+    t -= (t / TIME_MINUTE)*TIME_MINUTE;
+    long s = (t / TIME_SECOND);
+    t -= (t / TIME_SECOND)*TIME_SECOND;
+    long ms = t / Simulation.MILLISECOND;
+    if (h > 0) {
+      return String.format("%d:%02d:%02d.%03d", h,m,s,ms);
+    } else {
+      return String.format("%02d:%02d.%03d", m,s,ms);
+    }
   }
 
 }

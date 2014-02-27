@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: MspCompileDialog.java,v 1.2 2010/03/08 14:26:12 fros4943 Exp $
  */
 
 package se.sics.cooja.mspmote;
@@ -38,7 +37,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextArea;
 
-import se.sics.cooja.GUI;
+import se.sics.cooja.Cooja;
 import se.sics.cooja.MoteInterface;
 import se.sics.cooja.Simulation;
 import se.sics.cooja.dialogs.AbstractCompileDialog;
@@ -72,8 +71,11 @@ public class MspCompileDialog extends AbstractCompileDialog {
     addCompilationTipsTab(tabbedPane);
   }
 
+  public Class<? extends MoteInterface>[] getAllMoteInterfaces() {
+	  return ((MspMoteType)moteType).getAllMoteInterfaceClasses();
+  }
   public Class<? extends MoteInterface>[] getDefaultMoteInterfaces() {
-    return ((MspMoteType)moteType).getAllMoteInterfaceClasses();
+	  return ((MspMoteType)moteType).getDefaultMoteInterfaceClasses();
   }
 
   private void addCompilationTipsTab(JTabbedPane parent) {
@@ -100,7 +102,7 @@ public class MspCompileDialog extends AbstractCompileDialog {
   public String getDefaultCompileCommands(File source) {
     /* TODO Split into String[] */
     return
-    GUI.getExternalToolsSetting("PATH_MAKE") + " " +
+    Cooja.getExternalToolsSetting("PATH_MAKE") + " " +
     getExpectedFirmwareFile(source).getName() + " TARGET=" + target;
   }
 

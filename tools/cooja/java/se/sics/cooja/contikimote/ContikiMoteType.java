@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: ContikiMoteType.java,v 1.44 2010/11/10 13:11:43 fros4943 Exp $
  */
 
 package se.sics.cooja.contikimote;
@@ -58,7 +57,7 @@ import org.jdom.Element;
 import se.sics.cooja.AbstractionLevelDescription;
 import se.sics.cooja.ClassDescription;
 import se.sics.cooja.CoreComm;
-import se.sics.cooja.GUI;
+import se.sics.cooja.Cooja;
 import se.sics.cooja.Mote;
 import se.sics.cooja.MoteInterface;
 import se.sics.cooja.MoteType;
@@ -211,7 +210,7 @@ public class ContikiMoteType implements MoteType {
 
   public boolean configureAndInit(Container parentContainer, Simulation simulation,
       boolean visAvailable) throws MoteTypeCreationException {
-    myConfig = simulation.getGUI().getProjectConfig().clone();
+    myConfig = simulation.getCooja().getProjectConfig().clone();
 
     if (visAvailable) {
 
@@ -386,7 +385,7 @@ public class ContikiMoteType implements MoteType {
     myCoreComm = CoreComm.createCoreComm(this.javaClassName, getContikiFirmwareFile());
 
     /* Parse addresses using map file or command */
-    boolean useCommand = Boolean.parseBoolean(GUI.getExternalToolsSetting("PARSE_WITH_COMMAND", "false"));
+    boolean useCommand = Boolean.parseBoolean(Cooja.getExternalToolsSetting("PARSE_WITH_COMMAND", "false"));
 
     int dataSectionAddr = -1, dataSectionSize = -1;
     int bssSectionAddr = -1, bssSectionSize = -1;
@@ -613,7 +612,7 @@ public class ContikiMoteType implements MoteType {
     int nrNew = 0, nrOld = 0, nrMismatch = 0;
 
     Pattern pattern =
-      Pattern.compile(GUI.getExternalToolsSetting("COMMAND_VAR_NAME_ADDRESS"));
+      Pattern.compile(Cooja.getExternalToolsSetting("COMMAND_VAR_NAME_ADDRESS"));
 
     for (String line : output) {
       Matcher matcher = pattern.matcher(line);
@@ -739,9 +738,9 @@ public class ContikiMoteType implements MoteType {
     }
 
     String regExp =
-      GUI.getExternalToolsSetting("MAPFILE_VAR_ADDRESS_1") +
+      Cooja.getExternalToolsSetting("MAPFILE_VAR_ADDRESS_1") +
       varName +
-      GUI.getExternalToolsSetting("MAPFILE_VAR_ADDRESS_2");
+      Cooja.getExternalToolsSetting("MAPFILE_VAR_ADDRESS_2");
     String retString = getFirstMatchGroup(mapFileData, regExp, 1);
 
     if (retString != null) {
@@ -805,7 +804,7 @@ public class ContikiMoteType implements MoteType {
       int startAddress, int endAddress) {
     ArrayList<String> varNames = new ArrayList<String>();
 
-    Pattern pattern = Pattern.compile(GUI.getExternalToolsSetting("MAPFILE_VAR_NAME"));
+    Pattern pattern = Pattern.compile(Cooja.getExternalToolsSetting("MAPFILE_VAR_NAME"));
     for (String line : lines) {
       Matcher matcher = pattern.matcher(line);
       if (matcher.find()) {
@@ -820,9 +819,9 @@ public class ContikiMoteType implements MoteType {
 
   protected int getVariableSize(Vector<String> lines, String varName) {
     Pattern pattern = Pattern.compile(
-        GUI.getExternalToolsSetting("MAPFILE_VAR_SIZE_1") +
+        Cooja.getExternalToolsSetting("MAPFILE_VAR_SIZE_1") +
         varName +
-        GUI.getExternalToolsSetting("MAPFILE_VAR_SIZE_2"));
+        Cooja.getExternalToolsSetting("MAPFILE_VAR_SIZE_2"));
     for (int i = 0; i < lines.size(); i++) {
       Matcher matcher = pattern.matcher(lines.get(i));
       if (matcher.find()) {
@@ -844,42 +843,42 @@ public class ContikiMoteType implements MoteType {
   }
 
   public static int parseMapDataSectionAddr(String[] mapFileData) {
-    String regexp = GUI.getExternalToolsSetting("MAPFILE_DATA_START", "");
+    String regexp = Cooja.getExternalToolsSetting("MAPFILE_DATA_START", "");
     if (regexp.equals("")) {
       return -1;
     }
     return parseFirstHexInt(regexp, mapFileData);
   }
   public static int parseMapDataSectionSize(String[] mapFileData) {
-    String regexp = GUI.getExternalToolsSetting("MAPFILE_DATA_SIZE", "");
+    String regexp = Cooja.getExternalToolsSetting("MAPFILE_DATA_SIZE", "");
     if (regexp.equals("")) {
       return -1;
     }
     return parseFirstHexInt(regexp, mapFileData);
   }
   public static int parseMapBssSectionAddr(String[] mapFileData) {
-    String regexp = GUI.getExternalToolsSetting("MAPFILE_BSS_START", "");
+    String regexp = Cooja.getExternalToolsSetting("MAPFILE_BSS_START", "");
     if (regexp.equals("")) {
       return -1;
     }
     return parseFirstHexInt(regexp, mapFileData);
   }
   public static int parseMapBssSectionSize(String[] mapFileData) {
-    String regexp = GUI.getExternalToolsSetting("MAPFILE_BSS_SIZE", "");
+    String regexp = Cooja.getExternalToolsSetting("MAPFILE_BSS_SIZE", "");
     if (regexp.equals("")) {
       return -1;
     }
     return parseFirstHexInt(regexp, mapFileData);
   }
   public static int parseMapCommonSectionAddr(String[] mapFileData) {
-    String regexp = GUI.getExternalToolsSetting("MAPFILE_COMMON_START", "");
+    String regexp = Cooja.getExternalToolsSetting("MAPFILE_COMMON_START", "");
     if (regexp.equals("")) {
       return -1;
     }
     return parseFirstHexInt(regexp, mapFileData);
   }
   public static int parseMapCommonSectionSize(String[] mapFileData) {
-    String regexp = GUI.getExternalToolsSetting("MAPFILE_COMMON_SIZE", "");
+    String regexp = Cooja.getExternalToolsSetting("MAPFILE_COMMON_SIZE", "");
     if (regexp.equals("")) {
       return -1;
     }
@@ -887,14 +886,14 @@ public class ContikiMoteType implements MoteType {
   }
 
   public static int parseCommandDataSectionAddr(String[] output) {
-    String regexp = GUI.getExternalToolsSetting("COMMAND_DATA_START", "");
+    String regexp = Cooja.getExternalToolsSetting("COMMAND_DATA_START", "");
     if (regexp.equals("")) {
       return -1;
     }
     return parseFirstHexInt(regexp, output);
   }
   public static int parseCommandDataSectionSize(String[] output) {
-    String regexp = GUI.getExternalToolsSetting("COMMAND_DATA_END", "");
+    String regexp = Cooja.getExternalToolsSetting("COMMAND_DATA_END", "");
     if (regexp.equals("")) {
       return -1;
     }
@@ -910,14 +909,14 @@ public class ContikiMoteType implements MoteType {
     return end - start;
   }
   public static int parseCommandBssSectionAddr(String[] output) {
-    String regexp = GUI.getExternalToolsSetting("COMMAND_BSS_START", "");
+    String regexp = Cooja.getExternalToolsSetting("COMMAND_BSS_START", "");
     if (regexp.equals("")) {
       return -1;
     }
     return parseFirstHexInt(regexp, output);
   }
   public static int parseCommandBssSectionSize(String[] output) {
-    String regexp = GUI.getExternalToolsSetting("COMMAND_BSS_END", "");
+    String regexp = Cooja.getExternalToolsSetting("COMMAND_BSS_END", "");
     if (regexp.equals("")) {
       return -1;
     }
@@ -933,14 +932,14 @@ public class ContikiMoteType implements MoteType {
     return end - start;
   }
   public static int parseCommandCommonSectionAddr(String[] output) {
-    String regexp = GUI.getExternalToolsSetting("COMMAND_COMMON_START", "");
+    String regexp = Cooja.getExternalToolsSetting("COMMAND_COMMON_START", "");
     if (regexp.equals("")) {
       return -1;
     }
     return parseFirstHexInt(regexp, output);
   }
   public static int parseCommandCommonSectionSize(String[] output) {
-    String regexp = GUI.getExternalToolsSetting("COMMAND_COMMON_END", "");
+    String regexp = Cooja.getExternalToolsSetting("COMMAND_COMMON_END", "");
     if (regexp.equals("")) {
       return -1;
     }
@@ -973,9 +972,9 @@ public class ContikiMoteType implements MoteType {
 
   private static int getRelVarAddr(String mapFileData[], String varName) {
     String regExp =
-      GUI.getExternalToolsSetting("MAPFILE_VAR_ADDRESS_1") +
+      Cooja.getExternalToolsSetting("MAPFILE_VAR_ADDRESS_1") +
       varName +
-      GUI.getExternalToolsSetting("MAPFILE_VAR_ADDRESS_2");
+      Cooja.getExternalToolsSetting("MAPFILE_VAR_ADDRESS_2");
     String retString = getFirstMatchGroup(mapFileData, regExp, 1);
 
     if (retString != null) {
@@ -1003,7 +1002,7 @@ public class ContikiMoteType implements MoteType {
     ArrayList<String> output = new ArrayList<String>();
 
     try {
-      String command = GUI.getExternalToolsSetting("PARSE_COMMAND");
+      String command = Cooja.getExternalToolsSetting("PARSE_COMMAND");
       if (command == null) {
         return null;
       }
@@ -1254,7 +1253,7 @@ public class ContikiMoteType implements MoteType {
     config.add(element);
 
     element = new Element("source");
-    File file = simulation.getGUI().createPortablePath(getContikiSourceFile());
+    File file = simulation.getCooja().createPortablePath(getContikiSourceFile());
     element.setText(file.getPath().replaceAll("\\\\", "/"));
     config.add(element);
 
@@ -1299,7 +1298,7 @@ public class ContikiMoteType implements MoteType {
       } else if (name.equals("contikiapp") || name.equals("source")) {
         File file = new File(element.getText());
         if (!file.exists()) {
-          file = simulation.getGUI().restorePortablePath(file);
+          file = simulation.getCooja().restorePortablePath(file);
         }
 
         setContikiSourceFile(file);
@@ -1325,7 +1324,7 @@ public class ContikiMoteType implements MoteType {
           /* Backwards compatibility: ContikiLog was removed */
         } else {
           Class<? extends MoteInterface> moteInterfaceClass =
-            simulation.getGUI().tryLoadClass(
+            simulation.getCooja().tryLoadClass(
                 this, MoteInterface.class, element.getText().trim());
 
           if (moteInterfaceClass == null) {
@@ -1387,7 +1386,7 @@ public class ContikiMoteType implements MoteType {
       setCompileCommands(compileCommands);
     }
 
-    boolean createdOK = configureAndInit(GUI.getTopParentContainer(), simulation, visAvailable);
+    boolean createdOK = configureAndInit(Cooja.getTopParentContainer(), simulation, visAvailable);
     return createdOK;
   }
 

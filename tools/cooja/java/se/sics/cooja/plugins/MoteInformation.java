@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: MoteInformation.java,v 1.9 2010/05/17 09:30:27 fros4943 Exp $
  */
 
 package se.sics.cooja.plugins;
@@ -46,7 +45,7 @@ import javax.swing.JScrollPane;
 import org.apache.log4j.Logger;
 
 import se.sics.cooja.ClassDescription;
-import se.sics.cooja.GUI;
+import se.sics.cooja.Cooja;
 import se.sics.cooja.Mote;
 import se.sics.cooja.MotePlugin;
 import se.sics.cooja.PluginType;
@@ -80,7 +79,7 @@ public class MoteInformation extends VisPlugin implements MotePlugin {
    * @param s Simulation
    * @param gui Simulator
    */
-  public MoteInformation(Mote m, Simulation s, GUI gui) {
+  public MoteInformation(Mote m, Simulation s, Cooja gui) {
     super("Mote Information (" + m + ")", gui);
     this.mote = m;
     this.simulation = s;
@@ -114,7 +113,7 @@ public class MoteInformation extends VisPlugin implements MotePlugin {
     button.setPreferredSize(size);
     button.addActionListener(new ActionListener() {
       public void actionPerformed(ActionEvent e) {
-        simulation.getGUI().tryStartPlugin(MoteTypeInformation.class, simulation.getGUI(), simulation, mote);
+        simulation.getCooja().tryStartPlugin(MoteTypeInformation.class, simulation.getCooja(), simulation, mote);
       }
     });
     smallPane.add(BorderLayout.EAST, button);
@@ -135,7 +134,7 @@ public class MoteInformation extends VisPlugin implements MotePlugin {
     button.setPreferredSize(size);
     button.addActionListener(new ActionListener() {
       public void actionPerformed(ActionEvent e) {
-        simulation.getGUI().tryStartPlugin(MoteInterfaceViewer.class, simulation.getGUI(), simulation, mote);
+        simulation.getCooja().tryStartPlugin(MoteInterfaceViewer.class, simulation.getCooja(), simulation, mote);
       }
     });
     smallPane.add(BorderLayout.EAST, button);

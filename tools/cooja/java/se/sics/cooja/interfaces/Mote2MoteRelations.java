@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: Mote2MoteRelations.java,v 1.7 2010/12/10 17:50:49 nifi Exp $
  */
 
 package se.sics.cooja.interfaces;
@@ -45,7 +44,7 @@ import org.apache.log4j.Logger;
 import org.jdom.Element;
 
 import se.sics.cooja.ClassDescription;
-import se.sics.cooja.GUI;
+import se.sics.cooja.Cooja;
 import se.sics.cooja.Mote;
 import se.sics.cooja.MoteInterface;
 import se.sics.cooja.SimEventCentral.MoteCountListener;
@@ -80,7 +79,7 @@ public class Mote2MoteRelations extends MoteInterface {
   private Mote mote = null;
 
   private ArrayList<Mote> relations = new ArrayList<Mote>();
-  private GUI gui;
+  private Cooja gui;
 
   private Observer logObserver = new Observer() {
     public void update(Observable o, Object arg) {
@@ -93,7 +92,7 @@ public class Mote2MoteRelations extends MoteInterface {
   
   public Mote2MoteRelations(Mote mote) {
     this.mote = mote;
-    this.gui = mote.getSimulation().getGUI();
+    this.gui = mote.getSimulation().getCooja();
   }
 
   public void added() {

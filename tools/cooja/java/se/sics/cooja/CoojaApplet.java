@@ -24,7 +24,6 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $Id: CoojaApplet.java,v 1.2 2008/04/03 13:59:24 fros4943 Exp $
  */
 
 package se.sics.cooja;
@@ -52,7 +51,7 @@ public class CoojaApplet extends JApplet {
       esbFirmware = "";
     }
 
-    GUI.main(new String[] {
+    Cooja.main(new String[] {
         "-applet ",
         "-esb_firmware=" + esbFirmware,
         "-sky_firmware=" + skyFirmware,

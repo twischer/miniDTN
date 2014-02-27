@@ -35,7 +35,7 @@ import java.io.File;
 
 import org.apache.log4j.Logger;
 
-import se.sics.cooja.GUI;
+import se.sics.cooja.Cooja;
 import se.sics.cooja.MoteInterface;
 import se.sics.cooja.MoteType;
 import se.sics.cooja.Simulation;
@@ -62,6 +62,9 @@ public class AvrCompileDialog extends AbstractCompileDialog {
     super(parent, simulation, moteType);
   }
 
+  public Class<? extends MoteInterface>[] getAllMoteInterfaces() {
+	  return ((MicaZMoteType)moteType).getAllMoteInterfaceClasses();
+  }
   public boolean canLoadFirmware(File file) {
     if (file.getName().endsWith(".elf")) {
       return true;
@@ -76,7 +79,7 @@ public class AvrCompileDialog extends AbstractCompileDialog {
     /* TODO Split into String[] */
     return
     /*"make clean TARGET=<target>\n" + */
-    GUI.getExternalToolsSetting("PATH_MAKE") + " " + getExpectedFirmwareFile(source).getName() + " TARGET=" + ((AvroraMoteType)moteType).getMoteContikiTarget();
+    Cooja.getExternalToolsSetting("PATH_MAKE") + " " + getExpectedFirmwareFile(source).getName() + " TARGET=micaz";
   }
 
   public File getExpectedFirmwareFile(File source) {

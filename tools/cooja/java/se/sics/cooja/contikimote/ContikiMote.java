@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: ContikiMote.java,v 1.18 2010/10/04 12:54:01 joxe Exp $
  */
 
 package se.sics.cooja.contikimote;
@@ -187,7 +186,7 @@ public class ContikiMote extends AbstractWakeupMote implements Mote {
         /* Ignored: handled by simulation */
       } else if (name.equals("interface_config")) {
         Class<? extends MoteInterface> moteInterfaceClass =
-          simulation.getGUI().tryLoadClass(this, MoteInterface.class, element.getText().trim());
+          simulation.getCooja().tryLoadClass(this, MoteInterface.class, element.getText().trim());
 
         if (moteInterfaceClass == null) {
           logger.fatal("Could not load mote interface class: " + element.getText().trim());

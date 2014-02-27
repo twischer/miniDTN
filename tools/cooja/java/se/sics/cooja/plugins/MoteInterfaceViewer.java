@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: MoteInterfaceViewer.java,v 1.10 2010/05/09 22:50:34 nifi Exp $
  */
 
 package se.sics.cooja.plugins;
@@ -50,7 +49,7 @@ import javax.swing.JSeparator;
 import org.jdom.Element;
 
 import se.sics.cooja.ClassDescription;
-import se.sics.cooja.GUI;
+import se.sics.cooja.Cooja;
 import se.sics.cooja.HasQuickHelp;
 import se.sics.cooja.Mote;
 import se.sics.cooja.MoteInterface;
@@ -80,7 +79,7 @@ public class MoteInterfaceViewer extends VisPlugin implements HasQuickHelp, Mote
    *
    * @param moteToView Mote to view
    */
-  public MoteInterfaceViewer(Mote moteToView, Simulation simulation, GUI gui) {
+  public MoteInterfaceViewer(Mote moteToView, Simulation simulation, Cooja gui) {
     super("Mote Interface Viewer (" + moteToView + ")", gui);
     mote = moteToView;
 
@@ -99,7 +98,7 @@ public class MoteInterfaceViewer extends VisPlugin implements HasQuickHelp, Mote
 
     Collection<MoteInterface> intfs = mote.getInterfaces().getInterfaces();
     for (MoteInterface intf : intfs) {
-      selectInterfaceComboBox.addItem(GUI.getDescriptionOf(intf));
+      selectInterfaceComboBox.addItem(Cooja.getDescriptionOf(intf));
     }
 
     selectInterfaceComboBox.addActionListener(new ActionListener() {
@@ -116,9 +115,9 @@ public class MoteInterfaceViewer extends VisPlugin implements HasQuickHelp, Mote
         selectedMoteInterface = null;
         Collection<MoteInterface> intfs = mote.getInterfaces().getInterfaces();
         for (MoteInterface intf : intfs) {
-          if (GUI.getDescriptionOf(intf).equals(interfaceDescription)) {
+          if (Cooja.getDescriptionOf(intf).equals(interfaceDescription)) {
             selectedMoteInterface = intf;
-            mote.getSimulation().getGUI().loadQuickHelp(MoteInterfaceViewer.this);
+            mote.getSimulation().getCooja().loadQuickHelp(MoteInterfaceViewer.this);
             break;
           }
         }
@@ -220,7 +219,7 @@ public class MoteInterfaceViewer extends VisPlugin implements HasQuickHelp, Mote
   }
 
   public String getQuickHelp() {
-    String help = "<b>" + GUI.getDescriptionOf(this) + "</b>";
+    String help = "<b>" + Cooja.getDescriptionOf(this) + "</b>";
     help += "<p>Lists mote interfaces, and allows mote inspection and interaction via mote interface visualizers.";
 
     MoteInterface intf = selectedMoteInterface;
@@ -228,7 +227,7 @@ public class MoteInterfaceViewer extends VisPlugin implements HasQuickHelp, Mote
       if (intf instanceof HasQuickHelp) {
         help += "<p>" + ((HasQuickHelp)intf).getQuickHelp();
       } else {
-        help += "<p><b>" + GUI.getDescriptionOf(intf) + "</b>";
+        help += "<p><b>" + Cooja.getDescriptionOf(intf) + "</b>";
         help += "<p>No help available";
       }
     }

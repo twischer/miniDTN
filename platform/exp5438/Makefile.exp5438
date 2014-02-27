@@ -40,8 +40,17 @@ ifndef CONTIKI_TARGET_MAIN
 CONTIKI_TARGET_MAIN = contiki-exp5438-main.c
 endif
 
-ifdef UIP_CONF_IPV6
+ifeq ($(UIP_CONF_IPV6),1)
 CFLAGS += -DWITH_UIP6=1
+endif
+
+ifndef IAR
+ifneq (,$(findstring 4.7.,$(shell msp430-gcc -dumpversion)))
+TARGET_MEMORY_MODEL ?= medium
+CFLAGS += -mmemory-model=$(TARGET_MEMORY_MODEL)
+CFLAGS += -ffunction-sections -fdata-sections -mcode-region=far
+LDFLAGS += -mmemory-model=$(TARGET_MEMORY_MODEL) -Wl,-gc-sections
+endif
 endif
 
 CONTIKI_TARGET_SOURCEFILES += $(ARCH) $(UIPDRIVERS)
@@ -58,8 +67,7 @@ contiki-$(TARGET).a: ${addprefix $(OBJECTDIR)/,symbols.o}
 
 
 ifdef IAR
-STACKSIZE=300
-LDFLAGSNO += -B -xm "$(IAR_PATH)/lib/dlib/dl430xsfn.r43" -f "$(IAR_PATH)/config/lnk430f5437.xcl" -l contiki-$(TARGET).map -s __program_start -D_STACK_SIZE=$(STACKSIZE) -D_DATA16_HEAP_SIZE=$(STACKSIZE) -D_DATA20_HEAP_SIZE=$(STACKSIZE)
+LDFLAGSNO += -xm "$(IAR_PATH)/lib/dlib/dl430xsfn.r43" -f "$(IAR_PATH)/config/lnk430f5437.xcl"
 LDFLAGS += $(LDFLAGSNO) -Felf -yn
 endif
 

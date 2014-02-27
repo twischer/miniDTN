@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: BufferSettings.java,v 1.1 2009/07/03 13:37:41 fros4943 Exp $
  */
 
 package se.sics.cooja.dialogs;
@@ -54,7 +53,7 @@ import javax.swing.KeyStroke;
 
 import org.apache.log4j.Logger;
 
-import se.sics.cooja.GUI;
+import se.sics.cooja.Cooja;
 import se.sics.cooja.SimEventCentral;
 import se.sics.cooja.Simulation;
 
@@ -66,7 +65,7 @@ public class BufferSettings extends JDialog {
   private SimEventCentral central;
 
   public static void showDialog(JDesktopPane parent, Simulation simulation) {
-    if (GUI.isVisualizedInApplet()) {
+    if (Cooja.isVisualizedInApplet()) {
       return;
     }
 
@@ -146,7 +145,7 @@ public class BufferSettings extends JDialog {
         return;
       }
 
-      GUI.setExternalToolsSetting("BUFFERSIZE_LOGOUTPUT", "" + central.getLogOutputBufferSize());
+      Cooja.setExternalToolsSetting("BUFFERSIZE_LOGOUTPUT", "" + central.getLogOutputBufferSize());
     }
   };
 

@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: ProjectConfig.java,v 1.5 2010/12/02 15:28:06 fros4943 Exp $
  */
 
 package se.sics.cooja;
@@ -108,8 +107,8 @@ public class ProjectConfig {
 
 
     if (useDefault) {
-      InputStream input = GUI.class
-          .getResourceAsStream(GUI.PROJECT_DEFAULT_CONFIG_FILENAME);
+      InputStream input = Cooja.class
+          .getResourceAsStream(Cooja.PROJECT_DEFAULT_CONFIG_FILENAME);
       if (input != null) {
         try {
           appendConfigStream(input);
@@ -117,7 +116,7 @@ public class ProjectConfig {
           input.close();
         }
       } else {
-        throw new FileNotFoundException(GUI.PROJECT_DEFAULT_CONFIG_FILENAME);
+        throw new FileNotFoundException(Cooja.PROJECT_DEFAULT_CONFIG_FILENAME);
       }
     }
   }
@@ -143,7 +142,7 @@ public class ProjectConfig {
       throw new FileNotFoundException("Project directory does not exist: " + projectDir.getAbsolutePath());
     }
     
-    File projectConfig = new File(projectDir.getPath(), GUI.PROJECT_CONFIG_FILENAME);
+    File projectConfig = new File(projectDir.getPath(), Cooja.PROJECT_CONFIG_FILENAME);
     if (!projectConfig.exists()) {
       throw new FileNotFoundException("Project config does not exist: " + projectConfig.getAbsolutePath());
     }
@@ -238,7 +237,7 @@ public class ProjectConfig {
   public boolean appendConfigFile(File propertyFile)
       throws FileNotFoundException, IOException {
     if (!propertyFile.exists()) {
-      logger.warn("Trying to import non-existant project configuration");
+      logger.warn("Trying to import non-existant project configuration: " + propertyFile.toString());
       return true;
     }
 

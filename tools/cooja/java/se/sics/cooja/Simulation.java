@@ -24,7 +24,6 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $Id: Simulation.java,v 1.70 2011/01/13 19:05:09 adamdunkels Exp $
  */
 
 package se.sics.cooja;
@@ -61,7 +60,8 @@ public class Simulation extends Observable implements Runnable {
   /*private static long EVENT_COUNTER = 0;*/
 
   private Vector<Mote> motes = new Vector<Mote>();
-
+  private Vector<Mote> motesUninit = new Vector<Mote>();
+  
   private Vector<MoteType> moteTypes = new Vector<MoteType>();
 
   /* If true, run simulation at full speed */
@@ -86,7 +86,7 @@ public class Simulation extends Observable implements Runnable {
 
   private Thread simulationThread = null;
 
-  private GUI myGUI = null;
+  private Cooja cooja = null;
 
   private long randomSeed = 123456;
 
@@ -290,7 +290,7 @@ public class Simulation extends Observable implements Runnable {
     	} else {
 
     		logger.fatal("Simulation stopped due to error: " + e.getMessage(), e);
-    		if (!GUI.isVisualized()) {
+    		if (!Cooja.isVisualized()) {
     			/* Quit simulator if in test mode */
     			System.exit(1);
     		} else {
@@ -298,7 +298,7 @@ public class Simulation extends Observable implements Runnable {
     		  if (nextEvent instanceof MoteTimeEvent) {
     		    title += ": " + ((MoteTimeEvent)nextEvent).getMote();
     		  }
-    		  GUI.showErrorDialog(GUI.getTopParentContainer(), title, e, false);
+    		  Cooja.showErrorDialog(Cooja.getTopParentContainer(), title, e, false);
     		}
     	}
     }
@@ -320,8 +320,8 @@ public class Simulation extends Observable implements Runnable {
   /**
    * Creates a new simulation
    */
-  public Simulation(GUI gui) {
-    myGUI = gui;
+  public Simulation(Cooja cooja) {
+    this.cooja = cooja;
   }
 
   /**
@@ -393,11 +393,8 @@ public class Simulation extends Observable implements Runnable {
     startSimulation();
   }
 
-  /**
-   * @return GUI holding this simulation
-   */
-  public GUI getGUI() {
-    return myGUI;
+  public Cooja getCooja() {
+    return cooja;
   }
 
   /**
@@ -603,7 +600,7 @@ public class Simulation extends Observable implements Runnable {
       // Radio medium
       if (element.getName().equals("radiomedium")) {
         String radioMediumClassName = element.getText().trim();
-        Class<? extends RadioMedium> radioMediumClass = myGUI.tryLoadClass(
+        Class<? extends RadioMedium> radioMediumClass = cooja.tryLoadClass(
             this, RadioMedium.class, radioMediumClassName);
 
         if (radioMediumClass != null) {
@@ -619,7 +616,7 @@ public class Simulation extends Observable implements Runnable {
         // Show configure simulation dialog
         boolean createdOK = false;
         if (visAvailable) {
-          createdOK = CreateSimDialog.showDialog(GUI.getTopParentContainer(), this);
+          createdOK = CreateSimDialog.showDialog(Cooja.getTopParentContainer(), this);
         } else {
           createdOK = true;
         }
@@ -648,9 +645,9 @@ public class Simulation extends Observable implements Runnable {
 
         /* Try to recreate simulation using a different mote type */
         if (visAvailable) {
-          String[] availableMoteTypes = getGUI().getProjectConfig().getStringArrayValue("se.sics.cooja.GUI.MOTETYPES");
+          String[] availableMoteTypes = getCooja().getProjectConfig().getStringArrayValue("se.sics.cooja.Cooja.MOTETYPES");
           String newClass = (String) JOptionPane.showInputDialog(
-              GUI.getTopParentContainer(),
+              Cooja.getTopParentContainer(),
               "The simulation is about to load '" + moteTypeClassName + "'\n" +
               "You may try to load the simulation using a different mote type.\n",
               "Loading mote type",
@@ -659,13 +656,16 @@ public class Simulation extends Observable implements Runnable {
               availableMoteTypes,
               moteTypeClassName
           );
-          if (newClass != null && !newClass.equals(moteTypeClassName)) {
+          if (newClass == null) {
+            throw new MoteType.MoteTypeCreationException("No mote type class selected");
+          }
+          if (!newClass.equals(moteTypeClassName)) {
             logger.warn("Changing mote type class: " + moteTypeClassName + " -> " + newClass);
             moteTypeClassName = newClass;
           }
         }
 
-        Class<? extends MoteType> moteTypeClass = myGUI.tryLoadClass(this,
+        Class<? extends MoteType> moteTypeClass = cooja.tryLoadClass(this,
             MoteType.class, moteTypeClassName);
 
         if (moteTypeClass == null) {
@@ -779,7 +779,7 @@ public class Simulation extends Observable implements Runnable {
       invokeSimulationThread(removeMote);
     }
 
-    getGUI().closeMotePlugins(mote);
+    getCooja().closeMotePlugins(mote);
   }
 
   /**
@@ -820,6 +820,7 @@ public class Simulation extends Observable implements Runnable {
         }
 
         motes.add(mote);
+        motesUninit.remove(mote);
         currentRadioMedium.registerMote(mote, Simulation.this);
 
         /* Notify mote interfaces that node was added */
@@ -839,6 +840,9 @@ public class Simulation extends Observable implements Runnable {
       /* Add mote from simulation thread */
       invokeSimulationThread(addMote);
     }
+    //Add to list of uninitialized motes
+    motesUninit.add(mote);
+    
   }
 
   /**
@@ -870,6 +874,24 @@ public class Simulation extends Observable implements Runnable {
   }
 
   /**
+   * Returns uninitialised simulation mote with with given ID.
+   * 
+   * @param id ID
+   * @return Mote or null
+   * @see Mote#getID()
+   */
+  public Mote getMoteWithIDUninit(int id) {
+    for (Mote m: motesUninit) {
+      if (m.getID() == id) {
+        return m;
+      }
+    }
+    return null;
+  }
+
+
+
+  /**
    * Returns number of motes in this simulation.
    *
    * @return Number of motes
@@ -888,6 +910,16 @@ public class Simulation extends Observable implements Runnable {
     motes.toArray(arr);
     return arr;
   }
+
+  /**
+   * Returns uninitialised motes
+   *
+   * @return Motes
+   */
+  public Mote[] getMotesUninit() {
+    return motesUninit.toArray(new Mote[motesUninit.size()]);
+  }
+
 
   /**
    * Returns all mote types in simulation.
@@ -957,7 +989,7 @@ public class Simulation extends Observable implements Runnable {
    * @param newSpeedLimit
    */
   public void setSpeedLimit(final Double newSpeedLimit) {
-    invokeSimulationThread(new Runnable() {
+    Runnable r = new Runnable() {
       public void run() {
         if (newSpeedLimit == null) {
           speedLimitNone = true;
@@ -976,7 +1008,14 @@ public class Simulation extends Observable implements Runnable {
         Simulation.this.setChanged();
         Simulation.this.notifyObservers(this);
       }
-    });
+    };
+    if (!isRunning()) {
+    	/* Simulation is stopped, change speed immediately */
+    	r.run();
+    } else {
+    	/* Change speed from simulation thread */
+    	invokeSimulationThread(r);
+    }
   }
 
   /**
@@ -1072,9 +1111,6 @@ public class Simulation extends Observable implements Runnable {
    * @return True if simulation is runnable
    */
   public boolean isRunnable() {
-    if (motes.isEmpty()) {
-      return false;
-    }
     return isRunning || hasPollRequests || eventQueue.peekFirst() != null;
   }
 

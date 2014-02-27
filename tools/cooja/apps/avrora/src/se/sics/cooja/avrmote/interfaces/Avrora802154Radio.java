@@ -42,6 +42,7 @@ import avrora.sim.radio.Medium;
 import avrora.sim.radio.Medium.Receiver;
 import avrora.sim.radio.Medium.Transmitter;
 import avrora.sim.radio.Radio;
+import se.sics.cooja.interfaces.CustomDataRadio;
 
 /**
  * Cooja support for Avrora's 802.15.4 radios.
@@ -136,4 +137,10 @@ public abstract class Avrora802154Radio extends Radio802154 {
     int state = fsm.getCurrentState();
     return isRadioOn(state);
   }
+
+  @Override
+  public boolean canReceiveFrom(CustomDataRadio radio) {
+    return radio.getClass().equals(this.getClass());
+  }
+
 }

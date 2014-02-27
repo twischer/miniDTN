@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: VariableWatcher.java,v 1.10 2010/01/15 10:54:42 fros4943 Exp $
  */
 
 package se.sics.cooja.plugins;
@@ -67,7 +66,7 @@ import org.jdom.Element;
 
 import se.sics.cooja.AddressMemory;
 import se.sics.cooja.ClassDescription;
-import se.sics.cooja.GUI;
+import se.sics.cooja.Cooja;
 import se.sics.cooja.Mote;
 import se.sics.cooja.MotePlugin;
 import se.sics.cooja.PluginType;
@@ -122,7 +121,7 @@ public class VariableWatcher extends VisPlugin implements MotePlugin {
    * @param simulation Simulation
    * @param gui GUI
    */
-  public VariableWatcher(Mote moteToView, Simulation simulation, GUI gui) {
+  public VariableWatcher(Mote moteToView, Simulation simulation, Cooja gui) {
     super("Variable Watcher (" + moteToView + ")", gui);
     this.mote = moteToView;
     moteMemory = (AddressMemory) moteToView.getMemory();

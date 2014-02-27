@@ -37,7 +37,7 @@ import javax.swing.JTabbedPane;
 import org.apache.log4j.Logger;
 
 import se.sics.cooja.ClassDescription;
-import se.sics.cooja.GUI;
+import se.sics.cooja.Cooja;
 import se.sics.cooja.Mote;
 import se.sics.cooja.PluginType;
 import se.sics.cooja.Simulation;
@@ -67,8 +67,8 @@ public class NewAvrDebugger extends Debugger {
    * @param simulationToVisualize Simulation
    * @param gui Simulator
    */
-  public NewAvrDebugger(Mote mote, Simulation sim, GUI gui) {
-    super((WatchpointMote)mote, sim, gui, "Avr Debugger - " + mote);
+  public NewAvrDebugger(Mote mote, Simulation sim, Cooja cooja) {
+    super((WatchpointMote)mote, sim, cooja, "Avr Debugger - " + mote);
     this.avroraMote = (AvroraMote) mote;
 
     AtmelMicrocontroller cpu = (AtmelMicrocontroller) avroraMote.getPlatform().getMicrocontroller();

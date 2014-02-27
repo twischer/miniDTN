@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: AddMoteDialog.java,v 1.10 2009/09/17 13:20:03 fros4943 Exp $
  */
 
 package se.sics.cooja.dialogs;
@@ -63,7 +62,7 @@ import javax.swing.SwingUtilities;
 
 import org.apache.log4j.Logger;
 
-import se.sics.cooja.GUI;
+import se.sics.cooja.Cooja;
 import se.sics.cooja.Mote;
 import se.sics.cooja.MoteType;
 import se.sics.cooja.Positioner;
@@ -212,11 +211,11 @@ public class AddMoteDialog extends JDialog {
     label = new JLabel("Positioning");
     label.setPreferredSize(new Dimension(LABEL_WIDTH, LABEL_HEIGHT));
 
-    Vector<Class<? extends Positioner>> positioners = simulation.getGUI()
+    Vector<Class<? extends Positioner>> positioners = simulation.getCooja()
         .getRegisteredPositioners();
     String[] posDistributions = new String[positioners.size()];
     for (int i = 0; i < posDistributions.length; i++) {
-      posDistributions[i] = GUI.getDescriptionOf(positioners.get(i));
+      posDistributions[i] = Cooja.getDescriptionOf(positioners.get(i));
     }
 
     comboBox = new JComboBox(posDistributions);
@@ -464,9 +463,9 @@ public class AddMoteDialog extends JDialog {
 
           // Position new motes
           Class<? extends Positioner> positionerClass = null;
-          for (Class<? extends Positioner> positioner : simulation.getGUI()
+          for (Class<? extends Positioner> positioner : simulation.getCooja()
               .getRegisteredPositioners()) {
-            if (GUI.getDescriptionOf(positioner).equals(
+            if (Cooja.getDescriptionOf(positioner).equals(
                 positionDistributionBox.getSelectedItem())) {
               positionerClass = positioner;
             }

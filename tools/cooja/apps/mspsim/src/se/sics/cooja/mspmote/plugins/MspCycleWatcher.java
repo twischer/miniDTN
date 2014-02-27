@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: MspCycleWatcher.java,v 1.3 2010/01/15 10:55:03 fros4943 Exp $
  */
 
 package se.sics.cooja.mspmote.plugins;
@@ -47,7 +46,7 @@ import javax.swing.JTextField;
 import org.apache.log4j.Logger;
 
 import se.sics.cooja.ClassDescription;
-import se.sics.cooja.GUI;
+import se.sics.cooja.Cooja;
 import se.sics.cooja.Mote;
 import se.sics.cooja.MotePlugin;
 import se.sics.cooja.PluginType;
@@ -70,7 +69,7 @@ public class MspCycleWatcher extends VisPlugin implements MotePlugin {
   private JTextField resetTextField = new JTextField("");
   private long cycleReset = 0;
 
-  public MspCycleWatcher(Mote mote, Simulation simulationToVisualize, GUI gui) {
+  public MspCycleWatcher(Mote mote, Simulation simulationToVisualize, Cooja gui) {
     super("Msp Cycle Watcher", gui);
     this.mspMote = (MspMote) mote;
     cpu = mspMote.getCPU();

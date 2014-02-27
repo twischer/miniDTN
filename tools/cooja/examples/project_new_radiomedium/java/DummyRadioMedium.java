@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: DummyRadioMedium.java,v 1.3 2008/10/28 16:36:48 fros4943 Exp $
  */
 
 import java.util.Collection;
@@ -44,7 +43,7 @@ import se.sics.cooja.radiomediums.AbstractRadioMedium;
  */
 @ClassDescription("Dummy Radio Medium")
 public class DummyRadioMedium extends AbstractRadioMedium {
-  private static Logger logger = Logger.getLogger(GUI.class);
+  private static Logger logger = Logger.getLogger(Cooja.class);
 
   public DummyRadioMedium(Simulation simulation) {
     super(simulation);

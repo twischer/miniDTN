@@ -35,6 +35,7 @@ import org.apache.log4j.Logger;
 import se.sics.cooja.ClassDescription;
 import se.sics.cooja.Mote;
 import se.sics.cooja.emulatedmote.Radio802154;
+import se.sics.cooja.interfaces.CustomDataRadio;
 import se.sics.cooja.mspmote.MspMote;
 import se.sics.cooja.mspmote.MspMoteTimeEvent;
 import se.sics.mspsim.chip.CC2420;
@@ -50,7 +51,7 @@ import se.sics.mspsim.core.OperatingModeListener;
  */
 @ClassDescription("Mspsim's 802.15.4")
 public class Msp802154Radio extends Radio802154 {
-  private static Logger logger = Logger.getLogger(Msp802154Radio.class);
+  private static final Logger logger = Logger.getLogger(Msp802154Radio.class);
 
   private final MspMote mote;
   private final se.sics.mspsim.chip.Radio802154 radio;
@@ -69,7 +70,7 @@ public class Msp802154Radio extends Radio802154 {
   /**
    * Last 8 received signal strengths
    */
-  private double[] rssiLast = new double[8];
+  private final double[] rssiLast = new double[8];
   private int rssiLastCounter = 0;
 
   public Msp802154Radio(Mote m) {
@@ -82,11 +83,13 @@ public class Msp802154Radio extends Radio802154 {
     }
 
     radio.addRFListener(rfListener = new RFListener() {
+      @Override
       public void receivedByte(byte data) {
         handleTransmit(data);
       }
     });
     radio.addOperatingModeListener(operatingModeListener = new OperatingModeListener() {
+      @Override
       public void modeChanged(Chip source, int mode) {
         if (radio.isReadyToReceive()) {
           radioOn();
@@ -97,6 +100,7 @@ public class Msp802154Radio extends Radio802154 {
       }
     });
     radio.addChannelListener(channelListener = new ChannelListener() {
+      @Override
       public void channelChanged(int channel) {
         /* XXX Currently assumes zero channel switch time */
         lastEvent = RadioEvent.UNKNOWN;
@@ -106,6 +110,7 @@ public class Msp802154Radio extends Radio802154 {
     });
   }
 
+  @Override
   public void removed() {
     super.removed();
 
@@ -114,6 +119,7 @@ public class Msp802154Radio extends Radio802154 {
     radio.removeRFListener(rfListener);
   }
 
+  @Override
   public void handleReceive(byte b) {
     final byte inputByte;
     if (isInterfered()) {
@@ -125,6 +131,7 @@ public class Msp802154Radio extends Radio802154 {
     /* XXX We need a separate time event to synchronize Mspsim's internal
      * clocks here */
     new MspMoteTimeEvent(mote, 0) {
+      @Override
       public void execute(long t) {
         super.execute(t);
         if (!radio.isReadyToReceive()) {
@@ -136,19 +143,24 @@ public class Msp802154Radio extends Radio802154 {
     }.execute(mote.getSimulation().getSimulationTime());
   }
 
+  @Override
   public void handleStartOfReception() {
   }
+  @Override
   public void handleEndOfReception() {
   }
 
+  @Override
   public int getChannel() {
     return radio.getActiveChannel();
   }
 
+  @Override
   public double getCurrentSignalStrength() {
     return currentSignalStrength;
   }
 
+  @Override
   public void setCurrentSignalStrength(final double signalStrength) {
     if (signalStrength == currentSignalStrength) {
       return; /* ignored */
@@ -156,6 +168,7 @@ public class Msp802154Radio extends Radio802154 {
     currentSignalStrength = signalStrength;
     if (rssiLastCounter == 0) {
       getMote().getSimulation().scheduleEvent(new MspMoteTimeEvent(mote, 0) {
+        @Override
         public void execute(long t) {
           super.execute(t);
 
@@ -179,19 +192,37 @@ public class Msp802154Radio extends Radio802154 {
     }
     rssiLastCounter = 8;
   }
-
+  
+  @Override
   public double getCurrentOutputPower() {
     return radio.getOutputPower();
   }
+  
+  /* This will set the CORR-value of the CC2420
+   * 
+   * @see se.sics.cooja.interfaces.Radio#setLQI(int)
+   */
+  @Override
+  public void setLQI(int lqi){
+	  radio.setLQI(lqi);
+  }
 
+  @Override
+  public int getLQI(){
+	  return radio.getLQI();
+  }
+  
+  @Override
   public int getCurrentOutputPowerIndicator() {
     return radio.getOutputPowerIndicator();
   }
 
+  @Override
   public int getOutputPowerIndicatorMax() {
     return 31;
   }
 
+  @Override
   public boolean isRadioOn() {
     if (radio.isReadyToReceive()) {
       return true;
@@ -203,5 +234,10 @@ public class Msp802154Radio extends Radio802154 {
       return false;
     }
     return true;
+  }
+  
+  @Override
+  public boolean canReceiveFrom(CustomDataRadio radio) {
+    return radio.getClass().equals(this.getClass());
   }
 }

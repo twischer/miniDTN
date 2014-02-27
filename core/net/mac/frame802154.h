@@ -54,7 +54,6 @@
  *  This file converts to and from a structure to a packed 802.15.4
  *  frame.
  *
- *    $Id: frame802154.h,v 1.3 2010/02/18 21:00:28 adamdunkels Exp $
 */
 
 
@@ -156,14 +155,14 @@ typedef struct {
   uint8_t src_addr[8];      /**< Source address */
   frame802154_aux_hdr_t aux_hdr;    /**< Aux security header */
   uint8_t *payload;     /**< Pointer to 802.15.4 frame payload */
-  uint8_t payload_len;  /**< Length of payload field */
+  int payload_len;  /**< Length of payload field */
 } frame802154_t;
 
 /* Prototypes */
 
-uint8_t frame802154_hdrlen(frame802154_t *p);
-uint8_t frame802154_create(frame802154_t *p, uint8_t *buf, uint8_t buf_len);
-uint8_t frame802154_parse(uint8_t *data, uint8_t length, frame802154_t *pf);
+int frame802154_hdrlen(frame802154_t *p);
+int frame802154_create(frame802154_t *p, uint8_t *buf, int buf_len);
+int frame802154_parse(uint8_t *data, int length, frame802154_t *pf);
 
 /** @} */
 #endif /* FRAME_802154_H */

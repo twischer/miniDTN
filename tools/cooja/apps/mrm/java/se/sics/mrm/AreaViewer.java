@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: AreaViewer.java,v 1.5 2009/02/18 12:08:10 fros4943 Exp $
  */
 
 package se.sics.mrm;
@@ -99,7 +98,7 @@ import org.apache.log4j.Logger;
 import org.jdom.Element;
 
 import se.sics.cooja.ClassDescription;
-import se.sics.cooja.GUI;
+import se.sics.cooja.Cooja;
 import se.sics.cooja.PluginType;
 import se.sics.cooja.Simulation;
 import se.sics.cooja.SupportedArguments;
@@ -221,7 +220,7 @@ public class AreaViewer extends VisPlugin {
    *
    * @param simulationToVisualize Simulation using MRM
    */
-  public AreaViewer(Simulation simulationToVisualize, GUI gui) {
+  public AreaViewer(Simulation simulationToVisualize, Cooja gui) {
     super("MRM Radio environment", gui);
 
     currentSimulation = simulationToVisualize;
@@ -359,7 +358,7 @@ public class AreaViewer extends VisPlugin {
     JRadioButton customButton = new JRadioButton("From bitmap");
     customButton.setActionCommand("set custom bitmap");
     customButton.addActionListener(obstacleHandler);
-    if (GUI.isVisualizedInApplet()) {
+    if (Cooja.isVisualizedInApplet()) {
       customButton.setEnabled(false);
     }
 
@@ -1148,7 +1147,7 @@ public class AreaViewer extends VisPlugin {
       }
 
       /* Set virtual size of image */
-      Container topParent = GUI.getTopParentContainer();
+      Container topParent = Cooja.getTopParentContainer();
       ImageSettingsDialog dialog;
       if (topParent instanceof Frame) {
         dialog = new ImageSettingsDialog(file, image, (Frame) topParent);
@@ -1186,18 +1185,18 @@ public class AreaViewer extends VisPlugin {
 
       /* Show obstacle finder dialog */
       ObstacleFinderDialog obstacleFinderDialog;
-      Container parentContainer = GUI.getTopParentContainer();
+      Container parentContainer = Cooja.getTopParentContainer();
       if (parentContainer instanceof Window) {
         obstacleFinderDialog = new ObstacleFinderDialog(
-            backgroundImage, currentChannelModel, (Window) GUI.getTopParentContainer()
+            backgroundImage, currentChannelModel, (Window) Cooja.getTopParentContainer()
         );
       } else if (parentContainer instanceof Frame) {
         obstacleFinderDialog = new ObstacleFinderDialog(
-            backgroundImage, currentChannelModel, (Frame) GUI.getTopParentContainer()
+            backgroundImage, currentChannelModel, (Frame) Cooja.getTopParentContainer()
         );
       } else if (parentContainer instanceof Dialog) {
         obstacleFinderDialog = new ObstacleFinderDialog(
-            backgroundImage, currentChannelModel, (Dialog) GUI.getTopParentContainer()
+            backgroundImage, currentChannelModel, (Dialog) Cooja.getTopParentContainer()
         );
       } else {
         logger.fatal("Unknown parent container");
@@ -1214,7 +1213,7 @@ public class AreaViewer extends VisPlugin {
 
       // Create progress monitor
       final ProgressMonitor pm = new ProgressMonitor(
-          GUI.getTopParentContainer(),
+          Cooja.getTopParentContainer(),
           "Registering obstacles",
           null,
           0,
@@ -1775,7 +1774,7 @@ public class AreaViewer extends VisPlugin {
 
         // Create progress monitor
         final ProgressMonitor pm = new ProgressMonitor(
-            GUI.getTopParentContainer(),
+            Cooja.getTopParentContainer(),
             "Calculating channel attenuation",
             null,
             0,

@@ -24,7 +24,6 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $Id: EventListener.java,v 1.10 2009/09/17 13:20:48 fros4943 Exp $
  */
 
 package se.sics.cooja.plugins;
@@ -52,7 +51,7 @@ import org.apache.log4j.Logger;
 import org.jdom.Element;
 
 import se.sics.cooja.ClassDescription;
-import se.sics.cooja.GUI;
+import se.sics.cooja.Cooja;
 import se.sics.cooja.Mote;
 import se.sics.cooja.MoteInterface;
 import se.sics.cooja.MoteType;
@@ -133,16 +132,16 @@ public class EventListener extends VisPlugin {
       final MoteInterface moteInterface = (MoteInterface) obs;
       int moteID = myMote.getID();
 
-      myParent.actOnChange("'" + GUI.getDescriptionOf(moteInterface.getClass())
+      myParent.actOnChange("'" + Cooja.getDescriptionOf(moteInterface.getClass())
           + "'" + " of mote '" + (moteID > 0 ? Integer.toString(moteID) : "?")
           + "'" + " changed at time "
           + myParent.mySimulation.getSimulationTime(), new AbstractAction(
           "View interface visualizer") {
         public void actionPerformed(ActionEvent e) {
           MoteInterfaceViewer plugin =
-            (MoteInterfaceViewer) mySimulation.getGUI().tryStartPlugin(
-                MoteInterfaceViewer.class, mySimulation.getGUI(), mySimulation, myMote);
-          plugin.setSelectedInterface(GUI.getDescriptionOf(moteInterface.getClass()));
+            (MoteInterfaceViewer) mySimulation.getCooja().tryStartPlugin(
+                MoteInterfaceViewer.class, mySimulation.getCooja(), mySimulation, myMote);
+          plugin.setSelectedInterface(Cooja.getDescriptionOf(moteInterface.getClass()));
         }
       });
     }
@@ -154,7 +153,7 @@ public class EventListener extends VisPlugin {
     }
 
     public void update(Observable obs, Object obj) {
-      myParent.actOnChange("'" + GUI.getDescriptionOf(obs.getClass()) + "'"
+      myParent.actOnChange("'" + Cooja.getDescriptionOf(obs.getClass()) + "'"
           + " changed at time " + myParent.mySimulation.getSimulationTime(),
           null);
     }
@@ -164,7 +163,7 @@ public class EventListener extends VisPlugin {
    * @param simulationToControl
    *          Simulation to control
    */
-  public EventListener(Simulation simulationToControl, GUI gui) {
+  public EventListener(Simulation simulationToControl, Cooja gui) {
     super("Event Listener", gui);
 
     mySimulation = simulationToControl;
@@ -200,7 +199,7 @@ public class EventListener extends VisPlugin {
     interfacePanel.setLayout(new BoxLayout(interfacePanel, BoxLayout.Y_AXIS));
     interfacePanel.setBorder(BorderFactory.createEmptyBorder(10, 5, 10, 5));
     for (Class<? extends MoteInterface> interfaceClass : allInterfaces) {
-      JCheckBox checkBox = new JCheckBox(GUI.getDescriptionOf(interfaceClass),
+      JCheckBox checkBox = new JCheckBox(Cooja.getDescriptionOf(interfaceClass),
           false);
       checkBox.setToolTipText(interfaceClass.getName());
       checkBox.putClientProperty("interface_class", interfaceClass);

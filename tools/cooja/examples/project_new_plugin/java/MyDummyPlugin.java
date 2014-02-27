@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: MyDummyPlugin.java,v 1.4 2010/02/03 09:54:54 fros4943 Exp $
  */
 
 import java.awt.BorderLayout;
@@ -45,7 +44,7 @@ import org.apache.log4j.Logger;
 import org.jdom.Element;
 
 import se.sics.cooja.ClassDescription;
-import se.sics.cooja.GUI;
+import se.sics.cooja.Cooja;
 import se.sics.cooja.PluginType;
 import se.sics.cooja.Simulation;
 import se.sics.cooja.TimeEvent;
@@ -77,7 +76,7 @@ public class MyDummyPlugin extends VisPlugin {
    * @param simulation Simulation object
    * @param gui GUI object 
    */
-  public MyDummyPlugin(Simulation simulation, GUI gui) {
+  public MyDummyPlugin(Simulation simulation, Cooja gui) {
     super("Example plugin title", gui);
     this.sim = simulation;
 

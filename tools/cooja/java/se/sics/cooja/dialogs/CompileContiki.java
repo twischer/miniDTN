@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: CompileContiki.java,v 1.8 2010/12/03 15:25:17 fros4943 Exp $
  */
 
 package se.sics.cooja.dialogs;
@@ -43,13 +42,14 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.Reader;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
 
 import javax.swing.Action;
 
 import org.apache.log4j.Logger;
 
-import se.sics.cooja.GUI;
+import se.sics.cooja.Cooja;
 import se.sics.cooja.MoteType;
 import se.sics.cooja.MoteType.MoteTypeCreationException;
 import se.sics.cooja.contikimote.ContikiMoteType;
@@ -87,8 +87,17 @@ public class CompileContiki {
       final MessageList compilationOutput,
       boolean synchronous)
   throws Exception {
-    /* TODO Split into correct arguments: parse " and ' */
-  	return compile(command.split(" "), env, outputFile, directory, onSuccess, onFailure, compilationOutput, synchronous);
+    Pattern p = Pattern.compile("([^\\s\"']+|\"[^\"]*\"|'[^']*')");
+    Matcher m = p.matcher(command);
+    ArrayList<String> commandList = new ArrayList<String>();
+    while(m.find()) {
+      String arg = m.group();
+      if (arg.length() > 1 && (arg.charAt(0) == '"' || arg.charAt(0) == '\'')) {
+          arg = arg.substring(1, arg.length() - 1);
+      }
+      commandList.add(arg);
+    }
+    return compile(commandList.toArray(new String[commandList.size()]), env, outputFile, directory, onSuccess, onFailure, compilationOutput, synchronous);
   }
 
   /**
@@ -350,7 +359,7 @@ public class CompileContiki {
     BufferedWriter sourceFileWriter = null;
     try {
       Reader reader;
-      String mainTemplate = GUI.getExternalToolsSetting("CONTIKI_MAIN_TEMPLATE_FILENAME");
+      String mainTemplate = Cooja.getExternalToolsSetting("CONTIKI_MAIN_TEMPLATE_FILENAME");
       if ((new File(mainTemplate)).exists()) {
         reader = new FileReader(mainTemplate);
       } else {
@@ -446,11 +455,11 @@ public class CompileContiki {
     boolean includeSymbols = false; /* TODO */
 
     /* Fetch configuration from external tools */
-    String link1 = GUI.getExternalToolsSetting("LINK_COMMAND_1", "");
-    String link2 = GUI.getExternalToolsSetting("LINK_COMMAND_2", "");
-    String ar1 = GUI.getExternalToolsSetting("AR_COMMAND_1", "");
-    String ar2 = GUI.getExternalToolsSetting("AR_COMMAND_2", "");
-    String ccFlags = GUI.getExternalToolsSetting("COMPILER_ARGS", "");
+    String link1 = Cooja.getExternalToolsSetting("LINK_COMMAND_1", "");
+    String link2 = Cooja.getExternalToolsSetting("LINK_COMMAND_2", "");
+    String ar1 = Cooja.getExternalToolsSetting("AR_COMMAND_1", "");
+    String ar2 = Cooja.getExternalToolsSetting("AR_COMMAND_2", "");
+    String ccFlags = Cooja.getExternalToolsSetting("COMPILER_ARGS", "");
 
     /* Replace MAPFILE variable */
     link1 = link1.replace("$(MAPFILE)", "obj_cooja/" + mapFile.getName());
@@ -494,13 +503,13 @@ public class CompileContiki {
     env.add(new String[] { "CONTIKI_APP", contikiAppNoExtension });
     env.add(new String[] { "COOJA_SOURCEDIRS", "" });
     env.add(new String[] { "COOJA_SOURCEFILES", "" });
-    env.add(new String[] { "CC", GUI.getExternalToolsSetting("PATH_C_COMPILER") });
-    env.add(new String[] { "OBJCOPY", GUI.getExternalToolsSetting("PATH_OBJCOPY") });
+    env.add(new String[] { "CC", Cooja.getExternalToolsSetting("PATH_C_COMPILER") });
+    env.add(new String[] { "OBJCOPY", Cooja.getExternalToolsSetting("PATH_OBJCOPY") });
     env.add(new String[] { "EXTRA_CC_ARGS", ccFlags });
-    env.add(new String[] { "LD", GUI.getExternalToolsSetting("PATH_LINKER") });
+    env.add(new String[] { "LD", Cooja.getExternalToolsSetting("PATH_LINKER") });
     env.add(new String[] { "LINK_COMMAND_1", link1 });
     env.add(new String[] { "LINK_COMMAND_2", link2 });
-    env.add(new String[] { "AR", GUI.getExternalToolsSetting("PATH_AR") });
+    env.add(new String[] { "AR", Cooja.getExternalToolsSetting("PATH_AR") });
     env.add(new String[] { "AR_COMMAND_1", ar1 });
     env.add(new String[] { "AR_COMMAND_2", ar2 });
     env.add(new String[] { "SYMBOLS", includeSymbols?"1":"" });

@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: ESBMoteType.java,v 1.13 2010/02/18 11:13:21 joxe Exp $
  */
 
 package se.sics.cooja.mspmote;
@@ -46,7 +45,7 @@ import org.apache.log4j.Logger;
 
 import se.sics.cooja.AbstractionLevelDescription;
 import se.sics.cooja.ClassDescription;
-import se.sics.cooja.GUI;
+import se.sics.cooja.Cooja;
 import se.sics.cooja.MoteInterface;
 import se.sics.cooja.MoteType;
 import se.sics.cooja.Simulation;
@@ -74,14 +73,14 @@ public class ESBMoteType extends MspMoteType {
     Toolkit toolkit = Toolkit.getDefaultToolkit();
     URL imageURL = this.getClass().getClassLoader().getResource("images/esb.jpg");
     Image image = toolkit.getImage(imageURL);
-    MediaTracker tracker = new MediaTracker(GUI.getTopParentContainer());
+    MediaTracker tracker = new MediaTracker(Cooja.getTopParentContainer());
     tracker.addImage(image, 1);
     try {
       tracker.waitForAll();
     } catch (InterruptedException ex) {
     }
-    if (image.getHeight(GUI.getTopParentContainer()) > 0 && image.getWidth(GUI.getTopParentContainer()) > 0) {
-      image = image.getScaledInstance((100*image.getWidth(GUI.getTopParentContainer())/image.getHeight(GUI.getTopParentContainer())), 100, Image.SCALE_DEFAULT);
+    if (image.getHeight(Cooja.getTopParentContainer()) > 0 && image.getWidth(Cooja.getTopParentContainer()) > 0) {
+      image = image.getScaledInstance((100*image.getWidth(Cooja.getTopParentContainer())/image.getHeight(Cooja.getTopParentContainer())), 100, Image.SCALE_DEFAULT);
       return new ImageIcon(image);
     }
 
@@ -97,15 +96,15 @@ public class ESBMoteType extends MspMoteType {
 
     /* SPECIAL CASE: Cooja started in applet.
      * Use preconfigured Contiki firmware */
-    if (GUI.isVisualizedInApplet()) {
-      String firmware = GUI.getExternalToolsSetting("ESB_FIRMWARE", "");
+    if (Cooja.isVisualizedInApplet()) {
+      String firmware = Cooja.getExternalToolsSetting("ESB_FIRMWARE", "");
       if (!firmware.equals("")) {
         setContikiFirmwareFile(new File(firmware));
-        JOptionPane.showMessageDialog(GUI.getTopParentContainer(),
+        JOptionPane.showMessageDialog(Cooja.getTopParentContainer(),
             "Creating mote type from precompiled firmware: " + firmware,
             "Compiled firmware file available", JOptionPane.INFORMATION_MESSAGE);
       } else {
-        JOptionPane.showMessageDialog(GUI.getTopParentContainer(),
+        JOptionPane.showMessageDialog(Cooja.getTopParentContainer(),
             "No precompiled firmware found",
             "Compiled firmware file not available", JOptionPane.ERROR_MESSAGE);
         return false;
@@ -199,6 +198,9 @@ public class ESBMoteType extends MspMoteType {
     return true;
   }
 
+  public Class<? extends MoteInterface>[] getDefaultMoteInterfaceClasses() {
+	  return getAllMoteInterfaceClasses();
+  }
   public Class<? extends MoteInterface>[] getAllMoteInterfaceClasses() {
     return new Class[] {
         Position.class,

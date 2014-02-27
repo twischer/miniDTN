@@ -40,7 +40,7 @@ import javax.swing.JTabbedPane;
 import org.apache.log4j.Logger;
 
 import se.sics.cooja.ClassDescription;
-import se.sics.cooja.GUI;
+import se.sics.cooja.Cooja;
 import se.sics.cooja.Mote;
 import se.sics.cooja.PluginType;
 import se.sics.cooja.Simulation;
@@ -72,7 +72,7 @@ public class MspCodeWatcher extends Debugger {
    * @param sim Simulation
    * @param gui Simulator
    */
-  public MspCodeWatcher(Mote mote, Simulation sim, GUI gui) {
+  public MspCodeWatcher(Mote mote, Simulation sim, Cooja gui) {
     super((WatchpointMote)mote, sim, gui, "Msp Debugger - " + mote);
     this.mspMote = (MspMote) mote;
 

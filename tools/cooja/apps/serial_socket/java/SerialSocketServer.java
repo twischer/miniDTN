@@ -26,11 +26,12 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: SerialSocketServer.java,v 1.3 2010/03/25 08:00:15 fros4943 Exp $
  */
 
 import java.awt.BorderLayout;
 import java.awt.Dimension;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -46,12 +47,13 @@ import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 
 import org.apache.log4j.Logger;
 import org.jdom.Element;
 
 import se.sics.cooja.ClassDescription;
-import se.sics.cooja.GUI;
+import se.sics.cooja.Cooja;
 import se.sics.cooja.Mote;
 import se.sics.cooja.MotePlugin;
 import se.sics.cooja.PluginType;
@@ -88,14 +90,16 @@ public class SerialSocketServer extends VisPlugin implements MotePlugin {
 
   private Mote mote;
 
-  public SerialSocketServer(Mote mote, Simulation simulation, final GUI gui) {
+  public SerialSocketServer(Mote mote, Simulation simulation, final Cooja gui) {
     super("Serial Socket (SERVER) (" + mote + ")", gui, false);
     this.mote = mote;
+
+    updateTimer.start();
 
     LISTEN_PORT = 60000 + mote.getID();
 
     /* GUI components */
-    if (GUI.isVisualized()) {
+    if (Cooja.isVisualized()) {
       Box northBox = Box.createHorizontalBox();
       northBox.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
       statusLabel = configureLabel(northBox, "", "");
@@ -118,7 +122,7 @@ public class SerialSocketServer extends VisPlugin implements MotePlugin {
 
     try {
       logger.info("Listening on port: " + LISTEN_PORT);
-      if (GUI.isVisualized()) {
+      if (Cooja.isVisualized()) {
         statusLabel.setText("Listening on port: " + LISTEN_PORT);
       }
       server = new ServerSocket(LISTEN_PORT);
@@ -132,7 +136,7 @@ public class SerialSocketServer extends VisPlugin implements MotePlugin {
               out.flush();
 
               startSocketReadThread(in);
-              if (GUI.isVisualized()) {
+              if (Cooja.isVisualized()) {
                 statusLabel.setText("Client connected: " + client.getInetAddress());
               }
             } catch (IOException e) {
@@ -157,12 +161,11 @@ public class SerialSocketServer extends VisPlugin implements MotePlugin {
             /*logger.debug("out is null");*/
             return;
           }
+          
           out.write(serialPort.getLastSerialData());
           out.flush();
+          
           outBytes++;
-          if (GUI.isVisualized()) {
-            outLabel.setText(outBytes + " bytes");
-          }
         } catch (IOException e) {
           cleanupClient();
         }
@@ -189,10 +192,8 @@ public class SerialSocketServer extends VisPlugin implements MotePlugin {
             for (int i=0; i < numRead; i++) {
               serialPort.writeByte(data[i]);
             }
+
             inBytes += numRead;
-            if (GUI.isVisualized()) {
-              inLabel.setText(inBytes + " bytes");
-            }
           } else {
             cleanupClient();
             break;
@@ -246,7 +247,7 @@ public class SerialSocketServer extends VisPlugin implements MotePlugin {
     } catch (IOException e) {
     }
 
-    if (GUI.isVisualized()) {
+    if (Cooja.isVisualized()) {
       SwingUtilities.invokeLater(new Runnable() {
         public void run() {
           statusLabel.setText("Listening on port: " + LISTEN_PORT);
@@ -255,7 +256,9 @@ public class SerialSocketServer extends VisPlugin implements MotePlugin {
     }
   }
 
+  private boolean closed = false;
   public void closePlugin() {
+	  closed = true;
     cleanupClient();
     serialPort.deleteSerialDataObserver(serialDataObserver);
     try {
@@ -268,5 +271,17 @@ public class SerialSocketServer extends VisPlugin implements MotePlugin {
     return mote;
   }
 
+  private static final int UPDATE_INTERVAL = 150;
+  private Timer updateTimer = new Timer(UPDATE_INTERVAL, new ActionListener() {
+	  public void actionPerformed(ActionEvent e) {
+		  if (closed) {
+			  updateTimer.stop();
+			  return;
+		  }
+		  
+		  inLabel.setText(inBytes + " bytes");
+		  outLabel.setText(outBytes + " bytes");
+	  }
+  });
 }
 
