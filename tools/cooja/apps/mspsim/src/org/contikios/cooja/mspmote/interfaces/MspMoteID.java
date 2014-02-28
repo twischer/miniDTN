@@ -29,12 +29,6 @@
  */
 
 package org.contikios.cooja.mspmote.interfaces;
-import java.util.Observable;
-import java.util.Observer;
-
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-
 import org.apache.log4j.Logger;
 
 import org.contikios.cooja.Mote;
@@ -59,7 +53,7 @@ public class MspMoteID extends MoteID {
 	private int moteID = -1;
 
 	private MemoryMonitor memoryMonitor;
-	
+
 	/**
 	 * Creates an interface to the mote ID at mote.
 	 *
@@ -158,35 +152,7 @@ public class MspMoteID extends MoteID {
 		notifyObservers();
 	}
 
-	public JPanel getInterfaceVisualizer() {
-		JPanel panel = new JPanel();
-		final JLabel idLabel = new JLabel();
 
-		idLabel.setText("Mote ID: " + getMoteID());
-
-		panel.add(idLabel);
-
-		Observer observer;
-		this.addObserver(observer = new Observer() {
-			public void update(Observable obs, Object obj) {
-				idLabel.setText("Mote ID: " + getMoteID());
-			}
-		});
-
-		panel.putClientProperty("intf_obs", observer);
-
-		return panel;
-	}
-
-	public void releaseInterfaceVisualizer(JPanel panel) {
-		Observer observer = (Observer) panel.getClientProperty("intf_obs");
-		if (observer == null) {
-			logger.fatal("Error when releasing panel, observer is null");
-			return;
-		}
-
-		this.deleteObserver(observer);
-	}
 
 	public void removed() {
 	  super.removed();

@@ -105,6 +105,7 @@ import org.contikios.cooja.dialogs.UpdateAggregator;
 import org.contikios.cooja.interfaces.IPAddress;
 import org.contikios.cooja.motes.AbstractEmulatedMote;
 import org.contikios.cooja.util.ArrayQueue;
+import org.contikios.cooja.util.IPUtils;
 import org.contikios.cooja.util.StringUtils;
 
 /**
@@ -1691,7 +1692,7 @@ public class BufferListener extends VisPlugin {
       } else {
         mem = ba.mem;
       }
-      return IPAddress.IPUtils.getCompressedIPv6AddressString(mem);
+      return IPUtils.getCompressedIPv6AddressString(mem);
     }
   }
 

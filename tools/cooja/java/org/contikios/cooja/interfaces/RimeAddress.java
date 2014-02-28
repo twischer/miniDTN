@@ -27,6 +27,7 @@
  * SUCH DAMAGE.
  *
  */
+
 package org.contikios.cooja.interfaces;
 
 import java.util.Collection;

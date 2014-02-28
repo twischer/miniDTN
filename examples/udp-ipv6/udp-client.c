@@ -38,7 +38,8 @@
 #define DEBUG DEBUG_PRINT
 #include "net/ip/uip-debug.h"
 
-#define SEND_INTERVAL		15 * CLOCK_SECOND
+//#define SEND_INTERVAL		15 * CLOCK_SECOND
+#define SEND_INTERVAL	    5* CLOCK_SECOND
 #define MAX_PAYLOAD_LEN		40
 
 static struct uip_udp_conn *client_conn;
@@ -84,23 +85,28 @@ print_local_addresses(void)
   PRINTF("Client IPv6 addresses: ");
   for(i = 0; i < UIP_DS6_ADDR_NB; i++) {
     state = uip_ds6_if.addr_list[i].state;
-    if(uip_ds6_if.addr_list[i].isused &&
-       (state == ADDR_TENTATIVE || state == ADDR_PREFERRED)) {
+ //   if(uip_ds6_if.addr_list[i].isused &&
+ //      (state == ADDR_TENTATIVE || state == ADDR_PREFERRED)) {
       PRINT6ADDR(&uip_ds6_if.addr_list[i].ipaddr);
       PRINTF("\n");
-    }
+//    }
   }
 }
+
 /*---------------------------------------------------------------------------*/
 #if UIP_CONF_ROUTER
 static void
 set_global_address(void)
 {
   uip_ipaddr_t ipaddr;
-
   uip_ip6addr(&ipaddr, 0xaaaa, 0, 0, 0, 0, 0, 0, 0);
   uip_ds6_set_addr_iid(&ipaddr, &uip_lladdr);
-  uip_ds6_addr_add(&ipaddr, 0, ADDR_AUTOCONF);
+  uip_ds6_addr_add(&ipaddr, 0, ADDR_MANUAL);
+  printf("Add prefix\n");
+  uip_ds6_prefix_add(&ipaddr,64, 1, 0x80, 1000, 2000);
+//  uip_ds6_prefix_add(uip_ipaddr_t *ipaddr, uint8_t ipaddrlen,
+//                   uint8_t advertise, uint8_t flags, unsigned long vtime,
+ //                  unsigned long ptime)
 }
 #endif /* UIP_CONF_ROUTER */
 /*---------------------------------------------------------------------------*/
@@ -144,6 +150,7 @@ set_connection_address(uip_ipaddr_t *ipaddr)
 
   return status;
 }
+uint8_t portb=42;
 /*---------------------------------------------------------------------------*/
 PROCESS_THREAD(udp_client_process, ev, data)
 {
@@ -151,10 +158,19 @@ PROCESS_THREAD(udp_client_process, ev, data)
   uip_ipaddr_t ipaddr;
 
   PROCESS_BEGIN();
-  PRINTF("UDP client process started\n");
+  printf("UDP client process started\n");
 
 #if UIP_CONF_ROUTER
   set_global_address();
+#elif 1
+/* For testing, cooja motes */
+{
+  uip_ipaddr_t ipaddr;
+  uip_ip6addr(&ipaddr, 0xaaaa, 0, 0, 0, 0, 0, 0, 0);
+  uip_ds6_set_addr_iid(&ipaddr, &uip_lladdr);
+  uip_ds6_addr_add(&ipaddr, 0, ADDR_MANUAL);
+  uip_ds6_prefix_add(&ipaddr,64,0);
+}
 #endif
 
   print_local_addresses();
@@ -180,10 +196,13 @@ PROCESS_THREAD(udp_client_process, ev, data)
   PRINTF(" local/remote port %u/%u\n",
 	UIP_HTONS(client_conn->lport), UIP_HTONS(client_conn->rport));
 
-  etimer_set(&et, SEND_INTERVAL);
+    etimer_set(&et, SEND_INTERVAL);
+// DDRD=(0xFF);  //set all d pins to output
+ //   etimer_set(&et, 2*CLOCK_SECOND);
   while(1) {
     PROCESS_YIELD();
     if(etimer_expired(&et)) {
+  //  PORTD=~PORTD;
       timeout_handler();
       etimer_restart(&et);
     } else if(ev == tcpip_event) {

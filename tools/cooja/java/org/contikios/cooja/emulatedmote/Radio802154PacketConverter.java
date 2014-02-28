@@ -186,7 +186,7 @@ public class Radio802154PacketConverter {
         byte originalData[] = new byte[originalLen];
         System.arraycopy(data, 6, originalData, 0, originalLen);
         if (len < 0) {
-            logger.warn("No cross-level conversion available: negative packet length");
+          //  logger.warn("No cross-level conversion available: negative packet length");
             return new ConvertedRadioPacket(new byte[0], originalData);
         }
         byte convertedData[] = new byte[len];

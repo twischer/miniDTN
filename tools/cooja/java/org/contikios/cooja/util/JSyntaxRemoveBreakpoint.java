@@ -66,7 +66,7 @@ public class JSyntaxRemoveBreakpoint extends DefaultSyntaxAction {
       logger.warn("Error: Bad breakpoint info, cannot remove breakpoint");
       return;
     }
-    for (Watchpoint w: watchpointMote.getBreakpoints()) {
+    for (Watchpoint<? extends WatchpointMote> w: watchpointMote.getBreakpoints()) {
       if (file.equals(w.getCodeFile()) && line.equals(w.getLineNumber()) && address.equals(w.getExecutableAddress())) {
         watchpointMote.removeBreakpoint(w);
       }

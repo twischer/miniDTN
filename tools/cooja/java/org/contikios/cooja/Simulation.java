@@ -39,9 +39,10 @@ import java.util.Vector;
 import javax.swing.JOptionPane;
 
 import org.apache.log4j.Logger;
+import org.contikios.cooja.WatchpointMote.BreakpointTriggered;
+import org.contikios.cooja.dialogs.CreateSimDialog;
 import org.jdom.Element;
 
-import org.contikios.cooja.dialogs.CreateSimDialog;
 
 /**
  * A simulation consists of a number of motes and mote types.
@@ -284,9 +285,8 @@ public class Simulation extends Observable implements Runnable {
         }
       }
     } catch (RuntimeException e) {
-    	if ("MSPSim requested simulation stop".equals(e.getMessage())) {
-    		/* XXX Should be*/
-    		logger.info("Simulation stopped due to MSPSim breakpoint");
+    	if (e instanceof BreakpointTriggered) {
+    		logger.info("Simulation stopped due to breakpoint: " + e.getMessage());
     	} else {
 
     		logger.fatal("Simulation stopped due to error: " + e.getMessage(), e);

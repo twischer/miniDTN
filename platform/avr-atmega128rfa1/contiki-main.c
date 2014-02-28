@@ -38,7 +38,9 @@
 #define PRINTA(...)
 #endif
 
+#ifndef DEBUG
 #define DEBUG 0
+#endif
 #if DEBUG
 #define PRINTD(FORMAT,args...) printf_P(PSTR(FORMAT),##args)
 #else
@@ -116,7 +118,17 @@ struct rtimer rt;
 void rtimercycle(void) {rtimerflag=1;}
 #endif
 #endif
-
+/* node_id is used in Cooja to generate a unique EUI mac address for each instance.
+ * Cooja plants the mote number in node_id on startup, but if the variable is in RAM
+ * gcc will clear it during the later .bss initialization. Cooja can repeatedly
+ * rewrite node_id, e.g. every 62 usec for the first 62 msec of runtime.
+ * But putting it in EEMEM avoids the need for that.
+ */
+#define NODE_ID 1
+#if NODE_ID
+//EEMEM uint16_t eemem_node_id;
+uint16_t node_id;
+#endif
 uint16_t ledtimer;
 
 /*-------------------------------------------------------------------------*/
@@ -260,23 +272,53 @@ uint8_t i;
 
   linkaddr_t addr;
 
+  /* If eeprom is used for parameter retention, params_get_channel will check
+   * for integrity and reinitialize it from flash if it seems corrupted.
+   * It will then always return a valid channel
+   */
+  rf230_set_channel(params_get_channel());
+  rf230_set_txpower(params_get_txpower());
   if (params_get_eui64(addr.u8)) {
       PRINTA("Random EUI64 address generated\n");
   }
  
-#if UIP_CONF_IPV6 
+#if UIP_CONF_IPV6
+#if NODE_ID
+ //  {uint16_t node_id=eeprom_read_word(&eemem_node_id);
+  PRINTA("Initial node_id %u\n",node_id);
+  if (node_id) {
+    addr.u8[0]=0;
+    addr.u8[1]=0;
+    addr.u8[2]=0;
+    addr.u8[3]=node_id&0xff;
+    addr.u8[4]=(node_id&0xff)>>8;  
+    addr.u8[5]=node_id;
+    addr.u8[6]=node_id;
+    addr.u8[7]=node_id;
+}
+#endif
+ // } else {
+ //   node_id=addr.u8[7]+(addr.u8[6]<<8);
+ // }
   memcpy(&uip_lladdr.addr, &addr.u8, sizeof(linkaddr_t));
+  linkaddr_set_node_addr(&addr);  
+  rf230_set_pan_addr(params_get_panid(),params_get_panaddr(),(uint8_t *)&addr.u8);
 #elif WITH_NODE_ID
   node_id=get_panaddr_from_eeprom();
   addr.u8[1]=node_id&0xff;
   addr.u8[0]=(node_id&0xff00)>>8;
   PRINTA("Node ID from eeprom: %X\n",node_id);
-#endif  
+  uint16_t inv_node_id=((node_id&0xff00)>>8)+((node_id&0xff)<<8); // change order of bytes for rf23x
+  linkaddr_set_node_addr(&addr);
+  rf230_set_pan_addr(params_get_panid(),inv_node_id,NULL);
+#else
+  linkaddr_set_node_addr(&addr);
+  rf230_set_pan_addr(params_get_panid(),params_get_panaddr(),(uint8_t *)&addr.u8);
+#endif
   linkaddr_set_node_addr(&addr); 
 
   rf230_set_pan_addr(params_get_panid(),params_get_panaddr(),(uint8_t *)&addr.u8);
-  rf230_set_channel(params_get_channel());
-  rf230_set_txpower(params_get_txpower());
+
 
 #if UIP_CONF_IPV6
   PRINTA("EUI-64 MAC: %x-%x-%x-%x-%x-%x-%x-%x\n",addr.u8[0],addr.u8[1],addr.u8[2],addr.u8[3],addr.u8[4],addr.u8[5],addr.u8[6],addr.u8[7]);
@@ -469,7 +511,7 @@ main(void)
 #if DEBUGFLOWSIZE
   if (debugflowsize) {
     debugflow[debugflowsize]=0;
-    PRINTF("%s",debugflow);
+    PRINTF("%s\n",debugflow);
     debugflowsize=0;
    }
 #endif

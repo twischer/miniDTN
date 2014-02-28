@@ -52,10 +52,6 @@
 #include "contiki-net.h"
 #include "params.h"
 
-#if WITH_NODE_ID
-uint16_t node_id;
-#endif
-
 #if CONTIKI_CONF_RANDOM_MAC
 extern uint8_t rng_get_uint8(void);
 static void
@@ -118,7 +114,7 @@ uint8_t eemem_txpower EEMEM = PARAMS_TXPOWER;
 #if CONTIKI_CONF_RANDOM_MAC
 static uint8_t randomeui64;
 #endif
-
+    uint8_t i,buffer[32];
 uint8_t
 params_get_channel(void) {
   uint8_t x[2];
@@ -128,7 +124,7 @@ params_get_channel(void) {
 /* Do exclusive or test on the two values read */
   if((uint8_t)x[0]!=(uint8_t)~x[1]) {//~x[1] can promote comparison to 16 bit
 /* Verification fails, rewrite everything */
-    uint8_t i,buffer[32];
+ //   uint8_t i,buffer[32];
     PRINTD("EEPROM is corrupt, rewriting with defaults.\n");
 #if CONTIKI_CONF_RANDOM_MAC
     PRINTD("Generating random EUI64 MAC\n");
@@ -140,6 +136,7 @@ params_get_channel(void) {
 /* eeprom_write_block should not be interrupted */
     cli();
     eeprom_write_block(&buffer,  &eemem_mac_address, sizeof(eemem_mac_address));
+      eeprom_read_block (&buffer, &eemem_mac_address, sizeof(rimeaddr_t));
     for (i=0;i<sizeof(default_server_name);i++) buffer[i] = pgm_read_byte_near(default_server_name+i);
     eeprom_write_block(&buffer,  &eemem_server_name, sizeof(eemem_server_name));
     for (i=0;i<sizeof(default_domain_name);i++) buffer[i] = pgm_read_byte_near(default_domain_name+i);

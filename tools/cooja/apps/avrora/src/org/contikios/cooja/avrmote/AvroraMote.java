@@ -48,7 +48,6 @@ import org.contikios.cooja.dialogs.CompileContiki;
 import org.contikios.cooja.dialogs.MessageList;
 import org.contikios.cooja.dialogs.MessageList.MessageContainer;
 import org.contikios.cooja.motes.AbstractEmulatedMote;
-import org.contikios.cooja.plugins.Debugger.SourceLocation;
 import avrora.arch.avr.AVRProperties;
 import avrora.core.LoadableProgram;
 import avrora.core.SourceMapping;
@@ -62,6 +61,7 @@ import avrora.sim.types.SingleSimulation;
 import java.nio.ByteOrder;
 import org.contikios.cooja.MemoryLayout;
 import org.contikios.cooja.MoteMemory;
+import org.contikios.cooja.plugins.Debugger.SourceLocation;
 
 /**
  * @author Joakim Eriksson, Fredrik Osterlind, David Kopf
@@ -174,7 +174,7 @@ public abstract class AvroraMote extends AbstractEmulatedMote implements Watchpo
     if (stopNextInstruction) {
       stopNextInstruction = false;
       scheduleNextWakeup(t);
-      throw new RuntimeException("Avrora requested simulation stop");
+      throw new BreakpointTriggered("Avrora requested simulation stop");
     }
 
     /* Execute one millisecond */
@@ -266,7 +266,7 @@ public abstract class AvroraMote extends AbstractEmulatedMote implements Watchpo
 
     return config;
   }
-
+  
   public boolean setWatchpointConfigXML(Collection<Element> configXML, boolean visAvailable) {
     for (Element element : configXML) {
       if (element.getName().equals("breakpoint")) {
@@ -281,26 +281,19 @@ public abstract class AvroraMote extends AbstractEmulatedMote implements Watchpo
     return true;
   }
 
-  private ArrayList<WatchpointListener> watchpointListeners = new ArrayList<>();
-  private ArrayList<AvrBreakpoint> watchpoints = new ArrayList<>();
+  private ArrayList<WatchpointListener> watchpointListeners = new ArrayList<WatchpointListener>();
+  private ArrayList<AvrBreakpoint> watchpoints = new ArrayList<AvrBreakpoint>();
 
-  @Override
   public void addWatchpointListener(WatchpointListener listener) {
     watchpointListeners.add(listener);
   }
-
-  @Override
   public void removeWatchpointListener(WatchpointListener listener) {
     watchpointListeners.remove(listener);
   }
-
-  @Override
   public WatchpointListener[] getWatchpointListeners() {
     return watchpointListeners.toArray(new WatchpointListener[0]);
   }
-
-  @Override
-  public Watchpoint addBreakpoint(File codeFile, int lineNr, int address) {
+  public Watchpoint<AvroraMote> addBreakpoint(File codeFile, int lineNr, int address) {
     AvrBreakpoint bp = new AvrBreakpoint(this, address, codeFile, new Integer(lineNr));
     watchpoints.add(bp);
 
@@ -309,9 +302,7 @@ public abstract class AvroraMote extends AbstractEmulatedMote implements Watchpo
     }
     return bp;
   }
-  
-  @Override
-  public void removeBreakpoint(Watchpoint watchpoint) {
+  public void removeBreakpoint(Watchpoint<? extends WatchpointMote> watchpoint) {
     ((AvrBreakpoint)watchpoint).unregisterBreakpoint();
     watchpoints.remove(watchpoint);
 
@@ -319,13 +310,9 @@ public abstract class AvroraMote extends AbstractEmulatedMote implements Watchpo
       listener.watchpointsChanged();
     }
   }
-
-  @Override
   public AvrBreakpoint[] getBreakpoints() {
     return watchpoints.toArray(new AvrBreakpoint[0]);
   }
-
-  @Override
   public boolean breakpointExists(int address) {
     if (address < 0) {
       return false;
@@ -337,7 +324,6 @@ public abstract class AvroraMote extends AbstractEmulatedMote implements Watchpo
     }
     return false;
   }
-  @Override
   public boolean breakpointExists(File file, int lineNr) {
     return breakpointExists(getExecutableAddressOf(file, lineNr));
   }
@@ -375,7 +361,6 @@ public abstract class AvroraMote extends AbstractEmulatedMote implements Watchpo
     return null;
   }
 
-  @Override
   public int getExecutableAddressOf(File file, int lineNr) {
     try {
       File firmwareFile = ((AvroraMoteType)getType()).getContikiFirmwareFile();
@@ -402,6 +387,5 @@ public abstract class AvroraMote extends AbstractEmulatedMote implements Watchpo
     }
     return -1;
   }
-  
 
 }
