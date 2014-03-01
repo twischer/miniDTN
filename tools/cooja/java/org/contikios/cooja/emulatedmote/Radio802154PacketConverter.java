@@ -27,171 +27,138 @@
  * SUCH DAMAGE.
  *
  */
-
 package org.contikios.cooja.emulatedmote;
+
 import org.apache.log4j.Logger;
 
 import org.contikios.cooja.ConvertedRadioPacket;
 import org.contikios.cooja.RadioPacket;
-import org.contikios.cooja.util.StringUtils;
+
 /**
- * Converts radio packets between X-MAC/802.15.4 nodes and COOJA.
+ * Converts Cooja radio packets to full 802.15.4 radio packets.
+ * 
  * Handles radio driver specifics such as length header and CRC footer.
  *
- * TODO: Needs to fix 802.15.4 parsing of packets to really convert them...
  * @author Fredrik Osterlind, Joakim Eriksson
  */
-
 public class Radio802154PacketConverter {
-    private static Logger logger = Logger.getLogger(Radio802154PacketConverter.class);
 
-    public static final boolean WITH_PREAMBLE = true;
-    public static final boolean WITH_SYNCH = true;
-    public static final boolean WITH_XMAC = true;
-    public static final boolean WITH_CHECKSUM = false;
-    public static final boolean WITH_TIMESTAMP = true;
-    public static final boolean WITH_FOOTER = true;
+  private static final Logger logger = Logger.getLogger(Radio802154PacketConverter.class);
 
-    public static byte[] fromCoojaToCC2420(RadioPacket packet) {
-        byte cc2420Data[] = new byte[6+127];
-        int pos = 0;
-        byte packetData[] = packet.getPacketData();
-        byte len; /* total packet minus preamble(4), synch(1) and length(1) */
-        short accumulatedCRC = 0;
+  /**
+   * 4 octets preamble
+   */
+  public static final boolean WITH_PREAMBLE = true;
+  /**
+   * 1 octet Start of frame Delimiter (SFD)
+   */
+  public static final boolean WITH_SFD = true;
+//    public static final boolean WITH_XMAC = true;
+  public static final boolean WITH_CHECKSUM = false;
+  public static final boolean WITH_TIMESTAMP = true;
+  public static final boolean WITH_FOOTER = true;
 
-        /* 4 bytes preamble */
-        if (WITH_PREAMBLE) {
-            cc2420Data[pos++] = 0;
-            cc2420Data[pos++] = 0;
-            cc2420Data[pos++] = 0;
-            cc2420Data[pos++] = 0;
-        }
+  /**
+   * Converts from Cooja packet data (PHY payload) to PHY PDU.
+   *
+   * @param packet Cooja packet data
+   * @return converted PHY layer data
+   */
+  public static byte[] fromPacketTo802154(RadioPacket packet) {
+    byte cc2420Data[] = new byte[6 + 127];
+    int pos = 0;
+    byte packetData[] = packet.getPacketData();
+    byte len; /* total packet minus preamble(4), synch(1) and length(1) */
 
-        /* 1 byte synch */
-        if (WITH_SYNCH) {
-            cc2420Data[pos++] = 0x7A;
-        }
+    short accumulatedCRC = 0;
 
-        /* 1 byte length */
-        len = (byte) packetData.length;
-        if (WITH_XMAC) {
-            len += 6;
-        }
-        if (WITH_CHECKSUM) {
-            len += 2;
-        }
-        if (WITH_TIMESTAMP) {
-            len += 3;
-        }
-        if (WITH_FOOTER) {
-            len += 2;
-        }
-        cc2420Data[pos++] = len;
+    /* --- Add PHY header */
 
-        /* (TODO) 4 byte X-MAC */
-        if (WITH_XMAC) {
-            cc2420Data[pos++] = 1; /* TYPE_DATA */
-            accumulatedCRC = CRCCoder.crc16Add((byte)0, accumulatedCRC);
-            cc2420Data[pos++] = 0;
-            accumulatedCRC = CRCCoder.crc16Add((byte)0, accumulatedCRC);
-            cc2420Data[pos++] = 0; /* XXX sender: 0.0 */
-            accumulatedCRC = CRCCoder.crc16Add((byte)0, accumulatedCRC);
-            cc2420Data[pos++] = 0;
-            accumulatedCRC = CRCCoder.crc16Add((byte)0, accumulatedCRC);
-            cc2420Data[pos++] = 0; /* XXX receiver: 0.0 */
-            accumulatedCRC = CRCCoder.crc16Add((byte)0, accumulatedCRC);
-            cc2420Data[pos++] = 0;
-            accumulatedCRC = CRCCoder.crc16Add((byte)0, accumulatedCRC);
-        }
-
-        /* Payload */
-        for (byte b : packetData) {
-            accumulatedCRC = CRCCoder.crc16Add(b, accumulatedCRC);
-        }
-        System.arraycopy(packetData, 0, cc2420Data, pos, packetData.length);
-        pos += packetData.length;
-
-        /* 2 bytes checksum */
-        if (WITH_CHECKSUM) {
-            cc2420Data[pos++] = (byte) (accumulatedCRC & 0xff);
-            cc2420Data[pos++] = (byte) ((accumulatedCRC >> 8) & 0xff);
-        }
-
-        /* (TODO) 3 bytes timestamp */
-        if (WITH_TIMESTAMP) {
-            cc2420Data[pos++] = 0;
-            cc2420Data[pos++] = 0;
-            cc2420Data[pos++] = 0;
-        }
-
-        /* (TODO) 2 bytes footer */
-        if (WITH_FOOTER) {
-            cc2420Data[pos++] = 0; /* RSSI */
-            cc2420Data[pos++] = (byte) 0x80; /* CRC and CORRELATION */
-        }
-
-        byte cc2420DataStripped[] = new byte[pos];
-        System.arraycopy(cc2420Data, 0, cc2420DataStripped, 0, pos);
-
-        /*logger.info("Data length: " + cc2420DataStripped.length);*/
-        return cc2420DataStripped;
+    /* 4 bytes preamble */
+    if (WITH_PREAMBLE) {
+      cc2420Data[pos++] = 0;
+      cc2420Data[pos++] = 0;
+      cc2420Data[pos++] = 0;
+      cc2420Data[pos++] = 0;
     }
 
-    public static ConvertedRadioPacket fromCC2420ToCooja(byte[] data) {
-        int pos = 0;
-        int len; /* Payload */
-        int originalLen;
-
-        /* Use some CC2420/MAC specific field such as X-MAC response */
-
-        /* (IGNORED) 4 bytes preamble */
-        if (WITH_PREAMBLE) {
-            pos += 4;
-        }
-
-        /* (IGNORED) 1 byte synch */
-        if (WITH_SYNCH) {
-            pos += 1;
-        }
-
-        /* 1 byte length */
-        len = data[pos];
-        originalLen = len;
-        pos += 1;
-
-        /* (IGNORED) 4 byte X-MAC */
-        if (WITH_XMAC) {
-            pos += 6;
-            len -= 6;
-        }
-
-        /* (IGNORED) 2 bytes checksum */
-        if (WITH_CHECKSUM) {
-            len -= 2;
-        }
-
-        /* (IGNORED) 3 bytes timestamp */
-        if (WITH_TIMESTAMP) {
-            len -= 3;
-        }
-
-        /* (IGNORED) 2 bytes footer */
-        if (WITH_FOOTER) {
-            len -= 2;
-        }
-
-        /*logger.info("Payload pos: " + pos);
-        logger.info("Payload length: " + len);*/
-
-        byte originalData[] = new byte[originalLen];
-        System.arraycopy(data, 6, originalData, 0, originalLen);
-        if (len < 0) {
-          //  logger.warn("No cross-level conversion available: negative packet length");
-            return new ConvertedRadioPacket(new byte[0], originalData);
-        }
-        byte convertedData[] = new byte[len];
-        System.arraycopy(data, pos, convertedData, 0, len);
-        return new ConvertedRadioPacket(convertedData, originalData);
+    /* 1 byte synch */
+    if (WITH_SFD) {
+      cc2420Data[pos++] = 0x7A;
     }
+
+    /* 1 byte length */
+    len = (byte) packetData.length;
+    if (WITH_CHECKSUM) {
+      len += 2;
+    }
+    cc2420Data[pos++] = len;
+
+    /* --- Add Payload */
+    for (byte b : packetData) {
+      accumulatedCRC = CRCCoder.crc16Add(b, accumulatedCRC);
+    }
+    System.arraycopy(packetData, 0, cc2420Data, pos, packetData.length);
+    pos += packetData.length;
+
+    /* 2 bytes Frame Check Sequence (FCS) */
+    if (WITH_CHECKSUM) {
+      cc2420Data[pos++] = (byte) (accumulatedCRC & 0xff);
+      cc2420Data[pos++] = (byte) ((accumulatedCRC >> 8) & 0xff);
+    }
+
+    byte cc2420DataStripped[] = new byte[pos];
+    System.arraycopy(cc2420Data, 0, cc2420DataStripped, 0, pos);
+
+    /*logger.info("Data length: " + cc2420DataStripped.length);*/
+    return cc2420DataStripped;
+  }
+
+  /**
+   * Converts from PHY PDU to Cooja packet data (PHY payload).
+   *
+   * @param data PHY layer data
+   * @return converted Cooja packet data
+   */
+  public static ConvertedRadioPacket from802154toPacket(byte[] data) {
+    int pos = 0;
+    int len; /* Payload */
+
+    int originalLen;
+
+    /* Use some CC2420/MAC specific field such as X-MAC response */
+
+    /* (IGNORED) 4 bytes preamble */
+    if (WITH_PREAMBLE) {
+      pos += 4;
+    }
+
+    /* (IGNORED) 1 byte synch */
+    if (WITH_SFD) {
+      pos += 1;
+    }
+
+    /* 1 byte length */
+    len = data[pos];
+    originalLen = len;
+    pos += 1;
+
+    /* (IGNORED) 2 bytes checksum */
+    if (WITH_CHECKSUM) {
+      len -= 2;
+    }
+
+    /*logger.info("Payload pos: " + pos);
+     logger.info("Payload length: " + len);*/
+    byte originalData[] = new byte[originalLen];
+    System.arraycopy(data, 6, originalData, 0, originalLen);
+    if (len < 0) {
+      //  logger.warn("No cross-level conversion available: negative packet length");
+      return new ConvertedRadioPacket(new byte[0], originalData);
+    }
+    byte convertedData[] = new byte[len];
+    System.arraycopy(data, pos, convertedData, 0, len);
+    return new ConvertedRadioPacket(convertedData, originalData);
+  }
 
 }

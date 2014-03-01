@@ -50,7 +50,7 @@ import org.contikios.cooja.interfaces.Radio;
  */
 
 public abstract class Radio802154 extends Radio implements CustomDataRadio {
-  private static Logger logger = Logger.getLogger(Radio802154.class);
+  private static final Logger logger = Logger.getLogger(Radio802154.class);
   private final static boolean DEBUG = false;
 
   /**
@@ -71,7 +71,7 @@ public abstract class Radio802154 extends Radio implements CustomDataRadio {
   private RadioPacket lastOutgoingPacket = null;
   private RadioPacket lastIncomingPacket = null;
 
-  private Mote mote;
+  private final Mote mote;
 
   public Radio802154(Mote mote) {
     this.mote = mote;
@@ -79,7 +79,7 @@ public abstract class Radio802154 extends Radio implements CustomDataRadio {
 
   private int txLen = 0;
   private int txExpLen = 0; /* transmitted bytes before overflow */
-  private byte[] txBuffer = new byte[127/*data*/ + 15/*preamble*/];
+  private final byte[] txBuffer = new byte[127/*data*/ + 15/*preamble*/];
   protected void handleTransmit(byte val) {
     if (!isTransmitting()) {
       lastEvent = RadioEvent.TRANSMISSION_STARTED;
@@ -113,7 +113,7 @@ public abstract class Radio802154 extends Radio implements CustomDataRadio {
 
     if (txLen == txExpLen) {
       /* Send packet to radio medium */
-      lastOutgoingPacket = Radio802154PacketConverter.fromCC2420ToCooja(txBuffer);
+      lastOutgoingPacket = Radio802154PacketConverter.from802154toPacket(txBuffer);
       lastEvent = RadioEvent.PACKET_TRANSMITTED;
       if (DEBUG) logger.debug(mote.getID() + ":----- 802.15.4 PACKET TRANSMITTED -----");
       setChanged();
@@ -127,14 +127,17 @@ public abstract class Radio802154 extends Radio implements CustomDataRadio {
     }
   }
 
+  @Override
   public RadioPacket getLastPacketTransmitted() {
     return lastOutgoingPacket;
   }
 
+  @Override
   public RadioPacket getLastPacketReceived() {
     return lastIncomingPacket;
   }
 
+  @Override
   public void setReceivedPacket(RadioPacket packet) {
     /* Note:
      * Only nodes at other abstraction levels deliver full packets.
@@ -143,7 +146,7 @@ public abstract class Radio802154 extends Radio implements CustomDataRadio {
     lastIncomingPacket = packet;
 
     /* Delivering packet bytes with delays */
-    byte[] packetData = Radio802154PacketConverter.fromCoojaToCC2420(packet);
+    byte[] packetData = Radio802154PacketConverter.fromPacketTo802154(packet);
     long deliveryTime = getMote().getSimulation().getSimulationTime();
     for (byte b: packetData) {
       if (isInterfered()) {
@@ -152,6 +155,7 @@ public abstract class Radio802154 extends Radio implements CustomDataRadio {
 
       final byte byteToDeliver = b;
       getMote().getSimulation().scheduleEvent(new MoteTimeEvent(mote, 0) {
+        @Override
         public void execute(long t) {
           handleReceive(byteToDeliver);
         }
@@ -161,14 +165,17 @@ public abstract class Radio802154 extends Radio implements CustomDataRadio {
   }
 
   /* Custom data radio support */
+  @Override
   public byte getLastCustomDataTransmitted() {
     return lastOutgoingByte;
   }
 
+  @Override
   public byte getLastCustomDataReceived() {
     return lastIncomingByte;
   }
 
+  @Override
   public final void receiveCustomData(byte data) {
     lastIncomingByte = data;
     handleReceive(data);
@@ -188,6 +195,7 @@ public abstract class Radio802154 extends Radio implements CustomDataRadio {
 
       /* Simulate end of packet */
       lastOutgoingPacket = new RadioPacket() {
+        @Override
         public byte[] getPacketData() {
           return new byte[0];
         }
@@ -215,18 +223,22 @@ public abstract class Radio802154 extends Radio implements CustomDataRadio {
   protected abstract void handleEndOfReception();
   protected abstract void handleReceive(byte b);
 
+  @Override
   public boolean isTransmitting() {
     return isTransmitting;
   }
 
+  @Override
   public boolean isReceiving() {
     return isReceiving;
   }
 
+  @Override
   public boolean isInterfered() {
     return isInterfered;
   }
 
+  @Override
   public void signalReceptionStart() {
     isReceiving = true;
 
@@ -239,10 +251,12 @@ public abstract class Radio802154 extends Radio implements CustomDataRadio {
 
   }
 
+  @Override
   public RadioEvent getLastEvent() {
     return lastEvent;
   }
 
+  @Override
   public final void signalReceptionEnd() {
     /* Deliver packet data */
     isReceiving = false;
@@ -256,6 +270,7 @@ public abstract class Radio802154 extends Radio implements CustomDataRadio {
     notifyObservers();
   }
 
+  @Override
   public void interfereAnyReception() {
     isInterfered = true;
     isReceiving = false;
@@ -267,18 +282,22 @@ public abstract class Radio802154 extends Radio implements CustomDataRadio {
     notifyObservers();
   }
 
+  @Override
   public Mote getMote() {
     return mote;
   }
 
+  @Override
   public Position getPosition() {
     return mote.getInterfaces().getPosition();
   }
 
+  @Override
   public Collection<Element> getConfigXML() {
     return null;
   }
 
+  @Override
   public void setConfigXML(Collection<Element> configXML, boolean visAvailable) {
   }
 }
