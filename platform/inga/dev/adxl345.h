@@ -266,7 +266,7 @@ int8_t adxl345_ready(void);
  * 
  * @param range
  */
-inline void adxl345_set_g_range(uint8_t range);
+void adxl345_set_g_range(uint8_t range);
 
 /**
  * 

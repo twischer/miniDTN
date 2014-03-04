@@ -83,7 +83,7 @@ adxl345_deinit(void)
 }
 
 /*----------------------------------------------------------------------------*/
-inline void
+void
 adxl345_set_g_range(uint8_t range)
 {
   uint8_t tmp_reg = adxl345_read(ADXL345_DATA_FORMAT_REG);
@@ -180,6 +180,7 @@ adxl345_get(void)
   msb = mspi_transceive(MSPI_DUMMY_BYTE);
   adxl345_data.z = (int16_t) ((msb << 8) + lsb);
   mspi_chip_release(ADXL345_CS);
+  printf("x: %d, y: %d, z: %d\n", adxl345_data.x, adxl345_data.y, adxl345_data.z);
   return adxl345_data;
 }
 /*----------------------------------------------------------------------------*/

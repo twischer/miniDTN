@@ -324,7 +324,7 @@ int8_t l3g4200d_deinit(void);
  * 
  * @param set One of L3G4200D_250DPS, L3G4200D_500DPS or L3G4200D_2000DBS
  */
-extern inline uint8_t l3g4200d_set_dps(uint8_t set);
+uint8_t l3g4200d_set_dps(uint8_t set);
 
 /**
  * Sets the data rate [Hz]
@@ -332,7 +332,7 @@ extern inline uint8_t l3g4200d_set_dps(uint8_t set);
  * @param set one of L3G4200D_ODR_100HZ, L3G4200D_ODR_200HZ, L3G4200D_ODR_400HZ, L3G4200D_ODR_800HZ
  * @return 
  */
-extern inline uint8_t l3g4200d_set_data_rate(uint8_t set);
+uint8_t l3g4200d_set_data_rate(uint8_t set);
 
 /** Sets the fifo mode.
  * 
@@ -342,19 +342,19 @@ extern inline uint8_t l3g4200d_set_data_rate(uint8_t set);
  * @param set One of L3G4200D_BYPASS, L3G4200D_FIFO, L3G4200D_STREAM,
  * L3G4200D_STREAM_TO_FIFO or L3G4200D_BYPASS_TO_STREAM
  */
-extern inline void l3g4200d_set_fifomode(uint8_t set);
+void l3g4200d_set_fifomode(uint8_t set);
 
 
 /** Enables fifo mode.
  */
-extern inline void l3g4200d_fifo_enable(void);
+void l3g4200d_fifo_enable(void);
 
 
 /** Checks for fifo overrun.
  * 
  * @return 0 = no overrun, else overrun
  */
-extern inline int8_t l3g4200d_fifo_overrun(void);
+int8_t l3g4200d_fifo_overrun(void);
 
 
 /** Reads data for x,y and z angle.

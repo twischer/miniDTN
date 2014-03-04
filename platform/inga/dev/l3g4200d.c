@@ -127,14 +127,14 @@ l3g4200d_set_data_rate(uint8_t set)
   return (tmpref & 0xC0) ^ (set);
 }
 /*----------------------------------------------------------------------------*/
-inline void
+void
 l3g4200d_set_fifomode(uint8_t set)
 {
   uint8_t tmpref = l3g4200d_read8bit(L3G4200D_FIFO_CTRL_REG);
   l3g4200d_write8bit(L3G4200D_FIFO_CTRL_REG, (tmpref & 0x1F) | set);
 }
 /*----------------------------------------------------------------------------*/
-inline void
+void
 l3g4200d_fifo_enable()
 {
   l3g4200d_write8bit(L3G4200D_CTRL_REG5, (1 << L3G4200D_FIFO_EN));
