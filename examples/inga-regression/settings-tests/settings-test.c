@@ -51,7 +51,7 @@ PROCESS_THREAD(settings_test_process, ev, data)
   TEST_EQUALS(settings_txpower, RADIO_CONF_TX_POWER);
 
   uint8_t settings_eui64[8];
-  uint8_t compare_eui64[8] = {EUI64};
+  uint8_t compare_eui64[8] = {NODE_CONF_EUI64};
   settings_get(SETTINGS_KEY_EUI64, 0, settings_eui64, sizeof (settings_eui64));
   TEST_EQUALS(settings_eui64[0], compare_eui64[0]);
   TEST_EQUALS(settings_eui64[1], compare_eui64[1]);

@@ -55,6 +55,12 @@
 #define PRINTF(...)
 #endif
 
+/* specifies divisor of fat size to erase during mkfs, because erasing the whole FAT
+ * may take some time.
+ * e.g. FAT_ERASE_DIV set to 4 means 1/4 of the fat will be erased.
+ */
+#define FAT_ERASE_DIV 2
+
 
 static int mkfs_write_boot_sector(uint8_t *buffer, struct diskio_device_info *dev, struct FAT_Info *fi);
 static void mkfs_write_fats(uint8_t *buffer, struct diskio_device_info *dev, struct FAT_Info *fi);
@@ -213,182 +219,183 @@ mkfs_write_boot_sector(uint8_t *buffer, struct diskio_device_info *dev, struct F
   }
 
   // BS_jmpBoot
-  buffer[0] = 0x00;
-  buffer[1] = 0x00;
-  buffer[2] = 0x00;
+  buffer[0x000] = 0x00;
+  buffer[0x001] = 0x00;
+  buffer[0x002] = 0x00;
 
   // BS_OEMName
-  memcpy(&(buffer[3]), "cfs-mkfs", 8);
+  memcpy(&(buffer[0x03]), "cfs-mkfs", 8);
 
   // BPB_BytesPerSec
-  buffer[11] = (uint8_t) dev->sector_size;
-  buffer[12] = (uint8_t) (dev->sector_size >> 8);
+  buffer[0x00B] = (uint8_t) dev->sector_size;
+  buffer[0x00C] = (uint8_t) (dev->sector_size >> 8);
   fi->BPB_BytesPerSec = dev->sector_size;
 
   // BPB_SecPerClus
-  buffer[13] = sectors_per_cluster;
+  buffer[0x00D] = sectors_per_cluster;
   fi->BPB_SecPerClus = sectors_per_cluster;
 
   //BPB_RsvdSecCnt
   if (fi->type == FAT16) {
-    buffer[14] = 1;
-    buffer[15] = 0;
+    buffer[0x00E] = 1;
+    buffer[0x00F] = 0;
     fi->BPB_RsvdSecCnt = 1;
   } else if (fi->type == FAT32) {
-    buffer[14] = 32;
-    buffer[15] = 0;
+    buffer[0x00E] = 32;
+    buffer[0x00F] = 0;
     fi->BPB_RsvdSecCnt = 32;
   }
 
   // BPB_NumFATs
-  buffer[16] = 2;
+  buffer[0x010] = 2;
   fi->BPB_NumFATs = 2;
 
   // BPB_RootEntCnt
   if (fi->type == FAT16) {
-    buffer[17] = (uint8_t) 512;
-    buffer[18] = (uint8_t) (512 >> 8);
+    buffer[0x011] = (uint8_t) 512;
+    buffer[0x012] = (uint8_t) (512 >> 8);
     fi->BPB_RootEntCnt = 512;
   } else if (fi->type == FAT32) {
-    buffer[17] = 0;
-    buffer[18] = 0;
+    buffer[0x011] = 0;
+    buffer[0x012] = 0;
     fi->BPB_RootEntCnt = 0;
   }
 
   // BPB_TotSec16
   if (dev->num_sectors < 0x10000) {
-    buffer[19] = (uint8_t) dev->num_sectors;
-    buffer[20] = (uint8_t) (dev->num_sectors >> 8);
+    buffer[0x013] = (uint8_t) dev->num_sectors;
+    buffer[0x014] = (uint8_t) (dev->num_sectors >> 8);
   } else {
-    buffer[19] = 0;
-    buffer[20] = 0;
+    buffer[0x013] = 0;
+    buffer[0x014] = 0;
   }
   fi->BPB_TotSec = dev->num_sectors;
 
   // BPB_Media
-  buffer[21] = 0xF8;
+  buffer[0x015] = 0xF8;
   fi->BPB_Media = 0xF8;
 
   // BPB_FATSz16
   fi->BPB_FATSz = mkfs_compute_fat_size(fi);
 
   if (fi->type == FAT16 && fi->BPB_FATSz < 0x10000) {
-    buffer[22] = (uint8_t) fi->BPB_FATSz;
-    buffer[23] = (uint8_t) (fi->BPB_FATSz >> 8);
+    buffer[0x016] = (uint8_t) fi->BPB_FATSz;
+    buffer[0x017] = (uint8_t) (fi->BPB_FATSz >> 8);
   } else if (fi->type == FAT16) {
     PRINTF("B: FATSz = %lu", fi->BPB_FATSz);
     return -1;
   } else {
     // unused in FAT32 -> see offset 24h
-    buffer[22] = 0;
-    buffer[23] = 0;
+    buffer[0x016] = 0;
+    buffer[0x017] = 0;
   }
 
   // BPB_SecPerTrk
-  buffer[24] = 0;
-  buffer[25] = 0;
+  buffer[0x018] = 0;
+  buffer[0x019] = 0;
 
   // BPB_NumHeads
-  buffer[26] = 0;
-  buffer[27] = 0;
+  buffer[0x01A] = 0;
+  buffer[0x01B] = 0;
 
   // BPB_HiddSec
-  buffer[28] = 0;
-  buffer[29] = 0;
-  buffer[30] = 0;
-  buffer[31] = 0;
+  buffer[0x01C] = 0;
+  buffer[0x01D] = 0;
+  buffer[0x01E] = 0;
+  buffer[0x01F] = 0;
 
   // BPB_TotSec32
   if (dev->num_sectors < 0x10000) {
-    buffer[32] = 0;
-    buffer[33] = 0;
-    buffer[34] = 0;
-    buffer[35] = 0;
+    buffer[0x020] = 0;
+    buffer[0x021] = 0;
+    buffer[0x022] = 0;
+    buffer[0x023] = 0;
   } else {
-    buffer[32] = (uint8_t) fi->BPB_TotSec;
-    buffer[33] = (uint8_t) (fi->BPB_TotSec >> 8);
-    buffer[34] = (uint8_t) (fi->BPB_TotSec >> 16);
-    buffer[35] = (uint8_t) (fi->BPB_TotSec >> 24);
+    buffer[0x020] = (uint8_t) fi->BPB_TotSec;
+    buffer[0x021] = (uint8_t) (fi->BPB_TotSec >> 8);
+    buffer[0x022] = (uint8_t) (fi->BPB_TotSec >> 16);
+    buffer[0x023] = (uint8_t) (fi->BPB_TotSec >> 24);
   }
 
   if (fi->type == FAT16) {
     // BS_DrvNum
-    buffer[36] = 0x80;
+    buffer[0x024] = 0x80;
 
     // BS_Reserved1
-    buffer[37] = 0;
+    buffer[0x025] = 0;
 
     // BS_BootSig
-    buffer[38] = 0x29;
+    buffer[0x026] = 0x29;
 
     // BS_VolID
-    buffer[39] = 0;
-    buffer[40] = 0;
-    buffer[41] = 0;
-    buffer[42] = 0;
+    buffer[0x027] = 0;
+    buffer[0x028] = 0;
+    buffer[0x029] = 0;
+    buffer[0x02A] = 0;
 
     // BS_VolLab
-    memcpy(&(buffer[43]), "NO NAME    ", 11);
+    memcpy(&(buffer[0x02B]), "NO NAME    ", 11);
 
     // BS_FilSysType
-    memcpy(&(buffer[54]), "FAT16   ", 8);
+    memcpy(&(buffer[0x036]), "FAT16   ", 8);
   } else if (fi->type == FAT32) {
     // BPB_FATSz32
-    buffer[36] = (uint8_t) fi->BPB_FATSz;
-    buffer[37] = (uint8_t) (fi->BPB_FATSz >> 8);
-    buffer[38] = (uint8_t) (fi->BPB_FATSz >> 16);
-    buffer[39] = (uint8_t) (fi->BPB_FATSz >> 24);
+    buffer[0x024] = (uint8_t) fi->BPB_FATSz;
+    buffer[0x025] = (uint8_t) (fi->BPB_FATSz >> 8);
+    buffer[0x026] = (uint8_t) (fi->BPB_FATSz >> 16);
+    buffer[0x027] = (uint8_t) (fi->BPB_FATSz >> 24);
 
     // BPB_ExtFlags
-    buffer[40] = 0;
-    buffer[41] = 0; // Mirror enabled
+    buffer[0x028] = 0;
+    buffer[0x029] = 0; // Mirror enabled, TODO:...
 
     // BPB_FSVer
-    buffer[42] = 0;
-    buffer[43] = 0;
+    buffer[0x02A] = 0;
+    buffer[0x02B] = 0;
 
-    // BPB_RootClus
-    buffer[44] = 2;
-    buffer[45] = 0;
-    buffer[46] = 0;
-    buffer[47] = 0;
+    // BPB_RootClus, cluster number of root cluster (typically 2)
+    buffer[0x02C] = 2;
+    buffer[0x02D] = 0;
+    buffer[0x02E] = 0;
+    buffer[0x02F] = 0;
 
     // BPB_FSInfo
-    buffer[48] = 1;
-    buffer[49] = 0;
+    buffer[0x030] = 1;
+    buffer[0x031] = 0;
 
-    // BPB_BkBootSec
-    buffer[50] = 0;
-    buffer[51] = 0;
+    // BPB_BkBootSec, set to 0 as we do not create a boot sectors copy yet
+    // TODO: maybe we should create it, as it does not require to much effort?
+    buffer[0x032] = 0x00;
+    buffer[0x033] = 0x00;
 
     // BPB_Reserved
-    memset(&(buffer[52]), 0, 12);
+    memset(&(buffer[0x034]), 0, 12);
 
     // BS_DrvNum
-    buffer[64] = 0x80;
+    buffer[0x040] = 0x80;
 
     // BS_Reserved1
-    buffer[65] = 0;
+    buffer[0x041] = 0;
 
     // BS_BootSig
-    buffer[66] = 0x29;
+    buffer[0x042] = 0x29;
 
     // BS_VolID
-    buffer[67] = 0;
-    buffer[68] = 0;
-    buffer[69] = 0;
-    buffer[70] = 0;
+    buffer[0x043] = 0;
+    buffer[0x044] = 0;
+    buffer[0x045] = 0;
+    buffer[0x046] = 0;
 
     // BS_VolLab
-    memcpy(&(buffer[71]), "NO NAME    ", 11);
+    memcpy(&(buffer[0x047]), "NO NAME    ", 11);
 
     // BS_FilSysType
-    memcpy(&(buffer[82]), "FAT32   ", 8);
+    memcpy(&(buffer[0x052]), "FAT32   ", 8);
   }
 
   // Specification demands this values at this precise positions
-  buffer[510] = 0x55;
-  buffer[511] = 0xAA;
+  buffer[0x1FE] = 0x55;
+  buffer[0x1FF] = 0xAA;
 
   diskio_write_block(dev, 0, buffer);
 
@@ -416,7 +423,7 @@ mkfs_write_fats(uint8_t *buffer, struct diskio_device_info *dev, struct FAT_Info
     // BPB_Media Copy
     fat32_buf[0] = 0x0FFFFF00 + fi->BPB_Media;
     // End of Clusterchain marker 
-    fat32_buf[1] = 0x0FFFFFF8;
+    fat32_buf[1] = 0x0FFFFFFF;
     // End of Clusterchain marker for root directory at cluster 2
     fat32_buf[2] = 0x0FFFFFF8;
   } else {
@@ -439,10 +446,14 @@ mkfs_write_fats(uint8_t *buffer, struct diskio_device_info *dev, struct FAT_Info
   memset(buffer, 0x00, 12);
 
   // Write additional Sectors of the FATs
-  //  for (i = 1; i < fi->BPB_FATSz; ++i) {
-  for (i = 1; i < 128; ++i) {// only reset the first 128 sectors
-    diskio_write_block(dev, fi->BPB_RsvdSecCnt + i, buffer);
+  diskio_write_blocks_start(dev, fi->BPB_RsvdSecCnt + 1, fi->BPB_FATSz / 2);
+  for (i = 1; i < fi->BPB_FATSz / FAT_ERASE_DIV; ++i) {
+    watchdog_periodic();
+    diskio_write_blocks_next(dev, buffer);
+    //diskio_write_block(dev, fi->BPB_RsvdSecCnt + i, buffer);
   }
+  diskio_write_blocks_done(dev);
+
 #if FAT_SYNC
   // Write additional Sectors of the secondary FAT(s)
   for (j = 1; j < fi->BPB_NumFATs; ++j) {

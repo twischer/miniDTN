@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2004, Swedish Institute of Computer Science.
+ * Copyright (c) 2013, TU Braunschweig
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,62 +27,75 @@
  * SUCH DAMAGE.
  *
  * This file is part of the Contiki operating system.
- */
-
-/**
- * \file EEPROM read/write routines for AVR
  *
- * \author
- *        Adam Dunkels <adam@sics.se>
- *        Enrico Joerns <e.joerns@tu-bs.de>
  */
 
-#include "dev/eeprom.h"
-#include "dev/watchdog.h"
+/* Tests order of multiple started etimer events. */
 
-#include <avr/eeprom.h>
-#include <stdio.h>
-#include <util/delay.h>
+#include "contiki.h"
 
-#define EEPROM_WRITE_MAX_TRIES  100
+#include <stdio.h> /* For printf() */
+#include "rtimer.h"
+#include "../test.h"
 
+#define TEST_CONF_ETIMERS 7
+#define TEST_CONF_TIMES   (CLOCK_SECOND * 60), (CLOCK_SECOND / 10), (CLOCK_SECOND), (CLOCK_SECOND * 2), (CLOCK_SECOND / 2), (CLOCK_SECOND / 128), (CLOCK_SECOND * 5)
+#define TEST_CONF_ORDERS  5, 1, 4, 2, 3, 6, 0
+
+TEST_SUITE("etimer");
 /*---------------------------------------------------------------------------*/
-void
-eeprom_write(eeprom_addr_t addr, unsigned char *buf, int size)
-{
-  uint8_t tries = 0;
+PROCESS(etimer_test_process, "etimer Test process");
+AUTOSTART_PROCESSES(&etimer_test_process);
+/*---------------------------------------------------------------------------*/
+int running = 1;
+struct etimer et[TEST_CONF_ETIMERS];
+uint16_t times[TEST_CONF_ETIMERS] = {TEST_CONF_TIMES};
+uint16_t evt_orders[TEST_CONF_ETIMERS] = {TEST_CONF_ORDERS};
+static uint16_t cur_time, after_rtimer;
+static int ret;	
+static uint8_t done;
 
-  // nonblocking wait
-  while(!eeprom_is_ready()) {
-    watchdog_periodic();
-    _delay_ms(1);
-    tries++;
-
-    if (tries > EEPROM_WRITE_MAX_TRIES) {
-      printf("Error: EEPROM write failed (%d,%u,%d)\n", 0, addr, size);
-      return;
-    }
+void rtime_call(struct rtimer *t, void *ptr){
+  after_rtimer=RTIMER_NOW();
+  if (after_rtimer - cur_time ==  1000 + 1){
+    ret = 0;
+  }else{
+    ret = 1;
   }
-
-  eeprom_write_block(buf, (unsigned short *)addr, size);
+  done = 2;
 }
 /*---------------------------------------------------------------------------*/
-void
-eeprom_read(eeprom_addr_t addr, unsigned char *buf, int size)
+PROCESS_THREAD(etimer_test_process, ev, data)
 {
-  uint8_t tries = 0;
+  PROCESS_BEGIN();
 
-  // nonblocking wait
-  while(!eeprom_is_ready()) {
-    watchdog_periodic();
-    _delay_ms(1);
-    tries++;
-    if (tries > EEPROM_WRITE_MAX_TRIES) {
-      printf("Error: EEPROM read failed\n");
-      return;
-    }
+  TEST_BEGIN("etimer-test");
+
+  static int idx;
+
+  for(idx = 0; idx < TEST_CONF_ETIMERS; idx++) {
+    etimer_set(&et[idx], times[idx]);
   }
 
-  eeprom_read_block(buf, (unsigned short *)addr, size);
+  idx = 0;
+  while(running) {
+
+    PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_TIMER);
+
+    printf("event arrived from\n", data);
+    // check if events arrive in the same order we placed them
+    TEST_EQUALS((struct etimer*) data - &et[0], evt_orders[idx++]);
+
+    if (idx == TEST_CONF_ETIMERS) {
+      TESTS_DONE();
+    }
+
+  }
+
+  TEST_END();
+
+
+  PROCESS_END();
 }
 /*---------------------------------------------------------------------------*/
+

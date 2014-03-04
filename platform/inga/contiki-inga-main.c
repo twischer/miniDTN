@@ -243,14 +243,21 @@ generate_new_eui64(uint8_t eui64[8])
 }
 #endif /* CONTIKI_CONF_RANDOM_MAC */
 /*----------------------------------------------------------------------------*/
+// implements log function from uipopt.h
 void
 uip_log(char *msg)
 {
   printf("%s\n", msg);
 }
 /*----------------------------------------------------------------------------*/
+// config variables, preset with default values
+uint8_t radio_tx_power = RADIO_TX_POWER;
+uint8_t radio_channel = RADIO_CHANNEL;
+uint16_t pan_id = RADIO_PAN_ID;
+uint8_t eui64_addr[8] = {NODE_EUI64};
+/*----------------------------------------------------------------------------*/
 // implement sys/node-id.h interface
-unsigned short node_id;
+unsigned short node_id = NODE_ID;
 /*----------------------------------------------------------------------------*/
 void node_id_restore(void) {
   node_id = settings_get_uint16(SETTINGS_KEY_PAN_ADDR, 0);
@@ -269,49 +276,48 @@ void
 platform_radio_init(void)
 {
 
-  // Using default or project value as default value
-  // NOTE: These variables will always be overwritten when having an eeprom value
-  uint8_t radio_tx_power = RADIO_TX_POWER;
-  uint8_t radio_channel = RADIO_CHANNEL;
-  uint16_t pan_id = RADIO_PAN_ID;
-  node_id = NODE_ID;
-  uint8_t eui64_addr[8] = {0, 0, 0, 0, 0, 0, 0, 0};
-  //rimeaddr_t addr;
-
-
   /*******************************************************************************
-   * Load settings from EEPROM
+   * Load settings from EEPROM if not set manually
    ******************************************************************************/
 
   // PAN_ID
+#ifndef RADIO_CONF_PAN_ID
   if (settings_check(SETTINGS_KEY_PAN_ID, 0) == true) {
     pan_id = settings_get_uint16(SETTINGS_KEY_PAN_ID, 0);
   } else {
     PRINTD("PanID not in EEPROM - using default\n");
   }
+#endif
 
   // PAN_ADDR/NODE_ID
+#ifndef NODE_CONF_ID
   if (settings_check(SETTINGS_KEY_PAN_ADDR, 0) == true) {
     node_id = settings_get_uint16(SETTINGS_KEY_PAN_ADDR, 0);
   } else {
     PRINTD("NodeID/PanAddr not in EEPROM - using default\n");
   }
+#endif
 
   // TX_POWER
+#ifndef RADIO_CONF_TX_POWER
   if (settings_check(SETTINGS_KEY_TXPOWER, 0) == true) {
     radio_tx_power = settings_get_uint8(SETTINGS_KEY_TXPOWER, 0);
   } else {
     PRINTD("Radio TXPower not in EEPROM - using default\n");
   }
+#endif
 
   // CHANNEL
+#ifndef RADIO_CONF_CHANNEL
   if (settings_check(SETTINGS_KEY_CHANNEL, 0) == true) {
     radio_channel = settings_get_uint8(SETTINGS_KEY_CHANNEL, 0);
   } else {
     PRINTD("Radio Channel not in EEPROM - using default\n");
   }
+#endif
 
   // EUI64 ADDR
+#ifndef NODE_CONF_EUI64
   // if setting not set or invalid data - generate ieee_addr from node_id 
   if (settings_check(SETTINGS_KEY_EUI64, 0) != true || settings_get(SETTINGS_KEY_EUI64, 0, (void*) &eui64_addr, sizeof(eui64_addr)) != SETTINGS_STATUS_OK) {
 #if CONTIKI_CONF_RANDOM_MAC
@@ -336,6 +342,7 @@ platform_radio_init(void)
     }
 #endif
   }
+#endif
 
 #if EUI64_BY_NODE_ID
   /* Replace lower 2 bytes with node ID  */
@@ -436,15 +443,11 @@ platform_radio_init(void)
 void
 init(void)
 {
-
-  _delay_ms(200);
-  uint8_t reason;
   extern void *watchdog_return_addr;
+  extern uint8_t mcusr_mirror;
 
   /* Save the address where the watchdog occurred */
   void *wdt_addr = watchdog_return_addr;
-  /* Save the reset reason for later */
-  reason = MCUSR;
   MCUSR = 0;
 
   watchdog_init();
@@ -455,20 +458,23 @@ init(void)
   /* Redirect stdout to second port */
   rs232_redirect_stdout(RS232_PORT_0);
 
+  /* wait here to get a chance to see boot screen. */
+  _delay_ms(200);
+
   PRINTA("\n*******Booting %s*******\nReset reason: ", CONTIKI_VERSION_STRING);
   /* Print out reset reason */
-  if (reason & _BV(JTRF))
+  if (mcusr_mirror & _BV(JTRF))
     PRINTA("JTAG ");
-  if (reason & _BV(WDRF))
+  if (mcusr_mirror & _BV(WDRF))
     PRINTA("Watchdog ");
-  if (reason & _BV(BORF))
+  if (mcusr_mirror & _BV(BORF))
     PRINTA("Brown-out ");
-  if (reason & _BV(EXTRF))
+  if (mcusr_mirror & _BV(EXTRF))
     PRINTA("External ");
-  if (reason & _BV(PORF))
+  if (mcusr_mirror & _BV(PORF))
     PRINTA("Power-on ");
   PRINTA("\n");
-  if (reason & _BV(WDRF))
+  if (mcusr_mirror & _BV(WDRF))
     PRINTA("Watchdog possibly occured at address %p\n", wdt_addr);
 
   clock_init();
@@ -501,6 +507,11 @@ init(void)
 
   /* Flash initialization */
   at45db_init();
+
+#ifdef MICRO_SD_PWR_PIN
+  /* set pin for micro sd card power switch to output */
+  MICRO_SD_PWR_PORT_DDR |= (1 << MICRO_SD_PWR_PIN);
+#endif
 
   /* rtimers needed for radio cycling */
   rtimer_init();
@@ -545,73 +556,7 @@ init(void)
 
 #endif /* ANNOUNCE_BOOT */
 
-  /* Autostart other processes */
-  autostart_start(autostart_processes);
-
-  /*---If using coffee file system create initial web content if necessary---*/
-#if COFFEE_FILES
-  int fa = cfs_open("/index.html", CFS_READ);
-  if (fa < 0) { //Make some default web content
-    PRINTA("No index.html file found, creating upload.html!\n");
-    PRINTA("Formatting FLASH file system for coffee...");
-    cfs_coffee_format();
-    PRINTA("Done!\n");
-    fa = cfs_open("/index.html", CFS_WRITE);
-    int r = cfs_write(fa, &"It works!", 9);
-    if (r < 0) printf("Can''t create /index.html!\n");
-    cfs_close(fa);
-    fa = cfs_open("/upload.html", CFS_WRITE);
-    r = cfs_write(fa, &"<html><body><form action=\"upload.html\" enctype=\"multipart/form-data\" method=\"post\"><input name=\"userfile\" type=\"file\" size=\"50\" /><input value=\"Upload\" type=\"submit\" /></form></body></html>  ", 188);
-    if (r < 0) printf("Can''t create /index.html!\n");
-    cfs_close(fa);
-  } else {
-    PRINTF("index.html found\n");
-  }
-#endif /* COFFEE_FILES */
-
-  /*--------------------------Announce the configuration---------------------*/
-#if ANNOUNCE_BOOT
-  {
-#if AVR_WEBSERVER
-    //    uint8_t i;
-    char buf[80] = "dummy";
-    unsigned int size = 4711;
-    //
-    //    for (i = 0; i < UIP_DS6_ADDR_NB; i++) {
-    //      if (uip_ds6_if.addr_list[i].isused) {
-    //        httpd_cgi_sprint_ip6(uip_ds6_if.addr_list[i].ipaddr, buf);
-    //        PRINTA("IPv6 Address: %s\n", buf);
-    //      }
-    //    }
-    //    cli();
-    //    eeprom_read_block(buf, eemem_server_name, sizeof (eemem_server_name));
-    //    sei();
-    //    buf[sizeof (eemem_server_name)] = 0;
-    //    PRINTA("%s", buf);
-    //    cli();
-    //    eeprom_read_block(buf, eemem_domain_name, sizeof (eemem_domain_name));
-    //    sei();
-    //    buf[sizeof (eemem_domain_name)] = 0;
-    //    size = httpd_fs_get_size();
-
-#ifndef COFFEE_FILES
-    PRINTA(".%s online with fixed %u byte web content\n", buf, size);
-#elif COFFEE_FILES==1
-    PRINTA(".%s online with static %u byte EEPROM file system\n", buf, size);
-#elif COFFEE_FILES==2
-    PRINTA(".%s online with dynamic %u KB EEPROM file system\n", buf, size >> 10);
-#elif COFFEE_FILES==3
-    PRINTA(".%s online with static %u byte program memory file system\n", buf, size);
-#elif COFFEE_FILES==4
-    PRINTA(".%s online with dynamic %u KB program memory file system\n", buf, size >> 10);
-#endif /* COFFEE_FILES */
-
-#else
-    PRINTA("Online\n");
-#endif /* AVR_WEBSERVER */
-
-#endif /* ANNOUNCE_BOOT */
-  }
+  PRINTA("Online\n");
 }
 
 #if PER_ROUTES
@@ -739,7 +684,10 @@ int
 main(void)
 {
   init();
+  /* Start sensor init process */
   process_start(&sensors_process, NULL);
+  /* Autostart other processes */
+  autostart_start(autostart_processes);
 
   while (1) {
     process_run();

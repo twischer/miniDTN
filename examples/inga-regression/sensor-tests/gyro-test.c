@@ -8,7 +8,7 @@
 
 /*--- Test parameters ---*/
 #define SENSOR_NAME GYRO_SENSOR 
-#define GYRO_TEST_CFG_MAX_ZERO_G      1
+#define GYRO_TEST_CFG_MAX_ZERO_G      2
 #define GYRO_TEST_CFG_MAX_ZERO_G_RAW  150
 /*--- ---*/
 

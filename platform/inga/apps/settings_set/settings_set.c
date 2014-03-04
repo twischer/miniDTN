@@ -92,8 +92,8 @@ PROCESS_THREAD(settings_set_process, ev, data)
   }
 #endif
 
-#ifdef EUI64
-  uint8_t settings_eui64[8] = {EUI64};
+#ifdef NODE_CONF_EUI64
+  uint8_t settings_eui64[8] = {NODE_CONF_EUI64};
   if (settings_set(SETTINGS_KEY_EUI64, settings_eui64, 8) == SETTINGS_STATUS_OK) {
     settings_get(SETTINGS_KEY_EUI64, 0, settings_eui64, sizeof (settings_eui64));
     PRINTF("[APP.settings_set] New EUI64: %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x\n\r",

@@ -10,6 +10,11 @@
 
 #include <sys/test.h>
 
+void test_eq(uint32_t a, uint32_t b, char* test);
+void test_neq(uint32_t a, uint32_t b, char* test);
+void test_leq(uint32_t a, uint32_t b, char* test);
+void test_geq(uint32_t a, uint32_t b, char* test);
+
 //static uint8_t errors;
 static const char *precond_ = "PRE";
 static const char *postcond_ = "POST";
@@ -29,19 +34,6 @@ extern struct test_suite suite;
 
 #define TEST_SUITE(name) \
   struct test_suite suite = {"unknown", "unknown", "unknown",0};
-
-/** @depcrecated */
-#define ASSERT(a, b)  if (!(b)) { \
-  TEST_REPORT(a, 0, CLOCK_SECOND, "s"); \
-  suite.errors++; \
-  }
-
-/** @depcrecated */
-#define ASSERT_CRITICAL(a, b) if (!(b)) { \
-  ASSERT(a, b) \
-  sprintf(&noe, "Failed with %d errors", suite.errors); \
-  TEST_FAIL(err_msg); \
-  }
 
 /** Start of test with given name. */
 #define TEST_BEGIN(a) \
@@ -75,48 +67,22 @@ extern struct test_suite suite;
 /** Tests a, b for equality.
  * Reports error if failed.
  */
-#define TEST_EQUALS(a, b) \
-  if ((a) != (b)) { \
-    suite.errors++; \
-    report_fail(a, b, #a " != " #b); \
-    return; \
-  }
+#define TEST_EQUALS(a, b) test_eq(a, b, #a " != " #b)
 
 /** Tests a, b for unequality.
  * Reports error if failed.
  */
-#define TEST_NEQ(a, b) \
-  if ((a) == (b)) { \
-    suite.errors++; \
-    report_fail(a, b, #a " == " #b); \
-    return; \
-  }
+#define TEST_NEQ(a, b) test_neq(a, b, #a " == " #b)
 
 /** Tests for a <= b .
  * Reports error if failed.
  */
-#define TEST_LEQ(a, b) \
-  if ((a) > (b)) { \
-    suite.errors++; \
-    report_fail(a, b, #a " > " #b); \
-    return; \
-  }
+#define TEST_LEQ(a, b) test_leq(a, b, #a " > " #b)
 
 /** Tests for a >= b .
  * Reports error if failed.
  */
-#define TEST_GEQ(a, b) \
-  if ((a) < (b)) { \
-    suite.errors++; \
-    report_fail(a, b, #a " < " #b); \
-    return; \
-  }
-
-static void report_fail(int a, int b, char *msg) {
-  static char buffer_[128];
-  sprintf(buffer_, "%s@%s=>%s, %d, %d", suite.test_name, suite.test_type, msg, a, b);
-  TEST_FAIL(buffer_); \
-}
+#define TEST_GEQ(a, b) test_geq(a, b, #a " < " #b)
 
 /** Indicates end of test bundle. */
 #define TESTS_DONE() \
