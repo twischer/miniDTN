@@ -31,6 +31,7 @@
 package org.contikios.cooja;
 
 import java.util.Collection;
+import javax.swing.JDesktopPane;
 
 import javax.swing.JInternalFrame;
 import javax.swing.event.InternalFrameAdapter;
@@ -95,8 +96,22 @@ public abstract class VisPlugin extends JInternalFrame implements Plugin {
     return false;
   }
 
+  /**
+   * This method is called to display a new plugin,
+   * after having added it to the JDesktopPane.
+   * 
+   * Here the Plugins JInternalFrame dimensions should be specified or pack() 
+   * should be executed as this semms to work correctlyonly after having
+   * assigned it to a JDestopPane.
+   * 
+   * @param pane DesktopPane that implementing classes may use to determine their size/position
+   */
+  public abstract void packPlugin(JDesktopPane pane);
+  
+  @Override
   public void startPlugin() {
   }
+  @Override
   public void closePlugin() {
   }
   

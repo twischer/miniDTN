@@ -58,6 +58,7 @@ import javax.swing.JCheckBox;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
+import javax.swing.JDesktopPane;
 import javax.swing.JDialog;
 import javax.swing.JFileChooser;
 import javax.swing.JMenu;
@@ -373,11 +374,16 @@ public class TimeLine extends VisPlugin implements HasQuickHelp {
       }
     });
 
-    /* XXX HACK: here we set the position and size of the window when it appears on a blank simulation screen. */
-    this.setLocation(0, gui.getDesktopPane().getHeight() - 166);
-    this.setSize(gui.getDesktopPane().getWidth(), 166);
   }
-
+  
+  @Override
+  public void packPlugin(JDesktopPane pane) {
+    /* XXX HACK: here we set the position and size of the window
+       when it appears on a blank simulation screen. */
+    this.setLocation(0, pane.getHeight() - 166);
+    this.setSize(pane.getWidth(), 166);
+  }
+  
   public void startPlugin() {
       super.startPlugin();
       

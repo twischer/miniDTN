@@ -41,6 +41,7 @@ import java.util.Vector;
 
 import javax.swing.BorderFactory;
 import javax.swing.JComboBox;
+import javax.swing.JDesktopPane;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -130,7 +131,6 @@ public class MoteInterfaceViewer extends VisPlugin implements HasQuickHelp, Mote
           interfacePanel.add(new JLabel("No interface visualizer", JLabel.CENTER));
           currentInterfaceVisualizer = null;
         }
-        setSize(getSize());
       }
     });
     selectInterfaceComboBox.setSelectedIndex(0);
@@ -151,15 +151,11 @@ public class MoteInterfaceViewer extends VisPlugin implements HasQuickHelp, Mote
         JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
     mainScrollPane.setBorder(BorderFactory.createEmptyBorder(0,2,0,2));
     this.setContentPane(mainScrollPane);
-    //setPreferredSize(new Dimension(350,300));
-   // setSize(new Dimension(350,300));
+  }
+  
+  @Override
+  public void packPlugin(JDesktopPane pane) {
     pack();
-    try {
-      setSelected(true);
-    } catch (java.beans.PropertyVetoException e) {
-      // Could not select
-    }
-
   }
 
   /**

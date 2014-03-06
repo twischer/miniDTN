@@ -44,6 +44,7 @@ import java.util.Observer;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.JComponent;
+import javax.swing.JDesktopPane;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
@@ -111,7 +112,6 @@ public class SerialSocketServer extends VisPlugin implements MotePlugin {
 
       getContentPane().add(BorderLayout.NORTH, northBox);
       getContentPane().add(BorderLayout.CENTER, mainBox);
-      pack();
     }
 
     /* Mote serial port */
@@ -171,6 +171,11 @@ public class SerialSocketServer extends VisPlugin implements MotePlugin {
         }
       }
     });
+  }
+
+  @Override
+  public void packPlugin(JDesktopPane pane) {
+    pack();
   }
 
   private void startSocketReadThread(final DataInputStream in) {

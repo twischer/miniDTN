@@ -51,6 +51,7 @@ import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
+import javax.swing.JDesktopPane;
 import javax.swing.JFormattedTextField;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -522,9 +523,13 @@ public class VariableWatcher extends VisPlugin implements MotePlugin {
     mainPane.add(smallPane);
 
     add(BorderLayout.NORTH, mainPane);
-    pack();
   }
 
+  @Override
+  public void packPlugin(JDesktopPane pane) {
+    pack();
+  }
+  
   /**
    * Simple String to Hex to String conversion.
    */

@@ -64,6 +64,7 @@ import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JComponent;
+import javax.swing.JDesktopPane;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JMenu;
@@ -102,7 +103,6 @@ import org.contikios.cooja.TimeEvent;
 import org.contikios.cooja.VisPlugin;
 import org.contikios.cooja.dialogs.TableColumnAdjuster;
 import org.contikios.cooja.dialogs.UpdateAggregator;
-import org.contikios.cooja.interfaces.IPAddress;
 import org.contikios.cooja.motes.AbstractEmulatedMote;
 import org.contikios.cooja.util.ArrayQueue;
 import org.contikios.cooja.util.IPUtils;
@@ -660,9 +660,13 @@ public class BufferListener extends VisPlugin {
     getContentPane().add(BorderLayout.SOUTH, filterPanel);
 
     updateTitle();
+  }
+
+  @Override
+  public void packPlugin(JDesktopPane pane) {
     pack();
-    setSize(gui.getDesktopPane().getWidth(), 150);
-    setLocation(0, gui.getDesktopPane().getHeight() - 300);
+    setSize(pane.getWidth(), 150);
+    setLocation(0, pane.getHeight() - 300);
   }
 
   private boolean startMonitoring(Mote mote) throws Exception {

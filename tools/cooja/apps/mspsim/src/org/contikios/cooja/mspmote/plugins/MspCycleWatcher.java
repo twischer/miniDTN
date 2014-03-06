@@ -39,6 +39,7 @@ import java.util.Observer;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
+import javax.swing.JDesktopPane;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
@@ -106,8 +107,6 @@ public class MspCycleWatcher extends VisPlugin implements MotePlugin {
 
     add(BorderLayout.CENTER, controlPanel);
 
-    setSize(370, 100);
-
     simulation.addObserver(simObserver = new Observer() {
       public void update(Observable obs, Object obj) {
         updateLabels();
@@ -115,15 +114,13 @@ public class MspCycleWatcher extends VisPlugin implements MotePlugin {
     });
 
     updateLabels();
-
-    // Tries to select this plugin
-    try {
-      setSelected(true);
-    } catch (java.beans.PropertyVetoException e) {
-      // Could not select
-    }
   }
-
+  
+  @Override
+  public void packPlugin(JDesktopPane pane) {
+    setSize(370, 100);
+  }
+  
   private void updateLabels() {
     cycleTextField.setText("" + cpu.cycles);
     resetTextField.setText("" + (cpu.cycles - cycleReset));

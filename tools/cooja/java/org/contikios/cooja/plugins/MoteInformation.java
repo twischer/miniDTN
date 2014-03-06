@@ -38,6 +38,7 @@ import java.awt.event.ActionListener;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
+import javax.swing.JDesktopPane;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -178,9 +179,12 @@ public class MoteInformation extends VisPlugin implements MotePlugin {
         new JScrollPane(mainPane,
             JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
             JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED));
-
+  }
+  
+  @Override
+  public void packPlugin(JDesktopPane pane) {
     pack();
-    setSize(new Dimension(getWidth()+15, getHeight()+15));
+    setSize(new Dimension(getWidth() + 15, getHeight() + 15));
   }
 
   public void closePlugin() {

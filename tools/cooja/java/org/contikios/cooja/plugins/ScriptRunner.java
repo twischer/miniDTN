@@ -57,6 +57,7 @@ import javax.swing.Action;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JCheckBoxMenuItem;
+import javax.swing.JDesktopPane;
 import javax.swing.JDialog;
 import javax.swing.JEditorPane;
 import javax.swing.JFileChooser;
@@ -260,15 +261,6 @@ public class ScriptRunner extends VisPlugin {
     getContentPane().add(BorderLayout.CENTER, centerPanel);
     getContentPane().add(BorderLayout.SOUTH, southPanel);
 
-    setSize(600, 700);
-    Dimension maxSize = gui.getDesktopPane().getSize();
-    if (getWidth() > maxSize.getWidth()) {
-      setSize((int)maxSize.getWidth(), getHeight());
-    }
-    if (getHeight() > maxSize.getHeight()) {
-      setSize(getWidth(), (int)maxSize.getHeight());
-    }
-
     /* Set default script */
     String script = loadScript(EXAMPLE_SCRIPTS[0]);
     if (script != null) {
@@ -276,6 +268,18 @@ public class ScriptRunner extends VisPlugin {
     }
   }
 
+  @Override
+  public void packPlugin(JDesktopPane pane) {
+    setSize(600, 700);
+    Dimension maxSize = pane.getSize();
+    if (getWidth() > maxSize.getWidth()) {
+      setSize((int)maxSize.getWidth(), getHeight());
+    }
+    if (getHeight() > maxSize.getHeight()) {
+      setSize(getWidth(), (int)maxSize.getHeight());
+    }
+  }  
+  
   public void setLinkFile(File source) {
     linkedFile = source;
     if (source == null) {

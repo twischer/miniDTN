@@ -60,6 +60,7 @@ import javax.swing.Action;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JCheckBoxMenuItem;
+import javax.swing.JDesktopPane;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JMenu;
@@ -538,11 +539,15 @@ public class LogListener extends VisPlugin implements HasQuickHelp {
     getContentPane().add(BorderLayout.SOUTH, filterPanel);
 
     updateTitle();
+  }
+  
+    @Override
+  public void packPlugin(JDesktopPane pane) {
     pack();
-
-    /* XXX HACK: here we set the position and size of the window when it appears on a blank simulation screen. */
-    this.setLocation(400, 160);
-    this.setSize(gui.getDesktopPane().getWidth() - 400, 240);
+    /* XXX HACK: here we set the position and size of the window
+       when it appears on a blank simulation screen. */
+    setLocation(400, 160);
+    setSize(pane.getWidth() - 400, 240);
   }
 
   public void registerNewLogOutput(Mote mote, long time, String msg) {

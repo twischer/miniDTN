@@ -38,6 +38,7 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.Collection;
+import javax.swing.JDesktopPane;
 
 import javax.swing.JMenuItem;
 import javax.swing.JPopupMenu;
@@ -98,13 +99,16 @@ public class Notes extends VisPlugin {
         }
       });
     }
-
-
-    /* XXX HACK: here we set the position and size of the window when it appears on a blank simulation screen. */
-    this.setLocation(680, 0);
-    this.setSize(gui.getDesktopPane().getWidth() - 680, 160);
   }
-
+  
+  @Override
+  public void packPlugin(JDesktopPane pane) {
+    /* XXX HACK: here we set the position and size of the window
+       when it appears on a blank simulation screen. */
+    this.setLocation(680, 0);
+    this.setSize(pane.getWidth() - 680, 160);
+  }
+  
   public String getNotes() {
     return notes.getText();
   }

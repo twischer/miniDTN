@@ -191,7 +191,6 @@ public class SimInformation extends VisPlugin {
 
 
     this.setContentPane(mainPane);
-    pack();
 
     // Register as simulation observer
     simulation.addObserver(simObserver = new Observer() {
@@ -214,15 +213,13 @@ public class SimInformation extends VisPlugin {
     if (simulation.isRunning()) {
       updateLabelTimer.start(); 
     }
-    
-    try {
-      setSelected(true);
-    } catch (java.beans.PropertyVetoException e) {
-      // Could not select
-    }
-
   }
-
+  
+  @Override
+  public void packPlugin(JDesktopPane pane) {
+    pack();
+  }
+  
   public void closePlugin() {
     // Remove log observer from all log interfaces
     if (simObserver != null) {

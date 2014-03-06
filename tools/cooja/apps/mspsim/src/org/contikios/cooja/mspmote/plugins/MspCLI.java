@@ -29,6 +29,7 @@
  */
 
 package org.contikios.cooja.mspmote.plugins;
+
 import java.awt.BorderLayout;
 import java.awt.Container;
 import java.awt.event.ActionEvent;
@@ -38,6 +39,7 @@ import java.awt.event.KeyEvent;
 import java.io.PrintStream;
 import java.util.List;
 
+import javax.swing.JDesktopPane;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPopupMenu;
@@ -183,9 +185,13 @@ public class MspCLI extends VisPlugin implements MotePlugin, HasQuickHelp {
     cliResponseAggregator.start();
 
     panel.add(commandField, BorderLayout.SOUTH);
+  }
+  
+  @Override
+  public void packPlugin(JDesktopPane pane) {
     setSize(500,500);
   }
-
+  
   public void closePlugin() {
     cliResponseAggregator.stop();
   }

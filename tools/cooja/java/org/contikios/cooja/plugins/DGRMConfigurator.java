@@ -44,6 +44,7 @@ import java.util.Observer;
 import javax.swing.DefaultCellEditor;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
+import javax.swing.JDesktopPane;
 import javax.swing.JDialog;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
@@ -237,6 +238,10 @@ public class DGRMConfigurator extends VisPlugin {
     });
 
     model.fireTableDataChanged();
+  }
+  
+  @Override
+  public void packPlugin(JDesktopPane pane) {
     setSize(400, 300);
   }
 

@@ -1650,40 +1650,41 @@ public class Cooja extends Observable {
    *
    * @param plugin Plugin
    */
-  public void showPlugin(final Plugin plugin) {
+  public void showPlugin(final VisPlugin visPlugin) {
     new RunnableInEDT<Boolean>() {
       public Boolean work() {
-        JInternalFrame pluginFrame = plugin.getCooja();
-        if (pluginFrame == null) {
+
+        if (visPlugin == null) {
           logger.fatal("Failed trying to show plugin without visualizer.");
           return false;
         }
 
         int nrFrames = myDesktopPane.getAllFrames().length;
-        myDesktopPane.add(pluginFrame);
+        myDesktopPane.add(visPlugin);
+        visPlugin.packPlugin(getDesktopPane());
 
         /* Set size if not already specified by plugin */
-        if (pluginFrame.getWidth() <= 0 || pluginFrame.getHeight() <= 0) {
-          pluginFrame.setSize(FRAME_STANDARD_WIDTH, FRAME_STANDARD_HEIGHT);
+        if (visPlugin.getWidth() <= 0 || visPlugin.getHeight() <= 0) {
+          visPlugin.setSize(FRAME_STANDARD_WIDTH, FRAME_STANDARD_HEIGHT);
         }
 
         /* Set location if not already visible */
-        if (pluginFrame.getLocation().x <= 0 && pluginFrame.getLocation().y <= 0) {
-          pluginFrame.setLocation(
+        if (visPlugin.getLocation().x <= 0 && visPlugin.getLocation().y <= 0) {
+          visPlugin.setLocation(
               nrFrames * FRAME_NEW_OFFSET,
               nrFrames * FRAME_NEW_OFFSET);
         }
 
-        pluginFrame.setVisible(true);
+        visPlugin.setVisible(true);
 
         /* Select plugin */
         try {
           for (JInternalFrame existingPlugin : myDesktopPane.getAllFrames()) {
             existingPlugin.setSelected(false);
           }
-          pluginFrame.setSelected(true);
-        } catch (Exception e) { }
-        myDesktopPane.moveToFront(pluginFrame);
+          visPlugin.setSelected(true);
+        } catch (PropertyVetoException e) { }
+        myDesktopPane.moveToFront(visPlugin);
 
         return true;
       }
@@ -1873,8 +1874,8 @@ public class Cooja extends Observable {
     updateGUIComponentState();
 
     // Show plugin if visualizer type
-    if (activate && plugin.getCooja() != null) {
-      cooja.showPlugin(plugin);
+    if (activate && VisPlugin.class.isAssignableFrom(plugin.getClass())) {
+      cooja.showPlugin((VisPlugin) plugin);
     }
 
     return plugin;
@@ -3725,7 +3726,9 @@ public class Cooja extends Observable {
               }
             }
 
-            showPlugin(startedPlugin);
+            if (VisPlugin.class.isAssignableFrom(startedPlugin.getClass())) {
+              showPlugin((VisPlugin) startedPlugin);
+            }
             return true;
           }
         }.invokeAndWait();

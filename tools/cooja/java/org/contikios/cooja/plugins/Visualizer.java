@@ -71,6 +71,7 @@ import java.util.Observer;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.JCheckBoxMenuItem;
+import javax.swing.JDesktopPane;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
@@ -543,11 +544,15 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
 
     resetViewport = 3; /* XXX Quick-fix */
 
-    /* XXX HACK: here we set the position and size of the window when it appears on a blank simulation screen. */
+  }
+  
+  @Override
+  public void packPlugin(JDesktopPane pane) {
+    /* XXX HACK: here we set the position and size of the window
+       when it appears on a blank simulation screen. */
     this.setLocation(1, 1);
     this.setSize(400, 400);
   }
-
   private void generateAndActivateSkin(Class<? extends VisualizerSkin> skinClass) {
     for (VisualizerSkin skin: currentSkins) {
       if (skinClass == skin.getClass()) {

@@ -42,6 +42,7 @@ import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
+import javax.swing.JDesktopPane;
 import javax.swing.JLabel;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
@@ -121,14 +122,14 @@ public class SimControl extends VisPlugin implements HasQuickHelp {
     speedMenu.add(limitMenuItem2);
     JRadioButtonMenuItem limitMenuItem3 = new JRadioButtonMenuItem(
             new ChangeMaxSpeedLimitAction("100%", 1.0));
-        speedlimitButtonGroup.add(limitMenuItem3);
-        speedMenu.add(limitMenuItem3);
-        JRadioButtonMenuItem limitMenuItem200 = new JRadioButtonMenuItem(
-                new ChangeMaxSpeedLimitAction("200%", 2.0));
-            speedlimitButtonGroup.add(limitMenuItem200);
-            speedMenu.add(limitMenuItem200);
+    speedlimitButtonGroup.add(limitMenuItem3);
+    speedMenu.add(limitMenuItem3);
+    JRadioButtonMenuItem limitMenuItem200 = new JRadioButtonMenuItem(
+            new ChangeMaxSpeedLimitAction("200%", 2.0));
+    speedlimitButtonGroup.add(limitMenuItem200);
+    speedMenu.add(limitMenuItem200);
     JRadioButtonMenuItem limitMenuItem4 = new JRadioButtonMenuItem(
-        new ChangeMaxSpeedLimitAction("1000%", 10.0));
+            new ChangeMaxSpeedLimitAction("1000%", 10.0));
     speedlimitButtonGroup.add(limitMenuItem4);
     speedMenu.add(limitMenuItem4);
 
@@ -206,17 +207,20 @@ public class SimControl extends VisPlugin implements HasQuickHelp {
     /* Set initial values */
     updateValues();
 
-    pack();
-
     this.lastSystemTimeTimestamp = System.currentTimeMillis();
     this.lastSimulationTimeTimestamp = 0;
 
+  }
+  
+  @Override
+  public void packPlugin(JDesktopPane pane) {
+    pack();
     /* XXX HACK: here we set the position and size of the window when it
      * appears on a blank simulation screen. */
     this.setLocation(400, 0);
     this.setSize(280, 160);
   }
-
+  
   private class ChangeMaxSpeedLimitAction extends AbstractAction {
     private Double maxSpeed;
     public ChangeMaxSpeedLimitAction(String name, Double maxSpeed) {
