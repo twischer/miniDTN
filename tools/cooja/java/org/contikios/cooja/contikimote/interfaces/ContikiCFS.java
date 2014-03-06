@@ -185,7 +185,6 @@ public class ContikiCFS extends MoteInterface implements ContikiMoteInterface, P
     panel.putClientProperty("intf_obs", observer);
 
     panel.setMinimumSize(new Dimension(140, 60));
-    panel.setPreferredSize(new Dimension(140, 60));
 
     return panel;
   }
