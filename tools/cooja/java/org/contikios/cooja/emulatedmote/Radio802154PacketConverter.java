@@ -53,10 +53,10 @@ public class Radio802154PacketConverter {
    * 1 octet Start of frame Delimiter (SFD)
    */
   public static final boolean WITH_SFD = true;
-//    public static final boolean WITH_XMAC = true;
-  public static final boolean WITH_CHECKSUM = false;
-  public static final boolean WITH_TIMESTAMP = true;
-  public static final boolean WITH_FOOTER = true;
+  /**
+   * 2 octets Frame Check Sequence (FCS)
+   */
+  public static final boolean WITH_FCS = true;
 
   /**
    * Converts from Cooja packet data (PHY payload) to PHY PDU.
@@ -89,7 +89,7 @@ public class Radio802154PacketConverter {
 
     /* 1 byte length */
     len = (byte) packetData.length;
-    if (WITH_CHECKSUM) {
+    if (WITH_FCS) {
       len += 2;
     }
     cc2420Data[pos++] = len;
@@ -102,7 +102,7 @@ public class Radio802154PacketConverter {
     pos += packetData.length;
 
     /* 2 bytes Frame Check Sequence (FCS) */
-    if (WITH_CHECKSUM) {
+    if (WITH_FCS) {
       cc2420Data[pos++] = (byte) (accumulatedCRC & 0xff);
       cc2420Data[pos++] = (byte) ((accumulatedCRC >> 8) & 0xff);
     }
@@ -144,7 +144,7 @@ public class Radio802154PacketConverter {
     pos += 1;
 
     /* (IGNORED) 2 bytes checksum */
-    if (WITH_CHECKSUM) {
+    if (WITH_FCS) {
       len -= 2;
     }
 
