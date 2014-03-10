@@ -107,7 +107,7 @@ public abstract class MspMote extends AbstractEmulatedMote implements Mote, Watc
   public MspMote(MspMoteType moteType, Simulation simulation) {
     this.simulation = simulation;
     myMoteType = moteType;
-    memLayout = new MemoryLayout(ByteOrder.LITTLE_ENDIAN, 2, 2); /** @TODO: check! */
+    memLayout = new MemoryLayout(ByteOrder.LITTLE_ENDIAN, MemoryLayout.ARCH_16BIT, 2); /** @TODO: check! */
 
     /* Schedule us immediately */
     requestImmediateWakeup();

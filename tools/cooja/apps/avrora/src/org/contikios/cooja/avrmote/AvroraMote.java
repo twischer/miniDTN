@@ -105,7 +105,7 @@ public abstract class AvroraMote extends AbstractEmulatedMote implements Watchpo
       AVRProperties avrProperties = (AVRProperties) cpu.getProperties();
       sim = cpu.getSimulator();
       interpreter = (AtmelInterpreter) sim.getInterpreter();
-      memLayout = new MemoryLayout(ByteOrder.LITTLE_ENDIAN, 2, 2);
+      memLayout = new MemoryLayout(ByteOrder.LITTLE_ENDIAN, MemoryLayout.ARCH_8BIT, 2);
       memory = new AvrMoteMemory(memLayout, program.getProgram().getSourceMapping(), avrProperties, interpreter);
     } catch (Exception e) {
       logger.fatal("Error when initializing Avora mote: " + e.getMessage(), e);
