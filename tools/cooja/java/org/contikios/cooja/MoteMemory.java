@@ -32,7 +32,6 @@ package org.contikios.cooja;
 
 import java.util.HashMap;
 import java.util.Map;
-import org.contikios.cooja.MoteMemory.UnknownVariableException;
 import org.contikios.cooja.MemMonitor.MonitorType;
 
 /**
@@ -70,7 +69,6 @@ public abstract class MoteMemory extends NewAddressMemory {
    *
    * @param varName
    * @return
-   * @throws org.contikios.cooja.AddressMemory.UnknownVariableException
    */
   public abstract int getVariableSize(String varName) throws UnknownVariableException;
 
@@ -123,19 +121,18 @@ public abstract class MoteMemory extends NewAddressMemory {
           throws UnknownVariableException {
     return getAddrValueOf(getVariableAddress(varName));
   }
-  
+
   /**
-   * 
+   *
    * @param varName
    * @param length
    * @return
-   * @throws org.contikios.cooja.AddressMemory.UnknownVariableException 
    */
   public byte[] getByteArray(String varName, int length)
-      throws UnknownVariableException {
+          throws UnknownVariableException {
     return getMemorySegment(getVariableAddress(varName), length);
   }
-  
+
   /**
    *
    * @param varName
@@ -187,33 +184,14 @@ public abstract class MoteMemory extends NewAddressMemory {
   }
 
   /**
-   * 
+   *
    * @param varName
    * @param data
-   * @throws org.contikios.cooja.AddressMemory.UnknownVariableException 
    */
   public void setByteArray(String varName, byte[] data)
           throws UnknownVariableException {
     setMemorySegment(getVariableAddress(varName), data);
   }
-
-
-  /**
-   * Unknown variable name exception.
-   */
-  public class UnknownVariableException extends RuntimeException {
-
-    public UnknownVariableException(String varName) {
-      super("Unknown variable name: " + varName);
-    }
-  }
-  
-  
-    
-//  public enum MemoryEventType {
-//
-//    READ, WRITE
-//  };
 
   /**
    * Monitor to listen for memory updates.
@@ -228,7 +206,7 @@ public abstract class MoteMemory extends NewAddressMemory {
    * Require for removing appropriate monitor.
    */
   Map<VarMonitor, AddressMonitor> monitorMapping = new HashMap<>();
-  
+
   /**
    * Adds a AddressMonitor for the specified address region.
    *

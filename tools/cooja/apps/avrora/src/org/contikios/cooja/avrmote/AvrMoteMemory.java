@@ -39,7 +39,7 @@ import avrora.core.SourceMapping.Location;
 import avrora.sim.AtmelInterpreter;
 import avrora.sim.Simulator.Watch;
 import avrora.sim.State;
-import org.contikios.cooja.MoteMemory.UnknownVariableException;
+import org.contikios.cooja.UnknownVariableException;
 import org.contikios.cooja.MemMonitor.MemoryEventType;
 import org.contikios.cooja.MemMonitor.MonitorType;
 import org.contikios.cooja.MemoryLayout;

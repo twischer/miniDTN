@@ -32,7 +32,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 
 import org.apache.log4j.Logger;
-import org.contikios.cooja.MoteMemory.UnknownVariableException;
 import org.contikios.cooja.MemMonitor.MemoryEventType;
 import org.contikios.cooja.MemMonitor.MonitorType;
 import org.contikios.cooja.NewAddressMemory.AddressMonitor;
