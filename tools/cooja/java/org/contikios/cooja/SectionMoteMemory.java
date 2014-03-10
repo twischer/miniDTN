@@ -30,6 +30,7 @@ package org.contikios.cooja;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 
 import org.apache.log4j.Logger;
 import org.contikios.cooja.MemMonitor.MemoryEventType;
@@ -48,12 +49,12 @@ import org.contikios.cooja.NewAddressMemory.AddressMonitor;
  */
 public class SectionMoteMemory extends MoteMemory {
   private static Logger logger = Logger.getLogger(SectionMoteMemory.class);
+  private List<MemorySection> sections = new ArrayList<>();
 
-  private ArrayList<MoteMemorySection> sections = new ArrayList<MoteMemorySection>();
  
   /* readonly memory is never written to Contiki core, and is used to provide 
    * access to, for instance, strings */
-  private ArrayList<MoteMemorySection> readonlySections = new ArrayList<MoteMemorySection>();
+  private List<MemorySection> readonlySections = new ArrayList<>();
 
   private final HashMap<String, Integer> addresses;
 
@@ -107,18 +108,18 @@ public class SectionMoteMemory extends MoteMemory {
   public byte[] getMemorySegment(long address, int size) {
     /* Cooja address space */
     address -= offset;
-   
-    for (MoteMemorySection section : sections) {
+
+    for (MemorySection section : sections) {
       if (section.includesAddr(address)
-          && section.includesAddr(address + size - 1)) {
+              && section.includesAddr(address + size - 1)) {
         return section.getMemorySegment(address, size);
       }
     }
-    
+
     /* Check if in readonly section */
-    for (MoteMemorySection section : readonlySections) {
+    for (MemorySection section : readonlySections) {
       if (section.includesAddr(address)
-          && section.includesAddr(address + size - 1)) {
+              && section.includesAddr(address + size - 1)) {
         return section.getMemorySegment(address, size);
       }
     }
@@ -136,26 +137,26 @@ public class SectionMoteMemory extends MoteMemory {
     address -= offset;
 
     /* TODO XXX Sections may overlap */
-    for (MoteMemorySection section : sections) {
+    for (MemorySection section : sections) {
       if (section.includesAddr(address)
-          && section.includesAddr(address + data.length - 1)) {
+              && section.includesAddr(address + data.length - 1)) {
         section.setMemorySegment(address, data);
         return;
       }
     }
-    sections.add(new MoteMemorySection(address, data));
+    sections.add(new MemorySection(address, data));
   }
 
   public void setReadonlyMemorySegment(int address, byte[] data) {
     /* Cooja address space */
     address -= offset;
 
-    readonlySections.add(new MoteMemorySection(address, data));
+    readonlySections.add(new MemorySection(address, data));
   }
 
   public int getTotalSize() {
     int totalSize = 0;
-    for (MoteMemorySection section : sections) {
+    for (MemorySection section : sections) {
       totalSize += section.getSize();
     }
     return totalSize;
@@ -274,113 +275,10 @@ public class SectionMoteMemory extends MoteMemory {
 //    long varAddr = getVariableAddress(varName);
 //    setMemorySegment(varAddr, data);
 //  }
-
-  /**
-   * A memory section contains a byte array and a start address.
-   *
-   * @author Fredrik Osterlind
-   */
-  private static class MoteMemorySection {
-    private byte[] data = null;
-    private final long startAddr;
-
-    /**
-     * Create a new memory section.
-     *
-     * @param startAddr
-     *          Start address of section
-     * @param data
-     *          Data of section
-     */
-    public MoteMemorySection(long startAddr, byte[] data) {
-      this.startAddr = startAddr;
-      this.data = data;
-    }
-
-    /**
-     * Returns start address of this memory section.
-     *
-     * @return Start address
-     */
-    public long getStartAddr() {
-      return startAddr;
-    }
-
-    /**
-     * Returns size of this memory section.
-     *
-     * @return Size
-     */
-    public int getSize() {
-      return data.length;
-    }
-
-    /**
-     * Returns the entire byte array which defines this section.
-     *
-     * @return Byte array
-     */
-    public byte[] getData() {
-      return data;
-    }
-
-    /**
-     * True if given address is part of this memory section.
-     *
-     * @param addr
-     *          Address
-     * @return True if given address is part of this memory section, false
-     *         otherwise
-     */
-    public boolean includesAddr(long addr) {
-      if (data == null) {
-        return false;
-      }
-
-      return (addr >= startAddr && addr < (startAddr + data.length));
-    }
-
-    /**
-     * Returns memory segment.
-     *
-     * @param addr
-     *          Start address of memory segment
-     * @param size
-     *          Size of memory segment
-     * @return Memory segment
-     */
-    public byte[] getMemorySegment(long addr, int size) {
-      byte[] ret = new byte[size];
-      System.arraycopy(data, (int) (addr - startAddr), ret, 0, size);
-      return ret;
-    }
-
-    /**
-     * Sets a memory segment.
-     *
-     * @param addr
-     *          Start of memory segment
-     * @param data
-     *          Data of memory segment
-     */
-    public void setMemorySegment(long addr, byte[] data) {
-      System.arraycopy(data, 0, this.data, (int) (addr - startAddr), data.length);
-    }
-
-    @Override
-    public MoteMemorySection clone() {
-      byte[] dataClone = new byte[data.length];
-      System.arraycopy(data, 0, dataClone, 0, data.length);
-
-      MoteMemorySection clone = new MoteMemorySection(startAddr, dataClone);
-      return clone;
-    }
-  }
-
   @Override
   public SectionMoteMemory clone() {
-    ArrayList<MoteMemorySection> sectionsClone = new ArrayList<>();
-    for (MoteMemorySection section : sections) {
+    ArrayList<MemorySection> sectionsClone = new ArrayList<>();
+    for (MemorySection section : sections) {
       sectionsClone.add(section.clone());
     }
 
