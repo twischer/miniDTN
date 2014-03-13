@@ -60,6 +60,7 @@ import org.contikios.cooja.ClassDescription;
 import org.contikios.cooja.CoreComm;
 import org.contikios.cooja.Cooja;
 import org.contikios.cooja.MemoryLayout;
+import org.contikios.cooja.MemorySection;
 import org.contikios.cooja.Mote;
 import org.contikios.cooja.MoteInterface;
 import org.contikios.cooja.MoteType;
@@ -509,10 +510,10 @@ public class ContikiMoteType implements MoteType {
       SectionMoteMemory tmp = new SectionMoteMemory(MemoryLayout.getNative(), addresses, 0);
       byte[] data = new byte[dataSectionSize];
       getCoreMemory(dataSectionRelAddr, dataSectionSize, data);
-      tmp.setMemorySegment(dataSectionRelAddr, data);
+      tmp.addMemorySection(new MemorySection("tmp.data", dataSectionRelAddr, data));
       byte[] bss = new byte[bssSectionSize];
       getCoreMemory(bssSectionRelAddr, bssSectionSize, bss);
-      tmp.setMemorySegment(bssSectionRelAddr, bss);
+      tmp.addMemorySection(new MemorySection("tmp.bss", bssSectionRelAddr, bss));
 
       offset = tmp.getIntValueOf("referenceVar");
       logger.info(getContikiFirmwareFile().getName() +
@@ -524,23 +525,23 @@ public class ContikiMoteType implements MoteType {
 
     byte[] initialDataSection = new byte[dataSectionSize];
     getCoreMemory(dataSectionRelAddr, dataSectionSize, initialDataSection);
-    initialMemory.setMemorySegmentNative(dataSectionRelAddr, initialDataSection);
+    initialMemory.addMemorySection(new MemorySection(".data", dataSectionRelAddr, initialDataSection));
 
     byte[] initialBssSection = new byte[bssSectionSize];
     getCoreMemory(bssSectionRelAddr, bssSectionSize, initialBssSection);
-    initialMemory.setMemorySegmentNative(bssSectionRelAddr, initialBssSection);
+    initialMemory.addMemorySection(new MemorySection(".bss", bssSectionRelAddr, initialBssSection));
 
     if (commonSectionRelAddr >= 0 && commonSectionSize > 0) {
       byte[] initialCommonSection = new byte[commonSectionSize];
       getCoreMemory(commonSectionRelAddr, commonSectionSize, initialCommonSection);
-      initialMemory.setMemorySegmentNative(commonSectionRelAddr, initialCommonSection);
+      initialMemory.addMemorySection(new MemorySection("common", commonSectionRelAddr, initialCommonSection));
     }
 
     /* Read "read-only" memory */
     if (readonlySectionRelAddr >= 0 && readonlySectionSize > 0) {
       byte[] readonlySection = new byte[readonlySectionSize];
       getCoreMemory(readonlySectionRelAddr, readonlySectionSize, readonlySection);
-      initialMemory.setReadonlyMemorySegment(readonlySectionRelAddr+offset, readonlySection);
+      initialMemory.addMemorySection(new MemorySection("readonly", readonlySectionRelAddr, readonlySection, true));
     }
   }
 
@@ -571,11 +572,11 @@ public class ContikiMoteType implements MoteType {
    *          Memory to set
    */
   public void getCoreMemory(SectionMoteMemory mem) {
-    for (int i = 0; i < mem.getNumberOfSections(); i++) {
+    for (MemorySection memsec: mem.getSections()) {
       getCoreMemory(
-              (int) mem.getSectionNativeAddress(i) /* native address space */,
-              mem.getSizeOfSection(i),
-              mem.getDataOfSection(i));
+              (int) memsec.getStartAddr() /* native address space */,
+              memsec.getSize(), 
+              memsec.getData());
     }
   }
 
@@ -591,11 +592,11 @@ public class ContikiMoteType implements MoteType {
    *          New memory
    */
   public void setCoreMemory(SectionMoteMemory mem) {
-    for (int i = 0; i < mem.getNumberOfSections(); i++) {
+    for (MemorySection memsec : mem.getSections()) {
       setCoreMemory(
-              (int) mem.getSectionNativeAddress(i) /* native address space */,
-              mem.getSizeOfSection(i),
-              mem.getDataOfSection(i));
+              (int) memsec.getStartAddr() /* native address space */,
+              memsec.getSize(),
+              memsec.getData());
     }
   }
 

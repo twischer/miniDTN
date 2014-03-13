@@ -44,6 +44,7 @@ public class MemorySection {
 
   private static final Logger logger = Logger.getLogger(MemorySection.class);
 
+  private final String secName;
   private final long startAddr;
   private final boolean readonly;
   private byte[] data = null;
@@ -51,11 +52,13 @@ public class MemorySection {
   /**
    * Create a new memory section.
    *
+   * @param name
    * @param startAddr Start address of section
    * @param data Data of section
    * @param readonly If set true, write operations to memory are rejected.
    */
-  public MemorySection(long startAddr, byte[] data, boolean readonly) {
+  public MemorySection(String name, long startAddr, byte[] data, boolean readonly) {
+    this.secName = name;
     this.startAddr = startAddr;
     this.data = data;
     this.readonly = readonly;
@@ -64,11 +67,21 @@ public class MemorySection {
   /**
    * Create a new memory section.
    *
+   * @param name
    * @param startAddr Start address of section
    * @param data Data of section
    */
-  public MemorySection(long startAddr, byte[] data) {
-    this(startAddr, data, false);
+  public MemorySection(String name, long startAddr, byte[] data) {
+    this(name, startAddr, data, false);
+  }
+
+  /**
+   * Returns name of this memory section.
+   *
+   * @return secName
+   */
+  public String getName() {
+    return secName;
   }
 
   /**
@@ -176,7 +189,7 @@ public class MemorySection {
   public MemorySection clone() {
     byte[] dataClone = new byte[data.length];
     System.arraycopy(data, 0, dataClone, 0, data.length);
-    MemorySection clone = new MemorySection(startAddr, dataClone);
+    MemorySection clone = new MemorySection(secName, startAddr, dataClone);
     return clone;
   }
 
