@@ -28,39 +28,33 @@
  */
 package org.contikios.cooja;
 
-import org.apache.log4j.Logger;
-
 /**
- * A named memory section.
- * 
- * It contains a byte array and a start address.
+ * An abstract memory section.
  * 
  * Read-only memory is supported by setting the 'readonly' flag in the constructor.
  *
  * @author Fredrik Osterlind
  * @author Enrico Jörns
  */
-public class MemorySection {
+public abstract class MemorySection {
 
-  private static final Logger logger = Logger.getLogger(MemorySection.class);
-
-  private final String secName;
-  private final long startAddr;
-  private final boolean readonly;
-  private byte[] data = null;
+  protected final String secName;
+  protected final long secStartAddr;
+  protected final int secSize;
+  protected final boolean readonly;
 
   /**
    * Create a new memory section.
    *
    * @param name
    * @param startAddr Start address of section
-   * @param data Data of section
+   * @param size
    * @param readonly If set true, write operations to memory are rejected.
    */
-  public MemorySection(String name, long startAddr, byte[] data, boolean readonly) {
+  public MemorySection(String name, long startAddr, int size, boolean readonly) {
     this.secName = name;
-    this.startAddr = startAddr;
-    this.data = data;
+    this.secStartAddr = startAddr;
+    this.secSize = size;
     this.readonly = readonly;
   }
 
@@ -69,10 +63,10 @@ public class MemorySection {
    *
    * @param name
    * @param startAddr Start address of section
-   * @param data Data of section
+   * @param size
    */
-  public MemorySection(String name, long startAddr, byte[] data) {
-    this(name, startAddr, data, false);
+  public MemorySection(String name, long startAddr, int size) {
+    this(name, startAddr, size, false);
   }
 
   /**
@@ -90,7 +84,7 @@ public class MemorySection {
    * @return Start address
    */
   public long getStartAddr() {
-    return startAddr;
+    return secStartAddr;
   }
 
   /**
@@ -99,7 +93,7 @@ public class MemorySection {
    * @return Size
    */
   public int getSize() {
-    return data.length;
+    return secSize;
   }
 
   /**
@@ -107,9 +101,7 @@ public class MemorySection {
    *
    * @return Byte array
    */
-  public byte[] getData() {
-    return data;
-  }
+  public abstract byte[] getData();
 
   /**
    * True if given address is part of this memory section.
@@ -120,10 +112,7 @@ public class MemorySection {
    * otherwise
    */
   public boolean includesAddr(long addr) {
-    if (data == null) {
-      return false;
-    }
-    return addr >= startAddr && addr < (startAddr + data.length);
+    return addr >= secStartAddr && addr < (secStartAddr + secSize);
   }
 
   /**
@@ -137,7 +126,7 @@ public class MemorySection {
    * section
    */
   public boolean inSection(long addr, int size) {
-    return ((addr >= startAddr) && (addr + size <= startAddr + data.length - 1));
+    return ((addr >= secStartAddr) && (addr + size <= secStartAddr + secSize));
   }
 
   /**
@@ -147,18 +136,7 @@ public class MemorySection {
    * @param size Size of memory segment
    * @return Memory segment
    */
-  public byte[] getMemorySegment(long addr, int size) {
-    if (!inSection(addr, size)) {
-      logger.warn(String.format(
-              "Failed to read [0x%x,0x%x]: Outside segment [0x%x,0x%x]",
-              addr, addr + size - 1,
-              startAddr, startAddr + data.length - 1));
-      return null;
-    }
-    byte[] ret = new byte[size];
-    System.arraycopy(data, (int) (addr - startAddr), ret, 0, size);
-    return ret;
-  }
+  public abstract byte[] getMemorySegment(long addr, int size);
 
   /**
    * Sets a memory segment.
@@ -168,36 +146,16 @@ public class MemorySection {
    * @param data
    * Data of memory segment
    */
-  public void setMemorySegment(long addr, byte[] data) {
-    if (!inSection(addr, data.length)) {
-      logger.warn(String.format(
-              "Failed to write [0x%x,0x%x]: Outside segment [0x%x,0x%x]",
-              addr, addr + data.length - 1,
-              startAddr, startAddr + data.length - 1));
-      return;
-    }
-    if (readonly) {
-      logger.warn(String.format(
-              "Rejected write to read-only memory [0x%x,0x%x]",
-              addr, addr + data.length - 1));
-      return;
-    }
-    System.arraycopy(data, 0, this.data, (int) (addr - startAddr), data.length);
-  }
+  public abstract void setMemorySegment(long addr, byte[] data);
 
   @Override
-  public MemorySection clone() {
-    byte[] dataClone = new byte[data.length];
-    System.arraycopy(data, 0, dataClone, 0, data.length);
-    MemorySection clone = new MemorySection(secName, startAddr, dataClone);
-    return clone;
-  }
+  public abstract MemorySection clone();
 
   @Override
   public String toString() {
     return String.format(
             "%smemory section at [0x%x,0x%x]",
             readonly ? "readonly " : "",
-            startAddr, startAddr + data.length - 1);
+            secStartAddr, secStartAddr + secSize - 1);
   }
 }

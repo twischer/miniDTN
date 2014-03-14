@@ -56,6 +56,7 @@ import org.apache.log4j.Logger;
 import org.jdom.Element;
 
 import org.contikios.cooja.AbstractionLevelDescription;
+import org.contikios.cooja.BufferedMemorySection;
 import org.contikios.cooja.ClassDescription;
 import org.contikios.cooja.CoreComm;
 import org.contikios.cooja.Cooja;
@@ -509,12 +510,21 @@ public class ContikiMoteType implements MoteType {
     int offset;
     {
       SectionMoteMemory tmp = new SectionMoteMemory(MemoryLayout.getNative(), variables, 0);
-      byte[] data = new byte[dataSectionSize];
-      getCoreMemory(dataSectionRelAddr, dataSectionSize, data);
-      tmp.addMemorySection(new MemorySection("tmp.data", dataSectionRelAddr, data));
-      byte[] bss = new byte[bssSectionSize];
-      getCoreMemory(bssSectionRelAddr, bssSectionSize, bss);
-      tmp.addMemorySection(new MemorySection("tmp.bss", bssSectionRelAddr, bss));
+//      byte[] data = new byte[dataSectionSize];
+//      getCoreMemory(dataSectionRelAddr, dataSectionSize, data);
+      tmp.addMemorySection(
+              new BufferedMemorySection(
+                      "tmp.data", 
+                      dataSectionRelAddr, 
+                      dataSectionSize));
+//      byte[] bss = new byte[bssSectionSize];
+//      getCoreMemory(bssSectionRelAddr, bssSectionSize, bss);
+      tmp.addMemorySection(
+              new BufferedMemorySection(
+                      "tmp.bss", 
+                      bssSectionRelAddr, 
+                      bssSectionSize));
+      getCoreMemory(tmp);
 
       offset = tmp.getIntValueOf("referenceVar");
       logger.info(getContikiFirmwareFile().getName() +
@@ -524,26 +534,45 @@ public class ContikiMoteType implements MoteType {
     /* Create initial memory: data+bss+optional common */
     initialMemory = new SectionMoteMemory(MemoryLayout.getNative(), variables, offset);
 
-    byte[] initialDataSection = new byte[dataSectionSize];
-    getCoreMemory(dataSectionRelAddr, dataSectionSize, initialDataSection);
-    initialMemory.addMemorySection(new MemorySection(".data", dataSectionRelAddr, initialDataSection));
+//    byte[] initialDataSection = new byte[dataSectionSize];
+//    getCoreMemory(dataSectionRelAddr, dataSectionSize, initialDataSection);
+    initialMemory.addMemorySection(
+            new BufferedMemorySection(
+                    ".data",
+                    dataSectionRelAddr,
+                    dataSectionSize));
 
-    byte[] initialBssSection = new byte[bssSectionSize];
-    getCoreMemory(bssSectionRelAddr, bssSectionSize, initialBssSection);
-    initialMemory.addMemorySection(new MemorySection(".bss", bssSectionRelAddr, initialBssSection));
+//    byte[] initialBssSection = new byte[bssSectionSize];
+//    getCoreMemory(bssSectionRelAddr, bssSectionSize, initialBssSection);
+    initialMemory.addMemorySection(
+            new BufferedMemorySection(
+                    ".bss",
+                    bssSectionRelAddr,
+                    bssSectionSize));
 
     if (commonSectionRelAddr >= 0 && commonSectionSize > 0) {
-      byte[] initialCommonSection = new byte[commonSectionSize];
-      getCoreMemory(commonSectionRelAddr, commonSectionSize, initialCommonSection);
-      initialMemory.addMemorySection(new MemorySection("common", commonSectionRelAddr, initialCommonSection));
+//      byte[] initialCommonSection = new byte[commonSectionSize];
+//      getCoreMemory(commonSectionRelAddr, commonSectionSize, initialCommonSection);
+      initialMemory.addMemorySection(
+              new BufferedMemorySection(
+                      "common",
+                      commonSectionRelAddr,
+                      commonSectionSize));
     }
 
     /* Read "read-only" memory */
     if (readonlySectionRelAddr >= 0 && readonlySectionSize > 0) {
-      byte[] readonlySection = new byte[readonlySectionSize];
-      getCoreMemory(readonlySectionRelAddr, readonlySectionSize, readonlySection);
-      initialMemory.addMemorySection(new MemorySection("readonly", readonlySectionRelAddr, readonlySection, true));
+//      byte[] readonlySection = new byte[readonlySectionSize];
+//      getCoreMemory(readonlySectionRelAddr, readonlySectionSize, readonlySection);
+      initialMemory.addMemorySection(
+              new BufferedMemorySection(
+                      "readonly",
+                      readonlySectionRelAddr,
+                      readonlySectionSize, 
+                      true));
     }
+
+    getCoreMemory(initialMemory);
   }
 
   /**
