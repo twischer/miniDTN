@@ -760,17 +760,17 @@ public class ConfigurationWizard extends JDialog {
 
     testOutput.addMessage("### Parsing map file data for addresses");
     addresses = new HashMap<String, Symbol>();
-    boolean parseOK = ContikiMoteType.parseMapFileData(mapData, addresses);
-    if (!parseOK) {
-      testOutput.addMessage("### Error: Failed parsing map file data", MessageList.ERROR);
-      return false;
-    }
+//    boolean parseOK = ContikiMoteType.parseMapFileData(mapData, addresses);
+//    if (!parseOK) {
+//      testOutput.addMessage("### Error: Failed parsing map file data", MessageList.ERROR);
+//      return false;
+//    }
 
     testOutput.addMessage("### Validating section addresses");
-    relDataSectionAddr = ContikiMoteType.parseMapDataSectionAddr(mapData);
-    dataSectionSize = ContikiMoteType.parseMapDataSectionSize(mapData);
-    relBssSectionAddr = ContikiMoteType.parseMapBssSectionAddr(mapData);
-    bssSectionSize = ContikiMoteType.parseMapBssSectionSize(mapData);
+//    relDataSectionAddr = ContikiMoteType.parseMapDataSectionAddr(mapData);
+//    dataSectionSize = ContikiMoteType.parseMapDataSectionSize(mapData);
+//    relBssSectionAddr = ContikiMoteType.parseMapBssSectionAddr(mapData);
+//    bssSectionSize = ContikiMoteType.parseMapBssSectionSize(mapData);
     testOutput.addMessage("Data section address: 0x" + Integer.toHexString(relDataSectionAddr));
     testOutput.addMessage("Data section size: 0x" + Integer.toHexString(dataSectionSize));
     testOutput.addMessage("BSS section address: 0x" + Integer.toHexString(relBssSectionAddr));
@@ -840,17 +840,17 @@ public class ConfigurationWizard extends JDialog {
 
     testOutput.addMessage("### Parsing command output for addresses");
     addresses = new HashMap<String, Symbol>();
-    boolean parseOK = ContikiMoteType.parseCommandData(commandData, addresses);
-    if (!parseOK) {
-      testOutput.addMessage("### Error: Failed parsing command output", MessageList.ERROR);
-      return false;
-    }
+//    boolean parseOK = ContikiMoteType.parseCommandData(commandData, addresses);
+//    if (!parseOK) {
+//      testOutput.addMessage("### Error: Failed parsing command output", MessageList.ERROR);
+//      return false;
+//    }
 
     testOutput.addMessage("### Validating section addresses");
-    relDataSectionAddr = ContikiMoteType.parseCommandDataSectionAddr(commandData);
-    dataSectionSize = ContikiMoteType.parseCommandDataSectionSize(commandData);
-    relBssSectionAddr = ContikiMoteType.parseCommandBssSectionAddr(commandData);
-    bssSectionSize = ContikiMoteType.parseCommandBssSectionSize(commandData);
+//    relDataSectionAddr = ContikiMoteType.parseCommandDataSectionAddr(commandData);
+//    dataSectionSize = ContikiMoteType.parseCommandDataSectionSize(commandData);
+//    relBssSectionAddr = ContikiMoteType.parseCommandBssSectionAddr(commandData);
+//    bssSectionSize = ContikiMoteType.parseCommandBssSectionSize(commandData);
     testOutput.addMessage("Data section address: 0x" + Integer.toHexString(relDataSectionAddr));
     testOutput.addMessage("Data section size: 0x" + Integer.toHexString(dataSectionSize));
     testOutput.addMessage("BSS section address: 0x" + Integer.toHexString(relBssSectionAddr));
@@ -945,7 +945,7 @@ public class ConfigurationWizard extends JDialog {
     byte[] initialBssSection = new byte[bssSectionSize];
     javaLibrary.getMemory(relDataSectionAddr, dataSectionSize, initialDataSection);
     javaLibrary.getMemory(relBssSectionAddr, bssSectionSize, initialBssSection);
-    SectionMoteMemory memory = new SectionMoteMemory(MemoryLayout.getNative(), addresses, 0); /** TODO: check memory layout */
+    SectionMoteMemory memory = new SectionMoteMemory(MemoryLayout.getNative(), 0); /** TODO: check memory layout */
     memory.setMemorySegment(relDataSectionAddr, initialDataSection);
     memory.setMemorySegment(relBssSectionAddr, initialBssSection);
 

@@ -28,6 +28,7 @@
  */
 package org.contikios.cooja;
 
+import java.util.Arrays;
 import org.apache.log4j.Logger;
 
 /**
@@ -53,9 +54,10 @@ public class BufferedMemorySection extends MemorySection {
    * @param startAddr Start address of section
    * @param size Size of section [bytes]
    * @param readonly If set true, write operations to memory are rejected.
+   * @param vars
    */
-  public BufferedMemorySection(String name, long startAddr, int size, boolean readonly) {
-    super(name, startAddr, size, readonly);
+  public BufferedMemorySection(String name, long startAddr, int size, boolean readonly, Symbol[] vars) {
+    super(name, startAddr, size, readonly, vars);
     secData = new byte[size];
   }
 
@@ -65,9 +67,10 @@ public class BufferedMemorySection extends MemorySection {
    * @param name Name of the section
    * @param startAddr Start address of section
    * @param size Size of section [bytes]
+   * @param vars
    */
-  public BufferedMemorySection(String name, long startAddr, int size) {
-    this(name, startAddr, size, false);
+  public BufferedMemorySection(String name, long startAddr, int size, Symbol[] vars) {
+    this(name, startAddr, size, false, vars);
   }
 
   /**
@@ -134,7 +137,7 @@ public class BufferedMemorySection extends MemorySection {
    */
   @Override
   public MemorySection clone() {
-    MemorySection clone = new BufferedMemorySection(secName + ".clone", secStartAddr, secData.length);
+    MemorySection clone = new BufferedMemorySection(secName + ".clone", secStartAddr, secData.length, secVars);
     clone.setMemorySegment(secStartAddr, secData);
     return clone;
   }
@@ -146,5 +149,25 @@ public class BufferedMemorySection extends MemorySection {
             readonly ? "readonly " : "",
             secName,
             secStartAddr, secStartAddr + secData.length - 1);
+  }
+
+  @Override
+  public void clearMemory() {
+    Arrays.fill(secData, (byte) 0);
+  }
+
+  @Override
+  public int getTotalSize() {
+    return secData.length;
+  }
+
+  @Override
+  public boolean addSegmentMonitor(MemMonitor.MonitorType flag, long address, int size, SegmentMonitor monitor) {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public boolean removeSegmentMonitor(long address, int size, SegmentMonitor monitor) {
+    throw new UnsupportedOperationException("Not supported yet.");
   }
 }

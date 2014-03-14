@@ -36,12 +36,13 @@ package org.contikios.cooja;
  * @author Fredrik Osterlind
  * @author Enrico Jörns
  */
-public abstract class MemorySection {
+public abstract class MemorySection implements MemoryInterface {
 
   protected final String secName;
   protected final long secStartAddr;
   protected final int secSize;
   protected final boolean readonly;
+  protected Symbol[] secVars;
 
   /**
    * Create a new memory section.
@@ -50,12 +51,19 @@ public abstract class MemorySection {
    * @param startAddr Start address of section
    * @param size
    * @param readonly If set true, write operations to memory are rejected.
+   * @param vars
    */
-  public MemorySection(String name, long startAddr, int size, boolean readonly) {
+  public MemorySection(
+          String name, 
+          long startAddr, 
+          int size, 
+          boolean readonly,
+          final Symbol[] vars) {
     this.secName = name;
     this.secStartAddr = startAddr;
     this.secSize = size;
     this.readonly = readonly;
+    this.secVars = vars;
   }
 
   /**
@@ -64,9 +72,10 @@ public abstract class MemorySection {
    * @param name
    * @param startAddr Start address of section
    * @param size
+   * @param vars
    */
-  public MemorySection(String name, long startAddr, int size) {
-    this(name, startAddr, size, false);
+  public MemorySection(String name, long startAddr, int size, final Symbol[] vars) {
+    this(name, startAddr, size, false, vars);
   }
 
   /**
@@ -102,6 +111,15 @@ public abstract class MemorySection {
    * @return Byte array
    */
   public abstract byte[] getData();
+  
+  /**
+   * 
+   * @return 
+   */
+  @Override
+  public Symbol[] getVariables() {
+    return secVars;
+  }
 
   /**
    * True if given address is part of this memory section.
@@ -128,25 +146,6 @@ public abstract class MemorySection {
   public boolean inSection(long addr, int size) {
     return ((addr >= secStartAddr) && (addr + size <= secStartAddr + secSize));
   }
-
-  /**
-   * Returns memory segment from this section.
-   *
-   * @param addr Start address of memory segment
-   * @param size Size of memory segment
-   * @return Memory segment
-   */
-  public abstract byte[] getMemorySegment(long addr, int size);
-
-  /**
-   * Sets a memory segment.
-   *
-   * @param addr
-   * Start of memory segment
-   * @param data
-   * Data of memory segment
-   */
-  public abstract void setMemorySegment(long addr, byte[] data);
 
   @Override
   public abstract MemorySection clone();

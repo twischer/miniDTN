@@ -59,7 +59,7 @@ public class SectionMoteMemory extends VarMemory implements SectionMemory {
   /* Both normal and readonly sections */
   private List<MemorySection> sections = new ArrayList<>();
 
-  private final HashMap<String, Symbol> variables;
+  private final HashMap<String, Symbol> variables = new HashMap<>();
 
   /* used to map Cooja's address space to native (Contiki's) addresses */
   private final int offset;
@@ -71,10 +71,9 @@ public class SectionMoteMemory extends VarMemory implements SectionMemory {
    * @param variables
    * @param offset Offset for internally used addresses
    */
-  public SectionMoteMemory(MemoryLayout layout, HashMap<String, Symbol> variables, int offset) {
+  public SectionMoteMemory(MemoryLayout layout, int offset) {
     super(layout);
     this.layout = layout;
-    this.variables = variables;
     this.offset = offset;
   }
 
@@ -167,6 +166,11 @@ public class SectionMoteMemory extends VarMemory implements SectionMemory {
    */
   @Override
   public boolean addMemorySection(MemorySection section) {
+    
+    if (section == null) {
+      return false;
+    }
+    
     /* Cooja address space */
     for (MemorySection sec : sections) {
       /* check for overlap with existing region */
@@ -182,6 +186,12 @@ public class SectionMoteMemory extends VarMemory implements SectionMemory {
     }
 
     sections.add(section);
+    if (section.getVariables() != null) {
+      for (Symbol s : section.getVariables()) {
+        variables.put(s.name, s);
+      }
+    }
+    
     if (DEBUG) {
       logger.debug(String.format(
               "Created new memory section %s [0x%x,0x%x]",
@@ -267,8 +277,10 @@ public class SectionMoteMemory extends VarMemory implements SectionMemory {
       sectionsClone.add(section.clone());
     }
 
-    SectionMoteMemory clone = new SectionMoteMemory(layout, variables, offset);
-    clone.sections = sectionsClone;
+    SectionMoteMemory clone = new SectionMoteMemory(layout, offset);
+    for (MemorySection sec : sectionsClone) {
+      clone.addMemorySection(sec);
+    }
 
     return clone;
   }

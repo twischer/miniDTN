@@ -51,6 +51,7 @@ public class MoteMemory extends VarMemory {
     }
   }
 
+  @Override
   public Symbol[] getVariables() {
     return symbols.values().toArray(new Symbol[0]);
   }
@@ -58,6 +59,7 @@ public class MoteMemory extends VarMemory {
   /**
    * @return All variable names known and residing in this memory
    */
+  @Override
   public String[] getVariableNames() {
     return symbols.keySet().toArray(new String[0]);
   }
@@ -68,10 +70,12 @@ public class MoteMemory extends VarMemory {
    * @param varName Variable name
    * @return True if variable exists, false otherwise
    */
+  @Override
   public boolean variableExists(String varName) {
     return symbols.containsKey(varName);
   }
 
+  @Override
   public Symbol getVariable(String varName) throws UnknownVariableException {
     return symbols.get(varName);
   }
