@@ -38,7 +38,7 @@ import org.jdom.Element;
 import org.contikios.cooja.Mote;
 import org.contikios.cooja.MoteInterface;
 import org.contikios.cooja.MoteInterfaceHandler;
-import org.contikios.cooja.MoteMemory;
+import org.contikios.cooja.VarMemory;
 import org.contikios.cooja.MoteType;
 import org.contikios.cooja.SectionMoteMemory;
 import org.contikios.cooja.Simulation;
@@ -95,14 +95,16 @@ public class ContikiMote extends AbstractWakeupMote implements Mote {
     myInterfaceHandler = newInterfaces;
   }
 
-  public MoteMemory getMemory() {
+  @Override
+  public VarMemory getMemory() {
     return myMemory;
   }
 
-  public void setMemory(MoteMemory memory) {
+  public void setMemory(VarMemory memory) {
     myMemory = (SectionMoteMemory) memory;
   }
 
+  @Override
   public MoteType getType() {
     return myType;
   }

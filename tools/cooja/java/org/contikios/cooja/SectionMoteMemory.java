@@ -37,6 +37,7 @@ import org.apache.log4j.Logger;
 import org.contikios.cooja.MemMonitor.MemoryEventType;
 import org.contikios.cooja.MemMonitor.MonitorType;
 import org.contikios.cooja.NewAddressMemory.AddressMonitor;
+import org.contikios.cooja.MemoryInterface.Symbol;
 
 /**
  * Represents a mote memory consisting of non-overlapping memory sections with
@@ -50,7 +51,7 @@ import org.contikios.cooja.NewAddressMemory.AddressMonitor;
  * @author Fredrik Osterlind
  * @author Enrico Jorns
  */
-public class SectionMoteMemory extends MoteMemory implements SectionMemory {
+public class SectionMoteMemory extends VarMemory implements SectionMemory {
 
   private static final Logger logger = Logger.getLogger(SectionMoteMemory.class);
   private static final boolean DEBUG = logger.isDebugEnabled();
@@ -58,7 +59,7 @@ public class SectionMoteMemory extends MoteMemory implements SectionMemory {
   /* Both normal and readonly sections */
   private List<MemorySection> sections = new ArrayList<>();
 
-  private final HashMap<String, Integer> addresses;
+  private final HashMap<String, Symbol> variables;
 
   /* used to map Cooja's address space to native (Contiki's) addresses */
   private final int offset;
@@ -67,43 +68,41 @@ public class SectionMoteMemory extends MoteMemory implements SectionMemory {
 
   /**
    * @param layout
-   * @param addresses Symbol addresses
+   * @param variables
    * @param offset Offset for internally used addresses
    */
-  public SectionMoteMemory(MemoryLayout layout, HashMap<String, Integer> addresses, int offset) {
+  public SectionMoteMemory(MemoryLayout layout, HashMap<String, Symbol> variables, int offset) {
     super(layout);
     this.layout = layout;
-    this.addresses = addresses;
+    this.variables = variables;
     this.offset = offset;
   }
 
   @Override
+  public Symbol[] getVariables() {
+    return variables.values().toArray(new Symbol[0]);
+  }
+
+  @Override
   public String[] getVariableNames() {
-    return addresses.keySet().toArray(new String[0]);
+    return variables.keySet().toArray(new String[0]);
   }
 
   @Override
   public boolean variableExists(String varName) {
-    return addresses.containsKey(varName);
+    return variables.containsKey(varName);
   }
 
   @Override
-  public long getVariableAddress(String varName) throws UnknownVariableException {
+  public Symbol getVariable(String varName) throws UnknownVariableException {
     /* Cooja address space */
-    if (!addresses.containsKey(varName)) {
+    if (!variables.containsKey(varName)) {
       throw new UnknownVariableException(varName);
     }
 
-    return addresses.get(varName).intValue() + offset;
-  }
-
-  @Override
-  public int getVariableSize(String varName) throws UnknownVariableException {
-    throw new UnsupportedOperationException("Not implemented yet!");
-  }
-
-  public int getIntegerLength() {
-    return 4;
+    Symbol sym = variables.get(varName);
+    
+    return new Symbol(sym.type, sym.name, sym.section, sym.addr + offset, sym.size);
   }
 
   @Override
@@ -268,7 +267,7 @@ public class SectionMoteMemory extends MoteMemory implements SectionMemory {
       sectionsClone.add(section.clone());
     }
 
-    SectionMoteMemory clone = new SectionMoteMemory(layout, addresses, offset);
+    SectionMoteMemory clone = new SectionMoteMemory(layout, variables, offset);
     clone.sections = sectionsClone;
 
     return clone;

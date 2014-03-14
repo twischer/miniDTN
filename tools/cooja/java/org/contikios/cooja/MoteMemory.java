@@ -32,22 +32,35 @@ package org.contikios.cooja;
 
 import java.util.HashMap;
 import java.util.Map;
-import org.contikios.cooja.MemMonitor.MonitorType;
+import org.contikios.cooja.MemoryInterface.Symbol;
 
 /**
  *
  * @author Enrico Joerns
  */
-public abstract class MoteMemory extends NewAddressMemory {
+public class MoteMemory extends VarMemory {
 
-  public MoteMemory(MemoryLayout layout) {
+  private final Map<String, Symbol> symbols = new HashMap<>();
+  private final MemoryInterface mintf;
+
+  public MoteMemory(MemoryLayout layout, MemoryInterface mintf) {
     super(layout);
+    this.mintf = mintf;
+    for (Symbol s : mintf.getVariables()) {
+      this.symbols.put(s.name, s);
+    }
   }
 
+  public Symbol[] getVariables() {
+    return symbols.values().toArray(new Symbol[0]);
+  }
+  
   /**
    * @return All variable names known and residing in this memory
    */
-  public abstract String[] getVariableNames();
+  public String[] getVariableNames() {
+    return symbols.keySet().toArray(new String[0]);
+  }
 
   /**
    * Checks if given variable exists in memory.
@@ -55,189 +68,51 @@ public abstract class MoteMemory extends NewAddressMemory {
    * @param varName Variable name
    * @return True if variable exists, false otherwise
    */
-  public abstract boolean variableExists(String varName);
-
-  /**
-   * Returns address of variable with given name.
-   *
-   * @param varName Variable name
-   * @return Variable address
-   */
-  public abstract long getVariableAddress(String varName) throws UnknownVariableException;
-
-  /**
-   *
-   * @param varName
-   * @return
-   */
-  public abstract int getVariableSize(String varName) throws UnknownVariableException;
-
-  /**
-   *
-   * @param varName
-   * @return
-   */
-  public byte getByteValueOf(String varName)
-          throws UnknownVariableException {
-    return getByteValueOf(getVariableAddress(varName));
+  public boolean variableExists(String varName) {
+    return symbols.containsKey(varName);
   }
 
-  /**
-   *
-   * @param varName
-   * @return
-   */
-  public short getShortValueOf(String varName)
-          throws UnknownVariableException {
-    return getShortValueOf(getVariableAddress(varName));
+  public Symbol getVariable(String varName) throws UnknownVariableException {
+    return symbols.get(varName);
   }
 
-  /**
-   *
-   * @param varName
-   * @return
-   */
-  public int getIntValueOf(String varName)
-          throws UnknownVariableException {
-    return getIntValueOf(getVariableAddress(varName));
+  @Override
+  public void clearMemory() {
+    mintf.clearMemory();
   }
 
-  /**
-   *
-   * @param varName
-   * @return
-   */
-  public long getLongValueOf(String varName)
-          throws UnknownVariableException {
-    return getLongValueOf(getVariableAddress(varName));
+  @Override
+  public byte[] getMemorySegment(long address, int size) {
+    return mintf.getMemorySegment(address, size);
   }
 
-  /**
-   *
-   * @param varName
-   * @return
-   */
-  public long getAddrValueOf(String varName)
-          throws UnknownVariableException {
-    return getAddrValueOf(getVariableAddress(varName));
+  @Override
+  public void setMemorySegment(long address, byte[] data) {
+    mintf.setMemorySegment(address, data);
   }
 
-  /**
-   *
-   * @param varName
-   * @param length
-   * @return
-   */
-  public byte[] getByteArray(String varName, int length)
-          throws UnknownVariableException {
-    return getMemorySegment(getVariableAddress(varName), length);
+  @Override
+  public int getTotalSize() {
+    return mintf.getTotalSize();
   }
 
-  /**
-   *
-   * @param varName
-   * @param value
-   */
-  public void setByteValueOf(String varName, byte value)
-          throws UnknownVariableException {
-    setByteValueOf(getVariableAddress(varName), value);
-  }
+  private final Map<AddressMonitor, MemoryInterface.SegmentMonitor> monitors = new HashMap<>();
+  
+  @Override
+  public boolean addMemoryMonitor(MemMonitor.MonitorType flag, long address, int size, final AddressMonitor mm) {
+    MemoryInterface.SegmentMonitor monitor = new MemoryInterface.SegmentMonitor() {
 
-  /**
-   *
-   * @param varName
-   * @param value
-   */
-  public void setShortValueOf(String varName, short value)
-          throws UnknownVariableException {
-    setShortValueOf(getVariableAddress(varName), value);
-  }
-
-  /**
-   *
-   * @param varName
-   * @param value
-   */
-  public void setIntValueOf(String varName, int value)
-          throws UnknownVariableException {
-    setIntValueOf(getVariableAddress(varName), value);
-  }
-
-  /**
-   *
-   * @param varName
-   * @param value
-   */
-  public void setLongValueOf(String varName, long value)
-          throws UnknownVariableException {
-    setLongValueOf(getVariableAddress(varName), value);
-  }
-
-  /**
-   *
-   * @param varName
-   * @param value
-   */
-  public void setAddrValueOf(String varName, long value)
-          throws UnknownVariableException {
-    setAddrValueOf(getVariableAddress(varName), value);
-  }
-
-  /**
-   *
-   * @param varName
-   * @param data
-   */
-  public void setByteArray(String varName, byte[] data)
-          throws UnknownVariableException {
-    setMemorySegment(getVariableAddress(varName), data);
-  }
-
-  /**
-   * Monitor to listen for memory updates.
-   */
-  public interface VarMonitor extends MemMonitor {
-
-    public void varChanged(MoteMemory memory, MemoryEventType type, String varName);
-  }
-
-  /**
-   * Maps VarMonitor to their internal created AddressMonitor.
-   * Require for removing appropriate monitor.
-   */
-  Map<VarMonitor, AddressMonitor> monitorMapping = new HashMap<>();
-
-  /**
-   * Adds a AddressMonitor for the specified address region.
-   *
-   * @param flag Select memory operation(s) to listen for (read, write,
-   * read/write)
-   * @param varName
-   * @param vm
-   * @return
-   */
-  public boolean addVarMonitor(MonitorType flag, final String varName, final VarMonitor vm) {
-    AddressMonitor mm = new AddressMonitor() {
       @Override
-      public void memoryChanged(NewAddressMemory memory, MemoryEventType type, long address) {
-        vm.varChanged(MoteMemory.this, type, varName);
+      public void memoryChanged(MemoryInterface memory, MemMonitor.MemoryEventType type, long address) {
+        mm.memoryChanged(MoteMemory.this, type, address);
       }
     };
-    monitorMapping.put(vm, mm);
-    return addMemoryMonitor(
-            flag,
-            getVariableAddress(varName),
-            getVariableSize(varName),
-            mm);
+    monitors.put(mm, monitor);
+    return mintf.addSegmentMonitor(flag, address, size, monitor);
   }
 
-  /**
-   * Removes AddressMonitor assigned to the specified region.
-   *
-   * @param varName
-   * @param mm AddressMonitor to remove
-   */
-  public void removeVarMonitor(String varName, VarMonitor mm) {
-    removeMemoryMonitor(getVariableAddress(varName), getVariableSize(varName), monitorMapping.get(mm));
+  @Override
+  public boolean removeMemoryMonitor(long address, int size, AddressMonitor mm) {
+    return mintf.removeSegmentMonitor(address, size, monitors.get(mm));
   }
 }

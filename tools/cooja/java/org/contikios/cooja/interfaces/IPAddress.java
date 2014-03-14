@@ -74,7 +74,7 @@ import org.contikios.cooja.ClassDescription;
 import org.contikios.cooja.MemMonitor.MonitorType;
 import org.contikios.cooja.Mote;
 import org.contikios.cooja.MoteInterface;
-import org.contikios.cooja.MoteMemory;
+import org.contikios.cooja.VarMemory;
 import org.contikios.cooja.NewAddressMemory;
 import org.contikios.cooja.NewAddressMemory.AddressMonitor;
 import org.contikios.cooja.util.IPUtils;
@@ -100,7 +100,7 @@ public class IPAddress extends MoteInterface {
   
   private final IPv ipVersion;
 
-  private final MoteMemory moteMem;
+  private final VarMemory moteMem;
   private IPContainer localIPAddr = null;
 
   private final AddressMonitor memMonitor;

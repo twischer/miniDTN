@@ -78,7 +78,7 @@ import org.contikios.cooja.VisPlugin;
 import org.contikios.cooja.UnknownVariableException;
 import org.contikios.cooja.MemMonitor.MemoryEventType;
 import org.contikios.cooja.MemMonitor.MonitorType;
-import org.contikios.cooja.MoteMemory;
+import org.contikios.cooja.VarMemory;
 import org.contikios.cooja.NewAddressMemory;
 import org.contikios.cooja.NewAddressMemory.AddressMonitor;
 import org.jdesktop.swingx.autocomplete.AutoCompleteDecorator;
@@ -116,7 +116,7 @@ public class VariableWatcher extends VisPlugin implements MotePlugin {
   private JLabel debuglbl;
   private KeyListener charValueKeyListener;
   private FocusListener charValueFocusListener;
-  private MoteMemory moteMemory;
+  private VarMemory moteMemory;
 
   AddressMonitor memMonitor;
   long monitorAddr;
@@ -203,7 +203,7 @@ public class VariableWatcher extends VisPlugin implements MotePlugin {
   public VariableWatcher(Mote moteToView, Simulation simulation, Cooja gui) {
     super("Variable Watcher (" + moteToView + ")", gui);
     this.mote = moteToView;
-    moteMemory = (MoteMemory) moteToView.getMemory();
+    moteMemory = (VarMemory) moteToView.getMemory();
 
     JLabel label;
     integerFormat = NumberFormat.getIntegerInstance();

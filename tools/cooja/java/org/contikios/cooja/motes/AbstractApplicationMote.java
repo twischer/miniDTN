@@ -41,11 +41,12 @@ import org.jdom.Element;
 import org.contikios.cooja.Mote;
 import org.contikios.cooja.MoteInterface;
 import org.contikios.cooja.MoteInterfaceHandler;
-import org.contikios.cooja.MoteMemory;
+import org.contikios.cooja.VarMemory;
 import org.contikios.cooja.MoteType;
 import org.contikios.cooja.RadioPacket;
 import org.contikios.cooja.SectionMoteMemory;
 import org.contikios.cooja.Simulation;
+import org.contikios.cooja.MemoryInterface.Symbol;
 import org.contikios.cooja.interfaces.ApplicationRadio;
 import org.contikios.cooja.interfaces.ApplicationSerialPort;
 import org.contikios.cooja.interfaces.Radio;
@@ -90,7 +91,7 @@ public abstract class AbstractApplicationMote extends AbstractWakeupMote impleme
   public AbstractApplicationMote(MoteType moteType, Simulation sim) {
     setSimulation(sim);
     this.moteType = moteType;
-    this.memory = new SectionMoteMemory(MemoryLayout.getNative(), new HashMap<String, Integer>(), 0);
+    this.memory = new SectionMoteMemory(MemoryLayout.getNative(), new HashMap<String, Symbol>(), 0);
     this.moteInterfaces = new MoteInterfaceHandler(this, moteType.getMoteInterfaceClasses());
     this.moteInterfaces.getRadio().addObserver(radioDataObserver);
     requestImmediateWakeup();
@@ -108,11 +109,11 @@ public abstract class AbstractApplicationMote extends AbstractWakeupMote impleme
     moteInterfaces = moteInterfaceHandler;
   }
 
-  public MoteMemory getMemory() {
+  public VarMemory getMemory() {
     return memory;
   }
 
-  public void setMemory(MoteMemory memory) {
+  public void setMemory(VarMemory memory) {
     this.memory = (SectionMoteMemory) memory;
   }
 
@@ -145,7 +146,7 @@ public abstract class AbstractApplicationMote extends AbstractWakeupMote impleme
   public boolean setConfigXML(Simulation simulation,
       Collection<Element> configXML, boolean visAvailable) {
     setSimulation(simulation);
-    this.memory = new SectionMoteMemory(MemoryLayout.getNative(), new HashMap<String, Integer>(), 0);
+    this.memory = new SectionMoteMemory(MemoryLayout.getNative(), new HashMap<String, Symbol>(), 0);
     moteInterfaces.getRadio().addObserver(radioDataObserver);
 
     for (Element element : configXML) {

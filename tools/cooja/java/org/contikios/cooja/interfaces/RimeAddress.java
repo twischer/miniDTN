@@ -44,9 +44,9 @@ import org.contikios.cooja.ClassDescription;
 import org.contikios.cooja.MemMonitor.MonitorType;
 import org.contikios.cooja.Mote;
 import org.contikios.cooja.MoteInterface;
-import org.contikios.cooja.MoteMemory;
 import org.contikios.cooja.NewAddressMemory;
 import org.contikios.cooja.NewAddressMemory.AddressMonitor;
+import org.contikios.cooja.VarMemory;
 
 /**
  * Read-only interface to Rime address read from Contiki variable:
@@ -60,7 +60,7 @@ import org.contikios.cooja.NewAddressMemory.AddressMonitor;
 public class RimeAddress extends MoteInterface {
 
   private static final Logger logger = Logger.getLogger(RimeAddress.class);
-  private MoteMemory moteMem;
+  private VarMemory moteMem;
 
   public static final int RIME_ADDR_LENGTH = 2;
 

@@ -38,7 +38,7 @@ import org.apache.log4j.Logger;
 
 import org.contikios.cooja.MemMonitor.MonitorType;
 import org.contikios.cooja.Mote;
-import org.contikios.cooja.MoteMemory;
+import org.contikios.cooja.VarMemory;
 import org.contikios.cooja.interfaces.MoteID;
 
 /**
@@ -56,11 +56,11 @@ public class AvroraMoteID extends MoteID {
   private static final String VARNAME_ACT_MSG_ADDRC = "ActiveMessageAddressC$addr";
 
   private final Mote mote;
-  private MoteMemory moteMem = null;
+  private VarMemory moteMem = null;
 
   private int moteID = -1;
 
-  private MoteMemory.VarMonitor memoryMonitor;
+  private VarMemory.VarMonitor memoryMonitor;
 
   /**
    * Creates an interface to the mote ID at mote.
@@ -90,10 +90,10 @@ public class AvroraMoteID extends MoteID {
     
     /** Monitor used to overwrite id memorywith fixed id if modified externally */
     if (memoryMonitor == null) {
-      memoryMonitor = new MoteMemory.VarMonitor() {
+      memoryMonitor = new VarMemory.VarMonitor() {
 
         @Override
-        public void varChanged(MoteMemory memory, MemoryEventType type, String varName) {
+        public void varChanged(VarMemory memory, MemoryEventType type, String varName) {
           System.out.println("varChanged! " + type);
           writeID();
         }

@@ -95,7 +95,7 @@ public abstract class MspMote extends AbstractEmulatedMote implements Mote, Watc
   private MSP430 myCpu = null;
   private final MemoryLayout memLayout;
   private MspMoteType myMoteType = null;
-  private MspMoteMemory myMemory = null;
+  private MoteMemory myMemory = null;
   private MoteInterfaceHandler myMoteInterfaceHandler = null;
   public ComponentRegistry registry = null;
 
@@ -193,7 +193,7 @@ public abstract class MspMote extends AbstractEmulatedMote implements Mote, Watc
   }
 
   public void setMemory(MoteMemory memory) {
-    myMemory = (MspMoteMemory) memory;
+    myMemory = memory;
   }
 
   /**
@@ -242,7 +242,7 @@ public abstract class MspMote extends AbstractEmulatedMote implements Mote, Watc
     /* Create mote address memory */
     MapTable map = ((MspMoteType)getType()).getELF().getMap();
     MapEntry[] allEntries = map.getAllEntries();
-    myMemory = new MspMoteMemory(memLayout, this, allEntries, myCpu);
+    myMemory = new MoteMemory(memLayout, new MspMoteMemory(allEntries, myCpu));
 
     myCpu.reset();
   }

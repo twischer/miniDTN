@@ -29,29 +29,33 @@
 package org.contikios.cooja.mspmote;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
 
 import org.apache.log4j.Logger;
 
-import org.contikios.cooja.UnknownVariableException;
 import org.contikios.cooja.MemMonitor.MemoryEventType;
 import org.contikios.cooja.MemMonitor.MonitorType;
-import org.contikios.cooja.MemoryLayout;
-import org.contikios.cooja.Mote;
-import org.contikios.cooja.MoteMemory;
+import org.contikios.cooja.MemoryInterface;
+import org.contikios.cooja.MemoryInterface.Symbol;
 import se.sics.mspsim.core.MSP430;
 import se.sics.mspsim.core.Memory.AccessMode;
 import se.sics.mspsim.core.Memory.AccessType;
 import se.sics.mspsim.util.MapEntry;
 
-public class MspMoteMemory extends MoteMemory {
+/**
+ * 
+ * @author Enrico Joerns
+ */
+public class MspMoteMemory implements MemoryInterface {
 
   private static final Logger logger = Logger.getLogger(MspMoteMemory.class);
   private final ArrayList<MapEntry> mapEntries;
 
   private final MSP430 cpu;
 
-  public MspMoteMemory(MemoryLayout layout, Mote mote, MapEntry[] allEntries, MSP430 cpu) {
-    super(layout);
+  public MspMoteMemory(MapEntry[] allEntries, MSP430 cpu) {
     this.mapEntries = new ArrayList<>();
 
     for (MapEntry entry : allEntries) {
@@ -64,41 +68,45 @@ public class MspMoteMemory extends MoteMemory {
   }
 
   @Override
-  public String[] getVariableNames() {
-    String[] names = new String[mapEntries.size()];
-    for (int i = 0; i < mapEntries.size(); i++) {
-      names[i] = mapEntries.get(i).getName();
-    }
-    return names;
-  }
-
-  private MapEntry getMapEntry(String varName) throws UnknownVariableException {
+  public Symbol[] getVariables() {
+    List<Symbol> vars = new LinkedList<>();
     for (MapEntry entry : mapEntries) {
-      if (entry.getName().equals(varName)) {
-        return entry;
+      if (entry.getType() != MapEntry.TYPE.variable) {
+        continue;
       }
+      vars.add(new Symbol(
+              Symbol.Type.VARIABLE,
+              entry.getName(), 
+              entry.getAddress(), 
+              entry.getSize()));
     }
-    throw new UnknownVariableException(varName);
+    return vars.toArray(new Symbol[0]);
   }
 
-  @Override
-  public long getVariableAddress(String varName) throws UnknownVariableException {
-    MapEntry entry = getMapEntry(varName);
-    return entry.getAddress();
-  }
-
-  @Override
-  public int getVariableSize(String varName) throws UnknownVariableException {
-    MapEntry entry = getMapEntry(varName);
-    return entry.getSize();
-  }
-
-//  public int getIntegerLength() {
-//    return 2;
+//  private MapEntry getMapEntry(String varName) throws UnknownVariableException {
+//    for (MapEntry entry : mapEntries) {
+//      if (entry.getName().equals(varName)) {
+//        return entry;
+//      }
+//    }
+//    throw new UnknownVariableException(varName);
 //  }
+
+//  @Override
+//  public long getVariableAddress(String varName) throws UnknownVariableException {
+//    MapEntry entry = getMapEntry(varName);
+//    return entry.getAddress();
+//  }
+
+//  @Override
+//  public int getVariableSize(String varName) throws UnknownVariableException {
+//    MapEntry entry = getMapEntry(varName);
+//    return entry.getSize();
+//  }
+
   @Override
   public void clearMemory() {
-    logger.fatal("clearMemory() not implemented");
+    Arrays.fill(cpu.memory, 0);
   }
 
   @Override
@@ -132,88 +140,16 @@ public class MspMoteMemory extends MoteMemory {
     return cpu.memory.length;
   }
 
-  @Override
-  public boolean variableExists(String varName) {
-    for (MapEntry entry : mapEntries) {
-      if (entry.getName().equals(varName)) {
-        return true;
-      }
-    }
 
-    return false;
-  }
-
-  /* TODO Check correct variable size in below methods */
-//  public int getIntValueOf(String varName) throws UnknownVariableException {
-//    MapEntry entry = getMapEntry(varName);
-//
-//    int varAddr = entry.getAddress();
-//    byte[] varData = getMemorySegment(varAddr, 2);
-//    return parseInt(varData);
-//  }
-//  public void setIntValueOf(String varName, int newVal) throws UnknownVariableException {
-//    MapEntry entry = getMapEntry(varName);
-//    int varAddr = entry.getAddress();
-//
-//    int newValToSet = Integer.reverseBytes(newVal);
-//
-//    // Create byte array
-//    int pos = 0;
-//
-//    byte[] varData = new byte[2];
-//    varData[pos++] = (byte) ((newValToSet & 0xFF000000) >> 24);
-//    varData[pos++] = (byte) ((newValToSet & 0xFF0000) >> 16);
-//
-//    setMemorySegment(varAddr, varData);
-//  }
-//  public byte getByteValueOf(String varName) throws UnknownVariableException {
-//    MapEntry entry = getMapEntry(varName);
-//    int varAddr = entry.getAddress();
-//
-//    byte[] varData = getMemorySegment(varAddr, 1);
-//
-//    return varData[0];
-//  }
-//  public void setByteValueOf(String varName, byte newVal) throws UnknownVariableException {
-//    MapEntry entry = getMapEntry(varName);
-//    int varAddr = entry.getAddress();
-//
-//    byte[] varData = new byte[1];
-//
-//    varData[0] = newVal;
-//
-//    setMemorySegment(varAddr, varData);
-//  }
-//  public byte[] getByteArray(String varName, int length) throws UnknownVariableException {
-//    MapEntry entry = getMapEntry(varName);
-//    int varAddr = entry.getAddress();
-//
-//    return getMemorySegment(varAddr, length);
-//  }
-//  public void setByteArray(String varName, byte[] data) throws UnknownVariableException {
-//    MapEntry entry = getMapEntry(varName);
-//    int varAddr = entry.getAddress();
-//
-//    setMemorySegment(varAddr, data);
-//  }
   private final ArrayList<MemoryCPUMonitor> cpuMonitorArray = new ArrayList<>();
 
-//  @Override
-//  public boolean addMemoryMonitor(MonitorType flag, long address, int size, AddressMonitor mm) {
-//    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-//  }
-//
-//  @Override
-//  public void removeMemoryMonitor(long address, int size, AddressMonitor mm) {
-//    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-//  }
   class MemoryCPUMonitor extends se.sics.mspsim.core.MemoryMonitor.Adapter {
 
-    public final AddressMonitor mm;
+    public final SegmentMonitor mm;
     public final int address;
     public final int size;
 
-    public MemoryCPUMonitor(AddressMonitor mm, int address, int size) {
+    public MemoryCPUMonitor(SegmentMonitor mm, int address, int size) {
       this.mm = mm;
       this.address = address;
       this.size = size;
@@ -231,10 +167,7 @@ public class MspMoteMemory extends MoteMemory {
   }
 
   @Override
-  public boolean addMemoryMonitor(MonitorType type, long address, int size, AddressMonitor mm) {
-    if (type != MonitorType.RW) {
-      logger.warn("r/w type option ignored");
-    }
+  public boolean addSegmentMonitor(MonitorType type, long address, int size, SegmentMonitor mm) {
     MemoryCPUMonitor t = new MemoryCPUMonitor(mm, (int) address, size);
     cpuMonitorArray.add(t);
 
@@ -246,7 +179,7 @@ public class MspMoteMemory extends MoteMemory {
   }
 
   @Override
-  public boolean removeMemoryMonitor(long address, int size, AddressMonitor mm) {
+  public boolean removeSegmentMonitor(long address, int size, SegmentMonitor mm) {
     for (MemoryCPUMonitor mcm : cpuMonitorArray) {
       if (mcm.mm != mm || mcm.address != address || mcm.size != size) {
         continue;
@@ -259,17 +192,4 @@ public class MspMoteMemory extends MoteMemory {
     }
     return false;
   }
-
-//  public int parseInt(byte[] memorySegment) {
-//    if (memorySegment.length < 2) {
-//      return -1;
-//    }
-//    
-//    int retVal = 0;
-//    int pos = 0;
-//    retVal += ((memorySegment[pos++] & 0xFF)) << 8;
-//    retVal += ((memorySegment[pos++] & 0xFF)) << 0;
-//
-//    return Integer.reverseBytes(retVal) >> 16;
-//  }
 }

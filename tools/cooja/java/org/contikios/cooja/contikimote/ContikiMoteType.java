@@ -59,6 +59,7 @@ import org.contikios.cooja.AbstractionLevelDescription;
 import org.contikios.cooja.ClassDescription;
 import org.contikios.cooja.CoreComm;
 import org.contikios.cooja.Cooja;
+import org.contikios.cooja.MemoryInterface.Symbol;
 import org.contikios.cooja.MemoryLayout;
 import org.contikios.cooja.MemorySection;
 import org.contikios.cooja.Mote;
@@ -398,14 +399,14 @@ public class ContikiMoteType implements MoteType {
     int commonSectionRelAddr = -1, commonSectionSize = -1;
     int readonlySectionRelAddr = -1, readonlySectionSize = -1;
 
-    HashMap<String, Integer> addresses = new HashMap<String, Integer>();
+    HashMap<String, Symbol> variables = new HashMap<>();
     if (useCommand) {
       /* Parse command output */
       String[] output = loadCommandData(getContikiFirmwareFile());
       if (output == null) {
         throw new MoteTypeCreationException("No parse command output loaded");
       }
-      boolean parseOK = parseCommandData(output, addresses);
+      boolean parseOK = parseCommandData(output, variables);
       if (!parseOK) {
         logger.fatal("Command output parsing failed");
         throw new MoteTypeCreationException("Command output parsing failed");
@@ -437,7 +438,7 @@ public class ContikiMoteType implements MoteType {
         logger.fatal("No map data could be loaded");
         throw new MoteTypeCreationException("No map data could be loaded: " + mapFile);
       }
-      boolean parseOK = parseMapFileData(mapData, addresses);
+      boolean parseOK = parseMapFileData(mapData, variables);
       if (!parseOK) {
         logger.fatal("Map data parsing failed");
         throw new MoteTypeCreationException("Map data parsing failed: " + mapFile);
@@ -482,7 +483,7 @@ public class ContikiMoteType implements MoteType {
     } else {
       logger.warn(getContikiFirmwareFile().getName() + ": no readonly section found");
     }
-    if (addresses.isEmpty()) {
+    if (variables.isEmpty()) {
       throw new MoteTypeCreationException("Library variables parsing failed");
     }
     if (dataSectionRelAddr <= 0 || dataSectionSize <= 0
@@ -492,7 +493,7 @@ public class ContikiMoteType implements MoteType {
 
     try {
       /* Relative <-> absolute addresses offset */
-      int referenceVar = addresses.get("referenceVar");
+      int referenceVar = (int) variables.get("referenceVar").addr;
       myCoreComm.setReferenceAddress(referenceVar);
     } catch (Exception e) {
       throw (MoteTypeCreationException) new MoteTypeCreationException(
@@ -507,7 +508,7 @@ public class ContikiMoteType implements MoteType {
      * Contiki's and Cooja's address spaces */
     int offset;
     {
-      SectionMoteMemory tmp = new SectionMoteMemory(MemoryLayout.getNative(), addresses, 0);
+      SectionMoteMemory tmp = new SectionMoteMemory(MemoryLayout.getNative(), variables, 0);
       byte[] data = new byte[dataSectionSize];
       getCoreMemory(dataSectionRelAddr, dataSectionSize, data);
       tmp.addMemorySection(new MemorySection("tmp.data", dataSectionRelAddr, data));
@@ -521,7 +522,7 @@ public class ContikiMoteType implements MoteType {
     }
 
     /* Create initial memory: data+bss+optional common */
-    initialMemory = new SectionMoteMemory(MemoryLayout.getNative(), addresses, offset);
+    initialMemory = new SectionMoteMemory(MemoryLayout.getNative(), variables, offset);
 
     byte[] initialDataSection = new byte[dataSectionSize];
     getCoreMemory(dataSectionRelAddr, dataSectionSize, initialDataSection);
@@ -613,20 +614,14 @@ public class ContikiMoteType implements MoteType {
    * @param varAddresses
    *          Properties that should contain the name to addresses mappings.
    */
-  public static boolean parseMapFileData(String[] mapFileData, HashMap<String, Integer> varAddresses) {
-    String[] varNames = getMapFileVarNames(mapFileData);
+  public static boolean parseMapFileData(String[] mapFileData, HashMap<String, Symbol> varAddresses) {
+    Symbol[] varNames = getMapFileVars(mapFileData);
     if (varNames == null || varNames.length == 0) {
       return false;
     }
-
-    for (String varName : varNames) {
-      int varAddress = getMapFileVarAddress(mapFileData, varName, varAddresses);
-      if (varAddress > 0) {
-        varAddresses.put(varName, new Integer(varAddress));
-      } else {
-        logger.warn("Parsed Contiki variable '" + varName
-            + "' but could not find address");
-      }
+    
+    for (Symbol varName : varNames) {
+      varAddresses.put(varName.name, varName);
     }
 
     return true;
@@ -639,7 +634,7 @@ public class ContikiMoteType implements MoteType {
    * @param output Command output
    * @param addresses Variable addresses mappings
    */
-  public static boolean parseCommandData(String[] output, HashMap<String, Integer> addresses) {
+  public static boolean parseCommandData(String[] output, HashMap<String, Symbol> addresses) {
     int nrNew = 0, nrOld = 0, nrMismatch = 0;
 
     Pattern pattern =
@@ -655,9 +650,9 @@ public class ContikiMoteType implements MoteType {
 
         if (!addresses.containsKey(symbol)) {
           nrNew++;
-          addresses.put(symbol, new Integer(address));
+          addresses.put(symbol, new Symbol(Symbol.Type.VARIABLE, symbol, address, 1));
         } else {
-          int oldAddress = addresses.get(symbol);
+          int oldAddress = (int) addresses.get(symbol).addr;
           if (oldAddress != address) {
             /*logger.warn("Warning, command response not matching previous entry of: "
                 + varName);*/
@@ -760,28 +755,28 @@ public class ContikiMoteType implements MoteType {
    *
    * @return Variable names found in the data and bss section
    */
-  public static String[] getMapFileVarNames(String[] mapFileData) {
-    ArrayList<String> varNames = new ArrayList<String>();
+  public static Symbol[] getMapFileVars(String[] mapFileData) {
+    ArrayList<Symbol> vars = new ArrayList<>();
 
-    String[] dataVariables = getAllVariableNames(
+    Symbol[] dataVariables = getMapFileVarsInRange(
         mapFileData,
         parseMapDataSectionAddr(mapFileData),
         parseMapDataSectionAddr(mapFileData) + parseMapDataSectionSize(mapFileData));
-    varNames.addAll(Arrays.asList(dataVariables));
+    vars.addAll(Arrays.asList(dataVariables));
 
-    String[] bssVariables = getAllVariableNames(
+    Symbol[] bssVariables = getMapFileVarsInRange(
         mapFileData,
         parseMapBssSectionAddr(mapFileData),
         parseMapBssSectionAddr(mapFileData) + parseMapBssSectionSize(mapFileData));
-    varNames.addAll(Arrays.asList(bssVariables));
+    vars.addAll(Arrays.asList(bssVariables));
 
-    return varNames.toArray(new String[0]);
+    return vars.toArray(new Symbol[0]);
   }
   
 
-  private static String[] getAllVariableNames(String[] lines,
+  private static Symbol[] getMapFileVarsInRange(String[] lines,
       int startAddress, int endAddress) {
-    ArrayList<String> varNames = new ArrayList<String>();
+    ArrayList<Symbol> varNames = new ArrayList<>();
 
     Pattern pattern = Pattern.compile(Cooja.getExternalToolsSetting("MAPFILE_VAR_NAME"));
     for (String line : lines) {
@@ -789,33 +784,35 @@ public class ContikiMoteType implements MoteType {
       if (matcher.find()) {
         if (Integer.decode(matcher.group(1)).intValue() >= startAddress
             && Integer.decode(matcher.group(1)).intValue() <= endAddress) {
-          varNames.add(matcher.group(2));
+          String varName = matcher.group(2);
+          varNames.add(new Symbol(
+                  Symbol.Type.VARIABLE,
+                  varName,
+                  getMapFileVarAddress(lines, varName),
+                  getMapFileVarSize(lines, varName)));
         }
       }
     }
-    return varNames.toArray(new String[0]);
+    return varNames.toArray(new Symbol[0]);
   }
-
+  
   /**
    * Get relative address of variable with given name.
    *
    * @param varName Name of variable
    * @return Relative memory address of variable or -1 if not found
    */
-  private static int getMapFileVarAddress(String[] mapFileData, String varName, HashMap<String, Integer> varAddresses) {
+  private static int getMapFileVarAddress(String[] mapFileData, String varName) {
     Integer varAddrInteger;
-    if ((varAddrInteger = varAddresses.get(varName)) != null) {
-      return varAddrInteger.intValue();
-    }
 
-    String regExp = Cooja.getExternalToolsSetting("MAPFILE_VAR_ADDRESS_1")
+    String regExp
+            = Cooja.getExternalToolsSetting("MAPFILE_VAR_ADDRESS_1")
             + varName
             + Cooja.getExternalToolsSetting("MAPFILE_VAR_ADDRESS_2");
     String retString = getFirstMatchGroup(mapFileData, regExp, 1);
 
     if (retString != null) {
       varAddrInteger = Integer.parseInt(retString.trim(), 16);
-      varAddresses.put(varName, varAddrInteger);
       return varAddrInteger.intValue();
     }
     else {
@@ -825,9 +822,9 @@ public class ContikiMoteType implements MoteType {
   
   protected static int getMapFileVarSize(String[] mapFileData, String varName) {
     Pattern pattern = Pattern.compile(
-            Cooja.getExternalToolsSetting("MAPFILE_VAR_SIZE_1")
-            + varName
-            + Cooja.getExternalToolsSetting("MAPFILE_VAR_SIZE_2"));
+        Cooja.getExternalToolsSetting("MAPFILE_VAR_SIZE_1") +
+        varName +
+        Cooja.getExternalToolsSetting("MAPFILE_VAR_SIZE_2"));
     for (String line : mapFileData) {
       Matcher matcher = pattern.matcher(line);
       if (matcher.find()) {

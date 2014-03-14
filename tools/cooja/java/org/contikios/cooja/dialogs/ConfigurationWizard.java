@@ -65,6 +65,7 @@ import javax.swing.JScrollPane;
 
 import org.contikios.cooja.CoreComm;
 import org.contikios.cooja.Cooja;
+import org.contikios.cooja.MemoryInterface.Symbol;
 import org.contikios.cooja.MemoryLayout;
 import org.contikios.cooja.MoteType.MoteTypeCreationException;
 import org.contikios.cooja.SectionMoteMemory;
@@ -142,7 +143,7 @@ public class ConfigurationWizard extends JDialog {
   private static File cLibraryFile;
   private static String javaLibraryName;
   private static CoreComm javaLibrary;
-  private static HashMap<String, Integer> addresses;
+  private static HashMap<String, Symbol> addresses;
   private static int relDataSectionAddr;
   private static int dataSectionSize;
   private static int relBssSectionAddr;
@@ -758,7 +759,7 @@ public class ConfigurationWizard extends JDialog {
     }
 
     testOutput.addMessage("### Parsing map file data for addresses");
-    addresses = new HashMap<String, Integer>();
+    addresses = new HashMap<String, Symbol>();
     boolean parseOK = ContikiMoteType.parseMapFileData(mapData, addresses);
     if (!parseOK) {
       testOutput.addMessage("### Error: Failed parsing map file data", MessageList.ERROR);
@@ -838,7 +839,7 @@ public class ConfigurationWizard extends JDialog {
     }
 
     testOutput.addMessage("### Parsing command output for addresses");
-    addresses = new HashMap<String, Integer>();
+    addresses = new HashMap<String, Symbol>();
     boolean parseOK = ContikiMoteType.parseCommandData(commandData, addresses);
     if (!parseOK) {
       testOutput.addMessage("### Error: Failed parsing command output", MessageList.ERROR);
@@ -936,7 +937,7 @@ public class ConfigurationWizard extends JDialog {
       testOutput.addMessage("Could not find address of referenceVar", MessageList.ERROR);
       return false;
     }
-    int relRefAddress = addresses.get("referenceVar");
+    int relRefAddress = (int) addresses.get("referenceVar").addr;
     javaLibrary.setReferenceAddress(relRefAddress);
 
     testOutput.addMessage("### Creating data and BSS memory sections");
