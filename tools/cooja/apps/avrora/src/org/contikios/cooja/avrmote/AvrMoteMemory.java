@@ -51,6 +51,7 @@ import org.contikios.cooja.MemoryInterface;
 public class AvrMoteMemory implements MemoryInterface {
 
   private static final Logger logger = Logger.getLogger(AvrMoteMemory.class);
+  private static final boolean DEBUG = logger.isDebugEnabled();
 
   private final SourceMapping memoryMap;
   private final AVRProperties avrProperties;
@@ -72,11 +73,20 @@ public class AvrMoteMemory implements MemoryInterface {
   public void clearMemory() {
     setMemorySegment(0L, new byte[avrProperties.sram_size]);
   }
+  
+  private boolean accessInRange(long address, int size) {
+    return (address >= 0) && (address + size <= avrProperties.sram_size);
+  }
 
   @Override
-  public byte[] getMemorySegment(long address, int size) {
+  public byte[] getMemorySegment(long address, int size) throws MoteMemoryException {
     /*logger.info("getMemorySegment(" + String.format("0x%04x", address) +
      ", " + size + ")");*/
+    if (!accessInRange(address, size)) {
+      throw new MoteMemoryException(
+              "Getting memory segment [0x%x,0x%x] failed: Out of range",
+              address, address + size - 1);
+    }
 
     /* XXX Unsure whether this is the appropriate method to use, as it
      * triggers memoryRead monitor. Right now I'm using a flag to indicate
@@ -92,10 +102,12 @@ public class AvrMoteMemory implements MemoryInterface {
   }
 
   @Override
-  public void setMemorySegment(long address, byte[] data) {
-    logger.debug("setMemorySegment("
-            + String.format("0x%04x", address)
-            + ", data:" + data.length + ")");
+  public void setMemorySegment(long address, byte[] data) throws MoteMemoryException {
+    if (!accessInRange(address, data.length)) {
+      throw new MoteMemoryException(
+              "Writing memory segment [0x%x,0x%x] failed: Out of range",
+              address, address + data.length - 1);
+    }
 
     /* XXX See comment in getMemorySegment. */
     coojaIsAccessingMemory = true;
@@ -103,6 +115,11 @@ public class AvrMoteMemory implements MemoryInterface {
       interpreter.writeDataByte((int) address + i, data[i]);
     }
     coojaIsAccessingMemory = false;
+    if (DEBUG) {
+      logger.debug(String.format(
+              "Wrote memory segment [0x%x,0x%x]",
+              address, address + data.length - 1));
+    }
   }
 
   @Override

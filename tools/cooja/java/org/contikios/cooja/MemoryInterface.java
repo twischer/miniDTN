@@ -65,13 +65,23 @@ public interface MemoryInterface {
   }
 
   /**
+   * Class represents memory access exceptions.
+   */
+  public class MoteMemoryException extends RuntimeException {
+
+    public MoteMemoryException(String message, Object... args) {
+      super(String.format(message, args));
+    }
+  }
+
+  /**
    * Reads a segment from memory.
    *
    * @param addr Start address to read from
    * @param size Size to read [bytes]
    * @return Byte array
    */
-  public byte[] getMemorySegment(long addr, int size);
+  public byte[] getMemorySegment(long addr, int size) throws MoteMemoryException;
 
   /**
    * Sets a segment of memory.
@@ -79,7 +89,7 @@ public interface MemoryInterface {
    * @param addr Start address to write to
    * @param data Size to write [bytes]
    */
-  public void setMemorySegment(long addr, byte[] data);
+  public void setMemorySegment(long addr, byte[] data) throws MoteMemoryException;
 
   /**
    * Clears the memory.

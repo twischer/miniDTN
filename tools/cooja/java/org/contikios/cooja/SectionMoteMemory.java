@@ -36,6 +36,7 @@ import java.util.List;
 import org.apache.log4j.Logger;
 import org.contikios.cooja.MemMonitor.MemoryEventType;
 import org.contikios.cooja.MemMonitor.MonitorType;
+import org.contikios.cooja.MemoryInterface.MoteMemoryException;
 import org.contikios.cooja.NewAddressMemory.AddressMonitor;
 import org.contikios.cooja.MemoryInterface.Symbol;
 
@@ -119,7 +120,7 @@ public class SectionMoteMemory extends VarMemory implements SectionMemory {
   }
 
   @Override
-  public byte[] getMemorySegment(long address, int size) {
+  public byte[] getMemorySegment(long address, int size) throws MoteMemoryException {
     /* Cooja address space */
     address -= offset;
 
@@ -130,14 +131,13 @@ public class SectionMoteMemory extends VarMemory implements SectionMemory {
       }
     }
 
-    logger.error(String.format(
+    throw new MoteMemoryException(
             "Getting memory segment [0x%x,0x%x] failed: No section available",
-            address, address + size - 1));
-    return null;
+            address, address + size - 1);
   }
 
   @Override
-  public void setMemorySegment(long address, byte[] data) {
+  public void setMemorySegment(long address, byte[] data) throws MoteMemoryException {
     /* Cooja address space */
     address -= offset;
 
@@ -152,9 +152,9 @@ public class SectionMoteMemory extends VarMemory implements SectionMemory {
         return;
       }
     }
-    logger.error(String.format(
+    throw new MoteMemoryException(
             "Writing memory segment [0x%x,0x%x] failed: No section available",
-            address, address + data.length - 1));
+            address, address + data.length - 1);
   }
 
   /**
@@ -177,7 +177,7 @@ public class SectionMoteMemory extends VarMemory implements SectionMemory {
       if ((section.getStartAddr() <= sec.getStartAddr() + sec.getSize() - 1)
               && (section.getStartAddr() + section.getSize() - 1 >= sec.getStartAddr())) {
         logger.error(String.format(
-                "Creating memory section %s [0x%x,0x%x] failed: Overlap with existing section [%x,%x]",
+                "Adding memory section %s [0x%x,0x%x] failed: Overlap with existing section [%x,%x]",
                 section.getName(),
                 section.getStartAddr(), section.getStartAddr() + section.getSize() - 1,
                 sec.getStartAddr(), sec.getStartAddr() + sec.getSize() - 1));
@@ -194,7 +194,7 @@ public class SectionMoteMemory extends VarMemory implements SectionMemory {
     
     if (DEBUG) {
       logger.debug(String.format(
-              "Created new memory section %s [0x%x,0x%x]",
+              "Added new memory section %s [0x%x,0x%x]",
               section.getName(),
               section.getStartAddr(), section.getStartAddr() + section.getSize() - 1));
     }

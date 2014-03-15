@@ -1,6 +1,7 @@
 package org.contikios.cooja;
 
 import org.contikios.cooja.MemMonitor.MonitorType;
+import org.contikios.cooja.MemoryInterface.MoteMemoryException;
 
 /**
  *
@@ -38,7 +39,7 @@ public abstract class NewAddressMemory {
    * @param size Size of memory segment
    * @return Memory segment or null if segment not available
    */
-  public abstract byte[] getMemorySegment(long address, int size);
+  public abstract byte[] getMemorySegment(long address, int size) throws MoteMemoryException ;
 
   /**
    * Sets a memory segment.
@@ -46,7 +47,7 @@ public abstract class NewAddressMemory {
    * @param address Start address of memory segment
    * @param data Data
    */
-  public abstract void setMemorySegment(long address, byte[] data);
+  public abstract void setMemorySegment(long address, byte[] data) throws MoteMemoryException ;
 
   /**
    * Returns the sum of all byte array sizes in this memory.
@@ -147,11 +148,6 @@ public abstract class NewAddressMemory {
     setMemorySegment(addr, MemoryBuffer.getAddressMemory(memLayout, new byte[memLayout.addrSize]).putAddr(value).getBytes());
   }
   
-//  public enum MemoryEventType {
-//
-//    READ, WRITE
-//  };
-
   /**
    * Monitor to listen for memory updates.
    */
@@ -159,14 +155,6 @@ public abstract class NewAddressMemory {
 
     public void memoryChanged(NewAddressMemory memory, MemoryEventType type, long address);
   }
-
-  /**
-   * Memory access type to listen for.
-   */
-//  public enum MonitorType {
-//
-//    R, W, RW
-//  };
 
   /**
    * Adds a AddressMonitor for the specified address region.
