@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Enrico Joerns
+ * Copyright (c) 2014, TU Braunschweig
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -31,7 +31,7 @@ package org.contikios.cooja;
 /**
  * Memory interface to mote emulator.
  *
- * @author Enrico Joerns
+ * @author Enrico Jorns
  */
 public interface MemoryInterface {
 
@@ -40,11 +40,11 @@ public interface MemoryInterface {
    */
   public static class Symbol {
 
-    public Type type;
-    public String name;
-    public String section;
-    public long addr;
-    public int size;
+    public final Type type;
+    public final String name;
+    public final String section;
+    public final long addr;
+    public final int size;
 
     public enum Type {
 
@@ -53,6 +53,7 @@ public interface MemoryInterface {
     }
 
     public Symbol(Type type, String name, String section, long addr, int size) {
+      this.type = type;
       this.name = name;
       this.section = section;
       this.addr = addr;
@@ -61,6 +62,15 @@ public interface MemoryInterface {
 
     public Symbol(Type type, String name, long addr, int size) {
       this(type, name, null, addr, size);
+    }
+    
+    @Override
+    public String toString() {
+      return new StringBuilder("Symbol(").append(type == null ? "N/A" : type.toString())
+              .append(") '").append(name)
+              .append("' in '").append(section == null ? "N/A" : section)
+              .append("' at 0x").append(addr == -1 ? "N/A" : Long.toHexString(addr))
+              .append(" size ").append(size == -1 ? "N/A" : String.valueOf(size)).toString();
     }
   }
 

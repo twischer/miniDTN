@@ -62,20 +62,16 @@ public class SectionMoteMemory extends VarMemory implements SectionMemory {
 
   private final HashMap<String, Symbol> variables = new HashMap<>();
 
-  /* used to map Cooja's address space to native (Contiki's) addresses */
-  private final int offset;
 
   private final MemoryLayout layout;
 
   /**
    * @param layout
    * @param variables
-   * @param offset Offset for internally used addresses
    */
-  public SectionMoteMemory(MemoryLayout layout, int offset) {
+  public SectionMoteMemory(MemoryLayout layout) {
     super(layout);
     this.layout = layout;
-    this.offset = offset;
   }
 
   @Override
@@ -102,7 +98,7 @@ public class SectionMoteMemory extends VarMemory implements SectionMemory {
 
     Symbol sym = variables.get(varName);
     
-    return new Symbol(sym.type, sym.name, sym.section, sym.addr + offset, sym.size);
+    return new Symbol(sym.type, sym.name, sym.section, sym.addr, sym.size);
   }
 
   @Override
@@ -122,7 +118,7 @@ public class SectionMoteMemory extends VarMemory implements SectionMemory {
   @Override
   public byte[] getMemorySegment(long address, int size) throws MoteMemoryException {
     /* Cooja address space */
-    address -= offset;
+//    address -= offset;
 
     for (MemorySection section : sections) {
       if (section.includesAddr(address)
@@ -139,7 +135,7 @@ public class SectionMoteMemory extends VarMemory implements SectionMemory {
   @Override
   public void setMemorySegment(long address, byte[] data) throws MoteMemoryException {
     /* Cooja address space */
-    address -= offset;
+//    address -= offset;
 
     for (MemorySection section : sections) {
       if (section.inSection(address, data.length)) {
@@ -177,9 +173,10 @@ public class SectionMoteMemory extends VarMemory implements SectionMemory {
       if ((section.getStartAddr() <= sec.getStartAddr() + sec.getSize() - 1)
               && (section.getStartAddr() + section.getSize() - 1 >= sec.getStartAddr())) {
         logger.error(String.format(
-                "Adding memory section %s [0x%x,0x%x] failed: Overlap with existing section [%x,%x]",
+                "Adding memory section '%s' [0x%x,0x%x] failed: Overlap with existing section '%s' [%x,%x]",
                 section.getName(),
                 section.getStartAddr(), section.getStartAddr() + section.getSize() - 1,
+                sec.getName(),
                 sec.getStartAddr(), sec.getStartAddr() + sec.getSize() - 1));
         return false;
       }
@@ -194,7 +191,7 @@ public class SectionMoteMemory extends VarMemory implements SectionMemory {
     
     if (DEBUG) {
       logger.debug(String.format(
-              "Added new memory section %s [0x%x,0x%x]",
+              "Added memory section '%s' [0x%x,0x%x]",
               section.getName(),
               section.getStartAddr(), section.getStartAddr() + section.getSize() - 1));
     }
@@ -277,7 +274,7 @@ public class SectionMoteMemory extends VarMemory implements SectionMemory {
       sectionsClone.add(section.clone());
     }
 
-    SectionMoteMemory clone = new SectionMoteMemory(layout, offset);
+    SectionMoteMemory clone = new SectionMoteMemory(layout);
     for (MemorySection sec : sectionsClone) {
       clone.addMemorySection(sec);
     }
@@ -296,11 +293,11 @@ public class SectionMoteMemory extends VarMemory implements SectionMemory {
   private class PolledMemorySegments {
 
     public final AddressMonitor mm;
-    public final int address;
+    public final long address;
     public final int size;
     private byte[] oldMem;
 
-    public PolledMemorySegments(AddressMonitor mm, int address, int size) {
+    public PolledMemorySegments(AddressMonitor mm, long address, int size) {
       this.mm = mm;
       this.address = address;
       this.size = size;
@@ -316,7 +313,7 @@ public class SectionMoteMemory extends VarMemory implements SectionMemory {
 
       mm.memoryChanged(SectionMoteMemory.this, MemoryEventType.WRITE, address);
       oldMem = newMem;
-    }
+    }                                            
   }
 
   @Override
@@ -328,7 +325,7 @@ public class SectionMoteMemory extends VarMemory implements SectionMemory {
     else if (type == MonitorType.RW) {
       logger.warn("R/W type not supported, fallback to W");
     }
-    PolledMemorySegments t = new PolledMemorySegments(mm, (int) address, size);
+    PolledMemorySegments t = new PolledMemorySegments(mm, address, size);
     polledMemories.add(t);
     return true;
   }
