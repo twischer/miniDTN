@@ -35,10 +35,12 @@ import java.util.Observer;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import org.apache.log4j.Logger;
+import org.contikios.cooja.mote.memory.Memory;
+import org.contikios.cooja.mote.memory.Memory.MemoryMonitor;
+import org.contikios.cooja.mote.memory.Memory.MemoryMonitor.EventType;
 
-import org.contikios.cooja.MemMonitor.MonitorType;
 import org.contikios.cooja.Mote;
-import org.contikios.cooja.MoteMemory;
+import org.contikios.cooja.mote.memory.VarMemory;
 import org.contikios.cooja.interfaces.MoteID;
 
 /**
@@ -56,11 +58,11 @@ public class AvroraMoteID extends MoteID {
   private static final String VARNAME_ACT_MSG_ADDRC = "ActiveMessageAddressC$addr";
 
   private final Mote mote;
-  private MoteMemory moteMem = null;
+  private VarMemory moteMem = null;
 
   private int moteID = -1;
 
-  private MoteMemory.VarMonitor memoryMonitor;
+  private VarMemory.MemoryMonitor memoryMonitor;
 
   /**
    * Creates an interface to the mote ID at mote.
@@ -90,25 +92,25 @@ public class AvroraMoteID extends MoteID {
     
     /** Monitor used to overwrite id memorywith fixed id if modified externally */
     if (memoryMonitor == null) {
-      memoryMonitor = new MoteMemory.VarMonitor() {
+      memoryMonitor = new VarMemory.MemoryMonitor() {
 
         @Override
-        public void varChanged(MoteMemory memory, MemoryEventType type, String varName) {
+        public void memoryChanged(Memory memory, EventType type, long address) {
           System.out.println("varChanged! " + type);
           writeID();
         }
       };
       if (moteMem.variableExists(VARNAME_MOTE_ID)) {
-        moteMem.addVarMonitor(MonitorType.W, VARNAME_MOTE_ID, memoryMonitor);
+        moteMem.addVarMonitor(MemoryMonitor.EventType.WRITE, VARNAME_MOTE_ID, memoryMonitor);
       }
       if (moteMem.variableExists(VARNAME_TOS_NODE_ID)) {
-        moteMem.addVarMonitor(MonitorType.W, VARNAME_TOS_NODE_ID, memoryMonitor);
+        moteMem.addVarMonitor(MemoryMonitor.EventType.WRITE, VARNAME_TOS_NODE_ID, memoryMonitor);
       }
       if (moteMem.variableExists(VARNAME_ACT_MSG_ADDRC__)) {
-        moteMem.addVarMonitor(MonitorType.W, VARNAME_ACT_MSG_ADDRC__, memoryMonitor);
+        moteMem.addVarMonitor(MemoryMonitor.EventType.WRITE, VARNAME_ACT_MSG_ADDRC__, memoryMonitor);
       }
       if (moteMem.variableExists(VARNAME_ACT_MSG_ADDRC)) {
-        moteMem.addVarMonitor(MonitorType.W, VARNAME_ACT_MSG_ADDRC, memoryMonitor);
+        moteMem.addVarMonitor(MemoryMonitor.EventType.WRITE, VARNAME_ACT_MSG_ADDRC, memoryMonitor);
       }
     }
 

@@ -32,9 +32,9 @@ package org.contikios.cooja.mspmote.interfaces;
 import org.apache.log4j.Logger;
 
 import org.contikios.cooja.Mote;
+import org.contikios.cooja.mote.memory.MoteMemory;
 import org.contikios.cooja.interfaces.MoteID;
 import org.contikios.cooja.mspmote.MspMote;
-import org.contikios.cooja.mspmote.MspMoteMemory;
 import se.sics.mspsim.core.Memory;
 import se.sics.mspsim.core.MemoryMonitor;
 
@@ -47,7 +47,7 @@ public class MspMoteID extends MoteID {
 	private static Logger logger = Logger.getLogger(MspMoteID.class);
 
 	private MspMote mote;
-	private MspMoteMemory moteMem = null;
+	private MoteMemory moteMem = null;
 
 	private boolean writeFlashHeader = true;
 	private int moteID = -1;
@@ -57,13 +57,13 @@ public class MspMoteID extends MoteID {
 	/**
 	 * Creates an interface to the mote ID at mote.
 	 *
-	 * @param mote ID
+   * @param m
 	 * @see Mote
 	 * @see org.contikios.cooja.MoteInterfaceHandler
 	 */
 	public MspMoteID(Mote m) {
 		this.mote = (MspMote) m;
-		this.moteMem = (MspMoteMemory) mote.getMemory();
+		this.moteMem = (MoteMemory) mote.getMemory();
 	}
 
 	public int getMoteID() {

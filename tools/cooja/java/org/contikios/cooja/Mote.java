@@ -27,6 +27,7 @@
 
 package org.contikios.cooja;
 
+import org.contikios.cooja.mote.memory.VarMemory;
 import java.util.Collection;
 
 import org.jdom.Element;
@@ -37,7 +38,7 @@ import org.jdom.Element;
  * All motes have an interface handler, a mote type and a mote memory.
  *
  * @see org.contikios.cooja.MoteInterfaceHandler
- * @see org.contikios.cooja.MoteMemory
+ * @see org.contikios.cooja.VarMemory
  * @see org.contikios.cooja.MoteType
  *
  * @author Fredrik Osterlind
@@ -63,7 +64,7 @@ public interface Mote {
    * @see #setMemory(MoteMemory)
    * @return Mote memory
    */
-  public MoteMemory getMemory();
+  public VarMemory getMemory();
 
   /**
    * Returns mote type.

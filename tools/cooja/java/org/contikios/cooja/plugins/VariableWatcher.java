@@ -43,9 +43,10 @@ import java.text.NumberFormat;
 import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Vector;
-import javax.swing.AbstractButton;
+import java.util.LinkedList;
+import java.util.List;
 
+import javax.swing.AbstractButton;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -75,12 +76,10 @@ import org.contikios.cooja.MotePlugin;
 import org.contikios.cooja.PluginType;
 import org.contikios.cooja.Simulation;
 import org.contikios.cooja.VisPlugin;
-import org.contikios.cooja.MoteMemory.UnknownVariableException;
-import org.contikios.cooja.MemMonitor.MemoryEventType;
-import org.contikios.cooja.MemMonitor.MonitorType;
-import org.contikios.cooja.MoteMemory;
-import org.contikios.cooja.NewAddressMemory;
-import org.contikios.cooja.NewAddressMemory.AddressMonitor;
+import org.contikios.cooja.mote.memory.UnknownVariableException;
+import org.contikios.cooja.mote.memory.VarMemory;
+import org.contikios.cooja.mote.memory.Memory;
+import org.contikios.cooja.mote.memory.Memory.MemoryMonitor;
 import org.jdesktop.swingx.autocomplete.AutoCompleteDecorator;
 
 /**
@@ -116,9 +115,9 @@ public class VariableWatcher extends VisPlugin implements MotePlugin {
   private JLabel debuglbl;
   private KeyListener charValueKeyListener;
   private FocusListener charValueFocusListener;
-  private MoteMemory moteMemory;
+  private VarMemory moteMemory;
 
-  AddressMonitor memMonitor;
+  MemoryMonitor memMonitor;
   long monitorAddr;
   int monitorSize;
 
@@ -203,7 +202,7 @@ public class VariableWatcher extends VisPlugin implements MotePlugin {
   public VariableWatcher(Mote moteToView, Simulation simulation, Cooja gui) {
     super("Variable Watcher (" + moteToView + ")", gui);
     this.mote = moteToView;
-    moteMemory = (MoteMemory) moteToView.getMemory();
+    moteMemory = (VarMemory) moteToView.getMemory();
 
     JLabel label;
     integerFormat = NumberFormat.getIntegerInstance();
@@ -429,7 +428,7 @@ public class VariableWatcher extends VisPlugin implements MotePlugin {
 
     readPane.add(BorderLayout.WEST, readButton);
 
-    /* AddressMonitor required for monitor button */
+    /* MemoryMonitor required for monitor button */
 
     /* Monitor button */
     monitorButton = new JToggleButton("Monitor");
@@ -466,10 +465,10 @@ public class VariableWatcher extends VisPlugin implements MotePlugin {
 
         monitorAddr = moteMemory.getVariableAddress(varname);
         monitorSize = moteMemory.getVariableSize(varname);
-        memMonitor = new AddressMonitor() {
+        memMonitor = new MemoryMonitor() {
 
           @Override
-          public void memoryChanged(NewAddressMemory memory, MemoryEventType type, long address) {
+          public void memoryChanged(Memory memory, EventType type, long address) {
             bufferedBytes = moteMemory.getByteArray(
                     (String) varNameCombo.getSelectedItem(),
                     moteMemory.getVariableSize((String) varNameCombo.getSelectedItem()));
@@ -479,7 +478,7 @@ public class VariableWatcher extends VisPlugin implements MotePlugin {
         };
         //System.out.println("Adding monitor " + memMonitor + " for addr " + monitorAddr + ", size " + monitorSize + "");
         moteMemory.addMemoryMonitor(
-                MonitorType.W,
+                MemoryMonitor.EventType.WRITE,
                 monitorAddr,
                 monitorSize,
                 memMonitor);
@@ -745,7 +744,7 @@ public class VariableWatcher extends VisPlugin implements MotePlugin {
   @Override
   public Collection<Element> getConfigXML() {
     // Return currently watched variable and type
-    Vector<Element> config = new Vector<>();
+    List<Element> config = new LinkedList<>();
 
     Element element;
 

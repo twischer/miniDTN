@@ -39,7 +39,7 @@ import org.jdom.Element;
 
 import org.contikios.cooja.MoteInterface;
 import org.contikios.cooja.MoteInterfaceHandler;
-import org.contikios.cooja.MoteMemory;
+import org.contikios.cooja.mote.memory.VarMemory;
 import org.contikios.cooja.MoteType;
 import org.contikios.cooja.Simulation;
 import org.contikios.cooja.Watchpoint;
@@ -59,8 +59,9 @@ import avrora.sim.platform.Platform;
 import avrora.sim.platform.PlatformFactory;
 import avrora.sim.types.SingleSimulation;
 import java.nio.ByteOrder;
-import org.contikios.cooja.MemoryLayout;
-import org.contikios.cooja.MoteMemory;
+import org.contikios.cooja.mote.memory.MemoryLayout;
+import org.contikios.cooja.mote.memory.MoteMemory;
+import org.contikios.cooja.mote.memory.VarMemory;
 import org.contikios.cooja.plugins.Debugger.SourceLocation;
 
 /**
@@ -77,7 +78,7 @@ public abstract class AvroraMote extends AbstractEmulatedMote implements Watchpo
   private EEPROM EEPROM = null;
   private AtmelInterpreter interpreter = null;
   private MemoryLayout memLayout;
-  private AvrMoteMemory memory = null;
+  private MoteMemory memory = null;
 
   public Simulator sim;
   public SourceMapping sourceMapping;
@@ -105,8 +106,9 @@ public abstract class AvroraMote extends AbstractEmulatedMote implements Watchpo
       AVRProperties avrProperties = (AVRProperties) cpu.getProperties();
       sim = cpu.getSimulator();
       interpreter = (AtmelInterpreter) sim.getInterpreter();
-      memLayout = new MemoryLayout(ByteOrder.LITTLE_ENDIAN, 2, 2);
-      memory = new AvrMoteMemory(memLayout, program.getProgram().getSourceMapping(), avrProperties, interpreter);
+      memLayout = new MemoryLayout(ByteOrder.LITTLE_ENDIAN, MemoryLayout.ARCH_8BIT, 2);
+      AvrMoteMemory avrmom = new AvrMoteMemory(sourceMapping, avrProperties, interpreter);
+      memory = new MoteMemory(memLayout, avrmom);
     } catch (Exception e) {
       logger.fatal("Error when initializing Avora mote: " + e.getMessage(), e);
       return false;
@@ -153,7 +155,7 @@ public abstract class AvroraMote extends AbstractEmulatedMote implements Watchpo
     return moteType;
   }
   @Override
-  public MoteMemory getMemory() {
+  public VarMemory getMemory() {
     return memory;
   }
   @Override
