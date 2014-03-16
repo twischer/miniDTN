@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  */
-
 package org.contikios.cooja;
 
 import java.util.HashMap;
@@ -43,10 +42,10 @@ import org.contikios.cooja.Memory.MemoryMonitor.EventType;
 public abstract class VarMemory extends Memory {
 
   private final HashMap<String, Symbol> variables = new HashMap<>();
-  
+
   /**
    * Creates new VarMemory.
-   * 
+   *
    * @param layout MemoryLayout of memory
    * @param variables Variables located in memory of null if none known
    */
@@ -58,16 +57,16 @@ public abstract class VarMemory extends Memory {
       }
     }
   }
-  
+
   /**
    * Creates new VarMemory.
-   * 
+   *
    * @param layout MemoryLayout of memory
    */
   public VarMemory(MemoryLayout layout) {
     this(layout, null);
   }
-  
+
   /**
    * Adds a variable to this memory.
    *
@@ -120,7 +119,7 @@ public abstract class VarMemory extends Memory {
     }
 
     Symbol sym = variables.get(varName);
-    
+
     return new Symbol(sym.type, sym.name, sym.section, sym.addr, sym.size);
   }
 
@@ -144,6 +143,50 @@ public abstract class VarMemory extends Memory {
    */
   public int getVariableSize(String varName) throws UnknownVariableException {
     return getVariable(varName).size;
+  }
+
+  /**
+   * Read 8 bit integer from location associated with this variable name.
+   *
+   * @param varName Variable name
+   * @return 8 bit integer value read from location assigned to variable name
+   */
+  public byte getInt8ValueOf(String varName)
+          throws UnknownVariableException {
+    return getInt8ValueOf(getVariable(varName).addr);
+  }
+
+  /**
+   * Read 16 bit integer from location associated with this variable name.
+   *
+   * @param varName Variable name
+   * @return 16 bit integer value read from location assigned to variable name
+   */
+  public short getInt16ValueOf(String varName)
+          throws UnknownVariableException {
+    return getInt16ValueOf(getVariable(varName).addr);
+  }
+
+  /**
+   * Read 32 bit integer from location associated with this variable name.
+   *
+   * @param varName Variable name
+   * @return 32 bit integer value read from location assigned to variable name
+   */
+  public int getInt32ValueOf(String varName)
+          throws UnknownVariableException {
+    return getInt32ValueOf(getVariable(varName).addr);
+  }
+
+  /**
+   * Read 64 bit integer from location associated with this variable name.
+   *
+   * @param varName Variable name
+   * @return 64 bit integer value read from location assigned to variable name
+   */
+  public long getInt64ValueOf(String varName)
+          throws UnknownVariableException {
+    return getInt64ValueOf(getVariable(varName).addr);
   }
 
   /**
@@ -198,7 +241,7 @@ public abstract class VarMemory extends Memory {
    *
    * The number of bytes actually read depends on the pointer size
    * defined in memory layout.
-   * 
+   *
    * @param varName Variable name
    * @return pointer value read from location assigned to variable name
    */
@@ -221,8 +264,52 @@ public abstract class VarMemory extends Memory {
   }
 
   /**
+   * Write 8 bit integer value to location associated with this variable name.
+   *
+   * @param varName Variable name
+   * @param value 8 bit integer value to write
+   */
+  public void setInt8ValueOf(String varName, byte value)
+          throws UnknownVariableException {
+    setInt8ValueOf(getVariable(varName).addr, value);
+  }
+
+  /**
+   * Write 16 bit integer value to location associated with this variable name.
+   *
+   * @param varName Variable name
+   * @param value 16 bit integer value to write
+   */
+  public void setInt16ValueOf(String varName, byte value)
+          throws UnknownVariableException {
+    setInt16ValueOf(getVariable(varName).addr, value);
+  }
+
+  /**
+   * Write 32 bit integer value to location associated with this variable name.
+   *
+   * @param varName Variable name
+   * @param value 32 bit integer value to write
+   */
+  public void setInt32ValueOf(String varName, byte value)
+          throws UnknownVariableException {
+    setInt32ValueOf(getVariable(varName).addr, value);
+  }
+
+  /**
+   * Write 64 bit integer value to location associated with this variable name.
+   *
+   * @param varName Variable name
+   * @param value 64 bit integer value to write
+   */
+  public void setInt64ValueOf(String varName, byte value)
+          throws UnknownVariableException {
+    setInt64ValueOf(getVariable(varName).addr, value);
+  }
+
+  /**
    * Write byte value to location associated with this variable name.
-   * 
+   *
    * @param varName Variable name
    * @param value byte value to write
    */
@@ -233,7 +320,7 @@ public abstract class VarMemory extends Memory {
 
   /**
    * Write short value to location associated with this variable name.
-   * 
+   *
    * @param varName Variable name
    * @param value short value to write
    */
@@ -244,7 +331,7 @@ public abstract class VarMemory extends Memory {
 
   /**
    * Write int value to location associated with this variable name.
-   * 
+   *
    * @param varName Variable name
    * @param value int value to write
    */
@@ -255,9 +342,7 @@ public abstract class VarMemory extends Memory {
 
   /**
    * Write long value to location associated with this variable name.
-   * 
-   * Writes 4 bytes to memory. Endianess is determined by 
-   * 
+   *
    * @param varName Variable name
    * @param value long value to write
    */
@@ -268,7 +353,7 @@ public abstract class VarMemory extends Memory {
 
   /**
    * Write pointer value to location associated with this variable name.
-   * 
+   *
    * The number of bytes actually written depends on the pointer size
    * defined in memory layout.
    *
