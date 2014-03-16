@@ -34,15 +34,15 @@ import java.util.Observable;
 import java.util.Observer;
 
 import org.apache.log4j.Logger;
-import org.contikios.cooja.MemoryLayout;
+import org.contikios.cooja.mote.memory.MemoryLayout;
 import org.jdom.Element;
 import org.contikios.cooja.Mote;
 import org.contikios.cooja.MoteInterface;
 import org.contikios.cooja.MoteInterfaceHandler;
-import org.contikios.cooja.VarMemory;
+import org.contikios.cooja.mote.memory.VarMemory;
 import org.contikios.cooja.MoteType;
 import org.contikios.cooja.RadioPacket;
-import org.contikios.cooja.SectionMoteMemory;
+import org.contikios.cooja.mote.memory.SectionMoteMemory;
 import org.contikios.cooja.Simulation;
 import org.contikios.cooja.interfaces.ApplicationRadio;
 import org.contikios.cooja.interfaces.ApplicationSerialPort;

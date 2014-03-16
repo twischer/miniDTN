@@ -28,11 +28,11 @@
  *
  */
 
-package org.contikios.cooja;
+package org.contikios.cooja.mote.memory;
 
 import java.util.HashMap;
 import java.util.Map;
-import org.contikios.cooja.Memory.MemoryMonitor.EventType;
+import org.contikios.cooja.mote.memory.Memory.MemoryMonitor.EventType;
 
 /**
  * Represents a mote memory.

@@ -26,10 +26,10 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-package org.contikios.cooja;
+package org.contikios.cooja.mote.memory;
 
-import org.contikios.cooja.Memory.MemoryMonitor;
-import org.contikios.cooja.Memory.MemoryMonitor.EventType;
+import org.contikios.cooja.mote.memory.Memory.MemoryMonitor;
+import org.contikios.cooja.mote.memory.Memory.MemoryMonitor.EventType;
 
 /**
  * Memory interface to mote emulator.

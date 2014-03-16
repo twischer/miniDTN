@@ -26,17 +26,17 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package org.contikios.cooja;
+package org.contikios.cooja.mote.memory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 import org.apache.log4j.Logger;
-import org.contikios.cooja.Memory.MemoryMonitor.EventType;
-import org.contikios.cooja.MemoryInterface.MoteMemoryException;
-import org.contikios.cooja.Memory.MemoryMonitor;
-import org.contikios.cooja.MemoryInterface.Symbol;
+import org.contikios.cooja.mote.memory.Memory.MemoryMonitor.EventType;
+import org.contikios.cooja.mote.memory.MemoryInterface.MoteMemoryException;
+import org.contikios.cooja.mote.memory.Memory.MemoryMonitor;
+import org.contikios.cooja.mote.memory.MemoryInterface.Symbol;
 
 /**
  * Represents a mote memory consisting of non-overlapping memory sections with

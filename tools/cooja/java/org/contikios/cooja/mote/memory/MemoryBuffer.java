@@ -26,10 +26,10 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-package org.contikios.cooja;
+package org.contikios.cooja.mote.memory;
 
 import java.nio.ByteBuffer;
-import org.contikios.cooja.MemoryLayout.DataType;
+import org.contikios.cooja.mote.memory.MemoryLayout.DataType;
 
 /**
  * Basic routines for memory access with multi-arch support.

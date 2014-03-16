@@ -35,9 +35,9 @@ import java.util.List;
 
 import org.apache.log4j.Logger;
 
-import org.contikios.cooja.Memory.MemoryMonitor.EventType;
-import org.contikios.cooja.MemoryInterface;
-import org.contikios.cooja.MemoryInterface.Symbol;
+import org.contikios.cooja.mote.memory.Memory.MemoryMonitor.EventType;
+import org.contikios.cooja.mote.memory.MemoryInterface;
+import org.contikios.cooja.mote.memory.MemoryInterface.Symbol;
 import se.sics.mspsim.core.MSP430;
 import se.sics.mspsim.core.Memory.AccessMode;
 import se.sics.mspsim.core.Memory.AccessType;

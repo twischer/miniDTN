@@ -76,10 +76,10 @@ import org.contikios.cooja.MotePlugin;
 import org.contikios.cooja.PluginType;
 import org.contikios.cooja.Simulation;
 import org.contikios.cooja.VisPlugin;
-import org.contikios.cooja.UnknownVariableException;
-import org.contikios.cooja.VarMemory;
-import org.contikios.cooja.Memory;
-import org.contikios.cooja.Memory.MemoryMonitor;
+import org.contikios.cooja.mote.memory.UnknownVariableException;
+import org.contikios.cooja.mote.memory.VarMemory;
+import org.contikios.cooja.mote.memory.Memory;
+import org.contikios.cooja.mote.memory.Memory.MemoryMonitor;
 import org.jdesktop.swingx.autocomplete.AutoCompleteDecorator;
 
 /**

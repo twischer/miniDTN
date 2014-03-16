@@ -26,11 +26,11 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-package org.contikios.cooja;
+package org.contikios.cooja.mote.memory;
 
 import java.util.Arrays;
 import org.apache.log4j.Logger;
-import org.contikios.cooja.Memory.MemoryMonitor.EventType;
+import org.contikios.cooja.mote.memory.Memory.MemoryMonitor.EventType;
 
 /**
  * A named memory section.

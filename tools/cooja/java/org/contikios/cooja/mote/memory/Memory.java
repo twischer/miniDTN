@@ -27,10 +27,10 @@
  * SUCH DAMAGE.
  *
  */
-package org.contikios.cooja;
+package org.contikios.cooja.mote.memory;
 
-import org.contikios.cooja.MemoryInterface.MoteMemoryException;
-import org.contikios.cooja.MemoryLayout.DataType;
+import org.contikios.cooja.mote.memory.MemoryInterface.MoteMemoryException;
+import org.contikios.cooja.mote.memory.MemoryLayout.DataType;
 
 /**
  * Represents memory that can be accessed with address and size informations.

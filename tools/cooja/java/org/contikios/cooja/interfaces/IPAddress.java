@@ -73,9 +73,9 @@ import org.jdom.Element;
 import org.contikios.cooja.ClassDescription;
 import org.contikios.cooja.Mote;
 import org.contikios.cooja.MoteInterface;
-import org.contikios.cooja.VarMemory;
-import org.contikios.cooja.Memory;
-import org.contikios.cooja.Memory.MemoryMonitor;
+import org.contikios.cooja.mote.memory.VarMemory;
+import org.contikios.cooja.mote.memory.Memory;
+import org.contikios.cooja.mote.memory.Memory.MemoryMonitor;
 import org.contikios.cooja.util.IPUtils;
 
 /**

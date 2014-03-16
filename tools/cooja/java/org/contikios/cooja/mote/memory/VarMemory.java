@@ -27,12 +27,12 @@
  * SUCH DAMAGE.
  *
  */
-package org.contikios.cooja;
+package org.contikios.cooja.mote.memory;
 
 import java.util.HashMap;
 
-import org.contikios.cooja.MemoryInterface.Symbol;
-import org.contikios.cooja.Memory.MemoryMonitor.EventType;
+import org.contikios.cooja.mote.memory.MemoryInterface.Symbol;
+import org.contikios.cooja.mote.memory.Memory.MemoryMonitor.EventType;
 
 /**
  * Represents memory that can be accessed with names of variables.

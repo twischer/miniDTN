@@ -39,7 +39,7 @@ import org.jdom.Element;
 
 import org.contikios.cooja.ClassDescription;
 import org.contikios.cooja.Mote;
-import org.contikios.cooja.MoteMemory;
+import org.contikios.cooja.mote.memory.MoteMemory;
 import org.contikios.cooja.interfaces.Log;
 import org.contikios.cooja.mspmote.MspMote;
 import se.sics.mspsim.core.Memory;

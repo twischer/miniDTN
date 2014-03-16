@@ -32,7 +32,7 @@ package org.contikios.cooja.mspmote.interfaces;
 import org.apache.log4j.Logger;
 
 import org.contikios.cooja.Mote;
-import org.contikios.cooja.MoteMemory;
+import org.contikios.cooja.mote.memory.MoteMemory;
 import org.contikios.cooja.interfaces.MoteID;
 import org.contikios.cooja.mspmote.MspMote;
 import se.sics.mspsim.core.Memory;

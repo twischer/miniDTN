@@ -27,6 +27,7 @@
 
 package org.contikios.cooja;
 
+import org.contikios.cooja.mote.memory.VarMemory;
 import java.util.Collection;
 
 import org.jdom.Element;

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  */
 
-package org.contikios.cooja;
+package org.contikios.cooja.mote.memory;
 
 import java.nio.ByteOrder;
 

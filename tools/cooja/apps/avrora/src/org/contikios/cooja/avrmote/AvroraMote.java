@@ -39,7 +39,7 @@ import org.jdom.Element;
 
 import org.contikios.cooja.MoteInterface;
 import org.contikios.cooja.MoteInterfaceHandler;
-import org.contikios.cooja.VarMemory;
+import org.contikios.cooja.mote.memory.VarMemory;
 import org.contikios.cooja.MoteType;
 import org.contikios.cooja.Simulation;
 import org.contikios.cooja.Watchpoint;
@@ -59,9 +59,9 @@ import avrora.sim.platform.Platform;
 import avrora.sim.platform.PlatformFactory;
 import avrora.sim.types.SingleSimulation;
 import java.nio.ByteOrder;
-import org.contikios.cooja.MemoryLayout;
-import org.contikios.cooja.MoteMemory;
-import org.contikios.cooja.VarMemory;
+import org.contikios.cooja.mote.memory.MemoryLayout;
+import org.contikios.cooja.mote.memory.MoteMemory;
+import org.contikios.cooja.mote.memory.VarMemory;
 import org.contikios.cooja.plugins.Debugger.SourceLocation;
 
 /**

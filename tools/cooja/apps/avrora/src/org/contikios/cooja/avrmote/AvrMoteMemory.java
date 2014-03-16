@@ -42,8 +42,8 @@ import avrora.sim.AtmelInterpreter;
 import avrora.sim.Simulator.Watch;
 import avrora.sim.State;
 
-import org.contikios.cooja.Memory.MemoryMonitor.EventType;
-import org.contikios.cooja.MemoryInterface;
+import org.contikios.cooja.mote.memory.Memory.MemoryMonitor.EventType;
+import org.contikios.cooja.mote.memory.MemoryInterface;
 
 /**
  * @author Joakim Eriksson, Fredrik Osterlind, David Kopf

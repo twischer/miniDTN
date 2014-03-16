@@ -26,7 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-package org.contikios.cooja;
+package org.contikios.cooja.mote.memory;
 
 import java.util.List;
 
