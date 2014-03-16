@@ -43,7 +43,7 @@ public class MemoryLayout {
   public static final int ARCH_32BIT = 4;
   public static final int ARCH_64BIT = 8;
 
-  public enum Element {
+  public enum DataType {
 
     BYTE(1),
     CHAR(1),
@@ -61,7 +61,7 @@ public class MemoryLayout {
 
     private int size;
 
-    Element(int size) {
+    DataType(int size) {
       this.size = size;
     }
 
@@ -104,8 +104,8 @@ public class MemoryLayout {
     this.WORD_SIZE = wordsize;
     this.intSize = sizeofInt;
     this.addrSize = sizeofPointer;
-    Element.INT.setSize(this.intSize);
-    Element.POINTER.setSize(this.addrSize);
+    DataType.INT.setSize(this.intSize);
+    DataType.POINTER.setSize(this.addrSize);
   }
 
   /**
@@ -136,17 +136,14 @@ public class MemoryLayout {
     return aligned;
   }
 
-  public int getPaddingBytesFor(Element element, Element next) {
-    /* XXX This does not handle WORD_SIZE yet */
-    int pad = 0;
+  public int getPaddingBytesFor(DataType currType, DataType nextType) {
     /* get size of next element in structure */
-    int nextsize = next.getSize();
+    int nextsize = nextType.getSize();
     /* limit padding to word size */
-    nextsize = (nextsize > WORD_SIZE) ? WORD_SIZE : nextsize;
+    nextsize = nextsize > WORD_SIZE ? WORD_SIZE : nextsize;
     System.out.println("Nextsize: " + nextsize);
     /* calc padding */
-    pad = nextsize - element.getSize();
-    /* Skip padding bytes */
+    int pad = nextsize - currType.getSize();
     return pad;
   }
 

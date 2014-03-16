@@ -31,7 +31,7 @@ package org.contikios.cooja;
 
 import org.contikios.cooja.MemMonitor.MonitorType;
 import org.contikios.cooja.MemoryInterface.MoteMemoryException;
-import org.contikios.cooja.MemoryLayout.Element;
+import org.contikios.cooja.MemoryLayout.DataType;
 
 /**
  * Represents memory that can be accessed with address and size informations.
@@ -99,7 +99,7 @@ public abstract class NewAddressMemory {
    * @return 8 bit value read from address
    */
   public byte getInt8ValueOf(long addr) {
-    return getMemorySegment(addr, Element.INT8.getSize())[0];
+    return getMemorySegment(addr, DataType.INT8.getSize())[0];
   }
 
   /**
@@ -111,7 +111,7 @@ public abstract class NewAddressMemory {
   public short getInt16ValueOf(long addr) {
     return MemoryBuffer.getAddressMemory(
             memLayout,
-            getMemorySegment(addr, Element.INT16.getSize())).getInt16();
+            getMemorySegment(addr, DataType.INT16.getSize())).getInt16();
   }
 
   /**
@@ -123,7 +123,7 @@ public abstract class NewAddressMemory {
   public int getInt32ValueOf(long addr) {
     return MemoryBuffer.getAddressMemory(
             memLayout,
-            getMemorySegment(addr, Element.INT32.getSize())).getInt32();
+            getMemorySegment(addr, DataType.INT32.getSize())).getInt32();
   }
 
   /**
@@ -135,7 +135,7 @@ public abstract class NewAddressMemory {
   public long getInt64ValueOf(long addr) {
     return MemoryBuffer.getAddressMemory(
             memLayout,
-            getMemorySegment(addr, Element.INT64.getSize())).getInt64();
+            getMemorySegment(addr, DataType.INT64.getSize())).getInt64();
   }
 
   // -- Get compiler-dependent types
@@ -146,7 +146,7 @@ public abstract class NewAddressMemory {
    * @return byte read from address
    */
   public byte getByteValueOf(long addr) {
-    return getMemorySegment(addr, Element.BYTE.getSize())[0];
+    return getMemorySegment(addr, DataType.BYTE.getSize())[0];
   }
 
   /**
@@ -213,7 +213,7 @@ public abstract class NewAddressMemory {
   public void setInt16ValueOf(long addr, short value) {
     setMemorySegment(addr, MemoryBuffer.getAddressMemory(
             memLayout,
-            new byte[Element.INT16.getSize()]).putShort(value).getBytes());
+            new byte[DataType.INT16.getSize()]).putShort(value).getBytes());
   }
 
   /**
@@ -225,7 +225,7 @@ public abstract class NewAddressMemory {
   public void setInt32ValueOf(long addr, int value) {
     setMemorySegment(addr, MemoryBuffer.getAddressMemory(
             memLayout,
-            new byte[Element.INT32.getSize()]).putInt(value).getBytes());
+            new byte[DataType.INT32.getSize()]).putInt(value).getBytes());
   }
 
   /**
@@ -237,7 +237,7 @@ public abstract class NewAddressMemory {
   public void setInt64ValueOf(long addr, long value) {
     setMemorySegment(addr, MemoryBuffer.getAddressMemory(
             memLayout,
-            new byte[Element.INT64.getSize()]).putLong(value).getBytes());
+            new byte[DataType.INT64.getSize()]).putLong(value).getBytes());
   }
 
   // -- Set compiler-dependent types

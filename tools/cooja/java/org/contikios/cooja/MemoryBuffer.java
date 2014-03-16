@@ -29,7 +29,7 @@
 package org.contikios.cooja;
 
 import java.nio.ByteBuffer;
-import org.contikios.cooja.MemoryLayout.Element;
+import org.contikios.cooja.MemoryLayout.DataType;
 
 /**
  * Basic routines for memory access with multi-arch support.
@@ -44,10 +44,10 @@ public class MemoryBuffer {
 
   private final MemoryLayout memLayout;
   private final ByteBuffer bbuf;
-  private final Element[] structure;
+  private final DataType[] structure;
   private int structIndex;
 
-  private MemoryBuffer(MemoryLayout memLayout, ByteBuffer buffer, Element[] structure) {
+  private MemoryBuffer(MemoryLayout memLayout, ByteBuffer buffer, DataType[] structure) {
     this.memLayout = memLayout;
     this.bbuf = buffer;
     this.structure = structure;
@@ -73,7 +73,7 @@ public class MemoryBuffer {
    * @param array
    * @return
    */
-  public static MemoryBuffer getAddressMemory(MemoryLayout layout, byte[] array, Element[] structure) {
+  public static MemoryBuffer getAddressMemory(MemoryLayout layout, byte[] array, DataType[] structure) {
     ByteBuffer b = ByteBuffer.wrap(array);
     b.order(layout.order); // preset endianess
     return new MemoryBuffer(layout, b, structure);
@@ -96,9 +96,9 @@ public class MemoryBuffer {
    * Calculates the padding bytes to be added/skipped between current and next
    * element.
    *
-   * @param element Current element
+   * @param type Current data type
    */
-  private void skipPaddingBytesFor(Element element) {
+  private void skipPaddingBytesFor(DataType type) {
     /* Check if we have a structure and not yet reached the last element */
     if (structure != null && structure[structIndex + 1] != null) {
       /* get size of next element in structure */
@@ -106,7 +106,7 @@ public class MemoryBuffer {
       /* limit padding to word size */
       nextsize = nextsize > memLayout.WORD_SIZE ? memLayout.WORD_SIZE : nextsize;
       /* calc padding */
-      int pad = nextsize - element.getSize();
+      int pad = nextsize - type.getSize();
       /* Skip padding bytes */
       if (pad > 0) {
         bbuf.position(bbuf.position() + pad);
@@ -120,7 +120,7 @@ public class MemoryBuffer {
    *
    * @return current element type or null if no struct is used
    */
-  public Element getType() {
+  public DataType getType() {
     if (structure == null) {
       return null;
     }
@@ -140,7 +140,7 @@ public class MemoryBuffer {
    */
   public byte getInt8() {
     byte value = bbuf.get();
-    skipPaddingBytesFor(Element.INT8);
+    skipPaddingBytesFor(DataType.INT8);
     return value;
   }
 
@@ -155,7 +155,7 @@ public class MemoryBuffer {
    */
   public short getInt16() {
     short value = bbuf.getShort();
-    skipPaddingBytesFor(Element.INT16);
+    skipPaddingBytesFor(DataType.INT16);
     return value;
   }
 
@@ -170,7 +170,7 @@ public class MemoryBuffer {
    */
   public int getInt32() {
     int value = bbuf.getInt();
-    skipPaddingBytesFor(Element.INT32);
+    skipPaddingBytesFor(DataType.INT32);
     return value;
   }
 
@@ -185,7 +185,7 @@ public class MemoryBuffer {
    */
   public long getInt64() {
     long value = bbuf.getLong();
-    skipPaddingBytesFor(Element.INT64);
+    skipPaddingBytesFor(DataType.INT64);
     return value;
   }
 
@@ -202,7 +202,7 @@ public class MemoryBuffer {
    */
   public byte getByte() {
     byte value = bbuf.get();
-    skipPaddingBytesFor(Element.BYTE);
+    skipPaddingBytesFor(DataType.BYTE);
     return value;
   }
 
@@ -217,7 +217,7 @@ public class MemoryBuffer {
    */
   public short getShort() {
     short value = bbuf.getShort();
-    skipPaddingBytesFor(Element.SHORT);
+    skipPaddingBytesFor(DataType.SHORT);
     return value;
   }
 
@@ -241,7 +241,7 @@ public class MemoryBuffer {
         value = bbuf.getInt();
         break;
     }
-    skipPaddingBytesFor(Element.INT);
+    skipPaddingBytesFor(DataType.INT);
     return value;
   }
 
@@ -256,7 +256,7 @@ public class MemoryBuffer {
    */
   public long getLong() {
     long value = bbuf.getLong();
-    skipPaddingBytesFor(Element.LONG);
+    skipPaddingBytesFor(DataType.LONG);
     return value;
   }
 
@@ -285,7 +285,7 @@ public class MemoryBuffer {
         value = bbuf.getInt();
         break;
     }
-    skipPaddingBytesFor(Element.POINTER);
+    skipPaddingBytesFor(DataType.POINTER);
     return value;
   }
 
@@ -303,7 +303,7 @@ public class MemoryBuffer {
    */
   public MemoryBuffer putInt8(byte value) {
     bbuf.put(value);
-    skipPaddingBytesFor(Element.INT8);
+    skipPaddingBytesFor(DataType.INT8);
     return this;
   }
 
@@ -319,7 +319,7 @@ public class MemoryBuffer {
    */
   public MemoryBuffer putInt16(short value) {
     bbuf.putShort(value);
-    skipPaddingBytesFor(Element.INT16);
+    skipPaddingBytesFor(DataType.INT16);
     return this;
   }
 
@@ -335,7 +335,7 @@ public class MemoryBuffer {
    */
   public MemoryBuffer putInt32(int value) {
     bbuf.putInt(value);
-    skipPaddingBytesFor(Element.INT32);
+    skipPaddingBytesFor(DataType.INT32);
     return this;
   }
 
@@ -351,7 +351,7 @@ public class MemoryBuffer {
    */
   public MemoryBuffer putInt64(long value) {
     bbuf.putLong(value);
-    skipPaddingBytesFor(Element.INT64);
+    skipPaddingBytesFor(DataType.INT64);
     return this;
   }
 
@@ -369,7 +369,7 @@ public class MemoryBuffer {
    */
   public MemoryBuffer putByte(byte value) {
     bbuf.put(value);
-    skipPaddingBytesFor(Element.BYTE);
+    skipPaddingBytesFor(DataType.BYTE);
     return this;
   }
 
@@ -385,7 +385,7 @@ public class MemoryBuffer {
    */
   public MemoryBuffer putShort(short value) {
     bbuf.putShort(value);
-    skipPaddingBytesFor(Element.SHORT);
+    skipPaddingBytesFor(DataType.SHORT);
     return this;
   }
 
@@ -414,7 +414,7 @@ public class MemoryBuffer {
         bbuf.putInt(value);
         break;
     }
-    skipPaddingBytesFor(Element.INT);
+    skipPaddingBytesFor(DataType.INT);
     return this;
   }
 
@@ -430,7 +430,7 @@ public class MemoryBuffer {
    */
   public MemoryBuffer putLong(long value) {
     bbuf.putLong(value);
-    skipPaddingBytesFor(Element.LONG);
+    skipPaddingBytesFor(DataType.LONG);
     return this;
   }
 
@@ -464,7 +464,7 @@ public class MemoryBuffer {
         bbuf.putInt((int) value);
         break;
     }
-    skipPaddingBytesFor(Element.POINTER);
+    skipPaddingBytesFor(DataType.POINTER);
     return this;
   }
 }
