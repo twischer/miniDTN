@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
 package org.contikios.cooja;
 
 import java.nio.ByteBuffer;
@@ -36,9 +35,9 @@ import org.contikios.cooja.MemoryLayout.Element;
  * Basic routines for memory access with multi-arch support.
  *
  * Handles endianess, integer size and address size.
- * 
+ *
  * Supports padding/aligning.
- * 
+ *
  * @author Enrico Joerns
  */
 public class MemoryBuffer {
@@ -65,7 +64,7 @@ public class MemoryBuffer {
   public static MemoryBuffer getAddressMemory(MemoryLayout layout, byte[] array) {
     return getAddressMemory(layout, array, null);
   }
-  
+
   /**
    * Returns MemoryBuffer for given MemoryLayout.
    *
@@ -94,21 +93,20 @@ public class MemoryBuffer {
   }
 
   /**
-   * Calculates the padding bytes to be added/skipped between current and next element.
-   * 
+   * Calculates the padding bytes to be added/skipped between current and next
+   * element.
+   *
    * @param element Current element
    */
   private void skipPaddingBytesFor(Element element) {
-    /* XXX This does not handle WORD_SIZE yet */
-    int pad = 0;
     /* Check if we have a structure and not yet reached the last element */
     if (structure != null && structure[structIndex + 1] != null) {
       /* get size of next element in structure */
       int nextsize = structure[structIndex + 1].getSize();
       /* limit padding to word size */
-      nextsize = (nextsize > memLayout.WORD_SIZE) ? memLayout.WORD_SIZE : nextsize;
+      nextsize = nextsize > memLayout.WORD_SIZE ? memLayout.WORD_SIZE : nextsize;
       /* calc padding */
-      pad = nextsize - element.getSize();
+      int pad = nextsize - element.getSize();
       /* Skip padding bytes */
       if (pad > 0) {
         bbuf.position(bbuf.position() + pad);
@@ -116,9 +114,10 @@ public class MemoryBuffer {
     }
     structIndex++;
   }
-  
+
   /**
    * Returns current element type.
+   *
    * @return current element type or null if no struct is used
    */
   public Element getType() {
@@ -128,9 +127,78 @@ public class MemoryBuffer {
     return structure[structIndex];
   }
   
+  // --- fixed size types
+
   /**
+   * Reads 8 bit integer from current buffer position,
+   * and then increments position.
+   * <p>
+   * Note: If structured reading is enabled,
+   * additional padding bytes may be skipped automatically.
    *
-   * @return
+   * @return 8 bit integer at the buffer's current position
+   */
+  public byte getInt8() {
+    byte value = bbuf.get();
+    skipPaddingBytesFor(Element.INT8);
+    return value;
+  }
+
+  /**
+   * Reads 16 bit integer from current buffer position,
+   * and then increments position.
+   * <p>
+   * Note: If structured reading is enabled,
+   * additional padding bytes may be skipped automatically.
+   *
+   * @return 16 bit integer at the buffer's current position
+   */
+  public short getInt16() {
+    short value = bbuf.getShort();
+    skipPaddingBytesFor(Element.INT16);
+    return value;
+  }
+
+  /**
+   * Reads 32 bit integer from current buffer position,
+   * and then increments position.
+   * <p>
+   * Note: If structured reading is enabled,
+   * additional padding bytes may be skipped automatically.
+   *
+   * @return 32 bit integer at the buffer's current position
+   */
+  public int getInt32() {
+    int value = bbuf.getInt();
+    skipPaddingBytesFor(Element.INT32);
+    return value;
+  }
+
+  /**
+   * Reads 64 bit integer from current buffer position,
+   * and then increments position.
+   * <p>
+   * Note: If structured reading is enabled,
+   * additional padding bytes may be skipped automatically.
+   *
+   * @return 64 bit integer at the buffer's current position
+   */
+  public long getInt64() {
+    long value = bbuf.getLong();
+    skipPaddingBytesFor(Element.INT64);
+    return value;
+  }
+
+  // --- platform-dependent types
+
+  /**
+   * Reads byte from current buffer position,
+   * and then increments position.
+   * <p>
+   * Note: If structured reading is enabled,
+   * additional padding bytes may be skipped automatically.
+   *
+   * @return byte at the buffer's current position
    */
   public byte getByte() {
     byte value = bbuf.get();
@@ -139,8 +207,13 @@ public class MemoryBuffer {
   }
 
   /**
+   * Reads short from current buffer position,
+   * and then increments position.
+   * <p>
+   * Note: If structured reading is enabled,
+   * additional padding bytes may be skipped automatically.
    *
-   * @return
+   * @return short at the buffer's current position
    */
   public short getShort() {
     short value = bbuf.getShort();
@@ -149,8 +222,13 @@ public class MemoryBuffer {
   }
 
   /**
+   * Reads integer from current buffer position,
+   * and then increments position.
+   * <p>
+   * Note: If structured reading is enabled,
+   * additional padding bytes may be skipped automatically.
    *
-   * @return
+   * @return integer at the buffer's current position
    */
   public int getInt() {
     int value;
@@ -168,8 +246,13 @@ public class MemoryBuffer {
   }
 
   /**
+   * Reads long from current buffer position,
+   * and then increments position.
+   * <p>
+   * Note: If structured reading is enabled,
+   * additional padding bytes may be skipped automatically.
    *
-   * @return
+   * @return long at the buffer's current position
    */
   public long getLong() {
     long value = bbuf.getLong();
@@ -178,9 +261,13 @@ public class MemoryBuffer {
   }
 
   /**
-   * Read stored address.
+   * Reads pointer from current buffer position,
+   * and then increments position.
+   * <p>
+   * Note: If structured reading is enabled,
+   * additional padding bytes may be skipped automatically.
    *
-   * @return pointer
+   * @return pointer at the buffer's current position
    */
   public long getAddr() {
     long value;
@@ -202,10 +289,83 @@ public class MemoryBuffer {
     return value;
   }
 
+  // --- fixed size types
+  
   /**
+   * Writes 8 bit integer to current buffer position,
+   * and then increments position.
+   * <p>
+   * Note: If structured writing is enabled,
+   * additional padding bytes may be skipped automatically.
    *
-   * @param value
-   * @return This MemoryBuffer
+   * @param value 8 bit integer to write
+   * @return A reference to this object
+   */
+  public MemoryBuffer putInt8(byte value) {
+    bbuf.put(value);
+    skipPaddingBytesFor(Element.INT8);
+    return this;
+  }
+
+  /**
+   * Writes 16 bit integer to current buffer position,
+   * and then increments position.
+   * <p>
+   * Note: If structured writing is enabled,
+   * additional padding bytes may be skipped automatically.
+   *
+   * @param value 16 bit integer to write
+   * @return A reference to this object
+   */
+  public MemoryBuffer putInt16(short value) {
+    bbuf.putShort(value);
+    skipPaddingBytesFor(Element.INT16);
+    return this;
+  }
+
+  /**
+   * Writes 32 bit integer to current buffer position,
+   * and then increments position.
+   * <p>
+   * Note: If structured writing is enabled,
+   * additional padding bytes may be skipped automatically.
+   *
+   * @param value 32 bit integer to write
+   * @return A reference to this object
+   */
+  public MemoryBuffer putInt32(int value) {
+    bbuf.putInt(value);
+    skipPaddingBytesFor(Element.INT32);
+    return this;
+  }
+
+  /**
+   * Writes 64 bit integer to current buffer position,
+   * and then increments position.
+   * <p>
+   * Note: If structured writing is enabled,
+   * additional padding bytes may be skipped automatically.
+   *
+   * @param value 64 bit integer to write
+   * @return A reference to this object
+   */
+  public MemoryBuffer putInt64(long value) {
+    bbuf.putLong(value);
+    skipPaddingBytesFor(Element.INT64);
+    return this;
+  }
+
+  // --- platform-dependent types
+  
+  /**
+   * Writes byte to current buffer position,
+   * and then increments position.
+   * <p>
+   * Note: If structured writing is enabled,
+   * additional padding bytes may be skipped automatically.
+   *
+   * @param value byte to write
+   * @return A reference to this object
    */
   public MemoryBuffer putByte(byte value) {
     bbuf.put(value);
@@ -214,9 +374,14 @@ public class MemoryBuffer {
   }
 
   /**
+   * Writes short to current buffer position,
+   * and then increments position.
+   * <p>
+   * Note: If structured writing is enabled,
+   * additional padding bytes may be skipped automatically.
    *
-   * @param value
-   * @return This MemoryBuffer
+   * @param value short to write
+   * @return A reference to this object
    */
   public MemoryBuffer putShort(short value) {
     bbuf.putShort(value);
@@ -225,9 +390,16 @@ public class MemoryBuffer {
   }
 
   /**
+   * Writes integer to current buffer position,
+   * and then increments position.
+   * <p>
+   * Note: If structured writing is enabled,
+   * additional padding bytes may be skipped automatically.
+   * <p>
+   * Note: Size of integer depends on platform type
    *
-   * @param value
-   * @return This MemoryBuffer
+   * @param value integer to write
+   * @return A reference to this object
    */
   public MemoryBuffer putInt(int value) {
     switch (memLayout.intSize) {
@@ -247,9 +419,14 @@ public class MemoryBuffer {
   }
 
   /**
+   * Writes long to current buffer position,
+   * and then increments position.
+   * <p>
+   * Note: If structured writing is enabled,
+   * additional padding bytes may be skipped automatically.
    *
-   * @param value
-   * @return This MemoryBuffer
+   * @param value long to write
+   * @return A reference to this object
    */
   public MemoryBuffer putLong(long value) {
     bbuf.putLong(value);
@@ -258,26 +435,33 @@ public class MemoryBuffer {
   }
 
   /**
+   * Writes pointer to current buffer position,
+   * and then increments position.
+   * <p>
+   * Note: If structured writing is enabled,
+   * additional padding bytes may be skipped automatically.
+   * <p>
+   * Note: Size of pointer depends on platform type
    *
-   * @param addr
-   * @return This MemoryBuffer
+   * @param value pointer to write
+   * @return A reference to this object
    */
-  public MemoryBuffer putAddr(long addr) {
+  public MemoryBuffer putAddr(long value) {
     /**
      * @TODO: check for size?
      */
     switch (memLayout.addrSize) {
       case 2:
-        bbuf.putShort((short) addr);
+        bbuf.putShort((short) value);
         break;
       case 4:
-        bbuf.putInt((int) addr);
+        bbuf.putInt((int) value);
         break;
       case 8:
-        bbuf.putLong(addr);
+        bbuf.putLong(value);
         break;
       default:
-        bbuf.putInt((int) addr);
+        bbuf.putInt((int) value);
         break;
     }
     skipPaddingBytesFor(Element.POINTER);
