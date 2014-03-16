@@ -32,38 +32,81 @@ package org.contikios.cooja;
 
 import java.util.HashMap;
 import java.util.Map;
+
 import org.contikios.cooja.MemMonitor.MonitorType;
 import org.contikios.cooja.MemoryInterface.Symbol;
 
 /**
+ * Represents memory that can be accessed with names of variables.
  *
  * @author Enrico Joerns
  */
 public abstract class VarMemory extends NewAddressMemory {
 
-  /** XXX add Symbol list to constructor argument */
-  public VarMemory(MemoryLayout layout) {
+  private final HashMap<String, Symbol> variables = new HashMap<>();
+  
+  /**
+   * Creates new VarMemory.
+   * 
+   * @param layout MemoryLayout of memory
+   * @param variables Variables located in memory of null if none known
+   */
+  public VarMemory(MemoryLayout layout, Symbol[] variables) {
     super(layout);
+    if (variables != null) {
+      for (Symbol var : variables) {
+        this.variables.put(var.name, var);
+      }
+    }
+  }
+  
+  /**
+   * Creates new VarMemory.
+   * 
+   * @param layout MemoryLayout of memory
+   */
+  public VarMemory(MemoryLayout layout) {
+    this(layout, null);
+  }
+  
+  /**
+   * Adds a variable to this memory.
+   *
+   * @param var Variable to add
+   */
+  protected void addVariable(Symbol var) {
+    if (var != null) {
+      variables.put(var.name, var);
+    }
   }
 
   /**
-   * @return All variable names known and residing in this memory
+   * Generates and returns an array of all variables in this memory
+   *
+   * @return All variables located in this memory
    */
-  public abstract Symbol[] getVariables();
+  public Symbol[] getVariables() {
+    return variables.values().toArray(new Symbol[0]);
+  }
 
   /**
-   * 
-   * @return 
+   * Generates an array of all variable names in this memory.
+   *
+   * @return All variable names located in this memory
    */
-  public abstract String[] getVariableNames();
-  
+  public String[] getVariableNames() {
+    return variables.keySet().toArray(new String[0]);
+  }
+
   /**
    * Checks if given variable exists in memory.
    *
    * @param varName Variable name
    * @return True if variable exists, false otherwise
    */
-  public abstract boolean variableExists(String varName);
+  public boolean variableExists(String varName) {
+    return variables.containsKey(varName);
+  }
 
   /**
    * Returns address of variable with given name.
@@ -71,43 +114,55 @@ public abstract class VarMemory extends NewAddressMemory {
    * @param varName Variable name
    * @return Variable address
    */
-  public abstract Symbol getVariable(String varName) throws UnknownVariableException;
+  public Symbol getVariable(String varName) throws UnknownVariableException {
+    /* Cooja address space */
+    if (!variables.containsKey(varName)) {
+      throw new UnknownVariableException(varName);
+    }
+
+    Symbol sym = variables.get(varName);
+    
+    return new Symbol(sym.type, sym.name, sym.section, sym.addr, sym.size);
+  }
 
   /**
-   * 
-   * @param varName
-   * @return
-   * @throws UnknownVariableException 
+   * Returns address of variable with given name.
+   *
+   * @param varName Variable name
+   * @return Address of variable
+   * @throws UnknownVariableException If variable not found
    */
   public long getVariableAddress(String varName) throws UnknownVariableException {
     return getVariable(varName).addr;
   }
 
   /**
-   * 
-   * @param varName
-   * @return
-   * @throws UnknownVariableException 
+   * Return size of variable with given name.
+   *
+   * @param varName Variable name
+   * @return Size of variable, -1 if unknown size
+   * @throws UnknownVariableException If variable not found
    */
   public int getVariableSize(String varName) throws UnknownVariableException {
     return getVariable(varName).size;
   }
 
   /**
+   * Read byte from location associated with this variable name.
    *
-   * @param varName
-   * @return
+   * @param varName Variable name
+   * @return byte value read from location assigned to variable name
    */
   public byte getByteValueOf(String varName)
           throws UnknownVariableException {
-    byte val = getByteValueOf(getVariable(varName).addr);
-    return val;
+    return getByteValueOf(getVariable(varName).addr);
   }
 
   /**
+   * Read short from location associated with this variable name.
    *
-   * @param varName
-   * @return
+   * @param varName Variable name
+   * @return short value read from location assigned to variable name
    */
   public short getShortValueOf(String varName)
           throws UnknownVariableException {
@@ -116,9 +171,10 @@ public abstract class VarMemory extends NewAddressMemory {
   }
 
   /**
+   * Read integer from location associated with this variable name.
    *
-   * @param varName
-   * @return
+   * @param varName Variable name
+   * @return integer value read from location assigned to variable name
    */
   public int getIntValueOf(String varName)
           throws UnknownVariableException {
@@ -127,9 +183,10 @@ public abstract class VarMemory extends NewAddressMemory {
   }
 
   /**
+   * Read long from location associated with this variable name.
    *
-   * @param varName
-   * @return
+   * @param varName Variable name
+   * @return long value read from location assigned to variable name
    */
   public long getLongValueOf(String varName)
           throws UnknownVariableException {
@@ -138,9 +195,13 @@ public abstract class VarMemory extends NewAddressMemory {
   }
 
   /**
+   * Read pointer from location associated with this variable name.
    *
-   * @param varName
-   * @return
+   * The number of bytes actually read depends on the pointer size
+   * defined in memory layout.
+   * 
+   * @param varName Variable name
+   * @return pointer value read from location assigned to variable name
    */
   public long getAddrValueOf(String varName)
           throws UnknownVariableException {
@@ -149,10 +210,11 @@ public abstract class VarMemory extends NewAddressMemory {
   }
 
   /**
+   * Read byte array starting at location associated with this variable name.
    *
-   * @param varName
-   * @param length
-   * @return
+   * @param varName Variable name
+   * @param length Numbe of bytes to read
+   * @return byte array read from location assigned to variable name
    */
   public byte[] getByteArray(String varName, int length)
           throws UnknownVariableException {
@@ -160,9 +222,10 @@ public abstract class VarMemory extends NewAddressMemory {
   }
 
   /**
-   *
-   * @param varName
-   * @param value
+   * Write byte value to location associated with this variable name.
+   * 
+   * @param varName Variable name
+   * @param value byte value to write
    */
   public void setByteValueOf(String varName, byte value)
           throws UnknownVariableException {
@@ -170,9 +233,10 @@ public abstract class VarMemory extends NewAddressMemory {
   }
 
   /**
-   *
-   * @param varName
-   * @param value
+   * Write short value to location associated with this variable name.
+   * 
+   * @param varName Variable name
+   * @param value short value to write
    */
   public void setShortValueOf(String varName, short value)
           throws UnknownVariableException {
@@ -180,9 +244,10 @@ public abstract class VarMemory extends NewAddressMemory {
   }
 
   /**
-   *
-   * @param varName
-   * @param value
+   * Write int value to location associated with this variable name.
+   * 
+   * @param varName Variable name
+   * @param value int value to write
    */
   public void setIntValueOf(String varName, int value)
           throws UnknownVariableException {
@@ -190,9 +255,12 @@ public abstract class VarMemory extends NewAddressMemory {
   }
 
   /**
-   *
-   * @param varName
-   * @param value
+   * Write long value to location associated with this variable name.
+   * 
+   * Writes 4 bytes to memory. Endianess is determined by 
+   * 
+   * @param varName Variable name
+   * @param value long value to write
    */
   public void setLongValueOf(String varName, long value)
           throws UnknownVariableException {
@@ -200,9 +268,13 @@ public abstract class VarMemory extends NewAddressMemory {
   }
 
   /**
+   * Write pointer value to location associated with this variable name.
+   * 
+   * The number of bytes actually written depends on the pointer size
+   * defined in memory layout.
    *
-   * @param varName
-   * @param value
+   * @param varName Variable name
+   * @param value Value to write
    */
   public void setAddrValueOf(String varName, long value)
           throws UnknownVariableException {

@@ -32,52 +32,25 @@ package org.contikios.cooja;
 
 import java.util.HashMap;
 import java.util.Map;
-import org.contikios.cooja.MemoryInterface.Symbol;
 
 /**
+ * Represents a mote memory.
  *
- * @author Enrico Joerns
+ * @author Enrico Jorns
  */
 public class MoteMemory extends VarMemory {
 
-  private final Map<String, Symbol> symbols = new HashMap<>();
   private final MemoryInterface mintf;
 
+  /**
+   * Creates MoteMemory from given MemoryInterface.
+   * 
+   * @param layout
+   * @param mintf 
+   */
   public MoteMemory(MemoryLayout layout, MemoryInterface mintf) {
-    super(layout);
+    super(layout, mintf.getVariables());
     this.mintf = mintf;
-    for (Symbol s : mintf.getVariables()) {
-      this.symbols.put(s.name, s);
-    }
-  }
-
-  @Override
-  public Symbol[] getVariables() {
-    return symbols.values().toArray(new Symbol[0]);
-  }
-  
-  /**
-   * @return All variable names known and residing in this memory
-   */
-  @Override
-  public String[] getVariableNames() {
-    return symbols.keySet().toArray(new String[0]);
-  }
-
-  /**
-   * Checks if given variable exists in memory.
-   *
-   * @param varName Variable name
-   * @return True if variable exists, false otherwise
-   */
-  @Override
-  public boolean variableExists(String varName) {
-    return symbols.containsKey(varName);
-  }
-
-  @Override
-  public Symbol getVariable(String varName) throws UnknownVariableException {
-    return symbols.get(varName);
   }
 
   @Override

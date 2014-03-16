@@ -144,7 +144,7 @@ public abstract class MemorySection implements MemoryInterface {
    * section
    */
   public boolean inSection(long addr, int size) {
-    return ((addr >= secStartAddr) && (addr + size <= secStartAddr + secSize));
+    return addr >= secStartAddr && addr + size <= secStartAddr + secSize;
   }
 
   @Override
@@ -153,7 +153,7 @@ public abstract class MemorySection implements MemoryInterface {
   @Override
   public String toString() {
     return String.format(
-            "%smemory section at [0x%x,0x%x]",
+            "%smemory section [0x%x,0x%x]",
             readonly ? "readonly " : "",
             secStartAddr, secStartAddr + secSize - 1);
   }

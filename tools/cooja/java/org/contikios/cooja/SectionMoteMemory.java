@@ -30,7 +30,6 @@ package org.contikios.cooja;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 
 import org.apache.log4j.Logger;
@@ -58,48 +57,21 @@ public class SectionMoteMemory extends VarMemory implements SectionMemory {
   private static final boolean DEBUG = logger.isDebugEnabled();
 
   /* Both normal and readonly sections */
-  private List<MemorySection> sections = new ArrayList<>();
-
-  private final HashMap<String, Symbol> variables = new HashMap<>();
-
+  private final List<MemorySection> sections = new ArrayList<>();
 
   private final MemoryLayout layout;
 
   /**
-   * @param layout
-   * @param variables
+   * Creates a new section-based memory.
+   * 
+   * @param layout Memory layout of mote
    */
   public SectionMoteMemory(MemoryLayout layout) {
     super(layout);
     this.layout = layout;
   }
-
-  @Override
-  public Symbol[] getVariables() {
-    return variables.values().toArray(new Symbol[0]);
-  }
-
-  @Override
-  public String[] getVariableNames() {
-    return variables.keySet().toArray(new String[0]);
-  }
-
-  @Override
-  public boolean variableExists(String varName) {
-    return variables.containsKey(varName);
-  }
-
-  @Override
-  public Symbol getVariable(String varName) throws UnknownVariableException {
-    /* Cooja address space */
-    if (!variables.containsKey(varName)) {
-      throw new UnknownVariableException(varName);
-    }
-
-    Symbol sym = variables.get(varName);
-    
-    return new Symbol(sym.type, sym.name, sym.section, sym.addr, sym.size);
-  }
+  
+  // -- NewAddressMemory implementations
 
   @Override
   public void clearMemory() {
@@ -117,8 +89,6 @@ public class SectionMoteMemory extends VarMemory implements SectionMemory {
 
   @Override
   public byte[] getMemorySegment(long address, int size) throws MoteMemoryException {
-    /* Cooja address space */
-//    address -= offset;
 
     for (MemorySection section : sections) {
       if (section.includesAddr(address)
@@ -134,8 +104,6 @@ public class SectionMoteMemory extends VarMemory implements SectionMemory {
 
   @Override
   public void setMemorySegment(long address, byte[] data) throws MoteMemoryException {
-    /* Cooja address space */
-//    address -= offset;
 
     for (MemorySection section : sections) {
       if (section.inSection(address, data.length)) {
@@ -152,13 +120,15 @@ public class SectionMoteMemory extends VarMemory implements SectionMemory {
             "Writing memory segment [0x%x,0x%x] failed: No section available",
             address, address + data.length - 1);
   }
+  
+  // --- SectionMemory implementations
 
   /**
-   * Creates memory section for relative (jvm) address.
+   * Adds a section to this memory.
+   * 
+   * A new section will be checked for address overlap with existing sections.
    *
-   * Address will be converted from absolute to relative.
-   *
-   * @return true if creating succeeded, false otherwise
+   * @return true if adding succeeded, false otherwise
    */
   @Override
   public boolean addMemorySection(MemorySection section) {
@@ -173,11 +143,9 @@ public class SectionMoteMemory extends VarMemory implements SectionMemory {
       if ((section.getStartAddr() <= sec.getStartAddr() + sec.getSize() - 1)
               && (section.getStartAddr() + section.getSize() - 1 >= sec.getStartAddr())) {
         logger.error(String.format(
-                "Adding memory section '%s' [0x%x,0x%x] failed: Overlap with existing section '%s' [%x,%x]",
-                section.getName(),
-                section.getStartAddr(), section.getStartAddr() + section.getSize() - 1,
-                sec.getName(),
-                sec.getStartAddr(), sec.getStartAddr() + sec.getSize() - 1));
+                "Adding %s failed: Overlap with existing %s",
+                section.toString(),
+                sec.toString()));
         return false;
       }
     }
@@ -185,20 +153,16 @@ public class SectionMoteMemory extends VarMemory implements SectionMemory {
     sections.add(section);
     if (section.getVariables() != null) {
       for (Symbol s : section.getVariables()) {
-        variables.put(s.name, s);
+        addVariable(s);
       }
     }
     
     if (DEBUG) {
-      logger.debug(String.format(
-              "Added memory section '%s' [0x%x,0x%x]",
-              section.getName(),
-              section.getStartAddr(), section.getStartAddr() + section.getSize() - 1));
+      logger.debug("Added " + section.toString());
     }
     return true;
   }
 
-  // --- SectionMemory implementations
   /**
    * Returns the total number of sections in this memory.
    *
@@ -227,46 +191,8 @@ public class SectionMoteMemory extends VarMemory implements SectionMemory {
   }
 
   /**
-   * Get start address of given section in native address space.
-   *
-   * @param sectionNr Section position
-   * @return Start address of section
+   * Clones this memory including all sections and variables.
    */
-  public long getSectionNativeAddress(int sectionNr) {
-    if (sectionNr >= sections.size()) {
-      return -1;
-    }
-    return sections.get(sectionNr).getStartAddr();
-  }
-
-  /**
-   * Get size of section at given position.
-   *
-   * @param sectionNr Section position
-   * @return Size of section
-   */
-  public int getSizeOfSection(int sectionNr) {
-    if (sectionNr >= sections.size()) {
-      return -1;
-    }
-
-    return sections.get(sectionNr).getSize();
-  }
-
-  /**
-   * Get data of section at given position.
-   *
-   * @param sectionNr Section position
-   * @return Data at section
-   */
-  public byte[] getDataOfSection(int sectionNr) {
-    if (sectionNr >= sections.size()) {
-      return null;
-    }
-
-    return sections.get(sectionNr).getData();
-  }
-
   @Override
   public SectionMoteMemory clone() {
     ArrayList<MemorySection> sectionsClone = new ArrayList<>();
@@ -282,22 +208,28 @@ public class SectionMoteMemory extends VarMemory implements SectionMemory {
     return clone;
   }
 
-  private final List<PolledMemorySegments> polledMemories = new ArrayList<>();
+  private final List<PolledMemorySegment> polledMemories = new ArrayList<>();
 
   public void pollForMemoryChanges() {
-    for (PolledMemorySegments mem : polledMemories.toArray(new PolledMemorySegments[0])) {
+    for (PolledMemorySegment mem : polledMemories.toArray(new PolledMemorySegment[0])) {
       mem.notifyIfChanged();
     }
   }
 
-  private class PolledMemorySegments {
+  /**
+   * Memory segment monitor that needs to be polled manually
+   * to check for memory modifications.
+   * 
+   * @note This cannot be used to detect read operations on the segment
+   */
+  private class PolledMemorySegment {
 
-    public final AddressMonitor mm;
-    public final long address;
-    public final int size;
+    private final AddressMonitor mm;
+    private final long address;
+    private final int size;
     private byte[] oldMem;
 
-    public PolledMemorySegments(AddressMonitor mm, long address, int size) {
+    public PolledMemorySegment(AddressMonitor mm, long address, int size) {
       this.mm = mm;
       this.address = address;
       this.size = size;
@@ -305,6 +237,9 @@ public class SectionMoteMemory extends VarMemory implements SectionMemory {
       oldMem = getMemorySegment(address, size);
     }
 
+    /**
+     * Inkoves memoryChanged() if segment changed since last call.
+     */
     private void notifyIfChanged() {
       byte[] newMem = getMemorySegment(address, size);
       if (Arrays.equals(oldMem, newMem)) {
@@ -325,19 +260,18 @@ public class SectionMoteMemory extends VarMemory implements SectionMemory {
     else if (type == MonitorType.RW) {
       logger.warn("R/W type not supported, fallback to W");
     }
-    PolledMemorySegments t = new PolledMemorySegments(mm, address, size);
+    PolledMemorySegment t = new PolledMemorySegment(mm, address, size);
     polledMemories.add(t);
     return true;
   }
 
   @Override
   public boolean removeMemoryMonitor(long address, int size, AddressMonitor mm) {
-    for (PolledMemorySegments mcm : polledMemories) {
-      if (mcm.mm != mm || mcm.address != address || mcm.size != size) {
-        continue;
+    for (PolledMemorySegment mcm : polledMemories) {
+      if (mcm.mm == mm && mcm.address == address && mcm.size == size) {
+        polledMemories.remove(mcm);
+        return true;
       }
-      polledMemories.remove(mcm);
-      return true;
     }
     return false;
   }
