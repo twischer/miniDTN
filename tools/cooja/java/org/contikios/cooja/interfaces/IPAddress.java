@@ -71,12 +71,11 @@ import org.apache.log4j.Logger;
 import org.jdom.Element;
 
 import org.contikios.cooja.ClassDescription;
-import org.contikios.cooja.MemMonitor.MonitorType;
 import org.contikios.cooja.Mote;
 import org.contikios.cooja.MoteInterface;
 import org.contikios.cooja.VarMemory;
-import org.contikios.cooja.NewAddressMemory;
-import org.contikios.cooja.NewAddressMemory.AddressMonitor;
+import org.contikios.cooja.Memory;
+import org.contikios.cooja.Memory.MemoryMonitor;
 import org.contikios.cooja.util.IPUtils;
 
 /**
@@ -103,7 +102,7 @@ public class IPAddress extends MoteInterface {
   private final VarMemory moteMem;
   private IPContainer localIPAddr = null;
 
-  private final AddressMonitor memMonitor;
+  private final MemoryMonitor memMonitor;
 
   private List<IPContainer> ipList = new LinkedList<>();
   
@@ -115,12 +114,12 @@ public class IPAddress extends MoteInterface {
 
     /* If the ip memory sections changed, we recalculate addresses
      * and notify our observers.*/
-    memMonitor = new AddressMonitor() {
+    memMonitor = new MemoryMonitor() {
       int accessCount = 0;
       long lastAccess = 0;
       @Override
-      public void memoryChanged(NewAddressMemory memory, MemoryEventType type, long address) {
-        if (type != MemoryEventType.WRITE) {
+      public void memoryChanged(Memory memory, EventType type, long address) {
+        if (type != EventType.WRITE) {
           return;
         }
         
@@ -147,7 +146,7 @@ public class IPAddress extends MoteInterface {
                       + 1; // skip 'isused'
               /* logger.info("addIPMonitor for addr " + addr_of_ip + " with size " + 16); */
               moteMem.addMemoryMonitor(
-                      MonitorType.W,
+                      EventType.WRITE,
                       addr_of_ip,
                       16, /* Size of ip address in byte */
                       memMonitor);
@@ -190,7 +189,7 @@ public class IPAddress extends MoteInterface {
       logger.debug("IPv4 detected");
       ipVersion = IPv.IPv4;
       moteMem.addMemoryMonitor(
-              MonitorType.W,
+              MemoryMonitor.EventType.WRITE,
               moteMem.getVariableAddress("uip_hostaddr"),
               moteMem.getVariableSize("uip_hostaddr"),
               memMonitor);
@@ -201,12 +200,12 @@ public class IPAddress extends MoteInterface {
       logger.debug("IPv6 detected");
       ipVersion = IPv.IPv6;
       moteMem.addMemoryMonitor(
-              MonitorType.W,
+              MemoryMonitor.EventType.WRITE,
               moteMem.getVariableAddress("uip_ds6_netif_addr_list_offset"),
               1,
               memMonitor);
       moteMem.addMemoryMonitor(
-              MonitorType.W,
+              MemoryMonitor.EventType.WRITE,
               moteMem.getVariableAddress("uip_ds6_addr_size"),
               1,
               memMonitor);

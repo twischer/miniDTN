@@ -29,7 +29,6 @@
  */
 package org.contikios.cooja;
 
-import org.contikios.cooja.MemMonitor.MonitorType;
 import org.contikios.cooja.MemoryInterface.MoteMemoryException;
 import org.contikios.cooja.MemoryLayout.DataType;
 
@@ -38,7 +37,7 @@ import org.contikios.cooja.MemoryLayout.DataType;
  *
  * @author Enrico Jorns
  */
-public abstract class NewAddressMemory {
+public abstract class Memory {
 
   private final MemoryLayout memLayout;
 
@@ -47,7 +46,7 @@ public abstract class NewAddressMemory {
    *
    * @param layout MemoryLayout
    */
-  public NewAddressMemory(MemoryLayout layout) {
+  public Memory(MemoryLayout layout) {
     memLayout = layout;
   }
 
@@ -109,7 +108,7 @@ public abstract class NewAddressMemory {
    * @return 16 bit value read from address
    */
   public short getInt16ValueOf(long addr) {
-    return MemoryBuffer.getAddressMemory(
+    return MemoryBuffer.wrap(
             memLayout,
             getMemorySegment(addr, DataType.INT16.getSize())).getInt16();
   }
@@ -121,7 +120,7 @@ public abstract class NewAddressMemory {
    * @return 32 bit value read from address
    */
   public int getInt32ValueOf(long addr) {
-    return MemoryBuffer.getAddressMemory(
+    return MemoryBuffer.wrap(
             memLayout,
             getMemorySegment(addr, DataType.INT32.getSize())).getInt32();
   }
@@ -133,7 +132,7 @@ public abstract class NewAddressMemory {
    * @return 64 bit value read from address
    */
   public long getInt64ValueOf(long addr) {
-    return MemoryBuffer.getAddressMemory(
+    return MemoryBuffer.wrap(
             memLayout,
             getMemorySegment(addr, DataType.INT64.getSize())).getInt64();
   }
@@ -156,7 +155,7 @@ public abstract class NewAddressMemory {
    * @return short read from address
    */
   public short getShortValueOf(long addr) {
-    return MemoryBuffer.getAddressMemory(memLayout, getMemorySegment(addr, 2)).getShort();
+    return MemoryBuffer.wrap(memLayout, getMemorySegment(addr, 2)).getShort();
   }
 
   /**
@@ -168,7 +167,7 @@ public abstract class NewAddressMemory {
    * @return integer read from address
    */
   public int getIntValueOf(long addr) {
-    return MemoryBuffer.getAddressMemory(memLayout, getMemorySegment(addr, memLayout.intSize)).getInt();
+    return MemoryBuffer.wrap(memLayout, getMemorySegment(addr, memLayout.intSize)).getInt();
   }
 
   /**
@@ -178,7 +177,7 @@ public abstract class NewAddressMemory {
    * @return long read from address
    */
   public long getLongValueOf(long addr) {
-    return MemoryBuffer.getAddressMemory(memLayout, getMemorySegment(addr, 4)).getLong();
+    return MemoryBuffer.wrap(memLayout, getMemorySegment(addr, 4)).getLong();
   }
 
   /**
@@ -190,7 +189,7 @@ public abstract class NewAddressMemory {
    * @return pointer read from address
    */
   public long getAddrValueOf(long addr) {
-    return MemoryBuffer.getAddressMemory(memLayout, getMemorySegment(addr, memLayout.addrSize)).getAddr();
+    return MemoryBuffer.wrap(memLayout, getMemorySegment(addr, memLayout.addrSize)).getAddr();
   }
 
   // -- Set fixed size types
@@ -211,7 +210,7 @@ public abstract class NewAddressMemory {
    * @param value 16 bit value to write
    */
   public void setInt16ValueOf(long addr, short value) {
-    setMemorySegment(addr, MemoryBuffer.getAddressMemory(
+    setMemorySegment(addr, MemoryBuffer.wrap(
             memLayout,
             new byte[DataType.INT16.getSize()]).putShort(value).getBytes());
   }
@@ -223,7 +222,7 @@ public abstract class NewAddressMemory {
    * @param value 32 bit value to write
    */
   public void setInt32ValueOf(long addr, int value) {
-    setMemorySegment(addr, MemoryBuffer.getAddressMemory(
+    setMemorySegment(addr, MemoryBuffer.wrap(
             memLayout,
             new byte[DataType.INT32.getSize()]).putInt(value).getBytes());
   }
@@ -235,7 +234,7 @@ public abstract class NewAddressMemory {
    * @param value 64 bit value to write
    */
   public void setInt64ValueOf(long addr, long value) {
-    setMemorySegment(addr, MemoryBuffer.getAddressMemory(
+    setMemorySegment(addr, MemoryBuffer.wrap(
             memLayout,
             new byte[DataType.INT64.getSize()]).putLong(value).getBytes());
   }
@@ -258,7 +257,7 @@ public abstract class NewAddressMemory {
    * @param value short to write
    */
   public void setShortValueOf(long addr, short value) {
-    setMemorySegment(addr, MemoryBuffer.getAddressMemory(memLayout, new byte[2]).putShort(value).getBytes());
+    setMemorySegment(addr, MemoryBuffer.wrap(memLayout, new byte[2]).putShort(value).getBytes());
   }
 
   /**
@@ -270,7 +269,7 @@ public abstract class NewAddressMemory {
    * @param value integer to write
    */
   public void setIntValueOf(long addr, int value) {
-    setMemorySegment(addr, MemoryBuffer.getAddressMemory(memLayout, new byte[memLayout.intSize]).putInt(value).getBytes());
+    setMemorySegment(addr, MemoryBuffer.wrap(memLayout, new byte[memLayout.intSize]).putInt(value).getBytes());
   }
 
   /**
@@ -280,7 +279,7 @@ public abstract class NewAddressMemory {
    * @param value long to write
    */
   public void setLongValueOf(long addr, long value) {
-    setMemorySegment(addr, MemoryBuffer.getAddressMemory(memLayout, new byte[4]).putLong(value).getBytes());
+    setMemorySegment(addr, MemoryBuffer.wrap(memLayout, new byte[4]).putLong(value).getBytes());
   }
 
   /**
@@ -292,37 +291,53 @@ public abstract class NewAddressMemory {
    * @param value pointer to write
    */
   public void setAddrValueOf(long addr, long value) {
-    setMemorySegment(addr, MemoryBuffer.getAddressMemory(memLayout, new byte[memLayout.addrSize]).putAddr(value).getBytes());
+    setMemorySegment(addr, MemoryBuffer.wrap(memLayout, new byte[memLayout.addrSize]).putAddr(value).getBytes());
   }
 
   /**
    * Monitor to listen for memory updates.
    */
-  public interface AddressMonitor extends MemMonitor {
+  public interface MemoryMonitor {
+    /**
+     * Type of memory access occured / to listen for.
+     */
+    public static enum EventType {
 
-    void memoryChanged(NewAddressMemory memory, MemoryEventType type, long address);
+      READ,
+      WRITE,
+      READWRITE
+    }
+
+    /**
+     * Invoked if a monitored memory segment is accessed.
+     * 
+     * @param memory Memory that was accessed
+     * @param type Type of access (read/write)
+     * @param address Address of access
+     */
+    void memoryChanged(Memory memory, EventType type, long address);
   }
 
   /**
-   * Adds a AddressMonitor for the specified address region.
+   * Adds a MemoryMonitor for the specified address region.
    *
    * @param flag Select memory operation(s) to listen for (read, write,
    * read/write)
    * @param address Start address of monitored data region
    * @param size Size of monitored data region
-   * @param mm AddressMonitor to add
+   * @param mm MemoryMonitor to add
    * @return true if monitor could be added, false if not
    */
-  public abstract boolean addMemoryMonitor(MonitorType flag, long address, int size, AddressMonitor mm);
+  public abstract boolean addMemoryMonitor(MemoryMonitor.EventType flag, long address, int size, MemoryMonitor mm);
 
   /**
-   * Removes AddressMonitor assigned to the specified region.
+   * Removes MemoryMonitor assigned to the specified region.
    *
    * @param address Start address of Monitor data region
    * @param size Size of Monitor data region
-   * @param mm AddressMonitor to remove
+   * @param mm MemoryMonitor to remove
    * @return true if monitor was removed, false if not
    */
-  public abstract boolean removeMemoryMonitor(long address, int size, AddressMonitor mm);
+  public abstract boolean removeMemoryMonitor(long address, int size, MemoryMonitor mm);
 
 }

@@ -28,6 +28,9 @@
  */
 package org.contikios.cooja;
 
+import org.contikios.cooja.Memory.MemoryMonitor;
+import org.contikios.cooja.Memory.MemoryMonitor.EventType;
+
 /**
  * Memory interface to mote emulator.
  *
@@ -99,33 +102,33 @@ public interface MemoryInterface {
    * @param addr Start address to write to
    * @param data Size to write [bytes]
    */
-  public void setMemorySegment(long addr, byte[] data) throws MoteMemoryException;
+  void setMemorySegment(long addr, byte[] data) throws MoteMemoryException;
 
   /**
    * Clears the memory.
    */
-  public void clearMemory();
+  void clearMemory();
 
   /**
    * Returns total size of memory.
    *
    * @return Size [bytes]
    */
-  public int getTotalSize();
+  int getTotalSize();
 
   /**
    * Returns all variables in memory.
    *
    * @return Variables
    */
-  public Symbol[] getVariables();
+  Symbol[] getVariables();
 
   /**
    * Monitor to listen for memory updates.
    */
-  public interface SegmentMonitor extends MemMonitor {
+  interface SegmentMonitor {
 
-    public void memoryChanged(MemoryInterface memory, MemMonitor.MemoryEventType type, long address);
+    void memoryChanged(MemoryInterface memory, EventType type, long address);
   }
 
   /**
@@ -138,7 +141,7 @@ public interface MemoryInterface {
    * @param monitor SegmentMonitor to add
    * @return true if monitor could be added, false if not
    */
-  public abstract boolean addSegmentMonitor(MemMonitor.MonitorType flag, long address, int size, SegmentMonitor monitor);
+  boolean addSegmentMonitor(MemoryMonitor.EventType flag, long address, int size, SegmentMonitor monitor);
 
   /**
    * Removes SegmentMonitor assigned to the specified region.
@@ -148,5 +151,5 @@ public interface MemoryInterface {
    * @param monitor SegmentMonitor to remove
    * @return true if monitor was removed, false if not
    */
-  public abstract boolean removeSegmentMonitor(long address, int size, SegmentMonitor monitor);
+  boolean removeSegmentMonitor(long address, int size, SegmentMonitor monitor);
 }

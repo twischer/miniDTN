@@ -55,25 +55,35 @@ public class MemoryBuffer {
   }
 
   /**
-   * Returns MemoryBuffer for given MemoryLayout.
+   * Wraps a byte array into an unstructered MemoryBuffer with given MemoryLayout.
+   *<p>
+   * Note that modifications to the buffer are applied to the backed array and vice versa.
    *
    * @param layout
-   * @param array
-   * @return
+   * @param array Byte array that will back this buffer
+   * @return the new MemroyBuffer
    */
-  public static MemoryBuffer getAddressMemory(MemoryLayout layout, byte[] array) {
-    return getAddressMemory(layout, array, null);
+  public static MemoryBuffer wrap(MemoryLayout layout, byte[] array) {
+    return wrap(layout, array, null);
   }
 
   /**
-   * Returns MemoryBuffer for given MemoryLayout.
-   *
+   * Wraps a byte array into a structured MemoryBuffer with given MemoryLayout.
+   *<p>
+   * Note that modifications to the buffer are applied to the backed array and vice versa.
+   *<p>
+   * A structured MemoryBuffer can be used to simplify reading c struct data
+   * from the memory as it provides support for data aligning.
+   *<p>
+   * The structure array elements should be set to exactly the same types and order
+   * that the corresponding c struct has.
+   * 
    * @param layout
-   * @param structure
-   * @param array
-   * @return
+   * @param structure Array of data types representing the structure to read
+   * @param array Byte array that will back this buffer
+   * @return the new MemroyBuffer
    */
-  public static MemoryBuffer getAddressMemory(MemoryLayout layout, byte[] array, DataType[] structure) {
+  public static MemoryBuffer wrap(MemoryLayout layout, byte[] array, DataType[] structure) {
     ByteBuffer b = ByteBuffer.wrap(array);
     b.order(layout.order); // preset endianess
     return new MemoryBuffer(layout, b, structure);

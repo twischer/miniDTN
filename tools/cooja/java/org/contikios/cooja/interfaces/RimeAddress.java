@@ -41,11 +41,10 @@ import org.apache.log4j.Logger;
 import org.jdom.Element;
 
 import org.contikios.cooja.ClassDescription;
-import org.contikios.cooja.MemMonitor.MonitorType;
 import org.contikios.cooja.Mote;
 import org.contikios.cooja.MoteInterface;
-import org.contikios.cooja.NewAddressMemory;
-import org.contikios.cooja.NewAddressMemory.AddressMonitor;
+import org.contikios.cooja.Memory;
+import org.contikios.cooja.Memory.MemoryMonitor;
 import org.contikios.cooja.VarMemory;
 
 /**
@@ -64,15 +63,15 @@ public class RimeAddress extends MoteInterface {
 
   public static final int RIME_ADDR_LENGTH = 2;
 
-  private AddressMonitor memMonitor = null;
+  private MemoryMonitor memMonitor = null;
 
   public RimeAddress(final Mote mote) {
     moteMem = mote.getMemory();
     if (hasRimeAddress()) {
-      memMonitor = new AddressMonitor() {
+      memMonitor = new MemoryMonitor() {
         @Override
-        public void memoryChanged(NewAddressMemory memory, MemoryEventType type, long address) {
-          if (type != MemoryEventType.WRITE) {
+        public void memoryChanged(Memory memory, EventType type, long address) {
+          if (type != EventType.WRITE) {
             return;
           }
           setChanged();
@@ -80,7 +79,7 @@ public class RimeAddress extends MoteInterface {
         }
       };
       /* TODO XXX Timeout? */
-      moteMem.addMemoryMonitor(MonitorType.W, moteMem.getVariableAddress("linkaddr_node_addr"), RIME_ADDR_LENGTH, memMonitor);
+      moteMem.addMemoryMonitor(MemoryMonitor.EventType.WRITE, moteMem.getVariableAddress("linkaddr_node_addr"), RIME_ADDR_LENGTH, memMonitor);
     }
   }
 

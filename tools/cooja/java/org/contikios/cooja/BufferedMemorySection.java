@@ -30,6 +30,7 @@ package org.contikios.cooja;
 
 import java.util.Arrays;
 import org.apache.log4j.Logger;
+import org.contikios.cooja.Memory.MemoryMonitor.EventType;
 
 /**
  * A named memory section.
@@ -161,11 +162,13 @@ public class BufferedMemorySection extends MemorySection {
     return secData.length;
   }
 
+  /* XXX */
   @Override
-  public boolean addSegmentMonitor(MemMonitor.MonitorType flag, long address, int size, SegmentMonitor monitor) {
+  public boolean addSegmentMonitor(EventType flag, long address, int size, SegmentMonitor monitor) {
     throw new UnsupportedOperationException("Not supported yet.");
   }
 
+  /* XXX */
   @Override
   public boolean removeSegmentMonitor(long address, int size, SegmentMonitor monitor) {
     throw new UnsupportedOperationException("Not supported yet.");

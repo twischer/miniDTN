@@ -30,6 +30,8 @@ package org.contikios.cooja.avrmote;
 
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 
 import org.apache.log4j.Logger;
 
@@ -39,10 +41,8 @@ import avrora.core.SourceMapping.Location;
 import avrora.sim.AtmelInterpreter;
 import avrora.sim.Simulator.Watch;
 import avrora.sim.State;
-import java.util.LinkedList;
-import java.util.List;
-import org.contikios.cooja.MemMonitor.MemoryEventType;
-import org.contikios.cooja.MemMonitor.MonitorType;
+
+import org.contikios.cooja.Memory.MemoryMonitor.EventType;
 import org.contikios.cooja.MemoryInterface;
 
 /**
@@ -150,9 +150,9 @@ public class AvrMoteMemory implements MemoryInterface {
     /** Segment monitor to notify */
     final SegmentMonitor mm;
     /** MonitorType we are listening to */
-    final MonitorType flag;
+    final EventType flag;
 
-    public AvrByteMonitor(long address, int size, SegmentMonitor mm, MonitorType flag) {
+    public AvrByteMonitor(long address, int size, SegmentMonitor mm, EventType flag) {
       this.address = address;
       this.size = size;
       this.mm = mm;
@@ -161,23 +161,23 @@ public class AvrMoteMemory implements MemoryInterface {
 
     @Override
     public void fireAfterRead(State state, int data_addr, byte value) {
-      if (flag == MonitorType.W || coojaIsAccessingMemory) {
+      if (flag == EventType.WRITE || coojaIsAccessingMemory) {
         return;
       }
-      mm.memoryChanged(AvrMoteMemory.this, MemoryEventType.READ, data_addr);
+      mm.memoryChanged(AvrMoteMemory.this, EventType.READ, data_addr);
     }
 
     @Override
     public void fireAfterWrite(State state, int data_addr, byte value) {
-      if (flag == MonitorType.R || coojaIsAccessingMemory) {
+      if (flag == EventType.READ || coojaIsAccessingMemory) {
         return;
       }
-      mm.memoryChanged(AvrMoteMemory.this, MemoryEventType.WRITE, data_addr);
+      mm.memoryChanged(AvrMoteMemory.this, EventType.WRITE, data_addr);
     }
   }
 
   @Override
-  public boolean addSegmentMonitor(MonitorType flag, long address, int size, SegmentMonitor mm) {
+  public boolean addSegmentMonitor(EventType flag, long address, int size, SegmentMonitor mm) {
     AvrByteMonitor mon = new AvrByteMonitor(address, size, mm, flag);
 
     memoryMonitors.add(mon);

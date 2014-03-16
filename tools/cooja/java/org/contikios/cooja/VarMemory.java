@@ -31,17 +31,16 @@
 package org.contikios.cooja;
 
 import java.util.HashMap;
-import java.util.Map;
 
-import org.contikios.cooja.MemMonitor.MonitorType;
 import org.contikios.cooja.MemoryInterface.Symbol;
+import org.contikios.cooja.Memory.MemoryMonitor.EventType;
 
 /**
  * Represents memory that can be accessed with names of variables.
  *
  * @author Enrico Joerns
  */
-public abstract class VarMemory extends NewAddressMemory {
+public abstract class VarMemory extends Memory {
 
   private final HashMap<String, Symbol> variables = new HashMap<>();
   
@@ -292,36 +291,15 @@ public abstract class VarMemory extends NewAddressMemory {
   }
 
   /**
-   * Monitor to listen for memory updates.
-   */
-  public interface VarMonitor extends MemMonitor {
-
-    public void varChanged(VarMemory memory, MemoryEventType type, String varName);
-  }
-
-  /**
-   * Maps VarMonitor to their internal created AddressMonitor.
-   * Require for removing appropriate monitor.
-   */
-  Map<VarMonitor, AddressMonitor> monitorMapping = new HashMap<>();
-
-  /**
-   * Adds a AddressMonitor for the specified address region.
+   * Adds a MemoryMonitor for the specified address region.
    *
    * @param flag Select memory operation(s) to listen for (read, write,
    * read/write)
    * @param varName
-   * @param vm
+   * @param mm
    * @return
    */
-  public boolean addVarMonitor(MonitorType flag, final String varName, final VarMonitor vm) {
-    AddressMonitor mm = new AddressMonitor() {
-      @Override
-      public void memoryChanged(NewAddressMemory memory, MemoryEventType type, long address) {
-        vm.varChanged(VarMemory.this, type, varName);
-      }
-    };
-    monitorMapping.put(vm, mm);
+  public boolean addVarMonitor(EventType flag, final String varName, final MemoryMonitor mm) {
     return addMemoryMonitor(
             flag,
             getVariable(varName).addr,
@@ -330,12 +308,12 @@ public abstract class VarMemory extends NewAddressMemory {
   }
 
   /**
-   * Removes AddressMonitor assigned to the specified region.
+   * Removes MemoryMonitor assigned to the specified region.
    *
    * @param varName
-   * @param mm AddressMonitor to remove
+   * @param mm MemoryMonitor to remove
    */
-  public void removeVarMonitor(String varName, VarMonitor mm) {
-    removeMemoryMonitor(getVariable(varName).addr, getVariable(varName).size, monitorMapping.get(mm));
+  public void removeVarMonitor(String varName, MemoryMonitor mm) {
+    removeMemoryMonitor(getVariable(varName).addr, getVariable(varName).size, mm);
   }
 }

@@ -33,10 +33,9 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.apache.log4j.Logger;
-import org.contikios.cooja.MemMonitor.MemoryEventType;
-import org.contikios.cooja.MemMonitor.MonitorType;
+import org.contikios.cooja.Memory.MemoryMonitor.EventType;
 import org.contikios.cooja.MemoryInterface.MoteMemoryException;
-import org.contikios.cooja.NewAddressMemory.AddressMonitor;
+import org.contikios.cooja.Memory.MemoryMonitor;
 import org.contikios.cooja.MemoryInterface.Symbol;
 
 /**
@@ -71,7 +70,7 @@ public class SectionMoteMemory extends VarMemory implements SectionMemory {
     this.layout = layout;
   }
   
-  // -- NewAddressMemory implementations
+  // -- Memory implementations
 
   @Override
   public void clearMemory() {
@@ -224,12 +223,12 @@ public class SectionMoteMemory extends VarMemory implements SectionMemory {
    */
   private class PolledMemorySegment {
 
-    private final AddressMonitor mm;
+    private final MemoryMonitor mm;
     private final long address;
     private final int size;
     private byte[] oldMem;
 
-    public PolledMemorySegment(AddressMonitor mm, long address, int size) {
+    public PolledMemorySegment(MemoryMonitor mm, long address, int size) {
       this.mm = mm;
       this.address = address;
       this.size = size;
@@ -246,18 +245,18 @@ public class SectionMoteMemory extends VarMemory implements SectionMemory {
         return;
       }
 
-      mm.memoryChanged(SectionMoteMemory.this, MemoryEventType.WRITE, address);
+      mm.memoryChanged(SectionMoteMemory.this, EventType.WRITE, address);
       oldMem = newMem;
     }                                            
   }
 
   @Override
-  public boolean addMemoryMonitor(MonitorType type, long address, int size, AddressMonitor mm) {
-    if (type == MonitorType.R) {
+  public boolean addMemoryMonitor(EventType type, long address, int size, MemoryMonitor mm) {
+    if (type == EventType.READ) {
       logger.warn("R type not supported");
       return false;
     }
-    else if (type == MonitorType.RW) {
+    else if (type == EventType.READWRITE) {
       logger.warn("R/W type not supported, fallback to W");
     }
     PolledMemorySegment t = new PolledMemorySegment(mm, address, size);
@@ -266,7 +265,7 @@ public class SectionMoteMemory extends VarMemory implements SectionMemory {
   }
 
   @Override
-  public boolean removeMemoryMonitor(long address, int size, AddressMonitor mm) {
+  public boolean removeMemoryMonitor(long address, int size, MemoryMonitor mm) {
     for (PolledMemorySegment mcm : polledMemories) {
       if (mcm.mm == mm && mcm.address == address && mcm.size == size) {
         polledMemories.remove(mcm);

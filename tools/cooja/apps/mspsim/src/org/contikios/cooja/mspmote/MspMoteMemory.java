@@ -35,8 +35,7 @@ import java.util.List;
 
 import org.apache.log4j.Logger;
 
-import org.contikios.cooja.MemMonitor.MemoryEventType;
-import org.contikios.cooja.MemMonitor.MonitorType;
+import org.contikios.cooja.Memory.MemoryMonitor.EventType;
 import org.contikios.cooja.MemoryInterface;
 import org.contikios.cooja.MemoryInterface.Symbol;
 import se.sics.mspsim.core.MSP430;
@@ -82,27 +81,6 @@ public class MspMoteMemory implements MemoryInterface {
     }
     return vars.toArray(new Symbol[0]);
   }
-
-//  private MapEntry getMapEntry(String varName) throws UnknownVariableException {
-//    for (MapEntry entry : mapEntries) {
-//      if (entry.getName().equals(varName)) {
-//        return entry;
-//      }
-//    }
-//    throw new UnknownVariableException(varName);
-//  }
-
-//  @Override
-//  public long getVariableAddress(String varName) throws UnknownVariableException {
-//    MapEntry entry = getMapEntry(varName);
-//    return entry.getAddress();
-//  }
-
-//  @Override
-//  public int getVariableSize(String varName) throws UnknownVariableException {
-//    MapEntry entry = getMapEntry(varName);
-//    return entry.getSize();
-//  }
 
   @Override
   public void clearMemory() {
@@ -157,17 +135,17 @@ public class MspMoteMemory implements MemoryInterface {
 
     @Override
     public void notifyReadAfter(int address, AccessMode mode, AccessType type) {
-      mm.memoryChanged(MspMoteMemory.this, MemoryEventType.READ, address);
+      mm.memoryChanged(MspMoteMemory.this, EventType.READ, address);
     }
 
     @Override
     public void notifyWriteAfter(int dstAddress, int data, AccessMode mode) {
-      mm.memoryChanged(MspMoteMemory.this, MemoryEventType.WRITE, dstAddress);
+      mm.memoryChanged(MspMoteMemory.this, EventType.WRITE, dstAddress);
     }
   }
 
   @Override
-  public boolean addSegmentMonitor(MonitorType type, long address, int size, SegmentMonitor mm) {
+  public boolean addSegmentMonitor(EventType type, long address, int size, SegmentMonitor mm) {
     MemoryCPUMonitor t = new MemoryCPUMonitor(mm, (int) address, size);
     cpuMonitorArray.add(t);
 

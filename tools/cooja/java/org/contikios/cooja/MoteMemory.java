@@ -32,6 +32,7 @@ package org.contikios.cooja;
 
 import java.util.HashMap;
 import java.util.Map;
+import org.contikios.cooja.Memory.MemoryMonitor.EventType;
 
 /**
  * Represents a mote memory.
@@ -73,14 +74,14 @@ public class MoteMemory extends VarMemory {
     return mintf.getTotalSize();
   }
 
-  private final Map<AddressMonitor, MemoryInterface.SegmentMonitor> monitors = new HashMap<>();
+  private final Map<MemoryMonitor, MemoryInterface.SegmentMonitor> monitors = new HashMap<>();
   
   @Override
-  public boolean addMemoryMonitor(MemMonitor.MonitorType flag, long address, int size, final AddressMonitor mm) {
+  public boolean addMemoryMonitor(EventType flag, long address, int size, final MemoryMonitor mm) {
     MemoryInterface.SegmentMonitor monitor = new MemoryInterface.SegmentMonitor() {
 
       @Override
-      public void memoryChanged(MemoryInterface memory, MemMonitor.MemoryEventType type, long address) {
+      public void memoryChanged(MemoryInterface memory, EventType type, long address) {
         mm.memoryChanged(MoteMemory.this, type, address);
       }
     };
@@ -89,7 +90,7 @@ public class MoteMemory extends VarMemory {
   }
 
   @Override
-  public boolean removeMemoryMonitor(long address, int size, AddressMonitor mm) {
+  public boolean removeMemoryMonitor(long address, int size, MemoryMonitor mm) {
     return mintf.removeSegmentMonitor(address, size, monitors.get(mm));
   }
 }
