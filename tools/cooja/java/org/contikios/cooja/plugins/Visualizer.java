@@ -30,10 +30,12 @@
 
 package org.contikios.cooja.plugins;
 
+import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Dimension;
+import java.awt.Event;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Point;
@@ -50,6 +52,8 @@ import java.awt.dnd.DropTargetEvent;
 import java.awt.dnd.DropTargetListener;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.InputEvent;
+import static java.awt.event.InputEvent.CTRL_MASK;
 import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
 import java.awt.event.KeyEvent;
@@ -64,9 +68,14 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Observable;
 import java.util.Observer;
+import java.util.Set;
 
 import javax.swing.AbstractAction;
 import javax.swing.Action;
@@ -134,7 +143,7 @@ import org.contikios.cooja.plugins.skins.UDGMVisualizerSkin;
 @PluginType(PluginType.SIM_STANDARD_PLUGIN)
 public class Visualizer extends VisPlugin implements HasQuickHelp {
   private static final long serialVersionUID = 1L;
-  private static Logger logger = Logger.getLogger(Visualizer.class);
+  private static final Logger logger = Logger.getLogger(Visualizer.class);
 
   public static final int MOTE_RADIUS = 8;
   private static final Color[] DEFAULT_MOTE_COLORS = { Color.WHITE };
@@ -159,15 +168,16 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
   private Point zoomingPixel = null; /* Zooming center pixel */
   private boolean moving = false;
   private Point mouseDownPixel = null; /* Records position of mouse down to differentiate a click from a move */
-  private Mote movedMote = null;
-  public Mote clickedMote = null;
+  private Set<Mote> movedMotes = null;
+//  public Mote clickedMote = null;
   private long moveStartTime = -1;
   private boolean moveConfirm;
-  private Cursor moveCursor = new Cursor(Cursor.MOVE_CURSOR);
+  private static final Cursor MOVE_CURSOR = new Cursor(Cursor.MOVE_CURSOR);
+  private Selection selection;
 
   /* Visualizers */
-  private static ArrayList<Class<? extends VisualizerSkin>> visualizerSkins =
-    new ArrayList<Class<? extends VisualizerSkin>>();
+  private static final ArrayList<Class<? extends VisualizerSkin>> visualizerSkins =
+    new ArrayList<>();
   static {
     /* Register default visualizer skins */
     registerVisualizerSkin(IDVisualizerSkin.class);
@@ -180,13 +190,13 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
     registerVisualizerSkin(MoteTypeVisualizerSkin.class);
     registerVisualizerSkin(AttributeVisualizerSkin.class);
   }
-  private ArrayList<VisualizerSkin> currentSkins = new ArrayList<VisualizerSkin>();
+  private ArrayList<VisualizerSkin> currentSkins = new ArrayList<>();
 
   /* Generic visualization */
   private MoteCountListener newMotesListener;
   private Observer posObserver = null;
   private Observer moteHighligtObserver = null;
-  private ArrayList<Mote> highlightedMotes = new ArrayList<Mote>();
+  private ArrayList<Mote> highlightedMotes = new ArrayList<>();
   private final static Color HIGHLIGHT_COLOR = Color.CYAN;
   private final static Color MOVE_COLOR = Color.WHITE;
   private Observer moteRelationsObserver = null;
@@ -278,6 +288,7 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
     });
     zoomMenu.add(resetViewportItem);
 
+    selection = new Selection();
     /* Main canvas */
     canvas = new JPanel() {
       private static final long serialVersionUID = 1L;
@@ -297,6 +308,7 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
         for (VisualizerSkin skin: currentSkins) {
           skin.paintAfterMotes(g);
         }
+        selection.drawSelection(g);
       }
     };
     canvas.setBackground(Color.WHITE);
@@ -381,14 +393,18 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
     /* Popup menu */
     canvas.addMouseMotionListener(new MouseMotionListener() {
       public void mouseMoved(MouseEvent e) {
+//        System.out.println("mouseMoved");
         handleMouseMove(e, false);
       }
       public void mouseDragged(MouseEvent e) {
+//        System.out.println("mouseDragged");
         handleMouseMove(e, false);
+        handleMouseDrag(e, false);
       }
     });
     canvas.addMouseListener(new MouseAdapter() {
       public void mousePressed(MouseEvent e) {
+//        System.out.println("Pressed");
         if (e.isPopupTrigger()) {
           handlePopupRequest(e.getPoint().x, e.getPoint().y);
           return;
@@ -399,14 +415,20 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
         }
       }
       public void mouseReleased(MouseEvent e) {
+//        System.out.println("Released");
         if (e.isPopupTrigger()) {
           handlePopupRequest(e.getPoint().x, e.getPoint().y);
           return;
         }
 
         handleMouseMove(e, true);
+        handleMouseRelease(e);
       }
       public void mouseClicked(MouseEvent e) {
+//        System.out.println("Clicked");
+//        if (e.isControlDown()) {
+//          System.out.println("with Shift click");
+//        }
         if (e.isPopupTrigger()) {
           handlePopupRequest(e.getPoint().x, e.getPoint().y);
         }
@@ -417,6 +439,7 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
     });
     canvas.addMouseWheelListener(new MouseWheelListener() {
       public void mouseWheelMoved(MouseWheelEvent mwe) {
+//        System.out.println("wheelMoved");
         int x = mwe.getX();
         int y = mwe.getY();
         int rot = mwe.getWheelRotation();
@@ -553,7 +576,9 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
     this.setLocation(1, 1);
     this.setSize(400, 400);
   }
+  
   private void generateAndActivateSkin(Class<? extends VisualizerSkin> skinClass) {
+    logger.debug("Activating Skin: " + skinClass.getCanonicalName());
     for (VisualizerSkin skin: currentSkins) {
       if (skinClass == skin.getClass()) {
         logger.warn("Selected visualizer already active: " + skinClass);
@@ -822,44 +847,288 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
         }
       }
     }
-    if (!showMenuItem) {
-      return false;
-    }
-    return true;
+    return showMenuItem;
   }
+  
+  private static final int SELECT_MASK = Event.CTRL_MASK;
+  private static final int MOVE_MASK = Event.SHIFT_MASK;
+  
+  enum PressState {
+    SELECT_PRESS,
+    DEFAULT_PRESS,
+    PAN_PRESS,
+    PANNING,
+    MOVING,
+    // rectangular select
+    SELECTING
+  }
+  
+  public Set<Mote> selectedMotes = new HashSet<>();
+  Mote pressedMote;
+  PressState pressState;
+  Position pressedPos;
+  
 
   private void handleMousePress(MouseEvent mouseEvent) {
     int x = mouseEvent.getX();
     int y = mouseEvent.getY();
-    clickedMote = null;
-
-    if (mouseEvent.isControlDown()) {
-      /* Zoom */
-      zooming = true;
-      zoomingPixel = new Point(x, y);
-      zoomingPosition = transformPixelToPosition(zoomingPixel);
-      zoomStart = viewportTransform.getScaleX();
-      return;
+//    clickedMote = null;
+    
+    pressedPos = transformPixelToPosition(mouseEvent.getPoint());
+    
+  // decide on press:
+  // - select mote
+  // - move mote
+  //  -
+    // this is the state we have from pressing button
+    final Mote[] foundMotes = findMotesAtPosition(x, y);
+    if (foundMotes == null) {
+      pressedMote = null;
+    }
+    else {
+      pressedMote = foundMotes[0];
     }
 
-    final Mote[] motes = findMotesAtPosition(x, y);
-    if (mouseEvent.isShiftDown() ||
-        (!mouseEvent.isAltDown() && (motes == null || motes.length == 0))) {
-      /* No motes clicked or shift pressed: We should pan */
-      panning = true;
-      panningPosition = transformPixelToPosition(x, y);
-      return;
+    int modifiers = mouseEvent.getModifiers();
+    
+    /* translate input */
+    if ((modifiers & SELECT_MASK) != 0) {
+      if (foundMotes == null) {
+        // rectangular selection
+        // save coordinates
+      } else {
+        // if none are selected, immediately select current
+//        if (selectedMotes.isEmpty()) {
+//          selectedMotes.add(foundMotes[0]);
+//        }
+        // add to selection
+      }
+      pressState = PressState.SELECT_PRESS;
+    } else if ((modifiers & MOVE_MASK) != 0) {
+      // only move viewport
+      pressState = PressState.PAN_PRESS;
+    } else {
+      if (foundMotes == null) {
+        // move viewport
+        selectedMotes.clear();
+      } else {
+        // if this mote was not selected before, assume a new selection
+        if (!selectedMotes.contains(pressedMote)) {
+          selectedMotes.clear();
+        }
+        selectedMotes.add(foundMotes[0]);
+      }
+      pressState = PressState.DEFAULT_PRESS;
     }
+    
+  
+//    if (mouseEvent.isControlDown()) {
+//      /* Zoom */
+//      zooming = true;
+//      zoomingPixel = new Point(x, y);
+//      zoomingPosition = transformPixelToPosition(zoomingPixel);
+//      zoomStart = viewportTransform.getScaleX();
+//      return;
+//    }
 
-    if (motes != null && motes.length > 0) {
-      /* One of the clicked motes should be moved */
-      mouseDownPixel = new Point(x, y);
-      clickedMote = motes[0];
-      beginMoveRequest(motes[0], false, false);
+//    final Mote[] motes = findMotesAtPosition(x, y);
+//    if (mouseEvent.isShiftDown() ||
+//        (!mouseEvent.isAltDown() && (motes == null || motes.length == 0))) {
+//      /* No motes clicked or shift pressed: We should pan */
+//      panning = true;
+//      panningPosition = transformPixelToPosition(x, y);
+//      return;
+//    }
+
+//    if (motes != null && motes.length > 0) {
+//      /* One of the clicked motes should be moved */
+//      mouseDownPixel = new Point(x, y);
+//      clickedMote = motes[0];
+//      beginMoveRequest(motes[0], false, false);
+//    }
+  }
+  
+  Map<Mote, double[]> moveStartPositions = new HashMap<>();
+  
+  private void handleMouseDrag(MouseEvent e, boolean stop) {
+    Position currPos = transformPixelToPosition(e.getPoint());
+    
+    switch (pressState) {
+      case DEFAULT_PRESS:
+        if (pressedMote == null) {
+          System.out.println("Panning");
+          pressState = PressState.PANNING;
+        }
+        else {
+          System.out.println("Move mote");
+          pressState = PressState.MOVING;
+          // save start position
+          for (Mote m : selectedMotes) {
+            Position pos = m.getInterfaces().getPosition();
+            moveStartPositions.put(m, new double[]{
+              pos.getXCoordinate(),
+              pos.getYCoordinate(),
+              pos.getZCoordinate()});
+          }
+        }
+        break;
+      case MOVING:
+        canvas.setCursor(MOVE_CURSOR);
+        for (Mote moveMote : selectedMotes) {
+          moveMote.getInterfaces().getPosition().setCoordinates(
+                  moveStartPositions.get(moveMote)[0]
+                          + (currPos.getXCoordinate() - pressedPos.getXCoordinate()),
+                  moveStartPositions.get(moveMote)[1]
+                          + (currPos.getYCoordinate() - pressedPos.getYCoordinate()),
+                  moveStartPositions.get(moveMote)[2]
+          );
+          repaint();
+        }
+        break;
+      case PAN_PRESS:
+        pressState = PressState.PANNING;
+        System.out.println("Move mote");
+        break;
+      case PANNING:
+        /* The current mouse position should correspond to where panning started */
+        viewportTransform.translate(
+                currPos.getXCoordinate() - pressedPos.getXCoordinate(),
+                currPos.getYCoordinate() - pressedPos.getYCoordinate()
+        );
+        repaint();
+        break;
+      case SELECT_PRESS:
+        pressState = PressState.SELECTING;
+        System.out.println("Rectangular select, started at " + pressedPos);
+        selection.setEnabled(true);
+        break;
+      case SELECTING:
+        System.out.println("orig: " + pressedPos + ", curr: " + currPos);
+        int pressedX = transformToPixelX(pressedPos.getXCoordinate());
+        int pressedY = transformToPixelY(pressedPos.getYCoordinate());
+        int currX = transformToPixelX(currPos.getXCoordinate());
+        int currY = transformToPixelY(currPos.getYCoordinate());
+        int startX = pressedX < currX ? pressedX : currX;
+        int startY = pressedY < currY ? pressedY : currY;
+        int width = Math.abs(pressedX - currX);
+        int height = Math.abs(pressedY - currY);
+//        drawSelection(canvas.getGraphics());
+        selection.setSelection(startX, startY, width, height);
+        selectedMotes.clear();
+        for (Mote m : findMotesInRange(startX, startY, width, height)) {
+          selectedMotes.add(m);
+        }
+                
+        repaint();
+        break;
     }
   }
 
-  private void beginMoveRequest(Mote moteToMove, boolean withTiming, boolean confirm) {
+  private class Selection {
+
+    private int x;
+    private int y;
+    private int width;
+    private int height;
+    private boolean enable;
+
+    public void setSelection(int x, int y, int width, int height) {
+      this.x = x;
+      this.y = y;
+      this.width = width;
+      this.height = height;
+    }
+
+    public void setEnabled(boolean enable) {
+      this.enable = enable;
+    }
+
+    public void drawSelection(Graphics g) {
+      /* only draw if enabled */
+      if (!enable) {
+        return;
+      }
+      Graphics2D g2d = (Graphics2D) g;
+//      g2d.setXORMode(Color.gray);
+      g2d.setColor(new Color(64, 64, 64, 10));
+      g2d.fillRect(x, y, width, height);
+
+      BasicStroke dashed
+              = new BasicStroke(1.0f,
+                                BasicStroke.CAP_BUTT,
+                                BasicStroke.JOIN_MITER,
+                                10.0f, new float[]{5.0f}, 0.0f);
+      g2d.setColor(Color.BLACK);
+      g2d.setStroke(dashed);
+      g2d.drawRect(x, y, width, height);
+//      g2d.dispose();
+//      g2d.setPaintMode();
+//        canvas.getGraphics().drawRect(startX, startY, width, height);
+    }
+  }
+
+  
+
+  private void handleMouseRelease(MouseEvent mouseEvent) {
+    System.out.println("pressState: " + pressState);
+    
+//    if (withTiming) {
+//      moveStartTime = System.currentTimeMillis();
+//    }
+//    else {
+//      moveStartTime = -1;
+//    }
+
+    
+    switch (pressState) {
+      case PAN_PRESS:
+        // ignore
+        break;
+      case SELECT_PRESS:
+        if (pressedMote == null) {
+          selectedMotes.clear();
+          System.out.println("Clear selection");
+        }
+        else {
+          // toggle selection
+          if (selectedMotes.contains(pressedMote)) {
+            selectedMotes.remove(pressedMote);
+            System.out.println("Remove from selection: " + pressedMote.toString());
+          }
+          else {
+            selectedMotes.add(pressedMote);
+            System.out.println("Add to selection: " + pressedMote.toString());
+          }
+        }
+        break;
+      case DEFAULT_PRESS:
+        if (pressedMote == null) {
+          selectedMotes.clear();
+          System.out.println("Clear selection");
+        } else {
+          selectedMotes.clear();
+          selectedMotes.add(pressedMote);
+          System.out.println("Selected: " + pressedMote.toString());
+        }
+        break;
+      case MOVING:
+        /* Stop moving */
+        canvas.setCursor(Cursor.getDefaultCursor());
+        break;
+      case SELECTING:
+        /* Stop selection */
+        selection.setEnabled(false);
+        repaint();
+        break;
+    }
+    System.out.print("Selection: [");
+    for (Mote m : selectedMotes) {
+      System.out.print("" + m + ", ");
+    }
+    System.out.println("]");
+  }
+
+  private void beginMoveRequest(Set<Mote> motesToMove, boolean withTiming, boolean confirm) {
     if (withTiming) {
       moveStartTime = System.currentTimeMillis();
     } else {
@@ -867,7 +1136,7 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
     }
     moving = true;
     moveConfirm = confirm;
-    movedMote = moteToMove;
+    movedMotes = motesToMove;
     repaint();
   }
 
@@ -942,55 +1211,83 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
     }
 
     /* Moving */
-    if (moving) {
-      if(x != mouseDownPixel.x || y != mouseDownPixel.y) {
-        Position newPos = transformPixelToPosition(x, y);
-
-        if (!stop) {
-          canvas.setCursor(moveCursor);
-          movedMote.getInterfaces().getPosition().setCoordinates(
-              newPos.getXCoordinate(),
-              newPos.getYCoordinate(),
-              movedMote.getInterfaces().getPosition().getZCoordinate()
-          );
-          repaint();
-          return;
-        }
-        /* Restore cursor */
-        canvas.setCursor(Cursor.getDefaultCursor());
-
-
-        /* Move mote */
-        if (moveStartTime < 0 || System.currentTimeMillis() - moveStartTime > 300) {
-          if (moveConfirm) {
-            String options[] = {"Yes", "Cancel"};
-            int returnValue = JOptionPane.showOptionDialog(Visualizer.this,
-                "Move mote to" +
-                "\nX=" + newPos.getXCoordinate() +
-                "\nY=" + newPos.getYCoordinate() +
-                "\nZ=" + movedMote.getInterfaces().getPosition().getZCoordinate(),
-                "Move mote?",
-                JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE,
-                null, options, options[0]);
-            moving = returnValue == JOptionPane.YES_OPTION;
-          }
-          if (moving) {
-            movedMote.getInterfaces().getPosition().setCoordinates(
-                newPos.getXCoordinate(),
-                newPos.getYCoordinate(),
-                movedMote.getInterfaces().getPosition().getZCoordinate()
-            );
-            repaint();
-          }
-        }
-      }
-
-      moving = false;
-      movedMote = null;
-      repaint();
-    }
+//    if (moving) {
+//      if(x != mouseDownPixel.x || y != mouseDownPixel.y) {
+//        Position newPos = transformPixelToPosition(x, y);
+//
+//        if (!stop) {
+//          canvas.setCursor(moveCursor);
+//          movedMotes.getInterfaces().getPosition().setCoordinates(
+//              newPos.getXCoordinate(),
+//              newPos.getYCoordinate(),
+//              movedMotes.getInterfaces().getPosition().getZCoordinate()
+//          );
+//          repaint();
+//          return;
+//        }
+//        /* Restore cursor */
+//        canvas.setCursor(Cursor.getDefaultCursor());
+//
+//
+//        /* Move mote */
+//        if (moveStartTime < 0 || System.currentTimeMillis() - moveStartTime > 300) {
+//          if (moveConfirm) {
+//            String options[] = {"Yes", "Cancel"};
+//            int returnValue = JOptionPane.showOptionDialog(Visualizer.this,
+//                "Move mote to" +
+//                "\nX=" + newPos.getXCoordinate() +
+//                "\nY=" + newPos.getYCoordinate() +
+//                "\nZ=" + movedMotes.getInterfaces().getPosition().getZCoordinate(),
+//                "Move mote?",
+//                JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE,
+//                null, options, options[0]);
+//            moving = returnValue == JOptionPane.YES_OPTION;
+//          }
+//          if (moving) {
+//            movedMotes.getInterfaces().getPosition().setCoordinates(
+//                newPos.getXCoordinate(),
+//                newPos.getYCoordinate(),
+//                movedMotes.getInterfaces().getPosition().getZCoordinate()
+//            );
+//            repaint();
+//          }
+//        }
+//      }
+//
+//      moving = false;
+//      movedMotes = null;
+//      repaint();
+//    }
   }
 
+  /**
+   * Returns all motes in rectangular range
+   * 
+   * @param startX
+   * @param startY
+   * @param width
+   * @param height
+   * @return All motes in range
+   */
+  public Mote[] findMotesInRange(int startX, int startY, int width, int height) {
+    System.out.printf("findMotesInRange(%d, %d, %d, %d)%n", startX, startY, width, height);
+    List<Mote> motes = new LinkedList<>();
+    for (Mote m : simulation.getMotes()) {
+      Position pos = m.getInterfaces().getPosition();
+      int moteX = transformToPixelX(pos.getXCoordinate());
+      int moteY = transformToPixelY(pos.getYCoordinate());
+      if (moteX > startX && moteX < startX + width
+              && moteY > startY && moteY < startY + height) {
+        System.out.printf("In range: %d, %d%n", moteX, moteY);
+        motes.add(m);
+      } else {
+        System.out.printf("Not in range: %d, %d%n", moteX, moteY);
+      }
+    }
+    Mote[] motesArr = new Mote[motes.size()];
+    return motes.toArray(motesArr);
+  }
+  
   /**
    * Returns all motes at given position.
    *
@@ -998,13 +1295,13 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
    *          X coordinate
    * @param clickedY
    *          Y coordinate
-   * @return All motes at given position
+   * @return All motes at given position, null if no motes were found
    */
   public Mote[] findMotesAtPosition(int clickedX, int clickedY) {
     double xCoord = transformToPositionX(clickedX);
     double yCoord = transformToPositionY(clickedY);
 
-    ArrayList<Mote> motes = new ArrayList<Mote>();
+    List<Mote> motes = new LinkedList<>();
 
     // Calculate painted mote radius in coordinates
     double paintedMoteWidth = transformToPositionX(MOTE_RADIUS)
@@ -1012,8 +1309,8 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
     double paintedMoteHeight = transformToPositionY(MOTE_RADIUS)
     - transformToPositionY(0);
 
-    for (int i = 0; i < simulation.getMotesCount(); i++) {
-      Position pos = simulation.getMote(i).getInterfaces().getPosition();
+    for (Mote m: simulation.getMotes()) {
+      Position pos = m.getInterfaces().getPosition();
 
       // Transform to unit circle before checking if mouse hit this mote
       double distanceX = Math.abs(xCoord - pos.getXCoordinate())
@@ -1022,10 +1319,10 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
       / paintedMoteHeight;
 
       if (distanceX * distanceX + distanceY * distanceY <= 1) {
-        motes.add(simulation.getMote(i));
+        motes.add(m);
       }
     }
-    if (motes.size() == 0) {
+    if (motes.isEmpty()) {
       return null;
     }
 
@@ -1071,7 +1368,7 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
       int x = pixelCoord.x;
       int y = pixelCoord.y;
 
-      if (mote == movedMote) {
+      if (mote == movedMotes) {
         g.setColor(MOVE_COLOR);
         g.fillOval(x - MOTE_RADIUS, y - MOTE_RADIUS, 2 * MOTE_RADIUS,
             2 * MOTE_RADIUS);
@@ -1297,8 +1594,8 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
   /**
    * @return Selected mote
    */
-  public Mote getSelectedMote() {
-    return clickedMote;
+  public Set<Mote> getSelectedMotes() {
+    return selectedMotes;
   }
 
   public Collection<Element> getConfigXML() {
@@ -1520,7 +1817,8 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
       return "Move " + mote;
     }
     public void doAction(Visualizer visualizer, Mote mote) {
-      visualizer.beginMoveRequest(mote, false, false);
+// XXX
+//      visualizer.beginMoveRequest(mote, false, false);
     }
   };
 
@@ -1579,6 +1877,7 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
     }
   }
 
+  @Override
   public String getQuickHelp() {
     return
     "<b>Network</b> " +

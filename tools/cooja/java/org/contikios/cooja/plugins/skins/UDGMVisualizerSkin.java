@@ -36,6 +36,7 @@ import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Point;
 import java.beans.PropertyVetoException;
+import java.util.Set;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -259,8 +260,7 @@ public class UDGMVisualizerSkin implements VisualizerSkin {
 
   @Override
   public Color[] getColorOf(Mote mote) {
-    Mote selectedMote = visualizer.getSelectedMote();
-    if (mote == selectedMote) {
+    if (visualizer.getSelectedMotes().contains(mote)) {
       return new Color[] { Color.CYAN };
     }
     return null;
@@ -268,100 +268,103 @@ public class UDGMVisualizerSkin implements VisualizerSkin {
 
   @Override
   public void paintBeforeMotes(Graphics g) {
-    Mote selectedMote = visualizer.getSelectedMote();
-    if (simulation == null
-        || selectedMote == null
-        || selectedMote.getInterfaces().getRadio() == null) {
+    Set<Mote> selectedMotes = visualizer.getSelectedMotes();
+    if (simulation == null || selectedMotes == null) {
       return;
     }
 
-    /* Paint transmission and interference range for selected mote */
-    Position motePos = selectedMote.getInterfaces().getPosition();
+    for (Mote selectedMote : selectedMotes) {
+      if (selectedMote.getInterfaces().getRadio() == null) {
+        continue;
+      }
 
-    Point pixelCoord = visualizer.transformPositionToPixel(motePos);
-    int x = pixelCoord.x;
-    int y = pixelCoord.y;
+      /* Paint transmission and interference range for selected mote */
+      Position motePos = selectedMote.getInterfaces().getPosition();
 
-    // Fetch current output power indicator (scale with as percent)
-    Radio selectedRadio = selectedMote.getInterfaces().getRadio();
-    double moteInterferenceRange =
-      radioMedium.INTERFERENCE_RANGE
-      * ((double) selectedRadio.getCurrentOutputPowerIndicator()
-          / (double) selectedRadio.getOutputPowerIndicatorMax());
-    double moteTransmissionRange =
-      radioMedium.TRANSMITTING_RANGE
-      * ((double) selectedRadio.getCurrentOutputPowerIndicator()
-          / (double) selectedRadio.getOutputPowerIndicatorMax());
+      Point pixelCoord = visualizer.transformPositionToPixel(motePos);
+      int x = pixelCoord.x;
+      int y = pixelCoord.y;
 
-    Point translatedZero = visualizer.transformPositionToPixel(0.0, 0.0, 0.0);
-    Point translatedInterference =
-      visualizer.transformPositionToPixel(moteInterferenceRange, moteInterferenceRange, 0.0);
-    Point translatedTransmission =
-      visualizer.transformPositionToPixel(moteTransmissionRange, moteTransmissionRange, 0.0);
-    Point translatedInterferenceMax =
-      visualizer.transformPositionToPixel(radioMedium.INTERFERENCE_RANGE, radioMedium.INTERFERENCE_RANGE, 0.0);
-    Point translatedTransmissionMax =
-      visualizer.transformPositionToPixel(radioMedium.TRANSMITTING_RANGE, radioMedium.TRANSMITTING_RANGE, 0.0);
+      // Fetch current output power indicator (scale with as percent)
+      Radio selectedRadio = selectedMote.getInterfaces().getRadio();
+      double moteInterferenceRange
+              = radioMedium.INTERFERENCE_RANGE
+              * ((double) selectedRadio.getCurrentOutputPowerIndicator()
+              / (double) selectedRadio.getOutputPowerIndicatorMax());
+      double moteTransmissionRange
+              = radioMedium.TRANSMITTING_RANGE
+              * ((double) selectedRadio.getCurrentOutputPowerIndicator()
+              / (double) selectedRadio.getOutputPowerIndicatorMax());
 
-    translatedInterference.x = Math.abs(translatedInterference.x - translatedZero.x);
-    translatedInterference.y = Math.abs(translatedInterference.y - translatedZero.y);
-    translatedTransmission.x = Math.abs(translatedTransmission.x - translatedZero.x);
-    translatedTransmission.y = Math.abs(translatedTransmission.y - translatedZero.y);
-    translatedInterferenceMax.x = Math.abs(translatedInterferenceMax.x - translatedZero.x);
-    translatedInterferenceMax.y = Math.abs(translatedInterferenceMax.y - translatedZero.y);
-    translatedTransmissionMax.x = Math.abs(translatedTransmissionMax.x - translatedZero.x);
-    translatedTransmissionMax.y = Math.abs(translatedTransmissionMax.y - translatedZero.y);
+      Point translatedZero = visualizer.transformPositionToPixel(0.0, 0.0, 0.0);
+      Point translatedInterference
+              = visualizer.transformPositionToPixel(moteInterferenceRange, moteInterferenceRange, 0.0);
+      Point translatedTransmission
+              = visualizer.transformPositionToPixel(moteTransmissionRange, moteTransmissionRange, 0.0);
+      Point translatedInterferenceMax
+              = visualizer.transformPositionToPixel(radioMedium.INTERFERENCE_RANGE, radioMedium.INTERFERENCE_RANGE, 0.0);
+      Point translatedTransmissionMax
+              = visualizer.transformPositionToPixel(radioMedium.TRANSMITTING_RANGE, radioMedium.TRANSMITTING_RANGE, 0.0);
 
-    /* Interference range */
-    g.setColor(COLOR_INT);
-    g.fillOval(
-        x - translatedInterference.x,
-        y - translatedInterference.y,
-        2 * translatedInterference.x,
-        2 * translatedInterference.y);
+      translatedInterference.x = Math.abs(translatedInterference.x - translatedZero.x);
+      translatedInterference.y = Math.abs(translatedInterference.y - translatedZero.y);
+      translatedTransmission.x = Math.abs(translatedTransmission.x - translatedZero.x);
+      translatedTransmission.y = Math.abs(translatedTransmission.y - translatedZero.y);
+      translatedInterferenceMax.x = Math.abs(translatedInterferenceMax.x - translatedZero.x);
+      translatedInterferenceMax.y = Math.abs(translatedInterferenceMax.y - translatedZero.y);
+      translatedTransmissionMax.x = Math.abs(translatedTransmissionMax.x - translatedZero.x);
+      translatedTransmissionMax.y = Math.abs(translatedTransmissionMax.y - translatedZero.y);
 
-    /* Transmission range */
-    g.setColor(COLOR_TX);
-    g.fillOval(
-        x - translatedTransmission.x,
-        y - translatedTransmission.y,
-        2 * translatedTransmission.x,
-        2 * translatedTransmission.y);
+      /* Interference range */
+      g.setColor(COLOR_INT);
+      g.fillOval(
+              x - translatedInterference.x,
+              y - translatedInterference.y,
+              2 * translatedInterference.x,
+              2 * translatedInterference.y);
 
-    /* Interference range (MAX) */
-    g.setColor(Color.GRAY);
-    g.drawOval(
-        x - translatedInterferenceMax.x,
-        y - translatedInterferenceMax.y,
-        2 * translatedInterferenceMax.x,
-        2 * translatedInterferenceMax.y);
+      /* Transmission range */
+      g.setColor(COLOR_TX);
+      g.fillOval(
+              x - translatedTransmission.x,
+              y - translatedTransmission.y,
+              2 * translatedTransmission.x,
+              2 * translatedTransmission.y);
 
-    /* Transmission range (MAX) */
-    g.drawOval(
-        x - translatedTransmissionMax.x,
-        y - translatedTransmissionMax.y,
-        2 * translatedTransmissionMax.x,
-        2 * translatedTransmissionMax.y);
+      /* Interference range (MAX) */
+      g.setColor(Color.GRAY);
+      g.drawOval(
+              x - translatedInterferenceMax.x,
+              y - translatedInterferenceMax.y,
+              2 * translatedInterferenceMax.x,
+              2 * translatedInterferenceMax.y);
 
+      /* Transmission range (MAX) */
+      g.drawOval(
+              x - translatedTransmissionMax.x,
+              y - translatedTransmissionMax.y,
+              2 * translatedTransmissionMax.x,
+              2 * translatedTransmissionMax.y);
 
-    FontMetrics fm = g.getFontMetrics();
-    g.setColor(Color.BLACK);
+      FontMetrics fm = g.getFontMetrics();
+      g.setColor(Color.BLACK);
 
-    /* Print transmission success probabilities */
-    for (Mote m: simulation.getMotes()) {
-    	if (m == selectedMote) {
-    		continue;
-    	}
-    	double prob =
-    		((UDGM) simulation.getRadioMedium()).getSuccessProbability(selectedRadio, m.getInterfaces().getRadio());
-    	if (prob == 0.0d) {
-    		continue;
-    	}
-    	String msg = (((int)(1000*prob))/10.0) + "%";
-    	Position pos = m.getInterfaces().getPosition();
-    	Point pixel = visualizer.transformPositionToPixel(pos);
-    	int msgWidth = fm.stringWidth(msg);
-    	g.drawString(msg, pixel.x - msgWidth/2, pixel.y + 2*Visualizer.MOTE_RADIUS + 3);
+      /* Print transmission success probabilities */
+      for (Mote m : simulation.getMotes()) {
+        if (m == selectedMote) {
+          continue;
+        }
+        double prob
+                = ((UDGM) simulation.getRadioMedium()).getSuccessProbability(selectedRadio, m.getInterfaces().getRadio());
+        if (prob == 0.0d) {
+          continue;
+        }
+        String msg = (((int) (1000 * prob)) / 10.0) + "%";
+        Position pos = m.getInterfaces().getPosition();
+        Point pixel = visualizer.transformPositionToPixel(pos);
+        int msgWidth = fm.stringWidth(msg);
+        g.drawString(msg, pixel.x - msgWidth / 2, pixel.y + 2 * Visualizer.MOTE_RADIUS + 3);
+      }
     }
 
   }
