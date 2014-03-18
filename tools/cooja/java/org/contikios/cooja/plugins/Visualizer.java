@@ -858,7 +858,8 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
       cursorMote = null;
     }
     else {
-      cursorMote = foundMotes[0];
+      // select top mote
+      cursorMote = foundMotes[foundMotes.length - 1];
     }
 
     int modifiers = mouseEvent.getModifiers();
@@ -877,8 +878,8 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
         // if this mote was not selected before, assume a new selection
         if (!selectedMotes.contains(cursorMote)) {
           selectedMotes.clear();
+          selectedMotes.add(cursorMote);
         }
-        selectedMotes.add(foundMotes[0]);
       }
       mouseActionState = MotesActionState.DEFAULT_PRESS;
     }
@@ -1058,6 +1059,10 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
   
   /**
    * Returns all motes at given position.
+   * 
+   * If multiple motes were found on at a position the motes are returned
+   * in the order they are painted on screen.
+   * First mote in array is the bottom mote, last mote is the top mote.
    *
    * @param clickedX
    *          X coordinate
