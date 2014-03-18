@@ -34,7 +34,10 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.FontMetrics;
 import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.Point;
+import java.awt.geom.Area;
+import java.awt.geom.Ellipse2D;
 import java.beans.PropertyVetoException;
 import java.util.Set;
 
@@ -273,6 +276,11 @@ public class UDGMVisualizerSkin implements VisualizerSkin {
       return;
     }
 
+    Area intRangeArea = new Area();
+    Area intRangeMaxArea = new Area();
+    Area trxRangeArea = new Area();
+    Area trxRangeMaxArea = new Area();
+    
     for (Mote selectedMote : selectedMotes) {
       if (selectedMote.getInterfaces().getRadio() == null) {
         continue;
@@ -316,40 +324,53 @@ public class UDGMVisualizerSkin implements VisualizerSkin {
       translatedTransmissionMax.y = Math.abs(translatedTransmissionMax.y - translatedZero.y);
 
       /* Interference range */
-      g.setColor(COLOR_INT);
-      g.fillOval(
+      intRangeArea.add(new Area(new Ellipse2D.Double(
               x - translatedInterference.x,
               y - translatedInterference.y,
               2 * translatedInterference.x,
-              2 * translatedInterference.y);
+              2 * translatedInterference.y)));
 
-      /* Transmission range */
-      g.setColor(COLOR_TX);
-      g.fillOval(
+      /* Interference range (MAX) */
+      trxRangeArea.add(new Area(new Ellipse2D.Double(
               x - translatedTransmission.x,
               y - translatedTransmission.y,
               2 * translatedTransmission.x,
-              2 * translatedTransmission.y);
-
-      /* Interference range (MAX) */
-      g.setColor(Color.GRAY);
-      g.drawOval(
+              2 * translatedTransmission.y)));
+      
+      intRangeMaxArea.add(new Area(new Ellipse2D.Double(
               x - translatedInterferenceMax.x,
               y - translatedInterferenceMax.y,
               2 * translatedInterferenceMax.x,
-              2 * translatedInterferenceMax.y);
+              2 * translatedInterferenceMax.y)));
 
       /* Transmission range (MAX) */
-      g.drawOval(
+      trxRangeMaxArea.add(new Area(new Ellipse2D.Double(
               x - translatedTransmissionMax.x,
               y - translatedTransmissionMax.y,
               2 * translatedTransmissionMax.x,
-              2 * translatedTransmissionMax.y);
+              2 * translatedTransmissionMax.y)));
+      
+    }
+    
+    Graphics2D g2d = (Graphics2D) g;
+    
+    g2d.setColor(COLOR_INT);
+    g2d.fill(intRangeArea);
+    g.setColor(Color.GRAY);
+    g2d.draw(intRangeMaxArea);
+    
+    g.setColor(COLOR_TX);
+    g2d.fill(trxRangeArea);
+    g.setColor(Color.GRAY);
+    g2d.draw(trxRangeMaxArea);
 
-      FontMetrics fm = g.getFontMetrics();
-      g.setColor(Color.BLACK);
+    FontMetrics fm = g.getFontMetrics();
+    g.setColor(Color.BLACK);
 
-      /* Print transmission success probabilities */
+    /* Print transmission success probabilities only if single mote is selected */
+    if (selectedMotes.size() == 1) {
+      Mote selectedMote = selectedMotes.toArray(new Mote[0])[0];
+      Radio selectedRadio = selectedMote.getInterfaces().getRadio();
       for (Mote m : simulation.getMotes()) {
         if (m == selectedMote) {
           continue;
