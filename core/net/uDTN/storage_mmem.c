@@ -192,7 +192,7 @@ uint8_t storage_mmem_make_room(struct mmem * bundlemem)
 	struct bundle_list_entry_t * entry = NULL;
 
 	/* Keep deleting bundles until we have enough slots */
-	while( bundles_in_storage >= BUNDLE_STORAGE_SIZE) {
+	while( bundles_in_storage >= BUNDLE_STORAGE_SIZE || avail_memory < (2 * CONVERGENCE_LAYER_MAX_SIZE) ) {
 		unsigned long comparator = 0;
 		struct bundle_list_entry_t * deletor = NULL;
 
@@ -235,7 +235,7 @@ uint8_t storage_mmem_make_room(struct mmem * bundlemem)
 		}
 
 		/* Delete Bundle */
-		storage_mmem_delete_bundle(entry->bundle_num, REASON_DEPLETED_STORAGE);
+		storage_mmem_delete_bundle(deletor->bundle_num, REASON_DEPLETED_STORAGE);
 	}
 #elif (BUNDLE_STORAGE_BEHAVIOUR == BUNDLE_STORAGE_BEHAVIOUR_DELETE_OLDER || BUNDLE_STORAGE_BEHAVIOUR == BUNDLE_STORAGE_BEHAVIOUR_DELETE_YOUNGER )
 	struct bundle_t * bundle_new = NULL;
