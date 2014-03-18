@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  */
-
 package org.contikios.cooja.plugins.skins;
 
 import java.awt.Color;
@@ -46,7 +45,6 @@ import org.contikios.cooja.ClassDescription;
 import org.contikios.cooja.Mote;
 import org.contikios.cooja.Simulation;
 import org.contikios.cooja.SimEventCentral.MoteCountListener;
-import org.contikios.cooja.dialogs.MessageList.MessageContainer;
 import org.contikios.cooja.interfaces.IPAddress;
 import org.contikios.cooja.interfaces.Position;
 import org.contikios.cooja.interfaces.RimeAddress;
@@ -63,17 +61,21 @@ import org.contikios.cooja.plugins.Visualizer.MoteMenuAction;
  */
 @ClassDescription("Addresses: IP or Rime")
 public class AddressVisualizerSkin implements VisualizerSkin {
-  private static Logger logger = Logger.getLogger(AddressVisualizerSkin.class);
+
+  private static final Logger logger = Logger.getLogger(AddressVisualizerSkin.class);
 
   private Simulation simulation = null;
   private Visualizer visualizer = null;
 
   private Observer addrObserver = new Observer() {
+    @Override
     public void update(Observable obs, Object obj) {
       visualizer.repaint();
     }
   };
-  private MoteCountListener newMotesListener = new MoteCountListener() {
+  
+  private final MoteCountListener newMotesListener = new MoteCountListener() {
+    @Override
     public void moteWasAdded(Mote mote) {
       IPAddress ipAddr = mote.getInterfaces().getIPAddress();
       if (ipAddr != null) {
@@ -84,6 +86,8 @@ public class AddressVisualizerSkin implements VisualizerSkin {
         rimeAddr.addObserver(addrObserver);
       }
     }
+
+    @Override
     public void moteWasRemoved(Mote mote) {
       IPAddress ipAddr = mote.getInterfaces().getIPAddress();
       if (ipAddr != null) {
@@ -96,22 +100,24 @@ public class AddressVisualizerSkin implements VisualizerSkin {
     }
   };
 
+  @Override
   public void setActive(Simulation simulation, Visualizer vis) {
     this.simulation = simulation;
     this.visualizer = vis;
 
     simulation.getEventCentral().addMoteCountListener(newMotesListener);
-    for (Mote m: simulation.getMotes()) {
+    for (Mote m : simulation.getMotes()) {
       newMotesListener.moteWasAdded(m);
     }
-    
+
     /* Register menu actions */
     visualizer.registerMoteMenuAction(CopyAddressAction.class);
   }
 
+  @Override
   public void setInactive() {
     simulation.getEventCentral().removeMoteCountListener(newMotesListener);
-    for (Mote m: simulation.getMotes()) {
+    for (Mote m : simulation.getMotes()) {
       newMotesListener.moteWasRemoved(m);
     }
 
@@ -119,10 +125,12 @@ public class AddressVisualizerSkin implements VisualizerSkin {
     visualizer.unregisterMoteMenuAction(CopyAddressAction.class);
   }
 
+  @Override
   public Color[] getColorOf(Mote mote) {
     return null;
-  }
+  } 
 
+  @Override
   public void paintBeforeMotes(Graphics g) {
   }
 
@@ -141,42 +149,49 @@ public class AddressVisualizerSkin implements VisualizerSkin {
     }
     return null;
   }
-  
+
+  @Override
   public void paintAfterMotes(Graphics g) {
     FontMetrics fm = g.getFontMetrics();
     g.setColor(Color.BLACK);
 
     /* Paint last output below motes */
     Mote[] allMotes = simulation.getMotes();
-    for (Mote mote: allMotes) {
+    for (Mote mote : allMotes) {
       String msg = getMoteString(mote);
       if (msg == null) {
         continue;
       }
-      
+
       Position pos = mote.getInterfaces().getPosition();
       Point pixel = visualizer.transformPositionToPixel(pos);
 
       int msgWidth = fm.stringWidth(msg);
-      g.drawString(msg, pixel.x - msgWidth/2, pixel.y + 2*Visualizer.MOTE_RADIUS + 3);
+      g.drawString(msg, pixel.x - msgWidth / 2, pixel.y + 2 * Visualizer.MOTE_RADIUS + 3);
     }
   }
 
   public static class CopyAddressAction implements MoteMenuAction {
+
+    @Override
     public boolean isEnabled(Visualizer visualizer, Mote mote) {
       return true;
     }
 
+    @Override
     public String getDescription(Visualizer visualizer, Mote mote) {
       return "Copy address to clipboard: \"" + getMoteString(mote) + "\"";
     }
 
+    @Override
     public void doAction(Visualizer visualizer, Mote mote) {
       Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
       StringSelection stringSelection = new StringSelection(getMoteString(mote));
       clipboard.setContents(stringSelection, null);
     }
   };
+
+  @Override
   public Visualizer getVisualizer() {
     return visualizer;
   }
