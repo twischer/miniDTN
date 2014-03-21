@@ -78,6 +78,19 @@
 #define NETSTACK_CONF_RADIO         cooja_radio_driver
 #define NETSTACK_CONF_FRAMER        framer_802154
 
+#elif WITH_DTN /* WITH_UIP6 */
+/* Network setup for uDTN */
+#define NETSTACK_CONF_NETWORK       dtn_network_driver
+#define NETSTACK_CONF_MAC           nullmac_driver
+#define NETSTACK_CONF_RDC           nullrdc_driver
+#define NETSTACK_CONF_RADIO         cooja_radio_driver
+#define NETSTACK_CONF_FRAMER        framer_802154
+
+/* Disable as much as possible */
+#define UIP_CONF_IPV6             0
+#define UIP_CONF_IPV6_RPL		  0
+#define UIP_CONF_ROUTER			  0
+
 #else /* WITH_UIP6 */
 
 #if WITH_UIP
