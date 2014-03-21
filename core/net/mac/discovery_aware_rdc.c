@@ -48,7 +48,6 @@
 #include "net/netstack.h"
 #include "sys/process.h"
 #include "sys/etimer.h"
-#include "mac/mac-sequence.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -104,15 +103,23 @@
 #endif /* DISCOVERY_AWARE_RDC_CONF_AFTER_ACK_DETECTED_WAIT_TIME */
 #endif /* DISCOVERY_AWARE_RDC_802154_AUTOACK */
 
-#ifdef DISCOVERY_AWARE_RDC_CONF_SEND_802154_ACK
-#define DISCOVERY_AWARE_RDC_SEND_802154_ACK DISCOVERY_AWARE_RDC_CONF_SEND_802154_ACK
-#else /* DISCOVERY_AWARE_RDC_CONF_SEND_802154_ACK */
-#define DISCOVERY_AWARE_RDC_SEND_802154_ACK 0
-#endif /* DISCOVERY_AWARE_RDC_CONF_SEND_802154_ACK */
+#if DISCOVERY_AWARE_RDC_802154_AUTOACK || DISCOVERY_AWARE_RDC_802154_AUTOACK_HW
+struct seqno {
+	rimeaddr_t sender;
+	uint8_t seqno;
+};
+
+#ifdef NETSTACK_CONF_MAC_SEQNO_HISTORY
+#define MAX_SEQNOS NETSTACK_CONF_MAC_SEQNO_HISTORY
+#else /* NETSTACK_CONF_MAC_SEQNO_HISTORY */
+#define MAX_SEQNOS 16
+#endif /* NETSTACK_CONF_MAC_SEQNO_HISTORY */
 
 #if DISCOVERY_AWARE_RDC_SEND_802154_ACK
 #include "net/mac/frame802154.h"
 #endif /* DISCOVERY_AWARE_RDC_SEND_802154_ACK */
+static struct seqno received_seqnos[MAX_SEQNOS];
+#endif /* DISCOVERY_AWARE_RDC_802154_AUTOACK || DISCOVERY_AWARE_RDC_802154_AUTOACK_HW */
 
 #ifndef DISCOVERY_AWARE_RDC_CONF_RADIO_OFF_TIMEOUT
 #define RADIO_OFF_SEND_TIMEOUT 0.25
@@ -346,41 +353,33 @@ packet_input(void)
 			PRINTF("RDC: not for us\n");
 #endif /* DISCOVERY_AWARE_RDC_ADDRESS_FILTER */
 		} else {
-			int duplicate = 0;
-
 #if DISCOVERY_AWARE_RDC_802154_AUTOACK || DISCOVERY_AWARE_RDC_802154_AUTOACK_HW
-			/* Check for duplicate packet. */
-			duplicate = mac_sequence_is_duplicate();
-			if(duplicate) {
-				/* Drop the packet. */
-				PRINTF("RDC: drop duplicate link layer packet %u\n",
-						packetbuf_attr(PACKETBUF_ATTR_PACKET_ID));
-			} else {
-				mac_sequence_register_seqno();
-			}
-#endif /* DISCOVERY_AWARE_RDC_802154_AUTOACK */
-
-#if DISCOVERY_AWARE_RDC_SEND_802154_ACK
-			{
-				frame802154_t info154;
-				frame802154_parse(original_dataptr, original_datalen, &info154);
-				if(info154.fcf.frame_type == FRAME802154_DATAFRAME &&
-						info154.fcf.ack_required != 0 &&
-						rimeaddr_cmp((rimeaddr_t *)&info154.dest_addr,
-								&rimeaddr_node_addr)) {
-					uint8_t ackdata[ACK_LEN] = {0, 0, 0};
-
-					ackdata[0] = FRAME802154_ACKFRAME;
-					ackdata[1] = 0;
-					ackdata[2] = info154.seq;
-					NETSTACK_RADIO.send(ackdata, ACK_LEN);
+			/* Check for duplicate packet by comparing the sequence number
+       of the incoming packet with the last few ones we saw. */
+			int i;
+			for(i = 0; i < MAX_SEQNOS; ++i) {
+				if(packetbuf_attr(PACKETBUF_ATTR_PACKET_ID) == received_seqnos[i].seqno &&
+						rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_SENDER),
+								&received_seqnos[i].sender)) {
+					/* Drop the packet. */
+					return;
 				}
 			}
-#endif /* DISCOVERY_AWARE_RDC_SEND_ACK */
-
-			if(!duplicate) {
-				NETSTACK_MAC.input();
+			for(i = MAX_SEQNOS - 1; i > 0; --i) {
+				memcpy(&received_seqnos[i], &received_seqnos[i - 1],
+						sizeof(struct seqno));
 			}
+			received_seqnos[0].seqno = packetbuf_attr(PACKETBUF_ATTR_PACKET_ID);
+			rimeaddr_copy(&received_seqnos[0].sender,
+					packetbuf_addr(PACKETBUF_ADDR_SENDER));
+#endif /* DISCOVERY_AWARE_RDC_802154_AUTOACK */
+
+			if (!rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_RECEIVER), &rimeaddr_null)) {
+				to_modifier += 10;
+				rec_flag = 1;
+			}
+
+			NETSTACK_MAC.input();
 		}
 }
 /*---------------------------------------------------------------------------*/
