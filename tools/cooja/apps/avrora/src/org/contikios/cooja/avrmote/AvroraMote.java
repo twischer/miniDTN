@@ -39,7 +39,6 @@ import org.jdom.Element;
 
 import org.contikios.cooja.MoteInterface;
 import org.contikios.cooja.MoteInterfaceHandler;
-import org.contikios.cooja.mote.memory.VarMemory;
 import org.contikios.cooja.MoteType;
 import org.contikios.cooja.Simulation;
 import org.contikios.cooja.Watchpoint;
@@ -48,6 +47,11 @@ import org.contikios.cooja.dialogs.CompileContiki;
 import org.contikios.cooja.dialogs.MessageList;
 import org.contikios.cooja.dialogs.MessageList.MessageContainer;
 import org.contikios.cooja.motes.AbstractEmulatedMote;
+import org.contikios.cooja.mote.memory.MemoryLayout;
+import org.contikios.cooja.mote.memory.MoteMemory;
+import org.contikios.cooja.mote.memory.VarMemory;
+import org.contikios.cooja.plugins.Debugger.SourceLocation;
+
 import avrora.arch.avr.AVRProperties;
 import avrora.core.LoadableProgram;
 import avrora.core.SourceMapping;
@@ -59,20 +63,20 @@ import avrora.sim.platform.Platform;
 import avrora.sim.platform.PlatformFactory;
 import avrora.sim.types.SingleSimulation;
 import java.nio.ByteOrder;
-import org.contikios.cooja.mote.memory.MemoryLayout;
-import org.contikios.cooja.mote.memory.MoteMemory;
-import org.contikios.cooja.mote.memory.VarMemory;
-import org.contikios.cooja.plugins.Debugger.SourceLocation;
+import java.util.HashMap;
+import java.util.Map;
+import org.contikios.cooja.SensorMote;
+import org.contikios.cooja.interfaces.sensor.Sensor;
 
 /**
  * @author Joakim Eriksson, Fredrik Osterlind, David Kopf
  */
-public abstract class AvroraMote extends AbstractEmulatedMote implements WatchpointMote {
+public abstract class AvroraMote extends AbstractEmulatedMote implements WatchpointMote, SensorMote {
   public static Logger logger = Logger.getLogger(AvroraMote.class);
 
   private MoteInterfaceHandler moteInterfaceHandler;
-  private MoteType moteType;
-  private PlatformFactory factory;
+  private final MoteType moteType;
+  private final PlatformFactory factory;
 
   private Platform platform = null;
   private EEPROM EEPROM = null;
@@ -86,6 +90,8 @@ public abstract class AvroraMote extends AbstractEmulatedMote implements Watchpo
   /* Stack monitoring variables */
   private boolean stopNextInstruction = false;
 
+  private Sensor[] sensors;
+  
   public AvroraMote(Simulation simulation, MoteType type, PlatformFactory factory) {
     setSimulation(simulation);
     moteType = type;
@@ -109,6 +115,19 @@ public abstract class AvroraMote extends AbstractEmulatedMote implements Watchpo
       memLayout = new MemoryLayout(ByteOrder.LITTLE_ENDIAN, MemoryLayout.ARCH_8BIT, 2);
       AvrMoteMemory avrmom = new AvrMoteMemory(sourceMapping, avrProperties, interpreter);
       memory = new MoteMemory(memLayout, avrmom);
+
+      /* Get all sensors */
+      Map<String, Sensor> sensorMap = new HashMap<>();
+      for (String name : getPlatform().getDeviceNames()) {
+        Object obj = getPlatform().getDevice(name);
+        if (avrora.sim.platform.sensors.Sensor.class.isAssignableFrom(obj.getClass())) {
+          System.out.println("Found sensor: " + obj.getClass().getSimpleName());
+          sensorMap.put(obj.getClass().getSimpleName(), new Sensor(this, new SensorWrapper((avrora.sim.platform.sensors.Sensor) obj)));
+        }
+      }
+      sensors = sensorMap.values().toArray(new Sensor[0]);
+
+      
     } catch (Exception e) {
       logger.fatal("Error when initializing Avora mote: " + e.getMessage(), e);
       return false;
@@ -230,6 +249,12 @@ public abstract class AvroraMote extends AbstractEmulatedMote implements Watchpo
     return true;
   }
 
+
+  @Override
+  public Sensor[] getSensors() {
+    return sensors;
+  }
+  
   @Override
   public Collection<Element> getConfigXML() {
     ArrayList<Element> config = new ArrayList<>();
@@ -283,49 +308,64 @@ public abstract class AvroraMote extends AbstractEmulatedMote implements Watchpo
     return true;
   }
 
-  private ArrayList<WatchpointListener> watchpointListeners = new ArrayList<WatchpointListener>();
-  private ArrayList<AvrBreakpoint> watchpoints = new ArrayList<AvrBreakpoint>();
+  private final ArrayList<WatchpointListener> watchpointListeners = new ArrayList<>();
+  private final ArrayList<AvrBreakpoint> watchpoints = new ArrayList<>();
 
+  @Override
   public void addWatchpointListener(WatchpointListener listener) {
     watchpointListeners.add(listener);
   }
+
+  @Override
   public void removeWatchpointListener(WatchpointListener listener) {
     watchpointListeners.remove(listener);
   }
+
+  @Override
   public WatchpointListener[] getWatchpointListeners() {
     return watchpointListeners.toArray(new WatchpointListener[0]);
   }
+
+  @Override
   public Watchpoint<AvroraMote> addBreakpoint(File codeFile, int lineNr, int address) {
     AvrBreakpoint bp = new AvrBreakpoint(this, address, codeFile, new Integer(lineNr));
     watchpoints.add(bp);
 
-    for (WatchpointListener listener: watchpointListeners) {
+    for (WatchpointListener listener : watchpointListeners) {
       listener.watchpointsChanged();
     }
     return bp;
   }
-  public void removeBreakpoint(Watchpoint<? extends WatchpointMote> watchpoint) {
-    ((AvrBreakpoint)watchpoint).unregisterBreakpoint();
-    watchpoints.remove(watchpoint);
 
-    for (WatchpointListener listener: watchpointListeners) {
+  @Override
+  public void removeBreakpoint(Watchpoint<? extends WatchpointMote> watchpoint) {
+    ((AvrBreakpoint) watchpoint).unregisterBreakpoint();
+    watchpoints.remove((AvrBreakpoint) watchpoint);
+
+    for (WatchpointListener listener : watchpointListeners) {
       listener.watchpointsChanged();
     }
   }
+
+  @Override
   public AvrBreakpoint[] getBreakpoints() {
     return watchpoints.toArray(new AvrBreakpoint[0]);
   }
+
+  @Override
   public boolean breakpointExists(int address) {
     if (address < 0) {
       return false;
     }
-    for (AvrBreakpoint watchpoint: watchpoints) {
+    for (AvrBreakpoint watchpoint : watchpoints) {
       if (watchpoint.getExecutableAddress() == address) {
         return true;
       }
     }
     return false;
   }
+
+  @Override
   public boolean breakpointExists(File file, int lineNr) {
     return breakpointExists(getExecutableAddressOf(file, lineNr));
   }
@@ -363,6 +403,7 @@ public abstract class AvroraMote extends AbstractEmulatedMote implements Watchpo
     return null;
   }
 
+  @Override
   public int getExecutableAddressOf(File file, int lineNr) {
     try {
       File firmwareFile = ((AvroraMoteType)getType()).getContikiFirmwareFile();

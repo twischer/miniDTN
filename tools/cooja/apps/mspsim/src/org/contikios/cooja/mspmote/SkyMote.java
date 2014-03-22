@@ -30,35 +30,45 @@
 
 package org.contikios.cooja.mspmote;
 
+import org.contikios.cooja.SensorMote;
 import java.io.File;
+import java.io.IOException;
 
 import org.apache.log4j.Logger;
 
 import org.contikios.cooja.Simulation;
+import org.contikios.cooja.interfaces.sensor.Sensor;
 import org.contikios.cooja.mspmote.interfaces.CoojaM25P80;
 import org.contikios.cooja.mspmote.interfaces.SkyCoffeeFilesystem;
+import org.contikios.cooja.mspmote.interfaces.sensors.SHT11;
 import se.sics.mspsim.platform.sky.SkyNode;
 
 /**
  * @author Fredrik Osterlind
  */
-public class SkyMote extends MspMote {
-  private static Logger logger = Logger.getLogger(SkyMote.class);
+public class SkyMote extends MspMote implements SensorMote {
+  private static final Logger logger = Logger.getLogger(SkyMote.class);
 
   public SkyNode skyNode = null;
+  private Sensor[] sensors;
 
   public SkyMote(MspMoteType moteType, Simulation sim) {
     super(moteType, sim);
   }
 
+  @Override
   protected boolean initEmulator(File fileELF) {
     try {
       skyNode = new SkyNode();
       registry = skyNode.getRegistry();
       skyNode.setFlash(new CoojaM25P80(skyNode.getCPU()));
 
+      sensors = new Sensor[]{
+        new Sensor(this, new SHT11(skyNode.sht11))
+      };
+
       prepareMote(fileELF, skyNode);
-    } catch (Exception e) {
+    } catch (IOException e) {
       logger.fatal("Error when creating Sky mote: ", e);
       return false;
     }
@@ -94,6 +104,7 @@ public class SkyMote extends MspMote {
     }
   }*/
 
+  @Override
   public void idUpdated(int newID) {
     skyNode.setNodeID(newID);
 
@@ -105,8 +116,14 @@ public class SkyMote extends MspMote {
     return getInterfaces().getInterfaceOfType(SkyCoffeeFilesystem.class);
   }
 
+  @Override
   public String toString() {
     return "Sky " + getID();
+  }
+
+  @Override
+  public Sensor[] getSensors() {
+    return sensors;
   }
 
 }
