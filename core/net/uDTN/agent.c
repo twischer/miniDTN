@@ -122,7 +122,7 @@ PROCESS_THREAD(agent_process, ev, data)
 		}
 
 		if(ev == dtn_application_status_event) {
-			int status;
+			int status = -2;
 			reg = (struct registration_api *) data;
 			LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "Service switching status to %i", reg->status);
 			if(reg->status == APP_ACTIVE)
@@ -132,6 +132,8 @@ PROCESS_THREAD(agent_process, ev, data)
 
 			if(status == -1) {
 				LOG(LOGD_DTN, LOG_AGENT, LOGL_ERR, "no registration found to switch");
+			} else if(status == -2) {
+				LOG(LOGD_DTN, LOG_AGENT, LOGL_ERR, "Desired Regirstation Status is invalid");
 			}
 
 			continue;
