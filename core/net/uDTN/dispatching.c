@@ -149,7 +149,7 @@ int dispatching_dispatch_bundle(struct mmem *bundlemem) {
 		// bundle is custody
 		LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "Handing over to custody");
 
-		CUSTODY.decide(bundlemem, bundle_number_ptr);
+		CUSTODY.decide(bundlemem, &bundle_number_ptr);
 		return 1;
 	}
 
