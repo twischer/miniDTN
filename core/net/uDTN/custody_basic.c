@@ -451,7 +451,7 @@ uint8_t custody_basic_report(struct mmem *bundlemem, uint8_t status)
 {
 	return 0;
 }
-uint8_t custody_basic_decide(struct mmem *bundlemem, uint32_t * bundle_number)
+uint8_t custody_basic_decide(struct mmem *bundlemem, uint32_t ** bundle_number)
 {
 	return 0;
 }

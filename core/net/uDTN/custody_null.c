@@ -30,7 +30,7 @@ uint8_t custody_null_report(struct mmem *bundle, uint8_t status)
 	return 0;
 }
 
-uint8_t custody_null_decide(struct mmem *bundle, uint32_t * bundle_number)
+uint8_t custody_null_decide(struct mmem *bundle, uint32_t ** bundle_number)
 {
 	return 0;
 }
