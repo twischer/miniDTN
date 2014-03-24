@@ -79,7 +79,16 @@ typedef unsigned short uip_stats_t;
 #define NETSTACK_CONF_RDC_CHANNEL_CHECK_RATE 8
 #endif /* NETSTACK_CONF_RDC_CHANNEL_CHECK_RATE */
 
-#if UIP_CONF_IPV6
+#if WITH_DTN /* WITH_DTN */
+/* Network setup for uDTN */
+#define NETSTACK_CONF_NETWORK     dtn_network_driver
+
+/* Disable as much as possible */
+#define UIP_CONF_IPV6             0
+#define UIP_CONF_IPV6_RPL		  0
+#define UIP_CONF_ROUTER			  0
+
+#elif UIP_CONF_IPV6
 
 #define RIMEADDR_CONF_SIZE              8
 
