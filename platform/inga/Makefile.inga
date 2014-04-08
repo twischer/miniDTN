@@ -23,11 +23,6 @@ else ifeq ($(REV),2.0)
   CFLAGS += -DINGA_CONF_REVISION=INGA_REV_20
 endif
 
-# Enable profiling if needed
-# TODO: redundant
-ifeq ($(ENABLE_PROFILING),1)
-  INGA_SOURCEFILES += profiling.c sprofiling.c
-endif
 
 # Enable SLIP support
 ifeq ($(CONF_SLIP),1)
