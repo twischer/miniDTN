@@ -30,26 +30,6 @@
  */
 
 /**
- * \mainpage
- *
- * \section about About
- * In addition to the IBRnode sensor node hardware development, a software
- * library for installed sensing and storage stuff was written. A short
- * description and overview is given in chapter 'Software Peripherie Bibliothek'
- * of the project thesis.
- * The software library is divided into several layers, beginning with the low
- * level hardware drivers. Theses drivers set up the communication devices like
- * adc, i2c and spi. The interface layer holds the device specific information about
- * register values and communication protocol. For each sensor and memory device, an
- * interface uses the needed hardware drivers from the lower software layer. Note that
- * this library is just a simple collection of modules to perform working with the
- * the new developed IBRnode.
- * \section usage Usage
- * The software library is full compatible with contiki os and can be directly used
- * in a process by adding the specific header files.
- */
-
-/**
  * \file
  *		ADC driver definitions
  * \author
@@ -82,7 +62,9 @@
 /********************************************************************
  * ADC mode:
  ********************************************************************/
-
+/**
+ * \name ADC modes
+ * @{ */
 /*!
  * mode: ADC Single Conversion
  * \note The ADC will make just one conversion cycle (normal use)
@@ -135,11 +117,15 @@
  * Timer0 Capture Flag is set.
  */
 #define ADC_TIMER1_CAPTURE		((1 << ADTS2) | (1 << ADTS1) | (1 << ADTS0))
+/** @} */
 
 /********************************************************************
  * ADC reference voltage source:
  ********************************************************************/
 
+/**
+ * \name ADC reference voltage sources
+ * @{ */
 /*!
  * ref: External Reference Voltage (Aref)
  * \note The ADC reference voltage is provided by the external reference pin Aref
@@ -160,6 +146,7 @@
  * \note The ADC reference voltage is provided by internal 2.56V
  */
 #define	ADC_REF_2560MV_INT   	((1 << REFS1)| (1 << REFS0))
+/** @} */
 
 
 /**
@@ -230,9 +217,14 @@
 /**
  * \brief      Initialize the ADC module
  *
- * \param mode Select an ADC mode like single conversion or
- * 			   free running, etc.
+ * \note This routine performes a pre-check whether the AREF pin
+ * is connected. It aborts initialization if AREF pin is connected but 
+ * internal reference is chosen.
+ *
+ * \param mode Select an ADC mode like single conversion or free running, etc.
  * \param ref  The ADC reference voltage source.
+ * \retval 0 succeeded
+ * \retval 1 failed
  *
  */
 void adc_init(uint8_t mode, uint8_t ref);
