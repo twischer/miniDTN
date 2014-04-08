@@ -87,11 +87,10 @@ print_local_addresses(void)
 /*---------------------------------------------------------------------------*/
 PROCESS_THREAD(udp_server_process, ev, data)
 {
-#if UIP_CONF_ROUTER
   uip_ipaddr_t ipaddr;
-#endif /* UIP_CONF_ROUTER */
 
   PROCESS_BEGIN();
+
   PRINTF("UDP server started\n");
 
 #if RESOLV_CONF_SUPPORTS_MDNS
@@ -101,8 +100,15 @@ PROCESS_THREAD(udp_server_process, ev, data)
 #if UIP_CONF_ROUTER
   uip_ip6addr(&ipaddr, 0xaaaa, 0, 0, 0, 0, 0, 0, 0);
   uip_ds6_set_addr_iid(&ipaddr, &uip_lladdr);
-  uip_ds6_addr_add(&ipaddr, 0, ADDR_AUTOCONF);
-#endif /* UIP_CONF_ROUTER */
+  uip_ds6_addr_add(&ipaddr, 0, ADDR_MANUAL);
+  uip_ds6_prefix_add(&ipaddr, UIP_DEFAULT_PREFIX_LEN, 0, 0, 0, 0);
+#elif 1
+ /* Assign prefix for testing, e.g. cooja nodes */
+  uip_ip6addr(&ipaddr, 0xaaaa, 0, 0, 0, 0, 0, 0, 0);
+  uip_ds6_set_addr_iid(&ipaddr, &uip_lladdr);
+  uip_ds6_addr_add(&ipaddr, 0, ADDR_MANUAL);
+  uip_ds6_prefix_add(&ipaddr,64,0);
+#endif
 
   print_local_addresses();
 

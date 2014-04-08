@@ -30,10 +30,12 @@
 
 package org.contikios.cooja.plugins;
 
+import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Dimension;
+import java.awt.Event;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Point;
@@ -55,7 +57,7 @@ import java.awt.event.ItemListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.awt.event.MouseMotionListener;
+import java.awt.event.MouseMotionAdapter;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
 import java.awt.geom.AffineTransform;
@@ -64,17 +66,22 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Observable;
 import java.util.Observer;
+import java.util.Set;
 
 import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.JCheckBoxMenuItem;
+import javax.swing.JDesktopPane;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
-import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JSeparator;
@@ -128,12 +135,13 @@ import org.contikios.cooja.plugins.skins.UDGMVisualizerSkin;
  * @see #registerVisualizerSkin(Class)
  * @see UDGMVisualizerSkin
  * @author Fredrik Osterlind
+ * @author Enrico Jorns
  */
 @ClassDescription("Network")
 @PluginType(PluginType.SIM_STANDARD_PLUGIN)
 public class Visualizer extends VisPlugin implements HasQuickHelp {
   private static final long serialVersionUID = 1L;
-  private static Logger logger = Logger.getLogger(Visualizer.class);
+  private static final Logger logger = Logger.getLogger(Visualizer.class);
 
   public static final int MOTE_RADIUS = 8;
   private static final Color[] DEFAULT_MOTE_COLORS = { Color.WHITE };
@@ -149,24 +157,37 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
   private AffineTransform viewportTransform;
   public int resetViewport = 0;
 
-  /* Actions: move motes, pan view, and zoom view */
-  private boolean panning = false;
-  private Position panningPosition = null; /* Panning start position */
-  private boolean zooming = false;
-  private double zoomStart = 0;
-  private Position zoomingPosition = null; /* Zooming center position */
-  private Point zoomingPixel = null; /* Zooming center pixel */
-  private boolean moving = false;
-  private Point mouseDownPixel = null; /* Records position of mouse down to differentiate a click from a move */
-  private Mote movedMote = null;
-  public Mote clickedMote = null;
+  private static final int SELECT_MASK = Event.CTRL_MASK;
+  private static final int MOVE_MASK = Event.SHIFT_MASK;
+  
+  enum MotesActionState {
+    UNKNWON,
+    SELECT_PRESS,
+    DEFAULT_PRESS,
+    PAN_PRESS,
+    PANNING,
+    MOVING,
+    // rectangular select
+    SELECTING
+  }
+  
+  /* All selected motes */
+  public Set<Mote> selectedMotes = new HashSet<>();
+  /* Mote that was under curser while mouse press */
+  Mote cursorMote;
+  
+  MotesActionState mouseActionState = MotesActionState.UNKNWON;
+  /* Position where mouse button was pressed */
+  Position pressedPos;
+  
+  private Set<Mote> movedMotes = null;
   private long moveStartTime = -1;
-  private boolean moveConfirm;
-  private Cursor moveCursor = new Cursor(Cursor.MOVE_CURSOR);
+  private static final Cursor MOVE_CURSOR = new Cursor(Cursor.MOVE_CURSOR);
+  private Selection selection;
 
   /* Visualizers */
-  private static ArrayList<Class<? extends VisualizerSkin>> visualizerSkins =
-    new ArrayList<Class<? extends VisualizerSkin>>();
+  private static final ArrayList<Class<? extends VisualizerSkin>> visualizerSkins =
+    new ArrayList<>();
   static {
     /* Register default visualizer skins */
     registerVisualizerSkin(IDVisualizerSkin.class);
@@ -179,13 +200,13 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
     registerVisualizerSkin(MoteTypeVisualizerSkin.class);
     registerVisualizerSkin(AttributeVisualizerSkin.class);
   }
-  private ArrayList<VisualizerSkin> currentSkins = new ArrayList<VisualizerSkin>();
+  private ArrayList<VisualizerSkin> currentSkins = new ArrayList<>();
 
   /* Generic visualization */
   private MoteCountListener newMotesListener;
   private Observer posObserver = null;
   private Observer moteHighligtObserver = null;
-  private ArrayList<Mote> highlightedMotes = new ArrayList<Mote>();
+  private ArrayList<Mote> highlightedMotes = new ArrayList<>();
   private final static Color HIGHLIGHT_COLOR = Color.CYAN;
   private final static Color MOVE_COLOR = Color.WHITE;
   private Observer moteRelationsObserver = null;
@@ -277,6 +298,7 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
     });
     zoomMenu.add(resetViewportItem);
 
+    selection = new Selection();
     /* Main canvas */
     canvas = new JPanel() {
       private static final long serialVersionUID = 1L;
@@ -296,6 +318,7 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
         for (VisualizerSkin skin: currentSkins) {
           skin.paintAfterMotes(g);
         }
+        selection.drawSelection(g);
       }
     };
     canvas.setBackground(Color.WHITE);
@@ -378,18 +401,17 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
     });
 
     /* Popup menu */
-    canvas.addMouseMotionListener(new MouseMotionListener() {
-      public void mouseMoved(MouseEvent e) {
-        handleMouseMove(e, false);
-      }
+    canvas.addMouseMotionListener(new MouseMotionAdapter() {
+      @Override
       public void mouseDragged(MouseEvent e) {
-        handleMouseMove(e, false);
+        handleMouseDrag(e, false);
       }
     });
     canvas.addMouseListener(new MouseAdapter() {
+      @Override
       public void mousePressed(MouseEvent e) {
         if (e.isPopupTrigger()) {
-          handlePopupRequest(e.getPoint().x, e.getPoint().y);
+          handlePopupRequest(e.getPoint());
           return;
         }
 
@@ -397,24 +419,20 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
           handleMousePress(e);
         }
       }
+      @Override
       public void mouseReleased(MouseEvent e) {
         if (e.isPopupTrigger()) {
-          handlePopupRequest(e.getPoint().x, e.getPoint().y);
+          handlePopupRequest(e.getPoint());
           return;
         }
 
-        handleMouseMove(e, true);
-      }
-      public void mouseClicked(MouseEvent e) {
-        if (e.isPopupTrigger()) {
-          handlePopupRequest(e.getPoint().x, e.getPoint().y);
+        if (SwingUtilities.isLeftMouseButton(e)) {
+          handleMouseRelease(e);
         }
-
-        handleMouseMove(e, true);
-        repaint();
       }
     });
     canvas.addMouseWheelListener(new MouseWheelListener() {
+      @Override
       public void mouseWheelMoved(MouseWheelEvent mwe) {
         int x = mwe.getX();
         int y = mwe.getY();
@@ -443,6 +461,7 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
     /* Drag and drop files to motes */
     DropTargetListener dTargetListener = new DropTargetListener() {
       public void dragEnter(DropTargetDragEvent dtde) {
+        System.out.println("dragEnter");
         if (acceptOrRejectDrag(dtde)) {
           dtde.acceptDrag(DnDConstants.ACTION_COPY_OR_MOVE);
         } else {
@@ -450,8 +469,10 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
         }
       }
       public void dragExit(DropTargetEvent dte) {
+        System.out.println("dragExit");
       }
       public void dropActionChanged(DropTargetDragEvent dtde) {
+        System.out.println("dropActionChanged");
         if (acceptOrRejectDrag(dtde)) {
           dtde.acceptDrag(DnDConstants.ACTION_COPY_OR_MOVE);
         } else {
@@ -459,6 +480,7 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
         }
       }
       public void dragOver(DropTargetDragEvent dtde) {
+        System.out.println("dragOver");
         if (acceptOrRejectDrag(dtde)) {
           dtde.acceptDrag(DnDConstants.ACTION_COPY_OR_MOVE);
         } else {
@@ -466,6 +488,7 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
         }
       }
       public void drop(DropTargetDropEvent dtde) {
+        System.out.println("drop");
         Transferable transferable = dtde.getTransferable();
 
         /* Only accept single files */
@@ -490,7 +513,7 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
           }
           file = list.get(0);
         }
-        catch (Exception e) {
+        catch (UnsupportedFlavorException | IOException e) {
           return;
         }
 
@@ -527,9 +550,7 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
             return false;
           }
           file = list.get(0);
-        } catch (UnsupportedFlavorException e) {
-          return false;
-        } catch (IOException e) {
+        } catch (UnsupportedFlavorException | IOException e) {
           return false;
         }
 
@@ -543,12 +564,18 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
 
     resetViewport = 3; /* XXX Quick-fix */
 
-    /* XXX HACK: here we set the position and size of the window when it appears on a blank simulation screen. */
+  }
+  
+  @Override
+  public void packPlugin(JDesktopPane pane) {
+    /* XXX HACK: here we set the position and size of the window
+       when it appears on a blank simulation screen. */
     this.setLocation(1, 1);
     this.setSize(400, 400);
   }
-
+  
   private void generateAndActivateSkin(Class<? extends VisualizerSkin> skinClass) {
+    logger.debug("Activating Skin: " + skinClass.getCanonicalName());
     for (VisualizerSkin skin: currentSkins) {
       if (skinClass == skin.getClass()) {
         logger.warn("Selected visualizer already active: " + skinClass);
@@ -566,14 +593,13 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
       VisualizerSkin newSkin = skinClass.newInstance();
       newSkin.setActive(Visualizer.this.simulation, Visualizer.this);
       currentSkins.add(0, newSkin);
-    } catch (InstantiationException e1) {
-      e1.printStackTrace();
-    } catch (IllegalAccessException e1) {
-      e1.printStackTrace();
+    } catch (InstantiationException | IllegalAccessException e1) {
+      logger.error("Failed creating Skin", e1);
     }
     repaint();
   }
 
+  @Override
   public void startPlugin() {
     super.startPlugin();
     if (loadedConfig) {
@@ -645,11 +671,11 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
     visualizerSkins.remove(skin);
   }
 
-  private void handlePopupRequest(final int x, final int y) {
+  private void handlePopupRequest(Point point) {
     JPopupMenu menu = new JPopupMenu();
 
     /* Mote specific actions */
-    final Mote[] motes = findMotesAtPosition(x, y);
+    final Mote[] motes = findMotesAtPosition(point.x, point.y);
     if (motes != null && motes.length > 0) {
       menu.add(new JSeparator());
 
@@ -662,15 +688,14 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
             if (menuAction.isEnabled(this, mote)) {
               JMenuItem menuItem = new JMenuItem(menuAction.getDescription(this, mote));
               menuItem.addActionListener(new ActionListener() {
+                @Override
                 public void actionPerformed(ActionEvent e) {
                   menuAction.doAction(Visualizer.this, mote);
                 }
               });
               menu.add(menuItem);
             }
-          } catch (InstantiationException e1) {
-            logger.fatal("Error: " + e1.getMessage(), e1);
-          } catch (IllegalAccessException e1) {
+          } catch (  InstantiationException | IllegalAccessException e1) {
             logger.fatal("Error: " + e1.getMessage(), e1);
           }
         }
@@ -685,15 +710,14 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
         if (menuAction.isEnabled(this, simulation)) {
           JMenuItem menuItem = new JMenuItem(menuAction.getDescription(this, simulation));
           menuItem.addActionListener(new ActionListener() {
+            @Override
             public void actionPerformed(ActionEvent e) {
               menuAction.doAction(Visualizer.this, simulation);
             }
           });
           menu.add(menuItem);
         }
-      } catch (InstantiationException e1) {
-        logger.fatal("Error: " + e1.getMessage(), e1);
-      } catch (IllegalAccessException e1) {
+      } catch (InstantiationException | IllegalAccessException e1) {
         logger.fatal("Error: " + e1.getMessage(), e1);
       }
     }
@@ -709,8 +733,8 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
 
     /* Show menu */
     menu.setLocation(new Point(
-        canvas.getLocationOnScreen().x + x,
-        canvas.getLocationOnScreen().y + y));
+        canvas.getLocationOnScreen().x + point.x,
+        canvas.getLocationOnScreen().y + point.y));
     menu.setInvoker(canvas);
     menu.setVisible(true);
   }
@@ -720,6 +744,7 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
 	  /* Mote-to-mote relations */
 	  JCheckBoxMenuItem moteRelationsItem = new JCheckBoxMenuItem("Mote relations", showMoteToMoteRelations);
 	  moteRelationsItem.addItemListener(new ItemListener() {
+      @Override
 		  public void itemStateChanged(ItemEvent e) {
 			  JCheckBoxMenuItem menuItem = ((JCheckBoxMenuItem)e.getItem());
 			  showMoteToMoteRelations = menuItem.isSelected();
@@ -754,6 +779,7 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
       }
 
       item.addItemListener(new ItemListener() {
+        @Override
         public void itemStateChanged(ItemEvent e) {
           JCheckBoxMenuItem menuItem = ((JCheckBoxMenuItem)e.getItem());
           if (menuItem == null) {
@@ -817,52 +843,171 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
         }
       }
     }
-    if (!showMenuItem) {
-      return false;
-    }
-    return true;
+    return showMenuItem;
   }
-
+  
   private void handleMousePress(MouseEvent mouseEvent) {
     int x = mouseEvent.getX();
     int y = mouseEvent.getY();
-    clickedMote = null;
-
-    if (mouseEvent.isControlDown()) {
-      /* Zoom */
-      zooming = true;
-      zoomingPixel = new Point(x, y);
-      zoomingPosition = transformPixelToPosition(zoomingPixel);
-      zoomStart = viewportTransform.getScaleX();
-      return;
+    
+    pressedPos = transformPixelToPosition(mouseEvent.getPoint());
+    
+    // this is the state we have from pressing button
+    final Mote[] foundMotes = findMotesAtPosition(x, y);
+    if (foundMotes == null) {
+      cursorMote = null;
+    }
+    else {
+      // select top mote
+      cursorMote = foundMotes[foundMotes.length - 1];
     }
 
-    final Mote[] motes = findMotesAtPosition(x, y);
-    if (mouseEvent.isShiftDown() ||
-        (!mouseEvent.isAltDown() && (motes == null || motes.length == 0))) {
-      /* No motes clicked or shift pressed: We should pan */
-      panning = true;
-      panningPosition = transformPixelToPosition(x, y);
-      return;
+    int modifiers = mouseEvent.getModifiers();
+    
+    /* translate input */
+    if ((modifiers & SELECT_MASK) != 0) {
+      mouseActionState = MotesActionState.SELECT_PRESS;
+    } else if ((modifiers & MOVE_MASK) != 0) {
+      // only move viewport
+      mouseActionState = MotesActionState.PAN_PRESS;
+    } else {
+      if (foundMotes == null) {
+        // move viewport
+        selectedMotes.clear();
+      } else {
+        // if this mote was not selected before, assume a new selection
+        if (!selectedMotes.contains(cursorMote)) {
+          selectedMotes.clear();
+          selectedMotes.add(cursorMote);
+        }
+      }
+      mouseActionState = MotesActionState.DEFAULT_PRESS;
     }
+    repaint();
+  }
+  
+  Map<Mote, double[]> moveStartPositions = new HashMap<>();
+  
+  private void handleMouseDrag(MouseEvent e, boolean stop) {
+    Position currPos = transformPixelToPosition(e.getPoint());
+    
+    switch (mouseActionState) {
+      case DEFAULT_PRESS:
+        if (cursorMote == null) {
+          mouseActionState = MotesActionState.PANNING;
+        }
+        else {
+          mouseActionState = MotesActionState.MOVING;
+          // save start position
+          for (Mote m : selectedMotes) {
+            Position pos = m.getInterfaces().getPosition();
+            moveStartPositions.put(m, new double[]{
+              pos.getXCoordinate(),
+              pos.getYCoordinate(),
+              pos.getZCoordinate()});
+          }
+        }
+        break;
+      case MOVING:
+        canvas.setCursor(MOVE_CURSOR);
+        for (Mote moveMote : selectedMotes) {
+          moveMote.getInterfaces().getPosition().setCoordinates(
+                  moveStartPositions.get(moveMote)[0]
+                          + (currPos.getXCoordinate() - pressedPos.getXCoordinate()),
+                  moveStartPositions.get(moveMote)[1]
+                          + (currPos.getYCoordinate() - pressedPos.getYCoordinate()),
+                  moveStartPositions.get(moveMote)[2]
+          );
+          repaint();
+        }
+        break;
+      case PAN_PRESS:
+        mouseActionState = MotesActionState.PANNING;
+        break;
+      case PANNING:
+        /* The current mouse position should correspond to where panning started */
+        viewportTransform.translate(
+                currPos.getXCoordinate() - pressedPos.getXCoordinate(),
+                currPos.getYCoordinate() - pressedPos.getYCoordinate()
+        );
+        repaint();
+        break;
+      case SELECT_PRESS:
+        mouseActionState = MotesActionState.SELECTING;
+        selection.setEnabled(true);
+        break;
+      case SELECTING:
+        int pressedX = transformToPixelX(pressedPos.getXCoordinate());
+        int pressedY = transformToPixelY(pressedPos.getYCoordinate());
+        int currX = transformToPixelX(currPos.getXCoordinate());
+        int currY = transformToPixelY(currPos.getYCoordinate());
+        int startX = pressedX < currX ? pressedX : currX;
+        int startY = pressedY < currY ? pressedY : currY;
+        int width = Math.abs(pressedX - currX);
+        int height = Math.abs(pressedY - currY);
 
-    if (motes != null && motes.length > 0) {
-      /* One of the clicked motes should be moved */
-      mouseDownPixel = new Point(x, y);
-      clickedMote = motes[0];
-      beginMoveRequest(motes[0], false, false);
+        selection.setSelection(startX, startY, width, height);
+        selectedMotes.clear();
+        selectedMotes.addAll(Arrays.asList(findMotesInRange(startX, startY, width, height)));
+
+        repaint();
+        break;
     }
   }
 
-  private void beginMoveRequest(Mote moteToMove, boolean withTiming, boolean confirm) {
+  private void handleMouseRelease(MouseEvent mouseEvent) {
+    
+    switch (mouseActionState) {
+      case PAN_PRESS:
+        // ignore
+        break;
+      case SELECT_PRESS:
+        if (cursorMote == null) {
+          /* Click on free canvas deselects all mote */
+          selectedMotes.clear();
+        }
+        else {
+          /* toggle selection for mote */
+          if (selectedMotes.contains(cursorMote)) {
+            selectedMotes.remove(cursorMote);
+          }
+          else {
+            selectedMotes.add(cursorMote);
+          }
+        }
+        break;
+      case DEFAULT_PRESS:
+        if (cursorMote == null) {
+          /* Click on free canvas deselects all mote */
+          selectedMotes.clear();
+        } else {
+          /* Click on mote selects single mote */
+          selectedMotes.clear();
+          selectedMotes.add(cursorMote);
+        }
+        break;
+      case MOVING:
+        /* Release stops moving */
+        canvas.setCursor(Cursor.getDefaultCursor());
+        break;
+      case SELECTING:
+        /* Release stops moving */
+        selection.setEnabled(false);
+        repaint();
+        break;
+    }
+    repaint();
+  }
+
+  private void beginMoveRequest(Mote motesToMove, boolean withTiming, boolean confirm) {
     if (withTiming) {
       moveStartTime = System.currentTimeMillis();
     } else {
       moveStartTime = -1;
     }
-    moving = true;
-    moveConfirm = confirm;
-    movedMote = moteToMove;
+    mouseActionState = MotesActionState.DEFAULT_PRESS;
+    selectedMotes.clear();
+    selectedMotes.add(motesToMove);
     repaint();
   }
 
@@ -888,118 +1033,48 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
     repaint();
   }
 
-  private void handleMouseMove(MouseEvent e, boolean stop) {
-    int x = e.getX();
-    int y = e.getY();
-
-    /* Panning */
-    if (panning) {
-      if (panningPosition == null || stop) {
-        panning = false;
-        return;
+  /**
+   * Returns all motes in rectangular range
+   * 
+   * @param startX
+   * @param startY
+   * @param width
+   * @param height
+   * @return All motes in range
+   */
+  public Mote[] findMotesInRange(int startX, int startY, int width, int height) {
+    List<Mote> motes = new LinkedList<>();
+    for (Mote m : simulation.getMotes()) {
+      Position pos = m.getInterfaces().getPosition();
+      int moteX = transformToPixelX(pos.getXCoordinate());
+      int moteY = transformToPixelY(pos.getYCoordinate());
+      if (moteX > startX && moteX < startX + width
+              && moteY > startY && moteY < startY + height) {
+        motes.add(m);
       }
-
-      /* The current mouse position should correspond to where panning started */
-      Position moved = transformPixelToPosition(x,y);
-      viewportTransform.translate(
-          moved.getXCoordinate() - panningPosition.getXCoordinate(),
-          moved.getYCoordinate() - panningPosition.getYCoordinate()
-      );
-      repaint();
-      return;
     }
-
-    /* Zooming */
-    if (zooming) {
-      if (zoomingPosition == null || zoomingPixel == null || stop) {
-        zooming = false;
-        return;
-      }
-
-      /* The zooming start pixel should correspond to the zooming center position */
-      /* The current mouse position should correspond to where panning started */
-      double zoomFactor = 1.0 + Math.abs((double) zoomingPixel.y - y)/100.0;
-      double newZoom = (zoomingPixel.y - y)>0?zoomStart*zoomFactor: zoomStart/zoomFactor;
-      if (newZoom < 0.00001) {
-        newZoom = 0.00001;
-      }
-      viewportTransform.setToScale(
-          newZoom,
-          newZoom
-      );
-      Position moved = transformPixelToPosition(zoomingPixel);
-      viewportTransform.translate(
-          moved.getXCoordinate() - zoomingPosition.getXCoordinate(),
-          moved.getYCoordinate() - zoomingPosition.getYCoordinate()
-      );
-      repaint();
-      return;
-    }
-
-    /* Moving */
-    if (moving) {
-      if(x != mouseDownPixel.x || y != mouseDownPixel.y) {
-        Position newPos = transformPixelToPosition(x, y);
-
-        if (!stop) {
-          canvas.setCursor(moveCursor);
-          movedMote.getInterfaces().getPosition().setCoordinates(
-              newPos.getXCoordinate(),
-              newPos.getYCoordinate(),
-              movedMote.getInterfaces().getPosition().getZCoordinate()
-          );
-          repaint();
-          return;
-        }
-        /* Restore cursor */
-        canvas.setCursor(Cursor.getDefaultCursor());
-
-
-        /* Move mote */
-        if (moveStartTime < 0 || System.currentTimeMillis() - moveStartTime > 300) {
-          if (moveConfirm) {
-            String options[] = {"Yes", "Cancel"};
-            int returnValue = JOptionPane.showOptionDialog(Visualizer.this,
-                "Move mote to" +
-                "\nX=" + newPos.getXCoordinate() +
-                "\nY=" + newPos.getYCoordinate() +
-                "\nZ=" + movedMote.getInterfaces().getPosition().getZCoordinate(),
-                "Move mote?",
-                JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE,
-                null, options, options[0]);
-            moving = returnValue == JOptionPane.YES_OPTION;
-          }
-          if (moving) {
-            movedMote.getInterfaces().getPosition().setCoordinates(
-                newPos.getXCoordinate(),
-                newPos.getYCoordinate(),
-                movedMote.getInterfaces().getPosition().getZCoordinate()
-            );
-            repaint();
-          }
-        }
-      }
-
-      moving = false;
-      movedMote = null;
-      repaint();
-    }
+    Mote[] motesArr = new Mote[motes.size()];
+    return motes.toArray(motesArr);
   }
-
+  
   /**
    * Returns all motes at given position.
+   * 
+   * If multiple motes were found on at a position the motes are returned
+   * in the order they are painted on screen.
+   * First mote in array is the bottom mote, last mote is the top mote.
    *
    * @param clickedX
    *          X coordinate
    * @param clickedY
    *          Y coordinate
-   * @return All motes at given position
+   * @return All motes at given position, null if no motes were found
    */
   public Mote[] findMotesAtPosition(int clickedX, int clickedY) {
     double xCoord = transformToPositionX(clickedX);
     double yCoord = transformToPositionY(clickedY);
 
-    ArrayList<Mote> motes = new ArrayList<Mote>();
+    List<Mote> motes = new LinkedList<>();
 
     // Calculate painted mote radius in coordinates
     double paintedMoteWidth = transformToPositionX(MOTE_RADIUS)
@@ -1007,8 +1082,8 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
     double paintedMoteHeight = transformToPositionY(MOTE_RADIUS)
     - transformToPositionY(0);
 
-    for (int i = 0; i < simulation.getMotesCount(); i++) {
-      Position pos = simulation.getMote(i).getInterfaces().getPosition();
+    for (Mote m: simulation.getMotes()) {
+      Position pos = m.getInterfaces().getPosition();
 
       // Transform to unit circle before checking if mouse hit this mote
       double distanceX = Math.abs(xCoord - pos.getXCoordinate())
@@ -1017,10 +1092,10 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
       / paintedMoteHeight;
 
       if (distanceX * distanceX + distanceY * distanceY <= 1) {
-        motes.add(simulation.getMote(i));
+        motes.add(m);
       }
     }
-    if (motes.size() == 0) {
+    if (motes.isEmpty()) {
       return null;
     }
 
@@ -1066,7 +1141,7 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
       int x = pixelCoord.x;
       int y = pixelCoord.y;
 
-      if (mote == movedMote) {
+      if (mote == movedMotes) {
         g.setColor(MOVE_COLOR);
         g.fillOval(x - MOTE_RADIUS, y - MOTE_RADIUS, 2 * MOTE_RADIUS,
             2 * MOTE_RADIUS);
@@ -1177,6 +1252,7 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
     /* Center visible motes */
     final double smallXfinal = smallX, bigXfinal = bigX, smallYfinal = smallY, bigYfinal = bigY;
     SwingUtilities.invokeLater(new Runnable() {
+      @Override
       public void run() {
         Position viewMid =
           transformPixelToPosition(canvas.getWidth()/2, canvas.getHeight()/2);
@@ -1260,6 +1336,7 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
     return (y - viewportTransform.getTranslateY())/viewportTransform.getScaleY() ;
   }
 
+  @Override
   public void closePlugin() {
     for (VisualizerSkin skin: currentSkins) {
       skin.setInactive();
@@ -1292,12 +1369,13 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
   /**
    * @return Selected mote
    */
-  public Mote getSelectedMote() {
-    return clickedMote;
+  public Set<Mote> getSelectedMotes() {
+    return selectedMotes;
   }
 
+  @Override
   public Collection<Element> getConfigXML() {
-    ArrayList<Element> config = new ArrayList<Element>();
+    List<Element> config = new ArrayList<>();
     Element element;
 
     /* Show mote-to-mote relations */
@@ -1340,24 +1418,25 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
     return config;
   }
 
+  @Override
   public boolean setConfigXML(Collection<Element> configXML, boolean visAvailable) {
     loadedConfig = true;
     showMoteToMoteRelations = false;
 
     for (Element element : configXML) {
-      if (element.getName().equals("skin")) {
-        String wanted = element.getText();
-        /* Backwards compatibility: se.sics -> org.contikios */
-        if (wanted.startsWith("se.sics")) {
-        	wanted = wanted.replaceFirst("se\\.sics", "org.contikios");
-        }
-
-        for (Class<? extends VisualizerSkin> skinClass: visualizerSkins) {
+      switch (element.getName()) {
+        case "skin":
+          String wanted = element.getText();
+          /* Backwards compatibility: se.sics -> org.contikios */
+          if (wanted.startsWith("se.sics")) {
+            wanted = wanted.replaceFirst("se\\.sics", "org.contikios");
+          } for (Class<? extends VisualizerSkin> skinClass: visualizerSkins) {
           if (wanted.equals(skinClass.getName())
-              /* Backwards compatibility */
-              || wanted.equals(Cooja.getDescriptionOf(skinClass))) {
+                  /* Backwards compatibility */
+                  || wanted.equals(Cooja.getDescriptionOf(skinClass))) {
             final Class<? extends VisualizerSkin> skin = skinClass;
             SwingUtilities.invokeLater(new Runnable() {
+              @Override
               public void run() {
                 generateAndActivateSkin(skin);
               }
@@ -1365,31 +1444,32 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
             wanted = null;
             break;
           }
-        }
-        if (wanted != null) {
+        } if (wanted != null) {
           logger.warn("Could not load visualizer: " + element.getText());
-        }
-      } else if (element.getName().equals("moterelations")) {
-    	  showMoteToMoteRelations = true;
-      } else if (element.getName().equals("viewport")) {
-        try {
-          String[] matrix = element.getText().split(" ");
-          viewportTransform.setTransform(
-              Double.parseDouble(matrix[0]),
+        } break;
+        case "moterelations":
+          showMoteToMoteRelations = true;
+          break;
+        case "viewport":
+          try {
+            String[] matrix = element.getText().split(" ");
+            viewportTransform.setTransform(
+                    Double.parseDouble(matrix[0]),
               Double.parseDouble(matrix[1]),
               Double.parseDouble(matrix[2]),
               Double.parseDouble(matrix[3]),
               Double.parseDouble(matrix[4]),
               Double.parseDouble(matrix[5])
-          );
-          resetViewport = 0;
-        } catch (Exception e) {
-          logger.warn("Bad viewport: " + e.getMessage());
-          resetViewport();
-        }
-      } else if (element.getName().equals("hidden")) {
-        BasicInternalFrameUI ui = (BasicInternalFrameUI) getUI();
-        ui.getNorthPane().setPreferredSize(new Dimension(0,0));
+            );
+            resetViewport = 0;
+          } catch (NumberFormatException e) {
+            logger.warn("Bad viewport: " + e.getMessage());
+            resetViewport();
+          } break;
+        case "hidden":
+          BasicInternalFrameUI ui = (BasicInternalFrameUI) getUI();
+          ui.getNorthPane().setPreferredSize(new Dimension(0,0));
+          break;
       }
     }
     return true;
@@ -1514,6 +1594,7 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
     public String getDescription(Visualizer visualizer, Mote mote) {
       return "Move " + mote;
     }
+    @Override
     public void doAction(Visualizer visualizer, Mote mote) {
       visualizer.beginMoveRequest(mote, false, false);
     }
@@ -1574,15 +1655,60 @@ public class Visualizer extends VisPlugin implements HasQuickHelp {
     }
   }
 
+  @Override
   public String getQuickHelp() {
-    return
-    "<b>Network</b> " +
-    "<p>The network window shows the positions of simulated motes. " +
-    "It is possible to zoom (CRTL+Mouse drag) and pan (Shift+Mouse drag) the current view. Motes can be moved by dragging them. " +
-    "Mouse right-click motes for options. " +
-    "<p>The network window supports different views. " +
-    "Each view provides some specific information, such as the IP addresses of motes. " +
-    "Multiple views can be active at the same time. " +
-    "Use the View menu to select views. ";
-  };
+    return "<b>Network</b> "
+            + "<p>The network window shows the positions of simulated motes. "
+            + "<p>"
+            + "It is possible to zoom <em>(Mouse wheel)</em> and pan <em>(Shift+Mouse drag)</em> the current view. "
+            + "Motes can be moved by dragging them. "
+            + "You can add/remove motes to/from selection <em>(CTRL+Left click)</em> "
+            + "or use the rectangular selection tool <em>(CTRL+Mouse drag)</em>. "
+            + "Mouse right-click motes for options menu. "
+            + "<p>"
+            + "The network window supports different views. "
+            + "Each view provides some specific information, such as the IP addresses of motes. "
+            + "Multiple views can be active at the same time. "
+            + "Use the View menu to select views. ";
+  }
+
+  private class Selection {
+
+    private int x;
+    private int y;
+    private int width;
+    private int height;
+    private boolean enable;
+
+    public void setSelection(int x, int y, int width, int height) {
+      this.x = x;
+      this.y = y;
+      this.width = width;
+      this.height = height;
+    }
+
+    public void setEnabled(boolean enable) {
+      this.enable = enable;
+    }
+
+    public void drawSelection(Graphics g) {
+      /* only draw if enabled */
+      if (!enable) {
+        return;
+      }
+      Graphics2D g2d = (Graphics2D) g;
+      g2d.setColor(new Color(64, 64, 64, 10));
+      g2d.fillRect(x, y, width, height);
+
+      BasicStroke dashed
+              = new BasicStroke(1.0f,
+                                BasicStroke.CAP_BUTT,
+                                BasicStroke.JOIN_MITER,
+                                10.0f, new float[]{5.0f}, 0.0f);
+      g2d.setColor(Color.BLACK);
+      g2d.setStroke(dashed);
+      g2d.drawRect(x, y, width, height);
+    }
+  }
+
 }

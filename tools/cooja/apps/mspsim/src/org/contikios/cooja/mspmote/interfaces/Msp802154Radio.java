@@ -30,24 +30,17 @@
 
 package org.contikios.cooja.mspmote.interfaces;
 
-import java.util.Collection;
-
 import org.apache.log4j.Logger;
-import org.jdom.Element;
 
 import org.contikios.cooja.ClassDescription;
 import org.contikios.cooja.Mote;
-import org.contikios.cooja.RadioPacket;
-import org.contikios.cooja.Simulation;
+import org.contikios.cooja.emulatedmote.Radio802154;
 import org.contikios.cooja.interfaces.CustomDataRadio;
-import org.contikios.cooja.interfaces.Position;
-import org.contikios.cooja.interfaces.Radio;
 import org.contikios.cooja.mspmote.MspMote;
 import org.contikios.cooja.mspmote.MspMoteTimeEvent;
 import se.sics.mspsim.chip.CC2420;
 import se.sics.mspsim.chip.ChannelListener;
 import se.sics.mspsim.chip.RFListener;
-import se.sics.mspsim.chip.Radio802154;
 import se.sics.mspsim.core.Chip;
 import se.sics.mspsim.core.OperatingModeListener;
 
@@ -56,104 +49,58 @@ import se.sics.mspsim.core.OperatingModeListener;
  *
  * @author Fredrik Osterlind
  */
-@ClassDescription("IEEE 802.15.4 Radio")
-public class Msp802154Radio extends Radio implements CustomDataRadio {
-  private static Logger logger = Logger.getLogger(Msp802154Radio.class);
-
-  /**
-   * Cross-level:
-   * Inter-byte delay for delivering cross-level packet bytes.
-   */
-  public static final long DELAY_BETWEEN_BYTES =
-    (long) (1000.0*Simulation.MILLISECOND/(250000.0/8.0)); /* us. Corresponds to 250kbit/s */
-
-  private RadioEvent lastEvent = RadioEvent.UNKNOWN;
+@ClassDescription("Mspsim's 802.15.4")
+public class Msp802154Radio extends Radio802154 {
+  private static final Logger logger = Logger.getLogger(Msp802154Radio.class);
 
   private final MspMote mote;
-  private final Radio802154 radio;
+  private final se.sics.mspsim.chip.Radio802154 radio;
 
-  private boolean isInterfered = false;
-  private boolean isTransmitting = false;
-  private boolean isReceiving = false;
+  private RFListener rfListener;
+  private OperatingModeListener operatingModeListener;
+  private ChannelListener channelListener;
 
-  private byte lastOutgoingByte;
-  private byte lastIncomingByte;
 
-  private RadioPacket lastOutgoingPacket = null;
-  private RadioPacket lastIncomingPacket = null;
+  /**
+   * Current received signal strength.
+   * May differ from CC2420's internal value which is an average of the last 8 symbols.
+   */
+  private double currentSignalStrength = 0;
+
+  /**
+   * Last 8 received signal strengths
+   */
+  private final double[] rssiLast = new double[8];
+  private int rssiLastCounter = 0;
 
   public Msp802154Radio(Mote m) {
+    super(m);
+
     this.mote = (MspMote)m;
-    this.radio = this.mote.getCPU().getChip(Radio802154.class);
+    this.radio = mote.getCPU().getChip(se.sics.mspsim.chip.Radio802154.class);
     if (radio == null) {
       throw new IllegalStateException("Mote is not equipped with an IEEE 802.15.4 radio");
     }
 
-    radio.addRFListener(new RFListener() {
-      int len = 0;
-      int expLen = 0;
-      byte[] buffer = new byte[127 + 15];
+    radio.addRFListener(rfListener = new RFListener() {
+      @Override
       public void receivedByte(byte data) {
-        if (!isTransmitting()) {
-          lastEvent = RadioEvent.TRANSMISSION_STARTED;
-          isTransmitting = true;
-          len = 0;
-          /*logger.debug("----- 802.15.4 TRANSMISSION STARTED -----");*/
-          setChanged();
-          notifyObservers();
-        }
-
-        if (len >= buffer.length) {
-          /* Bad size packet, too large */
-          logger.debug("Error: bad size: " + len + ", dropping outgoing byte: " + data);
-          return;
-        }
-
-        /* send this byte to all nodes */
-        lastOutgoingByte = data;
-        lastEvent = RadioEvent.CUSTOM_DATA_TRANSMITTED;
-        setChanged();
-        notifyObservers();
-
-        buffer[len++] = data;
-
-        if (len == 6) {
-//          System.out.println("## CC2420 Packet of length: " + data + " expected...");
-          expLen = data + 6;
-        }
-
-        if (len == expLen) {
-          /*logger.debug("----- 802.15.4 CUSTOM DATA TRANSMITTED -----");*/
-
-          lastOutgoingPacket = CC2420RadioPacketConverter.fromCC2420ToCooja(buffer);
-          lastEvent = RadioEvent.PACKET_TRANSMITTED;
-          /*logger.debug("----- 802.15.4 PACKET TRANSMITTED -----");*/
-          setChanged();
-          notifyObservers();
-
-          /*logger.debug("----- 802.15.4 TRANSMISSION FINISHED -----");*/
-          isTransmitting = false;
-          lastEvent = RadioEvent.TRANSMISSION_FINISHED;
-          setChanged();
-          notifyObservers();
-          len = 0;
-        }
+        handleTransmit(data);
       }
     });
-
-    radio.addOperatingModeListener(new OperatingModeListener() {
+    radio.addOperatingModeListener(operatingModeListener = new OperatingModeListener() {
+      @Override
       public void modeChanged(Chip source, int mode) {
         if (radio.isReadyToReceive()) {
-          lastEvent = RadioEvent.HW_ON;
-          setChanged();
-          notifyObservers();
+          radioOn();
         } else {
+          // TODO We should check if radio was already turned off?
           radioOff();
         }
       }
     });
-
-    radio.addChannelListener(new ChannelListener() {
+    radio.addChannelListener(channelListener = new ChannelListener() {
+      @Override
       public void channelChanged(int channel) {
         /* XXX Currently assumes zero channel switch time */
         lastEvent = RadioEvent.UNKNOWN;
@@ -163,195 +110,57 @@ public class Msp802154Radio extends Radio implements CustomDataRadio {
     });
   }
 
-  private void radioOff() {
-    /* Radio was turned off during transmission.
-     * May for example happen if watchdog triggers */
-    if (isTransmitting()) {
-      logger.warn("Turning off radio while transmitting, ending packet prematurely");
+  @Override
+  public void removed() {
+    super.removed();
 
-      /* Simulate end of packet */
-      lastOutgoingPacket = new RadioPacket() {
-        public byte[] getPacketData() {
-          return new byte[0];
-        }
-      };
-
-      lastEvent = RadioEvent.PACKET_TRANSMITTED;
-      /*logger.debug("----- 802.15.4 PACKET TRANSMITTED -----");*/
-      setChanged();
-      notifyObservers();
-
-      /* Register that transmission ended in radio medium */
-      /*logger.debug("----- 802.15.4 TRANSMISSION FINISHED -----");*/
-      isTransmitting = false;
-      lastEvent = RadioEvent.TRANSMISSION_FINISHED;
-      setChanged();
-      notifyObservers();
-    }
-
-    lastEvent = RadioEvent.HW_OFF;
-    setChanged();
-    notifyObservers();
+    radio.removeOperatingModeListener(operatingModeListener);
+    radio.removeChannelListener(channelListener);
+    radio.removeRFListener(rfListener);
   }
 
-  /* Packet radio support */
-  public RadioPacket getLastPacketTransmitted() {
-    return lastOutgoingPacket;
-  }
-
-  public RadioPacket getLastPacketReceived() {
-    return lastIncomingPacket;
-  }
-
-  public void setReceivedPacket(RadioPacket packet) {
-    /* Note:
-     * Only nodes at other abstraction levels deliver full packets.
-     * MSPSim motes with 802.15.4 radios would instead directly deliver bytes. */
-
-    lastIncomingPacket = packet;
-    /* TODO Check isReceiverOn() instead? */
-    if (!radio.isReadyToReceive()) {
-      logger.warn("Radio receiver not ready, dropping packet data");
-      return;
-    }
-
-    /* Delivering packet bytes with delays */
-    byte[] packetData = CC2420RadioPacketConverter.fromCoojaToCC2420(packet);
-    long deliveryTime = getMote().getSimulation().getSimulationTime();
-    for (byte b: packetData) {
-      if (isInterfered()) {
-        b = (byte) 0xFF;
-      }
-
-      final byte byteToDeliver = b;
-      getMote().getSimulation().scheduleEvent(new MspMoteTimeEvent(mote, 0) {
-        public void execute(long t) {
-          super.execute(t);
-          radio.receivedByte(byteToDeliver);
-          mote.requestImmediateWakeup();
-        }
-      }, deliveryTime);
-      deliveryTime += DELAY_BETWEEN_BYTES;
-    }
-  }
-
-  /* Custom data radio support */
-  public byte getLastCustomDataTransmitted() {
-    return lastOutgoingByte;
-  }
-
-  public byte getLastCustomDataReceived() {
-    return lastIncomingByte;
-  }
-
-  public void receiveCustomData(byte data) {
-   /* if (!(data instanceof Byte)) {
-      logger.fatal("Bad custom data: " + data);
-      return;
-    }
-    lastIncomingByte = (Byte) data;
-
+  @Override
+  public void handleReceive(byte b) {
     final byte inputByte;
     if (isInterfered()) {
       inputByte = (byte)0xFF;
     } else {
-      inputByte = lastIncomingByte;
+      inputByte = b;
     }
-    mote.getSimulation().scheduleEvent(new MspMoteTimeEvent(mote, 0) {
+
+    /* XXX We need a separate time event to synchronize Mspsim's internal
+     * clocks here */
+    new MspMoteTimeEvent(mote, 0) {
+      @Override
       public void execute(long t) {
         super.execute(t);
+        if (!radio.isReadyToReceive()) {
+          /*logger.warn(String.format("Radio receiver not ready, dropping byte: %02x", inputByte));*/
+        }
         radio.receivedByte(inputByte);
         mote.requestImmediateWakeup();
       }
-    }, mote.getSimulation().getSimulationTime());
-*/
-    /// TODO: implement me!!
+    }.execute(mote.getSimulation().getSimulationTime());
   }
 
-  /* General radio support */
-  public boolean isTransmitting() {
-    return isTransmitting;
+  @Override
+  public void handleStartOfReception() {
+  }
+  @Override
+  public void handleEndOfReception() {
   }
 
-  public boolean isReceiving() {
-    return isReceiving;
-  }
-
-  public boolean isInterfered() {
-    return isInterfered;
-  }
-
+  @Override
   public int getChannel() {
     return radio.getActiveChannel();
   }
 
-  public int getFrequency() {
-    return radio.getActiveFrequency();
-  }
-
-  public void signalReceptionStart() {
-    isReceiving = true;
-
-    lastEvent = RadioEvent.RECEPTION_STARTED;
-    /*logger.debug("----- 802.15.4 RECEPTION STARTED -----");*/
-    setChanged();
-    notifyObservers();
-  }
-
-  public void signalReceptionEnd() {
-    /* Deliver packet data */
-    isReceiving = false;
-    isInterfered = false;
-
-    lastEvent = RadioEvent.RECEPTION_FINISHED;
-    /*logger.debug("----- 802.15.4 RECEPTION FINISHED -----");*/
-    setChanged();
-    notifyObservers();
-  }
-
-  public RadioEvent getLastEvent() {
-    return lastEvent;
-  }
-
-  public void interfereAnyReception() {
-    isInterfered = true;
-    isReceiving = false;
-    lastIncomingPacket = null;
-
-    lastEvent = RadioEvent.RECEPTION_INTERFERED;
-    /*logger.debug("----- 802.15.4 RECEPTION INTERFERED -----");*/
-    setChanged();
-    notifyObservers();
-  }
-
-  public double getCurrentOutputPower() {
-    return radio.getOutputPower();
-  }
-
-  public int getCurrentOutputPowerIndicator() {
-    return radio.getOutputPowerIndicator();
-  }
-
-  public int getOutputPowerIndicatorMax() {
-    return 31;
-  }
-
-  /**
-   * Current received signal strength.
-   * May differ from CC2420's internal value which is an average of the last 8 symbols.
-   */
-  double currentSignalStrength = 0;
-
-  /**
-   * Last 8 received signal strengths
-   */
-  private double[] rssiLast = new double[8];
-  private int rssiLastCounter = 0;
-
+  @Override
   public double getCurrentSignalStrength() {
     return currentSignalStrength;
   }
 
+  @Override
   public void setCurrentSignalStrength(final double signalStrength) {
     if (signalStrength == currentSignalStrength) {
       return; /* ignored */
@@ -359,6 +168,7 @@ public class Msp802154Radio extends Radio implements CustomDataRadio {
     currentSignalStrength = signalStrength;
     if (rssiLastCounter == 0) {
       getMote().getSimulation().scheduleEvent(new MspMoteTimeEvent(mote, 0) {
+        @Override
         public void execute(long t) {
           super.execute(t);
 
@@ -383,35 +193,36 @@ public class Msp802154Radio extends Radio implements CustomDataRadio {
     rssiLastCounter = 8;
   }
   
+  @Override
+  public double getCurrentOutputPower() {
+    return radio.getOutputPower();
+  }
   
   /* This will set the CORR-value of the CC2420
    * 
    * @see org.contikios.cooja.interfaces.Radio#setLQI(int)
    */
+  @Override
   public void setLQI(int lqi){
 	  radio.setLQI(lqi);
   }
 
+  @Override
   public int getLQI(){
 	  return radio.getLQI();
   }
   
-  
-  public Mote getMote() {
-    return mote;
+  @Override
+  public int getCurrentOutputPowerIndicator() {
+    return radio.getOutputPowerIndicator();
   }
 
-  public Position getPosition() {
-    return mote.getInterfaces().getPosition();
+  @Override
+  public int getOutputPowerIndicatorMax() {
+    return 31;
   }
 
-  public Collection<Element> getConfigXML() {
-    return null;
-  }
-
-  public void setConfigXML(Collection<Element> configXML, boolean visAvailable) {
-  }
-
+  @Override
   public boolean isRadioOn() {
     if (radio.isReadyToReceive()) {
       return true;
@@ -425,10 +236,8 @@ public class Msp802154Radio extends Radio implements CustomDataRadio {
     return true;
   }
   
+  @Override
   public boolean canReceiveFrom(CustomDataRadio radio) {
-    if (radio.getClass().equals(this.getClass())) {
-      return true;
-    }
-    return false;
+    return radio.getClass().equals(this.getClass());
   }
 }

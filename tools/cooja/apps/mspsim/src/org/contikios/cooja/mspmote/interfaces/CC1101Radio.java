@@ -257,11 +257,8 @@ public class CC1101Radio extends Radio implements CustomDataRadio {
 	}
 
 	public void receiveCustomData(byte data) {
-		/*if (!(data instanceof Byte)) {
-			logger.fatal("Bad custom data: " + data);
-			return;
-		}
-		lastIncomingByte = (Byte) data;
+
+    lastIncomingByte = (Byte) data;
 
 		final byte inputByte;
 		if (isInterfered()) {
@@ -276,8 +273,6 @@ public class CC1101Radio extends Radio implements CustomDataRadio {
 				mote.requestImmediateWakeup();
 			}
 		}, mote.getSimulation().getSimulationTime());
-*/
-      //TODO: implement again
 	}
 
 	/* General radio support */

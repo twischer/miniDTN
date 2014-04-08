@@ -1,7 +1,7 @@
 /*
- * Copyright (c) 2009, Swedish Institute of Computer Science.
+ * Copyright (c) 2014, TU Braunschweig
  * All rights reserved.
- *
+ * 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -13,7 +13,7 @@
  * 3. Neither the name of the Institute nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
- *
+ * 
  * THIS SOFTWARE IS PROVIDED BY THE INSTITUTE AND CONTRIBUTORS ``AS IS'' AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -25,24 +25,32 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
  */
+package org.contikios.cooja;
 
-package org.contikios.cooja.emulatedmote;
-import org.contikios.cooja.RadioPacket;
+import java.util.Collection;
+import org.jdom.Element;
 
-public class RadioByte implements RadioPacket {
-  private byte[] data = new byte[1];
+/**
+ * Interface for Classes that can be converted to XML data
+ * and configured based on XML data.
+ *
+ * @author Enrico Jorns
+ */
+public interface XMLExportable {
 
-  public RadioByte(byte data) {
-    this.data[0] = data;
-  }
+  /**
+   * Returns an XML representation of the current configuration.
+   *
+   * @return Current config
+   */
+  Element getConfigXML();
 
-  public RadioByte(int intData) {
-    this.data[0] = (byte) intData;
-  }
-
-  public byte[] getPacketData() {
-    return data;
-  }
+  /**
+   * Sets the current config depending on the given XML representation.
+   *
+   * @param configXML Configuration
+   * @return true if successfull, false if failed
+   */
+  boolean setConfigXML(Element configXML);
 }

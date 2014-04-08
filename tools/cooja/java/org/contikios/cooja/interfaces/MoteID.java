@@ -32,7 +32,13 @@ package org.contikios.cooja.interfaces;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Observable;
+import java.util.Observer;
 
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+
+import org.apache.log4j.Logger;
 import org.jdom.Element;
 
 import org.contikios.cooja.ClassDescription;
@@ -41,23 +47,24 @@ import org.contikios.cooja.MoteInterface;
 /**
  * A MoteID represents a mote ID number. An implementation should notify all
  * observers if the mote ID is set or changed.
- * 
+ *
  * @author Fredrik Osterlind
  */
 @ClassDescription("ID")
 public abstract class MoteID extends MoteInterface {
+  private static Logger logger = Logger.getLogger(MoteID.class);
 
   /**
    * @return Current mote ID number
    */
   public abstract int getMoteID();
-  
+
   /**
    * Sets mote ID to given number.
    * @param id New mote ID number
    */
   public abstract void setMoteID(int id);
-  
+
   public Collection<Element> getConfigXML() {
     ArrayList<Element> config = new ArrayList<Element>();
     Element element = new Element("id");
@@ -72,5 +79,30 @@ public abstract class MoteID extends MoteInterface {
         setMoteID(Integer.parseInt(element.getText()));
       }
     }
+  }
+
+  public JPanel getInterfaceVisualizer() {
+    final JLabel idLabel = new JLabel("Mote ID: " + getMoteID());
+
+    Observer observer;
+    this.addObserver(observer = new Observer() {
+      public void update(Observable obs, Object obj) {
+        idLabel.setText("Mote ID: " + getMoteID());
+      }
+    });
+
+    JPanel panel = new JPanel();
+    panel.add(idLabel);
+    panel.putClientProperty("intf_obs", observer);
+    return panel;
+  }
+
+  public void releaseInterfaceVisualizer(JPanel panel) {
+    Observer observer = (Observer) panel.getClientProperty("intf_obs");
+    if (observer == null) {
+      logger.fatal("Error when releasing panel, observer is null");
+      return;
+    }
+    this.deleteObserver(observer);
   }
 }

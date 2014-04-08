@@ -30,14 +30,10 @@
 
 package org.contikios.cooja.avrmote;
 
-import java.io.File;
-import java.util.Collection;
-import javax.swing.JComponent;
 import org.contikios.cooja.AbstractionLevelDescription;
 import org.contikios.cooja.ClassDescription;
 import org.contikios.cooja.Mote;
 import org.contikios.cooja.MoteInterface;
-import org.contikios.cooja.ProjectConfig;
 import org.contikios.cooja.Simulation;
 import org.contikios.cooja.avrmote.interfaces.ATTiny85ID;
 import org.contikios.cooja.avrmote.interfaces.AvrDebugger;
@@ -49,7 +45,6 @@ import org.contikios.cooja.interfaces.Mote2MoteRelations;
 import org.contikios.cooja.interfaces.MoteAttributes;
 import org.contikios.cooja.interfaces.Position;
 import org.contikios.cooja.interfaces.RimeAddress;
-import org.jdom.Element;
 
 /**
  * AVR-based MicaZ mote types emulated in Avrora.
@@ -90,7 +85,5 @@ public class ATTiny85MoteType extends AvroraMoteType {
         IPAddress.class
     };
   }
-
- 
 
 }

@@ -30,6 +30,7 @@
 
 package org.contikios.cooja.contikimote.interfaces;
 
+import org.contikios.cooja.mote.memory.SectionMoteMemory;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
@@ -185,7 +186,6 @@ public class ContikiCFS extends MoteInterface implements ContikiMoteInterface, P
     panel.putClientProperty("intf_obs", observer);
 
     panel.setMinimumSize(new Dimension(140, 60));
-    panel.setPreferredSize(new Dimension(140, 60));
 
     return panel;
   }

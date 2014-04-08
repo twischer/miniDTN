@@ -40,6 +40,7 @@ import java.io.InputStreamReader;
 import java.util.Collection;
 import java.util.Observable;
 import java.util.Observer;
+import javax.swing.JDesktopPane;
 
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -111,7 +112,6 @@ public class CollectView extends VisPlugin implements MotePlugin, HasQuickHelp {
       panel.add(outLabel, c);
 
       getContentPane().add(BorderLayout.NORTH, panel);
-      pack();
     }
 
     String contikiPath = Cooja.getExternalToolsSetting("PATH_CONTIKI", "../../..");
@@ -217,6 +217,11 @@ public class CollectView extends VisPlugin implements MotePlugin, HasQuickHelp {
         }
       }
     });
+  }
+
+  @Override
+  public void packPlugin(JDesktopPane pane) {
+    pack();
   }
 
   public boolean setConfigXML(Collection<Element> configXML, boolean visAvailable) {

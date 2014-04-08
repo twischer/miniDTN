@@ -38,7 +38,7 @@ import java.io.File;
 public interface WatchpointMote extends Mote {
 
   public interface WatchpointListener {
-    public void watchpointTriggered(Watchpoint watchpoint);
+    public void watchpointTriggered(Watchpoint<? extends WatchpointMote> watchpoint);
     public void watchpointsChanged();
   }
 
@@ -62,13 +62,20 @@ public interface WatchpointMote extends Mote {
    */
   public WatchpointListener[] getWatchpointListeners();
 
-  public Watchpoint addBreakpoint(File codeFile, int lineNr, int address);
-  public void removeBreakpoint(Watchpoint watchpoint);
-  public Watchpoint[] getBreakpoints();
+  public Watchpoint<? extends WatchpointMote> addBreakpoint(File codeFile, int lineNr, int address);
+  public void removeBreakpoint(Watchpoint<? extends WatchpointMote> watchpoint);
+  public Watchpoint<? extends WatchpointMote>[] getBreakpoints();
 
   public boolean breakpointExists(int address);
   public boolean breakpointExists(File file, int lineNr);
 
   public int getExecutableAddressOf(File file, int lineNr);
+
+  @SuppressWarnings("serial")
+  public class BreakpointTriggered extends RuntimeException {
+    public BreakpointTriggered(String msg) {
+      super(msg);
+    }
+  }
 
 }

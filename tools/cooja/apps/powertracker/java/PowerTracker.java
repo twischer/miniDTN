@@ -45,6 +45,7 @@ import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.Box;
 import javax.swing.JButton;
+import javax.swing.JDesktopPane;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.Timer;
@@ -217,9 +218,13 @@ public class PowerTracker extends VisPlugin {
 
     this.getContentPane().add(BorderLayout.CENTER, new JScrollPane(table));
     this.getContentPane().add(BorderLayout.SOUTH, control);
-    setSize(400, 400);
 
     repaintTimer.start();
+  }
+  
+  @Override
+  public void packPlugin(JDesktopPane pane) {
+    setSize(400, 400);
   }
 
   public MoteTracker getMoteTrackerOf(Mote mote) {

@@ -64,6 +64,7 @@ import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JComponent;
+import javax.swing.JDesktopPane;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JMenu;
@@ -89,11 +90,11 @@ import org.jdom.Element;
 
 import org.contikios.cooja.ClassDescription;
 import org.contikios.cooja.Cooja;
-import org.contikios.cooja.MemMonitor.MemoryEventType;
+import org.contikios.cooja.mote.memory.Memory.MemoryMonitor.EventType;
 import org.contikios.cooja.Mote;
-import org.contikios.cooja.MoteMemory;
-import org.contikios.cooja.NewAddressMemory;
-import org.contikios.cooja.NewAddressMemory.AddressMonitor;
+import org.contikios.cooja.mote.memory.MoteMemory;
+import org.contikios.cooja.mote.memory.Memory;
+import org.contikios.cooja.mote.memory.Memory.MemoryMonitor;
 import org.contikios.cooja.Plugin;
 import org.contikios.cooja.PluginType;
 import org.contikios.cooja.SimEventCentral.MoteCountListener;
@@ -102,9 +103,9 @@ import org.contikios.cooja.TimeEvent;
 import org.contikios.cooja.VisPlugin;
 import org.contikios.cooja.dialogs.TableColumnAdjuster;
 import org.contikios.cooja.dialogs.UpdateAggregator;
-import org.contikios.cooja.interfaces.IPAddress;
 import org.contikios.cooja.motes.AbstractEmulatedMote;
 import org.contikios.cooja.util.ArrayQueue;
+import org.contikios.cooja.util.IPUtils;
 import org.contikios.cooja.util.StringUtils;
 
 /**
@@ -659,9 +660,13 @@ public class BufferListener extends VisPlugin {
     getContentPane().add(BorderLayout.SOUTH, filterPanel);
 
     updateTitle();
+  }
+
+  @Override
+  public void packPlugin(JDesktopPane pane) {
     pack();
-    setSize(gui.getDesktopPane().getWidth(), 150);
-    setLocation(0, gui.getDesktopPane().getHeight() - 300);
+    setSize(pane.getWidth(), 150);
+    setLocation(0, pane.getHeight() - 300);
   }
 
   private boolean startMonitoring(Mote mote) throws Exception {
@@ -702,14 +707,14 @@ public class BufferListener extends VisPlugin {
 
       segmentMonitor = new SegmentMemoryMonitor(bl, mote, segmentAddress, size);
       if (notify) {
-        segmentMonitor.memoryChanged(mote.getMemory(), MemoryEventType.WRITE, -1);
+        segmentMonitor.memoryChanged(mote.getMemory(), EventType.WRITE, -1);
       }
       lastSegmentAddress = segmentAddress;
     }
 
     final public void memoryChanged(MoteMemory memory,
-        MemoryEventType type, int address) {
-      if (type == MemoryEventType.READ) {
+        EventType type, int address) {
+      if (type == EventType.READ) {
         return;
       }
 
@@ -740,7 +745,7 @@ public class BufferListener extends VisPlugin {
     }
   }
 
-  static class SegmentMemoryMonitor implements AddressMonitor {
+  static class SegmentMemoryMonitor implements MemoryMonitor {
     protected final BufferListener bl;
     protected final Mote mote;
 
@@ -757,7 +762,7 @@ public class BufferListener extends VisPlugin {
       this.size = size;
 
       if (address != 0) {
-        if (!mote.getMemory().addMemoryMonitor(MonitorType.R, address, size, this)) {
+        if (!mote.getMemory().addMemoryMonitor(EventType.READ, address, size, this)) {
           throw new Exception("Could not register memory monitor on: " + mote);
         }
       }
@@ -783,13 +788,13 @@ public class BufferListener extends VisPlugin {
     }
 
     @Override
-    public void memoryChanged(NewAddressMemory memory, MemoryEventType type, long address) {
+    public void memoryChanged(Memory memory, EventType type, long address) {
       byte[] newData = getAddress()==0?null:mote.getMemory().getMemorySegment(getAddress(), getSize());
       addBufferAccess(bl, mote, oldData, newData, type, this.address);
       oldData = newData;
     }
 
-    void addBufferAccess(BufferListener bl, Mote mote, byte[] oldData, byte[] newData, MemoryEventType type, long address) {
+    void addBufferAccess(BufferListener bl, Mote mote, byte[] oldData, byte[] newData, EventType type, long address) {
       BufferAccess ba = new BufferAccess(
           mote,
           mote.getSimulation().getSimulationTime(),
@@ -966,7 +971,7 @@ public class BufferListener extends VisPlugin {
         public boolean include(RowFilter.Entry<? extends Object, ? extends Object> entry) {
           if (hideReads) {
             int row = (Integer) entry.getIdentifier();
-            if (logs.get(row).type == MemoryEventType.READ) {
+            if (logs.get(row).type == EventType.READ) {
               return false;
             }
           }
@@ -1022,13 +1027,13 @@ public class BufferListener extends VisPlugin {
     public final byte[] mem;
     private boolean[] accessedBitpattern = null;
 
-    public final MemoryEventType type;
+    public final EventType type;
     public final String sourceStr;
     public final String stackTrace;
     public final long address;
 
     public BufferAccess(
-        Mote mote, long time, long address, byte[] newData, byte[] oldData, MemoryEventType type, boolean withStackTrace) {
+        Mote mote, long time, long address, byte[] newData, byte[] oldData, EventType type, boolean withStackTrace) {
       this.mote = mote;
       this.time = time;
       this.mem = newData==null?NULL_DATA:newData;
@@ -1691,7 +1696,7 @@ public class BufferListener extends VisPlugin {
       } else {
         mem = ba.mem;
       }
-      return IPAddress.IPUtils.getCompressedIPv6AddressString(mem);
+      return IPUtils.getCompressedIPv6AddressString(mem);
     }
   }
 

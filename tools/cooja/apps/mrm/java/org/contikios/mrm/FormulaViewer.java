@@ -49,6 +49,7 @@ import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JCheckBox;
+import javax.swing.JDesktopPane;
 import javax.swing.JFormattedTextField;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -331,17 +332,19 @@ public class FormulaViewer extends org.contikios.cooja.VisPlugin {
     // Add channel model observer responsible to keep all GUI components synched
     channelModel.addSettingsObserver(channelModelSettingsObserver);
 
-    // Set initial size etc.
-    pack();
-    setVisible(true);
-
     // Tries to select this plugin
     try {
       setSelected(true);
     } catch (java.beans.PropertyVetoException e) {
       // Could not select
     }
+  }
 
+  @Override
+  public void packPlugin(JDesktopPane pane) {
+    // Set initial size etc.
+    pack();
+    setVisible(true);
   }
 
   /**

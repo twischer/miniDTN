@@ -39,7 +39,7 @@
 #define PRINTA(...)
 #endif
 
-#define DEBUG 0
+#define DEBUG 1
 #if DEBUG
 #define PRINTD(FORMAT,args...) printf_P(PSTR(FORMAT),##args)
 #else
@@ -47,7 +47,7 @@
 #endif
 
 /* Track interrupt flow through mac, rdc and radio driver */
-//#define DEBUGFLOWSIZE 64
+#define DEBUGFLOWSIZE 32
 #if DEBUGFLOWSIZE
 unsigned char debugflowsize,debugflow[DEBUGFLOWSIZE];
 #define DEBUGFLOW(c) if (debugflowsize<(DEBUGFLOWSIZE-1)) debugflow[debugflowsize++]=c
@@ -127,6 +127,7 @@ struct rtimer rt;
 void rtimercycle(void) {rtimerflag=1;}
 #endif
 #endif
+uint16_t node_id = 0;
 
 /*-------------------------------------------------------------------------*/
 /*----------------------Configuration of the .elf file---------------------*/
@@ -265,7 +266,17 @@ uint8_t i;
       PRINTA("Random EUI64 address generated\n");
   }
  
-#if UIP_CONF_IPV6 
+#if UIP_CONF_IPV6
+  PRINTD("Initial node_id %u\n",node_id);
+  if (node_id) {
+    addr.u8[3]=node_id&0xff;
+    addr.u8[4]=(node_id&0xff)>>8;  
+    addr.u8[5]=node_id;
+    addr.u8[6]=node_id;
+    addr.u8[7]=node_id;
+  } else {
+    node_id=addr.u8[7]+(addr.u8[6]<<8);
+  }
   memcpy(&uip_lladdr.addr, &addr.u8, sizeof(linkaddr_t));
   linkaddr_set_node_addr(&addr);  
   rf230_set_pan_addr(params_get_panid(),params_get_panaddr(),(uint8_t *)&addr.u8);
@@ -327,6 +338,11 @@ uint8_t i;
 
 #ifdef RAVEN_LCD_INTERFACE
   process_start(&raven_lcd_process, NULL);
+#endif
+
+#if !RAVEN_LCD_INTERFACE
+  rs232_set_input(RS232_PORT_1, serial_line_input_byte);
+  serial_line_init();
 #endif
 
   /* Autostart other processes */
@@ -465,7 +481,7 @@ main(void)
 #if DEBUGFLOWSIZE
   if (debugflowsize) {
     debugflow[debugflowsize]=0;
-    PRINTF("%s",debugflow);
+    PRINTF("%s\n",debugflow);
     debugflowsize=0;
    }
 #endif
@@ -577,12 +593,12 @@ extern uint8_t rf230processflag;
 #endif
 
 #if RF230BB&&0
-extern uint8_t rf230_interrupt_flag;
-    if (rf230_interrupt_flag) {
- //   if (rf230_interrupt_flag!=11) {
-        PRINTF("**RI%u",rf230_interrupt_flag);
+extern uint8_t rf230interruptflag;
+    if (rf230interruptflag) {
+ //   if (rf230interruptflag!=11) {
+        PRINTF("**RI%u\n",rf230interruptflag);
  //   }
-      rf230_interrupt_flag=0;
+      rf230interruptflag=0;
     }
 #endif
   }

@@ -78,6 +78,7 @@ import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
+import javax.swing.JDesktopPane;
 import javax.swing.JDialog;
 import javax.swing.JFileChooser;
 import javax.swing.JFormattedTextField;
@@ -630,6 +631,10 @@ public class AreaViewer extends VisPlugin {
     } catch (java.beans.PropertyVetoException e) {
       // Could not select
     }
+  }
+  
+    @Override
+  public void packPlugin(JDesktopPane pane) {
   }
 
   /**

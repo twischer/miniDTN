@@ -36,6 +36,7 @@ import java.util.Observer;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.JComponent;
+import javax.swing.JDesktopPane;
 import javax.swing.JLabel;
 import javax.swing.JScrollPane;
 
@@ -74,8 +75,6 @@ public class MoteTypeInformation extends VisPlugin {
         new JScrollPane(createPanel(),
         JScrollPane.VERTICAL_SCROLLBAR_ALWAYS,
         JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED));
-    pack();
-    setSize(Math.min(getWidth(), 600), Math.min(getHeight(), 600));
     nrMotesTypes = simulation.getMoteTypes().length;
 
     simulation.addObserver(simObserver = new Observer() {
@@ -95,6 +94,12 @@ public class MoteTypeInformation extends VisPlugin {
     });
   }
 
+  @Override
+  public void packPlugin(JDesktopPane pane) {
+    pack();
+    setSize(Math.min(getWidth(), 600), Math.min(getHeight(), 600));
+  } 
+  
   private JComponent createPanel() {
     Box box = Box.createVerticalBox();
     box.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));

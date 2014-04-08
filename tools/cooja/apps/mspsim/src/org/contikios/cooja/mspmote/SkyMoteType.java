@@ -57,6 +57,7 @@ import org.contikios.cooja.interfaces.Mote2MoteRelations;
 import org.contikios.cooja.interfaces.MoteAttributes;
 import org.contikios.cooja.interfaces.Position;
 import org.contikios.cooja.interfaces.RimeAddress;
+import org.contikios.cooja.interfaces.SensorInterface;
 import org.contikios.cooja.mspmote.interfaces.Msp802154Radio;
 import org.contikios.cooja.mspmote.interfaces.MspClock;
 import org.contikios.cooja.mspmote.interfaces.MspDebugOutput;
@@ -221,7 +222,7 @@ public class SkyMoteType extends MspMoteType {
         MspSerial.class,
         SkyLED.class,
         MspDebugOutput.class, /* EXPERIMENTAL: Enable me for COOJA_DEBUG(..) */
-        SkyTemperature.class
+        SensorInterface.class
     };
   }
 

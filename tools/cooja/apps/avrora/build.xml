@@ -1,14 +1,17 @@
 <?xml version="1.0"?>
 
 <project name="Avrora COOJA support" default="jar" basedir=".">
+  <!-- Storage location of avrora code -->
+  <property name="avrora" location="../../../avrora/"/>
   <property name="src" location="src"/>
-  <property name="avrora_src" location="../../../avrora/src"/>
   <property name="build" location="build"/>
   <property name="lib" location="lib"/>
   <property name="javadoc" location="javadoc"/>
   <property name="cooja" location="../.."/>
 
   <property name="cooja_jar" value="${cooja}/dist/cooja.jar"/>
+  <property name="avrora_jar" value="${avrora}/dist/avrora.jar"/>
+  <property name="avrora_license" value="${avrora}/license.txt"/>
   <property name="cooja_avrora_jar" value="${lib}/cooja_avrora.jar"/>
 
   <target name="init">
@@ -19,15 +22,26 @@
 
   <target name="clean">
     <delete dir="${build}"/>
-    <delete file="${cooja_avrora_jar}"/>
+    <delete dir="${lib}"/>
   </target>
 
-  <target name="compile" depends="init">
-    <javac srcdir="${avrora_src}" destdir="${build}" debug="on" includeantruntime="false"></javac>
+  <target name="avrora" depends="init">
+    <fail>
+      ----------------
+      Could not find the Avrora build file. Did you run &quot;git submodule update --init&quot;?
+      ----------------
+      <condition><not>
+          <available file="${avrora}/build.xml" />
+      </not></condition>
+    </fail>
+    <ant antfile="build.xml" dir="${avrora}" target="avrora-jar" inheritAll="false"/>
+  </target>
+
+  <target name="compile" depends="avrora, init">
     <javac srcdir="${src}" destdir="${build}" debug="on" includeantruntime="false">
       <classpath>
         <pathelement location="${cooja_jar}"/>
-        <pathelement location="${cooja}/apps/mspsim/build"/>
+        <fileset dir="${avrora}/dist"/>
       </classpath>
     </javac>
   </target>
@@ -50,6 +64,11 @@
       </manifest>
       <fileset dir="." includes="images/*.jpg"/>
     </jar>
+    <copy todir="${lib}" file="${avrora_jar}" />
+    <copy todir="${lib}" file="${avrora_license}" />
+    <copy todir="${lib}">
+      <fileset dir="${avrora}/dist/lib" includes="*"/>
+    </copy>
   </target>
 
 </project>

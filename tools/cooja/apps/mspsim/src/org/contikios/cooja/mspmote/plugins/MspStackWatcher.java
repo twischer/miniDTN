@@ -38,6 +38,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 
+import javax.swing.JDesktopPane;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JToggleButton;
@@ -126,9 +127,13 @@ public class MspStackWatcher extends VisPlugin implements MotePlugin {
     add(BorderLayout.CENTER, stackUI);
     add(BorderLayout.SOUTH, toggleButton);
 
+  }
+  
+  @Override
+  public void packPlugin(JDesktopPane pane) {
     setSize(400, 300);
   }
-
+  
   private boolean activate(boolean gui) {
     try {
       int stack = ((MspMoteType) mspMote.getType()).getELF().getMap().stackStartAddress; 

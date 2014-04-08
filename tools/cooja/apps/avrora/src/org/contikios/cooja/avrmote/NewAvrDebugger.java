@@ -67,8 +67,8 @@ public class NewAvrDebugger extends Debugger {
    * @param simulationToVisualize Simulation
    * @param gui Simulator
    */
-  public NewAvrDebugger(Mote mote, Simulation sim, Cooja gui) {
-    super((WatchpointMote)mote, sim, gui, "Avr Debugger - " + mote);
+  public NewAvrDebugger(Mote mote, Simulation sim, Cooja cooja) {
+    super((WatchpointMote)mote, sim, cooja, "Avr Debugger - " + mote);
     this.avroraMote = (AvroraMote) mote;
 
     AtmelMicrocontroller cpu = (AtmelMicrocontroller) avroraMote.getPlatform().getMicrocontroller();

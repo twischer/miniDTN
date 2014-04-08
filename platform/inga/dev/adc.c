@@ -43,14 +43,47 @@
  * \addtogroup adc_driver
  * @{
  */
-
-
 #include "adc.h"
+#include <stdio.h>
+#include <avr/pgmspace.h>
+
+#define DEBUG 0
+#if DEBUG
+#define PRINTF(FORMAT,args...) printf_P(PSTR(FORMAT),##args)
+#else
+#define PRINTF(...)
+#endif
+
+static uint8_t aref_connected;
+
 void
 adc_init(uint8_t mode, uint8_t ref)
 {
   ADCSRA = ((ADC_ENABLE) | (ADC_PRESCALE_64));
   ADCSRB = 0x00;
+
+  /* Safety check:
+   * Test AREF pin by starting a single conversion with AREF as reference
+   * and 0V channel input.
+   * If this results in a value of 1023, AREF pin seems to be unconnected.*/
+  ADMUX = 0x1F; /* AREF input, 0V reference */
+  ADCSRA |= (1 << ADSC); /* Start conversion */
+  while (ADCSRA & (1 << ADSC)); /* Wait till done */
+
+  if (ADC == 1023) {
+    PRINTF("adc: AREF unconnected\n");
+    aref_connected = 0;
+  } else {
+    PRINTF("adc: AREF connected\n");
+    aref_connected = 1;
+  }
+
+  /* Do not allow to set internal reference with AREF connected */
+  if ((aref_connected) && (ref != ADC_REF_AREF)) {
+    PRINTF("adc: Internal reference voltage not allowed!\n");
+    return 1;
+  }
+
   ADMUX = ref;
 
   if (mode != ADC_SINGLE_CONVERSION) {

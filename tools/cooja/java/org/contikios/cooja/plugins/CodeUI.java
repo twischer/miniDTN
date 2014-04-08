@@ -215,7 +215,7 @@ public class CodeUI extends JPanel {
     }
     breakpointsLineTags.clear();
 
-    for (Watchpoint w: mote.getBreakpoints()) {
+    for (Watchpoint<? extends WatchpointMote> w: mote.getBreakpoints()) {
       if (!w.getCodeFile().equals(displayedFile)) {
         continue;
       }

@@ -58,6 +58,7 @@ import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.ButtonGroup;
 import javax.swing.JCheckBoxMenuItem;
+import javax.swing.JDesktopPane;
 import javax.swing.JFileChooser;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
@@ -527,13 +528,11 @@ public class RadioLogger extends VisPlugin {
         });
         }
       });
-
+  }
+  
+  @Override
+  public void packPlugin(JDesktopPane pane) {
     setSize(500, 300);
-    try {
-      setSelected(true);
-    } catch (java.beans.PropertyVetoException e) {
-      // Could not select
-    }
   }
 
   public void startPlugin() {

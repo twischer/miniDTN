@@ -82,7 +82,17 @@ set_rime_addr(void)
 
   memset(&addr, 0, sizeof(linkaddr_t));
 #if UIP_CONF_IPV6
+  if(node_id) {
+  //cooja-avrora-patch to get common addresses between platforms
+    addr.u8[3]=node_id&0xff;
+    addr.u8[4]=(node_id&0xff)>>8;  
+    addr.u8[5]=node_id;
+    addr.u8[6]=node_id;
+    addr.u8[7]=node_id;
+    memcpy(ds2401_id, addr.u8, sizeof(addr.u8));
+  }
   memcpy(addr.u8, ds2401_id, sizeof(addr.u8));
+
 #else
   if(node_id == 0) {
     for(i = 0; i < sizeof(linkaddr_t); ++i) {

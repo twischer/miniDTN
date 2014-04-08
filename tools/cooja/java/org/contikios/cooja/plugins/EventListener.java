@@ -42,6 +42,7 @@ import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
+import javax.swing.JDesktopPane;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -244,15 +245,11 @@ public class EventListener extends VisPlugin {
     mainPanel.add(new JLabel("Last message:"));
     mainPanel.add(messageLabel);
     mainPanel.add(actionButton);
-
+  }
+  
+  @Override
+  public void packPlugin(JDesktopPane pane) {
     pack();
-
-    try {
-      setSelected(true);
-    } catch (java.beans.PropertyVetoException e) {
-      // Could not select
-    }
-
   }
 
   private void actOnChange(final String message, final Action action) {

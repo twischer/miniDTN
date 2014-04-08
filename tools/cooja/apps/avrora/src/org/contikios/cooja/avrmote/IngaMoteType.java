@@ -30,6 +30,7 @@
 
 package org.contikios.cooja.avrmote;
 
+import org.contikios.cooja.interfaces.SensorInterface;
 import org.contikios.cooja.AbstractionLevelDescription;
 import org.contikios.cooja.ClassDescription;
 import org.contikios.cooja.Mote;
@@ -95,7 +96,8 @@ public class IngaMoteType extends AvroraMoteType {
         Mote2MoteRelations.class,
         MoteAttributes.class,
         RimeAddress.class,
-        IPAddress.class
+        IPAddress.class,
+        SensorInterface.class
     };
   }
 

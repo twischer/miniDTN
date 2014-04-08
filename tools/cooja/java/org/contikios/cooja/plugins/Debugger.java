@@ -48,6 +48,7 @@ import javax.swing.Action;
 import javax.swing.Box;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
+import javax.swing.JDesktopPane;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JList;
@@ -216,9 +217,13 @@ public abstract class Debugger extends VisPlugin implements MotePlugin {
       }
     });
 
+  }
+  
+  @Override
+  public void packPlugin(JDesktopPane pane) {
     setSize(750, 500);
   }
-
+  
   public abstract void addTabs(JTabbedPane pane, WatchpointMote mote);
 
   public void startPlugin() {

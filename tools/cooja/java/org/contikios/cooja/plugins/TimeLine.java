@@ -58,6 +58,7 @@ import javax.swing.JCheckBox;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
+import javax.swing.JDesktopPane;
 import javax.swing.JDialog;
 import javax.swing.JFileChooser;
 import javax.swing.JMenu;
@@ -373,11 +374,16 @@ public class TimeLine extends VisPlugin implements HasQuickHelp {
       }
     });
 
-    /* XXX HACK: here we set the position and size of the window when it appears on a blank simulation screen. */
-    this.setLocation(0, gui.getDesktopPane().getHeight() - 166);
-    this.setSize(gui.getDesktopPane().getWidth(), 166);
   }
-
+  
+  @Override
+  public void packPlugin(JDesktopPane pane) {
+    /* XXX HACK: here we set the position and size of the window
+       when it appears on a blank simulation screen. */
+    this.setLocation(0, pane.getHeight() - 166);
+    this.setSize(pane.getWidth(), 166);
+  }
+  
   public void startPlugin() {
       super.startPlugin();
       
@@ -629,6 +635,7 @@ public class TimeLine extends VisPlugin implements HasQuickHelp {
       zoomSlider.setPaintTicks(true);
       zoomSlider.setPaintLabels(false);
 
+      if (popupLocation == null) popupLocation = new Point(100,0);
       final long centerTime = (long) (popupLocation.x*currentPixelDivisor);
 
       zoomSlider.addChangeListener(new ChangeListener() {
@@ -1172,7 +1179,7 @@ public class TimeLine extends VisPlugin implements HasQuickHelp {
     if (mote instanceof WatchpointMote) {
       final WatchpointMote watchpointMote = ((WatchpointMote)mote);
       WatchpointListener listener = new WatchpointListener() {
-        public void watchpointTriggered(Watchpoint watchpoint) {
+        public void watchpointTriggered(Watchpoint<? extends WatchpointMote> watchpoint) {
           WatchpointEvent ev = new WatchpointEvent(simulation.getSimulationTime(), watchpoint);
 
           if (executionDetails && mote instanceof AbstractEmulatedMote) {
@@ -1356,7 +1363,11 @@ public class TimeLine extends VisPlugin implements HasQuickHelp {
       String name = element.getName();
       if ("mote".equals(name)) {
         int index = Integer.parseInt(element.getText());
-        addMote(simulation.getMote(index));
+        if (index >= 0 && index < simulation.getMotesCount()) {
+          addMote(simulation.getMote(index));
+        } else {
+          logger.warn("Mote index out of bounds: " + index);
+        }
       } else if ("showRadioRXTX".equals(name)) {
         showRadioRXTX = true;
       } else if ("showRadioChannels".equals(name)) {
@@ -2236,8 +2247,8 @@ public class TimeLine extends VisPlugin implements HasQuickHelp {
     }
   }
   class WatchpointEvent extends MoteEvent {
-    Watchpoint watchpoint;
-    public WatchpointEvent(long time, Watchpoint watchpoint) {
+    Watchpoint<? extends WatchpointMote> watchpoint;
+    public WatchpointEvent(long time, Watchpoint<? extends WatchpointMote> watchpoint) {
       super(time);
       this.watchpoint = watchpoint;
     }

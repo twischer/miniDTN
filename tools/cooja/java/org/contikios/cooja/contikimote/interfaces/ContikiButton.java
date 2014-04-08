@@ -30,6 +30,7 @@
 
 package org.contikios.cooja.contikimote.interfaces;
 
+import org.contikios.cooja.mote.memory.SectionMoteMemory;
 import java.awt.event.*;
 import java.util.Collection;
 import javax.swing.*;

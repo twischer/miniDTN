@@ -30,6 +30,7 @@
 
 package org.contikios.cooja.contikimote.interfaces;
 
+import org.contikios.cooja.mote.memory.SectionMoteMemory;
 import java.util.*;
 import javax.swing.*;
 import org.apache.log4j.Logger;

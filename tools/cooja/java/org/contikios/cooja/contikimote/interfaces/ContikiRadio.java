@@ -39,7 +39,7 @@ import org.jdom.Element;
 import org.contikios.cooja.COOJARadioPacket;
 import org.contikios.cooja.Mote;
 import org.contikios.cooja.RadioPacket;
-import org.contikios.cooja.SectionMoteMemory;
+import org.contikios.cooja.mote.memory.SectionMoteMemory;
 import org.contikios.cooja.Simulation;
 import org.contikios.cooja.contikimote.ContikiMote;
 import org.contikios.cooja.contikimote.ContikiMoteInterface;
@@ -87,11 +87,17 @@ import org.contikios.cooja.radiomediums.UDGM;
  * @author Fredrik Osterlind
  */
 public class ContikiRadio extends Radio implements ContikiMoteInterface, PolledAfterActiveTicks {
-  private ContikiMote mote;
+  
+  private final ContikiMote mote;
 
-  private SectionMoteMemory myMoteMemory;
+  private final SectionMoteMemory myMoteMemory;
 
-  private static Logger logger = Logger.getLogger(ContikiRadio.class);
+  private static final Logger logger = Logger.getLogger(ContikiRadio.class);
+  
+  /** Size of 802.15.4 synchronization header (SHR)
+   * + frame check sequence (FCS)
+   * + physical header (PHR) in bytes */
+  private static final int SHR_PHR_FCS_SIZE = 8;
 
   /**
    * Transmission bitrate (kbps).
@@ -342,7 +348,9 @@ public class ContikiRadio extends Radio implements ContikiMoteInterface, PolledA
 
       /* Calculate transmission duration (us) */
       /* XXX Currently floored due to millisecond scheduling! */
-      long duration = (int) (Simulation.MILLISECOND*((8 * size /*bits*/) / RADIO_TRANSMISSION_RATE_kbps));
+      /* Duration of transmission is size of packet + SHR + PHR + FCS
+         to give other radios the chance to schedule a whole 802.15.4 packet reception. */
+      long duration = (int) (Simulation.MILLISECOND * (((size + SHR_PHR_FCS_SIZE) * 8/*bits*/) / RADIO_TRANSMISSION_RATE_kbps));
       transmissionEndTime = now + Math.max(1, duration);
 
       lastEventTime = now;

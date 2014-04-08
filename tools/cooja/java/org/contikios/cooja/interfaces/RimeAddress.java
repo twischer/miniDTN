@@ -27,6 +27,7 @@
  * SUCH DAMAGE.
  *
  */
+
 package org.contikios.cooja.interfaces;
 
 import java.util.Collection;
@@ -40,12 +41,11 @@ import org.apache.log4j.Logger;
 import org.jdom.Element;
 
 import org.contikios.cooja.ClassDescription;
-import org.contikios.cooja.MemMonitor.MonitorType;
 import org.contikios.cooja.Mote;
 import org.contikios.cooja.MoteInterface;
-import org.contikios.cooja.MoteMemory;
-import org.contikios.cooja.NewAddressMemory;
-import org.contikios.cooja.NewAddressMemory.AddressMonitor;
+import org.contikios.cooja.mote.memory.Memory;
+import org.contikios.cooja.mote.memory.Memory.MemoryMonitor;
+import org.contikios.cooja.mote.memory.VarMemory;
 
 /**
  * Read-only interface to Rime address read from Contiki variable:
@@ -59,19 +59,19 @@ import org.contikios.cooja.NewAddressMemory.AddressMonitor;
 public class RimeAddress extends MoteInterface {
 
   private static final Logger logger = Logger.getLogger(RimeAddress.class);
-  private MoteMemory moteMem;
+  private VarMemory moteMem;
 
   public static final int RIME_ADDR_LENGTH = 2;
 
-  private AddressMonitor memMonitor = null;
+  private MemoryMonitor memMonitor = null;
 
   public RimeAddress(final Mote mote) {
     moteMem = mote.getMemory();
     if (hasRimeAddress()) {
-      memMonitor = new AddressMonitor() {
+      memMonitor = new MemoryMonitor() {
         @Override
-        public void memoryChanged(NewAddressMemory memory, MemoryEventType type, long address) {
-          if (type != MemoryEventType.WRITE) {
+        public void memoryChanged(Memory memory, EventType type, long address) {
+          if (type != EventType.WRITE) {
             return;
           }
           setChanged();
@@ -79,7 +79,7 @@ public class RimeAddress extends MoteInterface {
         }
       };
       /* TODO XXX Timeout? */
-      moteMem.addMemoryMonitor(MonitorType.W, moteMem.getVariableAddress("linkaddr_node_addr"), RIME_ADDR_LENGTH, memMonitor);
+      moteMem.addMemoryMonitor(MemoryMonitor.EventType.WRITE, moteMem.getVariableAddress("linkaddr_node_addr"), RIME_ADDR_LENGTH, memMonitor);
     }
   }
 

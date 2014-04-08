@@ -140,7 +140,8 @@ typedef unsigned short uip_stats_t;
 /* TX routine does automatic cca and optional backoffs */
 #define RDC_CONF_HARDWARE_CSMA   1
 /* Allow MCU sleeping between channel checks */
-#define RDC_CONF_MCU_SLEEP         1
+/* Not for COOJA yet! */
+#define RDC_CONF_MCU_SLEEP       0     
 
 #if UIP_CONF_IPV6
 #define LINKADDR_CONF_SIZE        8
@@ -182,7 +183,7 @@ typedef unsigned short uip_stats_t;
 #define UIP_CONF_DHCP_LIGHT      1
 
 
-#if 1 /* No radio cycling */
+#if 0 /* No radio cycling */
 
 #define NETSTACK_CONF_MAC         nullmac_driver
 #define NETSTACK_CONF_RDC         sicslowmac_driver

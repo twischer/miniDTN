@@ -35,13 +35,14 @@ import org.apache.log4j.Logger;
 import org.contikios.cooja.ClassDescription;
 import org.contikios.cooja.Mote;
 import org.contikios.cooja.avrmote.MicaZMoteType;
-import org.contikios.cooja.emulatedmote.Radio802154;
 import avrora.sim.FiniteStateMachine;
 import avrora.sim.FiniteStateMachine.Probe;
 import avrora.sim.radio.Medium;
 import avrora.sim.radio.Medium.Receiver;
 import avrora.sim.radio.Medium.Transmitter;
 import avrora.sim.radio.Radio;
+import org.contikios.cooja.emulatedmote.Radio802154;
+import org.contikios.cooja.interfaces.CustomDataRadio;
 
 /**
  * Cooja support for Avrora's 802.15.4 radios.
@@ -128,12 +129,18 @@ public abstract class Avrora802154Radio extends Radio802154 {
     receiver.setRSSI(signalStrength);
   }
 
-  public abstract double getFrequency();
+  protected abstract double getFrequency();
 
   protected abstract boolean isRadioOn(int state);
 
+  @Override
   public boolean isRadioOn() {
     int state = fsm.getCurrentState();
     return isRadioOn(state);
+  }
+
+  @Override
+  public boolean canReceiveFrom(CustomDataRadio radio) {
+    return radio.getClass().equals(this.getClass());
   }
 }

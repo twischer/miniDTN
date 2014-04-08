@@ -71,12 +71,12 @@ import org.apache.log4j.Logger;
 import org.jdom.Element;
 
 import org.contikios.cooja.ClassDescription;
-import org.contikios.cooja.MemMonitor.MonitorType;
 import org.contikios.cooja.Mote;
 import org.contikios.cooja.MoteInterface;
-import org.contikios.cooja.MoteMemory;
-import org.contikios.cooja.NewAddressMemory;
-import org.contikios.cooja.NewAddressMemory.AddressMonitor;
+import org.contikios.cooja.mote.memory.VarMemory;
+import org.contikios.cooja.mote.memory.Memory;
+import org.contikios.cooja.mote.memory.Memory.MemoryMonitor;
+import org.contikios.cooja.mote.memory.MemoryLayout;
 import org.contikios.cooja.util.IPUtils;
 
 /**
@@ -100,10 +100,10 @@ public class IPAddress extends MoteInterface {
   
   private final IPv ipVersion;
 
-  private final MoteMemory moteMem;
+  private final VarMemory moteMem;
   private IPContainer localIPAddr = null;
 
-  private final AddressMonitor memMonitor;
+  private final MemoryMonitor memMonitor;
 
   private List<IPContainer> ipList = new LinkedList<>();
   
@@ -115,12 +115,12 @@ public class IPAddress extends MoteInterface {
 
     /* If the ip memory sections changed, we recalculate addresses
      * and notify our observers.*/
-    memMonitor = new AddressMonitor() {
+    memMonitor = new MemoryMonitor() {
       int accessCount = 0;
       long lastAccess = 0;
       @Override
-      public void memoryChanged(NewAddressMemory memory, MemoryEventType type, long address) {
-        if (type != MemoryEventType.WRITE) {
+      public void memoryChanged(Memory memory, EventType type, long address) {
+        if (type != EventType.WRITE) {
           return;
         }
         
@@ -139,18 +139,25 @@ public class IPAddress extends MoteInterface {
           ipv6_addr_size = moteMem.getByteValueOf("uip_ds6_addr_size");
           /* If the variables just updated, add the final ip listeners */
           if ((ipv6_addr_list_offset != 0) && (ipv6_addr_size != 0)) {
-            /* Monitor for each IP reagion */
+            /* Add monitor for each IP region */
             for (int i = 0; i < IPv6_MAX_ADDRESSES; i++) {
               long addr_of_ip = moteMem.getVariableAddress("uip_ds6_if") // start address of interface
                       + ipv6_addr_list_offset // offset to ip address region
                       + i * ipv6_addr_size // offset to ith ip address 
-                      + 1; // skip 'isused'
-              /* logger.info("addIPMonitor for addr " + addr_of_ip + " with size " + 16); */
+                      + 1 + memory.getMemoryLayout().getPaddingBytesFor(
+                              MemoryLayout.DataType.INT8,
+                              MemoryLayout.DataType.INT16); // skip 'isused'
               moteMem.addMemoryMonitor(
-                      MonitorType.W,
+                      EventType.WRITE,
                       addr_of_ip,
                       16, /* Size of ip address in byte */
                       memMonitor);
+            }
+            /* Initial scan for IP address */
+            updateIPAddresses();
+            if (ipList.size() > 0) {
+              setChanged();
+              notifyObservers();
             }
             /** @TODO: Remove other listeners? */
           }
@@ -190,7 +197,7 @@ public class IPAddress extends MoteInterface {
       logger.debug("IPv4 detected");
       ipVersion = IPv.IPv4;
       moteMem.addMemoryMonitor(
-              MonitorType.W,
+              MemoryMonitor.EventType.WRITE,
               moteMem.getVariableAddress("uip_hostaddr"),
               moteMem.getVariableSize("uip_hostaddr"),
               memMonitor);
@@ -201,12 +208,12 @@ public class IPAddress extends MoteInterface {
       logger.debug("IPv6 detected");
       ipVersion = IPv.IPv6;
       moteMem.addMemoryMonitor(
-              MonitorType.W,
+              MemoryMonitor.EventType.WRITE,
               moteMem.getVariableAddress("uip_ds6_netif_addr_list_offset"),
               1,
               memMonitor);
       moteMem.addMemoryMonitor(
-              MonitorType.W,
+              MemoryMonitor.EventType.WRITE,
               moteMem.getVariableAddress("uip_ds6_addr_size"),
               1,
               memMonitor);
@@ -302,10 +309,10 @@ public class IPAddress extends MoteInterface {
         continue;
       }
       byte[] addressData = new byte[16];
-      /* XXX This version works only for 16bit struct alignment
-       *     as offset is determined by an 8bit struct member! */
       System.arraycopy(
-              structData, offset + 2,/* ipaddr offset */
+              structData, offset + 1 + moteMem.getMemoryLayout().getPaddingBytesFor(
+                      MemoryLayout.DataType.INT8,
+                      MemoryLayout.DataType.INT16),/* ipaddr offset */
               addressData, 0, 16);
 
       if (((addressData[0] & (byte) 0xFF) == (byte) 0xFE) && ((addressData[1] & (byte) 0xFF) == (byte) 0x80)) {
