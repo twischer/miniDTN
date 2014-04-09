@@ -34,10 +34,9 @@ import org.apache.log4j.Logger;
 
 import org.contikios.cooja.ClassDescription;
 import org.contikios.cooja.Mote;
-//import org.contikios.cooja.avrmote.RavenMote;
+import org.contikios.cooja.avrmote.AvroraMote;
 import avrora.sim.radio.AT86RF231Radio;
 import avrora.sim.radio.Radio;
-import org.contikios.cooja.avrmote.IngaMote;
 
 /**
  * Cooja support for Avrora's Atmel AT86RF230 radio (AT86RF231).
@@ -45,8 +44,8 @@ import org.contikios.cooja.avrmote.IngaMote;
  * @author David Kopf, Fredrik Osterlind
  */
 @ClassDescription("AT86RF230 Radio")
-public class IngaRadio extends Avrora802154Radio {
-  private static Logger logger = Logger.getLogger(RavenRadio.class);
+public class AT86RF23xRadio extends Avrora802154Radio {
+  private static final Logger logger = Logger.getLogger(RavenRadio.class);
   private final static boolean DEBUG = false;
 
   /* TODO XXX Verify states */
@@ -54,13 +53,14 @@ public class IngaRadio extends Avrora802154Radio {
   private final static int STATE_POWERDOWN = 1;
   private final static int STATE_IDLE = 2;
 
-  private AT86RF231Radio rf231radio;
+  private final AT86RF231Radio rf231radio;
 
-  public IngaRadio(Mote mote) {
+  public AT86RF23xRadio(Mote mote) {
     super(mote,
-        ((Radio) ((IngaMote)mote).getInga().getDevice("radio")),
-        ((AT86RF231Radio) ((IngaMote)mote).getInga().getDevice("radio")).getFiniteStateMachine());
-    rf231radio = (AT86RF231Radio) ((IngaMote)mote).getInga().getDevice("radio");
+        (Radio) ((AvroraMote)mote).getPlatform().getDevice("radio"),
+        ((AT86RF231Radio) (Radio) ((AvroraMote)mote).getPlatform().getDevice("radio")).getFiniteStateMachine());
+    rf231radio = (AT86RF231Radio) ((AvroraMote)mote).getPlatform().getDevice("radio");
+    System.out.println(">>> AT86RF23xRadio for " + mote.getClass().getSimpleName() + " started!");
   }
 
   @Override

@@ -42,7 +42,7 @@ import org.contikios.cooja.avrmote.interfaces.AvroraClock;
 import org.contikios.cooja.avrmote.interfaces.AvroraLED;
 import org.contikios.cooja.avrmote.interfaces.AvroraMoteID;
 import org.contikios.cooja.avrmote.interfaces.AvroraUsart0;
-import org.contikios.cooja.avrmote.interfaces.IngaRadio;
+import org.contikios.cooja.avrmote.interfaces.AT86RF23xRadio;
 import org.contikios.cooja.interfaces.IPAddress;
 import org.contikios.cooja.interfaces.Mote2MoteRelations;
 import org.contikios.cooja.interfaces.MoteAttributes;
@@ -88,7 +88,7 @@ public class IngaMoteType extends AvroraMoteType {
         Position.class,
         AvroraMoteID.class,
         AvroraLED.class,
-        IngaRadio.class,
+        AT86RF23xRadio.class,
         AvroraClock.class,
         AvroraUsart0.class,
         AvrDebugger.class,
