@@ -628,7 +628,7 @@ init(void)
   PRINTA("Sensors:\n");
   CHECK_SENSOR("Button", button_sensor);
   CHECK_SENSOR("Accelerometer", acc_sensor);
-  CHECK_SENSOR("Gyroscope", acc_sensor);
+  CHECK_SENSOR("Gyroscope", gyro_sensor);
   CHECK_SENSOR("Pressure", pressure_sensor);
   CHECK_SENSOR("Battery", battery_sensor);
 #endif
