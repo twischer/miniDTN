@@ -209,6 +209,8 @@
  * Set this smaller than the expected minimum rssi to avoid packet collisions */
 /* The Jackdaw menu 'm' command is helpful for determining the smallest ever received rssi */
 #define RF230_CONF_CCA_THRES    -85
+/* Default is one RAM buffer for received packets. More than one may benefit multiple TCP connections or ports */
+#define RF230_CONF_RX_BUFFERS     3
 
 /* -- UIP settings */
 #define UIP_CONF_UDP              1
