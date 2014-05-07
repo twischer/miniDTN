@@ -111,12 +111,12 @@ uint8_t debugflowsize, debugflow[DEBUGFLOWSIZE];
 #include "cfs/coffee/cfs-coffee.h"
 #endif
 
-#if WITH_UIP6
+#if UIP_CONF_IPV6
 #include "net/ipv6/uip-ds6.h"
 // function declaration for net/uip-debug.c
 void uip_debug_ipaddr_print(const uip_ipaddr_t *addr);
 void uip_debug_lladdr_print(const uip_lladdr_t *addr);
-#endif /* WITH_UIP6 */
+#endif /* UIP_CONF_IPV6 */
 
 #include "net/rime/rime.h"
 

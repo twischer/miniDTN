@@ -32,11 +32,6 @@ endif
 
 CONTIKI_TARGET_SOURCEFILES += $(INGA_SOURCEFILES)
 
-# Enable IPv6
-ifeq ($(UIP_CONF_IPV6),1)
-  CFLAGS += -DWITH_UIP6=1
-endif
-
 # Enable settings manager
 CFLAGS += -DCONTIKI_CONF_SETTINGS_MANAGER=1
 
