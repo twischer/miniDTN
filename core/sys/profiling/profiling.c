@@ -37,7 +37,7 @@
 #include <string.h>
 
 #include "contiki.h"
-#include "sys/profiling.h"
+#include "sys/profiling/profiling.h"
 #include "profiling_arch.h"
 
 /* Disable by default */
