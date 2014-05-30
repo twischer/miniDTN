@@ -423,8 +423,6 @@ platform_radio_init(void)
           eui64_addr[7]);
 #endif /* INGA_BOOTSCREEN_NET */
 
-#if RF230BB
-
   /* Start radio and radio receive process */
   NETSTACK_RADIO.init();
 
@@ -470,14 +468,6 @@ platform_radio_init(void)
 #endif /* CONVERTTXPOWER */
       printf("\n");
 #endif /* INGA_BOOTSCREEN_RADIO */
-
-#else /* RF230BB */
-
-  /* Original RF230 combined mac/radio driver */
-  /* mac process must be started before tcpip process! */
-  process_start(&mac_process, NULL);
-#endif /* RF230BB */
-
 }
 
 /*-------------------------Low level initialization------------------------*/
