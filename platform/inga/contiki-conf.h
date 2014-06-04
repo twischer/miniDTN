@@ -151,14 +151,9 @@
 
 /* -- UIP IPv6 settings */
 #define UIP_CONF_ICMP6            1
-#define UIP_CONF_IPV6             1
 #define UIP_CONF_IPV6_CHECKS      1
 #define UIP_CONF_IPV6_QUEUE_PKT   1
 #define UIP_CONF_IPV6_REASSEMBLY  0
-/* -- SICSLOWPAN driver settings */
-#define SICSLOWPAN_CONF_COMPRESSION SICSLOWPAN_COMPRESSION_HC06
-/* Allow 6lowpan fragments (needed for large TCP maximum segment size) */
-#define SICSLOWPAN_CONF_FRAG      1
 /* Most browsers reissue GETs after 3 seconds which stops fragment reassembly
  * so a longer MAXAGE does no good */
 #define SICSLOWPAN_CONF_MAXAGE    3
@@ -172,15 +167,6 @@
 #define SICSLOWPAN_CONF_ADDR_CONTEXT_0 {addr_contexts[0].prefix[0]=0xaa;addr_contexts[0].prefix[1]=0xaa;}
 #define SICSLOWPAN_CONF_ADDR_CONTEXT_1 {addr_contexts[1].prefix[0]=0xbb;addr_contexts[1].prefix[1]=0xbb;}
 #define SICSLOWPAN_CONF_ADDR_CONTEXT_2 {addr_contexts[2].prefix[0]=0x20;addr_contexts[2].prefix[1]=0x01;addr_contexts[2].prefix[2]=0x49;addr_contexts[2].prefix[3]=0x78,addr_contexts[2].prefix[4]=0x1d;addr_contexts[2].prefix[5]=0xb1;}
-
-/* See uip-ds6.h */
-#define UIP_CONF_DS6_NBR_NBU      20
-#define UIP_CONF_DS6_DEFRT_NBU    2
-#define UIP_CONF_DS6_PREFIX_NBU   3
-#define UIP_CONF_MAX_ROUTES       20
-#define UIP_CONF_DS6_ADDR_NBU     3
-#define UIP_CONF_DS6_MADDR_NBU    0
-#define UIP_CONF_DS6_AADDR_NBU    0
 
 #else /* UIP_CONF_IPV6 */
 /* ip4 should build but is largely untested */
@@ -206,15 +192,12 @@
  * Set this smaller than the expected minimum rssi to avoid packet collisions */
 /* The Jackdaw menu 'm' command is helpful for determining the smallest ever received rssi */
 #define RF230_CONF_CCA_THRES      -85
-/* Default is one RAM buffer for received packets. More than one may benefit multiple TCP connections or ports */
+/* Default is one RAM buffer for received packets. 
+ * More than one may benefit multiple TCP connections or ports */
 #define RF230_CONF_RX_BUFFERS     3
 
 /* -- UIP settings */
-#define UIP_CONF_UDP              1
 #define UIP_CONF_UDP_CHECKSUMS    1
-#ifndef UIP_CONF_TCP
-#define UIP_CONF_TCP              1
-#endif
 /* How long to wait before terminating an idle TCP connection.
  * Smaller to allow faster sleep. Default is 120 seconds */
 #define UIP_CONF_WAIT_TIMEOUT     5
@@ -222,9 +205,10 @@
 /* Use this to prevent 6LowPAN fragmentation (whether or not fragmentation is enabled) */
 //#define UIP_CONF_TCP_MSS      48
 
-/* 30 bytes per TCP connection */
-/* 6LoWPAN does not do well with concurrent TCP streams, as new browser GETs collide with packets coming */
-/* from previous GETs, causing decreased throughput, retransmissions, and timeouts. Increase to study this. */
+/* 6LoWPAN does not do well with concurrent TCP streams, 
+ * as new browser GETs collide with packets coming
+ * from previous GETs, causing decreased throughput, retransmissions, and timeouts. 
+ * Increase to study this. */
 #define UIP_CONF_MAX_CONNECTIONS  1
 
 /* 2 bytes per TCP listening port */
@@ -275,8 +259,8 @@
 
 #define UIP_CONF_ROUTER                 1
 #define UIP_CONF_ND6_SEND_RA            0
-#define UIP_CONF_ND6_REACHABLE_TIME     600000
-#define UIP_CONF_ND6_RETRANS_TIMER      10000
+#define UIP_CONF_ND6_REACHABLE_TIME     600000 /// TODO: fix in default config?
+#define UIP_CONF_ND6_RETRANS_TIMER      10000  /// TODO: fix in default config?
 
 #undef UIP_CONF_UDP_CONNS
 #define UIP_CONF_UDP_CONNS       12
@@ -292,9 +276,9 @@
 /* Logging adds 200 bytes to program size */
 #define LOG_CONF_ENABLED         1
 
-/** Contiki Core Interface (has no function here) */
+/* Contiki Core Interface (has no function here) */
 #define CCIF
-/** Contiki Loadable Interface (has no function here) */
+/* Contiki Loadable Interface (has no function here) */
 #define CLIF
 
 #ifndef CC_CONF_INLINE
