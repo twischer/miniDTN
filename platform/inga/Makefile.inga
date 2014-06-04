@@ -25,10 +25,8 @@ endif
 
 
 # Enable SLIP support
-ifeq ($(CONF_SLIP),1)
-  INGA_SOURCEFILES += slip_uart0.c slip.c slip-bridge.c
-  CFLAGS += -DINGA_CONF_WITH_SLIP=1
-endif
+INGA_SOURCEFILES += slip_uart0.c
+CFLAGS += -DINGA_CONF_WITH_SLIP=1
 
 CONTIKI_TARGET_SOURCEFILES += $(INGA_SOURCEFILES)
 
@@ -139,7 +137,7 @@ AVRDUDE_OPTIONS=-b 230400
 ifndef INGA_CONF_BAUDRATE
   INGA_CONF_BAUDRATE = 38400
 endif
-CFLAGS+=-DUSART_BAUD_INGA=USART_BAUD_$(INGA_CONF_BAUDRATE)
+CFLAGS+=-DINGA_CONF_USART_BAUD=USART_BAUD_$(INGA_CONF_BAUDRATE)
 
 ifdef MOTES
   MOTELIST=1
@@ -211,4 +209,4 @@ endif
 include $(CONTIKIAVR)/Makefile.avr
 include $(CONTIKIAVR)/radio/Makefile.radio
 
-MODULES += core/net/ipv6 core/net/ip core/net/mac core/net core/net/rime core/net/mac/sicslowmac core/net/rpl
+MODULES += core/net/ip core/net/ipv6 core/net/mac core/net core/net/rime core/net/mac/sicslowmac core/net/rpl
