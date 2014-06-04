@@ -236,6 +236,8 @@ void adc_init(uint8_t mode, uint8_t ref);
  *
  * \return     The ADC-value of preselected mux
  *
+ * \note       In single-conversion mode a conversion must have been started before
+ *
  */
 uint16_t adc_get_value(void);
 
@@ -261,6 +263,8 @@ uint16_t adc_get_value_from(uint8_t chn);
  * \param mux  Select single ADC channel (ADC_CHANNEL_0 ... ADC_CHANNEL_7)
  *             or differential input of various ADC-channels with or
  *             without gain
+ *
+ * \note       This also starts an initial conversion
  *
  */
 void adc_set_mux(uint8_t mux);

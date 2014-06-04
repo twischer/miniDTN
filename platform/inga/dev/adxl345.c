@@ -41,6 +41,16 @@
  */
 
 #include "adxl345.h"
+
+#define DEBUG 0
+
+#if DEBUG
+#include <stdio.h>
+#define PRINTF(...) printf(__VA_ARGS__)
+#else
+#define PRINTF(...)
+#endif
+
 #define ADXL345_DEVICE_ID_DATA            0xE5
 /*----------------------------------------------------------------------------*/
 int8_t
@@ -56,6 +66,7 @@ adxl345_available(void)
       return 0;
     }
   }
+  PRINTF("adxl345: is available\n");
   return 1;
 }
 /*----------------------------------------------------------------------------*/
@@ -72,6 +83,8 @@ adxl345_init(void)
   adxl345_write(ADXL345_POWER_CTL_REG, (1 << ADXL345_MEASURE));
   // output data rate: 100Hz
   adxl345_write(ADXL345_BW_RATE_REG, ADXL345_ODR_100HZ);
+
+  PRINTF("adxl345: initialized\n");
 
   return 0;
 }
@@ -180,7 +193,7 @@ adxl345_get(void)
   msb = mspi_transceive(MSPI_DUMMY_BYTE);
   adxl345_data.z = (int16_t) ((msb << 8) + lsb);
   mspi_chip_release(ADXL345_CS);
-  printf("x: %d, y: %d, z: %d\n", adxl345_data.x, adxl345_data.y, adxl345_data.z);
+  PRINTF("adxl345: x: %d, y: %d, z: %d\n", adxl345_data.x, adxl345_data.y, adxl345_data.z);
   return adxl345_data;
 }
 /*----------------------------------------------------------------------------*/
