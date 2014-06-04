@@ -66,7 +66,6 @@ _i2c_start(uint8_t addr, uint8_t rep) {
   uint16_t i = 0;
 
   PRR &= ~(1 << PRTWI);
-  i2c_init();
   TWCR = (1 << TWINT) | (1 << TWSTA) | (1 << TWEN);
   while (!(TWCR & (1 << TWINT))) {
     if( i++ > 800 ) {
