@@ -92,6 +92,12 @@ extern rpl_of_t RPL_OF;
 static uip_mcast6_route_t *mcast_group;
 #endif
 /*---------------------------------------------------------------------------*/
+/* Initialise RPL ICMPv6 message handlers */
+UIP_ICMP6_HANDLER(dis_handler, ICMP6_RPL, RPL_CODE_DIS, dis_input);
+UIP_ICMP6_HANDLER(dio_handler, ICMP6_RPL, RPL_CODE_DIO, dio_input);
+UIP_ICMP6_HANDLER(dao_handler, ICMP6_RPL, RPL_CODE_DAO, dao_input);
+UIP_ICMP6_HANDLER(dao_ack_handler, ICMP6_RPL, RPL_CODE_DAO_ACK, dao_ack_input);
+/*---------------------------------------------------------------------------*/
 static int
 get_global_addr(uip_ipaddr_t *addr)
 {
@@ -168,6 +174,7 @@ dis_input(void)
       }
     }
   }
+  uip_len = 0;
 }
 /*---------------------------------------------------------------------------*/
 void
@@ -267,7 +274,7 @@ dio_input(void)
 
   PRINTF("RPL: Incoming DIO (id, ver, rank) = (%u,%u,%u)\n",
          (unsigned)dio.instance_id,
-         (unsigned)dio.version, 
+         (unsigned)dio.version,
          (unsigned)dio.rank);
 
   dio.grounded = buffer[i] & RPL_DIO_GROUNDED;
@@ -323,11 +330,11 @@ dio_input(void)
         dio.mc.obj.etx = get16(buffer, i + 6);
 
         PRINTF("RPL: DAG MC: type %u, flags %u, aggr %u, prec %u, length %u, ETX %u\n",
-	       (unsigned)dio.mc.type,  
-	       (unsigned)dio.mc.flags, 
-	       (unsigned)dio.mc.aggr, 
-	       (unsigned)dio.mc.prec, 
-	       (unsigned)dio.mc.length, 
+	       (unsigned)dio.mc.type,
+	       (unsigned)dio.mc.flags,
+	       (unsigned)dio.mc.aggr,
+	       (unsigned)dio.mc.prec,
+	       (unsigned)dio.mc.length,
 	       (unsigned)dio.mc.obj.etx);
       } else if(dio.mc.type == RPL_DAG_MC_ENERGY) {
         dio.mc.obj.energy.flags = buffer[i + 6];
@@ -409,6 +416,8 @@ dio_input(void)
 #endif
 
   rpl_process_dio(&from, &dio);
+
+  uip_len = 0;
 }
 /*---------------------------------------------------------------------------*/
 void
@@ -422,7 +431,7 @@ dio_output(rpl_instance_t *instance, uip_ipaddr_t *uc_addr)
 #endif /* !RPL_LEAF_ONLY */
 
 #if RPL_LEAF_ONLY
-  /* In leaf mode, we only send DIO messages as unicasts in response to 
+  /* In leaf mode, we only send DIO messages as unicasts in response to
      unicast DIS messages. */
   if(uc_addr == NULL) {
     PRINTF("RPL: LEAF ONLY have multicast addr: skip dio_output\n");
@@ -643,7 +652,7 @@ dao_input(void)
       PRINTF("RPL: Loop detected when receiving a unicast DAO from a node with a lower rank! (%u < %u)\n",
           DAG_RANK(parent->rank, instance), DAG_RANK(dag->rank, instance));
       parent->rank = INFINITE_RANK;
-      parent->updated = 1;
+      parent->flags |= RPL_PARENT_FLAG_UPDATED;
       return;
     }
 
@@ -651,7 +660,7 @@ dao_input(void)
     if(parent != NULL && parent == dag->preferred_parent) {
       PRINTF("RPL: Loop detected when receiving a unicast DAO from our parent\n");
       parent->rank = INFINITE_RANK;
-      parent->updated = 1;
+      parent->flags |= RPL_PARENT_FLAG_UPDATED;
       return;
     }
   }
@@ -786,6 +795,7 @@ fwd_dao:
       dao_ack_output(instance, &dao_sender_addr, sequence);
     }
   }
+  uip_len = 0;
 }
 /*---------------------------------------------------------------------------*/
 void
@@ -915,6 +925,7 @@ dao_ack_input(void)
   PRINT6ADDR(&UIP_IP_BUF->srcipaddr);
   PRINTF("\n");
 #endif /* DEBUG */
+  uip_len = 0;
 }
 /*---------------------------------------------------------------------------*/
 void
@@ -937,27 +948,14 @@ dao_ack_output(rpl_instance_t *instance, uip_ipaddr_t *dest, uint8_t sequence)
 }
 /*---------------------------------------------------------------------------*/
 void
-uip_rpl_input(void)
+rpl_icmp6_register_handlers()
 {
-  PRINTF("Received an RPL control message\n");
-  switch(UIP_ICMP_BUF->icode) {
-  case RPL_CODE_DIO:
-    dio_input();
-    break;
-  case RPL_CODE_DIS:
-    dis_input();
-    break;
-  case RPL_CODE_DAO:
-    dao_input();
-    break;
-  case RPL_CODE_DAO_ACK:
-    dao_ack_input();
-    break;
-  default:
-    PRINTF("RPL: received an unknown ICMP6 code (%u)\n", UIP_ICMP_BUF->icode);
-    break;
-  }
-
-  uip_len = 0;
+  uip_icmp6_register_input_handler(&dis_handler);
+  uip_icmp6_register_input_handler(&dio_handler);
+  uip_icmp6_register_input_handler(&dao_handler);
+  uip_icmp6_register_input_handler(&dao_ack_handler);
 }
+/*---------------------------------------------------------------------------*/
 #endif /* UIP_CONF_IPV6 */
+
+/** @}*/

@@ -43,6 +43,7 @@
 #include "net/ip/uip.h"
 #include "net/ip/tcpip.h"
 #include "net/ipv6/uip-ds6.h"
+#include "net/ipv6/uip-icmp6.h"
 #include "net/rpl/rpl-private.h"
 #include "net/ipv6/multicast/uip-mcast6.h"
 
@@ -259,7 +260,7 @@ rpl_link_neighbor_callback(const linkaddr_t *addr, int status, int numtx)
       if(parent != NULL) {
         /* Trigger DAG rank recalculation. */
         PRINTF("RPL: rpl_link_neighbor_callback triggering update\n");
-        parent->updated = 1;
+        parent->flags |= RPL_PARENT_FLAG_UPDATED;
         if(instance->of->neighbor_link_callback != NULL) {
           instance->of->neighbor_link_callback(parent, status, numtx);
         }
@@ -285,7 +286,7 @@ rpl_ipv6_neighbor_callback(uip_ds6_nbr_t *nbr)
         p->rank = INFINITE_RANK;
         /* Trigger DAG rank recalculation. */
         PRINTF("RPL: rpl_ipv6_neighbor_callback infinite rank\n");
-        p->updated = 1;
+        p->flags |= RPL_PARENT_FLAG_UPDATED;
       }
     }
   }
@@ -300,6 +301,7 @@ rpl_init(void)
 
   rpl_dag_init();
   rpl_reset_periodic_timer();
+  rpl_icmp6_register_handlers();
 
   /* add rpl multicast address */
   uip_create_linklocal_rplnodes_mcast(&rplmaddr);
@@ -313,3 +315,5 @@ rpl_init(void)
 }
 /*---------------------------------------------------------------------------*/
 #endif /* UIP_CONF_IPV6 */
+
+/** @}*/

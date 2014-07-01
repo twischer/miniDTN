@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  */
-
 package org.contikios.cooja.plugins.skins;
 
 import java.awt.BorderLayout;
@@ -87,6 +86,7 @@ import org.contikios.cooja.radiomediums.UDGM;
 @ClassDescription("Radio environment (UDGM)")
 @SupportedArguments(radioMediums = {UDGM.class})
 public class UDGMVisualizerSkin implements VisualizerSkin {
+
   private static final Logger logger = Logger.getLogger(UDGMVisualizerSkin.class);
 
   private static final Color COLOR_TX = new Color(0, 255, 0, 100);
@@ -158,8 +158,8 @@ public class UDGMVisualizerSkin implements VisualizerSkin {
     txRangeSpinner.addChangeListener(new ChangeListener() {
       @Override
       public void stateChanged(ChangeEvent e) {
-        radioMedium.setTxRange(((SpinnerNumberModel)
-            txRangeSpinner.getModel()).getNumber().doubleValue());
+        radioMedium.setTxRange(((SpinnerNumberModel) txRangeSpinner.getModel())
+                .getNumber().doubleValue());
         visualizer.repaint();
       }
     });
@@ -167,8 +167,8 @@ public class UDGMVisualizerSkin implements VisualizerSkin {
     interferenceRangeSpinner.addChangeListener(new ChangeListener() {
       @Override
       public void stateChanged(ChangeEvent e) {
-        radioMedium.setInterferenceRange(((SpinnerNumberModel)
-            interferenceRangeSpinner.getModel()).getNumber().doubleValue());
+        radioMedium.setInterferenceRange(((SpinnerNumberModel) interferenceRangeSpinner.getModel())
+                .getNumber().doubleValue());
         visualizer.repaint();
       }
     });
@@ -176,8 +176,8 @@ public class UDGMVisualizerSkin implements VisualizerSkin {
     successRatioTxSpinner.addChangeListener(new ChangeListener() {
       @Override
       public void stateChanged(ChangeEvent e) {
-        radioMedium.SUCCESS_RATIO_TX = ((SpinnerNumberModel)
-            successRatioTxSpinner.getModel()).getNumber().doubleValue();
+        radioMedium.SUCCESS_RATIO_TX = ((SpinnerNumberModel) successRatioTxSpinner.getModel())
+                .getNumber().doubleValue();
         visualizer.repaint();
       }
     });
@@ -185,8 +185,8 @@ public class UDGMVisualizerSkin implements VisualizerSkin {
     successRatioRxSpinner.addChangeListener(new ChangeListener() {
       @Override
       public void stateChanged(ChangeEvent e) {
-        radioMedium.SUCCESS_RATIO_RX = ((SpinnerNumberModel)
-            successRatioRxSpinner.getModel()).getNumber().doubleValue();
+        radioMedium.SUCCESS_RATIO_RX = ((SpinnerNumberModel) successRatioRxSpinner.getModel())
+                .getNumber().doubleValue();
         visualizer.repaint();
       }
     });
@@ -199,7 +199,7 @@ public class UDGMVisualizerSkin implements VisualizerSkin {
     JPanel main = new JPanel();
     main.setLayout(new BoxLayout(main, BoxLayout.Y_AXIS));
     main.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
-    
+
     rangeTX = Box.createHorizontalBox();
     rangeTX.add(new JLabel("TX range:"));
     rangeTX.add(Box.createHorizontalStrut(5));
@@ -221,12 +221,12 @@ public class UDGMVisualizerSkin implements VisualizerSkin {
     rangeINT.setVisible(false);
     ratioTX.setVisible(false);
     ratioRX.setVisible(false);
-    
+
     main.add(rangeTX);
     main.add(rangeINT);
     main.add(ratioTX);
     main.add(ratioRX);
-    
+
     rrFrame = new JInternalFrame("UDGM", false, true);
     rrFrame.setVisible(false);
     rrFrame.setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
@@ -264,7 +264,7 @@ public class UDGMVisualizerSkin implements VisualizerSkin {
   @Override
   public Color[] getColorOf(Mote mote) {
     if (visualizer.getSelectedMotes().contains(mote)) {
-      return new Color[] { Color.CYAN };
+      return new Color[]{Color.CYAN};
     }
     return null;
   }
@@ -280,7 +280,7 @@ public class UDGMVisualizerSkin implements VisualizerSkin {
     Area intRangeMaxArea = new Area();
     Area trxRangeArea = new Area();
     Area trxRangeMaxArea = new Area();
-    
+
     for (Mote selectedMote : selectedMotes) {
       if (selectedMote.getInterfaces().getRadio() == null) {
         continue;
@@ -349,16 +349,16 @@ public class UDGMVisualizerSkin implements VisualizerSkin {
               y - translatedTransmissionMax.y,
               2 * translatedTransmissionMax.x,
               2 * translatedTransmissionMax.y)));
-      
+
     }
-    
+
     Graphics2D g2d = (Graphics2D) g;
-    
+      
     g2d.setColor(COLOR_INT);
     g2d.fill(intRangeArea);
     g.setColor(Color.GRAY);
     g2d.draw(intRangeMaxArea);
-    
+
     g.setColor(COLOR_TX);
     g2d.fill(trxRangeArea);
     g.setColor(Color.GRAY);
@@ -395,6 +395,7 @@ public class UDGMVisualizerSkin implements VisualizerSkin {
   }
 
   public static class RangeMenuAction implements SimulationMenuAction {
+
     @Override
     public boolean isEnabled(Visualizer visualizer, Simulation simulation) {
       return true;
@@ -420,6 +421,7 @@ public class UDGMVisualizerSkin implements VisualizerSkin {
   };
 
   public static class SuccessRatioMenuAction implements SimulationMenuAction {
+
     @Override
     public boolean isEnabled(Visualizer visualizer, Simulation simulation) {
       return true;
@@ -433,7 +435,7 @@ public class UDGMVisualizerSkin implements VisualizerSkin {
     @Override
     public void doAction(Visualizer visualizer, Simulation simulation) {
       VisualizerSkin[] skins = visualizer.getCurrentSkins();
-      for (VisualizerSkin skin: skins) {
+      for (VisualizerSkin skin : skins) {
         if (skin instanceof UDGMVisualizerSkin) {
           UDGMVisualizerSkin vskin = ((UDGMVisualizerSkin) skin);
           vskin.ratioTX.setVisible(true);

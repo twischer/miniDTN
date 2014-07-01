@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  */
-
 package org.contikios.cooja.plugins.skins;
 
 import java.awt.Color;
@@ -53,33 +52,34 @@ import org.contikios.cooja.radiomediums.DirectedGraphMedium;
 @ClassDescription("Radio environment (DGRM)")
 @SupportedArguments(radioMediums = {DirectedGraphMedium.class})
 public class DGRMVisualizerSkin implements VisualizerSkin {
-	private static final Logger logger = Logger.getLogger(DGRMVisualizerSkin.class);
 
-	private Simulation simulation = null;
-	private Visualizer visualizer = null;
+  private static final Logger logger = Logger.getLogger(DGRMVisualizerSkin.class);
 
-  @Override
-	public void setActive(Simulation simulation, Visualizer vis) {
-		if (!(simulation.getRadioMedium() instanceof DirectedGraphMedium)) {
-			logger.fatal("Cannot activate DGRM skin for unknown radio medium: " + simulation.getRadioMedium());
-			return;
-		}
-		this.simulation = simulation;
-		this.visualizer = vis;
-	}
+  private Simulation simulation = null;
+  private Visualizer visualizer = null;
 
   @Override
-	public void setInactive() {
-		if (simulation == null) {
-			/* Skin was never activated */
-			return;
-		}
-	}
+  public void setActive(Simulation simulation, Visualizer vis) {
+    if (!(simulation.getRadioMedium() instanceof DirectedGraphMedium)) {
+      logger.fatal("Cannot activate DGRM skin for unknown radio medium: " + simulation.getRadioMedium());
+      return;
+    }
+    this.simulation = simulation;
+    this.visualizer = vis;
+  }
 
   @Override
-	public Color[] getColorOf(Mote mote) {
+  public void setInactive() {
+    if (simulation == null) {
+      /* Skin was never activated */
+      return;
+    }
+  }
+
+  @Override
+  public Color[] getColorOf(Mote mote) {
     if (visualizer.getSelectedMotes().contains(mote)) {
-      return new Color[] { Color.CYAN };
+      return new Color[]{Color.CYAN};
     }
     return null;
   }
@@ -163,11 +163,11 @@ public class DGRMVisualizerSkin implements VisualizerSkin {
   }
 
   @Override
-	public void paintAfterMotes(Graphics g) {
-	}
+  public void paintAfterMotes(Graphics g) {
+  }
 
   @Override
-	public Visualizer getVisualizer() {
-		return visualizer;
-	}
+  public Visualizer getVisualizer() {
+    return visualizer;
+  }
 }

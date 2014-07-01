@@ -28,9 +28,11 @@ In terms of hardware support, the following drivers have been implemented:
     * Random number generator
     * Low Power Modes
     * General-Purpose Timers. NB: GPT0 is in use by the platform code, the remaining GPTs are available for application development.
+    * ADC
   * SmartRF06 EB and BB peripherals
     * LEDs
     * Buttons
+    * ADC sensors (on-chip VDD / 3 and temperature, ambient light sensor)
     * UART connectivity over the XDS100v3 backchannel (EB only)
 
 Requirements
@@ -244,6 +246,8 @@ If you want to upload the compiled firmware to a node via the serial boot loader
 
 For the `cc2538-demo`, the comments at the top of `cc2538-demo.c` describe in detail what the example does.
 
+To generate an assembly listing of the compiled firmware, run `make cc2538-demo.lst`. This may be useful for debugging or optimizing your application code. To intersperse the C source code within the assembly listing, you must instruct the compiler to include debugging information by adding `CFLAGS += -g` to the project Makefile and rebuild by running `make clean cc2538-demo.lst`.
+
 Node IEEE/RIME/IPv6 Addresses
 -----------------------------
 
@@ -361,19 +365,33 @@ By default, everything is configured to use the UART (stdio, border router's SLI
 
 You can multiplex things (for instance, SLIP as well as debugging over USB or SLIP over USB but debugging over UART and other combinations).
 
+Selecting UART0 and/or UART1
+----------------------------
+By default, everything is configured to use the UART0 (stdio, border router's SLIP, sniffer's output stream). If you want to change this, these are the relevant lines in contiki-conf.h (0: UART0, 1: UART1):
+
+    #define SERIAL_LINE_CONF_UART       0
+    #define SLIP_ARCH_CONF_UART         0
+    #define CC2538_RF_CONF_SNIFFER_UART 0
+    #define DBG_CONF_UART               0
+    #define UART1_CONF_UART             0
+
+A single UART is available on CC2538DK, so all the configuration values above should be the same (i.e. either all 0 or all 1), but 0 and 1 could be mixed for other CC2538-based platforms supporting 2 UARTs.
+
+The chosen UARTs must have their ports and pins defined in board.h:
+
+    #define UART0_RX_PORT            GPIO_A_NUM
+    #define UART0_RX_PIN             0
+    #define UART0_TX_PORT            GPIO_A_NUM
+    #define UART0_TX_PIN             1
+
+Only the UART ports and pins implemented on the board can be defined.
+
 UART Baud Rate
 --------------
-By default, the CC2538 UART is configured with a baud rate of 115200. It is easy to increase this to 230400 by changing the value of `UART_CONF_BAUD_RATE` in `contiki-conf.h` or `project-conf.h`.
+By default, the CC2538 UART is configured with a baud rate of 115200. It is easy to increase this to 230400 by changing the value of `UART0_CONF_BAUD_RATE` or `UART1_CONF_BAUD_RATE` in `contiki-conf.h` or `project-conf.h`, according to the UART instance used.
 
-    #define UART_CONF_BAUD_RATE 230400
-
-Currently, this configuration directive only supports values 115200, 230400 and 460800. Custom baud rates can also be achieved by following the steps below:
-
-* Configure `UART_CONF_BAUD_RATE` with an unsupported value to prevent it from auto-choosing values for IBRD and FBRD. For instance, in your project-conf.h you can do:
-
-        #define UART_CONF_BAUD_RATE 0
-
-* Provide custom values for `UART_CONF_IBRD` and `UART_CONF_FBRD` according to the guidelines in the CC2538 User Guide.
+    #define UART0_CONF_BAUD_RATE 230400
+    #define UART1_CONF_BAUD_RATE 230400
 
 RF and USB DMA
 --------------

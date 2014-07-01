@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
 package org.contikios.mrm;
 
 import java.awt.Color;
@@ -51,11 +50,13 @@ import org.contikios.mrm.ChannelModel.TxPair;
 @ClassDescription("Radio environment (MRM)")
 @SupportedArguments(radioMediums = {MRM.class})
 public class MRMVisualizerSkin implements VisualizerSkin {
-  private static Logger logger = Logger.getLogger(MRMVisualizerSkin.class);
+
+  private static final Logger logger = Logger.getLogger(MRMVisualizerSkin.class);
 
   private Simulation simulation = null;
   private Visualizer visualizer = null;
 
+  @Override
   public void setActive(Simulation simulation, Visualizer vis) {
     if (!(simulation.getRadioMedium() instanceof MRM)) {
       logger.fatal("Cannot activate MRM skin for unknown radio medium: " + simulation.getRadioMedium());
@@ -65,6 +66,7 @@ public class MRMVisualizerSkin implements VisualizerSkin {
     this.visualizer = vis;
   }
 
+  @Override
   public void setInactive() {
     if (simulation == null) {
       /* Skin was never activated */
@@ -75,7 +77,7 @@ public class MRMVisualizerSkin implements VisualizerSkin {
   @Override
   public Color[] getColorOf(Mote mote) {
     if (visualizer.getSelectedMotes().contains(mote)) {
-      return new Color[] { Color.CYAN };
+      return new Color[]{Color.CYAN};
     }
     return null;
   }
@@ -159,9 +161,11 @@ public class MRMVisualizerSkin implements VisualizerSkin {
     }
   }
 
+  @Override
   public void paintAfterMotes(Graphics g) {
   }
 
+  @Override
   public Visualizer getVisualizer() {
     return visualizer;
   }

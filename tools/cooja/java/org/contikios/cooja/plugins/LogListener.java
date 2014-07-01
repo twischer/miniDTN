@@ -384,6 +384,9 @@ public class LogListener extends VisPlugin implements HasQuickHelp {
         }
 
         int rowIndex = logTable.rowAtPoint(e.getPoint());
+        if (rowIndex == -1) {
+          return;
+        }
         LogData d = logs.get(logTable.getRowSorter().convertRowIndexToModel(rowIndex));
         if (d == null) {
         	return;

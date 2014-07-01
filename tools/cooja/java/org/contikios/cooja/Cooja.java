@@ -1659,7 +1659,6 @@ public class Cooja extends Observable {
           return false;
         }
 
-        int nrFrames = myDesktopPane.getAllFrames().length;
         myDesktopPane.add(visPlugin);
         visPlugin.packPlugin(getDesktopPane());
 
@@ -1668,11 +1667,9 @@ public class Cooja extends Observable {
           visPlugin.setSize(FRAME_STANDARD_WIDTH, FRAME_STANDARD_HEIGHT);
         }
 
-        /* Set location if not already visible */
+        /* Set location if not already set */
         if (visPlugin.getLocation().x <= 0 && visPlugin.getLocation().y <= 0) {
-          visPlugin.setLocation(
-              nrFrames * FRAME_NEW_OFFSET,
-              nrFrames * FRAME_NEW_OFFSET);
+          visPlugin.setLocation(determineNewPluginLocation());
         }
 
         visPlugin.setVisible(true);
@@ -1689,6 +1686,29 @@ public class Cooja extends Observable {
         return true;
       }
     }.invokeAndWait();
+  }
+
+  /**
+   * Determines suitable location for placing new plugin.
+   * <p>
+   * If possible, this is below right of the second last activated
+   * internfal frame (offset is determined by FRAME_NEW_OFFSET).
+   *
+   * @return Resulting placement position
+   */
+  private Point determineNewPluginLocation() {
+    Point topFrameLoc;
+    JInternalFrame[] iframes = myDesktopPane.getAllFrames();
+    if (iframes.length > 1) {
+      topFrameLoc = iframes[1].getLocation();
+    } else {
+      topFrameLoc = new Point(
+              myDesktopPane.getSize().width / 2,
+              myDesktopPane.getSize().height / 2);
+    }
+    return new Point(
+            topFrameLoc.x + FRAME_NEW_OFFSET,
+            topFrameLoc.y + FRAME_NEW_OFFSET);
   }
 
   /**
