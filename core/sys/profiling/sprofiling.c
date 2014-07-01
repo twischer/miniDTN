@@ -38,7 +38,7 @@
 #include <string.h>
 
 #include "contiki.h"
-#include "sys/sprofiling.h"
+#include "sys/profiling/sprofiling.h"
 
 #ifdef SPROFILES_CONF_MAX
 #define MAX_PROFILES SPROFILES_CONF_MAX

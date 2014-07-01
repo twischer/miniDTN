@@ -87,7 +87,6 @@ import javax.swing.table.TableRowSorter;
 
 import org.apache.log4j.Logger;
 import org.jdom.Element;
-
 import org.contikios.cooja.ClassDescription;
 import org.contikios.cooja.Cooja;
 import org.contikios.cooja.mote.memory.Memory.MemoryMonitor.EventType;

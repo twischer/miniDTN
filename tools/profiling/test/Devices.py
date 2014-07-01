@@ -203,8 +203,11 @@ class Device(object):
 					# TEST:FAIL:reason
 					# TEST:PASS
 					# TEST:REPORT:desc:value:scale:unit
+                                        # TEST:RESULT:desc:value
 					if testdata[1] == "REPORT":
 						queue.put({'status': 'Report', 'desc': testdata[2], 'name': self.name, 'data': int(testdata[3]), 'scale': int(testdata[4]), 'unit': testdata[5]})
+					elif testdata[1] == "RESULT":
+                                                queue.put({'status': 'Result', 'desc': testdata[2], 'data': testdata[3]})
 					elif testdata[1] == "PASS":
 						queue.put({'status': 'Completed', 'name': self.name})
 						break
