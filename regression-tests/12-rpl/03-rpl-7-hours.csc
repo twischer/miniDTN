@@ -238,7 +238,7 @@ make receiver-node.cooja TARGET=cooja</commands>
 &#xD;
 lostMsgs = 0;&#xD;
 &#xD;
-TIMEOUT(100000000, if(lastMsg != -1 &amp;&amp; lostMsgs == 0) { log.testOK(); } );&#xD;
+TIMEOUT(25000000, if(lastMsg != -1 &amp;&amp; lostMsgs == 0) { log.testOK(); } );&#xD;
 &#xD;
 lastMsg = -1;&#xD;
 packets = "_________";&#xD;
