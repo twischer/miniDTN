@@ -227,19 +227,24 @@ public abstract class AbstractMoteType implements MoteType {
       } else if (name.equals("moteinterface")) {
         String intfClass = element.getText().trim();
 
+        /* Backwards compatibility: se.sics -> org.contikios */
+        if (intfClass.startsWith("se.sics")) {
+          intfClass = intfClass.replaceFirst("se\\.sics", "org.contikios");
+        }
+
         /* Backwards compatibility: MspIPAddress -> IPAddress */
-        if (intfClass.equals("se.sics.cooja.mspmote.interfaces.MspIPAddress")) {
+        if (intfClass.equals("org.contikios.cooja.mspmote.interfaces.MspIPAddress")) {
           logger.warn("Old simulation config detected: IP address interface was moved");
           intfClass = IPAddress.class.getName();
-        } else if (intfClass.equals("se.sics.cooja.mspmote.interfaces.ESBLog")) {
+        } else if (intfClass.equals("org.contikios.cooja.mspmote.interfaces.ESBLog")) {
           logger.warn("Old simulation config detected: ESBLog was replaced by MspSerial");
-          intfClass = "se.sics.cooja.mspmote.interfaces.MspSerial";
-        } else if (intfClass.equals("se.sics.cooja.mspmote.interfaces.SkySerial")) {
+          intfClass = "org.contikios.cooja.mspmote.interfaces.MspSerial";
+        } else if (intfClass.equals("org.contikios.cooja.mspmote.interfaces.SkySerial")) {
           logger.warn("Old simulation config detected: SkySerial was replaced by MspSerial");
-          intfClass = "se.sics.cooja.mspmote.interfaces.MspSerial";
-        } else if (intfClass.equals("se.sics.cooja.mspmote.interfaces.SkyByteRadio")) {
+          intfClass = "org.contikios.cooja.mspmote.interfaces.MspSerial";
+        } else if (intfClass.equals("org.contikios.cooja.mspmote.interfaces.SkyByteRadio")) {
           logger.warn("Old simulation config detected: SkyByteRadio was replaced by Msp802154Radio");
-          intfClass = "se.sics.cooja.mspmote.interfaces.Msp802154Radio";
+          intfClass = "org.contikios.cooja.mspmote.interfaces.Msp802154Radio";
         } else if (intfClass.equals("org.contikios.cooja.avrmote.interfaces.MicaClock")) {
           logger.warn("Old simulation config detected: MicaClock was replaced by AvroraClock");
           intfClass = "org.contikios.cooja.avrmote.interfaces.AvroraClock";
