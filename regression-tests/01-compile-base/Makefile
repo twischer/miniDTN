@@ -5,7 +5,6 @@ EXAMPLES = \
 hello-world/avr-raven \
 hello-world/exp5438 \
 hello-world/inga \
-hello-world/micaz \
 hello-world/minimal-net \
 hello-world/native \
 hello-world/sky \

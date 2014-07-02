@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <simconf>
   <simulation>
-    <title>Hello World (MicaZ)</title>
+    <title>Hello World (INGA)</title>
     <randomseed>generated</randomseed>
     <motedelay_us>1000000</motedelay_us>
     <radiomedium>
@@ -15,20 +15,25 @@
       <logoutput>40000</logoutput>
     </events>
     <motetype>
-      org.contikios.cooja.avrmote.MicaZMoteType
-      <identifier>micaz1</identifier>
-      <description>MicaZ Mote Type #micaz1</description>
+      org.contikios.cooja.avrmote.IngaMoteType
+      <identifier>inga1</identifier>
+      <description>INGA Mote Type #inga1</description>
       <source>[CONTIKI_DIR]/examples/hello-world/hello-world.c</source>
-      <commands>make hello-world.elf TARGET=micaz</commands>
+      <commands>make hello-world.elf TARGET=inga</commands>
       <firmware>[CONTIKI_DIR]/examples/hello-world/hello-world.elf</firmware>
+      <moteinterface>org.contikios.cooja.interfaces.SensorInterface</moteinterface>
       <moteinterface>org.contikios.cooja.interfaces.Position</moteinterface>
-      <moteinterface>org.contikios.cooja.avrmote.interfaces.MicaZID</moteinterface>
-      <moteinterface>org.contikios.cooja.avrmote.interfaces.MicaZLED</moteinterface>
-      <moteinterface>org.contikios.cooja.avrmote.interfaces.MicaZRadio</moteinterface>
-      <moteinterface>org.contikios.cooja.avrmote.interfaces.MicaClock</moteinterface>
-      <moteinterface>org.contikios.cooja.avrmote.interfaces.MicaSerial</moteinterface>
+      <moteinterface>org.contikios.cooja.avrmote.interfaces.AvroraMoteID</moteinterface>
+      <moteinterface>org.contikios.cooja.avrmote.interfaces.AvroraLED</moteinterface>
+      <moteinterface>org.contikios.cooja.avrmote.interfaces.AT86RF23xRadio</moteinterface>
+      <moteinterface>org.contikios.cooja.avrmote.interfaces.AvroraClock</moteinterface>
+      <moteinterface>org.contikios.cooja.avrmote.interfaces.AvroraUsart0</moteinterface>
+      <moteinterface>org.contikios.cooja.avrmote.interfaces.AvrDebugger</moteinterface>
+      <moteinterface>org.contikios.cooja.avrmote.interfaces.AvroraADC</moteinterface>
       <moteinterface>org.contikios.cooja.interfaces.Mote2MoteRelations</moteinterface>
       <moteinterface>org.contikios.cooja.interfaces.MoteAttributes</moteinterface>
+      <moteinterface>org.contikios.cooja.interfaces.RimeAddress</moteinterface>
+      <moteinterface>org.contikios.cooja.interfaces.IPAddress</moteinterface>
     </motetype>
     <mote>
       <interface_config>
@@ -38,10 +43,10 @@
         <z>0.0</z>
       </interface_config>
       <interface_config>
-        org.contikios.cooja.avrmote.interfaces.MicaZID
+        org.contikios.cooja.avrmote.interfaces.AvroraMoteID
         <id>1</id>
       </interface_config>
-      <motetype_identifier>micaz1</motetype_identifier>
+      <motetype_identifier>inga1</motetype_identifier>
     </mote>
   </simulation>
   <plugin>
