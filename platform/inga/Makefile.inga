@@ -41,7 +41,7 @@ endif
 CFLAGS += -DCONTIKI_CONF_SETTINGS_MANAGER=1
 
 # TODO: find a better solution for diskio.c
-CONTIKI_TARGET_SOURCEFILES += cfs-coffee-arch.c diskio.c mbr.c
+CONTIKI_TARGET_SOURCEFILES += cfs-coffee-arch.c
 
 # For a coffee file system, the application makefile can define COFFEE_DEVICE=n
 # to select the type and COFFEE_ADDRESS=0xaaaaaaaa as the starting byte address.

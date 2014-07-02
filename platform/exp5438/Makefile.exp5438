@@ -3,7 +3,7 @@
 
 MODULES += core/net core/net/ip core/net/ipv6 core/net/ipv4 \
            core/net/mac core/net/rpl core/net/rime core/net/mac/contikimac \
-           dev/cc2420
+           dev/cc2420 core/cfs/ram
 
 ifdef IAR
 CFLAGS+=-e --vla -Ohz --multiplier=32 --multiplier_location=4C0 --hw_workaround=CPU40 --core=430X  --data_model small --double=32 -D__MSP430F5438A__=1
@@ -15,7 +15,7 @@ CLEAN += *.exp5438 symbols.c symbols.h
 ARCH=msp430.c leds.c watchdog.c \
      spix.c cc2420.c cc2420-arch.c \
      rtimer-arch.c node-id.c leds-arch.c uart1x.c lcd.c \
-     hal_lcd.c hal_lcd_fonts.c duty-cycle-scroller.c cfs-ram.c
+     hal_lcd.c hal_lcd_fonts.c duty-cycle-scroller.c
 
 ifeq ($(WITH_SLIP),1)
 ARCH += slip_uart0.c

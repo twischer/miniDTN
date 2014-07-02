@@ -2,12 +2,12 @@ CONTIKI_TARGET_SOURCEFILES += contiki-wismote-platform.c \
 	sht11.c sht11-sensor.c light-sensor.c battery-sensor.c \
 	button-sensor.c radio-sensor.c
 
-#ARCH=spi.c ds2411.c xmem.c i2c.c node-id.c sensors.c cfs-coffee.c \
+#ARCH=spi.c ds2411.c xmem.c i2c.c node-id.c sensors.c \
      cc2520.c cc2520-arch.c cc2520-arch-sfd.c \
      sky-sensors.c uip-ipchksum.c \
      uart1.c slip_uart1.c uart1-putchar.c
 
-ARCH=spi.c i2c.c node-id.c sensors.c cfs-coffee.c sht15.c \
+ARCH=spi.c i2c.c node-id.c sensors.c sht15.c \
      cc2520.c cc2520-arch.c cc2520-arch-sfd.c \
      sky-sensors.c uip-ipchksum.c \
      uart1.c slip_uart1.c uart1-putchar.c
@@ -56,4 +56,5 @@ contiki-$(TARGET).a: ${addprefix $(OBJECTDIR)/,symbols.o}
 
 MODULES += core/net core/net/ip core/net/ipv6 core/net/ipv4 core/net/mac \
            core/net/rime core/net/mac/contikimac core/net/rpl \
+	   core/cfs/coffee \
            dev/cc2520 dev/sht11

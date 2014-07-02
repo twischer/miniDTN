@@ -25,7 +25,7 @@ USB +=       scsi_decoder.c ctrl_access.c storage_task.c avr_flash.c
 #If CONTIKI_NO_NET=1 the tcpip_input routine in tcpip.c must be commented out; it expects a tcpip process and conflicts with the one in fakeuip.c
 #RPL      = rpl.c rpl-dag.c rpl-icmp6.c rpl-timers.c rpl-mrhof.c uip-ds6.c uip-icmp6.c uip-nd6.c uip6.c neighbor-info.c neighbor-attr.c tcpip.c uip-split.c psock.c
 
-CONTIKI_TARGET_SOURCEFILES +=   cfs-eeprom.c eeprom.c random.c \
+CONTIKI_TARGET_SOURCEFILES +=   eeprom.c random.c \
                                 mmem.c contiki-raven-default-init-lowlevel.c \
                                 contiki-raven-default-init-net.c contiki-raven-main.c httpd-simple-avr.c \
                                 sicslow_ethernet.c queuebuf.c packetbuf.c rng.c \
@@ -68,7 +68,8 @@ include $(CONTIKIAVR)/radio/Makefile.radio
 
 ifndef CONTIKI_NO_NET
 MODULES+=core/net/ip core/net/ipv4 core/net core/net/ipv6 \
-         core/net/rime core/net/mac core/net/mac/sicslowmac
+	core/net/rime core/net/mac core/net/mac/sicslowmac \
+	core/cfs/eeprom
 else
 vpath %.c $(CONTIKI)/core/net/ipv6
 CONTIKI_SOURCEFILES += sicslowpan.c linkaddr.c

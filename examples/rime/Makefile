@@ -1,6 +1,8 @@
 CONTIKI = ../..
 
-MODULES=core/cfs
+ifeq ($(TARGET),inga)
+MODULES+=core/cfs/coffee
+endif
 
 all: example-abc example-mesh example-collect example-trickle example-polite \
      example-rudolph0 example-rudolph1 example-rudolph2 example-rucb \

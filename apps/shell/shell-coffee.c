@@ -40,7 +40,7 @@
 #include "contiki.h"
 #include "shell-coffee.h"
 
-#include "cfs/cfs-coffee.h"
+#include "cfs/coffee/cfs-coffee.h"
 
 #include <stdio.h>
 #include <string.h>

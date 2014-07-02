@@ -47,8 +47,8 @@
  *      Wolf-Bastian P�ttner <poettner@ibr.cs.tu-bs.de>
  */
 
-#include "cfs-fat.h"
-#include "fat_coop.h"
+#include "fat/cfs-fat.h"
+#include "fat/fat_coop.h"
 #include "fat-coop-arch.h"
 
 static uint8_t stack[FAT_COOP_STACK_SIZE];

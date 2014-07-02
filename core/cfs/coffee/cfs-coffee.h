@@ -38,7 +38,7 @@
 #ifndef CFS_COFFEE_H
 #define CFS_COFFEE_H
 
-#include "cfs.h"
+#include "../cfs.h"
 
 /**
  * Instruct Coffee that the access pattern to this file is adapted to 
