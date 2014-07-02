@@ -240,6 +240,15 @@ public abstract class AbstractMoteType implements MoteType {
         } else if (intfClass.equals("se.sics.cooja.mspmote.interfaces.SkyByteRadio")) {
           logger.warn("Old simulation config detected: SkyByteRadio was replaced by Msp802154Radio");
           intfClass = "se.sics.cooja.mspmote.interfaces.Msp802154Radio";
+        } else if (intfClass.equals("org.contikios.cooja.avrmote.interfaces.MicaClock")) {
+          logger.warn("Old simulation config detected: MicaClock was replaced by AvroraClock");
+          intfClass = "org.contikios.cooja.avrmote.interfaces.AvroraClock";
+        } else if (intfClass.equals("org.contikios.cooja.avrmote.interfaces.MicaSerial")) {
+          logger.warn("Old simulation config detected: MicaClock was replaced by AvroraUsart0");
+          intfClass = "org.contikios.cooja.avrmote.interfaces.AvroraUsart0";
+        } else if (intfClass.equals("org.contikios.cooja.avrmote.interfaces.MicaZLED")) {
+          logger.warn("Old simulation config detected: MicaClock was replaced by AvroraLED");
+          intfClass = "org.contikios.cooja.avrmote.interfaces.AvroraLED";
         }
 
         Class<? extends MoteInterface> moteInterfaceClass =
