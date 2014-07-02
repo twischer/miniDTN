@@ -35,28 +35,22 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 
-/* Include stdint.h before avrdef.h, best option, otherwise do it this way. */
-#ifndef __STDINT_H_
-	#ifdef HAVE_STDINT_H
-		#include <stdint.h>
-	#else
-		typedef unsigned char   uint8_t;
-		typedef unsigned short uint16_t;
-		typedef unsigned long  uint32_t;
-		typedef   signed char    int8_t;
-		typedef          short  int16_t;
-		typedef          long   int32_t;
-	#endif /* !HAVE_STDINT_H */
-#endif
+#ifdef HAVE_STDINT_H
+#include <stdint.h>
+#else
+typedef unsigned char   uint8_t;
+typedef unsigned short uint16_t;
+typedef unsigned long  uint32_t;
+typedef   signed char    int8_t;
+typedef          short  int16_t;
+typedef          long   int32_t;
+#endif /* !HAVE_STDINT_H */
 
 /* These names are deprecated, use C99 names. */
 typedef  uint8_t    u8_t;
 typedef uint16_t   u16_t;
 typedef uint32_t   u32_t;
 typedef  int32_t   s32_t;
-typedef unsigned short clock_time_t;
-typedef unsigned short uip_stats_t;
-typedef unsigned long off_t;
 
 void cpu_init(void);
 
