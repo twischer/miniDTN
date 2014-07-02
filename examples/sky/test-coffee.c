@@ -39,7 +39,7 @@
 
 #include "contiki.h"
 #include "cfs/cfs.h"
-#include "cfs/cfs-coffee.h"
+#include "cfs/coffee/cfs-coffee.h"
 #include "lib/crc16.h"
 #include "lib/random.h"
 
