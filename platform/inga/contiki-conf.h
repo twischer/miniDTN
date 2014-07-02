@@ -237,6 +237,10 @@
 #define UIP_CONF_IP_FORWARD       0
 #define UIP_CONF_FWCACHE_SIZE     0
 
+#ifndef UIP_CONF_BUFFER_SIZE
+#define UIP_CONF_BUFFER_SIZE      240
+#endif
+
 #define UIP_CONF_DHCP_LIGHT       1
 /* uip uses 802.15.4 adresses */
 #define UIP_CONF_LL_802154        1
