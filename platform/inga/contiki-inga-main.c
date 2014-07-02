@@ -108,7 +108,7 @@ uint8_t debugflowsize, debugflow[DEBUGFLOWSIZE];
 #endif
 
 #ifdef COFFEE_FILES
-#include "cfs/cfs-coffee.h"
+#include "cfs/coffee/cfs-coffee.h"
 #endif
 
 #if WITH_UIP6

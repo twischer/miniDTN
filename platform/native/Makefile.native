@@ -15,7 +15,7 @@ CONTIKI_TARGET_MAIN = ${addprefix $(OBJECTDIR)/,contiki-main.o}
 
 CONTIKI_TARGET_SOURCEFILES = contiki-main.c clock.c leds.c leds-arch.c \
                 button-sensor.c pir-sensor.c vib-sensor.c xmem.c \
-                sensors.c irq.c cfs-posix.c cfs-posix-dir.c ctk-curses.c
+                sensors.c irq.c ctk-curses.c
 
 ifeq ($(HOST_OS),Windows)
 CONTIKI_TARGET_SOURCEFILES += wpcap-drv.c wpcap.c
@@ -47,4 +47,4 @@ CURSES_LIBS ?= -lncurses
 TARGET_LIBFILES += $(CURSES_LIBS)
 
 MODULES+=core/net/ip core/net/ipv4 core/net core/net/ipv6 core/net/rime \
-         core/net/mac core/net/rpl core/ctk
+         core/net/mac core/net/rpl core/ctk core/cfs/posix

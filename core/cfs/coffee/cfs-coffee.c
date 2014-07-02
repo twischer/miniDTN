@@ -58,7 +58,7 @@
 #include "contiki-conf.h"
 #include "cfs/cfs.h"
 #include "cfs-coffee-arch.h"
-#include "cfs/cfs-coffee.h"
+#include "cfs/coffee/cfs-coffee.h"
 
 /* Micro logs enable modifications on storage types that do not support
    in-place updates. This applies primarily to flash memories. */

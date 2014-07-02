@@ -82,7 +82,7 @@
 
 #ifdef COFFEE_FILES
 #include "cfs/cfs.h"
-#include "cfs/cfs-coffee.h"
+#include "cfs/coffee/cfs-coffee.h"
 #endif
 
 #if UIP_CONF_ROUTER&&0

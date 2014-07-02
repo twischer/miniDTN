@@ -55,7 +55,7 @@
 
 #include "sys/node-id.h"
 #include "cfs-coffee-arch.h"
-#include "cfs/cfs-coffee.h"
+#include "cfs/coffee/cfs-coffee.h"
 #include "sys/autostart.h"
 
 #include "dev/battery-sensor.h"
