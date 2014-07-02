@@ -197,7 +197,7 @@ typedef unsigned short uip_stats_t;
 #define UIP_CONF_TCP_SPLIT       1
 #define UIP_CONF_DHCP_LIGHT      1
 
-#if 0 /* No radio cycling */
+#if 1 /* No radio cycling */
 
 #define NETSTACK_CONF_MAC         nullmac_driver
 #define NETSTACK_CONF_RDC         sicslowmac_driver
@@ -353,48 +353,6 @@ typedef unsigned short uip_stats_t;
 #define UIP_CONF_LOGGING         0
 
 #endif /* RPL */
-
-#else /* UIP_CONF_IPV6 */
-
-/* Network setup for non-IPv6 (rime). */
-#define NETSTACK_CONF_NETWORK rime_driver
-#define RIMEADDR_CONF_SIZE        2
-#define NETSTACK_CONF_MAC         nullmac_driver
-//#define NETSTACK_CONF_RDC         nullrdc_driver
-#define NETSTACK_CONF_RDC         contikimac_driver
-#define NETSTACK_CONF_FRAMER      framer_802154
-#define NETSTACK_CONF_RADIO       rf230_driver
-#define CHANNEL_802_15_4          26
-#define RADIO_CONF_CALIBRATE_INTERVAL 256
-#define RF230_CONF_AUTOACK        1
-#define RF230_CONF_AUTORETRIES    3
-#define RF230_CONF_CSMARETRIES    5
-#define RF230_CONF_CCA_THRES    -85
-#define UIP_CONF_WAIT_TIMEOUT     5
-#define QUEUEBUF_CONF_NUM         16
-
-#define COLLECT_CONF_ANNOUNCEMENTS       1
-#define CXMAC_CONF_ANNOUNCEMENTS         0
-#define XMAC_CONF_ANNOUNCEMENTS          0
-#define CONTIKIMAC_CONF_ANNOUNCEMENTS    0
-
-#ifndef COLLECT_NEIGHBOR_CONF_MAX_COLLECT_NEIGHBORS
-#define COLLECT_NEIGHBOR_CONF_MAX_COLLECT_NEIGHBORS     32
-#endif /* COLLECT_NEIGHBOR_CONF_MAX_COLLECT_NEIGHBORS */
-
-#ifndef TIMESYNCH_CONF_ENABLED
-#define TIMESYNCH_CONF_ENABLED           0
-#endif /* TIMESYNCH_CONF_ENABLED */
-
-//#if TIMESYNCH_CONF_ENABLED
-/* CC2420 SDF timestamps must be on if timesynch is enabled. */
-//#undef CC2420_CONF_SFD_TIMESTAMPS
-//#define CC2420_CONF_SFD_TIMESTAMPS       1
-//#endif /* TIMESYNCH_CONF_ENABLED */
-
-#endif /* UIP_CONF_IPV6 */
-
-
 
 #define CCIF
 #define CLIF
