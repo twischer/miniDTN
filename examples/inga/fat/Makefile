@@ -1,4 +1,4 @@
-all: fat-tests fat-coop-tests
+all: fat-example
 
 TARGET=inga
 

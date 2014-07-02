@@ -1,4 +1,4 @@
-CONTIKI_PROJECT = acc-example
+CONTIKI_PROJECT = all-example
 
 all: $(CONTIKI_PROJECT)
 	

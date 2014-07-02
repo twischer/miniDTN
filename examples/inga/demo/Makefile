@@ -1,4 +1,4 @@
-CONTIKI_PROJECT = inga_demo
+CONTIKI_PROJECT = inga-demo
 all: $(CONTIKI_PROJECT)
 uip-unicast: uip_unicast
 	
