@@ -18,28 +18,21 @@ example-shell/native \
 inga/demo/inga \
 inga/sensors/inga \
 inga/fat/inga \
-netperf/sky \
-powertrace/sky \
 rime/inga \
 rime/sky \
-rime/z1 \
 ravenusbstick/avr-ravenusb \
 rest-example/sky \
 servreg-hack/inga \
 servreg-hack/sky \
 sky/sky \
 sky-ip/sky \
-sky-shell/sky \
-sky-shell-exec/sky \
-sky-shell-webserver/sky \
-tcp-socket/minimal-net \
-telnet-server/minimal-net \
 webserver/minimal-net \
 wget/minimal-net \
 z1/z1 \
 settings-example/avr-raven \
 settings-example/inga \
 ipv6/multicast/sky \
+ipv6/multicast/inga
 
 TOOLS=
 
