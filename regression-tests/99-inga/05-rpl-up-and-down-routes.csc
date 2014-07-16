@@ -290,7 +290,7 @@ lostMsgs = 0;&#xD;
 TIMEOUT(1000000, if(lostMsgs == 0) { log.testOK(); } );&#xD;
 &#xD;
 lastMsg = -1;&#xD;
-packets = "_________";&#xD;
+var packets = "_________";&#xD;
 hops = 0;&#xD;
 &#xD;
 while(true) {&#xD;
