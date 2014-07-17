@@ -173,7 +173,7 @@ rng_get_uint8(void)
 static void
 generate_new_eui64(uint8_t eui64[8])
 {
-  eui64[0] = 0x02;
+  eui64[0] = rng_get_uint8() | 0x02; // set U/L bit to 1 (local!)
   eui64[1] = rng_get_uint8();
   eui64[2] = rng_get_uint8();
   eui64[3] = 0xFF;
@@ -311,6 +311,7 @@ load_config(void)
   if (node_id > 0) {
 #if UIP_CONF_IPV6
     memset(inga_cfg.eui64_addr, 0, sizeof(inga_cfg.eui64_addr));
+    inga_cfg.eui64_addr[0] |= 0x02; // set U/L bit to 1 (local!)
     inga_cfg.eui64_addr[6] = (node_id >> 8);
     inga_cfg.eui64_addr[7] = node_id & 0xFF;
 #else /* UIP_CONF_IPV6 */
