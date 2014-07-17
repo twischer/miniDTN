@@ -1,7 +1,7 @@
 The INGA sensor platform on Contiki-OS.
 =======================================
 
-[![Build Status](http://jenkins.ibr.cs.tu-bs.de:8080/buildStatus/icon?job=inga--develop--compile)](http://jenkins.ibr.cs.tu-bs.de:8080/view/INGA/job/inga--develop--compile/)
+[![Build Status](https://jenkins.ibr.cs.tu-bs.de/jenkins/buildStatus/icon?job=inga--develop--cooja)](http://jenkins.ibr.cs.tu-bs.de/jenkins/view/INGA/job/inga--develop--compile/)
 
 INGA is an Open Source Wireless Sensor Node for many different applications. 
 INGA was developed at IBR as Inexpensive Node for General Applications and became part of many projects.
