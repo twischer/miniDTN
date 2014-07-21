@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, TU Braunschweig
+ * Copyright (c) 2014, TU Braunschweig
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -17,7 +17,8 @@
  * THIS SOFTWARE IS PROVIDED BY THE INSTITUTE AND CONTRIBUTORS ``AS IS'' AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE INSTITUTE OR CONTRIBUTORS BE LIABLE * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE INSTITUTE OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
  * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
  * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
@@ -29,15 +30,14 @@
  */
 
 /**
- * \file
- *      Contiki system setup
+ * \file Contiki system setup for INGA
  * \author Robert Hartung
  * \author Enrico Joerns <joerns@ibr.cs.tu-bs.de>
  */
 
 #define PRINTF(FORMAT,args...) printf_P(PSTR(FORMAT),##args)
 
-#define PRINTA(FORMAT,args...) printf_P(PSTR(FORMAT),##args)
+
 
 /* If defined 1, prints debug infos. */
 #ifndef DEBUG
@@ -80,18 +80,12 @@ uint8_t debugflowsize, debugflow[DEBUGFLOWSIZE];
 
 #include "ip/uip.h"
 
-#if RF230BB        //radio driver using contiki core mac
 #include "radio/rf230bb/rf230bb.h"
 #include "net/mac/frame802154.h"
 #include "net/mac/framer-802154.h"
 #include "net/ipv6/sicslowpan.h"
 
-#else              //radio driver using Atmel/Cisco 802.15.4'ish MAC
-#include "mac.h"
-#include "sicslowmac.h"
-#include "sicslowpan.h"
-#include "ieee-15-4-manager.h"
-#endif /*RF230BB*/
+#include "net/rime/rime.h"
 
 #include "contiki.h"
 #include "contiki-net.h"
@@ -102,23 +96,17 @@ uint8_t debugflowsize, debugflow[DEBUGFLOWSIZE];
 #include "dev/serial-line.h"
 #include "dev/slip.h"
 
-#if AVR_WEBSERVER
-#include "httpd-fs.h"
-#include "httpd-cgi.h"
-#endif
-
 #ifdef COFFEE_FILES
 #include "cfs/coffee/cfs-coffee.h"
 #endif
 
-#if WITH_UIP6
+#if UIP_CONF_IPV6
 #include "net/ipv6/uip-ds6.h"
 // function declaration for net/uip-debug.c
 void uip_debug_ipaddr_print(const uip_ipaddr_t *addr);
 void uip_debug_lladdr_print(const uip_lladdr_t *addr);
-#endif /* WITH_UIP6 */
+#endif /* UIP_CONF_IPV6 */
 
-#include "net/rime/rime.h"
 
 // Apps 
 #if (APP_SETTINGS_DELETE == 1)
@@ -128,41 +116,18 @@ void uip_debug_lladdr_print(const uip_lladdr_t *addr);
 #include "settings_set.h"
 #endif
 
-/* Get periodic prints from idle loop, from clock seconds or rtimer interrupts */
-/* Use of rtimer will conflict with other rtimer interrupts such as contikimac radio cycling */
-/* STAMPS will print ENERGEST outputs if that is enabled. */
-#ifndef INGA_CONF_PERIODIC
-#define INGA_PERIODIC 1
-#else
-#define INGA_PERIODIC INGA_CONF_PERIODIC
-#endif
 
-/** Enables route prints with given interval [seconds] */
-#ifndef INGA_CONF_PERIODIC_ROUTES
-#define INGA_PERIODIC_ROUTES 0
-#else
-#define INGA_PERIODIC_ROUTES INGA_CONF_PERIODIC_ROUTES
-#if INGA_PERIODIC_ROUTES > 0 && !UIP_CONF_IPV6
-#error Periodic routes only supported for IPv6
-#endif
-#endif
-/** Enables time stamps with given interval [seconds] */
-#ifndef INGA_CONF_PERIODIC_STAMPS
-#define PER_STAMPS 60
-#else
-#define PER_STAMPS INGA_CONF_PERIODIC_STAMPS
-#endif
-/** Activates stack monitor with given interval [seconds] */
-#ifndef INGA_CONF_PERIODIC_STACK
-#define INGA_PERIODIC_STACK 60
-#else
-#define INGA_PERIODIC_STACK INGA_CONF_PERIODIC_STACK
-#endif
+#if INGA_BOOTSCREEN
 
+#define PRINTA(FORMAT,args...) printf_P(PSTR(FORMAT),##args)
 
-#ifndef USART_BAUD_INGA
-#define USART_BAUD_INGA USART_BAUD_19200
-#endif
+#if INGA_TERMINAL_ESCAPES
+#define PRINTA_SEC(a) PRINTA("\e[1m" a "\e[0m")
+#else /* INGA_TERMINAL_ESCAPES */
+#define PRINTA_SEC(a) PRINTA(a)
+#endif /* INGA_TERMINAL_ESCAPES */
+
+#endif /* INGA_BOOTSCREEN */
 
 /*-------------------------------------------------------------------------*/
 /*----------------------Configuration of the .elf file---------------------*/
@@ -185,22 +150,21 @@ SIGNATURE = {
 };
 #endif /* (__AVR_LIBC_VERSION__ >= 10700UL) */
 
-#if CONTIKI_CONF_RANDOM_MAC
-/** Get a pseudo random number using the ADC */
+#if INGA_ADC_RANDOM
+#include "dev/adc.h"
+/** Get a pseudo random number using the ADC. */
 static uint8_t
 rng_get_uint8(void)
 {
   uint8_t i, j = 0;
-  ADCSRA = 1 << ADEN; //Enable ADC, not free running, interrupt disabled, fastest clock
-  for (i = 0; i < 4; i++) {
-    ADMUX = 0; //toggle reference to increase noise
-    ADMUX = 0x1E; //Select AREF as reference, measure 1.1 volt bandgap reference.
-    ADCSRA |= 1 << ADSC; //Start conversion
-    while (ADCSRA & (1 << ADSC)); //Wait till done
-    j = (j << 2) + ADC;
+  for( i = 0; i < 4; i++) {
+    adc_init(ADC_SINGLE_CONVERSION, ADC_REF_2560MV_INT);
+    adc_set_mux(0x1E);
+    int val = adc_get_value();
+    j = (j << 2) + val;
+    adc_deinit();
+    _delay_ms(1); // seems to improve noise
   }
-  ADCSRA = 0; //Disable ADC
-  PRINTD("rng issues %d\n", j);
   return j;
 }
 /*----------------------------------------------------------------------------*/
@@ -209,7 +173,7 @@ rng_get_uint8(void)
 static void
 generate_new_eui64(uint8_t eui64[8])
 {
-  eui64[0] = 0x02;
+  eui64[0] = rng_get_uint8() | 0x02; // set U/L bit to 1 (local!)
   eui64[1] = rng_get_uint8();
   eui64[2] = rng_get_uint8();
   eui64[3] = 0xFF;
@@ -218,7 +182,7 @@ generate_new_eui64(uint8_t eui64[8])
   eui64[6] = rng_get_uint8();
   eui64[7] = rng_get_uint8();
 }
-#endif /* CONTIKI_CONF_RANDOM_MAC */
+#endif
 /*----------------------------------------------------------------------------*/
 // implements log function from uipopt.h
 void
@@ -227,20 +191,27 @@ uip_log(char *msg)
   printf("%s\n", msg);
 }
 /*----------------------------------------------------------------------------*/
-// config variables, preset with default values
-uint8_t radio_tx_power = RADIO_TX_POWER;
-uint8_t radio_channel = RADIO_CHANNEL;
-uint16_t pan_id = RADIO_PAN_ID;
-uint8_t eui64_addr[8] = {NODE_EUI64};
+struct inga_config_s {
+  uint8_t eui64_addr[8];
+  uint8_t radio_channel;
+  uint8_t radio_tx_power;
+  uint16_t pan_id;
+  uint16_t pan_addr; // short address
+};
+struct inga_config_s inga_cfg; // Keep global!
 /*----------------------------------------------------------------------------*/
 // implement sys/node-id.h interface
 unsigned short node_id = NODE_ID;
 /*----------------------------------------------------------------------------*/
-void node_id_restore(void) {
+void
+node_id_restore(void)
+{
   node_id = settings_get_uint16(SETTINGS_KEY_PAN_ADDR, 0);
 }
 /*----------------------------------------------------------------------------*/
-void node_id_burn(unsigned short node_id) {
+void
+node_id_burn(unsigned short node_id)
+{
   if (settings_set_uint16(SETTINGS_KEY_PAN_ADDR, (uint16_t) node_id) == SETTINGS_STATUS_OK) {
     uint16_t settings_nodeid = settings_get_uint16(SETTINGS_KEY_PAN_ADDR, 0);
     PRINTF("New Node ID: %04X\n", settings_nodeid);
@@ -249,12 +220,13 @@ void node_id_burn(unsigned short node_id) {
   }
 }
 /*----------------------------------------------------------------------------*/
-#define CONVERTTXPOWER 1
-#if CONVERTTXPOWER  //adds ~120 bytes to program flash size
+#if INGA_CONVERTTXPOWER  //adds ~120 bytes to program flash size
 // NOTE: values for AT86RF231
 const char txonesdigit[16]   PROGMEM = {'3','2','2','1','1','0','0','1','2','3','4','5','7','9','2','7'};
 const char txtenthsdigit[16] PROGMEM = {'0','8','3','8','3','7','0','0','0','0','0','0','0','0','0','0'};
-static void printtxpower(void) {
+static void
+printtxpower(void)
+{
   uint8_t power = rf230_get_txpower() & 0xf;
   char sign = (power < 0x7 ? '+' : '-');
   char tens = (power > 0xD ? '1' : '0');
@@ -266,181 +238,152 @@ static void printtxpower(void) {
     printf_P(PSTR("%c%c%c.%cdBm"), sign, tens, ones, tenths);
   }
 }
-#endif
+#endif /* INGA_CONVERTTXPOWER */
 /*----------------------------------------------------------------------------*/
-
-// -- Bootscreen define parameters
-
-#ifndef INGA_CONF_BOOTSCREEN
-#define INGA_BOOTSCREEN 1
-#else /* INGA_CONF_BOOTSCREEN */
-#define INGA_BOOTSCREEN INGA_CONF_BOOTSCREEN
-#endif /* INGA_CONF_BOOTSCREEN */
-
-#if INGA_BOOTSCREEN
-#ifndef INGA_CONF_BOOTSCREEN_NET
-#define INGA_BOOTSCREEN_NET 1
-#else /* INGA_CONF_BOOTSCREEN_NET */
-#define INGA_BOOTSCREEN_NET INGA_CONF_BOOTSCREEN_NET
-#endif /* INGA_CONF_BOOTSCREEN_NET */
-
-#ifndef INGA_CONF_BOOTSCREEN_NETSTACK
-#define INGA_BOOTSCREEN_NETSTACK 1
-#else /* INGA_CONF_BOOTSCREEN_NETSTACK */
-#define INGA_BOOTSCREEN_NETSTACK INGA_CONF_BOOTSCREEN_NETSTACK
-#endif /* INGA_CONF_BOOTSCREEN_NETSTACK */
-
-#ifndef INGA_CONF_BOOTSCREEN_RADIO
-#define INGA_BOOTSCREEN_RADIO 1
-#else /* INGA_CONF_BOOTSCREEN_RADIO */
-#define INGA_BOOTSCREEN_RADIO INGA_CONF_BOOTSCREEN_RADIO
-#endif /* INGA_CONF_BOOTSCREEN_RADIO */
-
-#ifndef INGA_CONF_BOOTSCREEN_SENSORS
-#define INGA_BOOTSCREEN_SENSORS 1
-#else /* INGA_CONF_BOOTSCREEN_SENSORS */
-#define INGA_BOOTSCREEN_SENSORS INGA_CONF_BOOTSCREEN_SENSORS
-#endif /* INGA_CONF_BOOTSCREEN_SENSORS */
-
-#else /* INGA_BOOTSCREEN */
-#define INGA_BOOTSCREEN_NET 0
-#define INGA_BOOTSCREEN_NETSTACK 0
-#define INGA_BOOTSCREEN_RADIO 0
-#define INGA_BOOTSCREEN_SENSORS 0
-#endif /* INGA_BOOTSCREEN */
+#if INGA_TERMINAL_ESCAPES
+const char msg_ok[]   PROGMEM = "\e[32m[OK]\e[0m\n"; // green
+const char msg_err[]   PROGMEM = "\e[31m[N/A]\e[0m\n"; // red
+#else /* INGA_TERMINAL_ESCAPES */
+const char msg_ok[]   PROGMEM = "[OK]\n";
+const char msg_err[]  PROGMEM = "[N/A]\n";
+#endif /* INGA_TERMINAL_ESCAPES */
 
 #if INGA_BOOTSCREEN_SENSORS
-const char msg_ok[6]   PROGMEM = "[OK]\n";
-const char msg_err[7]  PROGMEM = "[N/A]\n";
 #define CHECK_SENSOR(name, sensor) \
   printf_P(PSTR("  " name ": ")); \
   printf_P(sensor.status(SENSORS_READY) ? msg_ok : msg_err);
 #endif
 /*----------------------------------------------------------------------------*/
-void
-platform_radio_init(void)
+#define eui64_is_null(eui64) \
+    ((eui64[0] == 0x00) \
+    && (eui64[1] == 0x00) \
+    && (eui64[2] == 0x00) \
+    && (eui64[3] == 0x00) \
+    && (eui64[4] == 0x00) \
+    && (eui64[5] == 0x00) \
+    && (eui64[6] == 0x00) \
+    && (eui64[7] == 0x00))
+/*----------------------------------------------------------------------------*/
+#define pan_addr_from_eui64(eui64) \
+  (uint16_t) (eui64[0] + eui64[1] + eui64[2] + eui64[3] + eui64[4] + eui64[5] + eui64[6] + eui64[7]);
+/*----------------------------------------------------------------------------*/
+static void
+load_config(void)
 {
 
-  /*******************************************************************************
-   * Load settings from EEPROM if not set manually
-   ******************************************************************************/
-
   // PAN_ID
-#ifndef RADIO_CONF_PAN_ID
+#ifndef INGA_CONF_PAN_ID
   if (settings_check(SETTINGS_KEY_PAN_ID, 0) == true) {
-    pan_id = settings_get_uint16(SETTINGS_KEY_PAN_ID, 0);
+    inga_cfg.pan_id = settings_get_uint16(SETTINGS_KEY_PAN_ID, 0);
   } else {
-    PRINTD("PanID not in EEPROM - using default\n");
+    inga_cfg.pan_id = INGA_PAN_ID;
+    PRINTD("PanID not in EEPROM - using default (0x%04x)\n", inga_cfg.pan_id);
   }
-#endif /* RADIO_CONF_PAN_ID */
+#else /* INGA_CONF_PAN_ID */
+  inga_cfg.pan_id = INGA_PAN_ID;
+#endif /* INGA_CONF_PAN_ID */
 
-  // PAN_ADDR/NODE_ID
-#ifndef NODE_CONF_ID
-  if (settings_check(SETTINGS_KEY_PAN_ADDR, 0) == true) {
-    node_id = settings_get_uint16(SETTINGS_KEY_PAN_ADDR, 0);
-  } else {
-    PRINTD("NodeID/PanAddr not in EEPROM - using default\n");
-  }
-#endif /* NODE_CONF_ID */
-
-  // TX_POWER
-#ifndef RADIO_CONF_TX_POWER
+  /* Radio TX Power */
+#ifndef INGA_CONF_RADIO_TX_POWER
   if (settings_check(SETTINGS_KEY_TXPOWER, 0) == true) {
-    radio_tx_power = settings_get_uint8(SETTINGS_KEY_TXPOWER, 0);
+    inga_cfg.radio_tx_power = settings_get_uint8(SETTINGS_KEY_TXPOWER, 0);
   } else {
-    PRINTD("Radio TXPower not in EEPROM - using default\n");
+    inga_cfg.radio_tx_power = INGA_RADIO_TX_POWER;
+    PRINTD("Radio TXPower not in EEPROM - using default (%d)\n", inga_cfg.radio_tx_power);
   }
-#endif /* RADIO_CONF_TX_POWER */
+#else /* INGA_CONF_RADIO_TX_POWER */
+  inga_cfg.radio_tx_power = INGA_RADIO_TX_POWER;
+#endif /* INGA_CONF_RADIO_TX_POWER */
 
-  // CHANNEL
-#ifndef RADIO_CONF_CHANNEL
+  /* Channel */
+#ifndef INGA_CONF_RADIO_CHANNEL
   if (settings_check(SETTINGS_KEY_CHANNEL, 0) == true) {
-    radio_channel = settings_get_uint8(SETTINGS_KEY_CHANNEL, 0);
+    inga_cfg.radio_channel = settings_get_uint8(SETTINGS_KEY_CHANNEL, 0);
   } else {
-    PRINTD("Radio Channel not in EEPROM - using default\n");
+    inga_cfg.radio_channel = INGA_RADIO_CHANNEL;
+    PRINTD("Radio Channel not in EEPROM - using default (%d)\n", inga_cfg.radio_channel);
   }
-#endif /* RADIO_CONF_CHANNEL */
+#else /* INGA_CONF_RADIO_CHANNEL */
+  inga_cfg.radio_channel = INGA_RADIO_CHANNEL;
+#endif /* INGA_CONF_RADIO_CHANNEL */
 
-  // EUI64 ADDR
-#ifndef NODE_CONF_EUI64
-  /* Tries to load EUI64 from settings.
-   * If not found depending on CONTIKI_CONF_RANDOM_MAC
-   * a new EUI64 is automatically generated either by using the node_id
-   * or by using the random number generator.
-   *
-   * If WRITE_EUI64 is set, the new mac will be saved in settings manager.*/
-  if (settings_check(SETTINGS_KEY_EUI64, 0) != true || settings_get(SETTINGS_KEY_EUI64, 0, (void*) &eui64_addr, sizeof(eui64_addr)) != SETTINGS_STATUS_OK) {
-#if CONTIKI_CONF_RANDOM_MAC
-    generate_new_eui64(eui64_addr);
-    PRINTD("Radio IEEE Addr not in EEPROM - generated random\n");
-#else /* CONTIKI_CONF_RANDOM_MAC */
-    // address generation described in [RFC 4944, Sec. 6]
-    // note: use pan id?
-    eui64_addr[0] = 0x02; // pan id
-    eui64_addr[1] = 0x00; // here?
-    eui64_addr[2] = 0x00;
-    eui64_addr[3] = 0xFF;
-    eui64_addr[4] = 0xFE;
-    eui64_addr[5] = 0x00;
-    eui64_addr[6] = (node_id >> 8);
-    eui64_addr[7] = node_id & 0xFF;
-    PRINTD("Radio IEEE Addr not in EEPROM - using default\n");
-#endif /* CONTIKI_CONF_RANDOM_MAC */
-#if WRITE_EUI64
-    if (settings_set(SETTINGS_KEY_EUI64, eui64_addr, sizeof (eui64_addr)) == SETTINGS_STATUS_OK) {
+  /* Overwrite with node id if set */
+  if (node_id > 0) {
+#if UIP_CONF_IPV6
+    memset(inga_cfg.eui64_addr, 0, sizeof(inga_cfg.eui64_addr));
+    inga_cfg.eui64_addr[0] |= 0x02; // set U/L bit to 1 (local!)
+    inga_cfg.eui64_addr[6] = (node_id >> 8);
+    inga_cfg.eui64_addr[7] = node_id & 0xFF;
+#else /* UIP_CONF_IPV6 */
+    inga_cfg.eui64_addr[0] = node_id & 0xFF;
+    inga_cfg.eui64_addr[1] = (node_id >> 8);
+#endif /* UIP_CONF_IPV6 */
+    inga_cfg.pan_addr = node_id;
+
+    /* Configuration done */
+    return;
+  }
+
+  /* EUI64 ADDR */
+#ifndef INGA_CONF_EUI64
+  if (settings_check(SETTINGS_KEY_EUI64, 0) == true) {
+    settings_get(SETTINGS_KEY_EUI64, 0, (void*) &inga_cfg.eui64_addr, sizeof(inga_cfg.eui64_addr));
+  } else {
+    PRINTD("EUI-64 not in EEPROM\n");
+    memset(inga_cfg.eui64_addr, 0, sizeof(inga_cfg.eui64_addr));
+  }
+#else /* !INGA_CONF_EUI64 */
+  inga_cfg.eui64_addr = {INGA_EUI64};
+#endif /* !INGA_CONF_EUI64 */
+
+  /* PAN Addr */
+#ifndef INGA_CONF_PAN_ADDR
+  if (settings_check(SETTINGS_KEY_PAN_ADDR, 0) == true) {
+    inga_cfg.pan_addr = settings_get_uint16(SETTINGS_KEY_PAN_ADDR, 0);
+  } else {
+    inga_cfg.pan_addr = INGA_PAN_ADDR;
+  }
+#else /* !INGA_CONF_PAN_ADDR */
+  inga_cfg.pan_adr = INGA_PAN_ADDR;
+#endif /* !INGA_CONF_PAN_ADDR */
+
+
+#if INGA_ADC_RANDOM
+  /* If we do not have a EUI64, we generate one */
+  if(eui64_is_null(inga_cfg.eui64_addr)) {
+    generate_new_eui64(inga_cfg.eui64_addr);
+#if INGA_WRITE_EUI64
+    /* Write new settings */
+    if (settings_set(SETTINGS_KEY_EUI64, inga_cfg.eui64_addr, sizeof (inga_cfg.eui64_addr)) == SETTINGS_STATUS_OK) {
       PRINTD("Wrote new IEEE Addr to EEPROM.\n");
     } else {
       PRINTD("Failed writing IEEE Addr to EEPROM.\n");
     }
-#endif /* WRITE_EUI64 */
+#endif /* INGA_WRITE_EUI64 */
   }
-#endif /* NODE_CONF_EUI64 */
+#endif /* INGA_ADC_RANDOM */
 
-#if EUI64_BY_NODE_ID // TODO: remove here?
-// TODO: node_id not required, when eui64 is replaced by addr
-#if UIP_CONF_IPV6
-  /* Replace lower 2 bytes with node ID  */
-  eui64_addr[6] = (node_id >> 8);
-  eui64_addr[7] = node_id & 0xFF;
-#else
-  eui64_addr[0] = node_id & 0xFF;
-  eui64_addr[1] = (node_id >> 8);
-#endif
-#endif
+  /* If we do not have a pan address, we generate one */
+  if(inga_cfg.pan_addr == 0x0000) {
+    inga_cfg.pan_addr = pan_addr_from_eui64(inga_cfg.eui64_addr);
+  }
 
-#if INGA_BOOTSCREEN_NET
-  PRINTA("WPAN Info:\n");
-  PRINTA("  PAN ID:   0x%04X\n", pan_id);
-  PRINTA("  PAN ADDR: 0x%04X\n", node_id);
-  PRINTA("  EUI-64:   %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x\n\r",
-          eui64_addr[0],
-          eui64_addr[1],
-          eui64_addr[2],
-          eui64_addr[3],
-          eui64_addr[4],
-          eui64_addr[5],
-          eui64_addr[6],
-          eui64_addr[7]);
-#endif /* INGA_BOOTSCREEN_NET */
-
-#if RF230BB
-
+}
+/*----------------------------------------------------------------------------*/
+void
+platform_radio_init(void)
+{
   /* Start radio and radio receive process */
   NETSTACK_RADIO.init();
 
-  //--- Radio address settings
-  {
-    /* change order of bytes for rf23x */
-    uint16_t inv_node_id = ((node_id >> 8) & 0xff) + ((node_id & 0xff) << 8);
-    rf230_set_pan_addr(
-            pan_id, // Network address 2 byte
-            inv_node_id, // PAN ADD 2 Byte
-            eui64_addr // MAC ADDRESS 8 byte
-            );
-
-    rf230_set_channel(radio_channel);
-    rf230_set_txpower(radio_tx_power);
+  if (eui64_is_null(inga_cfg.eui64_addr)) {
+    rf230_set_pan_addr(inga_cfg.pan_id, inga_cfg.pan_addr, NULL);
+  } else {
+    rf230_set_pan_addr(inga_cfg.pan_id, inga_cfg.pan_addr, inga_cfg.eui64_addr);
   }
+
+  rf230_set_channel(inga_cfg.radio_channel);
+  rf230_set_txpower(inga_cfg.radio_tx_power);
 
   /* Initialize stack protocols */
   queuebuf_init();
@@ -449,7 +392,10 @@ platform_radio_init(void)
   NETSTACK_NETWORK.init();
 
 #if INGA_BOOTSCREEN_NETSTACK
-  PRINTA("Netstack info:\n");
+#ifndef INGA_BOOTSCREEN
+#error WOOOT?
+#endif
+  PRINTA_SEC("Netstack info:\n");
   PRINTA("  NET: %s\n  MAC: %s\n  RDC: %s\n",
       NETSTACK_NETWORK.name,
       NETSTACK_MAC.name,
@@ -457,27 +403,19 @@ platform_radio_init(void)
 #endif /* INGA_BOOTSCREEN_NETSTACK */
 
 #if INGA_BOOTSCREEN_RADIO
-  PRINTA("Radio info:\n");
+  PRINTA_SEC("Radio info:\n");
   PRINTA("  Check rate %lu Hz\n  Channel: %u\n  Power: %u",
       CLOCK_SECOND / (NETSTACK_RDC.channel_check_interval() == 0 ? 1 :
       NETSTACK_RDC.channel_check_interval()), // radio??
       rf230_get_channel(),
       rf230_get_txpower());
-#if CONVERTTXPOWER
+#if INGA_CONVERTTXPOWER
       printf(" (");
       printtxpower();
       printf(")");
-#endif /* CONVERTTXPOWER */
+#endif /* INGA_CONVERTTXPOWER */
       printf("\n");
 #endif /* INGA_BOOTSCREEN_RADIO */
-
-#else /* RF230BB */
-
-  /* Original RF230 combined mac/radio driver */
-  /* mac process must be started before tcpip process! */
-  process_start(&mac_process, NULL);
-#endif /* RF230BB */
-
 }
 
 /*-------------------------Low level initialization------------------------*/
@@ -496,7 +434,7 @@ init(void)
   watchdog_start();
 
   /* Second rs232 port for debugging */
-  rs232_init(RS232_PORT_0, USART_BAUD_INGA, USART_PARITY_NONE | USART_STOP_BITS_1 | USART_DATA_BITS_8);
+  rs232_init(RS232_PORT_0, INGA_USART_BAUD, USART_PARITY_NONE | USART_STOP_BITS_1 | USART_DATA_BITS_8);
   /* Redirect stdout to second port */
   rs232_redirect_stdout(RS232_PORT_0);
 
@@ -540,13 +478,17 @@ init(void)
   }
 #endif
 
-  /* Get a random (or probably different) seed for the 802.15.4 packet sequence number.
-   * Some layers will ignore duplicates found in a history (e.g. Contikimac)
+  /* Init the random with a random (or probably different) seed.
+   * This is required for several applcations, mainly in the network stack,
+   * e.g. for trickle timers or the 802.15.4 packet sequence number.
+   * Some layers also will ignore 802.15.4 duplicates found in a history (e.g. Contikimac)
    * causing the initial packets to be ignored after a short-cycle restart.
    */
-#if CONTIKI_CONF_RANDOM_MAC
+#if INGA_ADC_RANDOM
   random_init(rng_get_uint8());
-#endif
+#else /* INGA_ADC_RANDOM */
+  random_init(node_id);
+#endif /* INGA_ADC_RANDOM */
 
 
   /* Flash initialization */
@@ -576,81 +518,102 @@ init(void)
   process_start(&settings_delete_process, NULL);
 #endif    
 
+  /* load stuff from eeprom */
+  load_config();
+
+#if INGA_BOOTSCREEN_NET
+  PRINTA_SEC("WPAN Info:\n");
+  PRINTA("  EUI-64:   %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x\n\r",
+      inga_cfg.eui64_addr[0],
+      inga_cfg.eui64_addr[1],
+      inga_cfg.eui64_addr[2],
+      inga_cfg.eui64_addr[3],
+      inga_cfg.eui64_addr[4],
+      inga_cfg.eui64_addr[5],
+      inga_cfg.eui64_addr[6],
+      inga_cfg.eui64_addr[7]);
+  PRINTA("  PAN ID:   0x%04X\n", inga_cfg.pan_id);
+  PRINTA("  PAN ADDR: 0x%04X\n", inga_cfg.pan_addr);
+#endif /* INGA_BOOTSCREEN_NET */
+
+  //--- Set Link address based on eui64
+#if LINKADDR_SIZE == 2
+  // need to invert byte order to match (short addr 0x0001 to rime addr 0.1)
+  linkaddr_t inv_id = {inga_cfg.pan_addr >> 8, inga_cfg.pan_addr & 0xFF};
+  linkaddr_set_node_addr(&inv_id);
+#elif LINKADDR_SIZE == 8
+  linkaddr_set_node_addr((linkaddr_t *) &inga_cfg.eui64_addr);
+#else /* LINKADDR_SIZE */
+#error LINKADDR_SIZE not supported
+#endif /* LINKADDR_SIZE */
+
 #if PLATFORM_RADIO
   // Init radio
   platform_radio_init();
 #endif
 
-  //--- Set Rime address based on eui64
-  linkaddr_t addr;
-  memcpy(addr.u8, eui64_addr, sizeof (linkaddr_t));
-  linkaddr_set_node_addr(&addr);
-
 #if UIP_CONF_IPV6
   // Copy EUI64 to the link local address
-  memcpy(&uip_lladdr.addr, &eui64_addr, sizeof (uip_lladdr.addr));
+  memcpy(&uip_lladdr.addr, &(inga_cfg.eui64_addr), sizeof(uip_lladdr.addr));
 
   process_start(&tcpip_process, NULL);
 
 #if INGA_BOOTSCREEN_NET
-  PRINTA("IPv6 info:\n");
+  PRINTA_SEC("IPv6 info:\n");
   PRINTA("  Tentative link-local IPv6 address ");
-  uip_ds6_addr_t *lladdr;
-  lladdr = uip_ds6_get_link_local(-1);
-  uip_debug_ipaddr_print(lladdr->ipaddr.u8);
+  uip_ds6_addr_t *lladdr = uip_ds6_get_link_local(-1);
+  uip_debug_ipaddr_print(&lladdr->ipaddr);
   PRINTA("\n");
 
-#if UIP_CONF_IPV6_RPL
-  PRINTA("  RPL Enabled\n");
-#endif
 #if UIP_CONF_ROUTER
   PRINTA("  Routing Enabled, TCP_MSS: %u\n", UIP_TCP_MSS);
 #endif
-#endif /* INGA_BOOTSCREEN_NET */
-
-#else /* UIP_CONF_IPV6 */
-
-#if INGA_BOOTSCREEN_NET
-  PRINTA("rime address:\n  ");
-  int i;
-  for (i = 0; i < sizeof (linkaddr_t); i++) {
-    PRINTA("%02x.", addr.u8[i]);
-  }
-  PRINTA("\n");
+#if UIP_CONF_IPV6_RPL
+  PRINTA("  RPL Enabled\n");
+#endif
 #endif /* INGA_BOOTSCREEN_NET */
 
 #endif /* UIP_CONF_IPV6 */
+
+#if INGA_BOOTSCREEN_NET
+  PRINTA_SEC("Link layer info:\n");
+  PRINTA("  Addr: ");
+  int i;
+  for (i = 0; i < sizeof(linkaddr_t) - 1; i++) {
+    PRINTA("%02x.", linkaddr_node_addr.u8[i]);
+  }
+  PRINTA("%02x\n", linkaddr_node_addr.u8[sizeof(linkaddr_t) - 1]);
+#endif /* INGA_BOOTSCREEN_NET */
 
   /* Start sensor init process */
   process_start(&sensors_process, NULL);
 
 #if INGA_BOOTSCREEN_SENSORS
-  PRINTA("Sensors:\n");
+  PRINTA_SEC("Sensors:\n");
   CHECK_SENSOR("Button", button_sensor);
   CHECK_SENSOR("Accelerometer", acc_sensor);
-  CHECK_SENSOR("Gyroscope", acc_sensor);
+  CHECK_SENSOR("Gyroscope", gyro_sensor);
   CHECK_SENSOR("Pressure", pressure_sensor);
   CHECK_SENSOR("Battery", battery_sensor);
-#endif
+#endif /* INGA_BOOTSCREEN_SENSORS */
 
 #if INGA_BOOTSCREEN
-  PRINTA("******* Online *******\n\n");
+  PRINTA("\n******* Online *******\n\n");
 #endif
 }
-
 /*---------------------------------------------------------------------------*/
 #if INGA_PERIODIC
 static void
-periodic_prints()
+periodic_prints(void)
 {
   static uint32_t clocktime;
 
   if (clocktime != clock_seconds()) {
     clocktime = clock_seconds();
 
-#if PER_STAMPS
+#if INGA_PERIODIC_STAMPS
     /* Print time stamps. */
-    if ((clocktime % PER_STAMPS) == 0) {
+    if ((clocktime % INGA_PERIODIC_STAMPS) == 0) {
 #if ENERGEST_CONF_ON
 #include "lib/print-stats.h"
       print_stats();
@@ -661,7 +624,7 @@ periodic_prints()
       PRINTF("%us\n", clocktime);
 #endif /* RADIOSTATS */
     }
-#endif /* PER_STAMPS */
+#endif /* INGA_PERIODIC_STAMPS */
 
 #if INGA_PERIODIC_ROUTES
     if ((clocktime % INGA_PERIODIC_ROUTES) == 2) {
@@ -687,23 +650,23 @@ periodic_prints()
         PRINTA("  ");
         uip_debug_ipaddr_print(&nbr->ipaddr);
         PRINTA(" lladdr ");
-        uip_debug_lladdr_print(uip_ds6_nbr_get_ll(&nbr->ipaddr));
-        if (&nbr->isrouter) PRINTA(" router ");
+        uip_debug_lladdr_print(uip_ds6_nbr_get_ll(nbr));
+        if (nbr->isrouter) PRINTA(" router");
         switch (nbr->state) {
           case NBR_INCOMPLETE:
-            PRINTA("INCOMPLETE");
+            PRINTA(" INCOMPLETE");
             break;
           case NBR_REACHABLE:
-            PRINTA("REACHABLE");
+            PRINTA(" REACHABLE");
             break;
           case NBR_STALE:
-            PRINTA("STALE");
+            PRINTA(" STALE");
             break;
           case NBR_DELAY:
-            PRINTA("DELAY");
+            PRINTA(" DELAY");
             break;
           case NBR_PROBE:
-            PRINTA("PROBE");
+            PRINTA(" PROBE");
             break;
         }
         PRINTA("\n");
@@ -789,3 +752,4 @@ log_message(char *m1, char *m2)
 {
   PRINTF("%s%s\n", m1, m2);
 }
+

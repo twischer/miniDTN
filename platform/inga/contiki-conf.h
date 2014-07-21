@@ -118,9 +118,6 @@
 #define PACKETBUF_CONF_HDR_SIZE   0            //RF230 combined driver/mac handles headers internally
 #endif /* RF230BB */
 
-/* Replace lower 2 bytes of MAC with node ID  */
-#define EUI64_BY_NODE_ID          1
-
 /* 211 bytes per queue buffer */
 #define QUEUEBUF_CONF_NUM         8
 /* 54 bytes per queue ref buffer */
@@ -147,21 +144,16 @@
 /*
  * Network stack setup.
  */
-#if WITH_UIP6
+#if UIP_CONF_IPV6
 #define NETSTACK_CONF_NETWORK     sicslowpan_driver
 
 #define LINKADDR_CONF_SIZE        8
 
 /* -- UIP IPv6 settings */
 #define UIP_CONF_ICMP6            1
-#define UIP_CONF_IPV6             1
 #define UIP_CONF_IPV6_CHECKS      1
 #define UIP_CONF_IPV6_QUEUE_PKT   1
 #define UIP_CONF_IPV6_REASSEMBLY  0
-/* -- SICSLOWPAN driver settings */
-#define SICSLOWPAN_CONF_COMPRESSION SICSLOWPAN_COMPRESSION_HC06
-/* Allow 6lowpan fragments (needed for large TCP maximum segment size) */
-#define SICSLOWPAN_CONF_FRAG      1
 /* Most browsers reissue GETs after 3 seconds which stops fragment reassembly
  * so a longer MAXAGE does no good */
 #define SICSLOWPAN_CONF_MAXAGE    3
@@ -176,22 +168,13 @@
 #define SICSLOWPAN_CONF_ADDR_CONTEXT_1 {addr_contexts[1].prefix[0]=0xbb;addr_contexts[1].prefix[1]=0xbb;}
 #define SICSLOWPAN_CONF_ADDR_CONTEXT_2 {addr_contexts[2].prefix[0]=0x20;addr_contexts[2].prefix[1]=0x01;addr_contexts[2].prefix[2]=0x49;addr_contexts[2].prefix[3]=0x78,addr_contexts[2].prefix[4]=0x1d;addr_contexts[2].prefix[5]=0xb1;}
 
-/* See uip-ds6.h */
-#define UIP_CONF_DS6_NBR_NBU      20
-#define UIP_CONF_DS6_DEFRT_NBU    2
-#define UIP_CONF_DS6_PREFIX_NBU   3
-#define UIP_CONF_MAX_ROUTES       20
-#define UIP_CONF_DS6_ADDR_NBU     3
-#define UIP_CONF_DS6_MADDR_NBU    0
-#define UIP_CONF_DS6_AADDR_NBU    0
-
-#else /* WITH_UIP6 */
+#else /* UIP_CONF_IPV6 */
 /* ip4 should build but is largely untested */
 #define NETSTACK_CONF_NETWORK     rime_driver
 
 #define LINKADDR_CONF_SIZE        2
 
-#endif /* WITH_UIP6 */
+#endif /* UIP_CONF_IPV6 */
 
 /* -- Radio driver settings */
 #define CHANNEL_802_15_4          26
@@ -202,20 +185,19 @@
 /* Make nullrdc wait for the proper ACK before proceeding */
 #define NULLRDC_CONF_802154_AUTOACK 1
 /* Let the RF230 radio driver generate fake acknowledgements to make nullrdc happy */
-#define RF320_CONF_INSERTACK 1
+#define RF320_CONF_INSERTACK      1
 /* Number of CSMA attempts 0-7. 802.15.4 2003 standard max is 5. */
-#define RF230_CONF_FRAME_RETRIES    5
+#define RF230_CONF_FRAME_RETRIES  5
 /* CCA theshold energy -91 to -61 dBm (default -77).
  * Set this smaller than the expected minimum rssi to avoid packet collisions */
 /* The Jackdaw menu 'm' command is helpful for determining the smallest ever received rssi */
-#define RF230_CONF_CCA_THRES    -85
+#define RF230_CONF_CCA_THRES      -85
+/* Default is one RAM buffer for received packets. 
+ * More than one may benefit multiple TCP connections or ports */
+#define RF230_CONF_RX_BUFFERS     3
 
 /* -- UIP settings */
-#define UIP_CONF_UDP              1
 #define UIP_CONF_UDP_CHECKSUMS    1
-#ifndef UIP_CONF_TCP
-#define UIP_CONF_TCP              1
-#endif
 /* How long to wait before terminating an idle TCP connection.
  * Smaller to allow faster sleep. Default is 120 seconds */
 #define UIP_CONF_WAIT_TIMEOUT     5
@@ -223,9 +205,10 @@
 /* Use this to prevent 6LowPAN fragmentation (whether or not fragmentation is enabled) */
 //#define UIP_CONF_TCP_MSS      48
 
-/* 30 bytes per TCP connection */
-/* 6LoWPAN does not do well with concurrent TCP streams, as new browser GETs collide with packets coming */
-/* from previous GETs, causing decreased throughput, retransmissions, and timeouts. Increase to study this. */
+/* 6LoWPAN does not do well with concurrent TCP streams, 
+ * as new browser GETs collide with packets coming
+ * from previous GETs, causing decreased throughput, retransmissions, and timeouts. 
+ * Increase to study this. */
 #define UIP_CONF_MAX_CONNECTIONS  1
 
 /* 2 bytes per TCP listening port */
@@ -249,59 +232,26 @@
 
 #define UIP_CONF_TCP_SPLIT        1
 
-// RADIO_PAN_ID
-#ifndef RADIO_CONF_PAN_ID
-#define RADIO_PAN_ID	IEEE802154_PANID
-#else /* RADIO_CONF_PAN_ID */
-#define RADIO_PAN_ID	RADIO_CONF_PAN_ID
-#endif /* RADIO_CONF_PAN_ID */
-
-/* Assure NODE_ID is not set manually */
-#ifdef NODE_ID
-#undef NODE_ID
-#warning Use NODE_CONF_ID to define your NodeId
-#endif /* NODE_ID */
-
-// NODE_ID
-#ifndef NODE_CONF_ID
-#define NODE_ID	0
-#else /* NODE_CONF_ID */
-#define NODE_ID	NODE_CONF_ID
-#endif /* NODE_CONF_ID */
-
-#ifndef NODE_CONF_EUI64
-#define NODE_EUI64 0, 0, 0, 0, 0, 0, 0, 0
-#else
-#define NODE_EUI64  NODE_CONF_EUI64
-#endif
-
-// RADIO_CHANNEL
-#ifndef RADIO_CONF_CHANNEL
-#define RADIO_CHANNEL	26
-#else /* RADIO_CONF_CHANNEL */
-#define RADIO_CHANNEL	RADIO_CONF_CHANNEL
-#endif /* RADIO_CONF_CHANNEL */
-
-// RADIO_TX_POWER
-#ifndef RADIO_CONF_TX_POWER
-#define RADIO_TX_POWER	0
-#else /* RADIO_CONF_TX_POWER */
-#define RADIO_TX_POWER	RADIO_CONF_TX_POWER
-#endif /* RADIO_CONF_TX_POWER */
+#include "inga-conf.h"
 
 /* ************************************************************************** */
 /* RPL Settings                                                               */
 /* ************************************************************************** */
 #if UIP_CONF_IPV6_RPL
 
-/* Define MAX_*X_POWER to reduce tx power and ignore weak rx packets for testing a miniature multihop network.
+/* Define MAX_*X_POWER to reduce tx power and ignore weak rx packets 
+ * for testing a miniature multihop network.
  * Leave undefined for full power and sensitivity.
  * tx=0 (3dbm, default) to 15 (-17.2dbm)
- * RF230_CONF_AUTOACK sets the extended mode using the energy-detect register with rx=0 (-91dBm) to 84 (-7dBm)
- *   else the rssi register is used having range 0 (91dBm) to 28 (-10dBm)
- *   For simplicity RF230_MIN_RX_POWER is based on the energy-detect value and divided by 3 when autoack is not set.
- * On the RF230 a reduced rx power threshold will not prevent autoack if enabled and requested.
- * These numbers applied to both Raven and Jackdaw give a maximum communication distance of about 15 cm
+ * RF230_CONF_AUTOACK sets the extended mode using the energy-detect register 
+ * with rx=0 (-91dBm) to 84 (-7dBm)
+ * else the rssi register is used having range 0 (91dBm) to 28 (-10dBm)
+ * For simplicity RF230_MIN_RX_POWER is based on the energy-detect value 
+ * and divided by 3 when autoack is not set.
+ * On the RF230 a reduced rx power threshold will not prevent autoack 
+ * if enabled and requested.
+ * These numbers applied to both Raven and Jackdaw give a maximum 
+ * communication distance of about 15 cm
  * and a 10 meter range to a full-sensitivity RF230 sniffer.
 #define RF230_MAX_TX_POWER 15
 #define RF230_MIN_RX_POWER 30
@@ -309,8 +259,8 @@
 
 #define UIP_CONF_ROUTER                 1
 #define UIP_CONF_ND6_SEND_RA            0
-#define UIP_CONF_ND6_REACHABLE_TIME     600000
-#define UIP_CONF_ND6_RETRANS_TIMER      10000
+#define UIP_CONF_ND6_REACHABLE_TIME     600000 /// TODO: fix in default config?
+#define UIP_CONF_ND6_RETRANS_TIMER      10000  /// TODO: fix in default config?
 
 #undef UIP_CONF_UDP_CONNS
 #define UIP_CONF_UDP_CONNS       12
@@ -326,9 +276,9 @@
 /* Logging adds 200 bytes to program size */
 #define LOG_CONF_ENABLED         1
 
-/** Contiki Core Interface (has no function here)*/
+/* Contiki Core Interface (has no function here) */
 #define CCIF
-/** Contiki Loadable Interface (has no function here) */
+/* Contiki Loadable Interface (has no function here) */
 #define CLIF
 
 #ifndef CC_CONF_INLINE

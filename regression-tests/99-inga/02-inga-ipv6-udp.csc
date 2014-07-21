@@ -24,7 +24,7 @@
       <description>Inga Mote Type #1</description>
       <source EXPORT="discard">[CONTIKI_DIR]/examples/udp-ipv6/udp-client.c</source>
       <commands EXPORT="discard">make clean TARGET=inga
-make udp-client.inga TARGET=inga DEFINES=UDP_CONNECTION_ADDR=fe80::ff:fe00:2</commands>
+make udp-client.inga TARGET=inga DEFINES=UDP_CONNECTION_ADDR=fe80::2</commands>
       <firmware EXPORT="copy">[CONTIKI_DIR]/examples/udp-ipv6/udp-client.inga</firmware>
       <moteinterface>org.contikios.cooja.interfaces.Position</moteinterface>
       <moteinterface>org.contikios.cooja.avrmote.interfaces.AvroraMoteID</moteinterface>
