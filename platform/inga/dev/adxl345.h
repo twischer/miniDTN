@@ -140,7 +140,7 @@
 /** x Acceleration Data register (high) */
 #define ADXL345_OUTX_LOW_REG      0x32
 /** x Acceleration Data register (low) */
-#define ADXL345_OUTX_HIGH_REG  		0x33
+#define ADXL345_OUTX_HIGH_REG     0x33
 /** y Acceleration Data register (high) */
 #define ADXL345_OUTY_LOW_REG      0x34
 /** y Acceleration Data register (low) */
@@ -325,7 +325,9 @@ int16_t adxl345_get_z(void);
  */
 acc_data_t adxl345_get(void);
 
-/** Convert raw value to mg value */
+/** Convert raw value to mg value 
+ * XXX Does not work for fix bitwidth mode!
+ */
 #define adxl345_raw_to_mg(raw) (raw * 62) / 16; // approx 3.9 scale factor
 
 
