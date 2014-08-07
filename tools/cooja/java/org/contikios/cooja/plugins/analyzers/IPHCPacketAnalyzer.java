@@ -1,55 +1,57 @@
 package org.contikios.cooja.plugins.analyzers;
 
-import org.contikios.cooja.util.IPUtils;
+import org.contikios.cooja.util.StringUtils;
 
 public class IPHCPacketAnalyzer extends PacketAnalyzer {
 
-  public final static int SICSLOWPAN_UDP_PORT_MIN = 0xF0B0;
-  public final static int SICSLOWPAN_UDP_PORT_MAX = 0xF0BF;   /* F0B0 + 15 */
+  public final static int SICSLOWPAN_UDP_4_BIT_PORT_MIN = 0xF0B0;
+  public final static int SICSLOWPAN_UDP_4_BIT_PORT_MAX = 0xF0BF;   /* F0B0 + 15 */
+  public final static int SICSLOWPAN_UDP_8_BIT_PORT_MIN = 0xF000;
+  public final static int SICSLOWPAN_UDP_8_BIT_PORT_MAX = 0xF0FF;   /* F000 + 255 */
 
-  public final static int SICSLOWPAN_DISPATCH_IPV6 = 0x41; /* 01000001 = 65 */
+  public final static int SICSLOWPAN_DISPATCH_IPV6                    = 0x41; /* 01000001 = 65 */
+  public final static int SICSLOWPAN_DISPATCH_HC1                     = 0x42; /* 01000010 = 66 */
+  public final static int SICSLOWPAN_DISPATCH_IPHC                    = 0x60; /* 011xxxxx = ... */
 
-  public final static int SICSLOWPAN_DISPATCH_HC1 = 0x42; /* 01000010 = 66 */
-
-  public final static int SICSLOWPAN_DISPATCH_IPHC = 0x60; /* 011xxxxx = ... */
-
-  public final static int SICSLOWPAN_DISPATCH_FRAG1 = 0xc0; /* 1100= 0xxx */
-
-  public final static int SICSLOWPAN_DISPATCH_FRAGN = 0xe0; /* 1110= 0xxx */
+  public final static int EXT_HDR_HOP_BY_HOP  = 0;
+  public final static int EXT_HDR_ROUTING     = 43;
+  public final static int EXT_HDR_FRAGMENT    = 44;
 
   /*
    * Values of fields within the IPHC encoding first byte
    * (C stands for compressed and I for inline)
    */
-  public final static int SICSLOWPAN_IPHC_FL_C = 0x10;
-  public final static int SICSLOWPAN_IPHC_TC_C = 0x08;
-  public final static int SICSLOWPAN_IPHC_NH_C = 0x04;
-  public final static int SICSLOWPAN_IPHC_TTL_1 = 0x01;
-  public final static int SICSLOWPAN_IPHC_TTL_64 = 0x02;
-  public final static int SICSLOWPAN_IPHC_TTL_255 = 0x03;
-  public final static int SICSLOWPAN_IPHC_TTL_I = 0x00;
+  public final static int SICSLOWPAN_IPHC_FL_C                        = 0x10;
+  public final static int SICSLOWPAN_IPHC_TC_C                        = 0x08;
+  public final static int SICSLOWPAN_IPHC_NH_C                        = 0x04;
+  public final static int SICSLOWPAN_IPHC_TTL_1                       = 0x01;
+  public final static int SICSLOWPAN_IPHC_TTL_64                      = 0x02;
+  public final static int SICSLOWPAN_IPHC_TTL_255                     = 0x03;
+  public final static int SICSLOWPAN_IPHC_TTL_I                       = 0x00;
 
 
   /* Values of fields within the IPHC encoding second byte */
-  public final static int SICSLOWPAN_IPHC_CID = 0x80;
+  public final static int SICSLOWPAN_IPHC_CID                         = 0x80;
 
-  public final static int SICSLOWPAN_IPHC_SAC = 0x40;
-  public final static int SICSLOWPAN_IPHC_SAM_00 = 0x00;
-  public final static int SICSLOWPAN_IPHC_SAM_01 = 0x10;
-  public final static int SICSLOWPAN_IPHC_SAM_10 = 0x20;
-  public final static int SICSLOWPAN_IPHC_SAM_11 = 0x30;
+  public final static int SICSLOWPAN_IPHC_SAC                         = 0x40;
+  public final static int SICSLOWPAN_IPHC_SAM_00                      = 0x00;
+  public final static int SICSLOWPAN_IPHC_SAM_01                      = 0x10;
+  public final static int SICSLOWPAN_IPHC_SAM_10                      = 0x20;
+  public final static int SICSLOWPAN_IPHC_SAM_11                      = 0x30;
 
-  public final static int SICSLOWPAN_IPHC_M = 0x08;
-  public final static int SICSLOWPAN_IPHC_DAC = 0x04;
-  public final static int SICSLOWPAN_IPHC_DAM_00 = 0x00;
-  public final static int SICSLOWPAN_IPHC_DAM_01 = 0x01;
-  public final static int SICSLOWPAN_IPHC_DAM_10 = 0x02;
-  public final static int SICSLOWPAN_IPHC_DAM_11 = 0x03;
+  public final static int SICSLOWPAN_IPHC_M                           = 0x08;
+  public final static int SICSLOWPAN_IPHC_DAC                         = 0x04;
+  public final static int SICSLOWPAN_IPHC_DAM_00                      = 0x00;
+  public final static int SICSLOWPAN_IPHC_DAM_01                      = 0x01;
+  public final static int SICSLOWPAN_IPHC_DAM_10                      = 0x02;
+  public final static int SICSLOWPAN_IPHC_DAM_11                      = 0x03;
 
-  private static final int SICSLOWPAN_NDC_UDP_MASK = 0xf8;
-  private static final int SICSLOWPAN_NHC_UDP_ID = 0xf0;
-  private static final int SICSLOWPAN_NHC_UDP_C = 0xf3;
-  private static final int SICSLOWPAN_NHC_UDP_I = 0xf0;
+  private static final int SICSLOWPAN_NDC_UDP_MASK                     = 0xf8;
+  private static final int SICSLOWPAN_NHC_UDP_ID =                       0xf0;
+  private static final int SICSLOWPAN_NHC_UDP_00 = 0xf0;
+  private static final int SICSLOWPAN_NHC_UDP_01 = 0xf1;
+  private static final int SICSLOWPAN_NHC_UDP_10 = 0xf2;
+  private static final int SICSLOWPAN_NHC_UDP_11 = 0xf3;
 
   public final static int PROTO_UDP = 17;
   public final static int PROTO_TCP = 6;
@@ -58,7 +60,7 @@ public class IPHCPacketAnalyzer extends PacketAnalyzer {
   public final static byte[] UNSPECIFIED_ADDRESS
           = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
-  private static final byte[][] addrContexts = new byte[][]{
+  private static byte[][] addrContexts = new byte[][]{
     {(byte) 0xaa, (byte) 0xaa, 0, 0, 0, 0, 0, 0}
   };
 
@@ -75,9 +77,7 @@ public class IPHCPacketAnalyzer extends PacketAnalyzer {
                            StringBuilder verbose) {
 
     /* if packet has less than 3 bytes it is not interesting ... */
-    if (packet.size() < 3) {
-      return ANALYSIS_FAILED;
-    }
+    if (packet.size() < 3) return ANALYSIS_FAILED;
 
     int tf = (packet.get(0) >> 3) & 0x03;
     boolean nhc = (packet.get(0) & SICSLOWPAN_IPHC_NH_C) > 0;
@@ -89,17 +89,17 @@ public class IPHCPacketAnalyzer extends PacketAnalyzer {
       case 0x01:
         hlim = 1;
         break;
-      case 0x10:
+      case 0x02:
         hlim = 64;
         break;
-      case 0x11:
+      case 0x03:
         hlim = 255;
         break;
     }
     int cid = (packet.get(1) >> 7) & 0x01;
     int sac = (packet.get(1) >> 6) & 0x01;
     int sam = (packet.get(1) >> 4) & 0x03;
-    int m = (packet.get(1) >> 3) & 0x01;
+    boolean m = ((packet.get(1) >> 3) & 0x01) != 0;
     int dac = (packet.get(1) >> 2) & 0x01;
     int dam = packet.get(1) & 0x03;
     int sci = 0;
@@ -112,13 +112,13 @@ public class IPHCPacketAnalyzer extends PacketAnalyzer {
     /* need to decompress while analyzing - add that later... */
     verbose.append("<b>IPHC HC-06</b><br>");
     verbose.append("TF = ").append(tf)
-            .append(", NH = ").append(nhc)
-            .append(", HLIM = ").append(hlim)
+            .append(", NH = ").append(nhc ? "compressed" : "inline")
+            .append(", HLIM = ").append(hlim == 0 ? "inline" : hlim)
             .append(", CID = ").append(cid)
-            .append(", SAC = ").append(sac)
+            .append(", SAC = ").append(sac == 1 ? "stateless" : "stateful")
             .append(", SAM = ").append(sam)
             .append(", MCast = ").append(m)
-            .append(", DAC = ").append(dac)
+            .append(", DAC = ").append(dac == 1 ? "stateless" : "stateful")
             .append(", DAM = ").append(dam);
     if (cid == 1) {
       verbose.append("<br>Contexts: sci=").append(packet.get(2) >> 4).
@@ -153,16 +153,14 @@ public class IPHCPacketAnalyzer extends PacketAnalyzer {
           /* hc06 format of tc is ECN | DSCP , original is DSCP | ECN */
           trafficClass = ((tmp >> 2) & 0x3f) | (tmp << 6) & (0x80 + 0x40);
           /* ECN rolled down two steps + lowest DSCP bits at top two bits */
-        }
-        else {
+        } else {
           /* highest flow label bits + ECN bits */
           int tmp = packet.get(hc06_ptr);
           trafficClass = (tmp >> 6) & 0x0f;
           flowLabel = packet.getInt(hc06_ptr + 1, 2);
           hc06_ptr += 3;
         }
-      }
-      else {
+      } else {
         /* Version is always 6! */
         /* Version and flow label are compressed */
         if ((packet.get(0) & SICSLOWPAN_IPHC_TC_C) == 0) {
@@ -186,7 +184,7 @@ public class IPHCPacketAnalyzer extends PacketAnalyzer {
           ttl = 1;
           break;
         case SICSLOWPAN_IPHC_TTL_64:
-          ttl = 2;
+          ttl = 64;
           break;
         case SICSLOWPAN_IPHC_TTL_255:
           ttl = 255;
@@ -236,8 +234,7 @@ public class IPHCPacketAnalyzer extends PacketAnalyzer {
             break;
         }
         /* end context based compression */
-      }
-      else {
+      } else {
         /* no compression and link local */
         switch (packet.get(1) & SICSLOWPAN_IPHC_SAM_11) {
           case SICSLOWPAN_IPHC_SAM_00: /* 128 bits */
@@ -280,8 +277,7 @@ public class IPHCPacketAnalyzer extends PacketAnalyzer {
         /* context based multicast compression */
         if ((packet.get(1) & SICSLOWPAN_IPHC_DAC) != 0) {
           /* TODO: implement this */
-        }
-        else {
+        } else {
           /* non-context based multicast compression */
           switch (packet.get(1) & SICSLOWPAN_IPHC_DAM_11) {
             case SICSLOWPAN_IPHC_DAM_00: /* 128 bits */
@@ -313,8 +309,7 @@ public class IPHCPacketAnalyzer extends PacketAnalyzer {
               break;
           }
         }
-      }
-      else {
+      } else {
         /* no multicast */
         /* Context based */
         if ((packet.get(1) & SICSLOWPAN_IPHC_DAC) != 0) {
@@ -345,8 +340,7 @@ public class IPHCPacketAnalyzer extends PacketAnalyzer {
                                16 - packet.llreceiver.length, packet.llreceiver.length);
               break;
           }
-        }
-        else {
+        } else {
           /* not context based => link local M = 0, DAC = 0 - same as SAC */
           switch (packet.get(1) & SICSLOWPAN_IPHC_DAM_11) {
             case SICSLOWPAN_IPHC_DAM_00: /* 128 bits */
@@ -385,29 +379,48 @@ public class IPHCPacketAnalyzer extends PacketAnalyzer {
         /* The next header is compressed, NHC is following */
         if ((packet.get(hc06_ptr) & SICSLOWPAN_NDC_UDP_MASK) == SICSLOWPAN_NHC_UDP_ID) {
           proto = PROTO_UDP;
-          switch (packet.get(hc06_ptr)) {
-            case (byte) SICSLOWPAN_NHC_UDP_C:
-              /* 1 byte for NHC, 1 byte for ports, 2 bytes chksum */
-              srcPort = SICSLOWPAN_UDP_PORT_MIN + (packet.get(hc06_ptr + 1) >> 4);
-              destPort = SICSLOWPAN_UDP_PORT_MIN + (packet.get(hc06_ptr + 1) & 0x0F);
-//                    memcpy(&SICSLOWPAN_UDP_BUF->udpchksum, hc06_ptr + 2, 2);
-//                    PRINTF("IPHC: Uncompressed UDP ports (4): %x, %x\n",
-//                            SICSLOWPAN_UDP_BUF->srcport, SICSLOWPAN_UDP_BUF->destport);
-              hc06_ptr += 4;
-              break;
-            case (byte) SICSLOWPAN_NHC_UDP_I:
+          switch (packet.get(hc06_ptr) & (byte) SICSLOWPAN_NHC_UDP_11) {
+            case (byte) SICSLOWPAN_NHC_UDP_00:
               /* 1 byte for NHC, 4 byte for ports, 2 bytes chksum */
-              srcPort = packet.getInt(hc06_ptr + 1, 2);
-              destPort = packet.getInt(hc06_ptr + 3, 2);
-//                    memcpy(&SICSLOWPAN_UDP_BUF->udpchksum, hc06_ptr + 5, 2);
-//                    PRINTF("IPHC: Uncompressed UDP ports (7): %x, %x\n",
-//                            SICSLOWPAN_UDP_BUF->srcport, SICSLOWPAN_UDP_BUF->destport);
-
+              srcPort = packet.getInt(hc06_ptr + 1, 2) & 0xFFFF;
+              destPort = packet.getInt(hc06_ptr + 3, 2) & 0xFFFF;
               hc06_ptr += 7;
               break;
-            default:
-//                    PRINTF("sicslowpan uncompress_hdr: error unsupported UDP compression\n");
-              return ANALYSIS_FAILED;
+            case (byte) SICSLOWPAN_NHC_UDP_01:
+              /* 1 byte for NHC, 3 byte for ports, 2 bytes chksum */
+              srcPort = packet.getInt(hc06_ptr + 1, 2);
+              destPort = SICSLOWPAN_UDP_8_BIT_PORT_MIN + (packet.get(hc06_ptr + 3) & 0xFF);
+              hc06_ptr += 6;
+              break;
+            case (byte) SICSLOWPAN_NHC_UDP_10:
+              /* 1 byte for NHC, 3 byte for ports, 2 bytes chksum */
+              srcPort = SICSLOWPAN_UDP_8_BIT_PORT_MIN + (packet.get(hc06_ptr + 1) & 0xFF);
+              destPort = packet.getInt(hc06_ptr + 2, 2);
+              hc06_ptr += 6;
+              break;
+            case (byte) SICSLOWPAN_NHC_UDP_11:
+              /* 1 byte for NHC, 1 byte for ports, 2 bytes chksum */
+              srcPort = SICSLOWPAN_UDP_4_BIT_PORT_MIN + (packet.get(hc06_ptr + 1) >> 4);
+              destPort = SICSLOWPAN_UDP_4_BIT_PORT_MIN + (packet.get(hc06_ptr + 1) & 0x0F);
+              hc06_ptr += 4;
+              break;
+          }
+        }
+      } else {
+        // Skip extension header
+        // XXX TODO: Handle others, too?
+        if (proto == EXT_HDR_HOP_BY_HOP) {
+          proto = packet.get(hc06_ptr) & 0xFF;
+
+          // header length is length specified in field, rounded up to 64 bit
+          int hdr_len = ((packet.get(hc06_ptr + 1) / 8) + 1) * 8;
+          hc06_ptr += hdr_len;
+
+          // UDP hadling
+          if (proto == PROTO_UDP) {
+            srcPort = packet.getInt(hc06_ptr, 2) & 0xFFFF;
+            destPort = packet.getInt(hc06_ptr + 2, 2) & 0xFFFF;
+            hc06_ptr += 4;
           }
         }
       }
@@ -428,36 +441,48 @@ public class IPHCPacketAnalyzer extends PacketAnalyzer {
 //        }
 
       /*--------------------------------------------- */
-    }
-    catch (Exception e) {
+    } catch (Exception e) {
       // some kind of unexpected error...
       error = " error during IPHC parsing: " + e.getMessage();
     }
     packet.pos += hc06_ptr;
 
-    String protoStr;
+    String protoStr = "" + proto;
     if (proto == PROTO_ICMP) {
       protoStr = "ICMPv6";
-    }
-    else if (proto == PROTO_UDP) {
+    } else if (proto == PROTO_UDP) {
       protoStr = "UDP";
-    }
-    else if (proto == PROTO_TCP) {
+    } else if (proto == PROTO_TCP) {
       protoStr = "TCP";
     } else {
       protoStr = String.valueOf(proto);
     }
 
-    verbose.append("<br><b>IPv6 ").append(protoStr).
-            append("</b> TC = ").append(trafficClass).
-            append(" FL: ").append(flowLabel).
-            append("<br>");
+    // IPv6 Information
+
+    brief.append("|IPv6");
+    verbose.append("<br/><b>IPv6</b>")
+            .append(" TC = ").append(trafficClass)
+            .append(", FL = ").append(flowLabel)
+            .append("<br>");
     verbose.append("From ");
-    IPUtils.getUncompressedIPv6AddressString(verbose, srcAddress);
+    printAddress(verbose, srcAddress);
     verbose.append("  to ");
-    IPUtils.getUncompressedIPv6AddressString(verbose, destAddress);
+    printAddress(verbose, destAddress);
     if (error != null) {
       verbose.append(" ").append(error);
+    }
+
+    // Application Layer Information
+
+    if (proto != PROTO_ICMP) {
+      brief.append('|').append(protoStr);
+      verbose.append("<br/><b>").append(protoStr).append("</b>");
+    }
+    if (proto == PROTO_UDP) {
+      brief.append(' ').append(srcPort).append(' ').append(destPort);
+      verbose.append("<br/>Src Port: ").append(srcPort);
+      verbose.append(", Dst Port: ").append(destPort);
     }
 
     packet.lastDispatch = (byte) (proto & 0xff);
@@ -465,10 +490,19 @@ public class IPHCPacketAnalyzer extends PacketAnalyzer {
             || proto == PROTO_TCP) {
       packet.level = APPLICATION_LEVEL;
       return ANALYSIS_OK_CONTINUE;
-    }
-    else {
+    } else {
       packet.level = NETWORK_LEVEL;
       return ANALYSIS_OK_CONTINUE;
+    }
+  }
+
+  public static void printAddress(StringBuilder out, byte[] address) {
+    for (int i = 0; i < 16; i += 2) {
+      out.append(StringUtils.toHex((byte) (address[i] & 0xff))
+              + StringUtils.toHex((byte) (address[i + 1] & 0xff)));
+      if (i < 14) {
+        out.append(":");
+      }
     }
   }
 }

@@ -1,6 +1,6 @@
 package org.contikios.cooja.plugins.analyzers;
 
-import org.contikios.cooja.util.IPUtils;
+import org.contikios.cooja.util.StringUtils;
 
 public class IPv6PacketAnalyzer extends PacketAnalyzer {
 
@@ -23,9 +23,7 @@ public class IPv6PacketAnalyzer extends PacketAnalyzer {
                            StringBuilder verbose) {
 
     /* if packet has less than 40 bytes it is not interesting ... */
-    if (packet.size() < 40) {
-      return ANALYSIS_FAILED;
-    }
+    if (packet.size() < 40) return ANALYSIS_FAILED;
 
     brief.append("IPv6");
 
@@ -49,11 +47,9 @@ public class IPv6PacketAnalyzer extends PacketAnalyzer {
     String protoStr = "" + proto;
     if (proto == PROTO_ICMP) {
       protoStr = "ICMPv6";
-    }
-    else if (proto == PROTO_UDP) {
+    } else if (proto == PROTO_UDP) {
       protoStr = "UDP";
-    }
-    else if (proto == PROTO_TCP) {
+    } else if (proto == PROTO_TCP) {
       protoStr = "TCP";
     }
 
@@ -64,12 +60,23 @@ public class IPv6PacketAnalyzer extends PacketAnalyzer {
             .append("</b> TC = ").append(trafficClass)
             .append(" FL: ").append(flowLabel).append("<br>");
     verbose.append("From ");
-    IPUtils.getUncompressedIPv6AddressString(verbose, srcAddress);
+    printAddress(verbose, srcAddress);
     verbose.append("  to ");
-    IPUtils.getUncompressedIPv6AddressString(verbose, destAddress);
+    printAddress(verbose, destAddress);
 
     packet.lastDispatch = (byte) (proto & 0xff);
     packet.level = APPLICATION_LEVEL;
     return ANALYSIS_OK_CONTINUE;
   }
+
+  public static void printAddress(StringBuilder out, byte[] address) {
+    for (int i = 0; i < 16; i += 2) {
+      out.append(StringUtils.toHex((byte) (address[i] & 0xff))
+              + StringUtils.toHex((byte) (address[i + 1] & 0xff)));
+      if (i < 14) {
+        out.append(":");
+      }
+    }
+  }
+
 }
