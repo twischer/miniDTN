@@ -16,9 +16,17 @@ setup: SETTINGS_SET_LOAD = 1
 setup: SETTINGS_DELETE_LOAD = 0
 setup: test $(CONTIKI_PROJECT).upload
 
+setup.jtag: SETTINGS_SET_LOAD = 1
+setup.jtag: SETTINGS_DELETE_LOAD = 0
+setup.jtag: test $(CONTIKI_PROJECT).jtag
+
 delete: SETTINGS_SET_LOAD = 0
 delete: SETTINGS_DELETE_LOAD = 1
 delete: test-single $(CONTIKI_PROJECT).upload
+
+delete.jtag: SETTINGS_SET_LOAD = 0
+delete.jtag: SETTINGS_DELETE_LOAD = 1
+delete.jtag: test-single $(CONTIKI_PROJECT).jtag
 
 # Note: currently, deleting single items is not fully supported by the settings library!
 #delete: #TODO

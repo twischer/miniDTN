@@ -7,7 +7,7 @@ Settings will be written to EEPROM when the program starts.
 usage: make [target] [MOTES=<device>] NODE_ID=<value> [options]
 Targets:
 - setup(default): Setup with given values
-- wipe:  Delete all settings
+- delete:  Delete all settings
 Options:
 - NODE_ID=<value>         default=0xABCD
 - PAN_ID=<value>          default=0xABCD
@@ -18,7 +18,7 @@ Options:
 Example
 ---
 
-If only one node is connected to your compute, you can run
+If only one node is connected to your computer, you can run
 
     make NODE_ID=<your-id> setup
 
