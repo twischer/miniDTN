@@ -134,6 +134,23 @@ AVRDUDE_PROGRAMMER=avr109
 # Baudrate
 AVRDUDE_OPTIONS=-b 230400
 
+
+### JTAG programming
+
+AVRDUDE_JTAG_PROGRAMMER=jtag2
+# number of bits every avr shifts the jtag commands 
+JTAG_BITSHIFT=4
+# number of devices in the chain
+JTAG_LENGTH=8
+# avrs before target device
+JTAG_UB=$(JTAG_DEVICE)
+# avrs after target device
+JTAG_UA=$(shell echo $(JTAG_LENGTH)\-$(JTAG_DEVICE)\-1 | bc)
+# bits before target device
+JTAG_BB=$(shell echo $(JTAG_UB)\*$(JTAG_BITSHIFT) | bc)
+# bits after target device
+JTAG_BA=$(shell echo $(JTAG_UA)\*$(JTAG_BITSHIFT) | bc)
+
 ifndef INGA_CONF_BAUDRATE
   INGA_CONF_BAUDRATE = 38400
 endif
@@ -204,6 +221,15 @@ else
 	  $(MOTES), \
 	  avrdude $(AVRDUDE_OPTIONS) -P $(PORT) $(AVRDUDE_PROGRAMMER) -p $(MCU) -U flash:w:$<& )wait $!
 	@echo Upload done.
+endif
+
+%.jtag:  %.hex
+ifndef JTAG_DEVICE
+	@echo "JTAG: no device specified, assuming single device"
+	avrdude -c $(AVRDUDE_JTAG_PROGRAMMER) -p $(MCU) -U flash:w:$<& wait $!
+else
+	@echo "JTAG: DEVICE = $(JTAG_DEVICE) (position in daisy chain), JTAG_LENGTH = $(JTAG_LENGTH) (length of daisy chain)"
+	avrdude -c $(AVRDUDE_JTAG_PROGRAMMER) -p $(MCU) -x jtagchain=$(JTAG_UB),$(JTAG_UA),$(JTAG_BB),$(JTAG_BA) -U flash:w:$<& wait $!
 endif
 
 include $(CONTIKIAVR)/Makefile.avr
