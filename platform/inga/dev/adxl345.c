@@ -53,21 +53,43 @@
 
 #define ADXL345_DEVICE_ID_DATA            0xE5
 /*----------------------------------------------------------------------------*/
+
+uint8_t bustype = 0;
 int8_t
 adxl345_available(void)
 {
-  uint8_t i = 0;
+  uint8_t i, i2c_data = 0, mpsi_data = 0;
+  
   mspi_chip_release(ADXL345_CS);
   mspi_init(ADXL345_CS, MSPI_MODE_3, MSPI_BAUD_MAX);
+  
+  for(i = 0; i <= 10; i++) {
+    mspi_chip_select(ADXL345_CS);
+    mspi_transceive(ADXL345_DEVICE_ID_REG);
+    mpsi_data = mspi_transceive(MSPI_DUMMY_BYTE);
+    mspi_chip_release(ADXL345_CS);
 
-  while (adxl345_read(ADXL345_DEVICE_ID_REG) != ADXL345_DEVICE_ID_DATA) {
-    _delay_ms(10);
-    if (i++ > 10) {
-      return 0;
+    i2c_init();
+    i2c_start(ADXL345_I2C_ADDR_R);
+    i2c_write(ADXL345_DEVICE_ID_REG);
+    i2c_rep_start(ADXL345_I2C_ADDR_R);
+    i2c_read_nack(&i2c_data);
+    i2c_stop();
+    printf("i2c_data = %d\n", i2c_data); 
+    if((mpsi_data == ADXL345_DEVICE_ID_DATA) && (i2c_data != ADXL345_DEVICE_ID_DATA)) {
+      bustype = MSPI;
+      PRINTF("adxl345: is available via MSPI\n");
+      return 1;
     }
-  }
-  PRINTF("adxl345: is available\n");
-  return 1;
+    if((mpsi_data != ADXL345_DEVICE_ID_DATA) && (i2c_data == ADXL345_DEVICE_ID_DATA)) {
+      bustype = I2C;
+      PRINTF("adxl345: is available via I2C\n");
+      return 1;
+    }
+ 
+    _delay_ms(10);
+ }
+  return 0;
 }
 /*----------------------------------------------------------------------------*/
 int8_t
@@ -179,6 +201,7 @@ adxl345_get_z(void)
 acc_data_t
 adxl345_get(void)
 {
+  //TODO: if(bus=
   acc_data_t adxl345_data;
   uint8_t lsb = 0, msb = 0;
   mspi_chip_select(ADXL345_CS);
@@ -213,22 +236,43 @@ adxl345_get_acceleration_fifo(acc_data_t* ret)
 void
 adxl345_write(uint8_t reg, uint8_t data)
 {
-  mspi_chip_select(ADXL345_CS);
   reg &= 0x7F;
-  mspi_transceive(reg);
-  mspi_transceive(data);
-  mspi_chip_release(ADXL345_CS);
+
+  if(bustype == MSPI) {
+    mspi_chip_select(ADXL345_CS);
+    mspi_transceive(reg);
+    mspi_transceive(data);
+    mspi_chip_release(ADXL345_CS);
+  }
+  else if(bustype == I2C) {
+    i2c_start(ADXL345_I2C_ADDR_W);
+    i2c_write(reg);
+    i2c_rep_start(ADXL345_I2C_ADDR_W);
+    i2c_write(data);
+    i2c_stop();
+  }
 }
 /*----------------------------------------------------------------------------*/
 uint8_t
 adxl345_read(uint8_t reg)
 {
   uint8_t data;
-  mspi_chip_select(ADXL345_CS);
   reg |= 0x80;
-  mspi_transceive(reg);
-  data = mspi_transceive(MSPI_DUMMY_BYTE);
-  mspi_chip_release(ADXL345_CS);
+  
+  if(bustype == MSPI) {
+    mspi_chip_select(ADXL345_CS);
+    mspi_transceive(reg);
+    data = mspi_transceive(MSPI_DUMMY_BYTE);
+    mspi_chip_release(ADXL345_CS);
+  }
+  else if(bustype == I2C) {
+    i2c_start(ADXL345_I2C_ADDR_R);
+    i2c_write(reg);
+    i2c_rep_start(ADXL345_I2C_ADDR_R);
+    i2c_read_nack(&data);
+    i2c_stop();
+  }
+
   return data;
 }
 /*----------------------------------------------------------------------------*/

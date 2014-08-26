@@ -58,8 +58,16 @@
 #define ADXL345_H_
 
 #include "../dev/mspi.h"
+#include "i2c.h"
 #include <stdio.h>
 #include <util/delay.h>
+
+// INGA 1.6 has I2C acc, previous version had MSPI. Defines to distinguish between them
+#define MSPI 1
+#define I2C 2
+
+#define ADXL345_I2C_ADDR_W 0xA6
+#define ADXL345_I2C_ADDR_R 0xA7
 
 /*!
  * SPI device order.
