@@ -33,6 +33,7 @@
  * \author
  *      Ulf Kulau <kulau@ibr.cs.tu-bs.de>
  *      Enrico Jörns <joerns@ibr.cs.tu-bs.de>
+ *      Keno Garlichs <garlichs@ibr.cs.tu-bs.de>
  */
 
 /**
@@ -238,11 +239,14 @@ typedef struct {
 } acc_data_t;
 
 /**
- * \brief Checks if ADXL345 is available
+ * \brief Checks if ADXL345 is available. On INGA version <= 1.5 
+ *        the ADXL345 is connected to the MSPI bus, whereas from
+ *        1.6 on it's to be reached via I2C. According to that,
+ *        this function checks on which bus it answers.
  *
- * \retval 1 available
- * \retval 0 not availabe
- */
+ * \retval 1 ADXL available
+ * \retval 0 ADXL not available
+ * */
 int8_t adxl345_available(void);
 
 /**

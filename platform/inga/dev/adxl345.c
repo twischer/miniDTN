@@ -33,6 +33,7 @@
  * \author
  *      Ulf Kulau <kulau@ibr.cs.tu-bs.de>
  *      Enrico Jörns <joerns@ibr.cs.tu-bs.de>
+ *      Keno Garlichs <garlichs@ibr.cs.tu-bs.de>
  */
 
 /**
@@ -55,33 +56,35 @@
 /*----------------------------------------------------------------------------*/
 
 uint8_t bustype = 0;
+
+
 int8_t
 adxl345_available(void)
 {
-  uint8_t i, i2c_data = 0, mpsi_data = 0;
-  
+  uint8_t i, i2c_data = 0, mspi_data = 0;
+ 
+    // Init MPSI and I2C busses
   mspi_chip_release(ADXL345_CS);
   mspi_init(ADXL345_CS, MSPI_MODE_3, MSPI_BAUD_MAX);
+  i2c_init();
   
   for(i = 0; i <= 10; i++) {
-    mspi_chip_select(ADXL345_CS);
-    mspi_transceive(ADXL345_DEVICE_ID_REG);
-    mpsi_data = mspi_transceive(MSPI_DUMMY_BYTE);
-    mspi_chip_release(ADXL345_CS);
+   
+    // Check whether ADXL is connected via MSPI
+    bustype = MSPI;
+    mspi_data = adxl345_read(ADXL345_DEVICE_ID_REG);  
 
-    i2c_init();
-    i2c_start(ADXL345_I2C_ADDR_R);
-    i2c_write(ADXL345_DEVICE_ID_REG);
-    i2c_rep_start(ADXL345_I2C_ADDR_R);
-    i2c_read_nack(&i2c_data);
-    i2c_stop();
-    printf("i2c_data = %d\n", i2c_data); 
-    if((mpsi_data == ADXL345_DEVICE_ID_DATA) && (i2c_data != ADXL345_DEVICE_ID_DATA)) {
+    if((mspi_data == ADXL345_DEVICE_ID_DATA) && (i2c_data != ADXL345_DEVICE_ID_DATA)) {
       bustype = MSPI;
       PRINTF("adxl345: is available via MSPI\n");
       return 1;
     }
-    if((mpsi_data != ADXL345_DEVICE_ID_DATA) && (i2c_data == ADXL345_DEVICE_ID_DATA)) {
+
+    // If not MSPI, check if its attached to the I2C bus
+    bustype = I2C;
+    i2c_data = adxl345_read(ADXL345_DEVICE_ID_REG);
+
+    if((mspi_data != ADXL345_DEVICE_ID_DATA) && (i2c_data == ADXL345_DEVICE_ID_DATA)) {
       bustype = I2C;
       PRINTF("adxl345: is available via I2C\n");
       return 1;
@@ -89,6 +92,8 @@ adxl345_available(void)
  
     _delay_ms(10);
  }
+
+  // After several checks, no ADXL could be found. Assumption: No ADXL available.
   return 0;
 }
 /*----------------------------------------------------------------------------*/
@@ -99,6 +104,7 @@ adxl345_init(void)
   if (!adxl345_available()) {
     return -1;
   }
+
   // full resolution, 2g range
   adxl345_write(ADXL345_DATA_FORMAT_REG, (1 << ADXL345_FULL_RES));
   // measuring enabled
@@ -185,7 +191,7 @@ adxl345_get_y(void)
   uint8_t byteHigh;
   byteLow = adxl345_read(ADXL345_OUTY_LOW_REG);
   byteHigh = adxl345_read(ADXL345_OUTY_HIGH_REG);
-  return (byteHigh << 8) +byteLow;
+  return (byteHigh << 8) + byteLow;
 }
 /*----------------------------------------------------------------------------*/
 int16_t
@@ -195,28 +201,46 @@ adxl345_get_z(void)
   uint8_t byteHigh;
   byteLow = adxl345_read(ADXL345_OUTZ_LOW_REG);
   byteHigh = adxl345_read(ADXL345_OUTZ_HIGH_REG);
-  return (byteHigh << 8) +byteLow;
+  return (byteHigh << 8) + byteLow;
 }
 /*----------------------------------------------------------------------------*/
 acc_data_t
 adxl345_get(void)
 {
-  //TODO: if(bus=
-  acc_data_t adxl345_data;
   uint8_t lsb = 0, msb = 0;
-  mspi_chip_select(ADXL345_CS);
-  mspi_transceive(ADXL345_OUTX_LOW_REG | 0xC0); // read, multiple
-  lsb = mspi_transceive(MSPI_DUMMY_BYTE);
-  msb = mspi_transceive(MSPI_DUMMY_BYTE);
-  adxl345_data.x = (int16_t) ((msb << 8) + lsb);
-  lsb = mspi_transceive(MSPI_DUMMY_BYTE);
-  msb = mspi_transceive(MSPI_DUMMY_BYTE);
-  adxl345_data.y = (int16_t) ((msb << 8) + lsb);
-  lsb = mspi_transceive(MSPI_DUMMY_BYTE);
-  msb = mspi_transceive(MSPI_DUMMY_BYTE);
-  adxl345_data.z = (int16_t) ((msb << 8) + lsb);
-  mspi_chip_release(ADXL345_CS);
-  PRINTF("adxl345: x: %d, y: %d, z: %d\n", adxl345_data.x, adxl345_data.y, adxl345_data.z);
+  acc_data_t adxl345_data;
+
+  if(bustype == MSPI) {
+    mspi_chip_select(ADXL345_CS);
+    mspi_transceive(ADXL345_OUTX_LOW_REG | 0xC0); // read, multiple
+    lsb = mspi_transceive(MSPI_DUMMY_BYTE);
+    msb = mspi_transceive(MSPI_DUMMY_BYTE);
+    adxl345_data.x = (int16_t) ((msb << 8) + lsb);
+    lsb = mspi_transceive(MSPI_DUMMY_BYTE);
+    msb = mspi_transceive(MSPI_DUMMY_BYTE);
+    adxl345_data.y = (int16_t) ((msb << 8) + lsb);
+    lsb = mspi_transceive(MSPI_DUMMY_BYTE);
+    msb = mspi_transceive(MSPI_DUMMY_BYTE);
+    adxl345_data.z = (int16_t) ((msb << 8) + lsb);
+    mspi_chip_release(ADXL345_CS);
+  }
+  else if(bustype == I2C) {
+    i2c_start(ADXL345_I2C_ADDR_W);
+    i2c_write(ADXL345_OUTX_LOW_REG);
+    i2c_rep_start(ADXL345_I2C_ADDR_R);
+    i2c_read_ack(&lsb);
+    i2c_read_ack(&msb);
+    adxl345_data.x = (int16_t) ((msb << 8) + lsb);
+    i2c_read_ack(&lsb);
+    i2c_read_ack(&msb);
+    adxl345_data.y = (int16_t) ((msb << 8) + lsb);
+    i2c_read_ack(&lsb);
+    i2c_read_nack(&msb);
+    adxl345_data.z = (int16_t) ((msb << 8) + lsb);
+    i2c_stop();
+  
+  }
+  PRINTF("adxl345_get: x: %d, y: %d, z: %d\n", adxl345_data.x, adxl345_data.y, adxl345_data.z);
   return adxl345_data;
 }
 /*----------------------------------------------------------------------------*/
@@ -236,9 +260,9 @@ adxl345_get_acceleration_fifo(acc_data_t* ret)
 void
 adxl345_write(uint8_t reg, uint8_t data)
 {
-  reg &= 0x7F;
 
   if(bustype == MSPI) {
+    reg &= 0x7F;
     mspi_chip_select(ADXL345_CS);
     mspi_transceive(reg);
     mspi_transceive(data);
@@ -247,7 +271,6 @@ adxl345_write(uint8_t reg, uint8_t data)
   else if(bustype == I2C) {
     i2c_start(ADXL345_I2C_ADDR_W);
     i2c_write(reg);
-    i2c_rep_start(ADXL345_I2C_ADDR_W);
     i2c_write(data);
     i2c_stop();
   }
@@ -257,22 +280,25 @@ uint8_t
 adxl345_read(uint8_t reg)
 {
   uint8_t data;
-  reg |= 0x80;
   
   if(bustype == MSPI) {
+    reg |= 0x80;
     mspi_chip_select(ADXL345_CS);
     mspi_transceive(reg);
     data = mspi_transceive(MSPI_DUMMY_BYTE);
     mspi_chip_release(ADXL345_CS);
   }
   else if(bustype == I2C) {
-    i2c_start(ADXL345_I2C_ADDR_R);
+    i2c_start(ADXL345_I2C_ADDR_W);
     i2c_write(reg);
     i2c_rep_start(ADXL345_I2C_ADDR_R);
     i2c_read_nack(&data);
     i2c_stop();
   }
-
+  else {
+    printf("Error: There is no ADXL345 connected!\n");
+    return -1;
+  }
   return data;
 }
 /*----------------------------------------------------------------------------*/
