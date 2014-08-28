@@ -240,6 +240,7 @@ endif
 
 %.bang: %.hex
 ifeq ($(REV),1.6)
+	avrdude -c $(AVRDUDE_BITBANG_PROGRAMMER) -p $(MCU) -C +$(CONTIKI)/platform/inga/avrdude_bitbang.conf -b 1000 & wait $!
 	avrdude -c $(AVRDUDE_BITBANG_PROGRAMMER) -p $(MCU) -C +$(CONTIKI)/platform/inga/avrdude_bitbang.conf -U flash:w:$<& wait $!
 else
 	@echo "BITBANG: bitbanging not supported on current INGA version"
