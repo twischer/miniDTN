@@ -13,12 +13,15 @@ INGA_SOURCEFILES += $(INGA_INTERFACES) $(INGA_DRIVERS) $(INGA_SENSORS)
 ifeq ($(REV),)
   $(info INGA revison not set, defaults to REV=1.4)
   CFLAGS += -DINGA_CONF_REVISION=INGA_REV_14
+  REV = 1.4
 else ifeq ($(REV),1.2)
   CFLAGS += -DINGA_CONF_REVISION=INGA_REV_12
 else ifeq ($(REV),1.4)
   CFLAGS += -DINGA_CONF_REVISION=INGA_REV_14
 else ifeq ($(REV),1.5)
   CFLAGS += -DINGA_CONF_REVISION=INGA_REV_15
+else ifeq ($(REV),1.6)
+  CFLAGS += -DINGA_CONF_REVISION=INGA_REV_16
 else ifeq ($(REV),2.0)
   CFLAGS += -DINGA_CONF_REVISION=INGA_REV_20
 endif
@@ -151,6 +154,9 @@ JTAG_BB=$(shell echo $(JTAG_UB)\*$(JTAG_BITSHIFT) | bc)
 # bits after target device
 JTAG_BA=$(shell echo $(JTAG_UA)\*$(JTAG_BITSHIFT) | bc)
 
+### Bitbang programming
+AVRDUDE_BITBANG_PROGRAMMER=inga
+
 ifndef INGA_CONF_BAUDRATE
   INGA_CONF_BAUDRATE = 38400
 endif
@@ -230,6 +236,14 @@ ifndef JTAG_DEVICE
 else
 	@echo "JTAG: DEVICE = $(JTAG_DEVICE) (position in daisy chain), JTAG_LENGTH = $(JTAG_LENGTH) (length of daisy chain)"
 	avrdude -c $(AVRDUDE_JTAG_PROGRAMMER) -p $(MCU) -x jtagchain=$(JTAG_UB),$(JTAG_UA),$(JTAG_BB),$(JTAG_BA) -U flash:w:$<& wait $!
+endif
+
+%.bang: %.hex
+ifeq ($(REV),1.6)
+	avrdude -c $(AVRDUDE_BITBANG_PROGRAMMER) -p $(MCU) -C +$(CONTIKI)/platform/inga/avrdude_bitbang.conf -b 1000 & wait $!
+	avrdude -c $(AVRDUDE_BITBANG_PROGRAMMER) -p $(MCU) -C +$(CONTIKI)/platform/inga/avrdude_bitbang.conf -U flash:w:$<& wait $!
+else
+	@echo "BITBANG: bitbanging not supported on current INGA version"
 endif
 
 include $(CONTIKIAVR)/Makefile.avr
