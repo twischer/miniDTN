@@ -34,15 +34,14 @@ PROCESS_THREAD(default_app_process, ev, data)
   PROCESS_BEGIN();
 
 	leds_init();	
-	leds_on(2);
-	leds_off(1);
+	leds_on(LEDS_GREEN);
+	leds_off(LEDS_YELLOW);
 	etimer_set(&timer,  CLOCK_SECOND*0.05);
         while (1) {
 		
 		PROCESS_YIELD();
 		etimer_set(&timer,  CLOCK_SECOND);
-		leds_invert(1);
-		leds_invert(2);
+		leds_toggle(LEDS_GREEN | LEDS_YELLOW); // toggle both LEDs at once using bitwise or
 
         }
 
