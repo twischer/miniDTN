@@ -36,18 +36,18 @@ PROCESS_THREAD(default_app_process, ev, data)
   SENSORS_ACTIVATE(button_sensor);
 
   leds_init();	
-  leds_on(2);
-  leds_on(1);
+  leds_on(LEDS_GREEN);
+  leds_on(LEDS_YELLOW);
   etimer_set(&timer,  CLOCK_SECOND*0.05);
   while (1) {
 
     PROCESS_YIELD();
     if (ev == sensors_event && data == &button_sensor) {
-      leds_toggle(1);
+      leds_toggle(LEDS_GREEN);
     }
     if ( etimer_expired(&timer)){
       etimer_set(&timer,  CLOCK_SECOND);
-      leds_toggle(2);
+      leds_toggle(LEDS_YELLOW);
 
     }
 
