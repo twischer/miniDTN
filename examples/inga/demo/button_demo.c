@@ -36,8 +36,7 @@ PROCESS_THREAD(default_app_process, ev, data)
   SENSORS_ACTIVATE(button_sensor);
 
   leds_init();	
-  leds_on(LEDS_GREEN);
-  leds_on(LEDS_YELLOW);
+  leds_on(LEDS_GREEN | LEDS_YELLOW); // turn both LEDs on at once
   etimer_set(&timer,  CLOCK_SECOND*0.05);
   while (1) {
 

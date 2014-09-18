@@ -41,8 +41,7 @@ PROCESS_THREAD(default_app_process, ev, data)
 		
 		PROCESS_YIELD();
 		etimer_set(&timer,  CLOCK_SECOND);
-		leds_toggle(LEDS_GREEN);
-		leds_toggle(LEDS_YELLOW);
+		leds_toggle(LEDS_GREEN | LEDS_YELLOW); // toggle both LEDs at once using bitwise or
 
         }
 
