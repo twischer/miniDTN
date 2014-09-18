@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2014, TU Braunschweig. All rights reserved.
  * Copyright (c) 2009, Swedish Institute of Computer Science. All rights
  * reserved.
  *
@@ -28,10 +29,6 @@
 
 package org.contikios.cooja.avrmote;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
 
 import org.apache.log4j.Logger;
 
@@ -41,41 +38,43 @@ import avrora.core.SourceMapping.Location;
 import avrora.sim.AtmelInterpreter;
 import avrora.sim.Simulator.Watch;
 import avrora.sim.State;
-
-import org.contikios.cooja.mote.memory.Memory.MemoryMonitor.EventType;
+import java.nio.ByteOrder;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
 import org.contikios.cooja.mote.memory.MemoryInterface;
-
+import org.contikios.cooja.mote.memory.MemoryInterface.SegmentMonitor.EventType;
+import org.contikios.cooja.mote.memory.MemoryLayout;
 /**
- * @author Joakim Eriksson, Fredrik Osterlind, David Kopf
+ * @author Joakim Eriksson, Fredrik Osterlind, David Kopf, Enrico Jorns
  */
 public class AvrMoteMemory implements MemoryInterface {
-
-  private static final Logger logger = Logger.getLogger(AvrMoteMemory.class);
+  private static Logger logger = Logger.getLogger(AvrMoteMemory.class);
   private static final boolean DEBUG = logger.isDebugEnabled();
 
   private final SourceMapping memoryMap;
   private final AVRProperties avrProperties;
   private final AtmelInterpreter interpreter;
   private final ArrayList<AvrByteMonitor> memoryMonitors = new ArrayList<>();
+  private final MemoryLayout memLayout = new MemoryLayout(ByteOrder.LITTLE_ENDIAN, MemoryLayout.ARCH_8BIT, 2);
 
   private boolean coojaIsAccessingMemory;
 
-  public AvrMoteMemory(
-          SourceMapping map,
-          AVRProperties avrProperties,
-          AtmelInterpreter interpreter) {
-    this.memoryMap = map;
-    this.avrProperties = avrProperties;
-    this.interpreter = interpreter;
+    public AvrMoteMemory(SourceMapping map, AVRProperties avrProperties, AtmelInterpreter interpreter) {
+        memoryMap = map;
+        this.interpreter = interpreter;
+        this.avrProperties = avrProperties;
+    }
+
+  @Override
+  public int getTotalSize() {
+    return avrProperties.sram_size;
   }
 
   @Override
-  public void clearMemory() {
-    setMemorySegment(0L, new byte[avrProperties.sram_size]);
-  }
-  
-  private boolean accessInRange(long address, int size) {
-    return (address >= 0) && (address + size <= avrProperties.sram_size);
+  public byte[] getMemory() throws MoteMemoryException {
+    return getMemorySegment(getStartAddr(), avrProperties.sram_size);
   }
 
   @Override
@@ -123,22 +122,37 @@ public class AvrMoteMemory implements MemoryInterface {
   }
 
   @Override
-  public int getTotalSize() {
-    return avrProperties.sram_size;
+  public void clearMemory() {
+    setMemorySegment(0L, new byte[avrProperties.sram_size]);
+  }
+  
+  private boolean accessInRange(long address, int size) {
+    return (address >= 0) && (address + size <= avrProperties.sram_size);
   }
 
   @Override
-  public Symbol[] getVariables() {
+  public long getStartAddr() {
+    return 0;// XXX
+  }
 
-    List<Symbol> symbols = new LinkedList<>();
+  @Override
+  public Map<String, Symbol> getSymbolMap() {
+    // XXX do not fetch in function!
+    Map<String, Symbol> symbols = new HashMap<>();
     for (Iterator<Location> iter = memoryMap.getIterator(); iter.hasNext();) {
       Location loc = iter.next();
       if (loc == null || (loc.section.equals(".text"))) {
         continue;
       }
-      symbols.add(new Symbol(Symbol.Type.VARIABLE, loc.name, loc.section, loc.vma_addr & 0x7fffff, loc.size));
+      symbols.put(loc.name, new Symbol(Symbol.Type.VARIABLE, loc.name, loc.section, loc.vma_addr & 0x7fffff, loc.size));
     }
-    return symbols.toArray(new Symbol[0]);
+    return symbols;
+  }
+
+
+  @Override
+  public MemoryLayout getLayout() {
+    return memLayout;
   }
 
   class AvrByteMonitor extends Watch.Empty {
@@ -206,4 +220,5 @@ public class AvrMoteMemory implements MemoryInterface {
     }
     return false;
   }
+
 }

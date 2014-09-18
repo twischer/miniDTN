@@ -38,10 +38,10 @@ import org.jdom.Element;
 import org.contikios.cooja.Mote;
 import org.contikios.cooja.MoteInterface;
 import org.contikios.cooja.MoteInterfaceHandler;
-import org.contikios.cooja.mote.memory.VarMemory;
 import org.contikios.cooja.MoteType;
 import org.contikios.cooja.mote.memory.SectionMoteMemory;
 import org.contikios.cooja.Simulation;
+import org.contikios.cooja.mote.memory.MemoryInterface;
 import org.contikios.cooja.motes.AbstractWakeupMote;
 
 /**
@@ -83,10 +83,12 @@ public class ContikiMote extends AbstractWakeupMote implements Mote {
     requestImmediateWakeup();
   }
 
+  @Override
   public int getID() {
     return myInterfaceHandler.getMoteID().getMoteID();
   }
 
+  @Override
   public MoteInterfaceHandler getInterfaces() {
     return myInterfaceHandler;
   }
@@ -96,12 +98,12 @@ public class ContikiMote extends AbstractWakeupMote implements Mote {
   }
 
   @Override
-  public VarMemory getMemory() {
+  public MemoryInterface getMemory() {
     return myMemory;
   }
 
-  public void setMemory(VarMemory memory) {
-    myMemory = (SectionMoteMemory) memory;
+  public void setMemory(SectionMoteMemory memory) {
+    myMemory = memory;
   }
 
   @Override
@@ -123,6 +125,7 @@ public class ContikiMote extends AbstractWakeupMote implements Mote {
    *
    * @param simTime Current simulation time
    */
+  @Override
   public void execute(long simTime) {
 
     /* Poll mote interfaces */
@@ -156,6 +159,7 @@ public class ContikiMote extends AbstractWakeupMote implements Mote {
    *
    * @return Current simulation config
    */
+  @Override
   public Collection<Element> getConfigXML() {
     ArrayList<Element> config = new ArrayList<Element>();
     Element element;
@@ -175,6 +179,7 @@ public class ContikiMote extends AbstractWakeupMote implements Mote {
     return config;
   }
 
+  @Override
   public boolean setConfigXML(Simulation simulation, Collection<Element> configXML, boolean visAvailable) {
     setSimulation(simulation);
     myMemory = myType.createInitialMemory();
@@ -214,6 +219,7 @@ public class ContikiMote extends AbstractWakeupMote implements Mote {
     return true;
   }
 
+  @Override
   public String toString() {
     return "Contiki " + getID();
   }

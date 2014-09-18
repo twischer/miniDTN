@@ -38,7 +38,7 @@ import org.contikios.cooja.mote.memory.MemoryLayout.DataType;
  *
  * Supports padding/aligning.
  *
- * @author Enrico Joerns
+ * @author Enrico Jorns
  */
 public class MemoryBuffer {
 
@@ -59,7 +59,7 @@ public class MemoryBuffer {
    *<p>
    * Note that modifications to the buffer are applied to the backed array and vice versa.
    *
-   * @param layout
+   * @param layout MemoryLayout for memory to access array from
    * @param array Byte array that will back this buffer
    * @return the new MemroyBuffer
    */
@@ -78,7 +78,7 @@ public class MemoryBuffer {
    * The structure array elements should be set to exactly the same types and order
    * that the corresponding c struct has.
    * 
-   * @param layout
+   * @param layout MemoryLayout for memory to access array from
    * @param structure Array of data types representing the structure to read
    * @param array Byte array that will back this buffer
    * @return the new MemroyBuffer
@@ -90,8 +90,9 @@ public class MemoryBuffer {
   }
 
   /**
+   * Returns the byte array that backs this buffer
    *
-   * @return
+   * @return  byte array that backs this buffer
    */
   public byte[] getBytes() {
     if (bbuf.hasArray()) {

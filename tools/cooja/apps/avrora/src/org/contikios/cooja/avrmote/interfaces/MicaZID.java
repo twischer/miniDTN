@@ -30,6 +30,9 @@
 
 package org.contikios.cooja.avrmote.interfaces;
 import org.contikios.cooja.Mote;
+import org.contikios.cooja.mote.memory.MemoryInterface;
+import org.contikios.cooja.mote.memory.MemoryInterface.SegmentMonitor;
+import org.contikios.cooja.mote.memory.VarMemory;
 
 public class MicaZID extends AvroraMoteID {
 

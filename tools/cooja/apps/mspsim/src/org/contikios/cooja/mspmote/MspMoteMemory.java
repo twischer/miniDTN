@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2014, TU Braunschweig. All rights reserved.
  * Copyright (c) 2007, Swedish Institute of Computer Science. All rights
  * reserved.
  *
@@ -28,63 +29,51 @@
 
 package org.contikios.cooja.mspmote;
 
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.apache.log4j.Logger;
 
-import org.contikios.cooja.mote.memory.Memory.MemoryMonitor.EventType;
+import org.contikios.cooja.Mote;
 import org.contikios.cooja.mote.memory.MemoryInterface;
-import org.contikios.cooja.mote.memory.MemoryInterface.Symbol;
+import org.contikios.cooja.mote.memory.MemoryInterface.SegmentMonitor.EventType;
+import org.contikios.cooja.mote.memory.MemoryLayout;
 import se.sics.mspsim.core.MSP430;
 import se.sics.mspsim.core.Memory.AccessMode;
 import se.sics.mspsim.core.Memory.AccessType;
 import se.sics.mspsim.util.MapEntry;
 
-/**
- * 
- * @author Enrico Joerns
- */
 public class MspMoteMemory implements MemoryInterface {
-
-  private static final Logger logger = Logger.getLogger(MspMoteMemory.class);
+  private static Logger logger = Logger.getLogger(MspMoteMemory.class);
   private final ArrayList<MapEntry> mapEntries;
+  private final MemoryLayout memLayout;
 
   private final MSP430 cpu;
 
-  public MspMoteMemory(MapEntry[] allEntries, MSP430 cpu) {
-    this.mapEntries = new ArrayList<>();
+  public MspMoteMemory(Mote mote, MapEntry[] allEntries, MSP430 cpu) {
+    this.mapEntries = new ArrayList<MapEntry>();
 
-    for (MapEntry entry : allEntries) {
+    for (MapEntry entry: allEntries) {
       if (entry.getType() == MapEntry.TYPE.variable) {
         mapEntries.add(entry);
       }
     }
 
     this.cpu = cpu;
+    memLayout = new MemoryLayout(ByteOrder.LITTLE_ENDIAN, MemoryLayout.ARCH_16BIT, 2);
   }
 
   @Override
-  public Symbol[] getVariables() {
-    List<Symbol> vars = new LinkedList<>();
-    for (MapEntry entry : mapEntries) {
-      if (entry.getType() != MapEntry.TYPE.variable) {
-        continue;
-      }
-      vars.add(new Symbol(
-              Symbol.Type.VARIABLE,
-              entry.getName(), 
-              entry.getAddress(), 
-              entry.getSize()));
-    }
-    return vars.toArray(new Symbol[0]);
+  public int getTotalSize() {
+    return cpu.memory.length;
   }
 
   @Override
-  public void clearMemory() {
-    Arrays.fill(cpu.memory, 0);
+  public byte[] getMemory() throws MoteMemoryException {
+    return getMemorySegment(getStartAddr(), cpu.memory.length);
   }
 
   @Override
@@ -114,10 +103,35 @@ public class MspMoteMemory implements MemoryInterface {
   }
 
   @Override
-  public int getTotalSize() {
-    return cpu.memory.length;
+  public void clearMemory() {
+    Arrays.fill(cpu.memory, 0);
   }
 
+  @Override
+  public long getStartAddr() {
+    return 0;// XXXX
+  }
+
+  @Override
+  public Map<String, Symbol> getSymbolMap() {
+    Map<String, Symbol> vars = new HashMap<>();
+    for (MapEntry entry : mapEntries) {
+      if (entry.getType() != MapEntry.TYPE.variable) {
+        continue;
+      }
+      vars.put(entry.getName(), new Symbol(
+              Symbol.Type.VARIABLE,
+              entry.getName(), 
+              entry.getAddress(), 
+              entry.getSize()));
+    }
+    return vars;
+  }
+
+  @Override
+  public MemoryLayout getLayout() {
+    return memLayout;
+  }
 
   private final ArrayList<MemoryCPUMonitor> cpuMonitorArray = new ArrayList<>();
 

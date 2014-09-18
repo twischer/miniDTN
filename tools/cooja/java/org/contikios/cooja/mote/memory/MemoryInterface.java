@@ -28,11 +28,13 @@
  */
 package org.contikios.cooja.mote.memory;
 
-import org.contikios.cooja.mote.memory.Memory.MemoryMonitor;
-import org.contikios.cooja.mote.memory.Memory.MemoryMonitor.EventType;
+import java.util.Map;
 
 /**
- * Memory interface to mote emulator.
+ * A minimal interface to a motes memory.
+ * 
+ * Allows reading and writing memory, obtaining symbol information
+ * and provides some basic inforation about size, layout, etc.
  *
  * @author Enrico Jorns
  */
@@ -66,7 +68,7 @@ public interface MemoryInterface {
     public Symbol(Type type, String name, long addr, int size) {
       this(type, name, null, addr, size);
     }
-    
+
     @Override
     public String toString() {
       return new StringBuilder("Symbol(").append(type == null ? "N/A" : type.toString())
@@ -86,6 +88,13 @@ public interface MemoryInterface {
       super(String.format(message, args));
     }
   }
+
+  /**
+   * Returns entire mote memory
+   * @return Memory byte array
+   * @throws org.contikios.cooja.mote.memory.MemoryInterface.MoteMemoryException 
+   */
+  public byte[] getMemory() throws MoteMemoryException;
 
   /**
    * Reads a segment from memory.
@@ -110,24 +119,52 @@ public interface MemoryInterface {
   void clearMemory();
 
   /**
+   * 
+   * @return 
+   */
+  long getStartAddr();
+
+  /**
    * Returns total size of memory.
    *
    * @return Size [bytes]
    */
-  int getTotalSize();
+  int getTotalSize();// XXX getSize();
 
   /**
-   * Returns all variables in memory.
+   * Returns Map of all variables in memory.
+   * Map must be of typ name / symbol.
    *
    * @return Variables
    */
-  Symbol[] getVariables();
+  Map<String, Symbol> getSymbolMap();
+
+  /**
+   * Returns the MemoryLayout for this memory.
+   * 
+   * @return Memory layout for this memory
+   */
+  MemoryLayout getLayout();
 
   /**
    * Monitor to listen for memory updates.
    */
   interface SegmentMonitor {
 
+    public static enum EventType {
+
+      READ,
+      WRITE,
+      READWRITE
+    }
+
+    /**
+     * Invoked if the monitored segment changed
+     * 
+     * @param memory Reference to the memory
+     * @param type XXX ???
+     * @param address Address in segment where modification occured
+     */
     void memoryChanged(MemoryInterface memory, EventType type, long address);
   }
 
@@ -141,7 +178,7 @@ public interface MemoryInterface {
    * @param monitor SegmentMonitor to add
    * @return true if monitor could be added, false if not
    */
-  boolean addSegmentMonitor(MemoryMonitor.EventType flag, long address, int size, SegmentMonitor monitor);
+  boolean addSegmentMonitor(SegmentMonitor.EventType flag, long address, int size, SegmentMonitor monitor);
 
   /**
    * Removes SegmentMonitor assigned to the specified region.

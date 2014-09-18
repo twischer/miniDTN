@@ -88,7 +88,7 @@ public class ContikiEEPROM extends MoteInterface implements ContikiMoteInterface
    */
   public ContikiEEPROM(Mote mote) {
     this.mote = mote;
-    this.moteMem = (VarMemory) mote.getMemory();
+    this.moteMem = new VarMemory(mote.getMemory());
   }
 
   public static String[] getCoreInterfaceDependencies() {

@@ -29,53 +29,39 @@
  */
 package org.contikios.cooja.mote.memory;
 
-import java.util.HashMap;
+import java.util.Collection;
+import java.util.Set;
 
 import org.contikios.cooja.mote.memory.MemoryInterface.Symbol;
-import org.contikios.cooja.mote.memory.Memory.MemoryMonitor.EventType;
+import org.contikios.cooja.mote.memory.MemoryInterface.SegmentMonitor;
+import org.contikios.cooja.mote.memory.MemoryInterface.SegmentMonitor.EventType;
 
 /**
  * Represents memory that can be accessed with names of variables.
  *
- * @author Enrico Joerns
+ * @author Enrico Jorns
  */
-public abstract class VarMemory extends Memory {
+public class VarMemory extends Memory {
 
-  private final HashMap<String, Symbol> variables = new HashMap<>();
-
-  /**
-   * Creates new VarMemory.
-   *
-   * @param layout MemoryLayout of memory
-   * @param variables Variables located in memory of null if none known
-   */
-  public VarMemory(MemoryLayout layout, Symbol[] variables) {
-    super(layout);
-    if (variables != null) {
-      for (Symbol var : variables) {
-        this.variables.put(var.name, var);
-      }
-    }
-  }
+  private MemoryInterface memIntf;
 
   /**
    * Creates new VarMemory.
    *
-   * @param layout MemoryLayout of memory
+   * @param intf
    */
-  public VarMemory(MemoryLayout layout) {
-    this(layout, null);
+  public VarMemory(MemoryInterface intf) {
+    super(intf);
+    memIntf = intf;
   }
 
   /**
-   * Adds a variable to this memory.
+   * Allows to change the MemoryInterface associated with this access class.
    *
-   * @param var Variable to add
+   * @param intf Interface to associate with
    */
-  protected void addVariable(Symbol var) {
-    if (var != null) {
-      variables.put(var.name, var);
-    }
+  public void associateMemory(MemoryInterface intf) {
+    memIntf = intf;
   }
 
   /**
@@ -83,8 +69,8 @@ public abstract class VarMemory extends Memory {
    *
    * @return All variables located in this memory
    */
-  public Symbol[] getVariables() {
-    return variables.values().toArray(new Symbol[0]);
+  public Collection<Symbol> getVariables() {
+    return memIntf.getSymbolMap().values();
   }
 
   /**
@@ -92,8 +78,8 @@ public abstract class VarMemory extends Memory {
    *
    * @return All variable names located in this memory
    */
-  public String[] getVariableNames() {
-    return variables.keySet().toArray(new String[0]);
+  public Set<String> getVariableNames() {
+    return memIntf.getSymbolMap().keySet();
   }
 
   /**
@@ -103,7 +89,7 @@ public abstract class VarMemory extends Memory {
    * @return True if variable exists, false otherwise
    */
   public boolean variableExists(String varName) {
-    return variables.containsKey(varName);
+    return memIntf.getSymbolMap().containsKey(varName);
   }
 
   /**
@@ -113,14 +99,11 @@ public abstract class VarMemory extends Memory {
    * @return Variable address
    */
   public Symbol getVariable(String varName) throws UnknownVariableException {
-    /* Cooja address space */
-    if (!variables.containsKey(varName)) {
+    Symbol sym = memIntf.getSymbolMap().get(varName);
+    if (sym == null) {
       throw new UnknownVariableException(varName);
     }
-
-    Symbol sym = variables.get(varName);
-
-    return new Symbol(sym.type, sym.name, sym.section, sym.addr, sym.size);
+    return sym;
   }
 
   /**
@@ -260,7 +243,7 @@ public abstract class VarMemory extends Memory {
    */
   public byte[] getByteArray(String varName, int length)
           throws UnknownVariableException {
-    return getMemorySegment(getVariable(varName).addr, length);
+    return getByteArray(getVariable(varName).addr, length);
   }
 
   /**
@@ -366,26 +349,26 @@ public abstract class VarMemory extends Memory {
   }
 
   /**
+   * Write byte array starting at location associated with this variable name.
    *
-   * @param varName
-   * @param data
+   * @param varName Variable name
+   * @param data data to write
    */
   public void setByteArray(String varName, byte[] data)
           throws UnknownVariableException {
-    setMemorySegment(getVariable(varName).addr, data);
+    setByteArray(getVariable(varName).addr, data);
   }
 
   /**
-   * Adds a MemoryMonitor for the specified address region.
+   * Adds a monitor for the specified address region.
    *
-   * @param flag Select memory operation(s) to listen for (read, write,
-   * read/write)
-   * @param varName
-   * @param mm
-   * @return
+   * @param flag Select memory operation(s) to listen for (read, write, read/write)
+   * @param varName Name of variable to monitor
+   * @param mm Monitor to add
+   * @return if monitor could be added, false if not
    */
-  public boolean addVarMonitor(EventType flag, final String varName, final MemoryMonitor mm) {
-    return addMemoryMonitor(
+  public boolean addVarMonitor(EventType flag, final String varName, final SegmentMonitor mm) {
+    return memIntf.addSegmentMonitor(
             flag,
             getVariable(varName).addr,
             getVariable(varName).size,
@@ -393,12 +376,12 @@ public abstract class VarMemory extends Memory {
   }
 
   /**
-   * Removes MemoryMonitor assigned to the specified region.
+   * Removes monitor assigned to the specified region.
    *
-   * @param varName
-   * @param mm MemoryMonitor to remove
+   * @param varName Name of monitored variable
+   * @param mm Monitor to remove
    */
-  public void removeVarMonitor(String varName, MemoryMonitor mm) {
-    removeMemoryMonitor(getVariable(varName).addr, getVariable(varName).size, mm);
+  public void removeVarMonitor(String varName, SegmentMonitor mm) {
+    memIntf.removeSegmentMonitor(getVariable(varName).addr, getVariable(varName).size, mm);
   }
 }

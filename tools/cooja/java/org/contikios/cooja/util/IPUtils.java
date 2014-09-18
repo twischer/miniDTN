@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, TU Braunschweig
+ * Copyright (c) 2014, TU Braunschweig
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -31,7 +31,7 @@ package org.contikios.cooja.util;
 /**
  * Holds some IP byte to string conversion functions etc.
  *
- * @author Enrico Joerns
+ * @author Enrico Jorns
  */
 public class IPUtils {
   

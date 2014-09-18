@@ -41,11 +41,11 @@ import java.awt.event.ItemListener;
 import java.awt.event.KeyListener;
 import java.text.NumberFormat;
 import java.text.ParseException;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
-
 import javax.swing.AbstractButton;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -66,9 +66,6 @@ import javax.swing.text.DefaultFormatterFactory;
 import javax.swing.text.DocumentFilter;
 import javax.swing.text.PlainDocument;
 import org.apache.log4j.Logger;
-
-import org.jdom.Element;
-
 import org.contikios.cooja.ClassDescription;
 import org.contikios.cooja.Cooja;
 import org.contikios.cooja.Mote;
@@ -76,11 +73,13 @@ import org.contikios.cooja.MotePlugin;
 import org.contikios.cooja.PluginType;
 import org.contikios.cooja.Simulation;
 import org.contikios.cooja.VisPlugin;
+import org.contikios.cooja.mote.memory.Memory;
+import org.contikios.cooja.mote.memory.MemoryInterface;
+import org.contikios.cooja.mote.memory.MemoryInterface.SegmentMonitor;
 import org.contikios.cooja.mote.memory.UnknownVariableException;
 import org.contikios.cooja.mote.memory.VarMemory;
-import org.contikios.cooja.mote.memory.Memory;
-import org.contikios.cooja.mote.memory.Memory.MemoryMonitor;
 import org.jdesktop.swingx.autocomplete.AutoCompleteDecorator;
+import org.jdom.Element;
 
 /**
  * Variable Watcher enables a user to watch mote variables during a simulation.
@@ -117,7 +116,7 @@ public class VariableWatcher extends VisPlugin implements MotePlugin {
   private FocusListener charValueFocusListener;
   private VarMemory moteMemory;
 
-  MemoryMonitor memMonitor;
+  SegmentMonitor memMonitor;
   long monitorAddr;
   int monitorSize;
 
@@ -202,7 +201,7 @@ public class VariableWatcher extends VisPlugin implements MotePlugin {
   public VariableWatcher(Mote moteToView, Simulation simulation, Cooja gui) {
     super("Variable Watcher (" + moteToView + ")", gui);
     this.mote = moteToView;
-    moteMemory = (VarMemory) moteToView.getMemory();
+    moteMemory = new VarMemory(moteToView.getMemory());
 
     JLabel label;
     integerFormat = NumberFormat.getIntegerInstance();
@@ -218,10 +217,10 @@ public class VariableWatcher extends VisPlugin implements MotePlugin {
     label.setPreferredSize(new Dimension(LABEL_WIDTH, LABEL_HEIGHT));
     smallPane.add(BorderLayout.WEST, label);
 
-    String[] allPotentialVarNames = moteMemory.getVariableNames();
-    Arrays.sort(allPotentialVarNames);
+    List<String> allPotentialVarNames = new ArrayList<>(moteMemory.getVariableNames());
+    Collections.sort(allPotentialVarNames);
 
-    varNameCombo = new JComboBox(allPotentialVarNames);
+    varNameCombo = new JComboBox(allPotentialVarNames.toArray());
     AutoCompleteDecorator.decorate(varNameCombo);
     varNameCombo.setEditable(true);
     varNameCombo.setSelectedItem("");
@@ -297,8 +296,8 @@ public class VariableWatcher extends VisPlugin implements MotePlugin {
     smallPane.add(BorderLayout.WEST, label);
 
     /* set correct integer and address size */
-    valueTypes[2].setBytes(moteMemory.getMemoryLayout().intSize);
-    valueTypes[4].setBytes(moteMemory.getMemoryLayout().addrSize);
+    valueTypes[2].setBytes(moteToView.getMemory().getLayout().intSize);
+    valueTypes[4].setBytes(moteToView.getMemory().getLayout().addrSize);
 
     JPanel reprPanel = new JPanel(new BorderLayout());
     varTypeCombo = new JComboBox(valueTypes);
@@ -465,10 +464,10 @@ public class VariableWatcher extends VisPlugin implements MotePlugin {
 
         monitorAddr = moteMemory.getVariableAddress(varname);
         monitorSize = moteMemory.getVariableSize(varname);
-        memMonitor = new MemoryMonitor() {
+        memMonitor = new SegmentMonitor() {
 
           @Override
-          public void memoryChanged(Memory memory, EventType type, long address) {
+          public void memoryChanged(MemoryInterface memory, SegmentMonitor.EventType type, long address) {
             bufferedBytes = moteMemory.getByteArray(
                     (String) varNameCombo.getSelectedItem(),
                     moteMemory.getVariableSize((String) varNameCombo.getSelectedItem()));
@@ -478,7 +477,7 @@ public class VariableWatcher extends VisPlugin implements MotePlugin {
         };
         //System.out.println("Adding monitor " + memMonitor + " for addr " + monitorAddr + ", size " + monitorSize + "");
         moteMemory.addMemoryMonitor(
-                MemoryMonitor.EventType.WRITE,
+                SegmentMonitor.EventType.WRITE,
                 monitorAddr,
                 monitorSize,
                 memMonitor);
@@ -512,9 +511,7 @@ public class VariableWatcher extends VisPlugin implements MotePlugin {
           }
         }
         /* Write to memory */
-        moteMemory.setMemorySegment(
-                moteMemory.getVariableAddress((String) varNameCombo.getSelectedItem()),
-                bufferedBytes);
+        moteMemory.setByteArray((String) varNameCombo.getSelectedItem(), bufferedBytes);
       }
     });
 

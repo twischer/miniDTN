@@ -41,6 +41,7 @@ import org.contikios.cooja.*;
 import org.contikios.cooja.contikimote.ContikiMote;
 import org.contikios.cooja.contikimote.ContikiMoteInterface;
 import org.contikios.cooja.interfaces.Button;
+import org.contikios.cooja.mote.memory.VarMemory;
 
 /**
  * Button mote interface.
@@ -63,7 +64,7 @@ import org.contikios.cooja.interfaces.Button;
  * @author Fredrik Osterlind
  */
 public class ContikiButton extends Button implements ContikiMoteInterface {
-  private SectionMoteMemory moteMem;
+  private VarMemory moteMem;
   private ContikiMote mote;
 
   private static Logger logger = Logger.getLogger(ContikiButton.class);
@@ -77,7 +78,7 @@ public class ContikiButton extends Button implements ContikiMoteInterface {
    */
   public ContikiButton(Mote mote) {
     this.mote = (ContikiMote) mote;
-    this.moteMem = (SectionMoteMemory) mote.getMemory();
+    this.moteMem = new VarMemory(mote.getMemory());
   }
 
   public static String[] getCoreInterfaceDependencies() {

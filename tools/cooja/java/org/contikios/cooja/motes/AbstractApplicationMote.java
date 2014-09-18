@@ -30,23 +30,24 @@ package org.contikios.cooja.motes;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Observable;
 import java.util.Observer;
-
 import org.apache.log4j.Logger;
-import org.contikios.cooja.mote.memory.MemoryLayout;
-import org.jdom.Element;
 import org.contikios.cooja.Mote;
 import org.contikios.cooja.MoteInterface;
 import org.contikios.cooja.MoteInterfaceHandler;
-import org.contikios.cooja.mote.memory.VarMemory;
 import org.contikios.cooja.MoteType;
 import org.contikios.cooja.RadioPacket;
-import org.contikios.cooja.mote.memory.SectionMoteMemory;
 import org.contikios.cooja.Simulation;
 import org.contikios.cooja.interfaces.ApplicationRadio;
 import org.contikios.cooja.interfaces.ApplicationSerialPort;
 import org.contikios.cooja.interfaces.Radio;
+import org.contikios.cooja.mote.memory.MemoryInterface;
+import org.contikios.cooja.mote.memory.MemoryInterface.Symbol;
+import org.contikios.cooja.mote.memory.MemoryLayout;
+import org.contikios.cooja.mote.memory.SectionMoteMemory;
+import org.jdom.Element;
 
 /**
  * Abstract application mote.
@@ -89,7 +90,8 @@ public abstract class AbstractApplicationMote extends AbstractWakeupMote impleme
   public AbstractApplicationMote(MoteType moteType, Simulation sim) {
     setSimulation(sim);
     this.moteType = moteType;
-    this.memory = new SectionMoteMemory(MemoryLayout.getNative());
+    MemoryLayout.getNative();
+    this.memory = new SectionMoteMemory(new HashMap<String, Symbol>());
     this.moteInterfaces = new MoteInterfaceHandler(this, moteType.getMoteInterfaceClasses());
     this.moteInterfaces.getRadio().addObserver(radioDataObserver);
     requestImmediateWakeup();
@@ -109,11 +111,11 @@ public abstract class AbstractApplicationMote extends AbstractWakeupMote impleme
   }
 
   @Override
-  public VarMemory getMemory() {
+  public MemoryInterface getMemory() {
     return memory;
   }
 
-  public void setMemory(VarMemory memory) {
+  public void setMemory(SectionMoteMemory memory) {
     this.memory = (SectionMoteMemory) memory;
   }
 
@@ -149,7 +151,7 @@ public abstract class AbstractApplicationMote extends AbstractWakeupMote impleme
   public boolean setConfigXML(Simulation simulation,
       Collection<Element> configXML, boolean visAvailable) {
     setSimulation(simulation);
-    this.memory = new SectionMoteMemory(MemoryLayout.getNative());
+    this.memory = new SectionMoteMemory(new HashMap<String, Symbol>());
     moteInterfaces.getRadio().addObserver(radioDataObserver);
 
     for (Element element : configXML) {

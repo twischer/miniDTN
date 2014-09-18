@@ -48,8 +48,6 @@ import org.contikios.cooja.dialogs.MessageList;
 import org.contikios.cooja.dialogs.MessageList.MessageContainer;
 import org.contikios.cooja.motes.AbstractEmulatedMote;
 import org.contikios.cooja.mote.memory.MemoryLayout;
-import org.contikios.cooja.mote.memory.MoteMemory;
-import org.contikios.cooja.mote.memory.VarMemory;
 import org.contikios.cooja.plugins.Debugger.SourceLocation;
 
 import avrora.arch.avr.AVRProperties;
@@ -67,6 +65,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.contikios.cooja.SensorMote;
 import org.contikios.cooja.interfaces.sensor.Sensor;
+import org.contikios.cooja.mote.memory.MemoryInterface;
 
 /**
  * @author Joakim Eriksson, Fredrik Osterlind, David Kopf
@@ -82,7 +81,7 @@ public abstract class AvroraMote extends AbstractEmulatedMote implements Watchpo
   private EEPROM EEPROM = null;
   private AtmelInterpreter interpreter = null;
   private MemoryLayout memLayout;
-  private MoteMemory memory = null;
+  private MemoryInterface memory = null;
 
   public Simulator sim;
   public SourceMapping sourceMapping;
@@ -113,8 +112,7 @@ public abstract class AvroraMote extends AbstractEmulatedMote implements Watchpo
       sim = cpu.getSimulator();
       interpreter = (AtmelInterpreter) sim.getInterpreter();
       memLayout = new MemoryLayout(ByteOrder.LITTLE_ENDIAN, MemoryLayout.ARCH_8BIT, 2);
-      AvrMoteMemory avrmom = new AvrMoteMemory(sourceMapping, avrProperties, interpreter);
-      memory = new MoteMemory(memLayout, avrmom);
+      memory = new AvrMoteMemory(sourceMapping, avrProperties, interpreter);
 
       /* Get all sensors */
       Map<String, Sensor> sensorMap = new HashMap<>();
@@ -173,13 +171,15 @@ public abstract class AvroraMote extends AbstractEmulatedMote implements Watchpo
   public MoteType getType() {
     return moteType;
   }
-  @Override
-  public VarMemory getMemory() {
-    return memory;
-  }
+
   @Override
   public MoteInterfaceHandler getInterfaces() {
     return moteInterfaceHandler;
+  }
+
+  @Override
+  public MemoryInterface getMemory() {
+    return memory;
   }
 
   private long cyclesExecuted = 0;

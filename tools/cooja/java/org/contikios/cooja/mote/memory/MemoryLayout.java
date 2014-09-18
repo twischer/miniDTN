@@ -32,17 +32,24 @@ package org.contikios.cooja.mote.memory;
 import java.nio.ByteOrder;
 
 /**
- * Holds memory layout informations such as endianess, wordsize, integer size.
- *
+ * Holds memory layout informations such as endianess, wordsize, C int size.
+ * 
  * @author Enrico Jorns
  */
 public class MemoryLayout {
 
+  /** 8 bit memory architecture */
   public static final int ARCH_8BIT = 1;
+  /** 16 bit memory architecture */
   public static final int ARCH_16BIT = 2;
+  /** 32 bit memory architecture */
   public static final int ARCH_32BIT = 4;
+  /** 64 bit memory architecture */
   public static final int ARCH_64BIT = 8;
 
+  /**
+   * Size of data types in bytes.
+   */
   public enum DataType {
 
     BYTE(1),
@@ -81,6 +88,7 @@ public class MemoryLayout {
   private boolean aligned = true;
 
   /**
+   * Creates new MemoryLayout instance.
    *
    * @param order either ByteOrder.BIG_ENDIAN, or ByteOrder.LITTLE_ENDIAN
    * @param wordsize should be one of ARCH_8BIT, ARCH_16BIT, ARCH_32BIT,
@@ -92,6 +100,7 @@ public class MemoryLayout {
   }
 
   /**
+   * Creates new MemoryLayout instance.
    *
    * @param order either ByteOrder.BIG_ENDIAN, or ByteOrder.LITTLE_ENDIAN
    * @param wordsize should be one of ARCH_8BIT, ARCH_16BIT, ARCH_32BIT,
@@ -132,11 +141,27 @@ public class MemoryLayout {
     this.aligned = aligned;
   }
 
+  /**
+   * Returns true if data is aligned.
+   * 
+   * @return if aligned
+   */
   public boolean isAligned() {
     return aligned;
   }
 
+  /**
+   * Returns number of padding bytes between two data types.
+   * 
+   * @param currType
+   * @param nextType
+   * @return 
+   */
   public int getPaddingBytesFor(DataType currType, DataType nextType) {
+    /* No padding bytes for unaligned memory */
+    if (!isAligned()) {
+      return 0;
+    }
     /* get size of next element in structure */
     int nextsize = nextType.getSize();
     /* limit padding to word size */
@@ -150,7 +175,7 @@ public class MemoryLayout {
   /**
    * Returns information string for this MemoryLayout.
    * 
-   * @return 
+   * @return String that shows Endianess and word size.
    */
   @Override
   public String toString() {

@@ -46,6 +46,7 @@ import org.contikios.cooja.contikimote.ContikiMoteInterface;
 import org.contikios.cooja.interfaces.PolledAfterActiveTicks;
 import org.contikios.cooja.interfaces.Position;
 import org.contikios.cooja.interfaces.Radio;
+import org.contikios.cooja.mote.memory.VarMemory;
 import org.contikios.cooja.radiomediums.UDGM;
 
 /**
@@ -87,10 +88,10 @@ import org.contikios.cooja.radiomediums.UDGM;
  * @author Fredrik Osterlind
  */
 public class ContikiRadio extends Radio implements ContikiMoteInterface, PolledAfterActiveTicks {
-  
+
   private final ContikiMote mote;
 
-  private final SectionMoteMemory myMoteMemory;
+  private final VarMemory myMoteMemory;
 
   private static final Logger logger = Logger.getLogger(ContikiRadio.class);
   
@@ -138,7 +139,7 @@ public class ContikiRadio extends Radio implements ContikiMoteInterface, PolledA
         ContikiRadio.class, "RADIO_TRANSMISSION_RATE_kbps");
 
     this.mote = (ContikiMote) mote;
-    this.myMoteMemory = (SectionMoteMemory) mote.getMemory();
+    this.myMoteMemory = new VarMemory(mote.getMemory());
 
     radioOn = myMoteMemory.getByteValueOf("simRadioHWOn") == 1;
   }
