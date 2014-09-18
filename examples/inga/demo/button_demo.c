@@ -43,11 +43,11 @@ PROCESS_THREAD(default_app_process, ev, data)
 
     PROCESS_YIELD();
     if (ev == sensors_event && data == &button_sensor) {
-      leds_invert(1);
+      leds_toggle(1);
     }
     if ( etimer_expired(&timer)){
       etimer_set(&timer,  CLOCK_SECOND);
-      leds_invert(2);
+      leds_toggle(2);
 
     }
 

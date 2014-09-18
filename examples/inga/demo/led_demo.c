@@ -41,8 +41,8 @@ PROCESS_THREAD(default_app_process, ev, data)
 		
 		PROCESS_YIELD();
 		etimer_set(&timer,  CLOCK_SECOND);
-		leds_invert(1);
-		leds_invert(2);
+		leds_toggle(1);
+		leds_toggle(2);
 
         }
 
