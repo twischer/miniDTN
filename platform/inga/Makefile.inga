@@ -123,13 +123,6 @@ MCU=atmega1284p
 #AVRDUDE_PROGRAMMER=jtag2
 AVRDUDE_PROGRAMMER=avr109
 
-# For usb devices, you may either use PORT=usb, or (e.g. if you have more than one
-# programmer connected) you can use the following trick to find out the serial number:
-#
-# The example is for an JTAGICE mkII used to program an ATmega128:
-# avrdude -v -P usb:xxxx -c jtag2 -p atmega128
-#AVRDUDE_PORT=usb:00B000000D79
-#AVRDUDE_PORT=usb
 
 # Additional avrdude options
 # Verify off
@@ -190,6 +183,10 @@ else
 endif
 
 CMOTES=$(MOTES)
+UPLOAD_MOTE_TARGETS=$(MOTES:%=%.upload_target)
+RESET_MOTE_TARGETS=$(MOTES:%=%.reset)
+
+UPLOAD_TARGET= # stores the binary which should be uploaded
 
 motelist:
 	$(MOTELIST)
@@ -197,37 +194,33 @@ motelist:
 motes:
 	@echo $(MOTES)
 
-reset:
+reset: $(RESET_MOTE_TARGETS)
+
+%.reset:
 ifeq ($(UNAME), Linux)
 	@make -C $(CONTIKI)/tools/inga/inga_tool
-	@echo MOTES: $(MOTES)
-	@$(foreach PORT, \
-	  $(MOTES), \
-	  if test -x $(INGA_RESET); then \
-	    $(INGA_RESET) -d $(PORT) -r; \
-	  fi;)
-	@wait $!
+	@echo MOTE: $*
+	  if test -x $(INGA_RESET); then
+	    $(INGA_RESET) -d $* -r;
+	  fi;
+	@wait $$!
 	@echo Waiting 0.5s; sleep 0.5
 else
 	$(warning resetting not supported)
 endif
 
-
 login:
 	$(SERIALDUMP) -b$(INGA_CONF_BAUDRATE) $(firstword $(CMOTES))
 
-AVRDUDE_PORT=$(CMOTES)
-
-%.upload:  %.hex reset
-ifeq ($(MOTES),)
-	$(warning No device connected)
-else
+%.upload_setup: %.hex
+	$(eval UPLOAD_TARGET=$*)
 	@echo Uploading...
-	$(foreach PORT, \
-	  $(MOTES), \
-	  avrdude $(AVRDUDE_OPTIONS) -P $(PORT) $(AVRDUDE_PROGRAMMER) -p $(MCU) -U flash:w:$<& )wait $!
+
+%.upload_target: %.reset
+	avrdude $(AVRDUDE_OPTIONS) -P $* $(AVRDUDE_PROGRAMMER) -p $(MCU) -U flash:w:$(UPLOAD_TARGET).hex
+
+%.upload: %.hex %.upload_setup $(UPLOAD_MOTE_TARGETS)
 	@echo Upload done.
-endif
 
 %.jtag:  %.hex
 ifndef JTAG_DEVICE
