@@ -200,11 +200,9 @@ reset: $(RESET_MOTE_TARGETS)
 ifeq ($(UNAME), Linux)
 	@make -C $(CONTIKI)/tools/inga/inga_tool
 	@echo MOTE: $*
-	  if test -x $(INGA_RESET); then
-	    $(INGA_RESET) -d $* -r;
-	  fi;
-	@wait $$!
-	@echo Waiting 0.5s; sleep 0.5
+	$(INGA_RESET) -d $* -r
+	@echo Waiting 0.5s
+	@sleep 0.5
 else
 	$(warning resetting not supported)
 endif
