@@ -22,7 +22,9 @@
 
   <target name="clean">
     <delete dir="${build}"/>
-    <delete dir="${lib}"/>
+    <delete>
+      <fileset dir="${lib}" excludes="*avrora*.txt"/>
+    </delete>
   </target>
 
   <target name="avrora" depends="init">
