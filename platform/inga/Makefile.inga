@@ -172,7 +172,7 @@ ifeq ($(UNAME), Darwin)
 	  perl -ne 'print $$1 . " " if(m-(/dev/\w+\.\w+\-\w+)-);')
 else ifeq ($(UNAME), Linux)
   # Linux
-  INGA_RESET = $(CONTIKI)/tools/inga/inga_tool/inga_tool
+  INGA_TOOL = $(CONTIKI)/tools/inga/inga_tool/inga_tool
   SERIALDUMP = $(CONTIKI)/tools/sky/serialdump-linux
   MOTELIST ?= $(CONTIKI)/tools/sky/motelist-linux
   MOTES ?= $(shell $(MOTELIST) 2>&- | grep USB | \
@@ -197,14 +197,18 @@ motes:
 reset: $(RESET_MOTE_TARGETS)
 
 %.reset:
+ifneq ($(NORESET),1)
 ifeq ($(UNAME), Linux)
 	@make -C $(CONTIKI)/tools/inga/inga_tool
 	@echo MOTE: $*
-	$(INGA_RESET) -d $* -r
+	$(INGA_TOOL) -d $* -r
 	@echo Waiting 0.5s
 	@sleep 0.5
 else
 	$(warning resetting not supported)
+endif
+else
+  $(warning Auto resetting disbaled)
 endif
 
 login:
