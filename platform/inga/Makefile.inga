@@ -215,6 +215,9 @@ login:
 	$(SERIALDUMP) -b$(INGA_CONF_BAUDRATE) $(firstword $(CMOTES))
 
 %.upload_setup: %.hex
+ifeq ($(strip $(MOTES)),)
+	$(error no motes found)
+endif
 	$(eval UPLOAD_TARGET=$*)
 	@echo Uploading...
 
