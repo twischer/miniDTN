@@ -81,7 +81,7 @@ adc_init(uint8_t mode, uint8_t ref)
   /* Do not allow to set internal reference with AREF connected */
   if ((aref_connected) && (ref != ADC_REF_AREF)) {
     PRINTF("adc: Internal reference voltage not allowed!\n");
-    return 1;
+    return;
   }
 
   ADMUX = ref;
