@@ -1,7 +1,8 @@
 #include "contiki.h"
-#include "net/rime.h"
+#include "net/rime/rime.h"
 
 #include <stdio.h>
+#include <string.h>
 #include "../test.h"
 #include "test-params.h"
 
@@ -14,7 +15,7 @@ PROCESS(rime_unicast_sender, "Example unicast");
 AUTOSTART_PROCESSES(&rime_unicast_sender);
 /*---------------------------------------------------------------------------*/
 static void
-recv_uc(struct unicast_conn *c, const rimeaddr_t *from)
+recv_uc(struct unicast_conn *c, const linkaddr_t *from)
 {
   char *datapntr;
   static uint8_t rec_count = 0;

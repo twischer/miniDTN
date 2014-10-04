@@ -3,9 +3,10 @@
  */
 
 #include "contiki.h"
-#include "net/rime.h"
+#include "net/rime/rime.h"
 
 #include <stdio.h>
+#include <string.h>
 #include "../test.h"
 #include "test-params.h"
 
@@ -18,7 +19,7 @@ PROCESS(rime_unicast_sender, "Rime Unicast Sender");
 AUTOSTART_PROCESSES(&rime_unicast_sender);
 /*---------------------------------------------------------------------------*/
 static void
-recv_uc(struct unicast_conn *c, const rimeaddr_t *from)
+recv_uc(struct unicast_conn *c, const linkaddr_t *from)
 {
   static uint8_t rec_count = 0;
 
@@ -47,7 +48,7 @@ PROCESS_THREAD(rime_unicast_sender, ev, data)
   unicast_open(&uc, 146, &unicast_callbacks); // channel = 145
 
   static struct etimer et;
-  static rimeaddr_t addr;
+  static linkaddr_t addr;
 
   etimer_set(&et, 2*CLOCK_SECOND);
 
