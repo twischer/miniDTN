@@ -540,7 +540,7 @@ init(void)
   //--- Set Link address based on eui64
 #if LINKADDR_SIZE == 2
   // need to invert byte order to match (short addr 0x0001 to rime addr 0.1)
-  linkaddr_t inv_id = {inga_cfg.pan_addr >> 8, inga_cfg.pan_addr & 0xFF};
+  linkaddr_t inv_id = { {inga_cfg.pan_addr >> 8, inga_cfg.pan_addr & 0xFF} };
   linkaddr_set_node_addr(&inv_id);
 #elif LINKADDR_SIZE == 8
   linkaddr_set_node_addr((linkaddr_t *) &inga_cfg.eui64_addr);

@@ -90,14 +90,10 @@ mpl115a_read_coefficients(void) {
   for (i = 0; i < 6; i++) {
     coeff_tmp_msb = mpl115a_cmd(coefficients[i].addr[0]);
     coeff_tmp_lsb = mpl115a_cmd(coefficients[i].addr[1]);
-    uart_TXchar(coeff_tmp_msb);
-    uart_TXchar(coeff_tmp_lsb);
-
 
     coefficients[i].value = (int16_t) (coeff_tmp_msb << 8);
     coefficients[i].value &= (0xFF00 | ((int16_t) (coeff_tmp_lsb)));
   }
-  uart_TXchar('\n');
 }
 /*---------------------------------------------------------------------------*/
 int16_t
