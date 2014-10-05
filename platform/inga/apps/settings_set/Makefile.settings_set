@@ -3,11 +3,9 @@ settings_set_src = settings_set.c
 # Note: this variable can be modified by setting target-specific variable
 SETTINGS_SET_LOAD=1
 
-# NODEID
-ifdef NODE_ID
- CFLAGS += -DNODE_CONF_ID=$(NODE_ID)
-else ifdef PAN_ADDR
- CFLAGS += -DNODE_CONF_ID=$(PAN_ADDR)
+# PAN_ADDR
+ifdef PAN_ADDR
+ CFLAGS += -DINGA_CONF_PAN_ADDR=$(PAN_ADDR)
 endif
 
 # PANID

@@ -9,11 +9,10 @@ Targets:
 - setup(default): Setup with given values
 - delete:  Delete all settings
 Options:
-- NODE_ID=<value>         default=0xABCD
+- EUI64=<value>           default=none
 - PAN_ID=<value>          default=0xABCD
 - RADIO_CHANNEL=<value>   default=26
 - RADIO_TX_POWER=<value>  default=0
-- EUI64=<value>           default=none
 
 Example
 ---

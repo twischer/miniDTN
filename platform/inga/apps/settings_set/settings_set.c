@@ -59,14 +59,14 @@ PROCESS_THREAD(settings_set_process, ev, data)
   PROCESS_BEGIN();
 #if (APP_SETTINGS_SET == 1)
 
-#ifdef NODE_CONF_ID
-  if (settings_set_uint16(SETTINGS_KEY_PAN_ADDR, (uint16_t) NODE_ID) == SETTINGS_STATUS_OK) {
-    uint16_t settings_nodeid = settings_get_uint16(SETTINGS_KEY_PAN_ADDR, 0);
-    PRINTF("[APP.settings_set] New PAN Addr:  0x%04X\n", settings_nodeid);
+#ifdef INGA_CONF_PAN_ADDR
+  if (settings_set_uint16(SETTINGS_KEY_PAN_ADDR, (uint16_t) INGA_PAN_ADDR) == SETTINGS_STATUS_OK) {
+    uint16_t settings_panaddr = settings_get_uint16(SETTINGS_KEY_PAN_ADDR, 0);
+    PRINTF("[APP.settings_set] New PAN Addr:  0x%04X\n", settings_panaddr);
   } else {
-    PRINTD("[APP.settings_set] Error: Failed writing NodeID to EEPROM\n");
+    PRINTD("[APP.settings_set] Error: Failed writing PAN Addr to EEPROM\n");
   }
-#endif /* NODE_CONF_ID */
+#endif /* INGA_CONF_PAN_ADDR */
 
 #ifdef INGA_CONF_PAN_ID
   if (settings_set_uint16(SETTINGS_KEY_PAN_ID, (uint16_t) INGA_PAN_ID) == SETTINGS_STATUS_OK) {
