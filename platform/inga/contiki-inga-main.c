@@ -334,7 +334,8 @@ load_config(void)
     memset(inga_cfg.eui64_addr, 0, sizeof(inga_cfg.eui64_addr));
   }
 #else /* !INGA_CONF_EUI64 */
-  inga_cfg.eui64_addr = {INGA_EUI64};
+  uint8_t tmp_eui64[8] = {INGA_EUI64};
+  memcpy(inga_cfg.eui64_addr, tmp_eui64, 8);
 #endif /* !INGA_CONF_EUI64 */
 
   /* PAN Addr */
