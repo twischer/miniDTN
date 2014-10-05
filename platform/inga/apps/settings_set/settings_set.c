@@ -68,35 +68,35 @@ PROCESS_THREAD(settings_set_process, ev, data)
   }
 #endif /* NODE_CONF_ID */
 
-#ifdef RADIO_CONF_PAN_ID
-  if (settings_set_uint16(SETTINGS_KEY_PAN_ID, (uint16_t) RADIO_PAN_ID) == SETTINGS_STATUS_OK) {
+#ifdef INGA_CONF_PAN_ID
+  if (settings_set_uint16(SETTINGS_KEY_PAN_ID, (uint16_t) INGA_PAN_ID) == SETTINGS_STATUS_OK) {
     uint16_t settings_panid = settings_get_uint16(SETTINGS_KEY_PAN_ID, 0);
     PRINTF("[APP.settings_set] New PAN ID:   0x%04X\n", settings_panid);
   } else {
     PRINTD("[APP.settings_set] Error: Failed writing PanID to EEPROM\n");
   }
-#endif /* RADIO_CONF_PAN_ID */
+#endif /* INGA_CONF_PAN_ID */
 
-#ifdef RADIO_CONF_CHANNEL
-  if (settings_set_uint8(SETTINGS_KEY_CHANNEL, (uint8_t) RADIO_CHANNEL) == SETTINGS_STATUS_OK) {
+#ifdef INGA_CONF_RADIO_CHANNEL
+  if (settings_set_uint8(SETTINGS_KEY_CHANNEL, (uint8_t) INGA_RADIO_CHANNEL) == SETTINGS_STATUS_OK) {
     uint8_t settings_channel = settings_get_uint8(SETTINGS_KEY_CHANNEL, 0);
     PRINTF("[APP.settings_set] New channel:  0x%02X\n", settings_channel);
   } else {
     PRINTD("[APP.settings_set] Error: Failed writing channel to EEPROM\n");
   }
-#endif /* RADIO_CONF_CHANNEL */
+#endif /* INGA_CONF_RADIO_CHANNEL */
 
-#ifdef RADIO_CONF_TX_POWER
-  if (settings_set_uint8(SETTINGS_KEY_TXPOWER, (uint8_t) RADIO_TX_POWER) == SETTINGS_STATUS_OK) {
+#ifdef INGA_CONF_RADIO_TX_POWER
+  if (settings_set_uint8(SETTINGS_KEY_TXPOWER, (uint8_t) INGA_RADIO_TX_POWER) == SETTINGS_STATUS_OK) {
     uint8_t settings_txpower = settings_get_uint8(SETTINGS_KEY_TXPOWER, 0);
     PRINTF("[APP.settings_set] New TX power: 0x%02X\n", settings_txpower);
   } else {
     PRINTD("[APP.settings_set] Error: Failed writing TX power to EEPROM\n");
   }
-#endif /* RADIO_CONF_TX_POWER */
+#endif /* INGA_CONF_RADIO_TX_POWER */
 
-#ifdef NODE_CONF_EUI64
-  uint8_t settings_eui64[8] = {NODE_CONF_EUI64};
+#ifdef INGA_CONF_EUI64
+  uint8_t settings_eui64[8] = {INGA_EUI64};
   if (settings_set(SETTINGS_KEY_EUI64, settings_eui64, 8) == SETTINGS_STATUS_OK) {
     settings_get(SETTINGS_KEY_EUI64, 0, settings_eui64, sizeof (settings_eui64));
     PRINTF("[APP.settings_set] New EUI64: %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x\n\r",
@@ -111,7 +111,7 @@ PROCESS_THREAD(settings_set_process, ev, data)
   } else {
     PRINTD("[APP.settings_set] Error: Failed writing EUI64 to EEPROM\n");
   }
-#endif /* NODE_CONF_EUI64 */
+#endif /* INGA_CONF_EUI64 */
 
 #endif /* (SETTINGS_SET_LOAD == 1)  */
 
