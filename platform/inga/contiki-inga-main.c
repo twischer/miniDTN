@@ -310,6 +310,7 @@ load_config(void)
 
   /* Overwrite with node id if set */
   if (node_id > 0) {
+    PRINTD("Using Node ID (0x%04x) to overwrite address settings!\n", node_id);
 #if UIP_CONF_IPV6
     memset(inga_cfg.eui64_addr, 0, sizeof(inga_cfg.eui64_addr));
     inga_cfg.eui64_addr[0] |= 0x02; // set U/L bit to 1 (local!)
@@ -334,7 +335,8 @@ load_config(void)
     memset(inga_cfg.eui64_addr, 0, sizeof(inga_cfg.eui64_addr));
   }
 #else /* !INGA_CONF_EUI64 */
-  inga_cfg.eui64_addr = {INGA_EUI64};
+  uint8_t tmp_eui64[8] = {INGA_EUI64};
+  memcpy(inga_cfg.eui64_addr, tmp_eui64, 8);
 #endif /* !INGA_CONF_EUI64 */
 
   /* PAN Addr */
@@ -345,7 +347,7 @@ load_config(void)
     inga_cfg.pan_addr = INGA_PAN_ADDR;
   }
 #else /* !INGA_CONF_PAN_ADDR */
-  inga_cfg.pan_adr = INGA_PAN_ADDR;
+  inga_cfg.pan_addr = INGA_PAN_ADDR;
 #endif /* !INGA_CONF_PAN_ADDR */
 
 
