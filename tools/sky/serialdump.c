@@ -205,6 +205,8 @@ int main(int argc, char **argv)
   options.c_cflag |= CS8;
 
   /* Raw input */
+  options.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP
+                    | INLCR | IGNCR | ICRNL | IXON);
   options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
   /* Raw output */
   options.c_oflag &= ~OPOST;
