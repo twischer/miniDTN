@@ -219,7 +219,7 @@ public class Msp802154Radio extends Radio802154 {
 
   @Override
   public int getOutputPowerIndicatorMax() {
-    return 31;
+    return radio.getOutputPowerIndicatorMax();
   }
 
   @Override
