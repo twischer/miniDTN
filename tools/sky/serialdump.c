@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <signal.h>
 
 #define BAUDRATE B57600
 #define BAUDRATE_S "57600"
@@ -85,9 +86,16 @@ print_hex_line(unsigned char *prefix, unsigned char *outbuf, int index)
     }
   }
 }
+static void
+intHandler(int sig)
+{
+  exit(0);
+}
 int
 main(int argc, char **argv)
 {
+  signal(SIGINT, intHandler);
+
   struct termios options;
   fd_set mask, smask;
   int fd;
