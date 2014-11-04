@@ -64,7 +64,7 @@ eeprom_write(eeprom_addr_t addr, unsigned char *buf, int size)
     }
   }
 
-  eeprom_write_block(buf, (unsigned short *)addr, size);
+  eeprom_update_block(buf, (unsigned short *)addr, size);
 }
 /*---------------------------------------------------------------------------*/
 void
