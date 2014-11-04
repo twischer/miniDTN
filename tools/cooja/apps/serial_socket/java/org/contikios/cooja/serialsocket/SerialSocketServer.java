@@ -339,7 +339,7 @@ public class SerialSocketServer extends VisPlugin implements MotePlugin {
 
   @Override
   public void packPlugin(JDesktopPane pane) {
-    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    pack();
   }
   
   public interface ServerListener {
