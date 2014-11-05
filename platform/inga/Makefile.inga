@@ -224,7 +224,8 @@ endif
 %.upload_target: %.reset
 	avrdude $(AVRDUDE_OPTIONS) -P $* $(AVRDUDE_PROGRAMMER) -p $(MCU) -U flash:w:$(UPLOAD_TARGET).hex
 
-%.upload: %.hex %.upload_setup $(UPLOAD_MOTE_TARGETS)
+%.upload: %.hex %.upload_setup
+	$(MAKE) UPLOAD_TARGET=$(UPLOAD_TARGET) $(UPLOAD_MOTE_TARGETS)
 	@echo Upload done.
 
 %.jtag:  %.hex
