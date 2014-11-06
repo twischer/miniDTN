@@ -72,12 +72,14 @@
 // ZIGBIT : Zigbit module from Meshnetics
 // ATMEGA128RFA1 : Bare chip with internal radio
 // IRIS : IRIS Mote from MEMSIC
+// INGA_RF23X_A: Inga rev 1.2 - 1.5
 #define RAVENUSB_C      1
-#define INGA_12	    1
-#define RCB_B	    	3
-#define ZIGBIT			4
-#define IRIS			5
+#define RAVEN_D         2
+#define RCB_B           3
+#define ZIGBIT          4
+#define IRIS            5
 #define ATMEGA128RFA1   6
+#define INGA_RF23X_A    7
 
 #if PLATFORM_TYPE == RCB_B
 /* 1281 rcb */
@@ -109,8 +111,8 @@
 #   define SLPTRPORT  B
 #   define SLPTRPIN   (0x04)
 
-#elif INGA_REVISION == INGA_V12
-/* 1284 raven */
+#elif PLATFORM_TYPE == INGA_RF23X_A
+/* 1284 inga */
 #   define SSPORT     B
 #   define SSPIN      (0x04)
 #   define SPIPORT    B
