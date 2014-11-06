@@ -224,6 +224,10 @@ typedef unsigned long rtimer_clock_t;
 #define UIP_CONF_TCP_SPLIT       0
 
 
+/* Turn off example-provided putchars */
+#define SLIP_BRIDGE_CONF_NO_PUTCHAR 1
+
+
 #define CFS_CONF_OFFSET_TYPE	long
 
 /* include the project config */
