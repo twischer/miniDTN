@@ -125,13 +125,6 @@
 #   define IRQPIN     (0x06)
 #   define SLPTRPORT  B
 #   define SLPTRPIN   (0x03)
-#   define TXCWPORT   B
-#   define TXCWPIN    (0x00)
-#   define USART      0
-#   define USARTVECT  USART0_RX_vect
-#   define TICKTIMER  3
-#   define HAS_CW_MODE
-#   define HAS_SPARE_TIMER
 
 #elif PLATFORM_TYPE == RAVEN_D
 /* 1284 raven */
