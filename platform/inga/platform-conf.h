@@ -55,15 +55,17 @@
  * Possible values are INGA_V12, INGA_V15, INGA_V20
  */
 #ifndef INGA_CONF_REVISION
-#define INGA_REVISION INGA_V12
+#define INGA_REVISION INGA_V14
+#warning  INGA_CONF_REVISION not set, defaults to INGA_V14
 #else
 #define INGA_REVISION INGA_CONF_REVISION
 #endif
 
 #define PLATFORM       PLATFORM_AVR
 
-/** Currently all INGA revisions use same HAL */
-#define RF230_HAL = INGA_12
+#if INGA_REVISION == INGA_V12 || INGA_REVISION == INGA_V13 || INGA_REVISION == INGA_V14 || INGA_REVISION == INGA_V15
+#define PLATFORM_TYPE INGA_RF23X_A
+#endif /* Inga rev 1.2 - 1.5 */
 
 #define PLATFORM_HAS_BUTTON 1
 
