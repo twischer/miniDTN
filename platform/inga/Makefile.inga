@@ -166,18 +166,14 @@ UNAME := $(shell uname)
 ifeq ($(UNAME), Darwin)
   # Mac OS X
   SERIALDUMP = $(CONTIKI)/tools/sky/serialdump-macos
-  MOTELIST ?= $(CONTIKI)/tools/sky/motelist-macos
-  MOTES ?= $(shell $(MOTELIST) 2>&- | grep usbserial | \
-	  cut -f 4 -d \  | \
-	  perl -ne 'print $$1 . " " if(m-(/dev/\w+\.\w+\-\w+)-);')
+  MOTELIST ?= $(CONTIKI)/tools/inga/motelist
+  MOTES ?= $(shell $(MOTELIST))
 else ifeq ($(UNAME), Linux)
   # Linux
   INGA_TOOL = $(CONTIKI)/tools/inga/inga_tool/inga_tool
   SERIALDUMP = $(CONTIKI)/tools/sky/serialdump-linux
-  MOTELIST ?= $(CONTIKI)/tools/sky/motelist-linux
-  MOTES ?= $(shell $(MOTELIST) 2>&- | grep USB | \
-	  cut -f 4 -d \  | \
-	  perl -ne 'print $$1 . " " if(m-(/dev/\w+)-);')
+  MOTELIST ?= $(CONTIKI)/tools/inga/motelist
+  MOTES ?= $(shell $(MOTELIST))
 else
   $(warning Operating system '$(UNAME)' not supported)
 endif

@@ -1,0 +1,30 @@
+#!/usr/bin/env python
+import glob
+import platform
+
+# Simple script that collects all available INGA-motes
+#
+# On Linux-systems with udev-rule $(CONTIKI)/platform/inga/99-inga-usb.rule
+# it is also possible to fetch only INGA-motes
+
+if __name__ == "__main__":
+	motes = []
+	system = platform.system()
+
+	if(system == "Darwin"):  # OS X
+		motes = glob.glob("/dev/tty.usbserial-*")
+
+	elif(system == "Linux"): # Linux
+		motes = glob.glob("/dev/inga/*")
+
+		if not motes:
+			motes = glob.glob("/dev/serial/by-id/*IBR_INGA*")
+
+		if not motes:
+			motes = glob.glob("/dev/ttyUSB*")
+
+	if motes:
+		for mote in motes:
+			print(mote)
+		exit(0)
+	exit(1)
