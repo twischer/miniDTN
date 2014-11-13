@@ -1,6 +1,8 @@
 The INGA sensor platform on Contiki-OS.
 =======================================
 
+## INGA
+
 [![Build Status](https://jenkins.ibr.cs.tu-bs.de/jenkins/buildStatus/icon?job=inga--develop--cooja)](http://jenkins.ibr.cs.tu-bs.de/jenkins/view/INGA/job/inga--develop--compile/)
 
 INGA is an Open Source Wireless Sensor Node for many different applications. 
@@ -8,9 +10,25 @@ INGA was developed at IBR as Inexpensive Node for General Applications and becam
 
 Current release version: 2.6-20131107
 
+### Requirements
+Required packages to be able to programm with recent linux (Debian/Ubuntu) systems:
+`make pkg-config avr-libc binutils-avr gcc-avr avrdude libusb-dev libftdi-dev libpopt-dev libudev1 libudev-dev`
+
+To gain write access (to flash INGA) even as regular user, a custom udev rule will change the group of INGAs USB device file every time you connect your INGA. To setup this, simply copy `examples/inga/99-inga-usb.rules` into `/etc/udev/rules.d/`(depending on your configuration you need to modify the group names). This will also make INGA nodes available as `/dev/inga/node-$ID`.
+
+### Flashing process
+This is a simple example how compiling and flashing works with contiki:
+
+	$ cd examples/hello-world/
+	$ make TARGET=inga savetarget
+	$ make hello-world.upload
+	$ make login
+
 For more information see the INGA project website:
 
-[http://www.ibr.cs.tu-bs.de/projects/inga/](http://www.ibr.cs.tu-bs.de/projects/inga/index.xml?lang=en).
+[www.ibr.cs.tu-bs.de/projects/inga/](https://www.ibr.cs.tu-bs.de/projects/inga/index.xml?lang=en).
+
+##Contiki
 
 [![Build Status](https://secure.travis-ci.org/contiki-os/contiki.png)](http://travis-ci.org/contiki-os/contiki)
 
