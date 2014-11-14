@@ -204,7 +204,7 @@ else
 	$(warning resetting not supported)
 endif
 else
-  $(warning Auto resetting disbaled)
+	$(warning Auto resetting disbaled)
 endif
 
 login:
