@@ -466,7 +466,7 @@ struct inga_usb_device_t *inga_usb_find_device(struct inga_usb_config_t *cfg, in
 			if (libusb_open(usb->usbdev, &handle) < 0)
 				continue;
 
-			rc = libusb_get_string_descriptor_ascii(handle, desc.iSerialNumber, buf, sizeof(buf));
+			rc = libusb_get_string_descriptor_ascii(handle, desc.iSerialNumber, (unsigned char*)buf, sizeof(buf));
 			libusb_close(handle);
 
 			if (rc <= 0 || strcmp(buf, cfg->device_serial))
@@ -572,7 +572,7 @@ int inga_usb_ftdi_eeprom_read(struct inga_usb_ftdi_t *ftdi)
 	if ((rc = ftdi_eeprom_decode(&ftdi->ctx, 0)) < 0)
 		return rc;
 
-	if ((rc = ftdi_get_eeprom_buf(&ftdi->ctx, buf, sizeof(buf))) < 0)
+	if ((rc = ftdi_get_eeprom_buf(&ftdi->ctx, (unsigned char*)buf, sizeof(buf))) < 0)
 		return rc;
 
 	if ((rc = ftdi_get_eeprom_value(&ftdi->ctx, CHIP_SIZE, &eeprom_size)) < 0)
