@@ -36,7 +36,9 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <libgen.h>
+#if __linux__
 #include <libudev.h>
+#endif
 #include <string.h>
 
 #include "inga_usb.h"
@@ -714,6 +716,7 @@ int inga_usb_ftdi_eeprom_set_string(struct inga_usb_ftdi_t *ftdi, enum ftdi_eepr
 /* Use udev to find the USB bus and device numbers a ttyUSB device is connected to */
 static void inga_usb_resolve(struct inga_usb_config_t *cfg, int verbose)
 {
+#if __linux__
 	int rc;
 	struct udev *udev;
 	struct udev_device *dev;
@@ -761,6 +764,7 @@ static void inga_usb_resolve(struct inga_usb_config_t *cfg, int verbose)
 			exit(EXIT_FAILURE);
 		}
 	}
+#endif
 }
 
 int inga_usb_ftdi_init(struct inga_usb_ftdi_t **ftdi)
