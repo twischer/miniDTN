@@ -78,11 +78,12 @@
 /* Keep address over reboots */
 void *watchdog_return_addr __attribute__ ((section (".noinit")));
 
-//Not all AVR toolchains alias MCUSR to the older MSUSCR name
-//#if defined (__AVR_ATmega8__) || defined (__AVR_ATmega8515__) || defined (__AVR_ATmega16__)
-#if !defined (MCUSR) && defined (MCUCSR)
-#warning *** MCUSR not defined, using MCUCSR instead ***
-#define MCUSR MCUCSR
+/* MCUSR is a deprecated name but older avr-libc versions may define it */
+#if !defined (MCUCSR)
+# if defined (MCUSR)
+#  warning *** MCUCSR not defined, using MCUSR instead ***
+#  define MCUCSR MCUSR
+# endif
 #endif
 
 #if WATCHDOG_CONF_BALANCE && WATCHDOG_CONF_TIMEOUT >= 0
@@ -102,7 +103,7 @@ void get_mcusr(void) \
 void get_mcusr(void)
 {
   mcusr_mirror = MCUSR;
-  MCUSR &= ~(1 << WDRF);
+  MCUCSR &= ~(1 << WDRF);
   wdt_disable();
 }
 

@@ -36,10 +36,14 @@
 /** @file   settings.h
  *  @brief  Settings Manager
  *  @author Robert Quattlebaum <darco@deepdarc.com>
+ */
+
+/** @addtogroup lib
+ * @{ */
+
+/** @defgroup settings_lib Settings Manager
  *
- *  ## Overview ##
- *
- *  The settings manager is a EEPROM-based key-value store. Keys
+ *  The settings manager is an EEPROM-based key-value store. Keys
  *  are 16-bit integers and values may be up to 16,383 bytes long.
  *  It is intended to be used to store configuration-related information,
  *  like network settings, radio channels, etc.
@@ -64,14 +68,13 @@
  *  EEPROM.
  *
  *  Each key-value pair is stored in memory in the following format:
- *  
- *  | Order   | Size     | Name       | Description                     |
- *  | -----   | ----     | ----       | ------------------------------- |
- *  | 0       | 2        | key        |                                 |
- *  | -2      | 1        | size_check | One's-complement of next byte   |
- *  | -3      | 1 or 2   | size       | The size of the value, in bytes |
- *  | -4 or 5 | variable | value      |                                 |
  *
+ *  | Order    | Size     | Name       | Description                     |
+ *  | -------- | -------- | ---------- | ------------------------------- |
+ *  | 0        | 2        | key        |                                 |
+ *  | -2       | 1        | size_check | One's-complement of next byte   |
+ *  | -3       | 1 or 2   | size       | The size of the value, in bytes |
+ *  | -4 or -5 | variable | value      |                                 |
  *
  *  The end of the key-value pairs is denoted by the first invalid entry.
  *  An invalid entry has any of the following attributes:
@@ -80,7 +83,7 @@
  *     of the size byte (or size_low byte).
  *   * The key has a value of 0x0000.
  *
- */
+ * @{ */
 
 #include <stdint.h>
 #include <string.h>
@@ -133,9 +136,9 @@ typedef uint16_t settings_length_t;
 
 /** Use this when you want to retrieve the last item */
 #define SETTINGS_LAST_INDEX        0xFF
-
+/** Returned when key is invalid. */
 #define SETTINGS_INVALID_KEY       0xFFFF
-
+/** Returned if no (further) element was found. */
 #define SETTINGS_INVALID_ITER      EEPROM_NULL
 
 #ifndef SETTINGS_CONF_SUPPORT_LARGE_VALUES
@@ -186,10 +189,10 @@ extern settings_status_t settings_delete(settings_key_t key, uint8_t index);
 
 typedef eeprom_addr_t settings_iter_t;
 
-/** Will return extern SETTINGS_INVALID_ITER if the settings store is empty. */
+/** Will return \ref SETTINGS_INVALID_ITER if the settings store is empty. */
 extern settings_iter_t settings_iter_begin();
 
-/** Will return extern SETTINGS_INVALID_ITER if at the end of settings list. */
+/** Will return \ref SETTINGS_INVALID_ITER if at the end of settings list. */
 extern settings_iter_t settings_iter_next(settings_iter_t iter);
 
 extern uint8_t settings_iter_is_valid(settings_iter_t iter);
@@ -345,3 +348,6 @@ settings_set_uint64(settings_key_t key, uint64_t value)
 #endif /* !SETTINGS_CONF_SKIP_CONVENIENCE_FUNCS */
 
 #endif /* !defined(CONTIKI_SETTINGS_H_) */
+
+/** @} */
+/** @} */
