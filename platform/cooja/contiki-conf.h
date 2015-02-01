@@ -46,11 +46,11 @@
 
 #define w_memcpy memcpy
 
-#if WITH_UIP
-#if WITH_UIP6
-#error WITH_UIP && WITH_IP6: Bad configuration
-#endif /* WITH_UIP6 */
-#endif /* WITH_UIP */
+#if NETSTACK_CONF_WITH_IPV4
+#if NETSTACK_CONF_WITH_IPV6
+#error NETSTACK_CONF_WITH_IPV4 && NETSTACK_CONF_WITH_IPV6: Bad configuration
+#endif /* NETSTACK_CONF_WITH_IPV6 */
+#endif /* NETSTACK_CONF_WITH_IPV4 */
 
 #ifdef NETSTACK_CONF_H
 
@@ -75,7 +75,7 @@
 #endif /* NETSTACK_CONF_RADIO */
 
 /* Default network config */
-#if WITH_UIP6
+#if NETSTACK_CONF_WITH_IPV6
 
 /* Network setup for IPv6 */
 #define NETSTACK_CONF_NETWORK       sicslowpan_driver
@@ -91,7 +91,7 @@
 #define NULLRDC_CONF_ACK_WAIT_TIME                RTIMER_SECOND / 500
 #define NULLRDC_CONF_AFTER_ACK_DETECTED_WAIT_TIME 0
 
-#define UIP_CONF_IPV6                   1
+#define NETSTACK_CONF_WITH_IPV6         1
 
 #define LINKADDR_CONF_SIZE              8
 
@@ -99,9 +99,6 @@
 #define UIP_CONF_LLH_LEN                0
 
 #define UIP_CONF_ROUTER                 1
-#ifndef UIP_CONF_IPV6_RPL
-#define UIP_CONF_IPV6_RPL               1
-#endif /* UIP_CONF_IPV6_RPL */
 
 /* configure number of neighbors and routes */
 #ifndef NBR_TABLE_CONF_MAX_NEIGHBORS
@@ -149,9 +146,9 @@
 #define SICSLOWPAN_CONF_MAX_MAC_TRANSMISSIONS   8
 #endif /* SICSLOWPAN_CONF_MAX_MAC_TRANSMISSIONS */
 
-#else /* WITH_UIP6 */
+#else /* NETSTACK_CONF_WITH_IPV6 */
 
-#if WITH_UIP
+#if NETSTACK_CONF_WITH_IPV4
 
 /* Network setup for IPv4 */
 #define NETSTACK_CONF_NETWORK       rime_driver /* NOTE: uip_over_mesh. else: uip_driver */
@@ -161,7 +158,7 @@
 
 #define UIP_CONF_IP_FORWARD           1
 
-#else /* WITH_UIP */
+#else /* NETSTACK_CONF_WITH_IPV4 */
 
 /* Network setup for Rime */
 #define NETSTACK_CONF_NETWORK       rime_driver
@@ -170,8 +167,8 @@
 #endif /* NETSTACK_CONF_MAC */
 /*#define NETSTACK_CONF_FRAMER framer_nullmac*/
 
-#endif /* WITH_UIP */
-#endif /* WITH_UIP6 */
+#endif /* NETSTACK_CONF_WITH_IPV4 */
+#endif /* NETSTACK_CONF_WITH_IPV6 */
 
 
 #define PACKETBUF_CONF_ATTRS_INLINE 1
