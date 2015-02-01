@@ -2242,8 +2242,6 @@ uip_process(uint8_t flag)
   UIP_TCP_BUF->seqno[2] = uip_connr->snd_nxt[2];
   UIP_TCP_BUF->seqno[3] = uip_connr->snd_nxt[3];
 
-  UIP_IP_BUF->proto = UIP_PROTO_TCP;
-
   UIP_TCP_BUF->srcport  = uip_connr->lport;
   UIP_TCP_BUF->destport = uip_connr->rport;
 
@@ -2265,6 +2263,8 @@ uip_process(uint8_t flag)
   }
 
  tcp_send_noconn:
+  UIP_IP_BUF->proto = UIP_PROTO_TCP;
+
   UIP_IP_BUF->ttl = uip_ds6_if.cur_hop_limit;
   UIP_IP_BUF->len[0] = ((uip_len - UIP_IPH_LEN) >> 8);
   UIP_IP_BUF->len[1] = ((uip_len - UIP_IPH_LEN) & 0xff);
