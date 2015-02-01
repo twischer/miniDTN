@@ -137,12 +137,14 @@ rpl_verify_header(int uip_ext_opt_offset)
 	   sender_rank, instance->current_dag->rank,
 	   sender_closer);
     if(UIP_EXT_HDR_OPT_RPL_BUF->flags & RPL_HDR_OPT_RANK_ERR) {
+      RPL_STAT(rpl_stats.loop_errors++);
       PRINTF("RPL: Rank error signalled in RPL option!\n");
       /* Packet must be dropped and dio trickle timer reset, see RFC6550 - 11.2.2.2 */
       rpl_reset_dio_timer(instance);
       return 1;
     }
     PRINTF("RPL: Single error tolerated\n");
+    RPL_STAT(rpl_stats.loop_warnings++);
     UIP_EXT_HDR_OPT_RPL_BUF->flags |= RPL_HDR_OPT_RANK_ERR;
     return 0;
   }
@@ -194,12 +196,12 @@ rpl_update_header_empty(void)
     if(UIP_HBHO_BUF->len != RPL_HOP_BY_HOP_LEN - 8) {
       PRINTF("RPL: Hop-by-hop extension header has wrong size\n");
       uip_ext_len = last_uip_ext_len;
-      return;
+      return 0;
     }
     if(UIP_EXT_HDR_OPT_RPL_BUF->opt_type != UIP_EXT_HDR_OPT_RPL) {
       PRINTF("RPL: Non RPL Hop-by-hop option support not implemented\n");
       uip_ext_len = last_uip_ext_len;
-      return;
+      return 0;
     }
     if(UIP_EXT_HDR_OPT_RPL_BUF->opt_len != RPL_HDR_OPT_LEN) {
       PRINTF("RPL: RPL Hop-by-hop option has wrong length\n");
