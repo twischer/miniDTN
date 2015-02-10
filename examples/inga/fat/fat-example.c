@@ -25,7 +25,8 @@ PROCESS_THREAD(test_process, ev, data)
   // Wait a second...
   etimer_set(&timer, CLOCK_SECOND);
   PROCESS_WAIT_UNTIL(etimer_expired(&timer));
-  
+  SDCARD_POWER_ON();
+
   int initialized = 0, i;
 
   diskio_detect_devices();
@@ -45,7 +46,7 @@ PROCESS_THREAD(test_process, ev, data)
     printf("Error: Initialization failed.\n");
     PROCESS_EXIT();
   }
- 
+
   // uncomment to automatically format volume (ALL DATA WILL GET LOST!)
   //cfs_fat_mkfs(info);
 
