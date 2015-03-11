@@ -3,7 +3,7 @@
  */
 
 #include "contiki.h"
-#include "net/rime.h"
+#include "net/rime/rime.h"
 
 #include <stdio.h>
 
@@ -12,7 +12,7 @@ PROCESS(rime_unicast_sender, "Rime Unicast Sender");
 AUTOSTART_PROCESSES(&rime_unicast_sender);
 /*---------------------------------------------------------------------------*/
 static void
-recv_uc(struct unicast_conn *c, const rimeaddr_t *from)
+recv_uc(struct unicast_conn *c, const linkaddr_t *from)
 {
   printf("unicast message received from %d.%d: '%s'\n", from->u8[0], from->u8[1], (char *) packetbuf_dataptr());
 }
@@ -30,7 +30,7 @@ PROCESS_THREAD(rime_unicast_sender, ev, data)
 
   while (1) {
     static struct etimer et;
-    rimeaddr_t addr;
+    linkaddr_t addr;
 
     etimer_set(&et, CLOCK_SECOND);
 
@@ -41,7 +41,7 @@ PROCESS_THREAD(rime_unicast_sender, ev, data)
     addr.u8[0] = 13; // Address of receiving Node
     addr.u8[1] = 0;
 
-    if (!rimeaddr_cmp(&addr, &rimeaddr_node_addr)) {
+    if (!linkaddr_cmp(&addr, &linkaddr_node_addr)) {
       printf("Message sent\n"); // debug message
       unicast_send(&uc, &addr);
     }
