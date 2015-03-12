@@ -7,10 +7,12 @@
 #include "net/rime/rime.h"
 
 #include <stdio.h>
+#include <avr/pgmspace.h>
 
 // TODO: Change ADDR to your receiver node, eg. lookup link addr on receiver boot
 #define RECEIVER_LINK_ADDR 0x04d6
 
+#define PRINTF(FORMAT,args...) printf_P(PSTR(FORMAT),##args)
 /*---------------------------------------------------------------------------*/
 PROCESS(rime_unicast_sender, "Rime Unicast Sender");
 AUTOSTART_PROCESSES(&rime_unicast_sender);

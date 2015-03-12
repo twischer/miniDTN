@@ -2,7 +2,9 @@
 #include "net/rime/rime.h"
 
 #include <stdio.h>
+#include <avr/pgmspace.h>
 
+#define PRINTF(FORMAT,args...) printf_P(PSTR(FORMAT),##args)
 /*---------------------------------------------------------------------------*/
 PROCESS(rime_unicast_receiver, "Rime Unicast Receiver");
 AUTOSTART_PROCESSES(&rime_unicast_receiver);
