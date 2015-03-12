@@ -11,7 +11,6 @@
 
 // TODO: Change ADDR to your receiver node, eg. lookup link addr on receiver boot
 #define RECEIVER_LINK_ADDR 0x04d6
-
 #define PRINTF(FORMAT,args...) printf_P(PSTR(FORMAT),##args)
 /*---------------------------------------------------------------------------*/
 PROCESS(rime_unicast_sender, "Rime Unicast Sender");
@@ -45,8 +44,9 @@ PROCESS_THREAD(rime_unicast_sender, ev, data)
     packetbuf_copyfrom("Unicast Example", 15); // String + Length to be send
 
     // Address of receiving Node
-    addr.u8[0] = RECEIVER_LINK_ADDR & 0xFF;
-    addr.u8[1] = RECEIVER_LINK_ADDR >> 8;
+    addr.u16 = UIP_HTONS(RECEIVER_LINK_ADDR);
+    /*addr.u8[0] = RECEIVER_LINK_ADDR >> 8;*/
+    /*addr.u8[1] = RECEIVER_LINK_ADDR & 0xFF;*/
 
     if (!linkaddr_cmp(&addr, &linkaddr_node_addr)) {
       PRINTF("Message sent\n"); // debug message
