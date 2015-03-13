@@ -105,7 +105,7 @@
 #define INGA_PERIODIC_ROUTES 0
 #else
 #define INGA_PERIODIC_ROUTES INGA_CONF_PERIODIC_ROUTES
-#if INGA_PERIODIC_ROUTES > 0 && !UIP_CONF_IPV6
+#if INGA_PERIODIC_ROUTES > 0 && !NETSTACK_CONF_WITH_IPV6
 #error Periodic routes only supported for IPv6
 #endif
 #endif

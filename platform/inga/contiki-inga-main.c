@@ -101,12 +101,12 @@ uint8_t debugflowsize, debugflow[DEBUGFLOWSIZE];
 #include "cfs/coffee/cfs-coffee.h"
 #endif
 
-#if UIP_CONF_IPV6
+#if NETSTACK_CONF_WITH_IPV6
 #include "net/ipv6/uip-ds6.h"
 // function declaration for net/uip-debug.c
 void uip_debug_ipaddr_print(const uip_ipaddr_t *addr);
 void uip_debug_lladdr_print(const uip_lladdr_t *addr);
-#endif /* UIP_CONF_IPV6 */
+#endif /* NETSTACK_CONF_WITH_IPV6 */
 
 
 // Apps 
@@ -311,15 +311,15 @@ load_config(void)
   /* Overwrite with node id if set */
   if (node_id > 0) {
     PRINTD("Using Node ID (0x%04x) to overwrite address settings!\n", node_id);
-#if UIP_CONF_IPV6
+#if NETSTACK_CONF_WITH_IPV6
     memset(inga_cfg.eui64_addr, 0, sizeof(inga_cfg.eui64_addr));
     inga_cfg.eui64_addr[0] |= 0x02; // set U/L bit to 1 (local!)
     inga_cfg.eui64_addr[6] = (node_id >> 8);
     inga_cfg.eui64_addr[7] = node_id & 0xFF;
-#else /* UIP_CONF_IPV6 */
+#else /* NETSTACK_CONF_WITH_IPV6 */
     inga_cfg.eui64_addr[0] = node_id & 0xFF;
     inga_cfg.eui64_addr[1] = (node_id >> 8);
-#endif /* UIP_CONF_IPV6 */
+#endif /* NETSTACK_CONF_WITH_IPV6 */
     inga_cfg.pan_addr = node_id;
 
     /* Configuration done */
@@ -555,7 +555,7 @@ init(void)
   platform_radio_init();
 #endif
 
-#if UIP_CONF_IPV6
+#if NETSTACK_CONF_WITH_IPV6
   // Copy EUI64 to the link local address
   memcpy(&uip_lladdr.addr, &(inga_cfg.eui64_addr), sizeof(uip_lladdr.addr));
 
@@ -576,7 +576,7 @@ init(void)
 #endif
 #endif /* INGA_BOOTSCREEN_NET */
 
-#endif /* UIP_CONF_IPV6 */
+#endif /* NETSTACK_CONF_WITH_IPV6 */
 
 #if INGA_BOOTSCREEN_NET
   PRINTA_SEC("Link layer info:\n");
