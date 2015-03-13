@@ -13,4 +13,5 @@ APPS = settings_set
 PROJECT_SOURCEFILES += ../test.c
 
 CONTIKI = ../../..
+CONTIKI_WITH_RIME = 1
 include $(CONTIKI)/Makefile.include
