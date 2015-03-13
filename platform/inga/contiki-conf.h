@@ -144,7 +144,7 @@
 /*
  * Network stack setup.
  */
-#if UIP_CONF_IPV6
+#if NETSTACK_CONF_WITH_IPV6
 #define NETSTACK_CONF_NETWORK     sicslowpan_driver
 
 #define LINKADDR_CONF_SIZE        8
@@ -168,13 +168,13 @@
 #define SICSLOWPAN_CONF_ADDR_CONTEXT_1 {addr_contexts[1].prefix[0]=0xbb;addr_contexts[1].prefix[1]=0xbb;}
 #define SICSLOWPAN_CONF_ADDR_CONTEXT_2 {addr_contexts[2].prefix[0]=0x20;addr_contexts[2].prefix[1]=0x01;addr_contexts[2].prefix[2]=0x49;addr_contexts[2].prefix[3]=0x78,addr_contexts[2].prefix[4]=0x1d;addr_contexts[2].prefix[5]=0xb1;}
 
-#else /* UIP_CONF_IPV6 */
+#else /* NETSTACK_CONF_WITH_IPV6 */
 /* ip4 should build but is largely untested */
 #define NETSTACK_CONF_NETWORK     rime_driver
 
 #define LINKADDR_CONF_SIZE        2
 
-#endif /* UIP_CONF_IPV6 */
+#endif /* NETSTACK_CONF_WITH_IPV6 */
 
 /* -- Radio driver settings */
 #define CHANNEL_802_15_4          26

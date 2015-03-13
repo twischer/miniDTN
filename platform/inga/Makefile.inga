@@ -128,7 +128,7 @@ AVRDUDE_PROGRAMMER=avr109
 # Verify off
 #AVRDUDE_OPTIONS=-V
 # Baudrate
-AVRDUDE_OPTIONS=-b 230400
+AVRDUDE_OPTIONS=-b 230400 -u
 
 
 ### JTAG programming
@@ -244,5 +244,5 @@ endif
 include $(CONTIKIAVR)/Makefile.avr
 include $(CONTIKIAVR)/radio/Makefile.radio
 
-MODULES += core/net/ip core/net/ipv6 core/net/mac core/net core/net/rime core/net/mac/sicslowmac core/net/rpl \
+MODULES +=  core/net/mac core/net core/net/mac/sicslowmac \
            core/net/llsec
