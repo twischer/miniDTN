@@ -45,7 +45,7 @@ PROCESS_THREAD(rime_unicast_sender, ev, data)
   PROCESS_BEGIN();
 
 
-  unicast_open(&uc, 146, &unicast_callbacks); // channel = 145
+  unicast_open(&uc, 146, &unicast_callbacks); // channel = 146
 
   static struct etimer et;
   static linkaddr_t addr;
@@ -55,8 +55,7 @@ PROCESS_THREAD(rime_unicast_sender, ev, data)
   PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
 
   // set address
-  addr.u8[0] = NET_TEST_CFG_TARGET_NODE_ID & 0xFF;
-  addr.u8[1] = NET_TEST_CFG_TARGET_NODE_ID >> 8;
+  addr.u16 = UIP_HTONS(NET_TEST_CFG_TARGET_NODE_ID);
 
   // send 10 messages
   static int8_t idx = 0;
@@ -68,7 +67,7 @@ PROCESS_THREAD(rime_unicast_sender, ev, data)
     sprintf(buff_, NET_TEST_CFG_REQUEST_MSG, idx);
     packetbuf_copyfrom(buff_ , NET_TEST_CFG_REQUEST_MSG_LEN); 
     unicast_send(&uc, &addr);
-    printf("sent: %s\n", buff_);
+    printf("sent: %s to %x.%x \n", buff_, addr.u8[0], addr.u8[1]  );
   }
 
   PROCESS_END();
