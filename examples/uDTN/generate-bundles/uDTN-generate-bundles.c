@@ -48,7 +48,7 @@
 #include "net/packetbuf.h"
 #include "logging.h"
 #include "mmem.h"
-#include "sys/profiling.h"
+#include "sys/profiling/profiling.h"
 #include "sys/test.h"
 #include "watchdog.h"
 

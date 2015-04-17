@@ -42,7 +42,7 @@
 
 #include "contiki.h"
 #include "watchdog.h"
-#include "sys/profiling.h"
+#include "sys/profiling/profiling.h"
 #include "sys/test.h"
 #include "process.h"
 #include "net/netstack.h"

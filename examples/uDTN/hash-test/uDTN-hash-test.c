@@ -42,7 +42,7 @@
 #include "contiki.h"
 #include "sys/test.h"
 #include "sys/test.h"
-#include "sys/profiling.h"
+#include "sys/profiling/profiling.h"
 #include "watchdog.h"
 
 #include "agent.h"
