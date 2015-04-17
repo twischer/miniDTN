@@ -1,0 +1,22 @@
+tests:
+### uDTN Serializer test
+  - name: serializer
+    timeout: 1200
+    devices:
+      - name: receiver
+        programdir: examples/uDTN/serializer-test
+        program: uDTN-serializer-test
+        instrument: [examples/uDTN/serializer-test/uDTN-serializer-test.c,platform/inga/*.c,core/net/uDTN/*.c]
+        debug: []
+        cflags: "-D__DELAY_BACKWARD_COMPATIBLE__ -fno-inline -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30"
+        graph_options: ""
+  - name: serializer-uninstr
+    timeout: 1200
+    devices:
+      - name: receiver
+        programdir: examples/uDTN/serializer-test
+        program: uDTN-serializer-test
+        instrument: []
+        debug: []
+        cflags: "-fno-inline"
+        graph_options: ""

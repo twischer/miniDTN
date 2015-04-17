@@ -19,6 +19,7 @@
 *.esb
 *.avr-raven
 *.inga
+dtn_apps_includes.h
 *.exp5438
 *.mbxxx
 *.win32

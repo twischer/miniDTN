@@ -118,6 +118,7 @@
 #define PACKETBUF_CONF_HDR_SIZE   0            //RF230 combined driver/mac handles headers internally
 #endif /* RF230BB */
 
+
 /* 211 bytes per queue buffer */
 #define QUEUEBUF_CONF_NUM         8
 /* 54 bytes per queue ref buffer */
@@ -170,7 +171,11 @@
 
 #else /* NETSTACK_CONF_WITH_IPV6 */
 /* ip4 should build but is largely untested */
+#if NETSTACK_CONF_WITH_DTN
+#define NETSTACK_CONF_NETWORK     dtn_network_driver 
+#else
 #define NETSTACK_CONF_NETWORK     rime_driver
+#endif
 
 #define LINKADDR_CONF_SIZE        2
 

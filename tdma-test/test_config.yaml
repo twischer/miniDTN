@@ -1,0 +1,19 @@
+tests:
+  - name: forward-test 
+    timeout: 900
+    devices:
+      - name: receiver
+        programdir: tdma-test
+        program: forwarder
+        instrument: [tdma-test/forwarder.c, cpu/avr/radio/rf230rt/rf230rt.c]
+        debug: []
+        cflags: "-fno-inline -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30"
+        graph_options: ""
+      - name: sender 
+        programdir: tdma-test
+        program: sender 
+        instrument: []
+        debug: []
+        cflags: ""
+        graph_options: ""
+

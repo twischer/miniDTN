@@ -1,0 +1,18 @@
+suite:
+    logbase:   /sample/logbase
+    logpattern: date-tag
+    contikibase: /sample/contikibase
+    contikiscm: git # Here only git and none are supported at the moment
+
+# List of devices
+# # Each device has a name, a class (type of device), a path and an id
+devices:
+    - name: sender
+    class: INGA
+    path: /dev/inga/4-1.8.5.2
+    id: 0x02
+    - name: receiver
+    class: INGA
+    path: /dev/inga/4-1.8.5.4
+    id: 0x01
+

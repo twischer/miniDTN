@@ -32,6 +32,7 @@ CONTIKI_TARGET_SOURCEFILES += $(AVR) $(SENSORS) \
 
 CONTIKI_SOURCEFILES        += $(CONTIKI_TARGET_SOURCEFILES)
 
+CONTIKI_SOURCEFILES        += profiling.c sprofiling.c
 
 ### Compiler definitions
 CC       = avr-gcc

@@ -8,7 +8,7 @@ The INGA sensor platform on Contiki-OS.
 INGA is an Open Source Wireless Sensor Node for many different applications. 
 INGA was developed at IBR as Inexpensive Node for General Applications and became part of many projects.
 
-Current release version: 2.6-20131107
+Current release version: 2.7-1
 
 ### Requirements
 Required packages to be able to programm with recent linux (Debian/Ubuntu) systems:

@@ -78,6 +78,12 @@ ifeq ($(CONTIKI_WITH_RIME),1)
   MODULES += core/net/rime
 endif
 
+ifeq ($(CONTIKI_WITH_DTN),1)
+  HAS_STACK = 1
+  CFLAGS += -DNETSTACK_CONF_WITH_DTN=1 
+  MODULES += core/net/uDTN
+endif
+
 # Make IPv6 the default stack
 ifeq ($(HAS_STACK),0)
 ifneq ($(CONTIKI_WITH_IPV6),0)
