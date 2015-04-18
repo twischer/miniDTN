@@ -48,7 +48,6 @@
 #include "net/netstack.h"
 #include "net/packetbuf.h"
 #include "dev/leds.h"
-#include "dev/cc2420.h"
 #include "etimer.h"
 
 #include "net/uDTN/api.h"
