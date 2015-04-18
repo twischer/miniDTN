@@ -100,7 +100,7 @@ PROCESS_THREAD(udtn_sender_process, ev, data)
 	static uint32_t time_start, time_stop;
 	uint8_t userdata[BUNDLE_SIZE];
 	uint32_t tmp;
-	static rimeaddr_t destination;
+	static linkaddr_t destination;
 	static struct mmem * bundle_outgoing;
 
 	PROCESS_BEGIN();
