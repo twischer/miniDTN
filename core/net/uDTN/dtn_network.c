@@ -8,7 +8,7 @@
  *
  * \author Georg von Zengen <vonzeng@ibr.cs.tu-bs.de>
  * \author Daniel Willmann <daniel@totalueberwachung.de>
- * \author Wolf-Bastian P�ttner <poettner@ibr.cs.tu-bs.de>
+ * \author Wolf-Bastian Pöttner <poettner@ibr.cs.tu-bs.de>
  */
 
 #ifdef CONF_LOGLEVEL
