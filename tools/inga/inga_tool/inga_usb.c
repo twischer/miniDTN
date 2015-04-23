@@ -36,7 +36,9 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <libgen.h>
+#if __linux__
 #include <libudev.h>
+#endif
 #include <string.h>
 
 #include "inga_usb.h"
@@ -464,7 +466,7 @@ struct inga_usb_device_t *inga_usb_find_device(struct inga_usb_config_t *cfg, in
 			if (libusb_open(usb->usbdev, &handle) < 0)
 				continue;
 
-			rc = libusb_get_string_descriptor_ascii(handle, desc.iSerialNumber, buf, sizeof(buf));
+			rc = libusb_get_string_descriptor_ascii(handle, desc.iSerialNumber, (unsigned char*)buf, sizeof(buf));
 			libusb_close(handle);
 
 			if (rc <= 0 || strcmp(buf, cfg->device_serial))
@@ -570,7 +572,7 @@ int inga_usb_ftdi_eeprom_read(struct inga_usb_ftdi_t *ftdi)
 	if ((rc = ftdi_eeprom_decode(&ftdi->ctx, 0)) < 0)
 		return rc;
 
-	if ((rc = ftdi_get_eeprom_buf(&ftdi->ctx, buf, sizeof(buf))) < 0)
+	if ((rc = ftdi_get_eeprom_buf(&ftdi->ctx, (unsigned char*)buf, sizeof(buf))) < 0)
 		return rc;
 
 	if ((rc = ftdi_get_eeprom_value(&ftdi->ctx, CHIP_SIZE, &eeprom_size)) < 0)
@@ -714,6 +716,7 @@ int inga_usb_ftdi_eeprom_set_string(struct inga_usb_ftdi_t *ftdi, enum ftdi_eepr
 /* Use udev to find the USB bus and device numbers a ttyUSB device is connected to */
 static void inga_usb_resolve(struct inga_usb_config_t *cfg, int verbose)
 {
+#if __linux__
 	int rc;
 	struct udev *udev;
 	struct udev_device *dev;
@@ -761,6 +764,7 @@ static void inga_usb_resolve(struct inga_usb_config_t *cfg, int verbose)
 			exit(EXIT_FAILURE);
 		}
 	}
+#endif
 }
 
 int inga_usb_ftdi_init(struct inga_usb_ftdi_t **ftdi)
