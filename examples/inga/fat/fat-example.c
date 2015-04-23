@@ -25,7 +25,8 @@ PROCESS_THREAD(test_process, ev, data)
   // Wait a second...
   etimer_set(&timer, CLOCK_SECOND);
   PROCESS_WAIT_UNTIL(etimer_expired(&timer));
-  
+  SDCARD_POWER_ON();
+
   int initialized = 0, i;
 
   diskio_detect_devices();
@@ -45,7 +46,7 @@ PROCESS_THREAD(test_process, ev, data)
     printf("Error: Initialization failed.\n");
     PROCESS_EXIT();
   }
- 
+
   // uncomment to automatically format volume (ALL DATA WILL GET LOST!)
   //cfs_fat_mkfs(info);
 
@@ -63,8 +64,8 @@ PROCESS_THREAD(test_process, ev, data)
 
   // let us know some infos about our device 
   cfs_fat_get_fat_info( &fat );
-  printf("Volume Size: %ld bytes\n", 512UL*fat.BPB_TotSec);
-  printf("             %ld sectors\n", fat.BPB_TotSec);
+  printf("Volume Size: %lu bytes\n", 512UL * fat.BPB_TotSec);
+  printf("             %lu sectors\n", fat.BPB_TotSec);
 
   // select as default device
   diskio_set_default_device(info);
@@ -80,7 +81,7 @@ PROCESS_THREAD(test_process, ev, data)
 
   // write message to file
   uint32_t n = cfs_write(fd, message, sizeof(message));
-  printf("%ld bytes written to '%s'\n", n, filename);
+  printf("%lu bytes written to '%s'\n", n, filename);
 
   // close
   cfs_close(fd);
@@ -96,7 +97,7 @@ PROCESS_THREAD(test_process, ev, data)
 
   // read messag from file
   n = cfs_read(fd, message, sizeof(message));
-  printf("%ld bytes read from '%s'\n", n, filename);
+  printf("%lu bytes read from '%s'\n", n, filename);
 
   cfs_close(fd);
 
