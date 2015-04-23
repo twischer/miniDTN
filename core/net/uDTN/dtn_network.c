@@ -135,6 +135,8 @@ void dtn_network_send(linkaddr_t * destination, uint8_t length, void * reference
 	/* Set destination address */
 	packetbuf_set_addr(PACKETBUF_ADDR_RECEIVER, destination);
 	packetbuf_set_attr(PACKETBUF_ADDRSIZE, 2);
+	/* Make sure we always send ieee802.15.4 data frames*/
+	packetbuf_set_attr(PACKETBUF_ATTR_FRAME_TYPE, FRAME802154_DATAFRAME);
 
 	/* Send it out via the MAC */
 	NETSTACK_MAC.send(&dtn_network_sent, reference);
