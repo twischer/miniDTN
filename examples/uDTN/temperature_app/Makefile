@@ -12,6 +12,13 @@ all: $(CONTIKI_PROJECT)
 DTN_APPS += dtntp
 DTN_APPS += dtnpingecho 
 DTN_APPS += dtneepromsettings
+# If there is something about coffee in the config, use it
+ifneq (,$(findstring storage_coffee,$(CFLAGS)))
+  # Compiling with COFFEE Storage
+  MODULES += core/cfs/coffee
+  COFFEE_DEVICE=5
+  CFS=coffee
+endif
 
 CONTIKI_WITH_DTN = 1
 
