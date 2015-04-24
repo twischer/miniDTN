@@ -385,7 +385,7 @@ sdcard_read_csd(uint8_t *buffer)
     return SDCARD_DATA_ERROR;
   }
 
-  /* Read 16 bit CSD content */
+  /* Read 16 byte CSD content */
   for (i = 0; i < 16; i++) {
     *buffer++ = mspi_transceive(MSPI_DUMMY_BYTE);
   }

@@ -1,7 +1,13 @@
-# Use pkg-config to determine which libftdi version we have
-
+UNAME := $(shell uname)
 FTDI_VERSION := -1
 
+ifeq ($(UNAME), Linux)
+# Use pkg-config to determine the compiler and linker flag forlibudev
+LIBUDEV_CFLAGS := `pkg-config --cflags libudev`
+LIBUDEV_LDLIBS := `pkg-config --libs libudev`
+endif
+
+# Use pkg-config to determine which libftdi version we have
 HASFTDI  := $(shell pkg-config --exists libftdi ; echo "$$?" )
 HASFTDI0 := $(shell pkg-config --exists libftdi0; echo "$$?" )
 HASFTDI1 := $(shell pkg-config --exists libftdi1; echo "$$?" )
@@ -11,27 +17,21 @@ ifeq (0, ${HASFTDI1})
 	FTDI_VERSION := 1
 	FTDI_CFLAGS  := `pkg-config --cflags libftdi1 libusb-1.0`
 	FTDI_LDLIBS  := `pkg-config --libs libftdi1 libusb-1.0`
-else
-ifeq (0, ${HASFTDI0})
+else ifeq (0, ${HASFTDI0})
 	FTDI_VERSION := 0
 	FTDI_CFLAGS  := `pkg-config --cflags libftdi0 libusb`
 	FTDI_LDLIBS  := `pkg-config --libs libftdi0 libusb`
-else
-ifeq (0, ${HASFTDI})
+else ifeq (0, ${HASFTDI})
 	FTDI_VERSION := 0
 	FTDI_CFLAGS  := `pkg-config --cflags libftdi libusb`
 	FTDI_LDLIBS  := `pkg-config --libs libftdi libusb`
 endif
-endif
-endif
 
-# Use pkg-config to determine the compiler and linker flag for popt and libudev
 
+# Use pkg-config to determine the compiler and linker flag for popt
 POPT_CFLAGS := `pkg-config --cflags popt`
 POPT_LDLIBS := `pkg-config --libs popt`
 
-LIBUDEV_CFLAGS := `pkg-config --cflags libudev`
-LIBUDEV_LDLIBS := `pkg-config --libs libudev`
 
 CFLAGS=${FTDI_CFLAGS} ${POPT_CFLAGS} ${LIBUDEV_CFLAGS} -DFTDI_VERSION="${FTDI_VERSION}" -ggdb
 LDLIBS=${FTDI_LDLIBS} ${POPT_LDLIBS} ${LIBUDEV_LDLIBS}
@@ -41,7 +41,7 @@ LDLIBS=${FTDI_LDLIBS} ${POPT_LDLIBS} ${LIBUDEV_LDLIBS}
 NAME    := inga_tool
 SOURCES := inga_usb.c inga_tool.c
 HEADERS := inga_usb.h
-OBJECTS := $(shell echo "${SOURCES}" | sed -e 's/\.c/\.o/g')
+OBJECTS := $(SOURCES:%.c=%.o)
 
 all: ${NAME}
 
