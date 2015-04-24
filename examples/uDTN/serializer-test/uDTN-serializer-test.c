@@ -47,7 +47,7 @@
 #include "sys/profiling/profiling.h"
 #include "watchdog.h"
 #include "list.h"
-#include "cfs-coffee.h"
+#include "core/cfs/coffee/cfs-coffee.h"
 
 #include "net/uDTN/agent.h"
 #include "net/uDTN/bundle.h"
