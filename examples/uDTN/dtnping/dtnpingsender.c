@@ -82,8 +82,9 @@ PROCESS_THREAD(dtnping_process, ev, data)
 	/* Register ping endpoint */
 	reg.status = APP_ACTIVE;
 	reg.application_process = PROCESS_CURRENT();
-	reg.app_id = DTN_PING_ENDPOINT;
+	reg.app_id = DTN_PING_ENDPOINT+1;
 	process_post(&agent_process, dtn_application_registration_event, &reg);
+	printf("main: process=%p app=%d\n",PROCESS_CURRENT(), reg.app_id);
 
 	etimer_set(&timer, CLOCK_SECOND);
 
@@ -115,7 +116,7 @@ PROCESS_THREAD(dtnping_process, ev, data)
 		bundle_set_attr(bundlemem, REP_SERV, &tmp);
 
 		// Set our service to 11 [DTN_PING_ENDPOINT] (IBR-DTN expects that)
-		tmp = DTN_PING_ENDPOINT;
+		tmp = DTN_PING_ENDPOINT+1;
 		bundle_set_attr(bundlemem, SRC_SERV, &tmp);
 
 		// Now set the flags
