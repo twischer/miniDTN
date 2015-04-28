@@ -42,7 +42,7 @@ usage:
 	@echo "make MAKETARGETS... [TARGET=(TARGET)] [savetarget] [targets]"
 
 targets:
-	@ls -1 $(CONTIKI)/platform $(TARGETDIRS) | grep -v CVS
+	@ls -1 $(contiki)/platform $(TARGETDIRS) | grep -v CVS
 
 savetarget:
 	-@rm -f Makefile.target
@@ -82,6 +82,7 @@ ifeq ($(CONTIKI_WITH_DTN),1)
   HAS_STACK = 1
   CFLAGS += -DNETSTACK_CONF_WITH_DTN=1 
   MODULES += core/net/uDTN
+include $(CONTIKI)/core/net/uDTN/Makefile.dtn
 endif
 
 # Make IPv6 the default stack
