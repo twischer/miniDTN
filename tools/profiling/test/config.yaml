@@ -1,0 +1,45 @@
+suite:
+    logbase: /home/alphaone/scm/diplomarbeit/eval/logs
+    logpattern: date-tag
+    contikibase: /home/alphaone/scm/diplomarbeit/eval/contiki
+    contikiscm: git # Here only git and none are supported at the moment
+    testcases:
+        - mmem-test
+        - mmem-test-uninstr
+
+# List of devices
+# Each device has a name, a class (type of device), a path and an id
+devices:
+  - name: foo
+    class: INGA
+    path: /dev/inga/0
+    id: 0
+
+tests:
+  - name: mmem-test
+    timeout: 60
+    devices:
+      - name: foo
+        programdir: examples/mmem-test
+        program: mmem-test
+        instrument: [examples/mmem-test/mmem-test.c,core/lib/mmem.c]
+        cflags: "-fno-inline"
+        graph_options: ""
+  - name: mmem-test-uninstr
+    timeout: 60
+    devices:
+      - name: foo
+        programdir: examples/mmem-test
+        program: mmem-test
+        instrument: []
+        cflags: "-fno-inline"
+        graph_options: ""
+  - name: profile-test
+    timeout: 140
+    devices:
+      - name: foo
+        programdir: examples/profile-test
+        program: profile-test
+        instrument: [examples/profile-test/profile-test.c,core/dev/leds.c,cpu/avr/leds-arch.c]
+        cflags: "-fno-inline"
+        graph_options: ""

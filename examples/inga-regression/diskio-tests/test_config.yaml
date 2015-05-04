@@ -1,0 +1,23 @@
+tests:
+### diskio test (SD card)
+  - name: diskio-sd
+    timeout: 120
+    devices:
+      - name: receiver
+        programdir: examples/inga-regression/diskio-tests
+        program: diskio-test
+        instrument: []
+        debug: []
+        cflags: "-fno-inline -DDISKIO_TEST_SD"
+        graph_options: ""
+### diskio test (external flash)
+  - name: diskio-extflash
+    timeout: 120
+    devices:
+      - name: receiver
+        programdir: examples/inga-regression/diskio-tests
+        program: diskio-test
+        instrument: []
+        debug: []
+        cflags: "-fno-inline -DDISKIO_TEST_EXTFLASH"
+        graph_options: ""

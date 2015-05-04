@@ -1,0 +1,29 @@
+/**
+ * \addtogroup platform
+ * @{
+ **/
+
+/**
+ * \defgroup inga INGA Sensor Platforms
+ *
+ * INGA is an Open Source Wireless Sensor Node for many different applications.
+ * INGA was developed at IBR as Inexpensive Node for General Applications
+ * and became part of many projects.
+ * 
+ * \section inga-features Features
+ * 
+ * - Transceiver
+ * - Temperature sensor
+ * - Gryoscope
+ * - Accelerometer
+ * - Pressure sensor
+ * 
+ * \section inga-programming Programming INGA
+ * 
+ * See: <a href="http://www.ibr.cs.tu-bs.de/trac/inga/wiki/GettingStarted">INGA Wiki</a> 
+ * 
+ * @{
+ */
+
+/** @} */ // inga
+/** @} */ // platform

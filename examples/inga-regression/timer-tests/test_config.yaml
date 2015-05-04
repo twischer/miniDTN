@@ -1,0 +1,23 @@
+tests:
+### rtimer test
+  - name: timer-rtimer
+    timeout: 120
+    devices:
+      - name: receiver
+        programdir: examples/inga-regression/timer-tests
+        program: rtimer-test
+        instrument: []
+        debug: []
+        cflags: "-fno-inline"
+        graph_options: ""
+### etimer test
+  - name: timer-etimer
+    timeout: 120
+    devices:
+      - name: receiver
+        programdir: examples/inga-regression/timer-tests
+        program: etimer-test
+        instrument: []
+        debug: []
+        cflags: "-fno-inline"
+        graph_options: ""

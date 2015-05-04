@@ -1,0 +1,3 @@
+usage: test.py [-h] [-l] [-d] [-r] [-s SUITE_CONFIGFILE] [-t TEST_CONFIGFILE]
+               [-n NODE_CONFIGFILE] [-x XMLREPORT] [--only-tests ONLY_TESTS]
+test.py: error: unrecognized arguments: Result of Test

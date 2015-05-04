@@ -1,0 +1,40 @@
+webserver-nano_src = webserver-nogui.c httpd.c psock.c memb.c httpd-cgi.c
+webserver-nano_dsc = webserver-dsc.c
+
+
+###
+# HTTPD-CFS=1 activates usage of currently enabled file sytem.
+# Otherwise a fake file system is used (requires httpds-fsdata.c)
+###
+ifeq ($(HTTPD-CFS),)
+  $(info Webserver using internal file system)
+  webserver-nano_src += httpd-fs.c
+else
+  CFLAGS += -DHTTPD_CONF_CFS
+  ifdef FAT
+    $(info Webserver using FAT file system)
+    CFLAGS += -DHTTPD_FS_FAT
+  else ifdef COFFEE_FILES
+    $(info Webserver using COFFEE file system)
+    CFLAGS += -DHTTPD_FS_COFFEE
+  else 
+    $(error You must specify a file system type)
+  endif
+endif
+
+###
+# HTTPD-NANO can be used to configure webserver features
+###
+ifdef HTTPD-NANO
+  CFLAGS += -DWEBSERVER_CONF_NANO=$(HTTPD-NANO)
+endif
+
+#Run makefsdata to regenerate httpd-fsdata.c when web content has been edited. This requires PERL.
+#  Note: Deleting files or transferring pages from makefsdata.ignore will not trigger this rule
+#        when there is no change in modification dates.
+#$(CONTIKI)/apps/webserver-nano/httpd-fsdata.c : $(CONTIKI)/apps/webserver-nano/httpd-fs/*.*
+#	$(CONTIKI)/tools/makefsdata -A HTTPD_STRING_ATTR -d $(CONTIKI)/apps/webserver-nano/httpd-fs -o $(CONTIKI)/apps/webserver-nano/httpd-fsdata.c
+	
+#Rebuild httpd-fs.c when makefsdata has changed httpd-fsdata.c
+#$(CONTIKI)/apps/webserver-nano/httpd-fs.c: $(CONTIKI)/apps/webserver-nano/httpd-fsdata.c
+#	touch $(CONTIKI)/apps/webserver-nano/httpd-fs.c

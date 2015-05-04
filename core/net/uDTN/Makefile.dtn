@@ -1,0 +1,43 @@
+STORAGE=storage_coffee.c storage_mmem.c storage_flash.c
+BUNDLE=sdnv.c bundle.c bundleslot.c
+NETWORK=convergence_layer.c dtn_network.c
+CUSTODY=custody_basic.c custody_null.c custody_signal.c
+AGENT=agent.c delivery.c dispatching.c registration.c statistics.c statusreport_basic.c statusreport_null.c eid.c bundle_ageing.c system_clock.c dtn_apps.c
+HASH=hash_xor.c hash_xxfast.c
+DISCOVERY=discovery_basic.c discovery_ipnd.c discovery_static.c discovery_simple.c
+DISCOVERY_SCHEDULER=discovery_scheduler_pattern.c discovery_scheduler_periodic.c
+REDUNDANCY=redundancy_basic.c redundancy_bloomfilter.c redundancy_null.c
+ROUTING=routing_flooding.c routing_chain.c routing_null.c
+
+CONTIKI_SOURCEFILES += $(STORAGE) $(BUNDLE) $(NETWORK) $(CUSTODY) $(AGENT) $(HASH) $(DISCOVERY) $(DISCOVERY_SCHEDULER) $(REDUNDANCY) $(ROUTING)
+
+ifeq ($(CONF_DTN),1)
+	CFLAGS+=-DWITH_DTN=1
+endif
+
+# Here comes black magic:
+# We automatically include and start so-called dtn apps
+# Enable an app by adding the following line to your project Makfile:
+# DTN_APPS += APPNAME
+# Apps are stored in Contikis standard "apps" directory
+ifdef DTN_APPS
+  # Make a list of the app structs that are later used to initialize an array
+  DTN_APPS_LIST = { ${foreach APP,$(DTN_APPS),&$(APP),} NULL}
+  
+  # Pass the list of app structs on as a define
+  CFLAGS += -DDTN_APPS_LIST="${DTN_APPS_LIST}"
+  
+  # Generate a header file that include an extern forward declaration for all app structs
+  $(shell echo > dtn_apps_includes.h)
+  ${foreach APP,$(DTN_APPS),$(shell echo extern const struct dtn_app $(APP)\; >> dtn_apps_includes.h)}
+  
+  # Contikis standard way of including the apps
+  APPDS = ${wildcard ${foreach DIR, $(APPDIRS), ${addprefix $(DIR)/, $(DTN_APPS)}}} \
+             ${wildcard ${addprefix $(CONTIKI)/apps/, $(DTN_APPS)} \
+             ${addprefix $(CONTIKI)/platform/$(TARGET)/apps/, $(DTN_APPS)} \
+             $(DTN_APPS)}
+  APPINCLUDES = ${foreach APP, $(DTN_APPS), ${wildcard ${foreach DIR, $(APPDS), $(DIR)/Makefile.$(APP)}}}
+  -include $(APPINCLUDES)
+  APP_SOURCES = ${foreach APP, $(DTN_APPS), $($(APP)_src)}
+  CONTIKI_SOURCEFILES += $(APP_SOURCES) $(DSC_SOURCES)
+endif

@@ -1,0 +1,13 @@
+# Test suite
+suite:
+    logbase:   log/
+    logpattern: date-tag
+    contikibase: ../
+    contikiscm: git # Here only git and none are supported at the moment
+    #workdir: /foo/bar
+    testdirs:
+        #  - settings-tests
+    testcases:
+        #- sensor-temppress
+        - inga-hardware-tests
+

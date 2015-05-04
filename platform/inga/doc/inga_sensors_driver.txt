@@ -1,0 +1,27 @@
+/**
+ * \addtogroup inga_sensors
+ * @{
+ */
+
+/**
+ * \defgroup inga_sensors_driver Driver Implementation
+ * 
+ * \section about About
+ * 
+ * These are the low level hardware drivers for the new developed sensor node,
+ * which was designed and developed by Ulf Kulau during his project thesis. The
+ * sensor node is based on the Atmel AVR Raven so please use the following
+ * datasheets for further information about the hardware:
+ * <ul>
+ * <li>ATmega164A/164PA/324A/324PA/644A/644PA/1284/1284P
+ * <li>AT86RF230
+ * </ul>
+ * 
+ * \section usage Usage
+ *
+ * The hardware drivers are used to interface the various external peripherals.
+ * @{
+ */
+
+/** @} */ // inga_sensors_driver
+/** @} */ // inga_driver

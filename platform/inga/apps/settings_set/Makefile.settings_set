@@ -1,0 +1,42 @@
+settings_set_src = settings_set.c
+
+# Note: this variable can be modified by setting target-specific variable
+SETTINGS_SET_LOAD=1
+
+# PAN_ADDR
+ifdef PAN_ADDR
+ CFLAGS += -DINGA_CONF_PAN_ADDR=$(PAN_ADDR)
+endif
+
+# PANID
+ifdef PAN_ID
+ CFLAGS += -DINGA_CONF_PAN_ID=$(PAN_ID)
+endif
+
+# RADIO CHANNEL
+ifdef RADIO_CHANNEL
+ CFLAGS += -DINGA_CONF_RADIO_CHANNEL=$(RADIO_CHANNEL)
+endif
+
+# RADIO TX POWER
+ifdef RADIO_TX_POWER
+ CFLAGS += -DINGA_CONF_RADIO_TX_POWER=$(RADIO_TX_POWER)
+endif
+
+# EUI64
+ifdef EUI64
+  CONF_EUI64 := $(shell echo $(EUI64) | sed 's/\([0-9a-fA-F]\{2\}\)/0x\1/g' | sed 's/:/,/g')
+  CFLAGS += -DINGA_CONF_EUI64=$(CONF_EUI64)
+endif
+
+# Inform about loading of app
+$(info [APP.settings_set] loaded)
+# Activate app if needed
+CFLAGS+=-DAPP_SETTINGS_SET=$(SETTINGS_SET_LOAD)
+
+# Force recompilation of settings because they may change with every arg
+.FORCE: 
+$(OBJECTDIR)/settings_delete.o: .FORCE
+$(OBJECTDIR)/settings_set.o: .FORCE
+$(OBJECTDIR)/contiki-inga-main.o: .FORCE
+

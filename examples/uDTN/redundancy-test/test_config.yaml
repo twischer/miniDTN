@@ -1,0 +1,43 @@
+tests:
+### uDTN Redundancy test Basic
+  - name: redundancy-basic
+    timeout: 1200
+    devices:
+      - name: receiver
+        programdir: examples/uDTN/redundancy-test
+        program: uDTN-redundancy-test
+        instrument: [examples/uDTN/redundancy-test/uDTN-redundancy-test.c,platform/inga/*.c,core/net/uDTN/*.c]
+        debug: []
+        cflags: "-D__DELAY_BACKWARD_COMPATIBLE__ -DCONF_REDUNDANCE=redundancy_basic -fno-inline -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30"
+        graph_options: ""
+  - name: redundancy-basic-uninstr
+    timeout: 960
+    devices:
+      - name: receiver
+        programdir: examples/uDTN/redundancy-test
+        program: uDTN-redundancy-test
+        instrument: []
+        debug: []
+        cflags: "-DCONF_REDUNDANCE=redundancy_basic -fno-inline"
+        graph_options: ""
+### uDTN Redundancy test Bloomfilter
+  - name: redundancy-bloomfilter
+    timeout: 5200
+    devices:
+      - name: receiver
+        programdir: examples/uDTN/redundancy-test
+        program: uDTN-redundancy-test
+        instrument: [examples/uDTN/redundancy-test/uDTN-redundancy-test.c,platform/inga/*.c,core/net/uDTN/*.c]
+        debug: []
+        cflags: "-D__DELAY_BACKWARD_COMPATIBLE__ -DCONF_REDUNDANCE=redundancy_bloomfilter -fno-inline -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30"
+        graph_options: ""
+  - name: redundancy-bloomfilter-uninstr
+    timeout: 960
+    devices:
+      - name: receiver
+        programdir: examples/uDTN/redundancy-test
+        program: uDTN-redundancy-test
+        instrument: []
+        debug: []
+        cflags: "-DCONF_REDUNDANCE=redundancy_bloomfilter -fno-inline"
+        graph_options: ""

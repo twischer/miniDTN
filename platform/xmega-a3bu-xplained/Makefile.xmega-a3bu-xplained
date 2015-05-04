@@ -1,0 +1,36 @@
+$(info Making XMEGA Xplained)
+
+ifndef CONTIKI
+  $(error CONTIKI not defined! You must specify where CONTIKI resides!)
+endif
+
+
+CONTIKI_CPU=$(CONTIKI)/cpu/avr
+MCU=atxmega256a3b
+#MCU_AVRDUDE=x256a3b
+
+# avrdude
+AVRDUDE_PROGRAMMER=jtagmkii
+PORT = usb
+
+# platform specific
+CONTIKI_TARGET_DIRS = . dev/
+CONTIKI_MAIN=contiki-main
+CONTIKI_TARGET_MAIN = ${CONTIKI_CORE}.o
+CONTIKI_TARGET_SOURCEFILES += contiki-main.c rtimer-arch.c xmega_interrupt.c xmega_clock.c xmega_timer.c nodeid.c xmega_timer.c xmega_powerreduction.c xmega_rtc.c xmega_usart.c
+
+# PROG_TYPES_COMPAT because prog_char is deprecated in rs232 driver
+CONTIKI_PLAT_DEFS = -DF_CPU=48000000UL -DAUTO_CRC_PADDING=2 -DAUTOSTART_ENABLE -D__PROG_TYPES_COMPAT__=1
+
+#CFLAGS += -std=c99
+
+AVRDUDE_OPTIONS=-v
+
+login:
+	screen /dev/ttyUSB0 115200
+
+%.upload: %.hex
+	avrdude $(AVRDUDE_OPTIONS) -p $(MCU) -P $(PORT) $(AVRDUDE_PROGRAMMER) -U flash:w:$<:a
+
+include $(CONTIKI_CPU)/Makefile.avr
+include $(CONTIKI_CPU)/radio/Makefile.radio
