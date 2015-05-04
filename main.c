@@ -4,6 +4,7 @@
 #include "math.h"
 #include "stdio.h"
 #include "stm32f4xx_usart.h"
+#include "stm32_ub_led.h"
 
 void init_USART3(void);
 
@@ -16,6 +17,9 @@ int main(void) {
   NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
   init_USART3();
 
+  UB_Led_Init(); // Init der LEDs
+  UB_Led_On(LED_GREEN); // gruene LED einschalten
+
   // Create a task
   ret = xTaskCreate(test_FPU_test, "FPU", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
 
@@ -25,6 +29,7 @@ int main(void) {
   } else {
     printf("System Error!\n");
     // --TODO blink some LEDs to indicate fatal system error
+	UB_Led_On(LED_RED);
   }
 
   for (;;);
@@ -74,6 +79,7 @@ void test_FPU_test(void* p) {
   float ff = 1.0f;
   printf("Start FPU test task.\n");
   for (;;) {
+	UB_Led_Toggle(LED_BLUE);
     float s = sinf(ff);
     ff += s;
     // TODO some other test
