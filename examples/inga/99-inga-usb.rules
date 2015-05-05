@@ -1,9 +1,0 @@
-# example udev-rule
-# change groupname if needed
-#
-# create symlink at /dev/inga/node-${SERIALID}
-SUBSYSTEM=="tty", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6001", ATTRS{product}=="INGA", SYMLINK+="inga/node-$attr{serial}"
-# assign to group plugdev
-KERNEL=="ttyUSB[0‐9]*", GROUP="plugdev"
-# assign to group plugdev
-SUBSYSTEM=="usb", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6001", GROUP="plugdev"
