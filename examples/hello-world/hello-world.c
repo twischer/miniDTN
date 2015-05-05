@@ -37,24 +37,25 @@
  *         Adam Dunkels <adam@sics.se>
  */
 
-#include "contiki.h"
-#include <stdio.h> /* For printf() */
-/*---------------------------------------------------------------------------*/
-PROCESS(hello_world_process, "Hello world process");
-AUTOSTART_PROCESSES(&hello_world_process);
-/*---------------------------------------------------------------------------*/
-PROCESS_THREAD(hello_world_process, ev, data)
-{
-  PROCESS_BEGIN();
+#include <stdio.h>
+#include "FreeRTOS.h"
+#include "task.h"
 
-  printf("Hello, world\n");
-	
-	while(1)
-	{
-		PROCESS_YIELD();
-	}
-	
-  
-  PROCESS_END();
+void hello_world_process(void* p);
+
+int init(void) {
+
+  // Create a task
+  int ret = xTaskCreate(hello_world_process, "Hello world process", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
+
+  return ret;
 }
-/*---------------------------------------------------------------------------*/
+
+void hello_world_process(void* p) {
+  printf("Hello, world\n");
+
+  for (;;) {
+	vTaskDelay(1000);
+  }
+  vTaskDelete(NULL);
+}

@@ -8,12 +8,10 @@
 
 void init_USART3(void);
 
-u8 init();
+int init();
 
 
 int main(void) {
-  uint8_t ret;
-
   SystemInit();
   NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
   init_USART3();
@@ -22,7 +20,7 @@ int main(void) {
   UB_Led_On(LED_GREEN); // gruene LED einschalten
 
   // Create a task
-  ret = init();
+  const int ret = init();
 
   if (ret == pdTRUE) {
     printf("System Started!\n");
