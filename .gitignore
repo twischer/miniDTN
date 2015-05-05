@@ -20,3 +20,4 @@
 *.elf
 
 .DS_Store
+*.creator.user
