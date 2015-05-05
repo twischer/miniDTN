@@ -1,0 +1,4 @@
+
+ifneq (,$(findstring storage_coffee,$(CFLAGS)))
+  # Compiling with COFFEE Storage
+endif

@@ -1,0 +1,43 @@
+tests:
+### uDTN xxFAST hash test
+  - name: hash-xxfast
+    timeout: 900
+    devices:
+      - name: receiver
+        programdir: examples/uDTN/hash-test
+        program: uDTN-hash-test
+        instrument: [examples/uDTN/hash-test/uDTN-hash-test.c,platform/inga/*.c,core/net/uDTN/*.c]
+        debug: []
+        cflags: "-DCONF_HASH=hash_xxfast -D__DELAY_BACKWARD_COMPATIBLE__ -fno-inline -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30"
+        graph_options: ""
+  - name: hash-xxfast-uninstr
+    timeout: 900
+    devices:
+      - name: receiver
+        programdir: examples/uDTN/hash-test
+        program: uDTN-hash-test
+        instrument: []
+        debug: []
+        cflags: "-DCONF_HASH=hash_xxfast -fno-inline"
+        graph_options: ""
+### uDTN XOR hash test
+  - name: hash-xor
+    timeout: 900
+    devices:
+      - name: receiver
+        programdir: examples/uDTN/hash-test
+        program: uDTN-hash-test
+        instrument: [examples/uDTN/hash-test/uDTN-hash-test.c,platform/inga/*.c,core/net/uDTN/*.c]
+        debug: []
+        cflags: "-DCONF_HASH=hash_xor -D__DELAY_BACKWARD_COMPATIBLE__ -fno-inline -DPROFILES_CONF_MAX=100 -DPROFILES_CONF_STACKSIZE=30"
+        graph_options: ""
+  - name: hash-xor-uninstr
+    timeout: 900
+    devices:
+      - name: receiver
+        programdir: examples/uDTN/hash-test
+        program: uDTN-hash-test
+        instrument: []
+        debug: []
+        cflags: "-DCONF_HASH=hash_xor -fno-inline"
+        graph_options: ""

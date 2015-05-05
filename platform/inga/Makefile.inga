@@ -1,0 +1,249 @@
+CONTIKI_TARGET_DIRS = . dev ../../core/sys/profiling
+
+CONTIKI_CORE=contiki-inga-main
+CONTIKI_TARGET_MAIN = ${CONTIKI_CORE}.o
+CONTIKI_TARGET_SOURCEFILES += contiki-inga-main.c
+# INGA platform source files
+INGA_INTERFACES = i2c.c  mspi.c sdcard.c 
+INGA_DRIVERS = leds-arch.c adc.c at45db.c adxl345.c bmp085.c l3g4200d.c mpl115a.c mag3110.c
+INGA_SENSORS = sensors.c acc-sensor.c adc-sensor.c battery-sensor.c \
+	       button-sensor.c gyro-sensor.c pressure-sensor.c radio-sensor.c mag-sensor.c
+INGA_PROFILING = profiling.c
+INGA_SOURCEFILES += $(INGA_INTERFACES) $(INGA_DRIVERS) $(INGA_SENSORS) $(INGA_PROFILING)
+
+ifeq ($(REV),)
+  $(info INGA revison not set, defaults to REV=1.4)
+  CFLAGS += -DINGA_CONF_REVISION=INGA_V14
+  REV = 1.4
+else ifeq ($(REV),1.2)
+  CFLAGS += -DINGA_CONF_REVISION=INGA_V12
+else ifeq ($(REV),1.4)
+  CFLAGS += -DINGA_CONF_REVISION=INGA_V14
+else ifeq ($(REV),1.5)
+  CFLAGS += -DINGA_CONF_REVISION=INGA_V15
+else ifeq ($(REV),1.6)
+  CFLAGS += -DINGA_CONF_REVISION=INGA_V16
+else ifeq ($(REV),2.0)
+  CFLAGS += -DINGA_CONF_REVISION=INGA_V20
+endif
+
+
+# Enable SLIP support
+INGA_SOURCEFILES += slip_uart0.c
+CFLAGS += -DINGA_CONF_WITH_SLIP=1
+
+CONTIKI_TARGET_SOURCEFILES += $(INGA_SOURCEFILES)
+
+# Enable settings manager
+CFLAGS += -DCONTIKI_CONF_SETTINGS_MANAGER=1
+
+# TODO: find a better solution for diskio.c
+CONTIKI_TARGET_SOURCEFILES += cfs-coffee-arch.c
+
+# For a coffee file system, the application makefile can define COFFEE_DEVICE=n
+# to select the type and COFFEE_ADDRESS=0xaaaaaaaa as the starting byte address.
+# If only one is define the other will use the (Raven webserver 1284p) defaults
+# of a static file system in program flash starting at 0x10000 (word address=0x8000)
+# For program flash the starting address is rounded down to a page boundary in cfs-coffee-arch.h
+# It should be rounded down here too if someone can figure out how :)
+COFFEE_DEFAULT_ADDR=0x0 
+
+ifdef COFFEE_DEVICE                    # if files are defined force definition of COFFEE_ADDRESS
+  ifndef COFFEE_ADDRESS
+    ifeq ($(COFFEE_DEVICE), 1)         # 1 = eeprom static
+      $(info Coffee in EEPROM (static))
+      COFFEE_ADDRESS=$(COFFEE_DEFAULT_ADDR) 
+    else ifeq ($(COFFEE_DEVICE), 2)    # 2 = eeprom dynamic
+      $(info Coffee in EEPROM (dynamic))
+      COFFEE_ADDRESS=$(COFFEE_DEFAULT_ADDR) 
+    else ifeq ($(COFFEE_DEVICE), 3)    # 3 = program flash static
+      $(info Coffee in Flash (static))
+      COFFEE_ADDRESS=0x14000
+    else ifeq ($(COFFEE_DEVICE), 4)    # 4 = program flash dynamic
+      $(info Coffee in Flash (dynamic))
+      COFFEE_ADDRESS=0x10000
+    else ifeq ($(COFFEE_DEVICE), 5)    # 5 = INGA external flash
+      $(info Coffee in external Flash)
+      COFFEE_ADDRESS=$(COFFEE_DEFAULT_ADDR) 
+    else ifeq ($(COFFEE_DEVICE), 6)    # 6 = INGA SDCard slot
+      $(info Coffee on SD-Card)
+      COFFEE_ADDRESS=$(COFFEE_DEFAULT_ADDR)
+    else
+      $(error Unsupported coffee file type $(COFFEE_DEVICE), supported are \
+        1=EEPROM static, \
+        2=EEPROM dynamic, \
+        3=Flash static, \
+        4=Flash dynamic, \
+        5=Flash external, \
+        6=SD card)
+    endif
+  endif
+endif # COFFEE_DEVICE
+
+
+ifdef COFFEE_ADDRESS
+  CFLAGS += -DCOFFEE_DEVICE=$(COFFEE_DEVICE) -DCOFFEE_ADDRESS=$(COFFEE_ADDRESS)
+  # NOTE: This is only for the makefsdata tool
+  ifneq ($(COFFEE_ADDRESS), COFFEE_DEFAULT_ADDR)
+    LDFLAGS+= -Wl,--section-start=.coffeefiles=$(COFFEE_ADDRESS)
+  endif
+
+# If $make invokation passed starting address use phony target to force synchronization of source to .coffeefiles section
+# Warning: recompilation will not be forced if the starting address is then dropped, with dire consequences:
+#  -->Source that uses COFFEE_DEVICE and read macros for conditional compilation will be left hanging!
+#  -->Object modules that used .coffeesection will overlap the .data section.
+#  -->$make clean is safest.
+#ifeq ($(origin COFFEE_ADDRESS), command line)
+# ifeq ($(COFFEE_DEVICE), 2)      #safest to force recompilation even if eeprom address is changed, might have been switched from flash
+   .PHONY : coffee
+   coffee:
+   $(OBJECTDIR)/cfs-coffee-arch.o    : coffee      #cfs-coffee-arch uses COFFEE_DEVICE, COFFEE_ADDRESS
+   $(OBJECTDIR)/contiki-raven-main.o : coffee      #Raven Webserver uses COFFEE_DEVICE
+   $(OBJECTDIR)/httpd-fs.o           : coffee      #this file contains httpd-fsdata.c which has the .coffeesection data
+   $(OBJECTDIR)/httpd.c.o            : coffee      #uses defines to read from file system
+   $(OBJECTDIR)/httpd-cgi.o          : coffee      #uses defines to read from file system
+   $(OBJECTDIR)/cfs-coffee.o         : coffee      #core routine requires recompilation
+
+# endif
+#endif
+endif # COFFEE_ADDRESS
+
+
+CONTIKIAVR=$(CONTIKI)/cpu/avr
+CONTIKIBOARD=.
+
+INGA_FCPU=8000000UL
+INGA_DEFS=-DAUTO_CRC_PADDING=2
+CONTIKI_PLAT_DEFS = -DF_CPU=$(INGA_FCPU) $(INGA_DEFS)
+#CONTIKI_PLAT_DEFS = -DF_CPU=8000000UL -DAUTO_CRC_PADDING=2
+
+MCU=atmega1284p
+
+### Avrdude Options
+
+#AVRDUDE_PROGRAMMER=jtag2
+AVRDUDE_PROGRAMMER=avr109
+
+
+# Additional avrdude options
+# Verify off
+#AVRDUDE_OPTIONS=-V
+# Baudrate
+AVRDUDE_OPTIONS=-b 230400 -u
+
+
+### JTAG programming
+
+AVRDUDE_JTAG_PROGRAMMER=jtag2
+# number of bits every avr shifts the jtag commands 
+JTAG_BITSHIFT=4
+# number of devices in the chain
+JTAG_LENGTH=8
+# avrs before target device
+JTAG_UB=$(JTAG_DEVICE)
+# avrs after target device
+JTAG_UA=$(shell echo $(JTAG_LENGTH)\-$(JTAG_DEVICE)\-1 | bc)
+# bits before target device
+JTAG_BB=$(shell echo $(JTAG_UB)\*$(JTAG_BITSHIFT) | bc)
+# bits after target device
+JTAG_BA=$(shell echo $(JTAG_UA)\*$(JTAG_BITSHIFT) | bc)
+
+### Bitbang programming
+AVRDUDE_BITBANG_PROGRAMMER=inga
+
+ifndef INGA_CONF_BAUDRATE
+  INGA_CONF_BAUDRATE = 38400
+endif
+CFLAGS+=-DINGA_CONF_USART_BAUD=USART_BAUD_$(INGA_CONF_BAUDRATE)
+
+ifdef MOTES
+  MOTELIST=1
+  CMOTES=$(MOTES)
+  MOTE=1;
+endif
+
+UNAME := $(shell uname)
+
+ifeq ($(UNAME), Darwin)
+  # Mac OS X
+  SERIALDUMP = $(CONTIKI)/tools/sky/serialdump-macos
+  MOTELIST ?= $(CONTIKI)/tools/inga/motelist
+  MOTES ?= $(shell $(MOTELIST))
+else ifeq ($(UNAME), Linux)
+  # Linux
+  INGA_TOOL = $(CONTIKI)/tools/inga/inga_tool/inga_tool
+  SERIALDUMP = $(CONTIKI)/tools/sky/serialdump-linux
+  MOTELIST ?= $(CONTIKI)/tools/inga/motelist
+  MOTES ?= $(shell $(MOTELIST))
+else
+  $(warning Operating system '$(UNAME)' not supported)
+endif
+
+CMOTES=$(MOTES)
+UPLOAD_MOTE_TARGETS=$(MOTES:%=%.upload_target)
+RESET_MOTE_TARGETS=$(MOTES:%=%.reset)
+
+UPLOAD_TARGET= # stores the binary which should be uploaded
+
+motelist:
+	$(MOTELIST)
+
+motes:
+	@echo $(MOTES)
+
+reset: $(RESET_MOTE_TARGETS)
+
+%.reset:
+ifneq ($(NORESET),1)
+ifeq ($(UNAME), Linux)
+	@make -C $(CONTIKI)/tools/inga/inga_tool
+	@echo MOTE: $*
+	$(INGA_TOOL) -d $* -r
+	@echo Waiting 0.5s
+	@sleep 0.5
+else
+	$(warning resetting not supported)
+endif
+else
+	$(warning Auto resetting disbaled)
+endif
+
+login:
+	$(SERIALDUMP) -b$(INGA_CONF_BAUDRATE) $(firstword $(CMOTES))
+
+%.upload_setup: %.hex
+ifeq ($(strip $(MOTES)),)
+	$(error no motes found)
+endif
+	$(eval UPLOAD_TARGET=$*)
+	@echo Uploading...
+
+%.upload_target: %.reset
+	avrdude $(AVRDUDE_OPTIONS) -P $* $(AVRDUDE_PROGRAMMER) -p $(MCU) -U flash:w:$(UPLOAD_TARGET).hex
+
+%.upload: %.hex %.upload_setup
+	$(MAKE) UPLOAD_TARGET=$(UPLOAD_TARGET) $(UPLOAD_MOTE_TARGETS)
+	@echo Upload done.
+
+%.jtag:  %.hex
+ifndef JTAG_DEVICE
+	@echo "JTAG: no device specified, assuming single device"
+	avrdude -c $(AVRDUDE_JTAG_PROGRAMMER) -p $(MCU) -U flash:w:$<& wait $!
+else
+	@echo "JTAG: DEVICE = $(JTAG_DEVICE) (position in daisy chain), JTAG_LENGTH = $(JTAG_LENGTH) (length of daisy chain)"
+	avrdude -c $(AVRDUDE_JTAG_PROGRAMMER) -p $(MCU) -x jtagchain=$(JTAG_UB),$(JTAG_UA),$(JTAG_BB),$(JTAG_BA) -U flash:w:$<& wait $!
+endif
+
+%.bang: %.hex
+ifeq ($(REV),1.6)
+	avrdude -c $(AVRDUDE_BITBANG_PROGRAMMER) -p $(MCU) -C +$(CONTIKI)/platform/inga/avrdude_bitbang.conf -b 1000 & wait $!
+	avrdude -c $(AVRDUDE_BITBANG_PROGRAMMER) -p $(MCU) -C +$(CONTIKI)/platform/inga/avrdude_bitbang.conf -U flash:w:$<& wait $!
+else
+	@echo "BITBANG: bitbanging not supported on current INGA version"
+endif
+
+include $(CONTIKIAVR)/Makefile.avr
+include $(CONTIKIAVR)/radio/Makefile.radio
+
+MODULES +=  core/net/mac core/net core/net/mac/sicslowmac \
+           core/net/llsec
