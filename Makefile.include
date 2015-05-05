@@ -8,40 +8,43 @@ TOOLCHAIN_PREFIX:=arm-none-eabi
 OPTLVL:=0
 DBG:=-g
 
-FREERTOS:=$(CURDIR)/FreeRTOS
-STARTUP:=$(CURDIR)/hardware
+FREERTOS:=$(ROOT_DIR)/FreeRTOS
+STARTUP:=$(ROOT_DIR)/hardware
 
-SRC_DIRS:=core/net/uDTN
+MODULES+= core/net/uDTN
 
-INC_DIRS:= $(SRC_DIRS) \
+INC_DIRS+= $(MODULES) \
 	core \
 	cpu/arm/stm32f103 \
 	platform/inga
 
-LINKER_SCRIPT:=$(CURDIR)/Utilities/stm32_flash.ld
+LINKER_SCRIPT:=$(ROOT_DIR)/Utilities/stm32_flash.ld
 
 
-INCLUDE=-I$(CURDIR)/hardware
+INCLUDE=-I$(ROOT_DIR)/hardware
 INCLUDE+=-I$(FREERTOS)/include
 INCLUDE+=-I$(FREERTOS)/portable/GCC/ARM_CM4F
-INCLUDE+=-I$(CURDIR)/Libraries/CMSIS/Device/ST/STM32F4xx/Include
-INCLUDE+=-I$(CURDIR)/Libraries/CMSIS/Include
-INCLUDE+=-I$(CURDIR)/Libraries/STM32F4xx_StdPeriph_Driver/inc
-INCLUDE+=-I$(CURDIR)/Libraries/ub_lib
-INCLUDE+=-I$(CURDIR)/config
+INCLUDE+=-I$(ROOT_DIR)/Libraries/CMSIS/Device/ST/STM32F4xx/Include
+INCLUDE+=-I$(ROOT_DIR)/Libraries/CMSIS/Include
+INCLUDE+=-I$(ROOT_DIR)/Libraries/STM32F4xx_StdPeriph_Driver/inc
+INCLUDE+=-I$(ROOT_DIR)/Libraries/ub_lib
+INCLUDE+=-I$(ROOT_DIR)/config
 
-INCLUDE+= $(addprefix -I$(CURDIR)/,$(INC_DIRS))
+SRC_DIRS:= $(addprefix $(ROOT_DIR)/,$(MODULES))
+INCLUDE+= $(addprefix -I$(ROOT_DIR)/,$(INC_DIRS))
 
 
-BUILD_DIR = $(CURDIR)/build
+BUILD_BASE = $(CURDIR)/build
 BIN_DIR = $(CURDIR)/binary
+
+BUILD_DIR := $(addprefix $(BUILD_BASE)/,$(MODULES))
 
 # vpath is used so object files are written to the current directory instead
 # of the same directory as their source files
-vpath %.c $(CURDIR)/Libraries/STM32F4xx_StdPeriph_Driver/src \
-	  $(CURDIR)/Libraries/syscall $(CURDIR)/hardware $(FREERTOS) \
+vpath %.c $(ROOT_DIR)/Libraries/STM32F4xx_StdPeriph_Driver/src \
+	  $(ROOT_DIR)/Libraries/syscall $(ROOT_DIR)/hardware $(FREERTOS) \
 	  $(FREERTOS)/portable/MemMang $(FREERTOS)/portable/GCC/ARM_CM4F \
-	  $(CURDIR)/Libraries/ub_lib \
+	  $(ROOT_DIR)/Libraries/ub_lib \
 	  $(SRC_DIRS)
 	  
 
@@ -51,7 +54,6 @@ ASRC=startup_stm32f4xx.s
 # Project Source Files
 SRC+=stm32f4xx_it.c
 SRC+=system_stm32f4xx.c
-SRC+=main.c
 SRC+=syscalls.c
 
 # FreeRTOS Source Files
@@ -84,7 +86,7 @@ SRC+=stm32_ub_led.c
 
 
 # miniDTN files
-SRC+= $(foreach sdir,$(SRC_DIRS),$(wildcard $(sdir)/*.c))
+SRC+= $(foreach sdir,$(MODULES),$(wildcard $(sdir)/*.c))
 
 
 
@@ -108,28 +110,38 @@ AS=$(TOOLCHAIN_PATH)/$(TOOLCHAIN_PREFIX)-as
 AR=$(TOOLCHAIN_PATH)/$(TOOLCHAIN_PREFIX)-ar
 GDB=$(TOOLCHAIN_PATH)/$(TOOLCHAIN_PREFIX)-gdb
 
-OBJ = $(SRC:%.c=$(BUILD_DIR)/%.o)
+OBJ = $(SRC:%.c=$(BUILD_BASE)/%.o)
 
-$(BUILD_DIR)/%.o: %.c
+$(BUILD_BASE)/%.o: %.c
 	@echo [CC] $(notdir $<)
 	@$(CC) $(CFLAGS) $< -c -o $@
 
-all: $(OBJ)
+
+all: checkdirs $(OBJ)
 	@echo [AS] $(ASRC)
-	@$(AS) -o $(ASRC:%.s=$(BUILD_DIR)/%.o) $(STARTUP)/$(ASRC)
+	@$(AS) -o $(ASRC:%.s=$(BUILD_BASE)/%.o) $(STARTUP)/$(ASRC)
 	@echo [LD] $(TARGET).elf
-	@$(CC) -o $(BIN_DIR)/$(TARGET).elf $(LDFLAGS) $(OBJ) $(ASRC:%.s=$(BUILD_DIR)/%.o) $(LDLIBS)
+	@$(CC) -o $(BIN_DIR)/$(TARGET).elf $(LDFLAGS) $(OBJ) $(ASRC:%.s=$(BUILD_BASE)/%.o) $(LDLIBS)
 	@echo [OBJCOPY] $(TARGET).hex
 	@$(OBJCOPY) -O ihex $(BIN_DIR)/$(TARGET).elf $(BIN_DIR)/$(TARGET).hex
 	@echo [OBJCOPY] $(TARGET).bin
 	@$(OBJCOPY) -O binary $(BIN_DIR)/$(TARGET).elf $(BIN_DIR)/$(TARGET).bin
+
+
+checkdirs: $(BUILD_DIR) $(BIN_DIR)
+	@echo $(SRC)
+
+
+$(BUILD_DIR) $(BIN_DIR):
+	$(Q) mkdir -p $@
+
 
 .PHONY: clean
 
 clean:
 	@echo [RM] OBJ
 	@rm -f $(OBJ)
-	@rm -f $(ASRC:%.s=$(BUILD_DIR)/%.o)
+	@rm -f $(ASRC:%.s=$(BUILD_BASE)/%.o)
 	@echo [RM] BIN
 	@rm -f $(BIN_DIR)/$(TARGET).elf
 	@rm -f $(BIN_DIR)/$(TARGET).hex
