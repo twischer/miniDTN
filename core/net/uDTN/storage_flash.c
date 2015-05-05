@@ -20,8 +20,8 @@
 
 #include "contiki.h"
 #include "lib/list.h"
-#include "logging.h"
-#include "watchdog.h"
+#include "lib/logging.h"
+#include "dev/watchdog.h"
 
 /* <> is necessary to include the header in the platform (instead of our fake header) */
 #include <flash_arch.h>

@@ -17,10 +17,10 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "mmem.h"
+#include "lib/mmem.h"
 #include "sys/process.h"
-#include "clock.h"
-#include "logging.h"
+#include "sys/clock.h"
+#include "lib/logging.h"
 
 #include "sdnv.h"
 #include "bundleslot.h"

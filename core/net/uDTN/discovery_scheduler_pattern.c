@@ -15,7 +15,7 @@
  *
  * \author André Frambach <frambach@ibr.cs.tu-bs.de>
  */
-#include "logging.h"
+#include "lib/logging.h"
 
 #include "discovery_scheduler.h"
 #include "discovery_scheduler_events.h"

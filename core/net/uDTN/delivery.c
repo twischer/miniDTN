@@ -16,8 +16,8 @@
 #include <stdlib.h>
 
 #include "lib/list.h"
-#include "process.h"
-#include "logging.h"
+#include "sys/process.h"
+#include "lib/logging.h"
 
 #include "bundle.h"
 #include "api.h"

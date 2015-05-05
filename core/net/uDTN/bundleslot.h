@@ -15,7 +15,7 @@
 
 #include <stddef.h>
 
-#include "mmem.h"
+#include "lib/mmem.h"
 #include "contiki.h"
 
 /* Kernel container_of function

@@ -14,7 +14,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-#include "logging.h"
+#include "lib/logging.h"
 
 #include "agent.h"
 

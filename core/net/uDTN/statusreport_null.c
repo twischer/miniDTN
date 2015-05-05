@@ -13,7 +13,7 @@
  * \author Wolf-Bastian Pšttner <poettner@ibr.cs.tu-bs.de>
  */
 
-#include "logging.h"
+#include "lib/logging.h"
 
 #include "statusreport.h"
 #include "administrative_record.h"

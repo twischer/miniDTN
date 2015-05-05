@@ -22,8 +22,8 @@
 #include "lib/list.h"
 #include "lib/memb.h"
 #include "contiki.h"
-#include "clock.h"
-#include "logging.h"
+#include "sys/clock.h"
+#include "lib/logging.h"
 
 #include "bundle.h"
 #include "storage.h"
@@ -79,7 +79,7 @@ struct routing_entry_t {
 /**
  * Routing process
  */
-PROCESS(routing_process, "CHAIN ROUTE process");
+//PROCESS(routing_process, "CHAIN ROUTE process");
 
 MEMB(routing_mem, struct routing_list_entry_t, BUNDLE_STORAGE_SIZE);
 LIST(routing_list);

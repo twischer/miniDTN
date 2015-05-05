@@ -14,7 +14,7 @@
 
 #include "lib/memb.h"
 #include "lib/list.h"
-#include "logging.h"
+#include "lib/logging.h"
 
 #include "api.h"
 #include "agent.h"

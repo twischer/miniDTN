@@ -19,7 +19,7 @@
 
 #include "contiki.h"
 #include "contiki-conf.h"
-#include "rime.h"
+#include "net/rime/rime.h"
 #include "net/linkaddr.h"
 
 #include "bundle.h"

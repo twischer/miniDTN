@@ -22,9 +22,9 @@
 #include "net/netstack.h"
 #include "net/packetbuf.h" 
 #include "net/linkaddr.h"
-#include "clock.h"
+#include "sys/clock.h"
 #include "net/mac/frame802154.h" // for IEEE802154_PANID
-#include "logging.h"
+#include "lib/logging.h"
 #include "sys/ctimer.h"
 
 #include "dtn_apps.h"
@@ -71,7 +71,7 @@ struct discovery_ipnd_neighbour_list_entry {
 LIST(neighbour_list);
 MEMB(neighbour_mem, struct discovery_ipnd_neighbour_list_entry, DISCOVERY_NEIGHBOUR_CACHE);
 
-uint8_t discovery_status = 0;
+static uint8_t discovery_status = 0;
 static struct ctimer discovery_timeout_timer;
 uint16_t discovery_sequencenumber = 0;
 

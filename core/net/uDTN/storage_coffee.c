@@ -20,14 +20,14 @@
 #include <string.h>
 
 #include "contiki.h"
-#include "netstack.h"
+#include "net/netstack.h"
 #include "cfs/cfs.h"
-#include "mmem.h"
-#include "memb.h"
+#include "lib/mmem.h"
+#include "lib/memb.h"
 #include "cfs/coffee/cfs-coffee.h"
-#include "watchdog.h"
-#include "list.h"
-#include "logging.h"
+#include "dev/watchdog.h"
+#include "lib/list.h"
+#include "lib/logging.h"
 
 #include "bundle.h"
 #include "sdnv.h"

@@ -23,7 +23,7 @@
 #include "contiki.h"
 #include "lib/mmem.h"
 #include "lib/list.h"
-#include "logging.h"
+#include "lib/logging.h"
 
 #include "bundle.h"
 #include "sdnv.h"

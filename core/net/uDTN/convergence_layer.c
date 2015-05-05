@@ -14,14 +14,14 @@
 #include <string.h> // memset
 
 #include "contiki.h"
-#include "packetbuf.h"
-#include "netstack.h"
-#include "linkaddr.h"
-#include "process.h"
-#include "list.h"
+#include "net/packetbuf.h"
+#include "net/netstack.h"
+#include "net/linkaddr.h"
+#include "sys/process.h"
+#include "lib/list.h"
 
 #include "agent.h"
-#include "logging.h"
+#include "lib/logging.h"
 #include "storage.h"
 #include "discovery.h"
 #include "dtn_network.h"

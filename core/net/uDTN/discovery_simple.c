@@ -17,7 +17,7 @@
  */
 #include <string.h>
 
-#include "logging.h"
+#include "lib/logging.h"
 
 #include "dtn_network.h"
 #include "agent.h"

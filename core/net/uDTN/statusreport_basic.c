@@ -16,8 +16,8 @@
 
 #include <string.h>
 
-#include "mmem.h"
-#include "logging.h"
+#include "lib/mmem.h"
+#include "lib/logging.h"
 
 #include "bundle.h"
 #include "agent.h"

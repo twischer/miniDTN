@@ -20,9 +20,9 @@
 #define CONVERGENCE_LAYER_H
 
 #include "contiki.h"
-#include "linkaddr.h"
-#include "process.h"
-#include "mmem.h"
+#include "net/linkaddr.h"
+#include "sys/process.h"
+#include "lib/mmem.h"
 
 /**
  * How many outgoing bundles can we queue?

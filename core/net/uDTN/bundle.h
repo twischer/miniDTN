@@ -21,10 +21,10 @@
 #include <stdint.h>
 
 #include "contiki.h"
-#include "mmem.h"
+#include "lib/mmem.h"
 #include "net/linkaddr.h"
-#include "process.h"
-#include "packetbuf.h"
+#include "sys/process.h"
+#include "net/packetbuf.h"
 
 #ifndef __BUNDLE_H__
 #define __BUNDLE_H__

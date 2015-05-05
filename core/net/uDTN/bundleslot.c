@@ -13,7 +13,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdio.h>
-#include "logging.h"
+#include "lib/logging.h"
 
 #include "bundle.h"
 #include "storage.h"

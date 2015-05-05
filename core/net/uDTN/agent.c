@@ -13,14 +13,14 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "clock.h"
-#include "timer.h"
+#include "sys/clock.h"
+#include "sys/timer.h"
 #include "net/netstack.h"
 #include "net/linkaddr.h"
-#include "mmem.h"
+#include "lib/mmem.h"
 #include "lib/memb.h"
-#include "logging.h"
-#include "node-id.h"
+#include "lib/logging.h"
+#include "sys/node-id.h"
 
 #include "api.h"
 #include "registration.h"

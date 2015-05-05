@@ -17,10 +17,10 @@
 #define LOGLEVEL LOGL_DBG
 #endif
 
-#include "netstack.h"
-#include "packetbuf.h"
-#include "leds.h"
-#include "logging.h"
+#include "net/netstack.h"
+#include "net/packetbuf.h"
+#include "dev/leds.h"
+#include "lib/logging.h"
 
 #include "convergence_layer.h"
 #include "agent.h"

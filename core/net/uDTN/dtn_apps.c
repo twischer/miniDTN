@@ -13,7 +13,7 @@
 #include <stdio.h>
 
 #include "contiki.h"
-#include "logging.h"
+#include "lib/logging.h"
 
 #include "agent.h"
 #include "dtn_apps.h"

@@ -16,9 +16,9 @@
 
 #include <string.h>
 
-#include "memb.h"
-#include "list.h"
-#include "mmem.h"
+#include "lib/memb.h"
+#include "lib/list.h"
+#include "lib/mmem.h"
 
 #include "bundle.h"
 #include "storage.h"

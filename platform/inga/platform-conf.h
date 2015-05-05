@@ -51,6 +51,9 @@
 /** Inga revision 2.0  */
 #define INGA_V20  20
 
+#define INGA_CONF_REVISION INGA_V14
+
+
 /** Set default INGA revision if nothing else set 
  * Possible values are INGA_V12, INGA_V15, INGA_V20
  */
@@ -82,7 +85,7 @@
 /* Types for clocks and uip_stats */
 typedef unsigned short uip_stats_t;
 typedef unsigned long clock_time_t;
-typedef unsigned long off_t;
+//typedef unsigned long off_t; already defined in <sys/types.h>
 
 /* LED ports */
 #define PLATFORM_HAS_LEDS       1
@@ -96,14 +99,14 @@ typedef unsigned long off_t;
 #define MICRO_SD_PWR_PORT_DDR   DDRA
 #define MICRO_SD_PWR_PIN        PORTA4
 
-#include <util/delay.h>
+//#include <util/delay.h>
 
 /**
  * Powers the microSD card on.
  *
  * @note With INGA 1.4 powering on the SD card will unfortunately block SPI MISO.
  */
-#define SDCARD_POWER_ON()   {MICRO_SD_PWR_PORT |= (1 << MICRO_SD_PWR_PIN); _delay_ms(2);}
+#define SDCARD_POWER_ON()   {MICRO_SD_PWR_PORT |= (1 << MICRO_SD_PWR_PIN); /* TODO _delay_ms(2);*/}
 
 /**
  * Powers the microSD card off.

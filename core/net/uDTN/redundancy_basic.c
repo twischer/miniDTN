@@ -24,7 +24,7 @@
 #include "lib/memb.h"
 #include "contiki.h"
 #include "sys/ctimer.h"
-#include "logging.h"
+#include "lib/logging.h"
 
 #include "sdnv.h"
 #include "redundancy.h"

@@ -18,11 +18,11 @@
 
 #include <string.h> // for memset
 
-#include "clock.h"
+#include "sys/clock.h"
 #include "net/netstack.h"
 #include "net/packetbuf.h" 
 #include "net/linkaddr.h"
-#include "logging.h"
+#include "lib/logging.h"
 
 #include "dtn_network.h"
 #include "agent.h"
@@ -58,7 +58,7 @@ PROCESS(discovery_process, "DISCOVERY process");
 LIST(neighbour_list);
 MEMB(neighbour_mem, struct discovery_basic_neighbour_list_entry, DISCOVERY_NEIGHBOUR_CACHE);
 
-uint8_t discovery_status = 0;
+static uint8_t discovery_status = 0;
 uint8_t discovery_pending = 0;
 uint8_t discovery_pending_start = 0;
 static struct etimer discovery_timeout_timer;

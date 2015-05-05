@@ -14,7 +14,7 @@
 #define DELIVERY_H
 
 #include "contiki.h"
-#include "mmem.h"
+#include "lib/mmem.h"
 
 #define DELIVERY_STATE_ERROR -1
 #define DELIVERY_STATE_WAIT_FOR_APP 1

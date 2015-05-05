@@ -25,7 +25,7 @@
 #include "contiki.h"
 #include "net/linkaddr.h"
 #include "lib/memb.h"
-#include "list.h"
+#include "lib/list.h"
 
 #include "bundle.h"
 #include "convergence_layer.h"

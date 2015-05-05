@@ -15,7 +15,7 @@
 #include <stdlib.h>
 
 #include "lib/list.h"
-#include "logging.h"
+#include "lib/logging.h"
 
 #include "agent.h"
 #include "bundle.h"

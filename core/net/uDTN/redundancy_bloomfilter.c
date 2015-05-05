@@ -20,7 +20,7 @@
 #include <string.h> // memset
 
 #include "contiki.h"
-#include "logging.h"
+#include "lib/logging.h"
 
 #include "hash.h"
 #include "redundancy.h"

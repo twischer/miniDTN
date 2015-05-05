@@ -47,7 +47,7 @@
 #include <stdint.h>
 #include "platform-conf.h"
 
-#include <avr/eeprom.h>
+//#include <avr/eeprom.h>
 
 /* Skip the last four bytes of the EEPROM, to leave room for things
  * like the avrdude erase count and bootloader signaling. */

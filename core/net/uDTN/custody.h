@@ -18,7 +18,7 @@
 #ifndef __CUSTODY_H__
 #define __CUSTODY_H__
 
-#include "mmem.h"
+#include "lib/mmem.h"
 #include "contiki.h"
 
 /**

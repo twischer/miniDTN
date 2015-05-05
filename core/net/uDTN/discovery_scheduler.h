@@ -9,8 +9,8 @@
 #define DISCOVERY_SCHEDULER_H_
 
 #include "contiki.h"
-#include "rime.h"
-#include "process.h"
+#include "net/rime/rime.h"
+#include "sys/process.h"
 
 /**
  * Which discovery scheduler driver are we going to use?

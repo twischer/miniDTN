@@ -20,7 +20,7 @@
 #include <stdint.h>
 
 #include "contiki.h"
-#include "mmem.h"
+#include "lib/mmem.h"
 
 #include "bundle.h"
 

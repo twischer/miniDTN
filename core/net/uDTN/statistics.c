@@ -15,7 +15,7 @@
 #include "agent.h"
 #include "contiki.h"
 #include "bundle.h"
-#include "logging.h"
+#include "lib/logging.h"
 
 #include "statistics.h"
 

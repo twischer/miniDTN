@@ -22,7 +22,7 @@
 #include <stdio.h>
 
 #include "contiki.h"
-#include "memb.h"
+#include "lib/memb.h"
 
 #include "bundle.h"
 

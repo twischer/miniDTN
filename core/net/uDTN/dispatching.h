@@ -13,7 +13,7 @@
 #define DISPATCHING_H
 
 #include "contiki.h"
-#include "mmem.h"
+#include "lib/mmem.h"
 
 /**
 *   \brief Handles Admin Records, custody bundles and regular bundles

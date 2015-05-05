@@ -22,7 +22,7 @@
 #include <stdint.h>
 
 #include "contiki.h"
-#include "mmem.h"
+#include "lib/mmem.h"
 
 /**
  * Support for AEB values > 32 bit? Makes uDTN *really* slow

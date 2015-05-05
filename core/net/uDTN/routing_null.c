@@ -22,8 +22,8 @@
 #include "lib/list.h"
 #include "lib/memb.h"
 #include "contiki.h"
-#include "clock.h"
-#include "logging.h"
+#include "sys/clock.h"
+#include "lib/logging.h"
 
 #include "bundle.h"
 #include "storage.h"
@@ -38,7 +38,7 @@
 
 #include "routing.h"
 
-PROCESS(routing_process, "null routing process");
+//PROCESS(routing_process, "null routing process");
 
 void routing_null_init(void)
 {
