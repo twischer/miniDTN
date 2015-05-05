@@ -10,8 +10,10 @@ DBG:=-g
 
 FREERTOS:=$(CURDIR)/FreeRTOS
 STARTUP:=$(CURDIR)/hardware
+SRC_DIRS:=$(CURDIR)/core/net/uDTN
 LINKER_SCRIPT:=$(CURDIR)/Utilities/stm32_flash.ld
 
+# TODO SDK_INCDIR	:= $(addprefix -I$(SDK_BASE)/,$(SDK_INCDIR))
 INCLUDE=-I$(CURDIR)/hardware
 INCLUDE+=-I$(FREERTOS)/include
 INCLUDE+=-I$(FREERTOS)/portable/GCC/ARM_CM4F
@@ -21,6 +23,11 @@ INCLUDE+=-I$(CURDIR)/Libraries/STM32F4xx_StdPeriph_Driver/inc
 INCLUDE+=-I$(CURDIR)/Libraries/ub_lib
 INCLUDE+=-I$(CURDIR)/config
 
+INCLUDE+=-I$(CURDIR)/core
+INCLUDE+=-I$(CURDIR)/core/net
+INCLUDE+=-I$(CURDIR)/core/net/uDTN
+
+
 BUILD_DIR = $(CURDIR)/build
 BIN_DIR = $(CURDIR)/binary
 
@@ -29,7 +36,9 @@ BIN_DIR = $(CURDIR)/binary
 vpath %.c $(CURDIR)/Libraries/STM32F4xx_StdPeriph_Driver/src \
 	  $(CURDIR)/Libraries/syscall $(CURDIR)/hardware $(FREERTOS) \
 	  $(FREERTOS)/portable/MemMang $(FREERTOS)/portable/GCC/ARM_CM4F \
-	  $(CURDIR)/Libraries/ub_lib
+	  $(CURDIR)/Libraries/ub_lib \
+	  $(SRC_DIRS)
+	  
 
 vpath %.s $(STARTUP)
 ASRC=startup_stm32f4xx.s
@@ -67,6 +76,12 @@ SRC+=stm32f4xx_rng.c
 
 # Advanced source files
 SRC+=stm32_ub_led.c
+
+
+# miniDTN files
+SRC+= $(foreach sdir,$(SRC_DIRS),$(wildcard $(sdir)/*.c))
+
+
 
 CDEFS=-DUSE_STDPERIPH_DRIVER
 CDEFS+=-DSTM32F4XX
@@ -121,10 +136,19 @@ flash: all
 
 run: flash
 	screen /dev/ttyUSB0 115200
-	
-debug:
+
+
+startgdb:
 	st-util &
 	sleep 1
+
+stopgdb:
+	killall st-util
+
+debug: startgdb
 	$(GDB) --args $(BIN_DIR)/$(TARGET).elf target extended remote :4242 b main
 	killall st-util
-	
+
+idedebug: startgdb
+	qtcreator -debug $(BIN_DIR)/$(TARGET).elf,server=:4242 ./minidtn.creator
+	killall st-util
