@@ -10,10 +10,17 @@ DBG:=-g
 
 FREERTOS:=$(CURDIR)/FreeRTOS
 STARTUP:=$(CURDIR)/hardware
-SRC_DIRS:=$(CURDIR)/core/net/uDTN
+
+SRC_DIRS:=core/net/uDTN
+
+INC_DIRS:= $(SRC_DIRS) \
+	core \
+	cpu/arm/stm32f103 \
+	platform/inga
+
 LINKER_SCRIPT:=$(CURDIR)/Utilities/stm32_flash.ld
 
-# TODO SDK_INCDIR	:= $(addprefix -I$(SDK_BASE)/,$(SDK_INCDIR))
+
 INCLUDE=-I$(CURDIR)/hardware
 INCLUDE+=-I$(FREERTOS)/include
 INCLUDE+=-I$(FREERTOS)/portable/GCC/ARM_CM4F
@@ -23,9 +30,7 @@ INCLUDE+=-I$(CURDIR)/Libraries/STM32F4xx_StdPeriph_Driver/inc
 INCLUDE+=-I$(CURDIR)/Libraries/ub_lib
 INCLUDE+=-I$(CURDIR)/config
 
-INCLUDE+=-I$(CURDIR)/core
-INCLUDE+=-I$(CURDIR)/core/net
-INCLUDE+=-I$(CURDIR)/core/net/uDTN
+INCLUDE+= $(addprefix -I$(CURDIR)/,$(INC_DIRS))
 
 
 BUILD_DIR = $(CURDIR)/build
