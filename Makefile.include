@@ -11,7 +11,7 @@ DBG:=-g
 FREERTOS:=$(ROOT_DIR)/FreeRTOS
 STARTUP:=$(ROOT_DIR)/hardware
 
-MODULES+= core/net/uDTN
+MODULES+= hardware core/net/uDTN
 
 INC_DIRS+= $(MODULES) \
 	core \
@@ -21,7 +21,6 @@ INC_DIRS+= $(MODULES) \
 LINKER_SCRIPT:=$(ROOT_DIR)/Utilities/stm32_flash.ld
 
 
-INCLUDE=-I$(ROOT_DIR)/hardware
 INCLUDE+=-I$(FREERTOS)/include
 INCLUDE+=-I$(FREERTOS)/portable/GCC/ARM_CM4F
 INCLUDE+=-I$(ROOT_DIR)/Libraries/CMSIS/Device/ST/STM32F4xx/Include
@@ -42,7 +41,7 @@ BUILD_DIR := $(addprefix $(BUILD_BASE)/,$(MODULES))
 # vpath is used so object files are written to the current directory instead
 # of the same directory as their source files
 vpath %.c $(ROOT_DIR)/Libraries/STM32F4xx_StdPeriph_Driver/src \
-	  $(ROOT_DIR)/Libraries/syscall $(ROOT_DIR)/hardware $(FREERTOS) \
+	  $(ROOT_DIR)/Libraries/syscall $(FREERTOS) \
 	  $(FREERTOS)/portable/MemMang $(FREERTOS)/portable/GCC/ARM_CM4F \
 	  $(ROOT_DIR)/Libraries/ub_lib \
 	  $(SRC_DIRS)
@@ -52,8 +51,6 @@ vpath %.s $(STARTUP)
 ASRC=startup_stm32f4xx.s
 
 # Project Source Files
-SRC+=stm32f4xx_it.c
-SRC+=system_stm32f4xx.c
 SRC+=syscalls.c
 
 # FreeRTOS Source Files
