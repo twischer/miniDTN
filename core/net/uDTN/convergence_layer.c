@@ -13,6 +13,9 @@
 
 #include <string.h> // memset
 
+#include "FreeRTOS.h"
+#include "task.h"
+
 #include "contiki.h"
 #include "net/packetbuf.h"
 #include "net/netstack.h"
@@ -67,7 +70,10 @@ int convergence_layer_set_unblocked(linkaddr_t * neighbour);
 /**
  * CL process
  */
-PROCESS(convergence_layer_process, "CL process");
+//PROCESS(convergence_layer_process, "CL process");
+static TaskHandle_t convergence_layer_task;
+
+static void convergence_layer_process(void* p);
 
 /**
  * MUTEX to avoid flooding the MAC layer with outgoing bundles
@@ -103,12 +109,16 @@ uint8_t convergence_layer_backoff_pending = 0;
 
 void convergence_layer_show_tickets();
 
-int convergence_layer_init(void)
+bool convergence_layer_init(void)
 {
 	// Start CL process
-	process_start(&convergence_layer_process, NULL);
+//	process_start(&convergence_layer_process, NULL);
 
-	return 1;
+	if ( !xTaskCreate(convergence_layer_process, "CL process", configMINIMAL_STACK_SIZE, NULL, 1, &convergence_layer_task) ) {
+		return false;
+	}
+
+	return true;
 }
 
 struct transmit_ticket_t * convergence_layer_get_transmit_ticket_priority(uint8_t priority)
@@ -129,7 +139,7 @@ struct transmit_ticket_t * convergence_layer_get_transmit_ticket_priority(uint8_
 		LOG(LOGD_DTN, LOG_CL, LOGL_WRN, "Cannot allocate ticket");
 		return NULL;
 	}
-	ticket->timestamp = clock_time();
+	ticket->timestamp = xTaskGetTickCount();
 
 	/* Initialize the ticket */
 	memset(ticket, 0, sizeof(struct transmit_ticket_t));
@@ -203,7 +213,8 @@ int convergence_layer_enqueue_bundle(struct transmit_ticket_t * ticket)
 
 	if( convergence_layer_pending == 0 ) {
 		/* Poll the process to initiate transmission */
-		process_poll(&convergence_layer_process);
+//		process_poll(&convergence_layer_process);
+		xTaskNotify(convergence_layer_task, 0, eNoAction);
 	}
 
 	convergence_layer_queue++;
@@ -484,7 +495,7 @@ int convergence_layer_send_ack(linkaddr_t * destination, uint8_t sequence_number
 	}
 
 	/* Note down our latest attempt */
-	ticket->timestamp = clock_time();
+	ticket->timestamp = xTaskGetTickCount();
 
 	/* Now we are transmitting */
 	convergence_layer_transmitting = 1;
@@ -528,7 +539,7 @@ int convergence_layer_resend_ack(struct transmit_ticket_t * ticket)
 	}
 
 	/* Check for the retransmission timer */
-	if( (clock_time() - ticket->timestamp) < (CONVERGENCE_LAYER_RETRANSMIT_TIMEOUT * CLOCK_SECOND) ) {
+	if( (xTaskGetTickCount() - ticket->timestamp) < pdMS_TO_TICKS(CONVERGENCE_LAYER_RETRANSMIT_TIMEOUT * 1000) ) {
 		return 0;
 	}
 
@@ -601,7 +612,7 @@ int convergence_layer_parse_dataframe(linkaddr_t * source, uint8_t * payload, ui
 			/* Fill the fields of the ticket */
 			linkaddr_copy(&ticket->neighbour, source);
 			ticket->flags = CONVERGENCE_LAYER_QUEUE_MULTIPART_RECV;
-			ticket->timestamp = clock_time();
+			ticket->timestamp = xTaskGetTickCount();
 			ticket->sequence_number = sequence_number;
 
 			/* Now allocate some memory */
@@ -656,7 +667,7 @@ int convergence_layer_parse_dataframe(linkaddr_t * source, uint8_t * payload, ui
 			}
 
 			/* Update timestamp to avoid the ticket from timing out */
-			ticket->timestamp = clock_time();
+			ticket->timestamp = xTaskGetTickCount();
 
 			/* And append the payload */
 			memcpy(((uint8_t *) MMEM_PTR(&ticket->buffer)) + n, payload, length);
@@ -713,7 +724,7 @@ int convergence_layer_parse_dataframe(linkaddr_t * source, uint8_t * payload, ui
 	}
 
 	/* Mark the bundle as "internal" */
-	bundle->source_process = &agent_process;
+	agent_set_bundle_source(bundle);
 
 	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Bundle from ipn:%lu.%lu (to ipn:%lu.%lu) received from %u.%u with SeqNo %u", bundle->src_node, bundle->src_srv, bundle->dst_node, bundle->dst_srv, source->u8[0], source->u8[1], sequence_number);
 
@@ -746,7 +757,8 @@ int convergence_layer_parse_ackframe(linkaddr_t * source, uint8_t * payload, uin
 
 	if( convergence_layer_pending == 0 ) {
 		/* Poll the process to initiate transmission of the next bundle */
-		process_poll(&convergence_layer_process);
+//		process_poll(&convergence_layer_process);
+		xTaskNotify(convergence_layer_task, 0, eNoAction);
 	}
 
 	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Incoming ACK from %u.%u for SeqNo %u", source->u8[0], source->u8[1], sequence_number);
@@ -936,11 +948,17 @@ int convergence_layer_status(void * pointer, uint8_t outcome)
 		 */
 		if( outcome == CONVERGENCE_LAYER_STATUS_NOSEND && pointer != NULL ) {
 			/* Use timer to slow the stuff down */
-			etimer_set(&convergence_layer_backoff, 0.1 * CLOCK_SECOND);
+//			etimer_set(&convergence_layer_backoff, 0.1 * CLOCK_SECOND);
+			// TODO do not block this function call
+			// only call the convergence_process 100ms later
+			vTaskDelay( pdMS_TO_TICKS(100) );
+			xTaskNotify(convergence_layer_task, 0, eNoAction);
+
 			convergence_layer_backoff_pending = 1;
 		} else {
 			/* Poll to make it faster */
-			process_poll(&convergence_layer_process);
+//			process_poll(&convergence_layer_process);
+			xTaskNotify(convergence_layer_task, 0, eNoAction);
 		}
 
 		convergence_layer_pending = 1;
@@ -1113,7 +1131,7 @@ int convergence_layer_set_blocked(linkaddr_t * neighbour)
 
 	/* Fill the struct */
 	linkaddr_copy(&n->neighbour, neighbour);
-	n->timestamp = clock_time();
+	n->timestamp = xTaskGetTickCount();
 
 	/* Add it to the list */
 	list_add(blocked_neighbour_list, n);
@@ -1146,7 +1164,7 @@ void check_blocked_neighbours() {
 		 n != NULL;
 		 n = list_item_next(n) ) {
 
-		if( (clock_time() - n->timestamp) >= (((clock_time_t) CLOCK_SECOND) * ((clock_time_t) CONVERGENCE_LAYER_TIMEOUT) ) ) {
+		if( (xTaskGetTickCount() - n->timestamp) >= pdMS_TO_TICKS(CONVERGENCE_LAYER_TIMEOUT * 1000) ) {
 			/* We have a neighbour that takes quite long to reply apparently -
 			 * unblock him and resend the pending bundle
 			 */
@@ -1183,7 +1201,8 @@ void check_blocked_neighbours() {
 
 	if( convergence_layer_pending == 0 ) {
 		/* Tell the process to resend the bundles */
-		process_poll(&convergence_layer_process);
+//		process_poll(&convergence_layer_process);
+		xTaskNotify(convergence_layer_task, 0, eNoAction);
 	}
 }
 
@@ -1203,7 +1222,7 @@ void check_blocked_tickets() {
 				continue;
 			}
 
-			if( (clock_time() - ticket->timestamp) > CONVERGENCE_LAYER_MULTIPART_TIMEOUT * CLOCK_SECOND ) {
+			if( (xTaskGetTickCount() - ticket->timestamp) > pdMS_TO_TICKS(CONVERGENCE_LAYER_MULTIPART_TIMEOUT * 1000) ) {
 				LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Multipart receiving ticket for peer %u.%u timed out, removing", ticket->neighbour.u8[0], ticket->neighbour.u8[1]);
 				changed = 1;
 				convergence_layer_free_transmit_ticket(ticket);
@@ -1279,13 +1298,13 @@ void convergence_layer_show_tickets() {
 	printf("---\n");
 }
 
-PROCESS_THREAD(convergence_layer_process, ev, data)
+static void convergence_layer_process(void* p)
 {
 	struct transmit_ticket_t * ticket = NULL;
-	static struct etimer stale_timer;
+//	static struct etimer stale_timer;
 	int n;
 
-	PROCESS_BEGIN();
+//	PROCESS_BEGIN();
 
 	/* Initialize ticket storage */
 	memb_init(&transmission_ticket_mem);
@@ -1304,25 +1323,29 @@ PROCESS_THREAD(convergence_layer_process, ev, data)
 	convergence_layer_pending = 0;
 
 	/* Set timer */
-	etimer_set(&stale_timer, CLOCK_SECOND);
+//	etimer_set(&stale_timer, CLOCK_SECOND);
+
 
 	while(1) {
-		PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL || ev == PROCESS_EVENT_CONTINUE || etimer_expired(&stale_timer) || ev == PROCESS_EVENT_TIMER);
+//		PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL || ev == PROCESS_EVENT_CONTINUE || etimer_expired(&stale_timer) || ev == PROCESS_EVENT_TIMER);
+		const BaseType_t notification_received = xTaskNotifyWait( 0, 0, NULL, pdMS_TO_TICKS(1000) );
 
-		if( etimer_expired(&stale_timer) ) {
+		if(!notification_received) {
 			check_blocked_neighbours();
 			check_blocked_tickets();
-			etimer_restart(&stale_timer);
-		}
+//			etimer_restart(&stale_timer);
+		} else
 
-		if( ev == PROCESS_EVENT_POLL || ev == PROCESS_EVENT_CONTINUE || (convergence_layer_backoff_pending && etimer_expired(&convergence_layer_backoff)) ) {
+			// TODO convergence_layer_backoff_pending not checkt if the convergence timer expired
+		/*if( ev == PROCESS_EVENT_POLL || ev == PROCESS_EVENT_CONTINUE || (convergence_layer_backoff_pending && etimer_expired(&convergence_layer_backoff)) )*/ {
 			convergence_layer_pending = 0;
 
-			/* Stop timer to avoid it firing again */
-			if ( (convergence_layer_backoff_pending && etimer_expired(&convergence_layer_backoff)) ) {
-				etimer_stop(&convergence_layer_backoff);
-				convergence_layer_backoff_pending = 0;
-			}
+			// TODO no difference if with or without timeout
+//			/* Stop timer to avoid it firing again */
+//			if ( (convergence_layer_backoff_pending && etimer_expired(&convergence_layer_backoff)) ) {
+//				etimer_stop(&convergence_layer_backoff);
+//				convergence_layer_backoff_pending = 0;
+//			}
 
 			/* If we are currently transmitting, we cannot send another bundle */
 			if( convergence_layer_transmitting ) {
@@ -1368,5 +1391,5 @@ PROCESS_THREAD(convergence_layer_process, ev, data)
 			}
 		}
 	}
-	PROCESS_END();
+//	PROCESS_END();
 }

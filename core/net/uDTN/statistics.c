@@ -19,7 +19,7 @@
 
 #include "statistics.h"
 
-process_event_t dtn_statistics_overrun;
+//process_event_t dtn_statistics_overrun;
 
 unsigned long statistics_timestamp = 0;
 struct statistics_element_t statistics_array[STATISTICS_ELEMENTS];
@@ -65,7 +65,7 @@ uint16_t statistics_setup(struct process * process)
 	statistics_event_process = process;
 
 	// Allocate our event
-	dtn_statistics_overrun = process_alloc_event();
+//	dtn_statistics_overrun = process_alloc_event();
 
 	return STATISTICS_PERIOD * STATISTICS_ELEMENTS;
 }
@@ -151,7 +151,7 @@ void statistics_reset(void)
 	memset(statistics_array, 0, sizeof(struct statistics_element_t) * STATISTICS_ELEMENTS);
 
 	// Record the current timestamp
-	statistics_timestamp = clock_seconds();
+	statistics_timestamp = xTaskGetTickCount() / portTICK_PERIOD_MS / 1000;
 }
 
 /**
@@ -276,7 +276,7 @@ void statistics_contacts_down(linkaddr_t * peer, uint16_t duration)
 	// Avoid overrunning the array
 	if( contacts_pointer >= STATISTICS_CONTACTS && statistics_event_process != NULL ) {
 		LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "contacts full, sending event");
-		process_post(statistics_event_process, dtn_statistics_overrun, NULL);
+//		process_post(statistics_event_process, dtn_statistics_overrun, NULL);
 	} else if( statistics_event_process == NULL ) {
 		// Nobody is interested in our data anyway, start from the beginning
 		LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "contacts full, clearing array");

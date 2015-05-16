@@ -1188,9 +1188,8 @@ dev/sht11/sht11-sensor.c
 dev/sht11/sht11-sensor.h
 dev/sht11/sht11.c
 dev/sht11/sht11.h
+examples/fpu-test/main.c
 examples/hello-world/hello-world.c
-examples/hello-world/huge.c
-examples/hello-world/large.c
 examples/hello-world/project-conf.h
 examples/uDTN/compile_test/test.c
 examples/uDTN/dtnping/dtnpingsender.c
@@ -1241,6 +1240,7 @@ FreeRTOS/list.c
 FreeRTOS/queue.c
 FreeRTOS/tasks.c
 FreeRTOS/timers.c
+hardware/main.c
 hardware/stm32f4xx_it.c
 hardware/stm32f4xx_it.h
 hardware/system_stm32f4xx.c
@@ -1855,4 +1855,3 @@ platform/z1/contiki-z1-main.c
 platform/z1/contiki-z1-platform.c
 platform/z1/node-id.c
 platform/z1/platform-conf.h
-main.c

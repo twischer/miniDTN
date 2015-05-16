@@ -98,14 +98,14 @@ static uint8_t bundle_list_changed = 0;
  * "Internal" functions
  */
 void storage_coffee_prune();
-uint16_t storage_coffee_delete_bundle(uint32_t bundle_number, uint8_t reason);
+uint8_t storage_coffee_delete_bundle(uint32_t bundle_number, uint8_t reason);
 struct mmem * storage_coffee_read_bundle(uint32_t bundle_number);
 void storage_coffee_reconstruct_bundles();
 
 /**
  * \brief called by agent at startup
  */
-void storage_coffee_init(void)
+bool storage_coffee_init(void)
 {
 	// Initialize the bundle list
 	list_init(bundle_list);
@@ -130,6 +130,8 @@ void storage_coffee_init(void)
 
 	// Set the timer to regularly prune expired bundles
 	ctimer_set(&g_store_timer, CLOCK_SECOND*5, storage_coffee_prune, NULL);
+
+	return true;
 }
 
 /**
@@ -559,7 +561,7 @@ uint8_t storage_coffee_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_n
  * \param reason reason code
  * \return 1 on success or 0 on error
  */
-uint16_t storage_coffee_delete_bundle(uint32_t bundle_number, uint8_t reason)
+uint8_t storage_coffee_delete_bundle(uint32_t bundle_number, uint8_t reason)
 {
 	struct bundle_t * bundle = NULL;
 	struct file_list_entry_t * entry = NULL;

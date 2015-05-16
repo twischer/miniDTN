@@ -11,7 +11,8 @@ DBG:=-g
 FREERTOS:=$(ROOT_DIR)/FreeRTOS
 STARTUP:=$(ROOT_DIR)/hardware
 
-MODULES+= hardware core/net/uDTN
+# TODO remove contiki lib, if everything was ported successfully
+MODULES+= hardware core/lib core/net core/net/uDTN
 
 INC_DIRS+= $(MODULES) \
 	core \

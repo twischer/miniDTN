@@ -20,6 +20,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdbool.h>
 
 #include "contiki.h"
 #include "lib/memb.h"
@@ -95,7 +96,7 @@ struct storage_entry_t {
 struct storage_driver {
 	char *name;
 	/** called by agent a startup */
-	void (* init)(void);
+	bool (* init)(void);
 	void (* reinit)(void);
 	/** saves a bundle */
 	uint8_t (* save_bundle)(struct mmem *bundlemem, uint32_t ** bundle_number);

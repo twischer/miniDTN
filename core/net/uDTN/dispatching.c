@@ -202,7 +202,12 @@ int dispatching_dispatch_bundle(struct mmem *bundlemem) {
 		REDUNDANCE.set(bundle_number);
 
 		// Now we have to send an event to our daemon
-		process_post(&agent_process, dtn_bundle_in_storage_event, bundle_number_ptr);
+//		process_post(&agent_process, dtn_bundle_in_storage_event, bundle_number_ptr);
+		const event_container_t event = {
+			.event = dtn_bundle_in_storage_event,
+			.bundle_number_ptr = bundle_number_ptr
+		};
+		agent_send_event(&event);
 
 		return 1;
 	}

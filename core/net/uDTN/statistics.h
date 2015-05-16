@@ -35,7 +35,7 @@
 #define STATISTICS_CONTACTS 0
 #endif
 
-extern process_event_t dtn_statistics_overrun;
+//extern process_event_t dtn_statistics_overrun;
 
 struct statistics_element_t
 {

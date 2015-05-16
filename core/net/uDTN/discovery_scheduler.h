@@ -8,6 +8,8 @@
 #ifndef DISCOVERY_SCHEDULER_H_
 #define DISCOVERY_SCHEDULER_H_
 
+#include <stdbool.h>
+
 #include "contiki.h"
 #include "net/rime/rime.h"
 #include "sys/process.h"
@@ -32,7 +34,7 @@
 
 /** interface for discovery scheduler modules **/
 struct discovery_scheduler_driver {
-	void (* init)();
+	bool (* init)();
 	void (* set_schedule_index)(uint8_t index);
 };
 

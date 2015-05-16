@@ -21,9 +21,9 @@
 
 #include "discovery.h"
 
-void discovery_static_init()
+bool discovery_static_init()
 {
-
+	return true;
 }
 
 uint8_t discovery_static_is_neighbour(linkaddr_t * dest)

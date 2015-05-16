@@ -21,6 +21,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdbool.h>
 
 #include "contiki.h"
 #include "net/linkaddr.h"
@@ -66,7 +67,7 @@
 #define ROUTING_STATUS_ERROR		0x08
 #define ROUTING_STATUS_TEMP_NACK	0x10
 
-PROCESS_NAME(routing_process);
+//PROCESS_NAME(routing_process);
 
 /** the route_t struct is used to inform the network interface which bundle should be transmitted to whicht node*/
 struct route_t	{
@@ -81,7 +82,7 @@ struct route_t	{
 struct routing_driver {
 	char *name;
 	/** module init, called by agent at startup*/
-	void (* init)(void);
+	bool (* init)(void);
 	/** informs the module about a new neighbor */
 	void (* new_neighbor)(linkaddr_t * dest);
 	/** informs the module about a new bundel */

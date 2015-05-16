@@ -252,7 +252,7 @@ void storage_flash_format(void)
 	}
 }
 
-void storage_flash_init(void)
+bool storage_flash_init(void)
 {
 	LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "storage_flash init");
 
@@ -275,6 +275,9 @@ void storage_flash_init(void)
 #endif
 
 	ctimer_set(&storage_flash_timer, CLOCK_SECOND*5, storage_flash_prune, NULL);
+
+
+	return true;
 }
 
 void storage_flash_reinit(void)

@@ -5,6 +5,9 @@
  *      Author: Johannes Morgenroth <morgenroth@ibr.cs.tu-bs.de>
  */
 
+#include "FreeRTOS.h"
+#include "task.h"
+
 #include "system_clock.h"
 
 static udtn_timeval_t udtn_clock_offset;
@@ -51,9 +54,9 @@ void udtn_gettimeofday(udtn_timeval_t *tv) {
 
 void udtn_uptime(udtn_timeval_t *tv) {
 	do {
-		tv->tv_usec = (uint32_t)clock_time();
-		tv->tv_sec = (uint32_t)clock_seconds();
-	} while (tv->tv_usec != (uint32_t)clock_time());
+		tv->tv_usec = (uint32_t)xTaskGetTickCount();
+		tv->tv_sec = (uint32_t)xTaskGetTickCount();
+	} while (tv->tv_usec != (uint32_t)xTaskGetTickCount());
 
 	// convert to microseconds
 	tv->tv_usec = ((tv->tv_usec % CLOCK_SECOND) * 1000000) / CLOCK_SECOND;

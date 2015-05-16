@@ -20,6 +20,9 @@
 
 #include <stdint.h>
 
+#include "FreeRTOS.h"
+#include "queue.h"
+
 #include "contiki.h"
 #include "lib/mmem.h"
 #include "net/linkaddr.h"
@@ -146,7 +149,7 @@ struct bundle_t{
 	uint32_t app_len;
 
 	packetbuf_attr_t rssi;
-	struct process * source_process;
+	QueueHandle_t source_event_queue;
 	linkaddr_t msrc;
 
 	uint32_t aeb_value_ms;

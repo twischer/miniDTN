@@ -11,7 +11,7 @@
 /**
  * \file
  * \author Georg von Zengen <vonzeng@ibr.cs.tu-bs.de>
- * \author Wolf-Bastian Pšttner <poettner@ibr.cs.tu-bs.de>
+ * \author Wolf-Bastian PÂšttner <poettner@ibr.cs.tu-bs.de>
  */
 
 #include <string.h>
@@ -236,7 +236,8 @@ uint8_t statusreport_basic_send(struct mmem * bundlemem, uint8_t status, uint8_t
 	// "Fake" the source of the bundle to be the agent
 	// Otherwise we cannot send bundles, because we do not have an endpoint registration
 	bundle = (struct bundle_t *) MMEM_PTR(report_bundle);
-	bundle->source_process = &agent_process;
+//	bundle->source_process = &agent_process;
+	agent_set_bundle_source(bundle);
 
 	// Set destination addresses for the outgoing bundle
 	bundle_set_attr(report_bundle, DEST_NODE, &report_node_id);
@@ -275,7 +276,12 @@ uint8_t statusreport_basic_send(struct mmem * bundlemem, uint8_t status, uint8_t
 	}
 
 	// Send out the report
-	process_post(&agent_process, dtn_send_bundle_event, report_bundle);
+//	process_post(&agent_process, dtn_send_bundle_event, report_bundle);
+	const event_container_t event = {
+		.event = dtn_send_bundle_event,
+		.bundlemem = report_bundle
+	};
+	agent_send_event(&event);
 
 	return 1;
 }

@@ -20,6 +20,9 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "FreeRTOS.h"
+#include "timers.h"
+
 #include "contiki.h"
 #include "lib/mmem.h"
 #include "lib/list.h"
@@ -77,12 +80,12 @@ MEMB(bundle_mem, struct bundle_list_entry_t, BUNDLE_STORAGE_SIZE);
 static uint16_t bundles_in_storage;
 
 /** Is used to periodically traverse all bundles and delete those that are expired */
-static struct ctimer r_store_timer;
+static TimerHandle_t r_store_timer;
 
 /**
  * "Internal" functions
  */
-void storage_mmem_prune();
+void storage_mmem_prune(const TimerHandle_t timer);
 void storage_mmem_reinit(void);
 uint8_t storage_mmem_delete_bundle(uint32_t bundle_number, uint8_t reason);
 void storage_mmem_update_statistics();
@@ -104,7 +107,7 @@ void storage_mmem_format(void)
 /**
  * \brief called by agent at startup
  */
-void storage_mmem_init(void)
+bool storage_mmem_init(void)
 {
 	LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "storage_mmem init");
 
@@ -122,13 +125,23 @@ void storage_mmem_init(void)
 	storage_mmem_reinit();
 	storage_mmem_update_statistics();
 
-	ctimer_set(&r_store_timer, CLOCK_SECOND*5, storage_mmem_prune, NULL);
+//	ctimer_set(&r_store_timer, CLOCK_SECOND*5, storage_mmem_prune, NULL);
+	r_store_timer = xTimerCreate("store timer", pdMS_TO_TICKS(5 * 1000), pdFALSE, NULL, storage_mmem_prune);
+	if (r_store_timer == NULL) {
+		return false;
+	}
+
+	if ( !xTimerStart(r_store_timer, 0) ) {
+		return false;
+	}
+
+	return true;
 }
 
 /**
  * \brief deletes expired bundles from storage
  */
-void storage_mmem_prune()
+void storage_mmem_prune(const TimerHandle_t timer)
 {
 	struct bundle_list_entry_t * entry = NULL;
 	struct bundle_t *bundle = NULL;
@@ -145,7 +158,8 @@ void storage_mmem_prune()
 		}
 	}
 
-	ctimer_restart(&r_store_timer);
+//	ctimer_restart(&r_store_timer);
+	xTimerReset(r_store_timer, 0);
 }
 
 /**
@@ -174,7 +188,7 @@ void storage_mmem_reinit(void)
 uint8_t storage_mmem_make_room(struct mmem * bundlemem)
 {
 	/* Now delete expired bundles */
-	storage_mmem_prune();
+	storage_mmem_prune(NULL);
 
 	/* If we do not have a pointer, we cannot compare - do nothing */
 	if( bundlemem == NULL ) {
@@ -269,7 +283,7 @@ uint8_t storage_mmem_make_room(struct mmem * bundlemem)
 			/* If the new bundle has a longer lifetime than the bundle in our storage,
 			 * delete the bundle from storage to make room
 			 */
-			if( bundle_new->lifetime - (clock_time() - bundle_new->rec_time) / CLOCK_SECOND >= bundle_old->lifetime - (clock_time() - bundle_old->rec_time) / CLOCK_SECOND ) {
+			if( bundle_new->lifetime - (xTaskGetTickCount() - bundle_new->rec_time) / 1000 / portTICK_PERIOD_MS >= bundle_old->lifetime - (xTaskGetTickCount() - bundle_old->rec_time) / 1000 / portTICK_PERIOD_MS ) {
 				break;
 			}
 #elif BUNDLE_STORAGE_BEHAVIOUR == BUNDLE_STORAGE_BEHAVIOUR_DELETE_YOUNGER

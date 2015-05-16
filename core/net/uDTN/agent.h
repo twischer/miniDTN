@@ -23,38 +23,31 @@
 #ifndef AGENT_H
 #define AGENT_H
 
+#include <stdbool.h>
+
+#include "FreeRTOS.h"
+#include "queue.h"
+
+#include "api.h"
+#include "bundle.h"
+
 #include "contiki.h"
 
 extern uint32_t dtn_node_id;
 extern uint32_t dtn_seq_nr;
-PROCESS_NAME(agent_process);
 
-/**
-*  \name Events internal communication 
-* @{
-*/
-/* Event thrown to the bundle agent by network layer */
-process_event_t dtn_receive_bundle_event;
-
-/* Event thrown to the bundle agent by storage */
-process_event_t dtn_bundle_in_storage_event;
-
-/* Event to transmit an administrative record */
-process_event_t dtn_send_admin_record_event;
-
-/* Event to transmit a bundle to a specific node */
-process_event_t dtn_send_bundle_to_node_event;
-/** @} */
 
 /**
 *   \brief Bundle Protocols initialisation
 *
 *    called by contikis main function
 */
-void agent_init(void);
+bool agent_init(void);
 void agent_delete_bundle(uint32_t bundle_number);
 uint32_t agent_get_sequence_number();
 void agent_set_sequence_number(uint32_t);
+void agent_set_bundle_source(struct bundle_t* const bundle);
+void agent_send_event(const event_container_t* const event);
 
 /**
  * \brief uDTN log domains

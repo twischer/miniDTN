@@ -39,11 +39,20 @@
 #include "routing.h"
 
 //PROCESS(routing_process, "null routing process");
+static TaskHandle_t routing_task;
+static void routing_process(void* p);
 
-void routing_null_init(void)
+
+bool routing_null_init(void)
 {
 	// Start Routing process
-	process_start(&routing_process, NULL);
+//	process_start(&routing_process, NULL);
+
+	if ( !xTaskCreate(routing_process, "null routing process", configMINIMAL_STACK_SIZE, NULL, 1, &routing_task) ) {
+		return false;
+	}
+
+	return true;
 }
 
 int routing_null_send_bundle(uint32_t bundle_number, linkaddr_t * neighbour)
@@ -103,7 +112,8 @@ void routing_null_send_to_known_neighbours(void)
 }
 
 void routing_null_resubmit_bundles() {
-	process_poll(&routing_process);
+//	process_poll(&routing_process);
+	vTaskResume(routing_task);
 }
 
 int routing_null_new_bundle(uint32_t * bundle_number)
@@ -160,7 +170,8 @@ void routing_null_bundle_sent(struct transmit_ticket_t * ticket, uint8_t status)
 	convergence_layer_free_transmit_ticket(ticket);
 
 	/* Notify the process */
-	process_poll(&routing_process);
+//	process_poll(&routing_process);
+	vTaskResume(routing_task);
 }
 
 void routing_null_bundle_delivered_locally(struct mmem * bundlemem)
@@ -179,22 +190,24 @@ void routing_null_bundle_delivered_locally(struct mmem * bundlemem)
 	bundle_decrement(bundlemem);
 
 	/* Notify the process */
-	process_poll(&routing_process);
+//	process_poll(&routing_process);
+	vTaskResume(routing_task);
 }
 
-PROCESS_THREAD(routing_process, ev, data)
+void routing_process(void* p)
 {
-	PROCESS_BEGIN();
+//	PROCESS_BEGIN();
 
 	LOG(LOGD_DTN, LOG_ROUTE, LOGL_INF, "null routing process in running");
 
 	while(1) {
-		PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL);
+//		PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL);
+		vTaskSuspend(NULL);
 
 		routing_null_send_to_known_neighbours();
 	}
 
-	PROCESS_END();
+//	PROCESS_END();
 }
 
 const struct routing_driver routing_null ={

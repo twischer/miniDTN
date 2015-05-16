@@ -80,6 +80,9 @@ struct routing_entry_t {
  * Routing process
  */
 //PROCESS(routing_process, "CHAIN ROUTE process");
+static TaskHandle_t routing_task;
+static void routing_process(void* p);
+
 
 MEMB(routing_mem, struct routing_list_entry_t, BUNDLE_STORAGE_SIZE);
 LIST(routing_list);
@@ -90,10 +93,16 @@ void routing_chain_check_keep_bundle(uint32_t bundle_number);
 /**
  * \brief called by agent at startup
  */
-void routing_chain_init(void)
+bool routing_chain_init(void)
 {
 	// Start CL process
-	process_start(&routing_process, NULL);
+//	process_start(&routing_process, NULL);
+
+	if ( !xTaskCreate(routing_process, "CHAIN ROUTE process", configMINIMAL_STACK_SIZE, NULL, 1, &routing_task) ) {
+		return false;
+	}
+
+	return true;
 }
 
 /**
@@ -101,7 +110,8 @@ void routing_chain_init(void)
  */
 void routing_chain_schedule_resubmission(void)
 {
-	process_poll(&routing_process);
+//	process_poll(&routing_process);
+	vTaskResume(routing_task);
 }
 
 /**
@@ -752,9 +762,9 @@ void routing_chain_bundle_delivered_locally(struct mmem * bundlemem) {
 /**
  * \brief Routing persistent process
  */
-PROCESS_THREAD(routing_process, ev, data)
+void routing_process(void* p)
 {
-	PROCESS_BEGIN();
+//	PROCESS_BEGIN();
 
 	LOG(LOGD_DTN, LOG_ROUTE, LOGL_INF, "CHAIN ROUTE process in running");
 
@@ -763,12 +773,13 @@ PROCESS_THREAD(routing_process, ev, data)
 	list_init(routing_list);
 
 	while(1) {
-		PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL);
+//		PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL);
+		vTaskSuspend(NULL);
 
 		routing_chain_send_to_known_neighbours();
 	}
 
-	PROCESS_END();
+//	PROCESS_END();
 }
 
 const struct routing_driver routing_chain ={

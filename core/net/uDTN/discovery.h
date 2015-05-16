@@ -18,6 +18,8 @@
 #ifndef DISCOVERY_H
 #define DISCOVERY_H
 
+#include <stdbool.h>
+
 #include "contiki.h"
 #include "net/rime/rime.h"
 #include "sys/process.h"
@@ -47,7 +49,7 @@ struct discovery_driver {
 	/**
 	 * Initialize discovery module
 	 */
-	void (* init)();
+	bool (* init)();
 
 	/**
 	 * Ask discovery, if this node is currently in range

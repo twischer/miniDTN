@@ -18,25 +18,34 @@
 #include "discovery_scheduler.h"
 #include "discovery.h"
 
+#include "FreeRTOS.h"
+#include "timers.h"
+
 #include "sys/ctimer.h"
 
-static struct ctimer dst;
-process_event_t dtn_disco_start_event;
-process_event_t dtn_disco_stop_event;
+static TimerHandle_t dst;
 
-void discovery_scheduler_periodic_func(void * ptr);
+void discovery_scheduler_periodic_func(const TimerHandle_t timer);
 
-void discovery_scheduler_periodic_init() {
-	dtn_disco_start_event = process_alloc_event();
-	dtn_disco_stop_event = process_alloc_event();
+bool discovery_scheduler_periodic_init() {
+//	ctimer_set(&dst, DISCOVERY_CYCLE * CLOCK_SECOND, discovery_scheduler_periodic_func, NULL);
+	dst = xTimerCreate("discovery scheduler timer", pdMS_TO_TICKS(DISCOVERY_CYCLE * 1000), pdFALSE, NULL, discovery_scheduler_periodic_func);
+	if (dst == NULL) {
+		return false;
+	}
 
-	ctimer_set(&dst, DISCOVERY_CYCLE * CLOCK_SECOND, discovery_scheduler_periodic_func, NULL);
+	if ( !xTimerStart(dst, 0) ) {
+		return false;
+	}
+
+	return true;
 }
 
-void discovery_scheduler_periodic_func(void * ptr)
+void discovery_scheduler_periodic_func(const TimerHandle_t timer)
 {
 	/* Rescheudle ourself */
-	ctimer_reset(&dst);
+//	ctimer_reset(&dst);
+	xTimerReset(dst, 0);
 
 	/* Trigger discovery module to send a message */
 	DISCOVERY.start(0, 0);

@@ -17,7 +17,11 @@
  * \author Wolf-Bastian Poettner <poettner@ibr.cs.tu-bs.de>
  */
 
+#include <stdbool.h>
 #include <string.h> // for memset
+
+#include "FreeRTOS.h"
+#include "timers.h"
 
 #include "net/netstack.h"
 #include "net/packetbuf.h" 
@@ -40,7 +44,7 @@
 
 void discovery_ipnd_refresh_neighbour(linkaddr_t * neighbour);
 void discovery_ipnd_save_neighbour(linkaddr_t * neighbour);
-void discovery_ipnd_remove_stale_neighbours(void * ptr);
+static void discovery_ipnd_remove_stale_neighbours(const TimerHandle_t timer);
 void discovery_ipnd_print_list();
 
 #define DISCOVERY_NEIGHBOUR_CACHE	3
@@ -72,7 +76,7 @@ LIST(neighbour_list);
 MEMB(neighbour_mem, struct discovery_ipnd_neighbour_list_entry, DISCOVERY_NEIGHBOUR_CACHE);
 
 static uint8_t discovery_status = 0;
-static struct ctimer discovery_timeout_timer;
+static TimerHandle_t discovery_timeout_timer = NULL;
 uint16_t discovery_sequencenumber = 0;
 
 linkaddr_t discovery_whitelist[DISCOVERY_IPND_WHITELIST];
@@ -80,7 +84,7 @@ linkaddr_t discovery_whitelist[DISCOVERY_IPND_WHITELIST];
 /**
  * \brief IPND Discovery init function (called by agent)
  */
-void discovery_ipnd_init()
+bool discovery_ipnd_init()
 {
 	// Initialize the neighbour list
 	list_init(neighbour_list);
@@ -98,10 +102,21 @@ void discovery_ipnd_init()
 #endif
 
 	// Set the neighbour timeout timer
-	ctimer_set(&discovery_timeout_timer, DISCOVERY_NEIGHBOUR_TIMEOUT * CLOCK_SECOND, discovery_ipnd_remove_stale_neighbours, NULL);
+//	ctimer_set(&discovery_timeout_timer, DISCOVERY_NEIGHBOUR_TIMEOUT * CLOCK_SECOND, discovery_ipnd_remove_stale_neighbours, NULL);
+	discovery_timeout_timer = xTimerCreate("discovery timeout timer", pdMS_TO_TICKS(DISCOVERY_NEIGHBOUR_TIMEOUT * 1000),
+										   pdFALSE, NULL, discovery_ipnd_remove_stale_neighbours);
+	if (discovery_timeout_timer == NULL) {
+		return false;
+	}
+
+	if ( !xTimerStart(discovery_timeout_timer, 0) ) {
+		return false;
+	}
 
 	// Enable discovery module
 	discovery_status = 1;
+
+	return true;
 }
 
 /** 
@@ -362,7 +377,7 @@ void discovery_ipnd_refresh_neighbour(linkaddr_t * neighbour)
 			entry != NULL;
 			entry = list_item_next(entry)) {
 		if( linkaddr_cmp(&entry->neighbour, neighbour) ) {
-			entry->timestamp_last = clock_seconds();
+			entry->timestamp_last = xTaskGetTickCount() / portTICK_PERIOD_MS / 1000;
 			return;
 		}
 	}
@@ -434,8 +449,8 @@ void discovery_ipnd_save_neighbour(linkaddr_t * neighbour)
 	memset(entry, 0, sizeof(struct discovery_ipnd_neighbour_list_entry));
 
 	linkaddr_copy(&entry->neighbour, neighbour);
-	entry->timestamp_last = clock_seconds();
-	entry->timestamp_discovered = clock_seconds();
+	entry->timestamp_last = xTaskGetTickCount() / portTICK_PERIOD_MS / 1000;
+	entry->timestamp_discovered = xTaskGetTickCount() / portTICK_PERIOD_MS / 1000;
 
 	// Notify the statistics module
 	statistics_contacts_up(neighbour);
@@ -443,7 +458,12 @@ void discovery_ipnd_save_neighbour(linkaddr_t * neighbour)
 	list_add(neighbour_list, entry);
 
 	// We have found a new neighbour, now go and notify the agent
-	process_post(&agent_process, dtn_beacon_event, &entry->neighbour);
+//	process_post(&agent_process, dtn_beacon_event, &entry->neighbour);
+	const event_container_t event = {
+		.event = dtn_beacon_event,
+		.linkaddr = &entry->neighbour
+	};
+	agent_send_event(&event);
 }
 
 /**
@@ -493,7 +513,7 @@ void discovery_ipnd_clear()
 	}
 }
 
-void discovery_ipnd_remove_stale_neighbours(void * ptr)
+static void discovery_ipnd_remove_stale_neighbours(const TimerHandle_t timer)
 {
 	struct discovery_ipnd_neighbour_list_entry * entry;
 	int changed = 1;
@@ -504,7 +524,7 @@ void discovery_ipnd_remove_stale_neighbours(void * ptr)
 		for(entry = list_head(neighbour_list);
 				entry != NULL;
 				entry = list_item_next(entry)) {
-			if( (clock_seconds() - entry->timestamp_last) > DISCOVERY_NEIGHBOUR_TIMEOUT ) {
+			if( (xTaskGetTickCount() / portTICK_PERIOD_MS / 1000 - entry->timestamp_last) > DISCOVERY_NEIGHBOUR_TIMEOUT ) {
 				LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "Neighbour %u.%u timed out: %lu vs. %lu = %lu", entry->neighbour.u8[0], entry->neighbour.u8[1], clock_time(), entry->timestamp_last, clock_time() - entry->timestamp_last);
 				discovery_ipnd_delete_neighbour(&entry->neighbour);
 				changed = 1;
@@ -513,7 +533,8 @@ void discovery_ipnd_remove_stale_neighbours(void * ptr)
 		}
 	}
 
-	ctimer_set(&discovery_timeout_timer, DISCOVERY_NEIGHBOUR_TIMEOUT * CLOCK_SECOND, discovery_ipnd_remove_stale_neighbours, NULL);
+//	ctimer_set(&discovery_timeout_timer, DISCOVERY_NEIGHBOUR_TIMEOUT * CLOCK_SECOND, discovery_ipnd_remove_stale_neighbours, NULL);
+	xTimerReset(discovery_timeout_timer, 0);
 }
 
 void discovery_ipnd_print_list()

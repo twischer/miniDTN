@@ -43,7 +43,7 @@ void registration_init(void)
 	LOG(LOGD_DTN, LOG_AGENT, LOGL_INF, "Registration init ok");
 }
 
-int registration_new_application(uint32_t app_id, struct process *application_process, uint32_t node_id)
+int registration_new_application(uint32_t app_id, const QueueHandle_t event_queue, uint32_t node_id)
 {
 	struct registration * n = NULL;
 
@@ -71,14 +71,14 @@ int registration_new_application(uint32_t app_id, struct process *application_pr
 	n->node_id = node_id;
 	n->app_id = app_id;
 	n->status = APP_ACTIVE;
-	n->application_process = application_process;
+	n->event_queue = event_queue;
 
 	list_add(registration_list, n);
 
 	return 1;
 }
 
-struct process * registration_get_process(uint32_t app_id, uint32_t node_id)
+QueueHandle_t registration_get_process(uint32_t app_id, uint32_t node_id)
 {
 	struct registration * n = NULL;
 
@@ -88,7 +88,7 @@ struct process * registration_get_process(uint32_t app_id, uint32_t node_id)
 
 	for(n = list_head(registration_list); n != NULL; n = list_item_next(n)) {
 		if(n->node_id == node_id && n->app_id == app_id) {
-			return n->application_process;
+			return n->event_queue;
 		}
 	}
 
@@ -171,12 +171,16 @@ int registration_return_status(uint32_t app_id, uint32_t node_id)
 	return -1;
 }
 
-uint32_t registration_get_application_id(struct process * application_process)
+uint32_t registration_get_application_id(const QueueHandle_t event_queue)
 {
+	if (event_queue == NULL) {
+		return REGISTRATION_EID_UNDEFINED;
+	}
+
 	struct registration * n = NULL;
 
 	for(n = list_head(registration_list); n != NULL; n = list_item_next(n)) {
-		if( n->application_process == application_process ) {
+		if( n->event_queue == event_queue ) {
 			return n->app_id;
 		}
 	}

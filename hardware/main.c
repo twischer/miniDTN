@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include "stm32f4xx.h"
 #include "FreeRTOS.h"
 #include "task.h"
@@ -8,7 +9,7 @@
 
 void init_USART3(void);
 
-int init();
+bool init();
 
 
 int main(void) {
@@ -19,10 +20,8 @@ int main(void) {
   UB_Led_Init(); // Init der LEDs
   UB_Led_On(LED_GREEN); // gruene LED einschalten
 
-  // Create a task
-  const int ret = init();
-
-  if (ret == pdTRUE) {
+  const bool successful = init();
+  if (successful) {
     printf("System Started!\n");
     vTaskStartScheduler();  // should never return
   } else {

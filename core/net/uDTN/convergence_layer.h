@@ -19,6 +19,8 @@
 #ifndef CONVERGENCE_LAYER_H
 #define CONVERGENCE_LAYER_H
 
+#include <stdbool.h>
+
 #include "contiki.h"
 #include "net/linkaddr.h"
 #include "sys/process.h"
@@ -164,7 +166,7 @@
 /**
  * Convergence Layer Process
  */
-PROCESS_NAME(convergence_layer_process);
+//PROCESS_NAME(convergence_layer_process);
 
 /**
  * Bundle Queue Entry
@@ -189,7 +191,7 @@ struct transmit_ticket_t {
 	struct mmem * bundle;
 };
 
-int convergence_layer_init(void);
+bool convergence_layer_init(void);
 
 struct transmit_ticket_t * convergence_layer_get_transmit_ticket(void);
 int convergence_layer_free_transmit_ticket(struct transmit_ticket_t * ticket);

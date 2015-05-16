@@ -22,6 +22,7 @@
 #include "sys/clock.h"
 #include "lib/logging.h"
 
+#include "dtn_process.h"
 #include "sdnv.h"
 #include "bundleslot.h"
 #include "agent.h"
@@ -58,9 +59,9 @@ struct mmem * bundle_create_bundle()
 
 	bundle = (struct bundle_t *) MMEM_PTR(&bs->bundle);
 	memset(bundle, 0, sizeof(struct bundle_t));
-	bundle->rec_time = (uint32_t) clock_time();
+	bundle->rec_time = (uint32_t) xTaskGetTickCount();
 	bundle->num_blocks = 0;
-	bundle->source_process = PROCESS_CURRENT();
+	bundle->source_event_queue = dtn_process_get_event_queue();
 
 	/* Bundles are created as singleton and with normal priority */
 	bundle->flags = BUNDLE_FLAG_SINGLETON | BUNDLE_PRIORITY_NORMAL;

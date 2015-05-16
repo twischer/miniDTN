@@ -15,6 +15,9 @@
 
 #include <stdint.h>
 
+#include "FreeRTOS.h"
+#include "queue.h"
+
 #include "contiki.h"
 
 #include "lib/list.h"
@@ -32,7 +35,7 @@ struct registration {
 	uint32_t app_id;
 	uint8_t status:1;
 	uint8_t busy:1;
-	struct process * application_process;
+	QueueHandle_t event_queue;
 };
 
 /**
@@ -49,7 +52,7 @@ void registration_init(void);
  *
  * \return 1 on success, 0 on error
  */
-int registration_new_application(uint32_t app_id, struct process * application_process, uint32_t node_id);
+int registration_new_application(uint32_t app_id, const QueueHandle_t event_queue, uint32_t node_id);
 
 /**
  * \brief deletes registration of service
@@ -97,7 +100,7 @@ int registration_return_status(uint32_t app_id, uint32_t node_id);
  *
  * \return pointer to process struct
  */
-struct process * registration_get_process(uint32_t app_id, uint32_t node_id);
+QueueHandle_t registration_get_process(uint32_t app_id, uint32_t node_id);
 
 /**
  * \brief provides the endpoint id of a registred process (if any)
@@ -106,7 +109,7 @@ struct process * registration_get_process(uint32_t app_id, uint32_t node_id);
  *
  * \return app_id, REGISTRATION_EID_UNDEFINED on error
  */
-uint32_t registration_get_application_id(struct process * application_process);
+uint32_t registration_get_application_id(const QueueHandle_t event_queue);
 
 /**
  * \brief Checks whether the bundle is for a local process

@@ -1,4 +1,4 @@
-MODULES+= examples/fpu-test
+MODULES+= examples/uDTN/pingpong
 
 ROOT_DIR = $(CURDIR)
 

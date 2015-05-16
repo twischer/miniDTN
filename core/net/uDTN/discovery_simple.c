@@ -36,12 +36,14 @@ static uint8_t discovery_simple_enabled = 0;
 void discovery_simple_send_discover();
 
 
-void discovery_simple_init() {
+bool discovery_simple_init() {
 	// Initialize the neighbour list
 	list_init(neighbour_list);
 
 	// Initialize the neighbour memory block
 	memb_init(&neighbour_mem);
+
+	return true;
 }
 
 uint8_t discovery_simple_is_neighbour(linkaddr_t * dest) {
@@ -85,7 +87,12 @@ void discovery_simple_receive(linkaddr_t * source, uint8_t * payload, uint8_t le
 	}
 
 	// We have found a new neighbor, now go and notify the agent
-	process_post(&agent_process, dtn_beacon_event, source);
+//	process_post(&agent_process, dtn_beacon_event, source);
+	const event_container_t event = {
+		.event = dtn_beacon_event,
+		.linkaddr = source
+	};
+	agent_send_event(&event);
 }
 
 void discovery_simple_alive(linkaddr_t * neighbour) {

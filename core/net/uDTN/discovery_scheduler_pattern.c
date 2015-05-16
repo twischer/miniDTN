@@ -45,19 +45,16 @@
 #define DTN_DISCO_PATTERN {2,1,1,3}
 #endif
 
-process_event_t dtn_disco_start_event;
-process_event_t dtn_disco_stop_event;
 static struct ctimer dst;
 static uint8_t schedule_index = 0;
 
 
 void discovery_scheduler_pattern_func(void * ptr);
 
-void discovery_scheduler_pattern_init() {
-	dtn_disco_start_event = process_alloc_event();
-	dtn_disco_stop_event = process_alloc_event();
-
+bool discovery_scheduler_pattern_init() {
 	ctimer_set(&dst, DTN_DISCO_TIMESLOT_LENGTH * CLOCK_SECOND, discovery_scheduler_pattern_func, NULL);
+
+	return true;
 }
 
 void discovery_scheduler_pattern_func(void * ptr)
@@ -79,7 +76,7 @@ void discovery_scheduler_pattern_func(void * ptr)
 
 	if (counter == 0) {
 		/* calculate new timeout */
-		clock_time_t newTimeout = schedule[schedule_index] * DTN_DISCO_TIMESLOT_LENGTH * CLOCK_SECOND;
+		TickType_t newTimeout = schedule[schedule_index] * pdMS_TO_TICKS(DTN_DISCO_TIMESLOT_LENGTH * 1000);
 
 		counter = schedule[schedule_index++];
 

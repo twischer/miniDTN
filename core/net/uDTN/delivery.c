@@ -21,6 +21,7 @@
 
 #include "bundle.h"
 #include "api.h"
+#include "dtn_process.h"
 #include "registration.h"
 #include "statusreport.h"
 #include "sdnv.h"
@@ -110,7 +111,8 @@ int delivery_deliver_bundle(struct mmem *bundlemem) {
 					BUNDLE_STORAGE.lock_bundle(bundle->bundle_num);
 
 					// Post the event to the respective service
-					process_post(n->application_process, submit_data_to_application_event, bundlemem);
+//					process_post(n->event_queue, submit_data_to_application_event, bundlemem);
+					dtn_process_send_event(n->event_queue, submit_data_to_application_event, bundlemem);
 
 					delivered = 1;
 

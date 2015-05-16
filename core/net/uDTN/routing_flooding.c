@@ -55,7 +55,7 @@ struct blacklist_entry_t {
 
 	linkaddr_t node;
 	uint8_t counter;
-	clock_time_t timestamp;
+	TickType_t timestamp;
 };
 
 struct routing_list_entry_t {
@@ -92,7 +92,11 @@ struct routing_entry_t {
 /**
  * Routing process
  */
-PROCESS(routing_process, "FLOOD ROUTE process");
+//PROCESS(routing_process, "FLOOD ROUTE process");
+static TaskHandle_t routing_task;
+
+static void routing_process(void* p);
+
 
 MEMB(blacklist_mem, struct blacklist_entry_t, BLACKLIST_SIZE);
 LIST(blacklist_list);
@@ -116,13 +120,13 @@ int routing_flooding_blacklist_add(linkaddr_t * neighbour)
 		entry != NULL;
 		entry = list_item_next(entry)) {
 		if( linkaddr_cmp(neighbour, &entry->node) ) {
-			if( (clock_time() - entry->timestamp) > (BLACKLIST_TIMEOUT * CLOCK_SECOND) ) {
+			if( (xTaskGetTickCount() - entry->timestamp) > pdMS_TO_TICKS(BLACKLIST_TIMEOUT * 1000) ) {
 				// Reusing existing (timedout) entry
 				entry->counter = 0;
 			}
 
 			entry->counter ++;
-			entry->timestamp = clock_time();
+			entry->timestamp = xTaskGetTickCount();
 
 			if( entry->counter > BLACKLIST_THRESHOLD ) {
 				LOG(LOGD_DTN, LOG_ROUTE, LOGL_INF, "%u.%u blacklisted", neighbour->u8[0], neighbour->u8[1]);
@@ -143,7 +147,7 @@ int routing_flooding_blacklist_add(linkaddr_t * neighbour)
 
 	linkaddr_copy(&entry->node, neighbour);
 	entry->counter = 1;
-	entry->timestamp = clock_time();
+	entry->timestamp = xTaskGetTickCount();
 
 	list_add(blacklist_list, entry);
 
@@ -173,10 +177,16 @@ void routing_flooding_blacklist_delete(linkaddr_t * neighbour)
 /**
  * \brief called by agent at startup
  */
-void routing_flooding_init(void)
+bool routing_flooding_init(void)
 {
 	// Start CL process
-	process_start(&routing_process, NULL);
+//	process_start(&routing_process, NULL);
+
+	if ( !xTaskCreate(routing_process, "FLOOD ROUTE process", configMINIMAL_STACK_SIZE, NULL, 1, &routing_task) ) {
+		return false;
+	}
+
+	return true;
 }
 
 /**
@@ -184,7 +194,8 @@ void routing_flooding_init(void)
  */
 void routing_flooding_schedule_resubmission(void)
 {
-	process_poll(&routing_process);
+//	process_poll(&routing_process);
+	vTaskResume(routing_task);
 }
 
 /**
@@ -818,9 +829,9 @@ void routing_flooding_bundle_delivered_locally(struct mmem * bundlemem) {
 /**
  * \brief Routing persistent process
  */
-PROCESS_THREAD(routing_process, ev, data)
+void routing_process(void* p)
 {
-	PROCESS_BEGIN();
+//	PROCESS_BEGIN();
 
 	LOG(LOGD_DTN, LOG_ROUTE, LOGL_INF, "FLOOD ROUTE process in running");
 
@@ -833,12 +844,13 @@ PROCESS_THREAD(routing_process, ev, data)
 	list_init(routing_list);
 
 	while(1) {
-		PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL);
+//		PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL);
+		vTaskSuspend(NULL);
 
 		routing_flooding_send_to_known_neighbours();
 	}
 
-	PROCESS_END();
+//	PROCESS_END();
 }
 
 const struct routing_driver routing_flooding ={

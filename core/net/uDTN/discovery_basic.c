@@ -67,7 +67,7 @@ static struct etimer discovery_pending_timer;
 /**
  * \brief Initialize basic discovery module
  */
-void discovery_basic_init()
+bool discovery_basic_init()
 {
 	// Enable discovery module
 	discovery_status = 1;
@@ -80,6 +80,8 @@ void discovery_basic_init()
 
 	// Start discovery process
 	process_start(&discovery_process, NULL);
+
+	return true;
 }
 
 /** 
@@ -226,7 +228,12 @@ void discovery_basic_neighbour_found(linkaddr_t * neighbour)
 		// Apparently previously unknown neighbour
 	} else {
 		LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "sending DTN BEACON Event for %u.%u", neighbour->u8[0], neighbour->u8[1]);
-		process_post(&agent_process, dtn_beacon_event, &entry->neighbour);
+//		process_post(&agent_process, dtn_beacon_event, &entry->neighbour);
+		const event_container_t event = {
+			.event = dtn_beacon_event,
+			.linkaddr = &entry->neighbour
+		};
+		agent_send_event(&event);
 	}
 
 	// Once we have found a new neighbour, we will stop discovering other nodes
@@ -392,7 +399,7 @@ PROCESS_THREAD(discovery_process, ev, data)
 			for(entry = list_head(neighbour_list);
 					entry != NULL;
 					entry = entry->next) {
-				if( entry->active && (clock_time() - entry->timestamp) > (DISCOVERY_NEIGHBOUR_TIMEOUT * CLOCK_SECOND) ) {
+				if( entry->active && (xTaskGetTickCount() - entry->timestamp) > pdMS_TO_TICKS(DISCOVERY_NEIGHBOUR_TIMEOUT * 1000) ) {
 					LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_INF, "Neighbour %u.%u timed out: %lu vs. %lu = %lu", entry->neighbour.u8[0], entry->neighbour.u8[1], clock_time(), entry->timestamp, clock_time() - entry->timestamp);
 
 					// Tell the CL that this neighbour has disappeared
