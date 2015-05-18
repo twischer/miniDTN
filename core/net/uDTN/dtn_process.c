@@ -15,11 +15,11 @@
 
 bool dtn_process_create(const TaskFunction_t pvTaskCode, const char* const pcName)
 {
-	return dtn_process_create_different_stack(pvTaskCode, pcName, configMINIMAL_STACK_SIZE);
+	return dtn_process_create_other_stack(pvTaskCode, pcName, configMINIMAL_STACK_SIZE);
 }
 
 
-bool dtn_process_create_different_stack(const TaskFunction_t pvTaskCode, const char* const pcName, const uint16_t usStackDepth)
+bool dtn_process_create_other_stack(const TaskFunction_t pvTaskCode, const char* const pcName, const uint16_t usStackDepth)
 {
 	// TODO add parameter and fail if parameter false and function already used for an process
 
