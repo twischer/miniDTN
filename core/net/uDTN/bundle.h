@@ -182,7 +182,7 @@ int bundle_encode_bundle(struct mmem * bundlemem, uint8_t * buffer, int max_len)
  * \param val pointer to the value to be set
  * \return length of the set value on success or 0 on error
  */
-uint8_t bundle_set_attr(struct mmem *bundlemem, uint8_t attr, uint32_t *val);
+uint8_t bundle_set_attr(struct mmem *bundlemem, uint8_t attr, const uint32_t * const val);
 
 /**
  * \brief Gets an attribute of a bundle

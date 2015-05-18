@@ -100,7 +100,7 @@ int registration_return_status(uint32_t app_id, uint32_t node_id);
  *
  * \return pointer to process struct
  */
-QueueHandle_t registration_get_process(uint32_t app_id, uint32_t node_id);
+QueueHandle_t registration_get_input_queue(uint32_t app_id, uint32_t node_id);
 
 /**
  * \brief provides the endpoint id of a registred process (if any)

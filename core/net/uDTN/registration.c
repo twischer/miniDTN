@@ -78,7 +78,7 @@ int registration_new_application(uint32_t app_id, const QueueHandle_t event_queu
 	return 1;
 }
 
-QueueHandle_t registration_get_process(uint32_t app_id, uint32_t node_id)
+QueueHandle_t registration_get_input_queue(uint32_t app_id, uint32_t node_id)
 {
 	struct registration * n = NULL;
 

@@ -495,7 +495,6 @@ bool init()
 	printf("Starting tests\n");
 
 #if CONF_MODE == MODE_ACTIVE
-	// TODO use bigger stack size
 	if ( !dtn_process_create_other_stack(ping_process, "Ping", configMINIMAL_STACK_SIZE + 50) ) {
 		return false;
 	}

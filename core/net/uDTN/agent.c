@@ -170,7 +170,7 @@ void agent_process(void* p)
 
 			// TODO check if the queue was registered for dtn
 //			/* Go and find the process from which the bundle has been sent */
-			uint32_t app_id = registration_get_application_id(bundle->source_event_queue);
+			const uint32_t app_id = registration_get_application_id(bundle->source_event_queue);
 //			if( app_id == REGISTRATION_EID_UNDEFINED  && bundle->source_event_queue != event_queue) {
 //				LOG(LOGD_DTN, LOG_AGENT, LOGL_ERR, "Unregistered process %s tries to send a bundle", PROCESS_NAME_STRING(bundle->source_event_queue));
 //				// TODO send error to all processes
@@ -242,6 +242,7 @@ void agent_process(void* p)
 
 			// Copy the sending process, because 'bundle' will not be accessible anymore afterwards
 //			source_process = bundle->source_event_queue;
+			const QueueHandle_t source_queue = bundle->source_event_queue;
 
 			// To uniquely identify fragments, we need the length of the payload block
 			if( bundle->flags & BUNDLE_FLAG_FRAGMENT ) {
@@ -266,8 +267,9 @@ void agent_process(void* p)
 				const event_container_t event = {
 					.event = dtn_bundle_stored,
 				};
-				if ( !xQueueSend(bundle->source_event_queue, &event, 0) ) {
-					LOG(LOGD_DTN, LOG_AGENT, LOGL_WRN, "Could not add event to queue of the source process!");
+				if ( !xQueueSend(source_queue, &event, 0) ) {
+					LOG(LOGD_DTN, LOG_AGENT, LOGL_WRN, "Could not add event to queue of the source process! (app_id %d, queue %p)",
+						app_id, source_queue);
 				}
 			} else {
 				/* Bundle could not be saved, notify service */
@@ -275,7 +277,7 @@ void agent_process(void* p)
 				const event_container_t event = {
 					.event = dtn_bundle_store_failed,
 				};
-				if ( !xQueueSend(bundle->source_event_queue, &event, 0) ) {
+				if ( !xQueueSend(source_queue, &event, 0) ) {
 					LOG(LOGD_DTN, LOG_AGENT, LOGL_WRN, "Could not add event to queue of the source process!");
 				}
 			}

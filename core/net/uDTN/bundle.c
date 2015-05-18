@@ -140,7 +140,7 @@ struct bundle_block_t * bundle_get_payload_block(struct mmem * bundlemem) {
 	return bundle_get_block_by_type(bundlemem, BUNDLE_BLOCK_TYPE_PAYLOAD);
 }
 
-uint8_t bundle_set_attr(struct mmem *bundlemem, uint8_t attr, uint32_t *val)
+uint8_t bundle_set_attr(struct mmem *bundlemem, uint8_t attr, const uint32_t* const val)
 {
 	struct bundle_t *bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 	LOG(LOGD_DTN, LOG_BUNDLE, LOGL_DBG, "set attr %lx",*val);
