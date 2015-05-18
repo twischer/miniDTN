@@ -126,8 +126,7 @@ static inline struct mmem *bundle_convenience(uint16_t dest, uint16_t dst_srv, u
 	uint32_t tmp;
 	struct mmem *bundlemem;
 
-	// TODO possibly
-	bundlemem = bundle_create_bundle(NULL);
+	bundlemem = bundle_create_bundle();
 	if (!bundlemem) {
 		printf("create_bundle failed\n");
 		return NULL;
@@ -195,7 +194,7 @@ void ping_process(void* p)
 	static struct registration_api reg_ping;
 	static uint32_t sequence_sent = 0;
 	int i;
-	uint8_t userdata[PAYLOAD_LEN];
+	static uint8_t userdata[PAYLOAD_LEN];
 	uint32_t * timestamp;
 	uint32_t * sequence;
 	uint8_t sent = 0;
