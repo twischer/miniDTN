@@ -104,8 +104,6 @@ struct registration_api {
 	uint8_t status:1;
 	uint32_t node_id;
 	QueueHandle_t event_queue;
-	// TODO remove if everything is ported
-	struct process *application_process;
 };
 
 typedef struct {

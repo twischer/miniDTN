@@ -203,10 +203,15 @@ void ping_process(void* p)
 
 	/* Register our endpoint */
 	reg_ping.status = APP_ACTIVE;
-//	reg_ping.application_process = PROCESS_CURRENT(); TODO
 	reg_ping.event_queue = dtn_process_get_event_queue();
 	reg_ping.app_id = 5;
-//	process_post(&agent_process, dtn_application_registration_event, &reg_ping); TODO
+//	process_post(&agent_process, dtn_application_registration_event, &reg_ping);
+	static const event_container_t event = {
+		.event = dtn_application_registration_event,
+		.registration = &reg_ping
+	};
+	agent_send_event(&event);
+
 
 #if CONF_MODE != MODE_LOOPBACK
 	/* Wait until a neighbour has been discovered */
@@ -391,10 +396,14 @@ void pong_process(void* p)
 
 	/* Register our endpoint */
 	reg_pong.status = APP_ACTIVE;
-//	reg_pong.application_process = PROCESS_CURRENT(); TODO
-	reg_pong.event_queue = xQueueCreate( 10, sizeof(event_container_t) );
+	reg_pong.event_queue = dtn_process_get_event_queue();
 	reg_pong.app_id = 7;
-//	process_post(&agent_process, dtn_application_registration_event, &reg_pong); TODO
+//	process_post(&agent_process, dtn_application_registration_event, &reg_pong);
+	static const event_container_t event = {
+		.event = dtn_application_registration_event,
+		.registration = &reg_pong
+	};
+	agent_send_event(&event);
 
 	/* Wait a second */
 	vTaskDelay( pdMS_TO_TICKS(1000) );

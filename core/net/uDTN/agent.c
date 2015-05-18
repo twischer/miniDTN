@@ -119,7 +119,7 @@ void agent_process(void* p)
 		}
 
 		if(ev.event == dtn_application_registration_event) {
-			registration_new_application(ev.registration->app_id, ev.registration->application_process, ev.registration->node_id);
+			registration_new_application(ev.registration->app_id, ev.registration->event_queue, ev.registration->node_id);
 			LOG(LOGD_DTN, LOG_AGENT, LOGL_INF, "New Service registration for endpoint %lu", ev.registration->app_id);
 			continue;
 		}
