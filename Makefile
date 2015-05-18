@@ -1,4 +1,5 @@
 MODULES+= examples/uDTN/pingpong
+CFLAGS+=-DENABLE_LOGGING
 
 ROOT_DIR = $(CURDIR)
 

@@ -97,7 +97,7 @@ CDEFS+=-DARM_MATH_CM4
 
 MCUFLAGS=-mcpu=cortex-m4 -mthumb -mfloat-abi=hard
 COMMONFLAGS=-O$(OPTLVL) $(DBG) -Wall
-CFLAGS=$(COMMONFLAGS) $(MCUFLAGS) $(INCLUDE) $(CDEFS)
+CFLAGS+=$(COMMONFLAGS) $(MCUFLAGS) $(INCLUDE) $(CDEFS)
 LDLIBS=$(TOOLCHAIN_ROOT)/arm-none-eabi/lib/armv7e-m/fpu/libc_nano.a $(TOOLCHAIN_ROOT)/arm-none-eabi/lib/armv7e-m/fpu/libm.a
 LDFLAGS=$(COMMONFLAGS) -fno-exceptions -ffunction-sections -fdata-sections -nostartfiles -Wl,--gc-sections,-T$(LINKER_SCRIPT)
 
@@ -150,7 +150,8 @@ flash: all
 
 
 run: flash
-	screen /dev/ttyUSB0 115200
+	stty -F /dev/ttyUSB0 115200 cs8 cread clocal
+	cat /dev/ttyUSB0
 
 
 startgdb:
