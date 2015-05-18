@@ -7,6 +7,12 @@
 #include "stm32f4xx_usart.h"
 #include "stm32_ub_led.h"
 
+
+#include "net/netstack.h"
+
+#include "dtn_network.h"
+
+
 void init_USART3(void);
 
 bool init();
@@ -19,6 +25,10 @@ int main(void) {
 
   UB_Led_Init(); // Init der LEDs
   UB_Led_On(LED_GREEN); // gruene LED einschalten
+
+  /* init the network stack */
+  // TODO should be moved to own file
+  dtn_network_driver.init();
 
   const bool successful = init();
   if (successful) {
