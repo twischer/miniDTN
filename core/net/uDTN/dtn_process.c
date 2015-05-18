@@ -10,21 +10,22 @@
  */
 
 
-#include <stdbool.h>
+#include "dtn_process.h"
 
-#include "FreeRTOS.h"
-#include "task.h"
-#include "queue.h"
 
-#include "api.h"
+bool dtn_process_create(const TaskFunction_t pvTaskCode, const char* const pcName)
+{
+	return dtn_process_create_different_stack(pvTaskCode, pcName, configMINIMAL_STACK_SIZE);
+}
 
-bool dtn_process_create(TaskFunction_t pvTaskCode, const char * const pcName)
+
+bool dtn_process_create_different_stack(const TaskFunction_t pvTaskCode, const char* const pcName, const uint16_t usStackDepth)
 {
 	// TODO add parameter and fail if parameter false and function already used for an process
 
 
 	TaskHandle_t createdTask;
-	if ( !xTaskCreate(pvTaskCode, pcName, configMINIMAL_STACK_SIZE, NULL, 1, &createdTask) ) {
+	if ( !xTaskCreate(pvTaskCode, pcName, usStackDepth, NULL, 1, &createdTask) ) {
 		return false;
 	}
 

@@ -64,7 +64,7 @@ bool agent_init(void)
 	}
 
 	// Otherwise start the agent process
-	if ( !dtn_process_create(agent_process, "AGENT process") ) {
+	if ( !dtn_process_create_different_stack(agent_process, "AGENT process", configMINIMAL_STACK_SIZE + 50) ) {
 		return false;
 	}
 
