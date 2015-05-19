@@ -414,7 +414,7 @@ void pong_process(void* p)
 	while(1) {
 		/* Wait for incoming bundle */
 		event_container_t ev;
-		const BaseType_t event_received = xQueueReceive(reg_pong.event_queue, &ev, pdMS_TO_TICKS(PING_TIMEOUT * 1000));
+		const BaseType_t event_received = xQueueReceive(reg_pong.event_queue, &ev, portMAX_DELAY);
 		if (event_received && ev.event == submit_data_to_application_event) {
 			/* We received a bundle - bounce it back */
 
