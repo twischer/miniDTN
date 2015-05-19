@@ -17,14 +17,11 @@
 #include "task.h"
 #include "queue.h"
 
-#include "sys/clock.h"
-#include "sys/timer.h"
 #include "net/netstack.h"
 #include "net/linkaddr.h"
 #include "lib/mmem.h"
 #include "lib/memb.h"
 #include "lib/logging.h"
-#include "sys/node-id.h"
 
 #include "api.h"
 #include "dtn_process.h"

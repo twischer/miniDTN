@@ -18,8 +18,6 @@
 #include <string.h>
 
 #include "lib/mmem.h"
-#include "sys/process.h"
-#include "sys/clock.h"
 #include "lib/logging.h"
 
 #include "dtn_process.h"

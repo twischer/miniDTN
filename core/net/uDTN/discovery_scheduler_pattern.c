@@ -23,7 +23,6 @@
 #include "agent.h"
 
 #include "net/mac/discovery_aware_rdc.h"
-#include "sys/ctimer.h"
 
 /**
  * Discovery Timeslot Length in Seconds

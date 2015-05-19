@@ -21,7 +21,6 @@
 #include "FreeRTOS.h"
 #include "timers.h"
 
-#include "sys/ctimer.h"
 
 static TimerHandle_t dst;
 

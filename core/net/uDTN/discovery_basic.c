@@ -18,7 +18,10 @@
 
 #include <string.h> // for memset
 
-#include "sys/clock.h"
+#include "FreeRTOS.h"
+#include "task.h"
+#include "timers.h"
+
 #include "net/netstack.h"
 #include "net/packetbuf.h" 
 #include "net/linkaddr.h"
@@ -50,7 +53,9 @@ struct discovery_basic_neighbour_list_entry {
 	uint8_t active;
 };
 
-PROCESS(discovery_process, "DISCOVERY process");
+//PROCESS(discovery_process, "DISCOVERY process");
+static TaskHandle_t discovery_task;
+static void discovery_process(void* p);
 
 /**
  * List and memory blocks to save information about neighbours
@@ -61,8 +66,10 @@ MEMB(neighbour_mem, struct discovery_basic_neighbour_list_entry, DISCOVERY_NEIGH
 static uint8_t discovery_status = 0;
 uint8_t discovery_pending = 0;
 uint8_t discovery_pending_start = 0;
-static struct etimer discovery_timeout_timer;
-static struct etimer discovery_pending_timer;
+static TimerHandle_t discovery_pending_timer;
+
+static void discovery_timeout(const TimerHandle_t timer);
+static void discovery_pending_timeout(const TimerHandle_t timer);
 
 /**
  * \brief Initialize basic discovery module
@@ -78,8 +85,29 @@ bool discovery_basic_init()
 	// Initialize the neighbour memory block
 	memb_init(&neighbour_mem);
 
+
+//	etimer_set(&discovery_timeout_timer, DISCOVERY_NEIGHBOUR_TIMEOUT * CLOCK_SECOND);
+	const TimerHandle_t discovery_timeout_timer = xTimerCreate("discovery timeout timer", pdMS_TO_TICKS(DISCOVERY_NEIGHBOUR_TIMEOUT * 1000),
+										   pdTRUE, NULL, discovery_timeout);
+	if (discovery_timeout_timer == NULL) {
+		return false;
+	}
+
+	if ( !xTimerStart(discovery_timeout_timer, 0) ) {
+		return false;
+	}
+
+	discovery_pending_timer = xTimerCreate("discovery pending timer", pdMS_TO_TICKS(DISCOVERY_CYCLE * 1000),
+										   pdFALSE, NULL, discovery_pending_timeout);
+	if (discovery_pending_timer == NULL) {
+		return false;
+	}
+
 	// Start discovery process
-	process_start(&discovery_process, NULL);
+//	process_start(&discovery_process, NULL);
+	if ( !xTaskCreate(discovery_process, "DISCOVERY process", configMINIMAL_STACK_SIZE, NULL, 1, &discovery_task) ) {
+		return false;
+	}
 
 	return true;
 }
@@ -333,7 +361,8 @@ uint8_t discovery_basic_discover(linkaddr_t * dest)
 
 	// Memorize, that we still have a discovery pending
 	discovery_pending_start = 1;
-	process_poll(&discovery_process);
+//	process_poll(&discovery_process);
+	vTaskResume(discovery_task);
 
 	// Otherwise, send out a discovery beacon
 	discovery_basic_send_discovery(dest);
@@ -356,7 +385,8 @@ struct discovery_neighbour_list_entry * discovery_basic_list_neighbours()
 void discovery_basic_stop_pending()
 {
 	discovery_pending = 0;
-	etimer_stop(&discovery_pending_timer);
+//	etimer_stop(&discovery_pending_timer);
+	xTimerStop(discovery_pending_timer, 0);
 }
 
 /**
@@ -365,7 +395,8 @@ void discovery_basic_stop_pending()
 void discovery_basic_start_pending()
 {
 	discovery_pending = 1;
-	etimer_set(&discovery_pending_timer, DISCOVERY_CYCLE * CLOCK_SECOND);
+//	etimer_set(&discovery_pending_timer, DISCOVERY_CYCLE * CLOCK_SECOND);
+	xTimerStart(discovery_pending_timer, 0);
 }
 
 void discovery_basic_start(clock_time_t duration, uint8_t index)
@@ -380,52 +411,59 @@ void discovery_basic_clear()
 {
 }
 
+
+static void discovery_timeout(const TimerHandle_t timer)
+{
+	struct discovery_basic_neighbour_list_entry * entry;
+
+	for(entry = list_head(neighbour_list);
+			entry != NULL;
+			entry = entry->next) {
+		if( entry->active && (xTaskGetTickCount() - entry->timestamp) > pdMS_TO_TICKS(DISCOVERY_NEIGHBOUR_TIMEOUT * 1000) ) {
+			LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_INF, "Neighbour %u.%u timed out: %lu vs. %lu = %lu", entry->neighbour.u8[0], entry->neighbour.u8[1], clock_time(), entry->timestamp, clock_time() - entry->timestamp);
+
+			// Tell the CL that this neighbour has disappeared
+			convergence_layer_neighbour_down(&entry->neighbour);
+
+			memb_free(&neighbour_mem, entry);
+			list_remove(neighbour_list, entry);
+		}
+	}
+
+//	etimer_restart(&discovery_timeout_timer);
+	// no longer needed because of auto reloading of the timer is active
+}
+
+
+static void discovery_pending_timeout(const TimerHandle_t timer)
+{
+	/**
+	 * If we have a discovery pending, resend the beacon multiple times
+	 */
+	if( discovery_pending) {
+		discovery_basic_send_discovery(NULL);
+		discovery_pending ++;
+
+		if( discovery_pending > (DISCOVERY_TRIES + 1)) {
+			discovery_basic_stop_pending();
+		} else {
+//			etimer_restart(&discovery_pending_timer);
+			xTimerReset(timer, 0);
+		}
+	}
+}
+
+
 /**
  * \brief Basic Discovery Persistent Process
  */
-PROCESS_THREAD(discovery_process, ev, data)
+static void discovery_process(void* p)
 {
-	PROCESS_BEGIN();
-
-	etimer_set(&discovery_timeout_timer, DISCOVERY_NEIGHBOUR_TIMEOUT * CLOCK_SECOND);
 	LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "Basic Discovery process running");
 
 	while(1) {
-		PROCESS_WAIT_EVENT();
-
-		if( etimer_expired(&discovery_timeout_timer) ) {
-			struct discovery_basic_neighbour_list_entry * entry;
-
-			for(entry = list_head(neighbour_list);
-					entry != NULL;
-					entry = entry->next) {
-				if( entry->active && (xTaskGetTickCount() - entry->timestamp) > pdMS_TO_TICKS(DISCOVERY_NEIGHBOUR_TIMEOUT * 1000) ) {
-					LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_INF, "Neighbour %u.%u timed out: %lu vs. %lu = %lu", entry->neighbour.u8[0], entry->neighbour.u8[1], clock_time(), entry->timestamp, clock_time() - entry->timestamp);
-
-					// Tell the CL that this neighbour has disappeared
-					convergence_layer_neighbour_down(&entry->neighbour);
-
-					memb_free(&neighbour_mem, entry);
-					list_remove(neighbour_list, entry);
-				}
-			}
-
-			etimer_restart(&discovery_timeout_timer);
-		}
-
-		/**
-		 * If we have a discovery pending, resend the beacon multiple times
-		 */
-		if( discovery_pending && etimer_expired(&discovery_pending_timer) ) {
-			discovery_basic_send_discovery(NULL);
-			discovery_pending ++;
-
-			if( discovery_pending > (DISCOVERY_TRIES + 1)) {
-				discovery_basic_stop_pending();
-			} else {
-				etimer_restart(&discovery_pending_timer);
-			}
-		}
+//		PROCESS_WAIT_EVENT();
+		vTaskSuspend(NULL);
 
 		/**
 		 * In case we should start the periodic discovery, do it here and now
@@ -435,8 +473,6 @@ PROCESS_THREAD(discovery_process, ev, data)
 			discovery_pending_start = 0;
 		}
 	}
-
-	PROCESS_END();
 }
 
 const struct discovery_driver discovery_basic = {

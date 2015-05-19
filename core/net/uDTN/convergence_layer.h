@@ -21,9 +21,7 @@
 
 #include <stdbool.h>
 
-#include "contiki.h"
 #include "net/linkaddr.h"
-#include "sys/process.h"
 #include "lib/mmem.h"
 
 /**

@@ -26,7 +26,6 @@
 #include "contiki.h"
 #include "lib/mmem.h"
 #include "net/linkaddr.h"
-#include "sys/process.h"
 #include "net/packetbuf.h"
 
 #ifndef __BUNDLE_H__

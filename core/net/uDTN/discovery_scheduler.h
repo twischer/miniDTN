@@ -10,9 +10,7 @@
 
 #include <stdbool.h>
 
-#include "contiki.h"
 #include "net/rime/rime.h"
-#include "sys/process.h"
 
 /**
  * Which discovery scheduler driver are we going to use?

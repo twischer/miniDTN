@@ -26,10 +26,8 @@
 #include "net/netstack.h"
 #include "net/packetbuf.h" 
 #include "net/linkaddr.h"
-#include "sys/clock.h"
 #include "net/mac/frame802154.h" // for IEEE802154_PANID
 #include "lib/logging.h"
-#include "sys/ctimer.h"
 
 #include "dtn_apps.h"
 #include "dtn_network.h"

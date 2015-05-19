@@ -23,7 +23,6 @@
 #include "FreeRTOS.h"
 #include "timers.h"
 
-#include "contiki.h"
 #include "lib/mmem.h"
 #include "lib/list.h"
 #include "lib/logging.h"
@@ -32,7 +31,6 @@
 #include "sdnv.h"
 #include "agent.h"
 #include "statusreport.h"
-#include "sys/profiling/profiling.h"
 #include "statistics.h"
 #include "hash.h"
 #include "bundle_ageing.h"

@@ -16,11 +16,9 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
-#include "contiki.h"
 #include "net/packetbuf.h"
 #include "net/netstack.h"
 #include "net/linkaddr.h"
-#include "sys/process.h"
 #include "lib/list.h"
 
 #include "agent.h"

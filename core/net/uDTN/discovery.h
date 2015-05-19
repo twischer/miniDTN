@@ -22,7 +22,6 @@
 
 #include "contiki.h"
 #include "net/rime/rime.h"
-#include "sys/process.h"
 
 /**
  * Which discovery driver are we going to use?
@@ -35,7 +34,7 @@
 
 
 
-PROCESS_NAME(discovery_process);
+//PROCESS_NAME(discovery_process);
 
 struct discovery_neighbour_list_entry {
 	struct discovery_neighbour_list_entry *next;

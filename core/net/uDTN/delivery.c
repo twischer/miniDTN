@@ -16,7 +16,6 @@
 #include <stdlib.h>
 
 #include "lib/list.h"
-#include "sys/process.h"
 #include "lib/logging.h"
 
 #include "bundle.h"

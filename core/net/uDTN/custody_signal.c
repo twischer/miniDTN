@@ -12,8 +12,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "sys/clock.h"
-
 #include "sdnv.h"
 #include "custody.h"
 
