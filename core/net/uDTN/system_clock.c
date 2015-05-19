@@ -9,6 +9,7 @@
 #include "task.h"
 
 #include "system_clock.h"
+#include "clock.h"
 
 static udtn_timeval_t udtn_clock_offset;
 static udtn_clock_state_t udtn_clock_state;
@@ -53,15 +54,13 @@ void udtn_gettimeofday(udtn_timeval_t *tv) {
 }
 
 void udtn_uptime(udtn_timeval_t *tv) {
-	// TODO possibly wrong replaced
-	// sec are not seconds
 	do {
-		tv->tv_usec = (uint32_t)xTaskGetTickCount();
-		tv->tv_sec = (uint32_t)xTaskGetTickCount();
-	} while (tv->tv_usec != (uint32_t)xTaskGetTickCount());
+		tv->tv_usec = xTaskGetTickCount();
+		tv->tv_sec = clock_seconds();
+	} while (tv->tv_usec != xTaskGetTickCount());
 
-	// convert to microseconds
-	tv->tv_usec = ((tv->tv_usec % (1000 * portTICK_PERIOD_MS)) * 1000000) / (1000 * portTICK_PERIOD_MS);
+	/* calulate rest of one second and convert from ticks to microseconds */
+	tv->tv_usec = (tv->tv_usec % pdMS_TO_TICKS(1000)) * 1000 / pdMS_TO_TICKS(1);
 }
 
 void udtn_setclockstate(udtn_clock_state_t s) {
