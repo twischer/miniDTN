@@ -5,6 +5,7 @@ TOOLCHAIN_PATH:=$(TOOLCHAIN_ROOT)/bin
 TOOLCHAIN_PREFIX:=arm-none-eabi
 
 # Optimization level, can be [0, 1, 2, 3, s].
+# TODO use s
 OPTLVL:=0
 DBG:=-g
 
@@ -95,8 +96,24 @@ CDEFS+=-D__FPU_PRESENT=1
 CDEFS+=-D__FPU_USED=1
 CDEFS+=-DARM_MATH_CM4
 
+# Contiki definitions from old inga platform with an atmega128
+CDEFS+=-DNETSTACK_CONF_WITH_DTN=1
+CDEFS+=-DUIP_CONF_IPV6_RPL=0
+CDEFS+=-DINGA_CONF_REVISION=INGA_V14
+
+# TODO eemprom not suported at this time
+#CDEFS+=-DCONTIKI_CONF_SETTINGS_MANAGER=1
+
+CDEFS+=-DAUTO_CRC_PADDING=2
+CDEFS+=-DRF230BB
+CDEFS+=-DCONTIKI=1
+CDEFS+=-DINGA_BOOTSCREEN_NETSTACK
+CDEFS+=-DINGA_BOOTSCREEN
+CDEFS+=-DINGA_BOOTSCREEN_RADIO
+
+
 MCUFLAGS=-mcpu=cortex-m4 -mthumb -mfloat-abi=hard
-COMMONFLAGS=-O$(OPTLVL) $(DBG) -Wall
+COMMONFLAGS=-O$(OPTLVL) $(DBG) -Wall -MMD
 CFLAGS+=$(COMMONFLAGS) $(MCUFLAGS) $(INCLUDE) $(CDEFS)
 LDLIBS=$(TOOLCHAIN_ROOT)/arm-none-eabi/lib/armv7e-m/fpu/libc_nano.a $(TOOLCHAIN_ROOT)/arm-none-eabi/lib/armv7e-m/fpu/libm.a
 LDFLAGS=$(COMMONFLAGS) -fno-exceptions -ffunction-sections -fdata-sections -nostartfiles -Wl,--gc-sections,-T$(LINKER_SCRIPT)
