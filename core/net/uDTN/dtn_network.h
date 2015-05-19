@@ -17,7 +17,6 @@
 #ifndef DTN_NETWORK_H
 #define DTN_NETWORK_H
 
-#include "contiki.h"
 #include "contiki-conf.h"
 #include "net/rime/rime.h"
 #include "net/linkaddr.h"

@@ -18,8 +18,6 @@
 #include "FreeRTOS.h"
 #include "queue.h"
 
-#include "contiki.h"
-
 #include "lib/list.h"
 
 list_t reg_list;

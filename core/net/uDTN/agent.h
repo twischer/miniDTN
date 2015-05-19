@@ -31,8 +31,6 @@
 #include "api.h"
 #include "bundle.h"
 
-#include "contiki.h"
-
 extern uint32_t dtn_node_id;
 extern uint32_t dtn_seq_nr;
 

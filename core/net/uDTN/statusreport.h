@@ -11,7 +11,7 @@
 /**
  * \file
  * \author Georg von Zengen <vonzeng@ibr.cs.tu-bs.de>
- * \author Wolf-Bastian Pšttner <poettner@ibr.cs.tu-bs.de>
+ * \author Wolf-Bastian PÃ¶ttner <poettner@ibr.cs.tu-bs.de>
  */
 
 #ifndef STATUS_REPORT_H

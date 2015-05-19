@@ -53,13 +53,15 @@ void udtn_gettimeofday(udtn_timeval_t *tv) {
 }
 
 void udtn_uptime(udtn_timeval_t *tv) {
+	// TODO possibly wrong replaced
+	// sec are not seconds
 	do {
 		tv->tv_usec = (uint32_t)xTaskGetTickCount();
 		tv->tv_sec = (uint32_t)xTaskGetTickCount();
 	} while (tv->tv_usec != (uint32_t)xTaskGetTickCount());
 
 	// convert to microseconds
-	tv->tv_usec = ((tv->tv_usec % CLOCK_SECOND) * 1000000) / CLOCK_SECOND;
+	tv->tv_usec = ((tv->tv_usec % (1000 * portTICK_PERIOD_MS)) * 1000000) / (1000 * portTICK_PERIOD_MS);
 }
 
 void udtn_setclockstate(udtn_clock_state_t s) {

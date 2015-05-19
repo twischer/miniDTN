@@ -13,7 +13,6 @@
 #ifndef STATISTICS_H
 #define STATISTICS_H
 
-#include "contiki.h"
 #include "net/linkaddr.h"
 
 #ifdef STATISTICS_CONF_ELEMENTS

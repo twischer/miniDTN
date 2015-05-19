@@ -18,8 +18,6 @@
 
 #include <stdint.h>
 
-#include "contiki.h"
-
 #ifndef __EID_H__
 #define __EID_H__
 

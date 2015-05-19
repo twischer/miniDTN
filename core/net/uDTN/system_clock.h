@@ -5,7 +5,6 @@
  *      Author: Johannes Morgenroth <morgenroth@ibr.cs.tu-bs.de>
  */
 
-#include "contiki.h"
 
 #ifndef SYSTEM_CLOCK_H_
 #define SYSTEM_CLOCK_H_

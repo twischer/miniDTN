@@ -14,8 +14,6 @@
 
 #include <stdint.h>
 
-#include "contiki.h"
-
 #include "bundle.h"
 
 #define CUSTODY_TRANSFER_SUCCEEDED		(0x80)

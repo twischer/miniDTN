@@ -23,7 +23,6 @@
 #include "FreeRTOS.h"
 #include "queue.h"
 
-#include "contiki.h"
 #include "lib/mmem.h"
 #include "net/linkaddr.h"
 #include "net/packetbuf.h"

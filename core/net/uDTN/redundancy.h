@@ -21,8 +21,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "contiki.h"
-
 #include "bundle.h"
 
 /**

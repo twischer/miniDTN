@@ -21,7 +21,6 @@
 
 #include <stdint.h>
 
-#include "contiki.h"
 #include "lib/mmem.h"
 
 /**

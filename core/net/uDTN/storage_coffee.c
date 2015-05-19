@@ -19,7 +19,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "contiki.h"
 #include "net/netstack.h"
 #include "cfs/cfs.h"
 #include "lib/mmem.h"

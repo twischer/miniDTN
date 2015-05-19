@@ -18,8 +18,8 @@
 #ifndef __CUSTODY_H__
 #define __CUSTODY_H__
 
+#include <stdint.h>
 #include "lib/mmem.h"
-#include "contiki.h"
 
 /**
  * Which custody driver are we going to use?

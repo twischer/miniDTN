@@ -12,7 +12,6 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "contiki.h"
 #include "lib/logging.h"
 
 #include "agent.h"

@@ -20,7 +20,6 @@
 
 #include <stdbool.h>
 
-#include "contiki.h"
 #include "net/rime/rime.h"
 
 /**

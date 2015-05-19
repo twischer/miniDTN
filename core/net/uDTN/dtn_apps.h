@@ -6,13 +6,11 @@
 /**
  * \file
  * \brief DTN App Support file
- * \author Wolf-Bastian Pšttner <poettner@ibr.cs.tu-bs.de>
+ * \author Wolf-Bastian PÃ¶ttner <poettner@ibr.cs.tu-bs.de>
  */
 
 #ifndef DTN_APPS_H
 #define DTN_APPS_H
-
-#include "contiki.h"
 
 extern const struct dtn_app * dtn_apps[];
 

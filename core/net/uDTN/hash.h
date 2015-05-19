@@ -18,7 +18,7 @@
 #ifndef HASH_H
 #define HASH_H
 
-#include "contiki.h"
+#include <stdint.h>
 
 /**
  * Which hash driver are we going to use?

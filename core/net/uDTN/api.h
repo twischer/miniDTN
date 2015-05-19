@@ -26,8 +26,6 @@
 #include "task.h"
 #include "queue.h"
 
-// TODO remove if everything is ported
-#include "contiki.h"
 #include "net/linkaddr.h"
 
 typedef enum {

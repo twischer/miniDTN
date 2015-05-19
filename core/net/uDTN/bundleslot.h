@@ -16,7 +16,6 @@
 #include <stddef.h>
 
 #include "lib/mmem.h"
-#include "contiki.h"
 
 /* Kernel container_of function
  * WARNING: The ({}) macro extenstion is GCC-specific,

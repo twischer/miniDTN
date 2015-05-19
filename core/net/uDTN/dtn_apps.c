@@ -6,13 +6,12 @@
 /**
  * \file
  * \brief DTN App Support file
- * \author Wolf-Bastian Pšttner <poettner@ibr.cs.tu-bs.de>
+ * \author Wolf-Bastian PÃ¶ttner <poettner@ibr.cs.tu-bs.de>
  */
 
 #include <string.h>
 #include <stdio.h>
 
-#include "contiki.h"
 #include "lib/logging.h"
 
 #include "agent.h"

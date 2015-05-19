@@ -22,7 +22,6 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-#include "contiki.h"
 #include "lib/memb.h"
 
 #include "bundle.h"

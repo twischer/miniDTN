@@ -16,7 +16,6 @@
  */
 
 #include "lib/memb.h"
-#include "contiki.h"
 
 #include "redundancy.h"
 

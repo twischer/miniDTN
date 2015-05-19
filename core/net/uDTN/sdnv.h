@@ -22,8 +22,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "contiki.h"
-
 typedef uint8_t * sdnv_t;
 
 /**

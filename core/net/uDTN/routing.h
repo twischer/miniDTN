@@ -23,7 +23,6 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-#include "contiki.h"
 #include "net/linkaddr.h"
 #include "lib/memb.h"
 #include "lib/list.h"

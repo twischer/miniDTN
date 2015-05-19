@@ -12,7 +12,6 @@
 #ifndef DISPATCHING_H
 #define DISPATCHING_H
 
-#include "contiki.h"
 #include "lib/mmem.h"
 
 /**

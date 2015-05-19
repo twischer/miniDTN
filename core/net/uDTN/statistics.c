@@ -13,7 +13,6 @@
 #include <string.h> // for memcpy
 
 #include "agent.h"
-#include "contiki.h"
 #include "bundle.h"
 #include "lib/logging.h"
 

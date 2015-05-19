@@ -19,7 +19,6 @@
 #include <stdio.h>
 #include <string.h> // memset
 
-#include "contiki.h"
 #include "lib/logging.h"
 
 #include "hash.h"
