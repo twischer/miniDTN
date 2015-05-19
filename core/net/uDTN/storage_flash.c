@@ -18,6 +18,9 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "FreeRTOS.h"
+#include "timers.h"
+
 #include "lib/list.h"
 #include "lib/logging.h"
 #include "dev/watchdog.h"
@@ -82,7 +85,7 @@ MEMB(bundle_mem, struct storage_flash_entry_t, BUNDLE_STORAGE_SIZE);
 #define STORAGE_FLASH_TAG			0xAA55A5AA
 
 /** Is used to periodically traverse all bundles and delete those that are expired */
-static struct ctimer storage_flash_timer;
+static TimerHandle_t storage_flash_timer;
 
 uint32_t bundles_in_storage = 0;
 
@@ -200,7 +203,7 @@ void storage_flash_scan(void)
 	}
 }
 
-void storage_flash_prune()
+static void storage_flash_prune(const TimerHandle_t timer)
 {
 	struct storage_flash_entry_t * entry = NULL;
 	uint32_t * deletion[BUNDLE_STORAGE_SIZE];
@@ -230,7 +233,8 @@ void storage_flash_prune()
 		storage_flash_delete_bundle(*deletion[h], REASON_LIFETIME_EXPIRED);
 	}
 
-	ctimer_restart(&storage_flash_timer);
+//	ctimer_restart(&storage_flash_timer);
+	xTimerReset(storage_flash_timer, 0);
 }
 
 void storage_flash_format(void)
@@ -272,7 +276,15 @@ bool storage_flash_init(void)
 	storage_flash_scan();
 #endif
 
-	ctimer_set(&storage_flash_timer, CLOCK_SECOND*5, storage_flash_prune, NULL);
+//	ctimer_set(&storage_flash_timer, CLOCK_SECOND*5, storage_flash_prune, NULL);
+	storage_flash_timer = xTimerCreate("store flash timer", pdMS_TO_TICKS(5000), pdFALSE, NULL, storage_flash_prune);
+	if (storage_flash_timer == NULL) {
+		return false;
+	}
+
+	if ( !xTimerStart(storage_flash_timer, 0) ) {
+		return false;
+	}
 
 
 	return true;
@@ -298,7 +310,7 @@ uint8_t storage_flash_make_room(struct mmem * bundlemem)
 	LOG(LOGD_DTN, LOG_STORE, LOGL_DBG, "Making room for new bundles");
 
 	/* Now delete expired bundles */
-	storage_flash_prune();
+	storage_flash_prune(NULL);
 
 	/* If we do not have a pointer, we cannot compare - do nothing */
 	if( bundlemem == NULL ) {

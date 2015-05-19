@@ -15,6 +15,9 @@
  *
  * \author André Frambach <frambach@ibr.cs.tu-bs.de>
  */
+#include "FreeRTOS.h"
+#include "timers.h"
+
 #include "lib/logging.h"
 
 #include "discovery_scheduler.h"
@@ -44,19 +47,27 @@
 #define DTN_DISCO_PATTERN {2,1,1,3}
 #endif
 
-static struct ctimer dst;
+static TimerHandle_t dst;
 static uint8_t schedule_index = 0;
 
 
-void discovery_scheduler_pattern_func(void * ptr);
+static void discovery_scheduler_pattern_func(const TimerHandle_t timer);
 
 bool discovery_scheduler_pattern_init() {
-	ctimer_set(&dst, DTN_DISCO_TIMESLOT_LENGTH * CLOCK_SECOND, discovery_scheduler_pattern_func, NULL);
+//	ctimer_set(&dst, DTN_DISCO_TIMESLOT_LENGTH * CLOCK_SECOND, discovery_scheduler_pattern_func, NULL);
+	dst = xTimerCreate("discovery scheduler timer", pdMS_TO_TICKS(DTN_DISCO_TIMESLOT_LENGTH * 1000), pdFALSE, NULL, discovery_scheduler_pattern_func);
+	if (dst == NULL) {
+		return false;
+	}
+
+	if ( !xTimerStart(dst, 0) ) {
+		return false;
+	}
 
 	return true;
 }
 
-void discovery_scheduler_pattern_func(void * ptr)
+static void discovery_scheduler_pattern_func(const TimerHandle_t timer)
 {
 	static uint8_t schedule[] = DTN_DISCO_PATTERN;
 
@@ -71,7 +82,8 @@ void discovery_scheduler_pattern_func(void * ptr)
 
 
 	/* Rescheudle ourself */
-	ctimer_reset(&dst);
+//	ctimer_reset(&dst);
+	xTimerReset(dst, 0);
 
 	if (counter == 0) {
 		/* calculate new timeout */

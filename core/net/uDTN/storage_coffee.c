@@ -19,6 +19,9 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "FreeRTOS.h"
+#include "timers.h"
+
 #include "net/netstack.h"
 #include "cfs/cfs.h"
 #include "lib/mmem.h"
@@ -76,9 +79,6 @@ MEMB(bundle_mem, struct file_list_entry_t, BUNDLE_STORAGE_SIZE);
 /** Counts the number of bundles in storage */
 static uint16_t bundles_in_storage;
 
-/** Is used to periodically traverse all bundles and delete those that are expired */
-static struct ctimer g_store_timer;
-
 /** Flag to indicate whether the bundle list has changed since last writing the list file */
 static uint8_t bundle_list_changed = 0;
 
@@ -96,7 +96,7 @@ static uint8_t bundle_list_changed = 0;
 /**
  * "Internal" functions
  */
-void storage_coffee_prune();
+static void storage_coffee_prune(const TimerHandle_t timer);
 uint8_t storage_coffee_delete_bundle(uint32_t bundle_number, uint8_t reason);
 struct mmem * storage_coffee_read_bundle(uint32_t bundle_number);
 void storage_coffee_reconstruct_bundles();
@@ -128,7 +128,15 @@ bool storage_coffee_init(void)
 #endif
 
 	// Set the timer to regularly prune expired bundles
-	ctimer_set(&g_store_timer, CLOCK_SECOND*5, storage_coffee_prune, NULL);
+//	ctimer_set(&g_store_timer, CLOCK_SECOND*5, storage_coffee_prune, NULL);
+	const TimerHandle_t store_timer = xTimerCreate("store timer", pdMS_TO_TICKS(5000), pdFALSE, NULL, storage_coffee_prune);
+	if (store_timer == NULL) {
+		return false;
+	}
+
+	if ( !xTimerStart(store_timer, 0) ) {
+		return false;
+	}
 
 	return true;
 }
@@ -249,7 +257,7 @@ void storage_coffee_reconstruct_bundles()
 /**
  * \brief deletes expired bundles from storage
  */
-void storage_coffee_prune()
+static void storage_coffee_prune(const TimerHandle_t timer)
 {
 	uint32_t elapsed_time;
 	struct file_list_entry_t * entry = NULL;
@@ -267,7 +275,8 @@ void storage_coffee_prune()
 	}
 
 	// Restart the timer
-	ctimer_restart(&g_store_timer);
+//	ctimer_restart(&g_store_timer);
+	xTimerReset(timer, 0);
 }
 
 /**
@@ -299,7 +308,7 @@ void storage_coffee_reinit(void)
 uint8_t storage_coffee_make_room(struct mmem * bundlemem)
 {
 	/* Delete expired bundles first */
-	storage_coffee_prune();
+	storage_coffee_prune(NULL);
 
 	/* If we do not have a pointer, we cannot compare - do nothing */
 	if( bundlemem == NULL ) {
