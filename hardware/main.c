@@ -73,7 +73,7 @@ void vApplicationMallocFailedHook(void) {
 void vApplicationIdleHook(void) {
 }
 
-void vApplicationStackOverflowHook(xTaskHandle pxTask, signed char *pcTaskName) {
+void vApplicationStackOverflowHook(TaskHandle_t pxTask, signed char *pcTaskName) {
   (void) pcTaskName;
   (void) pxTask;
   /* Run time stack overflow checking is performed if

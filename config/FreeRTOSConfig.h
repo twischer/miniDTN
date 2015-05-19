@@ -90,6 +90,7 @@
 
 extern uint32_t SystemCoreClock;
 
+// TODO enable premention again, if dtn uses mutexes
 #define configUSE_PREEMPTION			0
 #define configUSE_IDLE_HOOK				1
 #define configUSE_TICK_HOOK				1
@@ -110,6 +111,7 @@ extern uint32_t SystemCoreClock;
 #define configUSE_APPLICATION_TASK_TAG	1
 #define configUSE_COUNTING_SEMAPHORES	1
 #define configGENERATE_RUN_TIME_STATS	0
+#define configENABLE_BACKWARD_COMPATIBILITY 0
 
 /* Co-routine definitions. */
 #define configUSE_CO_ROUTINES 		0
