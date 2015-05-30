@@ -365,6 +365,8 @@ core/net/uDTN/dtn_apps.c
 core/net/uDTN/dtn_apps.h
 core/net/uDTN/dtn_network.c
 core/net/uDTN/dtn_network.h
+core/net/uDTN/dtn_process.c
+core/net/uDTN/dtn_process.h
 core/net/uDTN/eid.c
 core/net/uDTN/eid.h
 core/net/uDTN/flash_arch.h
