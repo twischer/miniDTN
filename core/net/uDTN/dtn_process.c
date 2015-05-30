@@ -53,6 +53,26 @@ QueueHandle_t dtn_process_get_event_queue()
 }
 
 
+bool dtn_process_wait_any_event(const TickType_t xTicksToWait, event_container_t* const event_container)
+{
+	return xQueueReceive(dtn_process_get_event_queue(), event_container, xTicksToWait);
+}
+
+bool dtn_process_wait_event(const event_t event, const TickType_t xTicksToWait, event_container_t* const event_container)
+{
+	const TickType_t wait_start = xTaskGetTickCount();
+	do {
+		const TickType_t ticks_left = xTicksToWait - (xTaskGetTickCount() - wait_start);
+		if ( !dtn_process_wait_any_event(ticks_left, event_container) ) {
+			/* timeout has expired, so cancel waiting for the event */
+			return false;
+		}
+	} while (event_container->event != event);
+
+	return true;
+}
+
+
 void dtn_process_send_event(const QueueHandle_t event_queue, const event_t event, const void* const data)
 {
 	if (event_queue == NULL) {

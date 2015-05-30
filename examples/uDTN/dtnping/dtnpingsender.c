@@ -34,14 +34,14 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "contiki.h"
-#include "watchdog.h"
-#include "process.h"
+#include "FreeRTOS.h"
+#include "task.h"
+
 #include "net/netstack.h"
 #include "net/packetbuf.h"
-#include "dev/leds.h"
 
 #include "net/uDTN/api.h"
+#include "dtn_process.h"
 #include "net/uDTN/agent.h"
 #include "net/uDTN/bundle.h"
 #include "net/uDTN/sdnv.h"
@@ -51,47 +51,44 @@
 #define DTN_PING_LENGTH		64
 
 /*---------------------------------------------------------------------------*/
-PROCESS(dtnping_process, "DTN PING process");
-AUTOSTART_PROCESSES(&dtnping_process);
 static struct registration_api reg;
 /*---------------------------------------------------------------------------*/
-PROCESS_THREAD(dtnping_process, ev, data)
+void dtnping_process(void* p)
 {
-	static struct etimer timer;
-	static struct etimer timeout;
 	static uint32_t bundles_sent = 0;
-	static clock_time_t start;
-	clock_time_t end;
+	static TickType_t start;
+	static TickType_t end;
 
 	uint32_t tmp;
 
-	uint8_t payload_buffer[DTN_PING_LENGTH];
+	static uint8_t payload_buffer[DTN_PING_LENGTH];
 	uint32_t source_node;
 	uint32_t source_service;
 	uint32_t incoming_lifetime;
 
 	struct mmem * bundlemem = NULL;
-	struct bundle_t * bundle = NULL;
 	struct bundle_block_t * block = NULL;
 
-	PROCESS_BEGIN();
-
 	/* Give agent time to initialize */
-	PROCESS_PAUSE();
+//	PROCESS_PAUSE();
+	vTaskDelay( pdMS_TO_TICKS(1000) );
+
 
 	/* Register ping endpoint */
 	reg.status = APP_ACTIVE;
-	reg.application_process = PROCESS_CURRENT();
+	reg.event_queue = dtn_process_get_event_queue();
 	reg.app_id = DTN_PING_ENDPOINT+1;
-	process_post(&agent_process, dtn_application_registration_event, &reg);
-	printf("main: process=%p app=%d\n",PROCESS_CURRENT(), reg.app_id);
+	const event_container_t event = {
+		.event = dtn_application_registration_event,
+		.registration = &reg
+	};
+	agent_send_event(&event);
 
-	etimer_set(&timer, CLOCK_SECOND);
-
+	printf("main: queue=%p app=%d\n",reg.event_queue, reg.app_id);
 	printf("ECHO ipn:%u.%u %u bytes of data.\n", DTN_PING_NODE, DTN_PING_ENDPOINT, DTN_PING_LENGTH);
 
 	while (1) {
-		PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&timer));
+		vTaskDelay( pdMS_TO_TICKS(1000) );
 
 		// Create the reply bundle
 		bundlemem = bundle_create_bundle();
@@ -151,23 +148,25 @@ PROCESS_THREAD(dtnping_process, ev, data)
 		bundle_add_block(bundlemem, BUNDLE_BLOCK_TYPE_PAYLOAD, BUNDLE_BLOCK_FLAG_NULL, payload_buffer, DTN_PING_LENGTH);
 
 		// And submit the bundle to the agent
-		process_post(&agent_process, dtn_send_bundle_event, (void *) bundlemem);
-		start = clock_time();
+		const event_container_t event = {
+			.event = dtn_send_bundle_event,
+			.bundlemem = bundlemem
+		};
+		agent_send_event(&event);
 
-		etimer_set(&timeout, CLOCK_SECOND * 5);
+		start = xTaskGetTickCount();
 
-		PROCESS_WAIT_EVENT_UNTIL(ev == submit_data_to_application_event || etimer_expired(&timeout));
-		end = clock_time();
+		event_container_t ev;
+		const bool event_received = dtn_process_wait_event(submit_data_to_application_event, pdMS_TO_TICKS(5000), &ev);
+		end = xTaskGetTickCount();
 
-		if( etimer_expired(&timeout) ) {
+		if(!event_received) {
 			printf("timeout\n");
-			etimer_set(&timer, CLOCK_SECOND);
 			continue;
 		}
 
 		// Reconstruct the bundle and mmem struct from the event
-		bundlemem = (struct mmem *) data;
-		bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
+		bundlemem = ev.bundlemem;
 
 		// Extract payload for further analysis
 		block = bundle_get_payload_block(bundlemem);
@@ -186,7 +185,11 @@ PROCESS_THREAD(dtnping_process, ev, data)
 		bundle_get_attr(bundlemem, LIFE_TIME, &incoming_lifetime);
 
 		// Tell the agent, that have processed the bundle
-		process_post(&agent_process, dtn_processing_finished, bundlemem);
+		const event_container_t finished_event = {
+			.event = dtn_processing_finished,
+			.bundlemem = bundlemem
+		};
+		agent_send_event(&finished_event);
 
 		// Warn duplicate packets
 		if( tmp != bundles_sent ) {
@@ -200,12 +203,16 @@ PROCESS_THREAD(dtnping_process, ev, data)
 				source_service,
 				tmp,
 				incoming_lifetime,
-				((end - start) * 1000) / CLOCK_SECOND);
-
-		// ping again in 1 second
-		etimer_set(&timer, CLOCK_SECOND);
+				(end - start) / portTICK_PERIOD_MS);
 	}
-
-	PROCESS_END();
 }
 /*---------------------------------------------------------------------------*/
+
+bool init()
+{
+	if ( !dtn_process_create(dtnping_process, "DTN Ping") ) {
+		return false;
+	}
+
+  return true;
+}

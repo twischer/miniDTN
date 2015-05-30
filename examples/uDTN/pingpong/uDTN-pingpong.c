@@ -229,6 +229,7 @@ void ping_process(void* p)
 //		etimer_set(&timer, CLOCK_SECOND * PING_TIMEOUT);
 //		PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&timer) ||
 //				ev == submit_data_to_application_event);
+		// TODO replace with dtn_process_wait_event
 		event_container_t ev;
 		const BaseType_t event_received = xQueueReceive(reg_ping.event_queue, &ev, pdMS_TO_TICKS(PING_TIMEOUT * 1000));
 

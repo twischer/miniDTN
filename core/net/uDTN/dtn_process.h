@@ -34,6 +34,9 @@ bool dtn_process_create_other_stack(const TaskFunction_t pvTaskCode, const char*
  */
 QueueHandle_t dtn_process_get_event_queue();
 
+bool dtn_process_wait_any_event(const TickType_t xTicksToWait, event_container_t* const event_container);
+bool dtn_process_wait_event(const event_t event, const TickType_t xTicksToWait, event_container_t* const event_container);
+
 
 void dtn_process_send_event(const QueueHandle_t event_queue, const event_t event, const void* const data);
 
