@@ -1,16 +1,16 @@
 #include <stdint.h>
 #include <stdbool.h>
-#include "stm32f4xx.h"
+
 #include "FreeRTOS.h"
 #include "task.h"
-#include "math.h"
-#include "stdio.h"
+
+#include "stm32f4xx.h"
 #include "stm32f4xx_usart.h"
 #include "stm32_ub_led.h"
-
+#include "delay.h"
 
 #include "net/netstack.h"
-
+#include "rf230bb.h"
 #include "dtn_network.h"
 
 static unsigned long current_seconds = 0;
@@ -24,12 +24,14 @@ int main(void) {
   SystemInit();
   NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
   init_USART3();
+  delay_init();
 
   UB_Led_Init(); // Init der LEDs
   UB_Led_On(LED_GREEN); // gruene LED einschalten
 
   /* init the network stack */
   // TODO should be moved to own file
+  rf230_driver.init();
   dtn_network_driver.init();
 
   const bool successful = init();

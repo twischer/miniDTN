@@ -13,9 +13,16 @@ FREERTOS:=$(ROOT_DIR)/FreeRTOS
 STARTUP:=$(ROOT_DIR)/hardware
 
 # TODO remove contiki lib, if everything was ported successfully
-MODULES+= hardware core/lib core/net core/net/uDTN
+MODULES+= hardware \
+	Libraries \
+	Libraries/ub_lib \
+	cpu/avr/radio/rf230bb \
+	core/lib \
+	core/net \
+	core/net/uDTN
 
 INC_DIRS+= $(MODULES) \
+	Libraries \
 	core \
 	cpu/arm/stm32f103 \
 	platform/inga
@@ -79,9 +86,6 @@ SRC+=stm32f4xx_spi.c
 SRC+=stm32f4xx_tim.c
 SRC+=stm32f4xx_usart.c
 SRC+=stm32f4xx_rng.c
-
-# Advanced source files
-SRC+=stm32_ub_led.c
 
 
 # miniDTN files
