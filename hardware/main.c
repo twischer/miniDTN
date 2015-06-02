@@ -31,7 +31,21 @@ int main(void) {
 
   /* init the network stack */
   // TODO should be moved to own file
+  linkaddr_t inv_id = { .u16 = 0x780 };
+  linkaddr_set_node_addr(&inv_id);
+
   rf230_driver.init();
+//  if (eui64_is_null(inga_cfg.eui64_addr)) {
+	rf230_set_pan_addr(inv_id.u16, 0x05B9, NULL);
+//  } else {
+//    rf230_set_pan_addr(inga_cfg.pan_id, inga_cfg.pan_addr, inga_cfg.eui64_addr);
+//  }
+
+  rf230_set_channel(26);
+  rf230_set_txpower(0);
+
+  /* Initialize stack protocols */
+  queuebuf_init();
   dtn_network_driver.init();
 
   const bool successful = init();

@@ -150,9 +150,9 @@ struct timestamp {
 #endif
 
 /* RS232 delays will cause 6lowpan fragment overruns! Use DEBUGFLOW instead. */
-#define DEBUG 0
+#define DEBUG 1
 #if DEBUG
-#define PRINTF(FORMAT,args...) printf_P(PSTR(FORMAT),##args)
+#define PRINTF(FORMAT,args...) printf(FORMAT,##args)
 #define PRINTSHORT(FORMAT,args...) printf_P(PSTR(FORMAT),##args)
 #else
 #define PRINTF(...)

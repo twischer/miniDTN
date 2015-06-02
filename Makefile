@@ -1,5 +1,5 @@
 MODULES+= examples/uDTN/dtnping
-# UNcomment it for enableing debug messages
+# Uncomment it for enabling debug messages
 #CFLAGS+=-DENABLE_LOGGING
 
 ROOT_DIR = $(CURDIR)

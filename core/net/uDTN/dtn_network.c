@@ -24,6 +24,7 @@
 
 #include "convergence_layer.h"
 #include "agent.h"
+#include "rf230bb.h"
 
 #include "dtn_network.h"
 
@@ -141,6 +142,31 @@ void dtn_network_send(linkaddr_t * destination, uint8_t length, void * reference
 	// TODO send directly to device driver
 //	/* Send it out via the MAC */
 //	NETSTACK_MAC.send(&dtn_network_sent, reference);
+	int ret = MAC_TX_ERR_FATAL;
+	packetbuf_set_addr(PACKETBUF_ADDR_SENDER, &linkaddr_node_addr);
+
+	// TODO check if this is possibly needed
+//	if(NETSTACK_FRAMER.create_and_secure() < 0) {
+//		/* Failed to allocate space for headers */
+//		printf("nullrdc: send failed, too large header\n");
+//		ret = MAC_TX_ERR_FATAL;
+//    } else {
+		switch(rf230_driver.send(packetbuf_hdrptr(), packetbuf_totlen())) {
+			case RADIO_TX_OK:
+			  ret = MAC_TX_OK;
+			  break;
+			case RADIO_TX_COLLISION:
+			  ret = MAC_TX_COLLISION;
+			  break;
+			case RADIO_TX_NOACK:
+			  ret = MAC_TX_NOACK;
+			  break;
+			default:
+			  ret = MAC_TX_ERR;
+			  break;
+		}
+//	}
+	dtn_network_sent(reference, ret, 1);
 
 //	leds_off(LEDS_YELLOW);
 }

@@ -150,7 +150,7 @@ hal_init(void)
 //    SPCR         = (1 << SPE) | (1 << MSTR); /* Enable SPI module and master operation. */
 //    SPSR         = (1 << SPI2X); /* Enable doubled SPI speed in master mode. */
 
-	// TODO find correct mode
+	// TODO process return value, if error
 	UB_SPI2_Init(SPI_MODE_0);
 
     /* Enable interrupts from the radio transceiver. */
