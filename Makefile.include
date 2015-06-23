@@ -24,6 +24,7 @@ MODULES+= hardware \
 INC_DIRS+= $(MODULES) \
 	Libraries \
 	core \
+	core/net/mac \
 	cpu/arm/stm32f103 \
 	platform/inga
 
@@ -53,6 +54,7 @@ vpath %.c $(ROOT_DIR)/Libraries/STM32F4xx_StdPeriph_Driver/src \
 	  $(ROOT_DIR)/Libraries/syscall $(FREERTOS) \
 	  $(FREERTOS)/portable/MemMang $(FREERTOS)/portable/GCC/ARM_CM4F \
 	  $(ROOT_DIR)/Libraries/ub_lib \
+	  $(ROOT_DIR)/core/net/mac/ \
 	  $(SRC_DIRS)
 	  
 
@@ -87,6 +89,11 @@ SRC+=stm32f4xx_tim.c
 SRC+=stm32f4xx_usart.c
 SRC+=stm32f4xx_rng.c
 
+
+# needed contiki mac files
+SRC+=frame802154.c
+SRC+=framer.c
+SRC+=framer-802154.c
 
 # miniDTN files
 SRC+= $(foreach sdir,$(MODULES),$(wildcard $(sdir)/*.c))

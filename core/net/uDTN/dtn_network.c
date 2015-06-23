@@ -19,6 +19,7 @@
 
 #include "net/netstack.h"
 #include "net/packetbuf.h"
+#include "net/mac/framer-802154.h"
 #include "dev/leds.h"
 #include "lib/logging.h"
 
@@ -139,18 +140,15 @@ void dtn_network_send(linkaddr_t * destination, uint8_t length, void * reference
 	/* Make sure we always send ieee802.15.4 data frames*/
 	packetbuf_set_attr(PACKETBUF_ATTR_FRAME_TYPE, FRAME802154_DATAFRAME);
 
-	// TODO send directly to device driver
-//	/* Send it out via the MAC */
-//	NETSTACK_MAC.send(&dtn_network_sent, reference);
+
 	int ret = MAC_TX_ERR_FATAL;
 	packetbuf_set_addr(PACKETBUF_ADDR_SENDER, &linkaddr_node_addr);
 
-	// TODO check if this is possibly needed
-//	if(NETSTACK_FRAMER.create_and_secure() < 0) {
-//		/* Failed to allocate space for headers */
-//		printf("nullrdc: send failed, too large header\n");
-//		ret = MAC_TX_ERR_FATAL;
-//    } else {
+	if(framer_802154.create_and_secure() < 0) {
+		/* Failed to allocate space for headers */
+		printf("nullrdc: send failed, too large header\n");
+		ret = MAC_TX_ERR_FATAL;
+	} else {
 		switch(rf230_driver.send(packetbuf_hdrptr(), packetbuf_totlen())) {
 			case RADIO_TX_OK:
 			  ret = MAC_TX_OK;
@@ -165,7 +163,7 @@ void dtn_network_send(linkaddr_t * destination, uint8_t length, void * reference
 			  ret = MAC_TX_ERR;
 			  break;
 		}
-//	}
+	}
 	dtn_network_sent(reference, ret, 1);
 
 //	leds_off(LEDS_YELLOW);
