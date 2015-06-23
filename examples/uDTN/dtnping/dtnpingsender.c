@@ -84,7 +84,7 @@ void dtnping_process(void* p)
 	};
 	agent_send_event(&event);
 
-	printf("main: queue=%p app=%d\n",reg.event_queue, reg.app_id);
+	printf("main: queue=%p app=%u\n",reg.event_queue, (unsigned int)reg.app_id);
 	printf("ECHO ipn:%u.%u %u bytes of data.\n", DTN_PING_NODE, DTN_PING_ENDPOINT, DTN_PING_LENGTH);
 
 	while (1) {
