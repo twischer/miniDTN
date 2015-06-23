@@ -31,12 +31,14 @@ int main(void) {
 
   /* init the network stack */
   // TODO should be moved to own file
-  linkaddr_t inv_id = { .u16 = 0x780 };
+  linkaddr_t inv_id = { {0x05, 0xB9} };
   linkaddr_set_node_addr(&inv_id);
 
   rf230_driver.init();
 //  if (eui64_is_null(inga_cfg.eui64_addr)) {
-	rf230_set_pan_addr(inv_id.u16, 0x05B9, NULL);
+	rf230_set_pan_addr(0x0780, 0x05B9, NULL);
+//	const uint8_t ieee_addr[8] = { 0xd3, 0xbb, 0xf5, 0xff, 0xfe, 0x4c, 0x22, 0xcb };
+//	rf230_set_pan_addr(0x0780, 0x05B9, ieee_addr);
 //  } else {
 //    rf230_set_pan_addr(inga_cfg.pan_id, inga_cfg.pan_addr, inga_cfg.eui64_addr);
 //  }
@@ -47,6 +49,13 @@ int main(void) {
   /* Initialize stack protocols */
   queuebuf_init();
   dtn_network_driver.init();
+
+
+//  // TODO only for testing
+//  const u8 data[] = { 0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55,
+//					  0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55 };
+//  const int ret = rf230_driver.send(data, sizeof(data));
+//  printf("Send finished with %d\n", ret);
 
   const bool successful = init();
   if (successful) {
