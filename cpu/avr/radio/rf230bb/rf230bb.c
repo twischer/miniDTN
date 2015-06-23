@@ -1301,7 +1301,7 @@ if (RF230_receive_on) {
 #endif /* RF230_CONF_TIMESTAMPS */
 
 //  process_poll(&rf230_process);
-  vTaskResume(rf230_task);
+  xTaskResumeFromISR(rf230_task);
   
   rf230_pending = 1;
   

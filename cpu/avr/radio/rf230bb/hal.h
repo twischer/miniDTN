@@ -74,17 +74,12 @@
 ///* 1284 inga */
 #   define SSPORT     GPIOB
 #   define SSPIN      GPIO_Pin_12
-//#   define SPIPORT    GPIOB
-//#   define MOSIPIN    (0x05)
-//#   define MISOPIN    (0x06)
-//#   define SCKPIN     (0x07)
 #   define RSTPORT    GPIOD
 #   define RSTPIN     GPIO_Pin_8
-//#   define IRQPORT    D
-//#   define IRQPIN     (0x06)
 #   define SLPTRPORT  GPIOD
 // TODO check if if is always used as mask and not as number
 #   define SLPTRPIN   GPIO_Pin_9
+
 
 /* For architectures that have all SPI signals on the same port */
 #ifndef SSPORT
@@ -154,16 +149,6 @@
 #define HAL_SS_HIGH( ) (SSPORT->BSRRL = SSPIN) /**< MACRO for pulling SS high. */
 #define HAL_SS_LOW( )  (SSPORT->BSRRH = SSPIN) /**< MACRO for pulling SS low. */
 
-// TODO
-#define RADIO_VECT TIMER1_CAPT_vect
-// Raven and Jackdaw
-//#define HAL_ENABLE_RADIO_INTERRUPT( ) { TCCR1B = ( 1 << ICES1 ) | ( 1 << CS10 ); TIFR1 |= (1 << ICF1); TIMSK1 |= ( 1 << ICIE1 ) ; }
-//#define HAL_DISABLE_RADIO_INTERRUPT( ) ( TIMSK1 &= ~( 1 << ICIE1 ) )
-
-//#define HAL_ENABLE_OVERFLOW_INTERRUPT( ) ( TIMSK1 |= ( 1 << TOIE1 ) )
-//#define HAL_DISABLE_OVERFLOW_INTERRUPT( ) ( TIMSK1 &= ~( 1 << TOIE1 ) )
-
-
 // TODO check where it will be used and whether it works right
 /** This macro will protect the following code from interrupts.*/
 #define HAL_ENTER_CRITICAL_REGION( ) { taskDISABLE_INTERRUPTS();
@@ -173,16 +158,6 @@
 #define HAL_LEAVE_CRITICAL_REGION( ) taskENABLE_INTERRUPTS(); }
 
 
-
-/** \brief  Enable the interrupt from the radio transceiver.
- */
-#define hal_enable_trx_interrupt( ) HAL_ENABLE_RADIO_INTERRUPT( )
-
-/** \brief  Disable the interrupt from the radio transceiver.
- *
- *  \retval 0 if the pin is low, 1 if the pin is high.
- */
-#define hal_disable_trx_interrupt( ) HAL_DISABLE_RADIO_INTERRUPT( )
 /*============================ TYPDEFS =======================================*/
 /*============================ PROTOTYPES ====================================*/
 /*============================ MACROS ========================================*/
@@ -216,26 +191,11 @@ typedef struct{
 /*============================ PROTOTYPES ====================================*/
 void hal_init( void );
 
-/* Hack for atmega128rfa1 with integrated radio. Access registers directly, not through SPI */
-#if defined(__AVR_ATmega128RFA1__)
-//#define hal_register_read(address) _SFR_MEM8((uint16_t)address)
-#define hal_register_read(address) address
-uint8_t hal_subregister_read( uint16_t address, uint8_t mask, uint8_t position );
-void hal_subregister_write( uint16_t address, uint8_t mask, uint8_t position,
-                            uint8_t value );
-
-//#define hal_register_write(address, value) _SFR_MEM8((uint16_t)address)=value
-#define hal_register_write(address, value) address=value
-//#define hal_subregister_read( address, mask, position ) (_SFR_MEM8((uint16_t)address)&mask)>>position
-//#define hal_subregister_read1( address, mask, position ) (address&mask)>>position
-//#define hal_subregister_write( address, mask, position, value ) address=(address<<position)&mask
-#else
 uint8_t hal_register_read( uint8_t address );
 void hal_register_write( uint8_t address, uint8_t value );
 uint8_t hal_subregister_read( uint8_t address, uint8_t mask, uint8_t position );
 void hal_subregister_write( uint8_t address, uint8_t mask, uint8_t position,
-                            uint8_t value );
-#endif
+							uint8_t value );
 
 
 
