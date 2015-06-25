@@ -114,12 +114,11 @@ void vApplicationIdleHook(void) {
 }
 
 void vApplicationStackOverflowHook(TaskHandle_t pxTask, signed char *pcTaskName) {
-  (void) pcTaskName;
-  (void) pxTask;
   /* Run time stack overflow checking is performed if
      configCHECK_FOR_STACK_OVERFLOW is defined to 1 or 2.  This hook
      function is called if a stack overflow is detected. */
   taskDISABLE_INTERRUPTS();
+  printf("STACK OVERFLOW in task '%s (handle %p)\n", pcTaskName, pxTask);
   for(;;);
 }
 
