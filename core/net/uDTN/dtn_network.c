@@ -61,22 +61,34 @@ static void dtn_network_init(void)
  */
 static void dtn_network_input(void) 
 {
-	linkaddr_t source;
-	uint8_t * buffer = NULL;
-	uint8_t length = 0;
-	packetbuf_attr_t rssi = 0;
+	// TODO move to own file
+	// dtn should be fully encoupsolated from mac layer
+	if(NETSTACK_FRAMER.parse() < 0) {
+	  printf("nullrdc: failed to parse %u\n", packetbuf_datalen());
+//#if NULLRDC_ADDRESS_FILTER
+	} else if(!linkaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_RECEIVER),
+										   &linkaddr_node_addr) &&
+			  !packetbuf_holds_broadcast()) {
+	  printf("nullrdc: not for us\n");
+//#endif /* NULLRDC_ADDRESS_FILTER */
+	} else {
+		linkaddr_t source;
+		uint8_t * buffer = NULL;
+		uint8_t length = 0;
+		packetbuf_attr_t rssi = 0;
 
-//	leds_on(LEDS_ALL);
+	//	leds_on(LEDS_ALL);
 
-	/* Create a copy here, because otherwise packetbuf_clear will evaporate the address */
-	linkaddr_copy(&source, packetbuf_addr(PACKETBUF_ADDR_SENDER));
-	buffer = packetbuf_dataptr();
-	length = packetbuf_datalen();
-	rssi = packetbuf_attr(PACKETBUF_ATTR_RSSI);
+		/* Create a copy here, because otherwise packetbuf_clear will evaporate the address */
+		linkaddr_copy(&source, packetbuf_addr(PACKETBUF_ADDR_SENDER));
+		buffer = packetbuf_dataptr();
+		length = packetbuf_datalen();
+		rssi = packetbuf_attr(PACKETBUF_ATTR_RSSI);
 
-	convergence_layer_incoming_frame(&source, buffer, length, rssi);
+		convergence_layer_incoming_frame(&source, buffer, length, rssi);
 
-//	leds_off(LEDS_ALL);
+	//	leds_off(LEDS_ALL);
+	}
 }
 
 /**
@@ -141,6 +153,9 @@ void dtn_network_send(linkaddr_t * destination, uint8_t length, void * reference
 	packetbuf_set_attr(PACKETBUF_ATTR_FRAME_TYPE, FRAME802154_DATAFRAME);
 
 
+
+	// TODO move to own file
+	// dtn should be fully encoupsolated from mac layer
 	int ret = MAC_TX_ERR_FATAL;
 	packetbuf_set_addr(PACKETBUF_ADDR_SENDER, &linkaddr_node_addr);
 

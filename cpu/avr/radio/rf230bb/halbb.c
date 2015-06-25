@@ -160,7 +160,7 @@ void hal_init_irq(const EXT_INT0_t* const int_pin)
 
   // Config als Digital-Eingang
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
-  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_DOWN;
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
   GPIO_InitStructure.GPIO_Pin = int_pin->PIN;
   GPIO_Init(int_pin->PORT, &GPIO_InitStructure);
 
@@ -520,14 +520,11 @@ HAL_RF230_ISR
 	if(EXTI_GetITStatus(IRQPIN.LINE) != RESET) {
 		EXTI_ClearITPendingBit(IRQPIN.LINE);
 		
-		UB_Led_Toggle(LED_GREEN);
-		
-		volatile uint8_t state;
-		uint8_t interrupt_source; /* used after HAL_SPI_TRANSFER_OPEN/CLOSE block */
-		
 		INTERRUPTDEBUG(1);
-		
-		
+
+		/* used after HAL_SPI_TRANSFER_OPEN/CLOSE block */
+		uint8_t interrupt_source = 0;
+
 		/* Using SPI bus from ISR is generally a bad idea... */
 		/* Note: all IRQ are not always automatically disabled when running in ISR */
 		HAL_SPI_TRANSFER_OPEN();
@@ -559,7 +556,7 @@ HAL_RF230_ISR
 		} else if (interrupt_source & HAL_TRX_END_MASK){
 			INTERRUPTDEBUG(11);
 			
-			state = hal_subregister_read(SR_TRX_STATUS);
+			const uint8_t state = hal_subregister_read(SR_TRX_STATUS);
 			if((state == BUSY_RX_AACK) || (state == RX_ON) || (state == BUSY_RX) || (state == RX_AACK_ON)){
 				/* Received packet interrupt */
 				/* Buffer the frame and call rf230_interrupt to schedule poll for rf230 receive process */
