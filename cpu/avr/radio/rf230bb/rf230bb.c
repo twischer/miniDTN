@@ -807,7 +807,7 @@ rf230_init(void)
  
  /* Start the packet receive process */
 //  process_start(&rf230_process, NULL);
-  if ( !xTaskCreate(rf230_process, "RF230BB driver", configMINIMAL_STACK_SIZE, NULL, 1, &rf230_task) ) {
+  if ( !xTaskCreate(rf230_process, "RF230BB driver", configMINIMAL_STACK_SIZE+100, NULL, 1, &rf230_task) ) {
 	  return 0;
   }
  
@@ -1366,7 +1366,6 @@ static void rf230_process(void* p)
     if(len > 0) {
       packetbuf_set_datalen(len);
       RF230PROCESSFLAG(2);
-//      NETSTACK_RDC.input();
 	  dtn_network_driver.input();
     } else {
 #if RADIOSTATS

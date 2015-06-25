@@ -456,7 +456,6 @@ void discovery_ipnd_save_neighbour(linkaddr_t * neighbour)
 	list_add(neighbour_list, entry);
 
 	// We have found a new neighbour, now go and notify the agent
-//	process_post(&agent_process, dtn_beacon_event, &entry->neighbour);
 	const event_container_t event = {
 		.event = dtn_beacon_event,
 		.linkaddr = &entry->neighbour

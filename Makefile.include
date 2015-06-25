@@ -174,7 +174,7 @@ clean:
 	@rm -f $(BIN_DIR)/$(TARGET).bin
 
 flash: all
-	@st-flash write $(BIN_DIR)/$(TARGET).bin 0x8000000
+	@st-flash --reset write $(BIN_DIR)/$(TARGET).bin 0x8000000
 
 
 run: flash
@@ -183,7 +183,7 @@ run: flash
 
 
 startgdb:
-	st-util &
+	st-util -m &
 	sleep 1
 
 stopgdb:
