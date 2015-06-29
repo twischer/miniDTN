@@ -112,7 +112,7 @@ bool convergence_layer_init(void)
 	// Start CL process
 //	process_start(&convergence_layer_process, NULL);
 
-	if ( !xTaskCreate(convergence_layer_process, "CL process", configMINIMAL_STACK_SIZE, NULL, 1, &convergence_layer_task) ) {
+	if ( !xTaskCreate(convergence_layer_process, "CL process", configMINIMAL_STACK_SIZE+100, NULL, 1, &convergence_layer_task) ) {
 		return false;
 	}
 
@@ -328,7 +328,7 @@ int convergence_layer_send_bundle(struct transmit_ticket_t * ticket)
 		ticket->sequence_number = outgoing_sequence_number;
 
 		/* Calculate the number of segments we will need */
-		segments = (length + 0.5 * CONVERGENCE_LAYER_MAX_LENGTH) / CONVERGENCE_LAYER_MAX_LENGTH;
+		segments = ( length + (CONVERGENCE_LAYER_MAX_LENGTH / 2) ) / CONVERGENCE_LAYER_MAX_LENGTH;
 
 		/* And reserve the sequence number space for this bundle to allow for consequtive numbers */
 		outgoing_sequence_number = (outgoing_sequence_number + segments) % 4;
@@ -537,7 +537,7 @@ int convergence_layer_resend_ack(struct transmit_ticket_t * ticket)
 	}
 
 	/* Check for the retransmission timer */
-	if( (xTaskGetTickCount() - ticket->timestamp) < pdMS_TO_TICKS(CONVERGENCE_LAYER_RETRANSMIT_TIMEOUT * 1000) ) {
+	if( (xTaskGetTickCount() - ticket->timestamp) < pdMS_TO_TICKS(CONVERGENCE_LAYER_RETRANSMIT_TIMEOUT) ) {
 		return 0;
 	}
 

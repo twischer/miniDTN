@@ -58,14 +58,14 @@
 #define CONVERGENCE_LAYER_MULTIPART_TIMEOUT		10
 
 /**
- * How long shell we wait before retransmitting an app-layer ACK or NACK? [in seconds]
+ * How long shell we wait before retransmitting an app-layer ACK or NACK? [in milli seconds]
  */
-#define CONVERGENCE_LAYER_RETRANSMIT_TIMEOUT	0.5
+#define CONVERGENCE_LAYER_RETRANSMIT_TIMEOUT	500
 
 /**
  * How often shall we retransmit?
  */
-#define CONVERGENCE_LAYER_RETRANSMIT_TRIES		(CONVERGENCE_LAYER_TIMEOUT / CONVERGENCE_LAYER_RETRANSMIT_TIMEOUT)
+#define CONVERGENCE_LAYER_RETRANSMIT_TRIES		(CONVERGENCE_LAYER_TIMEOUT * 1000 / CONVERGENCE_LAYER_RETRANSMIT_TIMEOUT)
 
 /**
  * Specify the maximum bundle size that we guarantee to support
