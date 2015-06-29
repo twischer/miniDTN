@@ -31,8 +31,9 @@
 
 /**
  * How many queue slots remain free for internal use?
+ * 1/5 is the same as 20%, but is not using the float unit
  */
-#define CONVERGENCE_LAYER_QUEUE_FREE 			(0.2 * CONVERGENCE_LAYER_QUEUE)
+#define CONVERGENCE_LAYER_QUEUE_FREE 			(CONVERGENCE_LAYER_QUEUE / 5)
 
 /**
  * How often shall we retransmit bundles before we notify routing
