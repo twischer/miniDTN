@@ -73,8 +73,8 @@ int _write(int file, char * ptr, int len) {
     return 0;
   }
   for (index = 0; index < len; index++) {
-    while (!(USART3->SR & 0x00000040));
-    USART_SendData(USART3, ptr[index]);
+	while (!(USART6->SR & 0x00000040));
+	USART_SendData(USART6, ptr[index]);
   }
   return len;
 }
