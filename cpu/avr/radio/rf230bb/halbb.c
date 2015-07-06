@@ -112,6 +112,7 @@ const EXT_INT0_t IRQPIN = {
 /*============================ VARIABLES =====================================*/
 
 volatile extern signed char rf230_last_rssi;
+static volatile bool rx_buffer_overflow = false;
 
 /*============================ CALLBACKS =====================================*/
 
@@ -130,6 +131,15 @@ volatile extern signed char rf230_last_rssi;
     HAL_LEAVE_CRITICAL_REGION(); \
     }
 #define HAL_SPI_TRANSFER(to_write) (spiTemp = UB_SPI2_SendByte(to_write))
+
+bool
+hal_rx_buffer_overflow()
+{
+	const bool last = rx_buffer_overflow;
+	rx_buffer_overflow = false;
+
+	return last;
+}
 
  
 void
@@ -560,7 +570,12 @@ HAL_RF230_ISR
 			if((state == BUSY_RX_AACK) || (state == RX_ON) || (state == BUSY_RX) || (state == RX_AACK_ON)){
 				/* Received packet interrupt */
 				/* Buffer the frame and call rf230_interrupt to schedule poll for rf230 receive process */
-				if (rxframe[rxframe_tail].length) INTERRUPTDEBUG(42); else INTERRUPTDEBUG(12);
+				if (rxframe[rxframe_tail].length) {
+					rx_buffer_overflow = true;
+					INTERRUPTDEBUG(42);
+				} else {
+					INTERRUPTDEBUG(12);
+				}
 				
 #ifdef RF230_MIN_RX_POWER
 				/* Discard packets weaker than the minimum if defined. This is for testing miniature meshes.*/

@@ -150,7 +150,7 @@ struct timestamp {
 #endif
 
 /* RS232 delays will cause 6lowpan fragment overruns! Use DEBUGFLOW instead. */
-//#define DEBUG 1
+#define DEBUG 2
 #if DEBUG
 #define PRINTF(FORMAT,args...) printf(FORMAT,##args)
 #define PRINTSHORT(FORMAT,args...) printf_P(PSTR(FORMAT),##args)
@@ -1350,6 +1350,11 @@ static void rf230_process(void* p)
 
     /* Restore interrupts. */
     HAL_LEAVE_CRITICAL_REGION();
+
+	if (hal_rx_buffer_overflow()) {
+		PRINTF("rf230_read: Packet lost, because of rx buffer overflow!\n");
+	}
+
     PRINTF("rf230_read: %u bytes lqi %u\n",len,rf230_last_correlation);
 #if DEBUG>1
      {
