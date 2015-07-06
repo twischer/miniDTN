@@ -1,0 +1,14 @@
+*.aux
+*.log
+*.out
+*.pdf
+*.tex.backup
+*.bbl
+*.blg
+*.bib~
+*.bib~?
+*.lof
+*.lot
+*.toc
+*.b#?
+*.s#?
