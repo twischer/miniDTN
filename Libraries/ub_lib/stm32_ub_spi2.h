@@ -35,10 +35,10 @@ typedef enum {
 
 //#define SPI2_VORTEILER     SPI_BaudRatePrescaler_2   // Frq = 21 MHz
 //#define SPI2_VORTEILER     SPI_BaudRatePrescaler_4   // Frq = 10,5 MHz
-//#define SPI2_VORTEILER     SPI_BaudRatePrescaler_8   // Frq = 5.25 MHz
+#define SPI2_VORTEILER     SPI_BaudRatePrescaler_8   // Frq = 5.25 MHz
 //#define SPI2_VORTEILER     SPI_BaudRatePrescaler_16  // Frq = 2.625 MHz
 //#define SPI2_VORTEILER     SPI_BaudRatePrescaler_32  // Frq = 1.3125 MHz
-#define SPI2_VORTEILER     SPI_BaudRatePrescaler_64  // Frq = 656.2 kHz
+//#define SPI2_VORTEILER     SPI_BaudRatePrescaler_64  // Frq = 656.2 kHz
 //#define SPI2_VORTEILER     SPI_BaudRatePrescaler_128 // Frq = 328.1 kHz
 //#define SPI2_VORTEILER     SPI_BaudRatePrescaler_256 // Frq = 164.0 kHz
 
