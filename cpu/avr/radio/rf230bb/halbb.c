@@ -206,7 +206,6 @@ hal_init(void)
 	// TODO has to be changed, if the port configuration changes
 	// TODO use only one port and enable one port clock to minimize energie consumption
 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB, ENABLE);
-	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE);
 
     /*IO Specific Initialization - sleep and reset pins. */
     /* Set pins low before they are initialized as output? Does not seem to matter */
@@ -569,6 +568,8 @@ HAL_RF230_ISR
 			const uint8_t state = hal_subregister_read(SR_TRX_STATUS);
 			if((state == BUSY_RX_AACK) || (state == RX_ON) || (state == BUSY_RX) || (state == RX_AACK_ON)){
 				/* Received packet interrupt */
+				UB_Led_On(LED_ORANGE);
+
 				/* Buffer the frame and call rf230_interrupt to schedule poll for rf230 receive process */
 				if (rxframe[rxframe_tail].length) {
 					rx_buffer_overflow = true;
@@ -614,8 +615,11 @@ HAL_RF230_ISR
 		} else {
 			INTERRUPTDEBUG(99);
 			;
+			UB_Led_On(LED_RED);
 		}
 	}
+	else
+		UB_Led_On(LED_RED);
 }
 #   endif /* defined(DOXYGEN) */
 

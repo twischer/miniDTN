@@ -42,6 +42,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "stm32_ub_led.h"
 #include "delay.h"
 
 #include "contiki.h"
@@ -150,7 +151,7 @@ struct timestamp {
 #endif
 
 /* RS232 delays will cause 6lowpan fragment overruns! Use DEBUGFLOW instead. */
-#define DEBUG 2
+#define DEBUG 0
 #if DEBUG
 #define PRINTF(FORMAT,args...) printf(FORMAT,##args)
 #define PRINTSHORT(FORMAT,args...) printf_P(PSTR(FORMAT),##args)
@@ -975,7 +976,9 @@ rf230_transmit(unsigned short payload_len)
    * the frame. We have about 16 us + the on-air transmission time of 40 bits
    * (for the synchronization header) before the transceiver sends the PHR. */
   hal_set_slptr_high();
+  delay_us(1);
   hal_set_slptr_low();
+
   hal_frame_write(buffer, total_len);
 
   HAL_LEAVE_CRITICAL_REGION();
@@ -1354,6 +1357,8 @@ static void rf230_process(void* p)
 	if (hal_rx_buffer_overflow()) {
 		PRINTF("rf230_read: Packet lost, because of rx buffer overflow!\n");
 	}
+
+	UB_Led_Off(LED_ORANGE);
 
     PRINTF("rf230_read: %u bytes lqi %u\n",len,rf230_last_correlation);
 #if DEBUG>1
