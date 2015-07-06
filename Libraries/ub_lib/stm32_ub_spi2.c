@@ -27,9 +27,9 @@
 //--------------------------------------------------------------
 SPI2_DEV_t SPI2DEV = {
 // PORT , PIN       , Clock              , Source 
-  {GPIOB,GPIO_Pin_13,RCC_AHB1Periph_GPIOB,GPIO_PinSource13}, // SCK an PB13
-  {GPIOB,GPIO_Pin_15,RCC_AHB1Periph_GPIOB,GPIO_PinSource15}, // MOSI an PB15
-  {GPIOB,GPIO_Pin_14,RCC_AHB1Periph_GPIOB,GPIO_PinSource14}, // MISO an PB14
+  .SCK = {GPIOB,GPIO_Pin_10,RCC_AHB1Periph_GPIOB,GPIO_PinSource10}, // SCK an PB10
+  .MOSI = {GPIOC,GPIO_Pin_3,RCC_AHB1Periph_GPIOC,GPIO_PinSource3}, // MOSI an PC3
+  .MISO = {GPIOC,GPIO_Pin_2,RCC_AHB1Periph_GPIOC,GPIO_PinSource2}, // MISO an PC2
 };
 
 

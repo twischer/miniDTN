@@ -92,20 +92,20 @@ typedef struct {
 
 
 const EXT_INT0_t IRQPIN = {
-	.PORT = GPIOD,
-	.PIN = GPIO_Pin_10,
-	.CLK = RCC_AHB1Periph_GPIOD,
-	.SRC_PORT = EXTI_PortSourceGPIOD,
-	.SRC_PIN = EXTI_PinSource10,
+	.PORT = GPIOB,
+	.PIN = GPIO_Pin_4,
+	.CLK = RCC_AHB1Periph_GPIOB,
+	.SRC_PORT = EXTI_PortSourceGPIOB,
+	.SRC_PIN = EXTI_PinSource4,
 	.TRG = EXTI_Trigger_Rising,
-	.LINE = EXTI_Line10,
-	.IRQn = EXTI15_10_IRQn,
+	.LINE = EXTI_Line4,
+	.IRQn = EXTI4_IRQn,
 };
 /*
  * this have to be changed, too,
  * if the input pin number was changed
  */
-#define HAL_RF230_ISR void EXTI15_10_IRQHandler()
+#define HAL_RF230_ISR void EXTI4_IRQHandler()
 
 
 

@@ -73,30 +73,12 @@
  */
 ///* 1284 inga */
 #   define SSPORT     GPIOB
-#   define SSPIN      GPIO_Pin_12
-#   define RSTPORT    GPIOD
-#   define RSTPIN     GPIO_Pin_8
-#   define SLPTRPORT  GPIOD
+#   define SSPIN      GPIO_Pin_14
+#   define RSTPORT    GPIOB
+#   define RSTPIN     GPIO_Pin_0
+#   define SLPTRPORT  GPIOB
 // TODO check if if is always used as mask and not as number
-#   define SLPTRPIN   GPIO_Pin_9
-
-
-/* For architectures that have all SPI signals on the same port */
-#ifndef SSPORT
-#define SSPORT SPIPORT
-#endif
-
-#ifndef SCKPORT
-#define SCKPORT SPIPORT
-#endif
-
-#ifndef MOSIPORT
-#define MOSIPORT SPIPORT
-#endif
-
-#ifndef MISOPORT
-#define MISOPORT SPIPORT
-#endif
+#   define SLPTRPIN   GPIO_Pin_1
 
 /** \} */
 
