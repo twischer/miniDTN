@@ -124,7 +124,7 @@ CDEFS+=-DINGA_BOOTSCREEN_RADIO
 
 
 MCUFLAGS=-mcpu=cortex-m4 -mthumb -mfloat-abi=hard
-COMMONFLAGS=-O$(OPTLVL) $(DBG) -Wall -MMD
+COMMONFLAGS=-O$(OPTLVL) $(DBG) -Wall -MMD -std=gnu11
 CFLAGS+=$(COMMONFLAGS) $(MCUFLAGS) $(INCLUDE) $(CDEFS)
 LDLIBS=$(TOOLCHAIN_ROOT)/arm-none-eabi/lib/armv7e-m/fpu/libc_nano.a $(TOOLCHAIN_ROOT)/arm-none-eabi/lib/armv7e-m/fpu/libm.a
 LDFLAGS=$(COMMONFLAGS) -fno-exceptions -ffunction-sections -fdata-sections -nostartfiles -Wl,--gc-sections,-T$(LINKER_SCRIPT)
