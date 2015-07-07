@@ -20,6 +20,7 @@
 #define CONVERGENCE_LAYER_H
 
 #include <stdbool.h>
+#include "FreeRTOS.h"
 
 #include "net/linkaddr.h"
 #include "lib/mmem.h"
@@ -179,7 +180,7 @@ struct transmit_ticket_t {
 	linkaddr_t neighbour;
 	uint32_t bundle_number;
 	uint8_t sequence_number;
-	clock_time_t timestamp;
+	TickType_t timestamp;
 
 #if CONVERGENCE_LAYER_SEGMENTATION
 	int offset_sent;
