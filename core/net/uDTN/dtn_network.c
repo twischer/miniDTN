@@ -152,34 +152,8 @@ void dtn_network_send(linkaddr_t * destination, uint8_t length, void * reference
 	/* Make sure we always send ieee802.15.4 data frames*/
 	packetbuf_set_attr(PACKETBUF_ATTR_FRAME_TYPE, FRAME802154_DATAFRAME);
 
-
-
-	// TODO move to own file
-	// dtn should be fully encoupsolated from mac layer
-	int ret = MAC_TX_ERR_FATAL;
-	packetbuf_set_addr(PACKETBUF_ADDR_SENDER, &linkaddr_node_addr);
-
-	if(framer_802154.create_and_secure() < 0) {
-		/* Failed to allocate space for headers */
-		printf("nullrdc: send failed, too large header\n");
-		ret = MAC_TX_ERR_FATAL;
-	} else {
-		switch(rf230_driver.send(packetbuf_hdrptr(), packetbuf_totlen())) {
-			case RADIO_TX_OK:
-			  ret = MAC_TX_OK;
-			  break;
-			case RADIO_TX_COLLISION:
-			  ret = MAC_TX_COLLISION;
-			  break;
-			case RADIO_TX_NOACK:
-			  ret = MAC_TX_NOACK;
-			  break;
-			default:
-			  ret = MAC_TX_ERR;
-			  break;
-		}
-	}
-	dtn_network_sent(reference, ret, 1);
+	/* Send it out via the MAC */
+	nullrdc_driver.send(&dtn_network_sent, reference);
 
 //	leds_off(LEDS_YELLOW);
 }

@@ -91,6 +91,9 @@ SRC+=stm32f4xx_rng.c
 
 
 # needed contiki mac files
+SRC+=mac.c
+SRC+=mac-sequence.c
+SRC+=nullrdc.c
 SRC+=frame802154.c
 SRC+=framer.c
 SRC+=framer-802154.c
