@@ -48,7 +48,7 @@
           <predecessor id="1" predecessor-id="7" type="FS"/>
         </predecessors>
       </task>
-      <task id="9" name="miniDTN mit lokalem PingPong testen" note="" work="28800" start="20150724T170000Z" end="20150727T170000Z" work-start="20150727T080000Z" percent-complete="80" priority="0" type="normal" scheduling="fixed-work">
+      <task id="9" name="miniDTN mit lokalem PingPong testen" note="" work="28800" start="20150724T170000Z" end="20150727T170000Z" work-start="20150727T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work">
         <predecessors>
           <predecessor id="1" predecessor-id="8" type="FS"/>
         </predecessors>
@@ -58,7 +58,7 @@
           <predecessor id="1" predecessor-id="9" type="FS"/>
         </predecessors>
       </task>
-      <task id="11" name="Treiber f&#xFC;r AT86RF231-Transceiver" note="" work="288000" start="20150728T170000Z" end="20150811T170000Z" work-start="20150729T080000Z" percent-complete="30" priority="0" type="normal" scheduling="fixed-work">
+      <task id="11" name="Treiber f&#xFC;r AT86RF231-Transceiver" note="" work="288000" start="20150728T170000Z" end="20150811T170000Z" work-start="20150729T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work">
         <predecessors>
           <predecessor id="1" predecessor-id="10" type="FS"/>
         </predecessors>
@@ -68,7 +68,7 @@
           <predecessor id="1" predecessor-id="11" type="FS"/>
         </predecessors>
       </task>
-      <task id="13" name="miniDTN mit DTNPing und Transceiver testen" note="" work="28800" start="20150818T170000Z" end="20150819T170000Z" work-start="20150819T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
+      <task id="13" name="miniDTN mit DTNPing und Transceiver testen" note="" work="28800" start="20150818T170000Z" end="20150819T170000Z" work-start="20150819T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work">
         <predecessors>
           <predecessor id="1" predecessor-id="12" type="FS"/>
         </predecessors>
