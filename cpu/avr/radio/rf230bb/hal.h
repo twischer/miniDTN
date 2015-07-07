@@ -91,53 +91,29 @@
  * \{
  */
 
-//#define SLP_TR                SLPTRPIN            /**< Pin number that corresponds to the SLP_TR pin. */
-//#define DDR_SLP_TR            DDR( SLPTRPORT )    /**< Data Direction Register that corresponds to the port where SLP_TR is connected. */
-//#define PORT_SLP_TR           PORT( SLPTRPORT )   /**< Port (Write Access) where SLP_TR is connected. */
-//#define PIN_SLP_TR            PIN( SLPTRPORT )    /**< Pin (Read Access) where SLP_TR is connected. */
 #define hal_set_slptr_high( ) (SLPTRPORT->BSRRL = SLPTRPIN)      /**< This macro pulls the SLP_TR pin high. */
 #define hal_set_slptr_low( )  (SLPTRPORT->BSRRH = SLPTRPIN)     /**< This macro pulls the SLP_TR pin low. */
 // TODO check if it is realy connected to the output, if it is configured as input
 #define hal_get_slptr( )      ( (SLPTRPORT->IDR & SLPTRPIN) ? true : false )   /**< Read current state of the SLP_TR pin (High/Low). */
-//#define RST                   RSTPIN              /**< Pin number that corresponds to the RST pin. */
-//#define DDR_RST               DDR( RSTPORT )      /**< Data Direction Register that corresponds to the port where RST is */
-//#define PORT_RST              PORT( RSTPORT )     /**< Port (Write Access) where RST is connected. */
-//#define PIN_RST               PIN( RSTPORT /* BUG? */)      /**< Pin (Read Access) where RST is connected. */
+
 #define hal_set_rst_high( )   (RSTPORT->BSRRL = RSTPIN)  /**< This macro pulls the RST pin high. */
 #define hal_set_rst_low( )    (RSTPORT->BSRRH = RSTPIN) /**< This macro pulls the RST pin low. */
 #define hal_get_rst( )        ( (RSTPORT->IDR & RSTPIN) ? true : false )  /**< Read current state of the RST pin (High/Low). */
-//#define HAL_SS_PIN            SSPIN               /**< The slave select pin. */
-//#define HAL_SCK_PIN           SCKPIN              /**< Data bit for SCK. */
-//#define HAL_MOSI_PIN          MOSIPIN
-//#define HAL_MISO_PIN          MISOPIN
-//#define HAL_PORT_SPI          PORT( SPIPORT )     /**< The SPI module is located on PORTB. */
-//#define HAL_PORT_SS            PORT( SSPORT )
-//#define HAL_PORT_SCK           PORT( SCKPORT )
-//#define HAL_PORT_MOSI          PORT( MOSIPORT )     /**< The SPI module uses GPIO might be split on different ports. */
-//#define HAL_PORT_MISO          PORT( MISOPORT )     /**< The SPI module uses GPIO might be split on different ports. */
-//#define HAL_DDR_SPI           DDR( SPIPORT )      /**< Data Direction Register for PORTB. */
-//#define HAL_DDR_SS             DDR( SSPORT )      /**< Data Direction Register for MISO GPIO pin. */
-//#define HAL_DDR_SCK            DDR( SCKPORT )      /**< Data Direction Register for MISO GPIO pin. */
-//#define HAL_DDR_MOSI           DDR( MOSIPORT )      /**< Data Direction Register for MISO GPIO pin. */
-//#define HAL_DDR_MISO           DDR( MISOPORT )      /**< Data Direction Register for MOSI GPIO pin. */
-//#define HAL_DD_SS             SSPIN               /**< Data Direction bit for SS. */
-//#define HAL_DD_SCK            SCKPIN              /**< Data Direction bit for SCK. */
-//#define HAL_DD_MOSI           MOSIPIN             /**< Data Direction bit for MOSI. */
-//#define HAL_DD_MISO           MISOPIN             /**< Data Direction bit for MISO. */
 
 /** \} */
 
 
 #define HAL_SS_HIGH( ) (SSPORT->BSRRL = SSPIN) /**< MACRO for pulling SS high. */
-#define HAL_SS_LOW( )  (SSPORT->BSRRH = SSPIN) /**< MACRO for pulling SS low. */
+#define HAL_SS_LOW( )  (SSPORT->BSRRH = SSPIN); delay_us(1); /**< MACRO for pulling SS low. */
+#define hal_get_ss( )      ( (SSPORT->IDR & SSPIN) ? true : false )
 
 // TODO check where it will be used and whether it works right
 /** This macro will protect the following code from interrupts.*/
-#define HAL_ENTER_CRITICAL_REGION( ) { taskDISABLE_INTERRUPTS();
+#define HAL_ENTER_CRITICAL_REGION( ) { NVIC_DisableIRQ(EXTI4_IRQn); taskDISABLE_INTERRUPTS();
 
 /** This macro must always be used in conjunction with HAL_ENTER_CRITICAL_REGION
 	so that interrupts are enabled again.*/
-#define HAL_LEAVE_CRITICAL_REGION( ) taskENABLE_INTERRUPTS(); }
+#define HAL_LEAVE_CRITICAL_REGION( ) taskENABLE_INTERRUPTS(); NVIC_EnableIRQ(EXTI4_IRQn); }
 
 
 /*============================ TYPDEFS =======================================*/

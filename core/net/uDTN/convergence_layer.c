@@ -949,7 +949,7 @@ int convergence_layer_status(void * pointer, uint8_t outcome)
 //			etimer_set(&convergence_layer_backoff, 0.1 * CLOCK_SECOND);
 			// TODO do not block this function call
 			// only call the convergence_process 100ms later
-			vTaskDelay( pdMS_TO_TICKS(100) );
+// TODO			vTaskDelay( pdMS_TO_TICKS(100) );
 			xTaskNotify(convergence_layer_task, 0, eNoAction);
 
 			convergence_layer_backoff_pending = 1;
@@ -1325,12 +1325,16 @@ static void convergence_layer_process(void* p)
 	while(1) {
 //		PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL || ev == PROCESS_EVENT_CONTINUE || etimer_expired(&stale_timer) || ev == PROCESS_EVENT_TIMER);
 		const BaseType_t notification_received = xTaskNotifyWait( 0, 0, NULL, pdMS_TO_TICKS(1000) );
+		// TODO für convergence_layer_backoff besondere notification verwenden und dann mit vTaskDelay 100ms warten
+		// wenn andere notification dann möglicherweise direkt ausführen
 
-		if(!notification_received) {
+		// TODO timer nicht immer neu aufrufen sondern methoden immer anch genau 1000ms ausführen
+		// vielleicht eignenen prozess verwenden
+// TODO		if(!notification_received) {
 			check_blocked_neighbours();
 			check_blocked_tickets();
 //			etimer_restart(&stale_timer);
-		} else
+// TODO		} else
 
 			// TODO convergence_layer_backoff_pending not checkt if the convergence timer expired
 		/*if( ev == PROCESS_EVENT_POLL || ev == PROCESS_EVENT_CONTINUE || (convergence_layer_backoff_pending && etimer_expired(&convergence_layer_backoff)) )*/ {

@@ -69,10 +69,12 @@ extern uint8_t debugflowsize,debugflow[DEBUGFLOWSIZE];
 
 
 /*============================ INCLUDE =======================================*/
+#include <stdio.h>
 #include <stdlib.h>
 
 #include "stm32_ub_led.h"
 #include "stm32_ub_spi2.h"
+#include "delay.h"
 #include "hal.h"
 
 #include "at86rf230_registermap.h"
@@ -526,6 +528,10 @@ volatile char rf230interruptflag;
 /* Separate RF230 has a single radio interrupt and the source must be read from the IRQ_STATUS register */
 HAL_RF230_ISR
 {
+	UB_Led_On(LED_BLUE);
+
+	const bool enter = ( (IRQPIN.PORT->IDR & IRQPIN.PIN) ? true : false );
+
 	if(EXTI_GetITStatus(IRQPIN.LINE) != RESET) {
 		EXTI_ClearITPendingBit(IRQPIN.LINE);
 		
@@ -547,7 +553,16 @@ HAL_RF230_ISR
 		interrupt_source = HAL_SPI_TRANSFER(0);
 		
 		HAL_SPI_TRANSFER_CLOSE();
-		
+
+		const bool leave = ( (IRQPIN.PORT->IDR & IRQPIN.PIN) ? true : false );
+		if (!enter || leave) {
+			printf("HAL_RF230_ISR: ERROR\n");
+			for (;;) {}
+		}
+
+
+
+
 		/*Handle the incomming interrupt. Prioritized.*/
 		if ((interrupt_source & HAL_RX_START_MASK)) {
 			INTERRUPTDEBUG(10);
@@ -566,7 +581,9 @@ HAL_RF230_ISR
 			INTERRUPTDEBUG(11);
 			
 			const uint8_t state = hal_subregister_read(SR_TRX_STATUS);
-			if((state == BUSY_RX_AACK) || (state == RX_ON) || (state == BUSY_RX) || (state == RX_AACK_ON)){
+			if((state == BUSY_RX_AACK) || (state == RX_ON) || (state == BUSY_RX) || (state == RX_AACK_ON)) {
+
+
 				/* Received packet interrupt */
 				UB_Led_On(LED_ORANGE);
 
@@ -620,6 +637,8 @@ HAL_RF230_ISR
 	}
 	else
 		UB_Led_On(LED_RED);
+
+	UB_Led_Off(LED_BLUE);
 }
 #   endif /* defined(DOXYGEN) */
 
