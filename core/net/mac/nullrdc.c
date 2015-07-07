@@ -271,12 +271,12 @@ packet_input(void)
 #endif /* NULLRDC_802154_AUTOACK */
   if(framer_802154.parse() < 0) {
     PRINTF("nullrdc: failed to parse %u\n", packetbuf_datalen());
-#if NULLRDC_ADDRESS_FILTER
+//#if NULLRDC_ADDRESS_FILTER
   } else if(!linkaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_RECEIVER),
                                          &linkaddr_node_addr) &&
             !packetbuf_holds_broadcast()) {
     PRINTF("nullrdc: not for us\n");
-#endif /* NULLRDC_ADDRESS_FILTER */
+//#endif /* NULLRDC_ADDRESS_FILTER */
   } else {
     int duplicate = 0;
 

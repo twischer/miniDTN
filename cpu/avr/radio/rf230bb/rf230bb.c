@@ -55,7 +55,6 @@
 #include "net/packetbuf.h"
 #include "net/rime/rimestats.h"
 #include "net/netstack.h"
-#include "dtn_network.h"
 
 #define WITH_SEND_CCA 0
 
@@ -202,10 +201,6 @@ static unsigned long total_time_for_transmission, total_transmission_len;
 static int num_transmissions;
 #endif
 
-#if defined(__AVR_ATmega128RFA1__)
-volatile uint8_t rf230_wakewait, rf230_txendwait, rf230_ccawait;
-#endif
-
 uint8_t volatile rf230_pending;
 
 uint8_t ack_pending=0;
@@ -227,7 +222,6 @@ typedef enum{
     TIME_STATE_TRANSITION_PLL_ACTIVE = 1,   /**<  Transition time from PLL active state to another. */
 }radio_trx_timing_t;
 /*---------------------------------------------------------------------------*/
-//PROCESS(rf230_process, "RF230 driver");
 static TaskHandle_t rf230_task;
 static void rf230_process(void* p);
 /*---------------------------------------------------------------------------*/
@@ -1342,7 +1336,7 @@ static void rf230_process(void* p)
   while(1) {
 //    PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL);
 	  vTaskSuspend(NULL);
-    RF230PROCESSFLAG(42);
+	RF230PROCESSFLAG(42);
 
     packetbuf_clear();
 
@@ -1376,7 +1370,7 @@ static void rf230_process(void* p)
     if(len > 0) {
       packetbuf_set_datalen(len);
       RF230PROCESSFLAG(2);
-	  dtn_network_driver.input();
+	  nullrdc_driver.input();
     } else {
 #if RADIOSTATS
        RF230_receivefail++;
@@ -1718,47 +1712,3 @@ rf230_pending_packet(void)
 #endif
   return rf230_pending;
 }
-/*---------------------------------------------------------------------------*/
-#if RF230_CONF_SNEEZER && JACKDAW
-/* See A.2 in the datasheet for the sequence needed.
- * This version for RF230 only, hence Jackdaw.
- * A full reset seems not necessary and allows keeping the pan address, etc.
- * for an easy reset back to network mode.
- */
-void rf230_start_sneeze(void) {
-//write buffer with random data for uniform spectral noise
-
-//uint8_t txpower = hal_register_read(0x05);  //save auto_crc bit and power
-//  hal_set_rst_low();
-//  hal_set_slptr_low();
-//  delay_us(TIME_RESET);
-//  hal_set_rst_high();
-    hal_register_write(0x0E, 0x01);
-    hal_register_write(0x02, 0x03);
-    hal_register_write(0x03, 0x10);
- // hal_register_write(0x08, 0x20+26);    //channel 26
-    hal_subregister_write(SR_CCA_MODE,1); //leave channel unchanged
-
- // hal_register_write(0x05, 0x00);       //output power maximum
-    hal_subregister_write(SR_TX_AUTO_CRC_ON, 0);  //clear AUTO_CRC, leave output power unchanged
- 
-    hal_register_read(0x01);             //should be trx-off state=0x08  
-    hal_frame_write(buffer, 127);        //maximum length, random for spectral noise 
-
-    hal_register_write(0x36,0x0F);       //configure continuous TX
-    hal_register_write(0x3D,0x00);       //Modulated frame, other options are:
-//  hal_register_write(RG_TX_2,0x10);    //CW -2MHz
-//  hal_register_write(RG_TX_2,0x80);    //CW -500KHz
-//  hal_register_write(RG_TX_2,0xC0);    //CW +500KHz
-
-    DDRB  |= 1<<7;                       //Raven USB stick has PB7 connected to the RF230 TST pin.   
-    PORTB |= 1<<7;                       //Raise it to enable continuous TX Test Mode.
-
-    hal_register_write(0x02,0x09);       //Set TRX_STATE to PLL_ON
-    delay_us(TIME_TRX_OFF_TO_PLL_ACTIVE);
-    delay_us(TIME_PLL_LOCK);
-    delay_us(TIME_PLL_LOCK);
- // while (hal_register_read(0x0f)!=1) {continue;}  //wait for pll lock-hangs
-    hal_register_write(0x02,0x02);       //Set TRX_STATE to TX_START
-}
-#endif
