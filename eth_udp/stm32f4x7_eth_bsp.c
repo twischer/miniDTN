@@ -69,17 +69,17 @@ void ETH_BSP_Config(void)
   /* Configure the GPIO ports for ethernet pins */
   ETH_GPIO_Config();
   
-  /* Config NVIC for Ethernet */
-  ETH_NVIC_Config();
+//  /* Config NVIC for Ethernet */
+//  ETH_NVIC_Config();
 
-  /* Configure the Ethernet MAC/DMA */
-  ETH_MACDMA_Config();
+//  /* Configure the Ethernet MAC/DMA */
+//  ETH_MACDMA_Config();
 
-  if (EthInitStatus == 0) {
-	UB_Led_On(LED_RED);
-	printf("Ethernet Init failed");
-	while(1);
-  }
+//  if (EthInitStatus == 0) {
+//	UB_Led_On(LED_RED);
+//	printf("Ethernet Init failed");
+//	while(1);
+//  }
 }
 
 /**
@@ -203,10 +203,9 @@ void ETH_GPIO_Config(void)
   GPIO_PinAFConfig(GPIOA, GPIO_PinSource2, GPIO_AF_ETH);
   GPIO_PinAFConfig(GPIOA, GPIO_PinSource7, GPIO_AF_ETH);
 
-  /* Configure PB10,PB11,PB12 and PB13 */
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10 | GPIO_Pin_11 | GPIO_Pin_12 | GPIO_Pin_13;
+  /* Configure PB11,PB12 and PB13 */
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_11 | GPIO_Pin_12 | GPIO_Pin_13;
   GPIO_Init(GPIOB, &GPIO_InitStructure);
-  GPIO_PinAFConfig(GPIOB, GPIO_PinSource10, GPIO_AF_ETH);	
   GPIO_PinAFConfig(GPIOB, GPIO_PinSource11, GPIO_AF_ETH);
   GPIO_PinAFConfig(GPIOB, GPIO_PinSource12, GPIO_AF_ETH);
   GPIO_PinAFConfig(GPIOB, GPIO_PinSource13, GPIO_AF_ETH);
