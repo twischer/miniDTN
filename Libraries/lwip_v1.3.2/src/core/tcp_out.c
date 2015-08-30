@@ -494,6 +494,9 @@ tcp_send_empty_ack(struct tcp_pcb *pcb)
 #if CHECKSUM_GEN_TCP
   tcphdr->chksum = inet_chksum_pseudo(p, &(pcb->local_ip), &(pcb->remote_ip),
         IP_PROTO_TCP, p->tot_len);
+#else
+  /* do not generate a compiler warning */
+  (void)tcphdr;
 #endif
 #if LWIP_NETIF_HWADDRHINT
   ip_output_hinted(p, &(pcb->local_ip), &(pcb->remote_ip), pcb->ttl, pcb->tos,
@@ -956,6 +959,9 @@ tcp_keepalive(struct tcp_pcb *pcb)
 #if CHECKSUM_GEN_TCP
   tcphdr->chksum = inet_chksum_pseudo(p, &pcb->local_ip, &pcb->remote_ip,
                                       IP_PROTO_TCP, p->tot_len);
+#else
+  /* do not generate a compiler warning */
+  (void)tcphdr;
 #endif
   TCP_STATS_INC(tcp.xmit);
 
