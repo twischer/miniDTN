@@ -54,7 +54,7 @@ static void udpecho_thread(void *arg)
 
   conn = netconn_new(NETCONN_UDP);
   if (conn!= NULL) {
-    err = netconn_bind(conn, IP_ADDR_ANY, 7);
+	err = netconn_bind(conn, IP_ADDR_ANY, 1234);
     if (err == ERR_OK) {
       while (1) {
         buf = netconn_recv(conn);
@@ -62,9 +62,13 @@ static void udpecho_thread(void *arg)
         if (buf!= NULL) {
           addr = netbuf_fromaddr(buf);
           port = netbuf_fromport(buf);
-          netconn_connect(conn, addr, port);
+		  if (netconn_connect(conn, addr, port) != ERR_OK) {
+			  printf("netconn_connect failed for addr %08x port %u\n", (unsigned int)addr->addr, port);
+		  }
           buf->addr = NULL;
-          netconn_send(conn,buf);
+		  if (netconn_send(conn,buf) != ERR_OK) {
+			  printf("netconn_send failed for addr %08x port %u\n", (unsigned int)addr->addr, port);
+		  }
           netbuf_delete(buf);
         }
       }
@@ -72,7 +76,7 @@ static void udpecho_thread(void *arg)
       printf("can not bind netconn");
     }
   } else {
-    printf("can create new UDP netconn");
+	printf("can not create new UDP netconn");
   }
 }
 /*-----------------------------------------------------------------------------------*/
