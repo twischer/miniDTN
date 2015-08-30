@@ -84,7 +84,7 @@ void dtnping_process(void* p)
 	};
 	agent_send_event(&event);
 
-	printf("main: queue=%p app=%d\n",reg.event_queue, reg.app_id);
+	printf("main: queue=%p app=%u\n",reg.event_queue, (unsigned int)reg.app_id);
 	printf("ECHO ipn:%u.%u %u bytes of data.\n", DTN_PING_NODE, DTN_PING_ENDPOINT, DTN_PING_LENGTH);
 
 	while (1) {
@@ -146,6 +146,9 @@ void dtnping_process(void* p)
 
 		// Flag 0x08 is last_block Flag
 		bundle_add_block(bundlemem, BUNDLE_BLOCK_TYPE_PAYLOAD, BUNDLE_BLOCK_FLAG_NULL, payload_buffer, DTN_PING_LENGTH);
+
+
+		printf("Sending ping...\n");
 
 		// And submit the bundle to the agent
 		const event_container_t event = {

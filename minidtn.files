@@ -665,7 +665,6 @@ cpu/avr/radio/rf230/radio.c
 cpu/avr/radio/rf230/radio.h
 cpu/avr/radio/rf230bb/at86rf230_registermap.h
 cpu/avr/radio/rf230bb/at86rf233.h
-cpu/avr/radio/rf230bb/atmega128rfa1_registermap.h
 cpu/avr/radio/rf230bb/hal.h
 cpu/avr/radio/rf230bb/halbb.c
 cpu/avr/radio/rf230bb/rf230bb.c
@@ -1857,3 +1856,5 @@ platform/z1/contiki-z1-main.c
 platform/z1/contiki-z1-platform.c
 platform/z1/node-id.c
 platform/z1/platform-conf.h
+Libraries/delay.h
+Libraries/delay.c

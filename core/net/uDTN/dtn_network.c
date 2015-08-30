@@ -19,11 +19,13 @@
 
 #include "net/netstack.h"
 #include "net/packetbuf.h"
+#include "net/mac/framer-802154.h"
 #include "dev/leds.h"
 #include "lib/logging.h"
 
 #include "convergence_layer.h"
 #include "agent.h"
+#include "rf230bb.h"
 
 #include "dtn_network.h"
 
@@ -138,9 +140,8 @@ void dtn_network_send(linkaddr_t * destination, uint8_t length, void * reference
 	/* Make sure we always send ieee802.15.4 data frames*/
 	packetbuf_set_attr(PACKETBUF_ATTR_FRAME_TYPE, FRAME802154_DATAFRAME);
 
-	// TODO send directly to device driver
-//	/* Send it out via the MAC */
-//	NETSTACK_MAC.send(&dtn_network_sent, reference);
+	/* Send it out via the MAC */
+	nullrdc_driver.send(&dtn_network_sent, reference);
 
 //	leds_off(LEDS_YELLOW);
 }

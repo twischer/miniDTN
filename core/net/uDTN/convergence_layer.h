@@ -20,6 +20,7 @@
 #define CONVERGENCE_LAYER_H
 
 #include <stdbool.h>
+#include "FreeRTOS.h"
 
 #include "net/linkaddr.h"
 #include "lib/mmem.h"
@@ -31,8 +32,9 @@
 
 /**
  * How many queue slots remain free for internal use?
+ * 1/5 is the same as 20%, but is not using the float unit
  */
-#define CONVERGENCE_LAYER_QUEUE_FREE 			(0.2 * CONVERGENCE_LAYER_QUEUE)
+#define CONVERGENCE_LAYER_QUEUE_FREE 			(CONVERGENCE_LAYER_QUEUE / 5)
 
 /**
  * How often shall we retransmit bundles before we notify routing
@@ -57,14 +59,14 @@
 #define CONVERGENCE_LAYER_MULTIPART_TIMEOUT		10
 
 /**
- * How long shell we wait before retransmitting an app-layer ACK or NACK? [in seconds]
+ * How long shell we wait before retransmitting an app-layer ACK or NACK? [in milli seconds]
  */
-#define CONVERGENCE_LAYER_RETRANSMIT_TIMEOUT	0.5
+#define CONVERGENCE_LAYER_RETRANSMIT_TIMEOUT	500
 
 /**
  * How often shall we retransmit?
  */
-#define CONVERGENCE_LAYER_RETRANSMIT_TRIES		(CONVERGENCE_LAYER_TIMEOUT / CONVERGENCE_LAYER_RETRANSMIT_TIMEOUT)
+#define CONVERGENCE_LAYER_RETRANSMIT_TRIES		(CONVERGENCE_LAYER_TIMEOUT * 1000 / CONVERGENCE_LAYER_RETRANSMIT_TIMEOUT)
 
 /**
  * Specify the maximum bundle size that we guarantee to support
@@ -178,7 +180,7 @@ struct transmit_ticket_t {
 	linkaddr_t neighbour;
 	uint32_t bundle_number;
 	uint8_t sequence_number;
-	clock_time_t timestamp;
+	TickType_t timestamp;
 
 #if CONVERGENCE_LAYER_SEGMENTATION
 	int offset_sent;

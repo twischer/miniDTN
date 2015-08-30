@@ -49,7 +49,7 @@ void discovery_basic_stop_pending();
 struct discovery_basic_neighbour_list_entry {
 	struct discovery_basic_neighbour_list_entry *next;
 	linkaddr_t neighbour;
-	clock_time_t timestamp;
+	TickType_t timestamp;
 	uint8_t active;
 };
 

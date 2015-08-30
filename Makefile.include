@@ -13,10 +13,18 @@ FREERTOS:=$(ROOT_DIR)/FreeRTOS
 STARTUP:=$(ROOT_DIR)/hardware
 
 # TODO remove contiki lib, if everything was ported successfully
-MODULES+= hardware core/lib core/net core/net/uDTN
+MODULES+= hardware \
+	Libraries \
+	Libraries/ub_lib \
+	cpu/avr/radio/rf230bb \
+	core/lib \
+	core/net \
+	core/net/uDTN
 
 INC_DIRS+= $(MODULES) \
+	Libraries \
 	core \
+	core/net/mac \
 	cpu/arm/stm32f103 \
 	platform/inga
 
@@ -46,6 +54,7 @@ vpath %.c $(ROOT_DIR)/Libraries/STM32F4xx_StdPeriph_Driver/src \
 	  $(ROOT_DIR)/Libraries/syscall $(FREERTOS) \
 	  $(FREERTOS)/portable/MemMang $(FREERTOS)/portable/GCC/ARM_CM4F \
 	  $(ROOT_DIR)/Libraries/ub_lib \
+	  $(ROOT_DIR)/core/net/mac/ \
 	  $(SRC_DIRS)
 	  
 
@@ -80,9 +89,14 @@ SRC+=stm32f4xx_tim.c
 SRC+=stm32f4xx_usart.c
 SRC+=stm32f4xx_rng.c
 
-# Advanced source files
-SRC+=stm32_ub_led.c
 
+# needed contiki mac files
+SRC+=mac.c
+SRC+=mac-sequence.c
+SRC+=nullrdc.c
+SRC+=frame802154.c
+SRC+=framer.c
+SRC+=framer-802154.c
 
 # miniDTN files
 SRC+= $(foreach sdir,$(MODULES),$(wildcard $(sdir)/*.c))
@@ -113,7 +127,7 @@ CDEFS+=-DINGA_BOOTSCREEN_RADIO
 
 
 MCUFLAGS=-mcpu=cortex-m4 -mthumb -mfloat-abi=hard
-COMMONFLAGS=-O$(OPTLVL) $(DBG) -Wall -MMD
+COMMONFLAGS=-O$(OPTLVL) $(DBG) -Wall -MMD -std=gnu11
 CFLAGS+=$(COMMONFLAGS) $(MCUFLAGS) $(INCLUDE) $(CDEFS)
 LDLIBS=$(TOOLCHAIN_ROOT)/arm-none-eabi/lib/armv7e-m/fpu/libc_nano.a $(TOOLCHAIN_ROOT)/arm-none-eabi/lib/armv7e-m/fpu/libm.a
 LDFLAGS=$(COMMONFLAGS) -fno-exceptions -ffunction-sections -fdata-sections -nostartfiles -Wl,--gc-sections,-T$(LINKER_SCRIPT)
@@ -163,7 +177,7 @@ clean:
 	@rm -f $(BIN_DIR)/$(TARGET).bin
 
 flash: all
-	@st-flash write $(BIN_DIR)/$(TARGET).bin 0x8000000
+	@st-flash --reset write $(BIN_DIR)/$(TARGET).bin 0x8000000
 
 
 run: flash
@@ -172,7 +186,7 @@ run: flash
 
 
 startgdb:
-	st-util &
+	st-util -m &
 	sleep 1
 
 stopgdb:

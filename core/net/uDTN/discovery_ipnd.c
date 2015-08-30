@@ -375,7 +375,7 @@ void discovery_ipnd_refresh_neighbour(linkaddr_t * neighbour)
 			entry != NULL;
 			entry = list_item_next(entry)) {
 		if( linkaddr_cmp(&entry->neighbour, neighbour) ) {
-			entry->timestamp_last = xTaskGetTickCount() / portTICK_PERIOD_MS / 1000;
+			entry->timestamp_last = clock_seconds();
 			return;
 		}
 	}
@@ -447,8 +447,8 @@ void discovery_ipnd_save_neighbour(linkaddr_t * neighbour)
 	memset(entry, 0, sizeof(struct discovery_ipnd_neighbour_list_entry));
 
 	linkaddr_copy(&entry->neighbour, neighbour);
-	entry->timestamp_last = xTaskGetTickCount() / portTICK_PERIOD_MS / 1000;
-	entry->timestamp_discovered = xTaskGetTickCount() / portTICK_PERIOD_MS / 1000;
+	entry->timestamp_last = clock_seconds();
+	entry->timestamp_discovered = clock_seconds();
 
 	// Notify the statistics module
 	statistics_contacts_up(neighbour);
@@ -456,7 +456,6 @@ void discovery_ipnd_save_neighbour(linkaddr_t * neighbour)
 	list_add(neighbour_list, entry);
 
 	// We have found a new neighbour, now go and notify the agent
-//	process_post(&agent_process, dtn_beacon_event, &entry->neighbour);
 	const event_container_t event = {
 		.event = dtn_beacon_event,
 		.linkaddr = &entry->neighbour
@@ -522,8 +521,8 @@ static void discovery_ipnd_remove_stale_neighbours(const TimerHandle_t timer)
 		for(entry = list_head(neighbour_list);
 				entry != NULL;
 				entry = list_item_next(entry)) {
-			if( (xTaskGetTickCount() / portTICK_PERIOD_MS / 1000 - entry->timestamp_last) > DISCOVERY_NEIGHBOUR_TIMEOUT ) {
-				LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "Neighbour %u.%u timed out: %lu vs. %lu = %lu", entry->neighbour.u8[0], entry->neighbour.u8[1], xTaskGetTickCount(), entry->timestamp_last, xTaskGetTickCount() - entry->timestamp_last);
+			if( (clock_seconds() - entry->timestamp_last) > DISCOVERY_NEIGHBOUR_TIMEOUT ) {
+				LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "Neighbour %u.%u timed out: %lu vs. %lu = %lu", entry->neighbour.u8[0], entry->neighbour.u8[1], clock_seconds(), entry->timestamp_last, clock_seconds() - entry->timestamp_last);
 				discovery_ipnd_delete_neighbour(&entry->neighbour);
 				changed = 1;
 				break;

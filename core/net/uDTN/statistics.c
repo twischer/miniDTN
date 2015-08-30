@@ -150,7 +150,7 @@ void statistics_reset(void)
 	memset(statistics_array, 0, sizeof(struct statistics_element_t) * STATISTICS_ELEMENTS);
 
 	// Record the current timestamp
-	statistics_timestamp = xTaskGetTickCount() / portTICK_PERIOD_MS / 1000;
+	statistics_timestamp = clock_seconds();
 }
 
 /**

@@ -12,6 +12,8 @@
 #ifndef DTN_PROCESS_H
 #define DTN_PROCESS_H
 
+#define DTN_QUEUE_LENGTH	10
+
 #include <stdint.h>
 #include <stdbool.h>
 
