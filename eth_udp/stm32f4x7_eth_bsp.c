@@ -44,6 +44,7 @@
 #include "stm32f4x7_eth.h"
 #include "stm32f4x7_eth_bsp.h"
 #include "stm32_ub_led.h"
+#include "FreeRTOSConfig.h"
 #include "main.h"
 
 /* Private typedef -----------------------------------------------------------*/
@@ -69,17 +70,17 @@ void ETH_BSP_Config(void)
   /* Configure the GPIO ports for ethernet pins */
   ETH_GPIO_Config();
   
-//  /* Config NVIC for Ethernet */
-//  ETH_NVIC_Config();
+  /* Config NVIC for Ethernet */
+  ETH_NVIC_Config();
 
-//  /* Configure the Ethernet MAC/DMA */
-//  ETH_MACDMA_Config();
+  /* Configure the Ethernet MAC/DMA */
+  ETH_MACDMA_Config();
 
-//  if (EthInitStatus == 0) {
-//	UB_Led_On(LED_RED);
-//	printf("Ethernet Init failed");
-//	while(1);
-//  }
+  if (EthInitStatus == 0) {
+	UB_Led_On(LED_RED);
+	printf("Ethernet Init failed");
+	while(1);
+  }
 }
 
 /**
@@ -239,13 +240,15 @@ void ETH_GPIO_Config(void)
 void ETH_NVIC_Config(void)
 {
   NVIC_InitTypeDef   NVIC_InitStructure;
-
-  /* 2 bit for pre-emption priority, 2 bits for subpriority */
-  NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2); 
   
   /* Enable the Ethernet global Interrupt */
   NVIC_InitStructure.NVIC_IRQChannel = ETH_IRQn;
-  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 2;
+  /*
+   * use lowest interrupt priority which can call FreeRTOS API functions
+   * NVIC_PriorityGroup_4 is used.
+   * So 4 bit can be used for NVIC_IRQChannelPreemptionPriority.
+   */
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY;
   NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStructure);    

@@ -62,7 +62,6 @@ extern struct netif xnetif;
 __IO uint32_t test;
  
 /* Private function prototypes -----------------------------------------------*/
-void LCD_LED_Init(void);
 extern void tcpecho_init(void);
 extern void udpecho_init(void);
 
@@ -83,7 +82,7 @@ void ToggleLed4(void * pvParameters)
       for( ;; ) {
         /* toggle LED4 each 250ms */
 		UB_Led_Toggle(LED_BLUE);
-        vTaskDelay(250);
+		vTaskDelay(250);
       }
     }
   }

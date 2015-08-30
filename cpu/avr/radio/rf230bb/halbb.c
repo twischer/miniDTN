@@ -187,10 +187,14 @@ void hal_init_irq(const EXT_INT_t* const int_pin)
   EXTI_InitStructure.EXTI_LineCmd = ENABLE;
   EXTI_Init(&EXTI_InitStructure);
 
-  // TODO prio richtig setzten. vielleicht sub prio auf 0 und vollen 4 bit für pre prio nutzten
   /* Set priority for EXT_INT 4 to NVIC */
   NVIC_InitTypeDef NVIC_InitStructure;
   NVIC_InitStructure.NVIC_IRQChannel = int_pin->IRQn;
+  /*
+   * use lowest interrupt priority which can call FreeRTOS API functions
+   * NVIC_PriorityGroup_4 is used.
+   * So 4 bit can be used for NVIC_IRQChannelPreemptionPriority.
+   */
   NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY;
   NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x0;
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
