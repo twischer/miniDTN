@@ -38,7 +38,7 @@
         <predecessor id="1" predecessor-id="1" type="FS"/>
       </predecessors>
       <task id="6" name="&#xB5;DTN portieren" note="" work="288000" start="20150701T170000Z" end="20150715T170000Z" work-start="20150702T080000Z" percent-complete="90" priority="0" type="normal" scheduling="fixed-work"/>
-      <task id="7" name="Thesis: &#xC4;nderungen der Contiki-Prozesse zu freeRTOS-Tasks" note="" work="144000" start="20150715T170000Z" end="20150722T170000Z" work-start="20150716T080000Z" percent-complete="80" priority="0" type="normal" scheduling="fixed-work">
+      <task id="7" name="Thesis: &#xC4;nderungen der Contiki-Prozesse zu freeRTOS-Tasks" note="" work="144000" start="20150715T170000Z" end="20150722T170000Z" work-start="20150716T080000Z" percent-complete="95" priority="0" type="normal" scheduling="fixed-work">
         <predecessors>
           <predecessor id="1" predecessor-id="6" type="FS"/>
         </predecessors>
@@ -58,12 +58,12 @@
           <predecessor id="1" predecessor-id="9" type="FS"/>
         </predecessors>
       </task>
-      <task id="11" name="Treiber f&#xFC;r AT86RF231-Transceiver" note="" work="288000" start="20150728T170000Z" end="20150811T170000Z" work-start="20150729T080000Z" percent-complete="90" priority="0" type="normal" scheduling="fixed-work">
+      <task id="11" name="Treiber f&#xFC;r AT86RF231-Transceiver" note="" work="288000" start="20150728T170000Z" end="20150811T170000Z" work-start="20150729T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work">
         <predecessors>
           <predecessor id="1" predecessor-id="10" type="FS"/>
         </predecessors>
       </task>
-      <task id="12" name="Thesis: Treiber HAL beschreiben (SPI Performanz)" note="" work="144000" start="20150811T170000Z" end="20150818T170000Z" work-start="20150812T080000Z" percent-complete="70" priority="0" type="normal" scheduling="fixed-work">
+      <task id="12" name="Thesis: Treiber HAL beschreiben (SPI Performanz)" note="" work="144000" start="20150811T170000Z" end="20150818T170000Z" work-start="20150812T080000Z" percent-complete="95" priority="0" type="normal" scheduling="fixed-work">
         <predecessors>
           <predecessor id="1" predecessor-id="11" type="FS"/>
         </predecessors>
