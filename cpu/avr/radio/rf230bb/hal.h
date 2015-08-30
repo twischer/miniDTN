@@ -72,13 +72,13 @@
  * \{
  */
 ///* 1284 inga */
-#   define SSPORT     GPIOB
-#   define SSPIN      GPIO_Pin_14
-#   define RSTPORT    GPIOB
-#   define RSTPIN     GPIO_Pin_0
-#   define SLPTRPORT  GPIOB
+#define SSPORT		GPIOB
+#define SSPIN		GPIO_Pin_14
+#define RSTPORT		GPIOB
+#define RSTPIN		GPIO_Pin_0
+#define SLPTRPORT	GPIOB
 // TODO check if if is always used as mask and not as number
-#   define SLPTRPIN   GPIO_Pin_1
+#define SLPTRPIN	GPIO_Pin_1
 
 /** \} */
 
@@ -91,21 +91,21 @@
  * \{
  */
 
-#define hal_set_slptr_high( ) (SLPTRPORT->BSRRL = SLPTRPIN)      /**< This macro pulls the SLP_TR pin high. */
-#define hal_set_slptr_low( )  (SLPTRPORT->BSRRH = SLPTRPIN)     /**< This macro pulls the SLP_TR pin low. */
+#define hal_set_slptr_high()	(SLPTRPORT->BSRRL = SLPTRPIN)      /**< This macro pulls the SLP_TR pin high. */
+#define hal_set_slptr_low()		(SLPTRPORT->BSRRH = SLPTRPIN)     /**< This macro pulls the SLP_TR pin low. */
 // TODO check if it is realy connected to the output, if it is configured as input
-#define hal_get_slptr( )      ( (SLPTRPORT->IDR & SLPTRPIN) ? true : false )   /**< Read current state of the SLP_TR pin (High/Low). */
+#define hal_get_slptr()			( (SLPTRPORT->IDR & SLPTRPIN) ? true : false )   /**< Read current state of the SLP_TR pin (High/Low). */
 
-#define hal_set_rst_high( )   (RSTPORT->BSRRL = RSTPIN)  /**< This macro pulls the RST pin high. */
-#define hal_set_rst_low( )    (RSTPORT->BSRRH = RSTPIN) /**< This macro pulls the RST pin low. */
-#define hal_get_rst( )        ( (RSTPORT->IDR & RSTPIN) ? true : false )  /**< Read current state of the RST pin (High/Low). */
+#define hal_set_rst_high()		(RSTPORT->BSRRL = RSTPIN)  /**< This macro pulls the RST pin high. */
+#define hal_set_rst_low()		(RSTPORT->BSRRH = RSTPIN) /**< This macro pulls the RST pin low. */
+#define hal_get_rst()			( (RSTPORT->IDR & RSTPIN) ? true : false )  /**< Read current state of the RST pin (High/Low). */
 
 /** \} */
 
 
-#define HAL_SS_HIGH( ) (SSPORT->BSRRL = SSPIN) /**< MACRO for pulling SS high. */
-#define HAL_SS_LOW( )  (SSPORT->BSRRH = SSPIN); delay_us(1); /**< MACRO for pulling SS low. */
-#define hal_get_ss( )      ( (SSPORT->IDR & SSPIN) ? true : false )
+#define HAL_SS_HIGH()			(SSPORT->BSRRL = SSPIN) /**< MACRO for pulling SS high. */
+#define HAL_SS_LOW()			(SSPORT->BSRRH = SSPIN); delay_us(1); /**< MACRO for pulling SS low. */
+#define hal_get_ss()			( (SSPORT->IDR & SSPIN) ? true : false )
 
 // TODO check where it will be used and whether it works right
 /** This macro will protect the following code from interrupts.*/

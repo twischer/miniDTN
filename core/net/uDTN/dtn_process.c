@@ -29,7 +29,7 @@ bool dtn_process_create_other_stack(const TaskFunction_t pvTaskCode, const char*
 		return false;
 	}
 
-	const QueueHandle_t event_queue = xQueueCreate( 10, sizeof(event_container_t) );
+	const QueueHandle_t event_queue = xQueueCreate( DTN_QUEUE_LENGTH, sizeof(event_container_t) );
 	if (event_queue == NULL) {
 		return false;
 	}

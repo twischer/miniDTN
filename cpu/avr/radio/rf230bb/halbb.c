@@ -90,10 +90,10 @@ typedef struct {
 	const EXTITrigger_TypeDef TRG;	/* Interrupt trigger edge */
 	const uint32_t LINE;
 	const IRQn_Type IRQn;
-} EXT_INT0_t;
+} EXT_INT_t;
 
 
-const EXT_INT0_t IRQPIN = {
+const EXT_INT_t IRQPIN = {
 	.PORT = GPIOB,
 	.PIN = GPIO_Pin_4,
 	.CLK = RCC_AHB1Periph_GPIOB,
@@ -159,40 +159,40 @@ hal_init_output(GPIO_TypeDef* const GPIO_Port, const uint32_t GPIO_Pin)
 }
 
 //--------------------------------------------------------------
-// Init vom external Interrupt 0
+// init of interrupt input
 //--------------------------------------------------------------
-void hal_init_irq(const EXT_INT0_t* const int_pin)
+void hal_init_irq(const EXT_INT_t* const int_pin)
 {
-  GPIO_InitTypeDef   GPIO_InitStructure;
-  EXTI_InitTypeDef   EXTI_InitStructure;
-  NVIC_InitTypeDef   NVIC_InitStructure;
-
-  // Clock enable (GPIO)
+  /* Clock enable (GPIO) */
   RCC_AHB1PeriphClockCmd(int_pin->CLK, ENABLE);
 
-  // Config als Digital-Eingang
+  /* Configure GPIO as input */
+  GPIO_InitTypeDef GPIO_InitStructure;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
   GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
   GPIO_InitStructure.GPIO_Pin = int_pin->PIN;
   GPIO_Init(int_pin->PORT, &GPIO_InitStructure);
 
-  // Clock enable (SYSCONFIG)
+  /* Clock enable (SYSCONFIG) */
   RCC_APB2PeriphClockCmd(RCC_APB2Periph_SYSCFG, ENABLE);
 
-  // EXT_INT0 mit Pin verbinden
+  /* Connect given EXT_INT with pin */
   SYSCFG_EXTILineConfig(int_pin->SRC_PORT, int_pin->SRC_PIN);
 
-  // EXT_INT0 config
+  /* enable EXT_INT and configure the interrupt mode */
+  EXTI_InitTypeDef EXTI_InitStructure;
   EXTI_InitStructure.EXTI_Line = int_pin->LINE;
   EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
   EXTI_InitStructure.EXTI_Trigger = int_pin->TRG;
   EXTI_InitStructure.EXTI_LineCmd = ENABLE;
   EXTI_Init(&EXTI_InitStructure);
 
-  // NVIC config
+  // TODO prio richtig setzten. vielleicht sub prio auf 0 und vollen 4 bit für pre prio nutzten
+  /* Set priority for EXT_INT 4 to NVIC */
+  NVIC_InitTypeDef NVIC_InitStructure;
   NVIC_InitStructure.NVIC_IRQChannel = int_pin->IRQn;
   NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY;
-  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x1;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x0;
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStructure);
 }

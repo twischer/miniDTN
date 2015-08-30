@@ -5,7 +5,7 @@ void delay_init();
 
 static inline void delay_us(const uint16_t us)
 {
-	TIM_SetCounter(TIM2, 0);
+	TIM2->CNT = 0;
 
-	while (TIM_GetCounter(TIM2) < us) { }
+	while (TIM2->CNT < us) { }
 }
