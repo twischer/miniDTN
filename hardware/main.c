@@ -17,6 +17,7 @@ static unsigned long current_seconds = 0;
 
 void init_USART(void);
 
+void udp_init(void);
 bool init();
 
 
@@ -69,6 +70,8 @@ int main(void) {
 //  counter++;
 
 //  }
+
+  udp_init();
 
   const bool successful = init();
   if (successful) {

@@ -102,6 +102,7 @@ dev/cc2520
 dev/ds2411
 dev/enc28j60
 dev/sht11
+eth_udp
 examples/hello-world
 examples/uDTN/dtnping
 examples/uDTN/dtntp
@@ -115,8 +116,14 @@ examples/uDTN/throughput
 FreeRTOS/include
 FreeRTOS/portable/GCC/ARM_CM4F
 hardware
+Libraries
 Libraries/CMSIS/Device/ST/STM32F4xx/Include
 Libraries/CMSIS/Include
+Libraries/lwip_v1.3.2/port/STM32F4x7
+Libraries/lwip_v1.3.2/port/STM32F4x7/FreeRTOS
+Libraries/lwip_v1.3.2/src/include/ipv4
+Libraries/lwip_v1.3.2/src/include
+Libraries/STM32F4x7_ETH_Driver/inc
 Libraries/STM32F4xx_StdPeriph_Driver/inc
 Libraries/ub_lib
 platform/apple2enh
@@ -181,4 +188,3 @@ platform/xmega-a3bu-xplained/apps/settings_set
 platform/xmega-a3bu-xplained/dev
 platform/z1
 platform/z1/dev
-Libraries

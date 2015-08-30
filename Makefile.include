@@ -16,13 +16,24 @@ STARTUP:=$(ROOT_DIR)/hardware
 MODULES+= hardware \
 	Libraries \
 	Libraries/ub_lib \
+	Libraries/STM32F4x7_ETH_Driver/src \
+	Libraries/lwip_v1.3.2/src/api \
+	Libraries/lwip_v1.3.2/src/core \
+	Libraries/lwip_v1.3.2/src/core/ipv4 \
+	Libraries/lwip_v1.3.2/src/netif \
+	Libraries/lwip_v1.3.2/port/STM32F4x7/FreeRTOS \
 	cpu/avr/radio/rf230bb \
 	core/lib \
 	core/net \
-	core/net/uDTN
+	core/net/uDTN \
+	eth_udp
 
 INC_DIRS+= $(MODULES) \
 	Libraries \
+	Libraries/STM32F4x7_ETH_Driver/inc \
+	Libraries/lwip_v1.3.2/src/include \
+	Libraries/lwip_v1.3.2/src/include/ipv4 \
+	Libraries/lwip_v1.3.2/port/STM32F4x7 \
 	core \
 	core/net/mac \
 	cpu/arm/stm32f103 \
