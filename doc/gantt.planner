@@ -21,13 +21,13 @@
   </calendars>
   <tasks>
     <task id="1" name="Voruntersuchungen" note="" work="316800" start="20150617T000000Z" end="20150701T170000Z" work-start="20150617T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
-      <task id="2" name="Thesis: Einleitung" note="" work="28800" start="20150617T000000Z" end="20150617T170000Z" work-start="20150617T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
-      <task id="3" name="Thesis: Betriebssysteme f&#xFC;r &#xB5;C" note="" work="144000" start="20150617T170000Z" end="20150624T170000Z" work-start="20150618T080000Z" percent-complete="20" priority="0" type="normal" scheduling="fixed-work">
+      <task id="2" name="Thesis: Einleitung" note="" work="28800" start="20150617T000000Z" end="20150617T170000Z" work-start="20150617T080000Z" percent-complete="10" priority="0" type="normal" scheduling="fixed-work"/>
+      <task id="3" name="Thesis: Betriebssysteme f&#xFC;r &#xB5;C" note="" work="144000" start="20150617T170000Z" end="20150624T170000Z" work-start="20150618T080000Z" percent-complete="90" priority="0" type="normal" scheduling="fixed-work">
         <predecessors>
           <predecessor id="1" predecessor-id="2" type="FS"/>
         </predecessors>
       </task>
-      <task id="4" name="Thesis: Existierende DTN-Implementierungen" note="" work="144000" start="20150624T170000Z" end="20150701T170000Z" work-start="20150625T080000Z" percent-complete="20" priority="0" type="normal" scheduling="fixed-work">
+      <task id="4" name="Thesis: Existierende DTN-Implementierungen" note="" work="144000" start="20150624T170000Z" end="20150701T170000Z" work-start="20150625T080000Z" percent-complete="90" priority="0" type="normal" scheduling="fixed-work">
         <predecessors>
           <predecessor id="1" predecessor-id="3" type="FS"/>
         </predecessors>
@@ -89,12 +89,12 @@
           <predecessor id="1" predecessor-id="16" type="FS"/>
         </predecessors>
       </task>
-      <task id="18" name="Beispielprojekt f&#xFC;r STM32F4 mit Ethernet analysieren" note="" work="115200" start="20150831T170000Z" end="20150904T170000Z" work-start="20150901T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
+      <task id="18" name="Beispielprojekt f&#xFC;r STM32F4 mit Ethernet analysieren" note="" work="115200" start="20150831T170000Z" end="20150904T170000Z" work-start="20150901T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work">
         <predecessors>
           <predecessor id="1" predecessor-id="17" type="FS"/>
         </predecessors>
       </task>
-      <task id="19" name="LwIP und Ethernet-Treiber in miniDTN integrieren" note="" work="144000" start="20150904T170000Z" end="20150911T170000Z" work-start="20150907T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
+      <task id="19" name="LwIP und Ethernet-Treiber in miniDTN integrieren" note="" work="144000" start="20150904T170000Z" end="20150911T170000Z" work-start="20150907T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work">
         <predecessors>
           <predecessor id="1" predecessor-id="18" type="FS"/>
         </predecessors>
