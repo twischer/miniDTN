@@ -41,6 +41,7 @@
 #include "gpio.h"
 
 /* USER CODE BEGIN Includes */
+#include "led.h"
 
 /* USER CODE END Includes */
 
@@ -89,6 +90,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
   printf("UART init done.\n");
+  LED_On(LED_GREEN);
 
   /* USER CODE END 2 */
 
@@ -102,6 +104,8 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  LED_On(LED_RED);
+
   while (1)
   {
   /* USER CODE END WHILE */

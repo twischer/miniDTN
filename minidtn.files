@@ -1718,8 +1718,6 @@ Inc/spi.h
 Inc/stm32f4xx_hal_conf.h
 Inc/stm32f4xx_it.h
 Inc/usart.h
-Libraries/ub_lib/stm32_ub_led.c
-Libraries/ub_lib/stm32_ub_led.h
 Libraries/delay.h
 Middlewares/Third_Party/FatFs/src/drivers/sd_diskio.c
 Middlewares/Third_Party/FatFs/src/drivers/sd_diskio.h
