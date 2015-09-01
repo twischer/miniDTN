@@ -86,6 +86,8 @@ int main(void)
 
   /* USER CODE BEGIN 2 */
 
+  printf("UART init done.\n");
+
   /* USER CODE END 2 */
 
   /* Call init function for freertos objects (in freertos.c) */

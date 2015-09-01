@@ -34,14 +34,15 @@
  *                   newlib version 1.17.0
  ****************************************************************************/
 
+
+#include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include "stdio.h"
-#include "stm32f4xx_usart.h"
+#include "usart.h"
 
 /***************************************************************************/
 
@@ -68,15 +69,11 @@ int _lseek(int file, int ptr, int dir) {
 /***************************************************************************/
 
 int _write(int file, char * ptr, int len) {
-  int index;
   if (!ptr) {
     return 0;
   }
-  for (index = 0; index < len; index++) {
-	while (!(USART6->SR & 0x00000040));
-	USART_SendData(USART6, ptr[index]);
-  }
-  return len;
+
+  return USART6_write((uint8_t*)ptr, (uint16_t)len);
 }
 
 /***************************************************************************/

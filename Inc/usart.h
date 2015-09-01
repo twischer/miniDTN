@@ -55,6 +55,19 @@ void MX_USART6_UART_Init(void);
 
 /* USER CODE BEGIN Prototypes */
 
+static inline uint16_t USART6_write(uint8_t* const ptr, const uint16_t len)
+{
+	HAL_StatusTypeDef ret = HAL_ERROR;
+	do {
+		ret = HAL_UART_Transmit(&huart6, ptr, len, HAL_MAX_DELAY);
+		if (ret == HAL_OK) {
+			return len;
+		}
+	} while (ret == HAL_BUSY);
+
+	return 0;
+}
+
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus
