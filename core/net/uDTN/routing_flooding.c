@@ -419,7 +419,7 @@ void routing_flooding_send_to_known_neighbours(void)
 			/* Is the bundle for local? */
 			h = routing_flooding_send_to_local(entry);
 
-			/* We can only deliver only bundle at a time to local processes to speed up the whole thing */
+			/* We can only deliver only one bundle at a time to local processes to speed up the whole thing */
 			if( h == FLOOD_ROUTE_RETURN_OK ) {
 				try_local = 0;
 			}
@@ -829,8 +829,6 @@ void routing_flooding_bundle_delivered_locally(struct mmem * bundlemem) {
  */
 void routing_process(void* p)
 {
-//	PROCESS_BEGIN();
-
 	LOG(LOGD_DTN, LOG_ROUTE, LOGL_INF, "FLOOD ROUTE process in running");
 
 	// Initialize memory used to store blacklisted neighbours
@@ -842,13 +840,10 @@ void routing_process(void* p)
 	list_init(routing_list);
 
 	while(1) {
-//		PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL);
 		vTaskSuspend(NULL);
 
 		routing_flooding_send_to_known_neighbours();
 	}
-
-//	PROCESS_END();
 }
 
 const struct routing_driver routing_flooding ={
