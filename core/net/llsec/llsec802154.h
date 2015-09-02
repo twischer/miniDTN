@@ -54,7 +54,6 @@
 #define LLSEC802154_H_
 
 #include "net/mac/frame802154.h"
-#include "net/ip/uip.h"
 
 #ifdef LLSEC802154_CONF_SECURITY_LEVEL
 #define LLSEC802154_SECURITY_LEVEL     LLSEC802154_CONF_SECURITY_LEVEL

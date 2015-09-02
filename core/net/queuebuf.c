@@ -48,6 +48,8 @@
 #endif
 
 #include <string.h> /* for memcpy() */
+#include "net/queuebuf.h"
+#include "lib/memb.h"
 
 #ifdef QUEUEBUF_CONF_REF_NUM
 #define QUEUEBUF_REF_NUM QUEUEBUF_CONF_REF_NUM
