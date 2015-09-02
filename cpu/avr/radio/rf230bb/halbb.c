@@ -72,43 +72,11 @@ extern uint8_t debugflowsize,debugflow[DEBUGFLOWSIZE];
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "stm32_ub_led.h"
-#include "stm32_ub_spi2.h"
+#include "led.h"
 #include "delay.h"
 #include "hal.h"
 
 #include "at86rf230_registermap.h"
-
-
-
-typedef struct {
-	GPIO_TypeDef* const PORT;
-	const uint16_t PIN;
-	const uint32_t CLK;				/* Clock */
-	const uint8_t SRC_PORT;			/* Interrupt source port */
-	const uint8_t SRC_PIN;			/* Interrupt source pin */
-	const EXTITrigger_TypeDef TRG;	/* Interrupt trigger edge */
-	const uint32_t LINE;
-	const IRQn_Type IRQn;
-} EXT_INT_t;
-
-
-const EXT_INT_t IRQPIN = {
-	.PORT = GPIOB,
-	.PIN = GPIO_Pin_4,
-	.CLK = RCC_AHB1Periph_GPIOB,
-	.SRC_PORT = EXTI_PortSourceGPIOB,
-	.SRC_PIN = EXTI_PinSource4,
-	.TRG = EXTI_Trigger_Rising,
-	.LINE = EXTI_Line4,
-	.IRQn = EXTI4_IRQn,
-};
-/*
- * this have to be changed, too,
- * if the input pin number was changed
- */
-#define HAL_RF230_ISR void EXTI4_IRQHandler()
-
 
 
 /*============================ VARIABLES =====================================*/
@@ -125,14 +93,14 @@ static volatile bool rx_buffer_overflow = false;
 #define HAL_SPI_TRANSFER_OPEN() { uint8_t spiTemp; \
   HAL_ENTER_CRITICAL_REGION();	  \
   HAL_SS_LOW(); /* Start the SPI transaction by pulling the Slave Select low. */
-#define HAL_SPI_TRANSFER_WRITE(to_write) (spiTemp = UB_SPI2_SendByte(to_write))
+#define HAL_SPI_TRANSFER_WRITE(to_write) (spiTemp = SPI2_SendReceiveByte(to_write))
 #define HAL_SPI_TRANSFER_WAIT()  ({0;})
 #define HAL_SPI_TRANSFER_READ() (spiTemp)
 #define HAL_SPI_TRANSFER_CLOSE() \
     HAL_SS_HIGH(); /* End the transaction by pulling the Slave Select High. */ \
     HAL_LEAVE_CRITICAL_REGION(); \
     }
-#define HAL_SPI_TRANSFER(to_write) (spiTemp = UB_SPI2_SendByte(to_write))
+#define HAL_SPI_TRANSFER(to_write) (spiTemp = SPI2_SendReceiveByte(to_write))
 
 bool
 hal_rx_buffer_overflow()
@@ -143,60 +111,6 @@ hal_rx_buffer_overflow()
 	return last;
 }
 
- 
-void
-hal_init_output(GPIO_TypeDef* const GPIO_Port, const uint32_t GPIO_Pin)
-{
-	GPIO_InitTypeDef  GPIO_InitStructure;
-
-	// Config als Digital-Ausgang
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
-	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(GPIO_Port, &GPIO_InitStructure);
-}
-
-//--------------------------------------------------------------
-// init of interrupt input
-//--------------------------------------------------------------
-void hal_init_irq(const EXT_INT_t* const int_pin)
-{
-  /* Clock enable (GPIO) */
-  RCC_AHB1PeriphClockCmd(int_pin->CLK, ENABLE);
-
-  /* Configure GPIO as input */
-  GPIO_InitTypeDef GPIO_InitStructure;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
-  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
-  GPIO_InitStructure.GPIO_Pin = int_pin->PIN;
-  GPIO_Init(int_pin->PORT, &GPIO_InitStructure);
-
-  /* Clock enable (SYSCONFIG) */
-  RCC_APB2PeriphClockCmd(RCC_APB2Periph_SYSCFG, ENABLE);
-
-  /* Connect given EXT_INT with pin */
-  SYSCFG_EXTILineConfig(int_pin->SRC_PORT, int_pin->SRC_PIN);
-
-  /* enable EXT_INT and configure the interrupt mode */
-  EXTI_InitTypeDef EXTI_InitStructure;
-  EXTI_InitStructure.EXTI_Line = int_pin->LINE;
-  EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
-  EXTI_InitStructure.EXTI_Trigger = int_pin->TRG;
-  EXTI_InitStructure.EXTI_LineCmd = ENABLE;
-  EXTI_Init(&EXTI_InitStructure);
-
-  // TODO prio richtig setzten. vielleicht sub prio auf 0 und vollen 4 bit für pre prio nutzten
-  /* Set priority for EXT_INT 4 to NVIC */
-  NVIC_InitTypeDef NVIC_InitStructure;
-  NVIC_InitStructure.NVIC_IRQChannel = int_pin->IRQn;
-  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY;
-  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x0;
-  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-  NVIC_Init(&NVIC_InitStructure);
-}
-
 
 
 /** \brief  This function initializes the Hardware Abstraction Layer.
@@ -204,28 +118,14 @@ void hal_init_irq(const EXT_INT_t* const int_pin)
 void
 hal_init(void)
 {
-	/* Clock Enable */
-	// TODO has to be changed, if the port configuration changes
-	// TODO use only one port and enable one port clock to minimize energie consumption
-	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB, ENABLE);
-
-    /*IO Specific Initialization - sleep and reset pins. */
-    /* Set pins low before they are initialized as output? Does not seem to matter */
-	hal_init_output(SLPTRPORT, SLPTRPIN); /* Enable SLP_TR as output. */
-	hal_init_output(RSTPORT, RSTPIN);    /* Enable RST as output. */
+	/*
+	 * The full initalisation will be done
+	 * by the STM32-CubeMX generated files.
+	 * See directory "Src" for detailed information.
+	 */
 
 	/* To avoid a SPI glitch, the port register shall be set before the port will be intitialized */
 	HAL_SS_HIGH();
-
-    /*SPI Specific Initialization.*/
-    /* Set SS, CLK and MOSI as output. */
-	hal_init_output(SSPORT, SSPIN);    /* Enable chip select as output. */
-
-	// TODO process return value, if error
-	UB_SPI2_Init(SPI_MODE_0);
-
-	/* Enable interrupts from the radio transceiver. */
-	hal_init_irq(&IRQPIN);
 }
 
 
@@ -526,119 +426,103 @@ volatile char rf230interruptflag;
 
 
 /* Separate RF230 has a single radio interrupt and the source must be read from the IRQ_STATUS register */
-HAL_RF230_ISR
+void hal_rf230_isr()
 {
-	UB_Led_On(LED_BLUE);
+	LED_On(LED_BLUE);
 
-	const bool enter = ( (IRQPIN.PORT->IDR & IRQPIN.PIN) ? true : false );
+	INTERRUPTDEBUG(1);
 
-	if(EXTI_GetITStatus(IRQPIN.LINE) != RESET) {
-		EXTI_ClearITPendingBit(IRQPIN.LINE);
-		
-		INTERRUPTDEBUG(1);
+	/* used after HAL_SPI_TRANSFER_OPEN/CLOSE block */
+	uint8_t interrupt_source = 0;
 
-		/* used after HAL_SPI_TRANSFER_OPEN/CLOSE block */
-		uint8_t interrupt_source = 0;
+	/* Using SPI bus from ISR is generally a bad idea... */
+	/* Note: all IRQ are not always automatically disabled when running in ISR */
+	HAL_SPI_TRANSFER_OPEN();
 
-		/* Using SPI bus from ISR is generally a bad idea... */
-		/* Note: all IRQ are not always automatically disabled when running in ISR */
-		HAL_SPI_TRANSFER_OPEN();
-		
-		/*Read Interrupt source.*/
-		/*Send Register address and read register content.*/
-		HAL_SPI_TRANSFER_WRITE(0x80 | RG_IRQ_STATUS);
-		
-		HAL_SPI_TRANSFER_WAIT(); /* AFTER possible interleaved processing */
-		
-		interrupt_source = HAL_SPI_TRANSFER(0);
-		
-		HAL_SPI_TRANSFER_CLOSE();
+	/*Read Interrupt source.*/
+	/*Send Register address and read register content.*/
+	HAL_SPI_TRANSFER_WRITE(0x80 | RG_IRQ_STATUS);
 
-		const bool leave = ( (IRQPIN.PORT->IDR & IRQPIN.PIN) ? true : false );
-		if (!enter || leave) {
-			printf("HAL_RF230_ISR: ERROR\n");
-			for (;;) {}
-		}
+	HAL_SPI_TRANSFER_WAIT(); /* AFTER possible interleaved processing */
+
+	interrupt_source = HAL_SPI_TRANSFER(0);
+
+	HAL_SPI_TRANSFER_CLOSE();
 
 
 
-
-		/*Handle the incomming interrupt. Prioritized.*/
-		if ((interrupt_source & HAL_RX_START_MASK)) {
-			INTERRUPTDEBUG(10);
-			/* Save RSSI for this packet if not in extended mode, scaling to 1dB resolution */
+	/*Handle the incomming interrupt. Prioritized.*/
+	if ((interrupt_source & HAL_RX_START_MASK)) {
+		INTERRUPTDEBUG(10);
+		/* Save RSSI for this packet if not in extended mode, scaling to 1dB resolution */
 #if !RF230_CONF_AUTOACK
 #if 0  // 3-clock shift and add is faster on machines with no hardware multiply
-			// With -Os avr-gcc saves a byte by using the general routine for multiply by 3
-			rf230_last_rssi = hal_subregister_read(SR_RSSI);
-			rf230_last_rssi = (rf230_last_rssi <<1)  + rf230_last_rssi;
+		// With -Os avr-gcc saves a byte by using the general routine for multiply by 3
+		rf230_last_rssi = hal_subregister_read(SR_RSSI);
+		rf230_last_rssi = (rf230_last_rssi <<1)  + rf230_last_rssi;
 #else  // Faster with 1-clock multiply. Raven and Jackdaw have 2-clock multiply so same speed while saving 2 bytes of program memory
-			rf230_last_rssi = 3 * hal_subregister_read(SR_RSSI);
+		rf230_last_rssi = 3 * hal_subregister_read(SR_RSSI);
 #endif
 #endif
-			
-		} else if (interrupt_source & HAL_TRX_END_MASK){
-			INTERRUPTDEBUG(11);
-			
-			const uint8_t state = hal_subregister_read(SR_TRX_STATUS);
-			if((state == BUSY_RX_AACK) || (state == RX_ON) || (state == BUSY_RX) || (state == RX_AACK_ON)) {
+
+	} else if (interrupt_source & HAL_TRX_END_MASK){
+		INTERRUPTDEBUG(11);
+
+		const uint8_t state = hal_subregister_read(SR_TRX_STATUS);
+		if((state == BUSY_RX_AACK) || (state == RX_ON) || (state == BUSY_RX) || (state == RX_AACK_ON)) {
 
 
-				/* Received packet interrupt */
-				UB_Led_On(LED_ORANGE);
+			/* Received packet interrupt */
+			LED_On(LED_ORANGE);
 
-				/* Buffer the frame and call rf230_interrupt to schedule poll for rf230 receive process */
-				if (rxframe[rxframe_tail].length) {
-					rx_buffer_overflow = true;
-					INTERRUPTDEBUG(42);
-				} else {
-					INTERRUPTDEBUG(12);
-				}
-				
-#ifdef RF230_MIN_RX_POWER
-				/* Discard packets weaker than the minimum if defined. This is for testing miniature meshes.*/
-				/* Save the rssi for printing in the main loop */
-#if RF230_CONF_AUTOACK
-				//rf230_last_rssi=hal_subregister_read(SR_ED_LEVEL);
-				rf230_last_rssi=hal_register_read(RG_PHY_ED_LEVEL);
-#endif
-				if (rf230_last_rssi >= RF230_MIN_RX_POWER) {
-#endif
-					hal_frame_read(&rxframe[rxframe_tail]);
-					rxframe_tail++;if (rxframe_tail >= RF230_CONF_RX_BUFFERS) rxframe_tail=0;
-					rf230_interrupt();
-#ifdef RF230_MIN_RX_POWER
-				}
-#endif
+			/* Buffer the frame and call rf230_interrupt to schedule poll for rf230 receive process */
+			if (rxframe[rxframe_tail].length) {
+				rx_buffer_overflow = true;
+				INTERRUPTDEBUG(42);
+			} else {
+				INTERRUPTDEBUG(12);
 			}
-		} else if (interrupt_source & HAL_TRX_UR_MASK){
-			INTERRUPTDEBUG(13);
-			;
-		} else if (interrupt_source & HAL_PLL_UNLOCK_MASK){
-			INTERRUPTDEBUG(14);
-			;
-		} else if (interrupt_source & HAL_PLL_LOCK_MASK){
-			INTERRUPTDEBUG(15);
-			;
-		} else if (interrupt_source & HAL_BAT_LOW_MASK){
-			/*  Disable BAT_LOW interrupt to prevent endless interrupts. The interrupt */
-			/*  will continously be asserted while the supply voltage is less than the */
-			/*  user-defined voltage threshold. */
-			uint8_t trx_isr_mask = hal_register_read(RG_IRQ_MASK);
-			trx_isr_mask &= ~HAL_BAT_LOW_MASK;
-			hal_register_write(RG_IRQ_MASK, trx_isr_mask);
-			INTERRUPTDEBUG(16);
-			;
-		} else {
-			INTERRUPTDEBUG(99);
-			;
-			UB_Led_On(LED_RED);
-		}
-	}
-	else
-		UB_Led_On(LED_RED);
 
-	UB_Led_Off(LED_BLUE);
+#ifdef RF230_MIN_RX_POWER
+			/* Discard packets weaker than the minimum if defined. This is for testing miniature meshes.*/
+			/* Save the rssi for printing in the main loop */
+#if RF230_CONF_AUTOACK
+			//rf230_last_rssi=hal_subregister_read(SR_ED_LEVEL);
+			rf230_last_rssi=hal_register_read(RG_PHY_ED_LEVEL);
+#endif
+			if (rf230_last_rssi >= RF230_MIN_RX_POWER) {
+#endif
+				hal_frame_read(&rxframe[rxframe_tail]);
+				rxframe_tail++;if (rxframe_tail >= RF230_CONF_RX_BUFFERS) rxframe_tail=0;
+				rf230_interrupt();
+#ifdef RF230_MIN_RX_POWER
+			}
+#endif
+		}
+	} else if (interrupt_source & HAL_TRX_UR_MASK){
+		INTERRUPTDEBUG(13);
+		;
+	} else if (interrupt_source & HAL_PLL_UNLOCK_MASK){
+		INTERRUPTDEBUG(14);
+		;
+	} else if (interrupt_source & HAL_PLL_LOCK_MASK){
+		INTERRUPTDEBUG(15);
+		;
+	} else if (interrupt_source & HAL_BAT_LOW_MASK){
+		/*  Disable BAT_LOW interrupt to prevent endless interrupts. The interrupt */
+		/*  will continously be asserted while the supply voltage is less than the */
+		/*  user-defined voltage threshold. */
+		uint8_t trx_isr_mask = hal_register_read(RG_IRQ_MASK);
+		trx_isr_mask &= ~HAL_BAT_LOW_MASK;
+		hal_register_write(RG_IRQ_MASK, trx_isr_mask);
+		INTERRUPTDEBUG(16);
+		;
+	} else {
+		INTERRUPTDEBUG(99);
+		;
+		LED_On(LED_RED);
+	}
+	LED_Off(LED_BLUE);
 }
 #   endif /* defined(DOXYGEN) */
 

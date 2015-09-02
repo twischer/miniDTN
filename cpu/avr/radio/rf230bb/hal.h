@@ -149,6 +149,7 @@ typedef struct{
 
 /*============================ PROTOTYPES ====================================*/
 void hal_init( void );
+void hal_rf230_isr( void );
 
 uint8_t hal_register_read( uint8_t address );
 void hal_register_write( uint8_t address, uint8_t value );
