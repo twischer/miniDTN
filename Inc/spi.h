@@ -55,6 +55,8 @@ void MX_SPI2_Init(void);
 
 /* USER CODE BEGIN Prototypes */
 
+uint8_t SPI2_SendReceiveByte(const uint8_t send);
+
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus
