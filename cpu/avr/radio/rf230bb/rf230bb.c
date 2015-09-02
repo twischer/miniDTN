@@ -42,7 +42,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "stm32_ub_led.h"
+#include "led.h"
 #include "delay.h"
 
 #include "contiki.h"
@@ -1352,7 +1352,7 @@ static void rf230_process(void* p)
 		PRINTF("rf230_read: Packet lost, because of rx buffer overflow!\n");
 	}
 
-	UB_Led_Off(LED_ORANGE);
+	LED_Off(LED_ORANGE);
 
     PRINTF("rf230_read: %u bytes lqi %u\n",len,rf230_last_correlation);
 #if DEBUG>1
