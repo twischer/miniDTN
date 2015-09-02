@@ -13,6 +13,7 @@ STARTUP	:= $(ROOT_DIR)/Drivers/CMSIS/Device/ST/STM32F4xx/Source/Templates/gcc
 
 FREERTOS:= Middlewares/Third_Party/FreeRTOS/Source
 FATFS	:= Middlewares/Third_Party/FatFs/src
+LWIP	:= Middlewares/Third_Party/LwIP
 
 # TODO remove contiki lib, if everything was ported successfully
 MODULES+= Src \
@@ -20,6 +21,11 @@ MODULES+= Src \
 	$(FREERTOS)/CMSIS_RTOS \
 	$(FREERTOS)/portable/GCC/ARM_CM4F \
 	$(FATFS) \
+	$(LWIP)/src/api \
+	$(LWIP)/src/core \
+	$(LWIP)/src/core/ipv4 \
+	$(LWIP)/src/netif \
+	$(LWIP)/system/OS \
 	Drivers/CMSIS/Device/ST/STM32F4xx/Source/Templates \
 	Drivers/STM32F4xx_HAL_Driver/Src \
 	Libraries \
@@ -32,6 +38,9 @@ MODULES+= Src \
 INC_DIRS+= Inc \
 	$(FREERTOS)/include \
 	$(FATFS)/drivers \
+	$(LWIP)/src/include \
+	$(LWIP)/src/include/ipv4 \
+	$(LWIP)/system \
 	Drivers/CMSIS/Device/ST/STM32F4xx/Include \
 	Drivers/CMSIS/Include \
 	Drivers/STM32F4xx_HAL_Driver/Inc \

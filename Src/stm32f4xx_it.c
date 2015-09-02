@@ -43,6 +43,7 @@
 
 /* External variables --------------------------------------------------------*/
 extern void xPortSysTickHandler(void);
+extern ETH_HandleTypeDef heth;
 
 /******************************************************************************/
 /*            Cortex-M4 Processor Interruption and Exception Handlers         */ 
@@ -83,6 +84,20 @@ void EXTI4_IRQHandler(void)
   hal_rf230_isr();
 
   /* USER CODE END EXTI4_IRQn 1 */
+}
+
+/**
+* @brief This function handles Ethernet global interrupt.
+*/
+void ETH_IRQHandler(void)
+{
+  /* USER CODE BEGIN ETH_IRQn 0 */
+
+  /* USER CODE END ETH_IRQn 0 */
+  HAL_ETH_IRQHandler(&heth);
+  /* USER CODE BEGIN ETH_IRQn 1 */
+
+  /* USER CODE END ETH_IRQn 1 */
 }
 
 /* USER CODE BEGIN 1 */

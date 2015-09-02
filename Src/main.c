@@ -34,6 +34,7 @@
 #include "stm32f4xx_hal.h"
 #include "cmsis_os.h"
 #include "fatfs.h"
+#include "lwip.h"
 #include "sdio.h"
 #include "spi.h"
 #include "tim.h"
@@ -43,6 +44,7 @@
 /* USER CODE BEGIN Includes */
 #include "led.h"
 #include "net/netstack.h"
+#include "net/queuebuf.h"
 #include "rf230bb.h"
 #include "dtn_network.h"
 

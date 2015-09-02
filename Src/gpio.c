@@ -58,11 +58,19 @@ void MX_GPIO_Init(void)
   GPIO_InitTypeDef GPIO_InitStruct;
 
   /* GPIO Ports Clock Enable */
+  __GPIOE_CLK_ENABLE();
   __GPIOH_CLK_ENABLE();
   __GPIOC_CLK_ENABLE();
+  __GPIOA_CLK_ENABLE();
   __GPIOB_CLK_ENABLE();
   __GPIOD_CLK_ENABLE();
-  __GPIOA_CLK_ENABLE();
+
+  /*Configure GPIO pin : PE2 */
+  GPIO_InitStruct.Pin = GPIO_PIN_2;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
+  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PB0 PB1 PB14 */
   GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_14;
