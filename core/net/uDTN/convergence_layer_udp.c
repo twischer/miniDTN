@@ -7,10 +7,12 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "lwip/opt.h"
+#include "lwip/netif.h"
 #include "lwip/api.h"
 #include "lwip/sys.h"
 
 #include "convergence_layer_udp.h"
+
 
 static struct netconn* discovery_conn = 0;
 static struct netconn* bundle_conn = 0;
@@ -28,16 +30,24 @@ static void convergence_layer_udp_discovery_thread(void *arg)
 	}
 
 	if (netconn_bind(discovery_conn, IP_ADDR_ANY, CL_UDP_DISCOVERY_PORT) != ERR_OK) {
-		printf("netconn_bind failed\n");
+		printf("ERR: netconn_bind failed\n");
 		netconn_delete(discovery_conn);
 		vTaskDelete(NULL);
 		return;
 	}
 
+
+	/* block until interface is up */
+	while (!netif_is_up(netif_default)) {
+		vTaskDelay(100);
+	}
+
 	static struct ip_addr mcast_addr;
 	IP4_ADDR(&mcast_addr, CL_UDP_DISCOVERY_IP_1, CL_UDP_DISCOVERY_IP_2, CL_UDP_DISCOVERY_IP_3, CL_UDP_DISCOVERY_IP_4);
-	if (netconn_join_leave_group(discovery_conn, &mcast_addr, IP_ADDR_ANY, NETCONN_JOIN) != ERR_OK) {
-		printf("netconn_join_leave_group failed\n");
+
+	const err_t err = netconn_join_leave_group(discovery_conn, &mcast_addr, IP_ADDR_ANY, NETCONN_JOIN);
+	if (err != ERR_OK) {
+		printf("ERR: netconn_join_leave_group failed with error %d\n", err);
 		netconn_delete(discovery_conn);
 		vTaskDelete(NULL);
 		return;

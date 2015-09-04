@@ -575,6 +575,10 @@ err_t ethernetif_init(struct netif *netif)
 #endif  /* LWIP_ARP || LWIP_ETHERNET */
   netif->linkoutput = low_level_output;
 
+#if LWIP_IGMP
+  netif->flags |= NETIF_FLAG_IGMP;
+#endif
+
   /* initialize the hardware */
   low_level_init(netif);
 
