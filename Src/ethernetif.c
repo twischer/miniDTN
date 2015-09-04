@@ -270,6 +270,24 @@ static void low_level_init(struct netif *netif)
   #else 
     netif->flags |= NETIF_FLAG_BROADCAST;
   #endif /* LWIP_ARP */
+
+
+  #if LWIP_IGMP
+  {
+	printf("before %08x\n", ETH->MACFFR);
+	ETH_MACInitTypeDef macconf;
+	memset(&macconf, 0, sizeof(macconf));
+	macconf.PassControlFrames = ETH_PASSCONTROLFRAMES_BLOCKALL;
+	macconf.MulticastFramesFilter = ETH_MULTICASTFRAMESFILTER_NONE;
+
+	if (HAL_ETH_ConfigMAC(&heth, &macconf) == HAL_OK) {
+	  netif->flags |= NETIF_FLAG_IGMP;
+	  printf("successfull\n");
+	}
+
+	printf("after %08x\n", ETH->MACFFR);
+  }
+  #endif
   
 /* create a binary semaphore used for informing ethernetif of frame reception */
   osSemaphoreDef(SEM);
@@ -574,10 +592,6 @@ err_t ethernetif_init(struct netif *netif)
 #endif /* LWIP_ARP */ 
 #endif  /* LWIP_ARP || LWIP_ETHERNET */
   netif->linkoutput = low_level_output;
-
-#if LWIP_IGMP
-  netif->flags |= NETIF_FLAG_IGMP;
-#endif
 
   /* initialize the hardware */
   low_level_init(netif);
