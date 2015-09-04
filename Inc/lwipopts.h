@@ -41,7 +41,7 @@
 
 /* Within 'USER CODE' section, code will be kept by default at each generation */
 /* USER CODE BEGIN 0 */
-
+#define LWIP_DEBUG
 /* USER CODE END 0 */
 
 #ifdef __cplusplus
@@ -58,14 +58,12 @@
 
 /* LwIP Stack Parameters (modified compared to initialization value in opt.h) -*/
 /* Parameters set in STM32CubeMX LwIP Configuration GUI -*/
-/*----- Value in opt.h for LWIP_DHCP: 0 -----*/
-#define LWIP_DHCP 1
+/*----- Default Value for LWIP_DHCP: 1 -*/
+#define LWIP_DHCP 0
 /*----- Value in opt.h for NO_SYS: 0 -----*/
 #define NO_SYS 0
 /*----- Value in opt.h for MEM_ALIGNMENT: 1 -----*/
 #define MEM_ALIGNMENT 4
-/*----- Value in opt.h for MEMP_NUM_SYS_TIMEOUT: (LWIP_TCP + IP_REASSEMBLY + LWIP_ARP + (2*LWIP_DHCP) + LWIP_AUTOIP + LWIP_IGMP + LWIP_DNS + PPP_SUPPORT) -*/
-#define MEMP_NUM_SYS_TIMEOUT 5
 /*----- Value in opt.h for LWIP_ETHERNET: (LWIP_ARP || PPPOE_SUPPORT) -*/
 #define LWIP_ETHERNET 1
 /*----- Value in opt.h for TCPIP_THREAD_STACKSIZE: 0 -----*/
