@@ -57,14 +57,15 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "stm32f4xx.h"
-#include "stm32f4xx_gpio.h"
-#include "stm32f4xx_rcc.h"
+#include "stm32f4xx_hal.h"
+#include "spi.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
 
+
 #include "contiki-conf.h"
+
 /*============================ MACROS ========================================*/
 
 /** \name This is the list of pin configurations needed for a given platform.
@@ -73,12 +74,12 @@
  */
 ///* 1284 inga */
 #define SSPORT		GPIOB
-#define SSPIN		GPIO_Pin_14
+#define SSPIN		GPIO_PIN_14
 #define RSTPORT		GPIOB
-#define RSTPIN		GPIO_Pin_0
+#define RSTPIN		GPIO_PIN_0
 #define SLPTRPORT	GPIOB
 // TODO check if if is always used as mask and not as number
-#define SLPTRPIN	GPIO_Pin_1
+#define SLPTRPIN	GPIO_PIN_1
 
 /** \} */
 
@@ -91,20 +92,20 @@
  * \{
  */
 
-#define hal_set_slptr_high()	(SLPTRPORT->BSRRL = SLPTRPIN)      /**< This macro pulls the SLP_TR pin high. */
-#define hal_set_slptr_low()		(SLPTRPORT->BSRRH = SLPTRPIN)     /**< This macro pulls the SLP_TR pin low. */
+#define hal_set_slptr_high()	(SLPTRPORT->BSRR = SLPTRPIN)      /**< This macro pulls the SLP_TR pin high. */
+#define hal_set_slptr_low()		(SLPTRPORT->BSRR = (uint32_t)SLPTRPIN << 16)     /**< This macro pulls the SLP_TR pin low. */
 // TODO check if it is realy connected to the output, if it is configured as input
 #define hal_get_slptr()			( (SLPTRPORT->IDR & SLPTRPIN) ? true : false )   /**< Read current state of the SLP_TR pin (High/Low). */
 
-#define hal_set_rst_high()		(RSTPORT->BSRRL = RSTPIN)  /**< This macro pulls the RST pin high. */
-#define hal_set_rst_low()		(RSTPORT->BSRRH = RSTPIN) /**< This macro pulls the RST pin low. */
+#define hal_set_rst_high()		(RSTPORT->BSRR = RSTPIN)  /**< This macro pulls the RST pin high. */
+#define hal_set_rst_low()		(RSTPORT->BSRR = (uint32_t)RSTPIN << 16) /**< This macro pulls the RST pin low. */
 #define hal_get_rst()			( (RSTPORT->IDR & RSTPIN) ? true : false )  /**< Read current state of the RST pin (High/Low). */
 
 /** \} */
 
 
-#define HAL_SS_HIGH()			(SSPORT->BSRRL = SSPIN) /**< MACRO for pulling SS high. */
-#define HAL_SS_LOW()			(SSPORT->BSRRH = SSPIN); delay_us(1); /**< MACRO for pulling SS low. */
+#define HAL_SS_HIGH()			(SSPORT->BSRR = SSPIN) /**< MACRO for pulling SS high. */
+#define HAL_SS_LOW()			(SSPORT->BSRR = (uint32_t)SSPIN << 16); delay_us(1); /**< MACRO for pulling SS low. */
 #define hal_get_ss()			( (SSPORT->IDR & SSPIN) ? true : false )
 
 // TODO check where it will be used and whether it works right
@@ -148,6 +149,7 @@ typedef struct{
 
 /*============================ PROTOTYPES ====================================*/
 void hal_init( void );
+void hal_rf230_isr( void );
 
 uint8_t hal_register_read( uint8_t address );
 void hal_register_write( uint8_t address, uint8_t value );

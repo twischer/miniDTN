@@ -9,11 +9,25 @@ TOOLCHAIN_PREFIX:=arm-none-eabi
 OPTLVL:=0
 DBG:=-g
 
-FREERTOS:=$(ROOT_DIR)/FreeRTOS
-STARTUP:=$(ROOT_DIR)/hardware
+STARTUP	:= $(ROOT_DIR)/Drivers/CMSIS/Device/ST/STM32F4xx/Source/Templates/gcc
+
+FREERTOS:= Middlewares/Third_Party/FreeRTOS/Source
+FATFS	:= Middlewares/Third_Party/FatFs/src
+LWIP	:= Middlewares/Third_Party/LwIP
 
 # TODO remove contiki lib, if everything was ported successfully
-MODULES+= hardware \
+MODULES+= Src \
+	$(FREERTOS) \
+	$(FREERTOS)/CMSIS_RTOS \
+	$(FREERTOS)/portable/GCC/ARM_CM4F \
+	$(FATFS) \
+	$(LWIP)/src/api \
+	$(LWIP)/src/core \
+	$(LWIP)/src/core/ipv4 \
+	$(LWIP)/src/netif \
+	$(LWIP)/system/OS \
+	Drivers/CMSIS/Device/ST/STM32F4xx/Source/Templates \
+	Drivers/STM32F4xx_HAL_Driver/Src \
 	Libraries \
 	Libraries/ub_lib \
 	cpu/avr/radio/rf230bb \
@@ -21,25 +35,29 @@ MODULES+= hardware \
 	core/net \
 	core/net/uDTN
 
-INC_DIRS+= $(MODULES) \
+INC_DIRS+= Inc \
+	$(FREERTOS)/include \
+	$(FATFS)/drivers \
+	$(LWIP)/src/include \
+	$(LWIP)/src/include/ipv4 \
+	$(LWIP)/system \
+	Drivers/CMSIS/Device/ST/STM32F4xx/Include \
+	Drivers/CMSIS/Include \
+	Drivers/STM32F4xx_HAL_Driver/Inc \
 	Libraries \
 	core \
 	core/net/mac \
-	cpu/arm/stm32f103 \
-	platform/inga
+	cpu/arm/stm32f103
 
-LINKER_SCRIPT:=$(ROOT_DIR)/Utilities/stm32_flash.ld
+	
+LINKER_SCRIPT:=$(ROOT_DIR)/STM32F407VG_FLASH.ld
 
-
-INCLUDE+=-I$(FREERTOS)/include
 INCLUDE+=-I$(FREERTOS)/portable/GCC/ARM_CM4F
-INCLUDE+=-I$(ROOT_DIR)/Libraries/CMSIS/Device/ST/STM32F4xx/Include
-INCLUDE+=-I$(ROOT_DIR)/Libraries/CMSIS/Include
-INCLUDE+=-I$(ROOT_DIR)/Libraries/STM32F4xx_StdPeriph_Driver/inc
 INCLUDE+=-I$(ROOT_DIR)/Libraries/ub_lib
 INCLUDE+=-I$(ROOT_DIR)/config
 
 SRC_DIRS:= $(addprefix $(ROOT_DIR)/,$(MODULES))
+INC_DIRS+= $(MODULES)
 INCLUDE+= $(addprefix -I$(ROOT_DIR)/,$(INC_DIRS))
 
 
@@ -51,43 +69,38 @@ BUILD_DIR := $(addprefix $(BUILD_BASE)/,$(MODULES))
 # vpath is used so object files are written to the current directory instead
 # of the same directory as their source files
 vpath %.c $(ROOT_DIR)/Libraries/STM32F4xx_StdPeriph_Driver/src \
-	  $(ROOT_DIR)/Libraries/syscall $(FREERTOS) \
-	  $(FREERTOS)/portable/MemMang $(FREERTOS)/portable/GCC/ARM_CM4F \
-	  $(ROOT_DIR)/Libraries/ub_lib \
-	  $(ROOT_DIR)/core/net/mac/ \
-	  $(SRC_DIRS)
+	$(ROOT_DIR)/Libraries/syscall \
+	$(ROOT_DIR)/$(FREERTOS)/portable/MemMang \
+	$(ROOT_DIR)/$(FATFS)/drivers \
+	$(ROOT_DIR)/core/net/mac/ \
+	$(SRC_DIRS)
 	  
 
 vpath %.s $(STARTUP)
-ASRC=startup_stm32f4xx.s
+ASRC=startup_stm32f407xx.s
 
 # Project Source Files
 SRC+=syscalls.c
 
 # FreeRTOS Source Files
-SRC+=port.c
-SRC+=list.c
-SRC+=queue.c
-SRC+=tasks.c
-SRC+=event_groups.c
-SRC+=timers.c
 SRC+=heap_4.c
 
 # Standard Peripheral Source Files
-SRC+=stm32f4xx_syscfg.c
-SRC+=misc.c
-SRC+=stm32f4xx_adc.c
-SRC+=stm32f4xx_dac.c
-SRC+=stm32f4xx_dma.c
-SRC+=stm32f4xx_exti.c
-SRC+=stm32f4xx_flash.c
-SRC+=stm32f4xx_gpio.c
-SRC+=stm32f4xx_i2c.c
-SRC+=stm32f4xx_rcc.c
-SRC+=stm32f4xx_spi.c
-SRC+=stm32f4xx_tim.c
-SRC+=stm32f4xx_usart.c
-SRC+=stm32f4xx_rng.c
+#SRC+=stm32f4xx_syscfg.c
+#SRC+=misc.c
+#SRC+=stm32f4xx_adc.c
+#SRC+=stm32f4xx_dac.c
+#SRC+=stm32f4xx_dma.c
+#SRC+=stm32f4xx_exti.c
+#SRC+=stm32f4xx_flash.c
+#SRC+=stm32f4xx_gpio.c
+#SRC+=stm32f4xx_i2c.c
+#SRC+=stm32f4xx_rcc.c
+#SRC+=stm32f4xx_spi.c
+#SRC+=stm32f4xx_tim.c
+#SRC+=stm32f4xx_usart.c
+#SRC+=stm32f4xx_rng.c
+SRC+=sd_diskio.c
 
 
 # needed contiki mac files
@@ -102,8 +115,8 @@ SRC+=framer-802154.c
 SRC+= $(foreach sdir,$(MODULES),$(wildcard $(sdir)/*.c))
 
 
-
-CDEFS=-DUSE_STDPERIPH_DRIVER
+CDEFS=-DSTM32F407xx 
+CDEFS+=-DUSE_STDPERIPH_DRIVER
 CDEFS+=-DSTM32F4XX
 CDEFS+=-DHSE_VALUE=8000000
 CDEFS+=-D__FPU_PRESENT=1
@@ -126,11 +139,11 @@ CDEFS+=-DINGA_BOOTSCREEN
 CDEFS+=-DINGA_BOOTSCREEN_RADIO
 
 
-MCUFLAGS=-mcpu=cortex-m4 -mthumb -mfloat-abi=hard
-COMMONFLAGS=-O$(OPTLVL) $(DBG) -Wall -MMD -std=gnu11
-CFLAGS+=$(COMMONFLAGS) $(MCUFLAGS) $(INCLUDE) $(CDEFS)
-LDLIBS=$(TOOLCHAIN_ROOT)/arm-none-eabi/lib/armv7e-m/fpu/libc_nano.a $(TOOLCHAIN_ROOT)/arm-none-eabi/lib/armv7e-m/fpu/libm.a
-LDFLAGS=$(COMMONFLAGS) -fno-exceptions -ffunction-sections -fdata-sections -nostartfiles -Wl,--gc-sections,-T$(LINKER_SCRIPT)
+MCUFLAGS=-O$(OPTLVL) $(DBG) -MMD -std=gnu11 -Wall -mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard
+CFLAGS+=$(MCUFLAGS) $(INCLUDE) $(CDEFS)
+
+LDLIBS=-lc -lm -lnosys
+LDFLAGS=$(MCUFLAGS) -specs=nano.specs -T$(LINKER_SCRIPT) $(LDLIBS) -Wl,--gc-sections
 
 CC=$(TOOLCHAIN_PATH)/$(TOOLCHAIN_PREFIX)-gcc
 LD=$(TOOLCHAIN_PATH)/$(TOOLCHAIN_PREFIX)-gcc
@@ -150,7 +163,7 @@ all: checkdirs $(OBJ)
 	@echo [AS] $(ASRC)
 	@$(AS) -o $(ASRC:%.s=$(BUILD_BASE)/%.o) $(STARTUP)/$(ASRC)
 	@echo [LD] $(TARGET).elf
-	@$(CC) -o $(BIN_DIR)/$(TARGET).elf $(LDFLAGS) $(OBJ) $(ASRC:%.s=$(BUILD_BASE)/%.o) $(LDLIBS)
+	@$(CC) -o $(BIN_DIR)/$(TARGET).elf $(LDFLAGS) $(OBJ) $(ASRC:%.s=$(BUILD_BASE)/%.o)
 	@echo [OBJCOPY] $(TARGET).hex
 	@$(OBJCOPY) -O ihex $(BIN_DIR)/$(TARGET).elf $(BIN_DIR)/$(TARGET).hex
 	@echo [OBJCOPY] $(TARGET).bin
@@ -158,7 +171,7 @@ all: checkdirs $(OBJ)
 
 
 checkdirs: $(BUILD_DIR) $(BIN_DIR)
-	@echo $(SRC)
+#	@echo $(SRC)
 
 
 $(BUILD_DIR) $(BIN_DIR):
@@ -175,6 +188,8 @@ clean:
 	@rm -f $(BIN_DIR)/$(TARGET).elf
 	@rm -f $(BIN_DIR)/$(TARGET).hex
 	@rm -f $(BIN_DIR)/$(TARGET).bin
+	@rm -f -R $(BUILD_BASE)/*.o
+	@rm -f -R $(BUILD_BASE)/*.d
 
 flash: all
 	@st-flash --reset write $(BIN_DIR)/$(TARGET).bin 0x8000000
