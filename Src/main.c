@@ -35,6 +35,7 @@
 #include "cmsis_os.h"
 #include "fatfs.h"
 #include "lwip.h"
+#include "rng.h"
 #include "sdio.h"
 #include "spi.h"
 #include "tim.h"
@@ -88,6 +89,7 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_RNG_Init();
   MX_SDIO_SD_Init();
   MX_SPI2_Init();
   MX_TIM2_Init();
