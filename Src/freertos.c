@@ -37,7 +37,8 @@
 #include "cmsis_os.h"
 
 /* USER CODE BEGIN Includes */     
-
+#include <stdio.h>
+#include "stm32f4xx_hal.h"
 /* USER CODE END Includes */
 
 /* Variables -----------------------------------------------------------------*/
@@ -81,7 +82,7 @@ void MX_FREERTOS_Init(void) {
 
   /* Create the thread(s) */
   /* definition and creation of defaultTask */
-  osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 128);
+  osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 160);
   defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
@@ -103,6 +104,8 @@ void StartDefaultTask(void const * argument)
   MX_LWIP_Init();
 
   /* USER CODE BEGIN StartDefaultTask */
+  printf("FATFS and LWIP init done\n");
+
   /* Infinite loop */
   for(;;)
   {
@@ -112,6 +115,15 @@ void StartDefaultTask(void const * argument)
 }
 
 /* USER CODE BEGIN Application */
+
+void vApplicationStackOverflowHook(TaskHandle_t pxTask, signed char *pcTaskName) {
+  /* Run time stack overflow checking is performed if
+	 configCHECK_FOR_STACK_OVERFLOW is defined to 1 or 2.  This hook
+	 function is called if a stack overflow is detected. */
+  taskDISABLE_INTERRUPTS();
+  printf("STACK OVERFLOW in task '%s (handle %p)\n", pcTaskName, pxTask);
+  for(;;);
+}
      
 /* USER CODE END Application */
 
