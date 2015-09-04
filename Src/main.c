@@ -64,7 +64,6 @@ void MX_FREERTOS_Init(void);
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
 extern bool init();
-extern void udpecho_init();
 
 /* USER CODE END PFP */
 
@@ -124,9 +123,6 @@ int main(void)
 	printf("miniDTN user task init failed\n");
 	return -1;
   }
-
-  /* Initialize udp echo server */
-  udpecho_init();
 
   LED_On(LED_GREEN);
 

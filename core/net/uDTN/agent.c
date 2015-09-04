@@ -37,7 +37,7 @@
 #include "discovery.h"
 #include "discovery_scheduler.h"
 #include "statistics.h"
-#include "convergence_layer.h"
+#include "convergence_layers.h"
 #include "hash.h"
 #include "system_clock.h"
 #include "dtn_apps.h"
@@ -92,7 +92,10 @@ void agent_process(void* p)
 
 	mmem_init();
 	udtn_clock_init();
-	convergence_layer_init();
+	if (!convergence_layers_init()) {
+		printf("CLs init failed\n");
+	}
+
 	BUNDLE_STORAGE.init();
 	REDUNDANCE.init();
 	CUSTODY.init();
