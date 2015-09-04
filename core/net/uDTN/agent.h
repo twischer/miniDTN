@@ -58,8 +58,9 @@ void agent_send_event(const event_container_t* const event);
 #define LOG_SLOTS  				5
 #define LOG_AGENT  				6
 #define LOG_CL	   				7
-#define LOG_DISCOVERY			8
-#define LOG_DISCOVERY_SCHEDULER 9
+#define LOG_CL_UDP 				8
+#define LOG_DISCOVERY			9
+#define LOG_DISCOVERY_SCHEDULER 10
 #endif
 
 /** @} */

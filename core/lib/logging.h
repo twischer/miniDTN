@@ -73,7 +73,7 @@
 #define LOGD_DTN  4
 #define LOGD_NUM  5 /* Always last! */
 
-#define SUBDOMS 10
+#define SUBDOMS 11
 
 struct log_cfg {
 	uint8_t subl[SUBDOMS];

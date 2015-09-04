@@ -1,7 +1,8 @@
 MODULES+= examples/uDTN/dtnping
 CFLAGS+= -DPROJECT_CONF_H=\"project-conf.h\"
 # Uncomment it for enabling debug messages
-#CFLAGS+= -DENABLE_LOGGING
+CFLAGS+= -DENABLE_LOGGING
+CFLAGS+= -DCONF_LOGLEVEL=LOGL_WRN
 
 ROOT_DIR = $(CURDIR)
 

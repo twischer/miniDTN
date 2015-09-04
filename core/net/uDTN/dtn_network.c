@@ -44,6 +44,7 @@ static void dtn_network_init(void)
 	logging_domain_level_set(LOGD_DTN, LOG_SLOTS, LOGLEVEL);
 	logging_domain_level_set(LOGD_DTN, LOG_AGENT, LOGLEVEL);
 	logging_domain_level_set(LOGD_DTN, LOG_CL, LOGLEVEL);
+	logging_domain_level_set(LOGD_DTN, LOG_CL_UDP, LOGLEVEL);
 	logging_domain_level_set(LOGD_DTN, LOG_DISCOVERY, LOGLEVEL);
 
 	/* Clear the packet buffer */
