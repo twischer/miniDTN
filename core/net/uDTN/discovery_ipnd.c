@@ -504,7 +504,7 @@ static bool discovery_ipnd_refresh_neighbour_ip(const ip_addr_t* const ip, const
 		}
 	}
 
-	LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_INF, "Node for addr %s and port %u is an unkown neighbour.", ipaddr_ntoa(ip), port);
+	LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_INF, "New and not registered node on address %s:%u.", ipaddr_ntoa(ip), port);
 	return false;
 }
 

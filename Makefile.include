@@ -169,7 +169,7 @@ all: checkdirs $(OBJ)
 	@$(OBJCOPY) -O ihex $(BIN_DIR)/$(TARGET).elf $(BIN_DIR)/$(TARGET).hex
 	@echo [OBJCOPY] $(TARGET).bin
 	@$(OBJCOPY) -O binary $(BIN_DIR)/$(TARGET).elf $(BIN_DIR)/$(TARGET).bin
-	$(SIZE) -A $(BIN_DIR)/$(TARGET).elf | grep "\.data\|\.ccmram\|\.bss"
+	$(SIZE) -A -x $(BIN_DIR)/$(TARGET).elf | grep "\.data\|\.ccmram\|\.bss"
 
 
 checkdirs: $(BUILD_DIR) $(BIN_DIR)
