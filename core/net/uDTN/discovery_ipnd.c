@@ -35,6 +35,7 @@
 #include "sdnv.h"
 #include "statistics.h"
 #include "convergence_layers.h"
+#include "convergence_layer_udp.h"
 #include "eid.h"
 #include "discovery_scheduler.h"
 
@@ -392,6 +393,73 @@ static void discovery_ipnd_parse_msg(const uint8_t* const payload, const uint8_t
 }
 
 /**
+ * @brief discovery_ipnd_add_service_udp_cl
+ * @param buffer the beacon message buffer
+ * @param buf_len the max length of beacon message buffer
+ * @param poffset pointer to the offset inside the message buffer
+ * @return The count of added service blocks
+ */
+static int discovery_ipnd_add_service_udp_cl(uint8_t* const buffer, const size_t buf_len, int* const poffset)
+{
+	/*
+	 * Overwrite offset at the end of the function,
+	 * if the processing not failed
+	 */
+	uint8_t offset = *poffset;
+
+	/* a service block for IPND
+	 * consist of the following fields
+	 * (see IPND darft 01 for more details)
+	 *
+	 * 1 byte	Service name length
+	 * x byte	Service name contains "udpcl"
+	 * 1 byte	Service parameters length
+	 * y byte	Service parameters contains "port=65535;"
+	 */
+	const uint8_t service_name_len = STATIC_STRLEN(DISCOVERY_IPND_SERVICE_UDP);
+	const uint8_t service_param_type_len = STATIC_STRLEN(DISCOVERY_IPND_SERVICE_PORT);
+	const uint8_t UINT16_AS_STRING_LEN = 5;
+	const uint8_t MAX_SERVICE_PARAM_LEN = service_param_type_len + UINT16_AS_STRING_LEN + 1;
+
+	if ( buf_len < (offset + 1 + service_name_len + 1 + MAX_SERVICE_PARAM_LEN) ) {
+		LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_ERR, "Discovery message buffer is too small for UDP-CL service parameters.");
+		return 0;
+	}
+
+	/* add the service name length */
+	buffer[offset++] = service_name_len;
+
+	/* add the service name */
+	uint8_t* const service_name_buf = &buffer[offset];
+	if (memcpy(service_name_buf, DISCOVERY_IPND_SERVICE_UDP, service_name_len) != service_name_buf) {
+		LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_ERR, "memcpy failed.");
+		return 0;
+	}
+	offset += service_name_len;
+
+	/* remember the position for the service parameter length byte */
+	uint8_t* const service_param_len = &buffer[offset++];
+
+	/* build and add the service parameter value */
+	const int len = snprintf((char*)&buffer[offset], MAX_SERVICE_PARAM_LEN, DISCOVERY_IPND_SERVICE_PORT"%u;", CL_UDP_BUNDLE_PORT);
+	if (len < 0) {
+		LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_ERR, "snprintf failed.");
+		return 0;
+	}
+	(*service_param_len) = len;
+	offset += len;
+
+	/*
+	 * Everything is done successfully.
+	 * So return the new offset and
+	 * the count of added service blocks.
+	 */
+	(*poffset) = offset;
+	/* One service block was added */
+	return 1;
+}
+
+/**
  * \brief Send out IPND beacon
  */
 static void discovery_ipnd_send()
@@ -425,6 +493,8 @@ static void discovery_ipnd_send()
 	 */
 	services = &ipnd_buffer[offset++]; // This is a pointer onto the location of the service counter in the outgoing buffer
 	*services = 0; // Start with 0 services
+
+	*services += discovery_ipnd_add_service_udp_cl(ipnd_buffer, sizeof(ipnd_buffer), &offset);
 
 	// Allow all registered DTN APPs to add an IPND service block
 	for(h=0; dtn_apps[h] != NULL; h++) {
