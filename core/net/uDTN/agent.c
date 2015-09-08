@@ -100,7 +100,9 @@ void agent_process(void* p)
 	REDUNDANCE.init();
 	CUSTODY.init();
 	ROUTING.init();
-	DISCOVERY_SCHEDULER.init();
+	if (!DISCOVERY_SCHEDULER.init()) {
+		LOG(LOGD_DTN, LOG_AGENT, LOGL_WRN, "Discovery scheduler failed to init.");
+	}
 	DISCOVERY.init();
 	registration_init();
 

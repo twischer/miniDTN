@@ -13,6 +13,7 @@
 
 
 bool convergence_layer_udp_init(void);
+int convergence_layer_udp_send_discovery(const uint8_t* const payload, const uint8_t length);
 
 #endif // CONVERGENCE_LAYER_UDP
 

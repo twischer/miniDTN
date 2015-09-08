@@ -26,8 +26,8 @@ static TimerHandle_t dst;
 
 void discovery_scheduler_periodic_func(const TimerHandle_t timer);
 
-bool discovery_scheduler_periodic_init() {
-//	ctimer_set(&dst, DISCOVERY_CYCLE * CLOCK_SECOND, discovery_scheduler_periodic_func, NULL);
+bool discovery_scheduler_periodic_init()
+{
 	dst = xTimerCreate("discovery scheduler timer", pdMS_TO_TICKS(DISCOVERY_CYCLE * 1000), pdFALSE, NULL, discovery_scheduler_periodic_func);
 	if (dst == NULL) {
 		return false;
@@ -43,7 +43,6 @@ bool discovery_scheduler_periodic_init() {
 void discovery_scheduler_periodic_func(const TimerHandle_t timer)
 {
 	/* Rescheudle ourself */
-//	ctimer_reset(&dst);
 	xTimerReset(dst, 0);
 
 	/* Trigger discovery module to send a message */

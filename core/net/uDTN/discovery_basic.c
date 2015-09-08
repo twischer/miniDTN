@@ -143,10 +143,9 @@ void discovery_basic_send_discovery(linkaddr_t * destination)
 		return;
 	}
 
-	linkaddr_t dest={{0,0}};
 	LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "dtn_send_discover");
 
-	convergence_layer_send_discovery((uint8_t *) "DTN_DISCOVERY", 13, &dest);
+	convergence_layers_send_discovery((uint8_t *) "DTN_DISCOVERY", 13);
 }
 
 /**
@@ -187,7 +186,8 @@ uint8_t discovery_basic_is_discovery(uint8_t * msg, linkaddr_t * dest)
 	}
 
 	LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "DTN DISCOVERY");
-	convergence_layer_send_discovery((uint8_t *) "DTN_HERE", 8, dest);
+	// TODO use given addresse dest instead of broadcast
+	convergence_layers_send_discovery((uint8_t *) "DTN_HERE", 8);
 
 	return 1;
 }

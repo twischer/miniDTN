@@ -34,7 +34,7 @@
 #include "agent.h"
 #include "sdnv.h"
 #include "statistics.h"
-#include "convergence_layer.h"
+#include "convergence_layers.h"
 #include "eid.h"
 #include "discovery_scheduler.h"
 
@@ -394,7 +394,8 @@ static void discovery_ipnd_parse_msg(const uint8_t* const payload, const uint8_t
 /**
  * \brief Send out IPND beacon
  */
-void discovery_ipnd_send() {
+static void discovery_ipnd_send()
+{
 	uint8_t ipnd_buffer[DISCOVERY_IPND_BUFFER_LEN];
 	int offset = 0;
 	int h = 0;
@@ -435,8 +436,9 @@ void discovery_ipnd_send() {
 	}
 
 	// Now: Send it
-	linkaddr_t destination = {{0, 0}}; // Broadcast
-	convergence_layer_send_discovery(ipnd_buffer, offset, &destination);
+	convergence_layers_send_discovery(ipnd_buffer, offset);
+
+	LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "Discovery beacon message sent.");
 }
 
 /**
@@ -504,7 +506,7 @@ static bool discovery_ipnd_refresh_neighbour_ip(const ip_addr_t* const ip, const
 		}
 	}
 
-	LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_INF, "New and not registered node on address %s:%u.", ipaddr_ntoa(ip), port);
+	LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_INF, "New and not registered node at address %s:%u.", ipaddr_ntoa(ip), port);
 	return false;
 }
 
@@ -618,13 +620,13 @@ void discovery_ipnd_stop_pending()
 
 }
 
-void discovery_ipnd_start(clock_time_t duration, uint8_t index)
+static void discovery_ipnd_start(clock_time_t duration, uint8_t index)
 {
 	// Send at the beginning of a cycle
 	discovery_ipnd_send();
 }
 
-void discovery_ipnd_stop()
+static void discovery_ipnd_stop()
 {
 	// Send at the end of a cycle
 	discovery_ipnd_send();

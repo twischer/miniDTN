@@ -119,10 +119,9 @@ void discovery_simple_send_discover() {
 		return;
 	}
 
-	linkaddr_t br_dest = { { 0, 0 } };
 	LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "send discover..");
 
-	convergence_layer_send_discovery((uint8_t *) "", 0, &br_dest);
+	convergence_layers_send_discovery((uint8_t *) "", 0);
 }
 
 uint8_t discovery_simple_discover(linkaddr_t * dest) {

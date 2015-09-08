@@ -16,7 +16,7 @@
 #include "agent.h"
 #include "discovery.h"
 
-
+static ip_addr_t mcast_addr;
 static struct netconn* discovery_conn = NULL;
 static struct netconn* bundle_conn = NULL;
 
@@ -31,14 +31,9 @@ static void convergence_layer_udp_discovery_thread(void *arg)
 	}
 
 	/* join to the multicast group for the discovery messages */
-	{
-		ip_addr_t mcast_addr;
-		IP4_ADDR(&mcast_addr, CL_UDP_DISCOVERY_IP_1, CL_UDP_DISCOVERY_IP_2, CL_UDP_DISCOVERY_IP_3, CL_UDP_DISCOVERY_IP_4);
-
-		const err_t err = netconn_join_leave_group(discovery_conn, &mcast_addr, IP_ADDR_ANY, NETCONN_JOIN);
-		if (err != ERR_OK) {
-			LOG(LOGD_DTN, LOG_CL_UDP, LOGL_WRN, "netconn_join_leave_group failed with error %d\n", err);
-		}
+	const err_t err = netconn_join_leave_group(discovery_conn, &mcast_addr, IP_ADDR_ANY, NETCONN_JOIN);
+	if (err != ERR_OK) {
+		LOG(LOGD_DTN, LOG_CL_UDP, LOGL_WRN, "netconn_join_leave_group failed with error %d\n", err);
 	}
 
 
@@ -97,6 +92,9 @@ bool convergence_layer_udp_init(void)
 	logging_domain_level_set(LOGD_DTN, LOG_CL_UDP, LOGL_DBG);
 	logging_domain_level_set(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG);
 
+
+	IP4_ADDR(&mcast_addr, CL_UDP_DISCOVERY_IP_1, CL_UDP_DISCOVERY_IP_2, CL_UDP_DISCOVERY_IP_3, CL_UDP_DISCOVERY_IP_4);
+
 	/* initalize the udp connection for the discovery messages */
 	discovery_conn = netconn_new(NETCONN_UDP);
 	if (discovery_conn == NULL) {
@@ -136,4 +134,36 @@ bool convergence_layer_udp_init(void)
 
 	LOG(LOGD_DTN, LOG_CL_UDP, LOGL_DBG, "UDP-CL tasks init done.");
 	return true;
+}
+
+
+/**
+ * @brief convergence_layer_udp_send_discovery sends a discovery message as broadcast
+ * on the ethernet
+ * @param payload
+ * @param length
+ * @return
+ */
+int convergence_layer_udp_send_discovery(const uint8_t* const payload, const uint8_t length)
+{
+	struct netbuf* const buf = netbuf_new ();
+	if (buf == NULL) {
+		LOG(LOGD_DTN, LOG_CL_UDP, LOGL_ERR, "Not enough free memory for allocating a new netbuf.");
+		return -1;
+	}
+
+	if (netbuf_ref(buf, payload, length) != ERR_OK) {
+		LOG(LOGD_DTN, LOG_CL_UDP, LOGL_ERR, "Not enough free memory for allocating a new pbuf.");
+		netbuf_delete(buf);
+		return -2;
+	}
+
+	if (netconn_sendto(discovery_conn, buf, &mcast_addr, CL_UDP_DISCOVERY_PORT) != ERR_OK) {
+		LOG(LOGD_DTN, LOG_CL_UDP, LOGL_ERR, "Could not send discovery message. Buffer is not existing.");
+		netbuf_delete(buf);
+		return -2;
+	}
+
+	netbuf_delete(buf);
+	return 0;
 }
