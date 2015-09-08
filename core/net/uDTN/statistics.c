@@ -228,10 +228,10 @@ void statistics_storage_memory(uint16_t free)
 /**
  * \brief A new neighbour has been found
  */
-void statistics_contacts_up(linkaddr_t * peer)
+void statistics_contacts_up(const uint32_t peer)
 {
 #if STATISTICS_ELEMENTS > 0
-	LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "contacts_up(%u.%u)", peer->u8[0], peer->u8[1]);
+	LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "contacts_up ipn:%lu", peer);
 #endif
 }
 

@@ -21,6 +21,7 @@
 #include <stdbool.h>
 
 #include "net/rime/rime.h"
+#include "lwip/ip_addr.h"
 
 /**
  * Which discovery driver are we going to use?
@@ -54,7 +55,7 @@ struct discovery_driver {
 	 * return 1 if yes,
 	 * return 0 otherwise
 	 */
-	uint8_t (* is_neighbour)(linkaddr_t * dest);
+	uint8_t (* is_neighbour)(const linkaddr_t* const dest);
 
 	/**
 	 * Enable discovery module
@@ -70,11 +71,13 @@ struct discovery_driver {
 	 * Pass incoming discovery beacons to the discovery module
 	 */
 	void (* receive)(linkaddr_t * source, uint8_t * payload, uint8_t length);
+	void (* receive_ip)(const struct ip_addr* const ip, const uint8_t* const payload, const uint8_t length);
 
 	/**
 	 * Bundle from node has been received, cache this node as available
 	 */
 	void (* alive)(linkaddr_t * source);
+	bool (* alive_ip)(const struct ip_addr* const ip, const uint16_t port);
 
 	/**
 	 * Multiple transmission attempts to this neighbour have failed
@@ -84,7 +87,7 @@ struct discovery_driver {
 	/**
 	 * Starts to discover a neighbour
 	 */
-	uint8_t (* discover)(linkaddr_t * dest);
+	uint8_t (* discover)(const linkaddr_t* const dest);
 
 	/**
 	 * Returns the list of currently known neighbours

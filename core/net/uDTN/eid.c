@@ -36,7 +36,7 @@ int eid_parse_host(char * buffer, uint8_t length, uint32_t * node_id)
 	return strlen(buffer);
 }
 
-int eid_parse_host_length(uint8_t * buffer, uint8_t length, uint32_t * node_id)
+int eid_parse_host_length(const uint8_t* const buffer, const uint8_t length, uint32_t* const node_id)
 {
 	uint32_t eid_length;
 	int sdnv_length = 0;

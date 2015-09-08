@@ -14,6 +14,7 @@
 
 #include "convergence_layer_udp.h"
 #include "agent.h"
+#include "discovery.h"
 
 
 static struct netconn* discovery_conn = NULL;
@@ -31,12 +32,12 @@ static void convergence_layer_udp_discovery_thread(void *arg)
 
 	/* join to the multicast group for the discovery messages */
 	{
-		struct ip_addr mcast_addr;
+		ip_addr_t mcast_addr;
 		IP4_ADDR(&mcast_addr, CL_UDP_DISCOVERY_IP_1, CL_UDP_DISCOVERY_IP_2, CL_UDP_DISCOVERY_IP_3, CL_UDP_DISCOVERY_IP_4);
 
 		const err_t err = netconn_join_leave_group(discovery_conn, &mcast_addr, IP_ADDR_ANY, NETCONN_JOIN);
 		if (err != ERR_OK) {
-			printf("ERR: netconn_join_leave_group failed with error %d\n", err);
+			LOG(LOGD_DTN, LOG_CL_UDP, LOGL_WRN, "netconn_join_leave_group failed with error %d\n", err);
 		}
 	}
 
@@ -46,11 +47,25 @@ static void convergence_layer_udp_discovery_thread(void *arg)
 		if (netconn_recv(discovery_conn, &buf) == ERR_OK) {
 			struct ip_addr* addr = netbuf_fromaddr(buf);
 			unsigned short port = netbuf_fromport(buf);
-			LOG(LOGD_DTN, LOG_CL_UDP, LOGL_DBG, "Discovery package received from addr 0x%08x port %u", addr->addr, port);
+			LOG(LOGD_DTN, LOG_CL_UDP, LOGL_DBG, "Discovery package received from addr %s port %u", ipaddr_ntoa(addr), port);
 
-			netconn_connect(discovery_conn, addr, port);
-			buf->addr.addr = 0;
-			netconn_send(discovery_conn,buf);
+			// TODO merge the data, if the package was splitted
+			const uint8_t* data = 0;
+			uint16_t length = 0;
+			if (netbuf_data(buf, (void**)&data, &length) != ERR_OK) {
+				LOG(LOGD_DTN, LOG_CL_UDP, LOGL_WRN, "Discovery package payload from addr %s port %u is empty", ipaddr_ntoa(addr), port);
+				netbuf_delete(buf);
+				continue;
+			}
+
+			if (netbuf_len(buf) != buf->ptr->len) {
+				LOG(LOGD_DTN, LOG_CL_UDP, LOGL_WRN, "Discovery package payload from addr %s port %u splitted. Possibly not processed correctly.",
+					ipaddr_ntoa(addr), port);
+			}
+
+			/* Notify the discovery module, that we have seen a peer */
+			DISCOVERY.receive_ip(addr, data, length);
+
 			netbuf_delete(buf);
 		}
 	}
@@ -77,7 +92,10 @@ static void convergence_layer_udp_bundle_thread(void *arg)
 
 bool convergence_layer_udp_init(void)
 {
+	// TODO only for debugging
+	// have to be removed if the udp-cl implementtation has finisched
 	logging_domain_level_set(LOGD_DTN, LOG_CL_UDP, LOGL_DBG);
+	logging_domain_level_set(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG);
 
 	/* initalize the udp connection for the discovery messages */
 	discovery_conn = netconn_new(NETCONN_UDP);

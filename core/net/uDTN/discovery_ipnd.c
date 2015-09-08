@@ -40,14 +40,36 @@
 
 #include "discovery.h"
 
-void discovery_ipnd_refresh_neighbour(linkaddr_t * neighbour);
-void discovery_ipnd_save_neighbour(linkaddr_t * neighbour);
+
+typedef struct {
+	uint16_t sequence_nr;
+	uint32_t node_id;
+	uint16_t port;
+} ipnd_msg_attrs_t;
+
+
+static void discovery_ipnd_refresh_neighbour(linkaddr_t * neighbour);
+static bool discovery_ipnd_refresh_neighbour_ip(const ip_addr_t* const ip, const uint16_t port);
+static void discovery_ipnd_parse_msg(const uint8_t* const payload, const uint8_t length, ipnd_msg_attrs_t* const attrs);
+static void discovery_ipnd_save_neighbour(linkaddr_t * neighbour);
+static void discovery_ipnd_save_neighbour_ip(const uint32_t node_id, const ip_addr_t* const ip, const uint16_t port);
 static void discovery_ipnd_remove_stale_neighbours(const TimerHandle_t timer);
 void discovery_ipnd_print_list();
+
+/*
+ * This is a strlen implementation which only can be used
+ * with static strings like
+ * "Hello"
+ * But in this case,
+ * it can be calculated during compile time.
+ */
+#define STATIC_STRLEN(x)			(sizeof(x) - 1)
 
 #define DISCOVERY_NEIGHBOUR_CACHE	3
 #define DISCOVERY_NEIGHBOUR_TIMEOUT	(5 * DISCOVERY_CYCLE)
 #define DISCOVERY_IPND_SERVICE		"lowpancl"
+#define DISCOVERY_IPND_SERVICE_UDP	"udpcl"
+#define DISCOVERY_IPND_SERVICE_PORT	"port="
 #define DISCOVERY_IPND_BUFFER_LEN 	70
 #define DISCOVERY_IPND_WHITELIST	0
 
@@ -56,13 +78,17 @@ void discovery_ipnd_print_list();
 #define IPND_FLAGS_SERVICE_BLOCK	(1<<1)
 #define IPND_FLAGS_BLOOMFILTER		(1<<2)
 
+
 /**
  * This "internal" struct extends the discovery_neighbour_list_entry struct with
  * more attributes for internal use
  */
 struct discovery_ipnd_neighbour_list_entry {
 	struct discovery_ipnd_neighbour_list_entry *next;
+	// TODO use uint64_t, because compressed bundle header can have such big addresses
 	linkaddr_t neighbour;
+	ip_addr_t ip;
+	uint16_t port;
 	unsigned long timestamp_last;
 	unsigned long timestamp_discovered;
 };
@@ -82,7 +108,7 @@ linkaddr_t discovery_whitelist[DISCOVERY_IPND_WHITELIST];
 /**
  * \brief IPND Discovery init function (called by agent)
  */
-bool discovery_ipnd_init()
+static bool discovery_ipnd_init()
 {
 	// Initialize the neighbour list
 	list_init(neighbour_list);
@@ -122,7 +148,7 @@ bool discovery_ipnd_init()
  * \param dest Address of potential neighbour
  * \return 1 if neighbour, 0 otherwise
  */
-uint8_t discovery_ipnd_is_neighbour(linkaddr_t * dest)
+uint8_t discovery_ipnd_is_neighbour(const linkaddr_t* const dest)
 {
 	struct discovery_ipnd_neighbour_list_entry * entry;
 
@@ -164,7 +190,7 @@ void discovery_ipnd_disable()
  * \param length Length of the Pointer
  * \return Length of the parsed EID
  */
-uint8_t discovery_ipnd_parse_eid(uint32_t * eid, uint8_t * buffer, uint8_t length) {
+uint8_t discovery_ipnd_parse_eid(uint32_t* const eid, const uint8_t* const buffer, const uint8_t length) {
 	int ret = 0;
 
 	/* Parse EID */
@@ -177,12 +203,47 @@ uint8_t discovery_ipnd_parse_eid(uint32_t * eid, uint8_t * buffer, uint8_t lengt
 }
 
 /**
+ * @brief discovery_ipnd_parse_service_param parses the port parameter of
+ * a service block of a ipnd beacon message
+ * @param attrs will contain the found port after parsing
+ */
+static void discovery_ipnd_parse_service_param(const uint8_t* const service_param, const uint32_t param_len, ipnd_msg_attrs_t* const attrs)
+{
+	if (attrs->port != 0) {
+		LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_WRN, "Port already set. Not overwritting with parsed service block parameter value.");
+		return;
+	}
+
+	const size_t param_min_len = STATIC_STRLEN(DISCOVERY_IPND_SERVICE_PORT);
+	if (param_len < param_min_len) {
+		/*
+		 * Service parameter is to small for
+		 * containing a port number.
+		 */
+		return;
+	}
+
+	// TODO the parameters are seperated by simicolons.
+	// So check all other parameters if there are more than one
+	if (memcmp(service_param, DISCOVERY_IPND_SERVICE_PORT, param_min_len) != 0) {
+		/*
+		 * Service parameter does not contain the
+		 * port number of this service
+		 */
+		return;
+	}
+
+	const char* const service_port_val = (char*)service_param + param_min_len;
+	attrs->port = atoi(service_port_val);
+}
+
+/**
  * \brief Function that could parse the IPND service block
  * \param buffer Pointer to the block
  * \param length Length of the block
  * \return the number of decoded bytes
  */
-uint8_t discovery_ipnd_parse_service_block(uint32_t eid, uint8_t * buffer, uint8_t length) {
+uint8_t discovery_ipnd_parse_service_block(uint32_t eid, const uint8_t* buffer, const uint8_t length, ipnd_msg_attrs_t* const attrs) {
 	uint32_t offset, num_services, i, sdnv_len, tag_len, data_len;
 	uint8_t *tag_buf;
 	int h;
@@ -200,7 +261,7 @@ uint8_t discovery_ipnd_parse_service_block(uint32_t eid, uint8_t * buffer, uint8
 		buffer += sdnv_len;
 
 		// decode service tag string
-		tag_buf = buffer;
+		tag_buf = (uint8_t*)buffer;
 		offset += tag_len;
 		buffer += tag_len;
 
@@ -209,13 +270,19 @@ uint8_t discovery_ipnd_parse_service_block(uint32_t eid, uint8_t * buffer, uint8
 		offset += sdnv_len;
 		buffer += sdnv_len;
 
+		/* parse UDP-CL service data, if available */
+		const size_t udpcl_len = STATIC_STRLEN(DISCOVERY_IPND_SERVICE_UDP);
+		if (tag_len == udpcl_len && memcmp(tag_buf, DISCOVERY_IPND_SERVICE_UDP, udpcl_len) == 0) {
+			discovery_ipnd_parse_service_param(buffer, data_len, attrs);
+		}
+
 		// Allow all registered DTN APPs to parse the IPND service block
 		for(h=0; dtn_apps[h] != NULL; h++) {
 			if( dtn_apps[h]->parse_ipnd_service_block == NULL ) {
 				continue;
 			}
 
-			dtn_apps[h]->parse_ipnd_service_block(eid, tag_buf, tag_len, buffer, data_len);
+			dtn_apps[h]->parse_ipnd_service_block(eid, tag_buf, tag_len, (uint8_t*)buffer, data_len);
 		}
 
 		offset += data_len;
@@ -232,7 +299,7 @@ uint8_t discovery_ipnd_parse_service_block(uint32_t eid, uint8_t * buffer, uint8
  * \param length Length of the filter
  * \return dummy
  */
-uint8_t discovery_ipnd_parse_bloomfilter(uint32_t eid, uint8_t * buffer, uint8_t length) {
+uint8_t discovery_ipnd_parse_bloomfilter(uint32_t eid, const uint8_t* const buffer, const uint8_t length) {
 	return 0;
 }
 
@@ -242,53 +309,86 @@ uint8_t discovery_ipnd_parse_bloomfilter(uint32_t eid, uint8_t * buffer, uint8_t
  * \param payload Payload pointer of the packet
  * \param length Length of the payload
  */
-void discovery_ipnd_receive(linkaddr_t * source, uint8_t * payload, uint8_t length)
+static void discovery_ipnd_receive(linkaddr_t * source, uint8_t * payload, uint8_t length)
 {
-	int offset = 0;
-
 	if( discovery_status == 0 ) {
 		// Not initialized yet
-		return;
-	}
-
-	if( length < 3 ) {
-		// IPND must have at least 3 bytes
 		return;
 	}
 
 	// Save all peer from which we receive packets to the active neighbours list
 	discovery_ipnd_refresh_neighbour(source);
 
+	ipnd_msg_attrs_t attrs;
+	discovery_ipnd_parse_msg(payload, length, &attrs);
+
+	if (source->u16 != attrs.node_id) {
+		LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_WRN, "LoWPAN address is not matching the node ID in the IPN scheme of the discovery message.");
+	}
+}
+
+
+static void discovery_ipnd_receive_ip(const ip_addr_t* const ip, const uint8_t* const payload, const uint8_t length)
+{
+	if( discovery_status == 0 ) {
+		// Not initialized yet
+		return;
+	}
+
+	ipnd_msg_attrs_t attrs;
+	discovery_ipnd_parse_msg(payload, length, &attrs);
+
+	/*
+	 * save the new neighbour,
+	 * if it not already exists.
+	 * If it already exists refresh only the time stamp.
+	 */
+	discovery_ipnd_save_neighbour_ip(attrs.node_id, ip, attrs.port);
+}
+
+
+static void discovery_ipnd_parse_msg(const uint8_t* const payload, const uint8_t length, ipnd_msg_attrs_t* const attrs)
+{
+	if (attrs == NULL) {
+		LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_ERR, "Attribute structure is a NULL pointer.");
+		return;
+	}
+
+	/* initialize the return variables */
+	memset(attrs, 0, sizeof(ipnd_msg_attrs_t));
+
+	if( length < 3 ) {
+		// IPND must have at least 3 bytes
+		return;
+	}
+
 	// Version
+	int offset = 0;
 	if( payload[offset++] != 0x02 ) {
 		LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_WRN, "IPND version mismatch");
 		return;
 	}
 
 	// Flags
-	uint8_t flags = payload[offset++];
+	const uint8_t flags = payload[offset++];
 
 	// Sequence Number
-	uint16_t sequenceNumber = ((payload[offset] & 0xFF) << 8) + (payload[offset+1] & 0xFF);
+	attrs->sequence_nr = ((payload[offset] & 0xFF) << 8) + (payload[offset+1] & 0xFF);
 	offset += 2;
 
-	/* Prevent compiler warning about unused variable */
-	(void) sequenceNumber;
-
-	uint32_t eid = 0;
 	if( flags & IPND_FLAGS_SOURCE_EID ) {
-		offset += discovery_ipnd_parse_eid(&eid, &payload[offset], length - offset);
+		offset += discovery_ipnd_parse_eid(&(attrs->node_id), &payload[offset], length - offset);
 	}
 
 	if( flags & IPND_FLAGS_SERVICE_BLOCK ) {
-		offset += discovery_ipnd_parse_service_block(eid, &payload[offset], length - offset);
+		offset += discovery_ipnd_parse_service_block(attrs->node_id, &payload[offset], length - offset, attrs);
 	}
 
 	if( flags & IPND_FLAGS_BLOOMFILTER ) {
-		offset += discovery_ipnd_parse_bloomfilter(eid, &payload[offset], length - offset);
+		offset += discovery_ipnd_parse_bloomfilter(attrs->node_id, &payload[offset], length - offset);
 	}
 
-	LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "Discovery from %u.%u (ipn:%lu) with flags %02X and seqNo %u", source->u8[0], source->u8[1], eid, flags, sequenceNumber);
+	LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "Discovery from ipn:%lu with flags %02X and seqNo %u", attrs->node_id, flags, attrs->sequence_nr);
 }
 
 /**
@@ -346,7 +446,7 @@ void discovery_ipnd_send() {
  *
  * \param neighbour Address of the neighbour that should be refreshed
  */
-void discovery_ipnd_refresh_neighbour(linkaddr_t * neighbour)
+static void discovery_ipnd_refresh_neighbour(linkaddr_t * neighbour)
 {
 #if DISCOVERY_IPND_WHITELIST > 0
 	int i;
@@ -383,11 +483,36 @@ void discovery_ipnd_refresh_neighbour(linkaddr_t * neighbour)
 	discovery_ipnd_save_neighbour(neighbour);
 }
 
+static bool discovery_ipnd_refresh_neighbour_ip(const ip_addr_t* const ip, const uint16_t port)
+{
+	if( discovery_status == 0 ) {
+		// Not initialized yet
+		return false;
+	}
+
+	if (ip == NULL) {
+		LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_WRN, "discovery_ipnd_refresh_neighbour_ip called with NULL ip address.");
+		return false;
+	}
+
+	for(struct discovery_ipnd_neighbour_list_entry* entry = list_head(neighbour_list);
+			entry != NULL;
+			entry = list_item_next(entry)) {
+		if(  ip_addr_cmp( &(entry->ip), ip ) && entry->port == port  ) {
+			entry->timestamp_last = clock_seconds();
+			return true;
+		}
+	}
+
+	LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_INF, "Node for addr %s and port %u is an unkown neighbour.", ipaddr_ntoa(ip), port);
+	return false;
+}
+
 /**
  * \brief Marks a neighbour as 'dead' after multiple transmission attempts have failed
  * \param neighbour Address of the neighbour
  */
-void discovery_ipnd_delete_neighbour(linkaddr_t * neighbour)
+static void discovery_ipnd_delete_neighbour(linkaddr_t * neighbour)
 {
 	struct discovery_ipnd_neighbour_list_entry * entry;
 
@@ -421,7 +546,13 @@ void discovery_ipnd_delete_neighbour(linkaddr_t * neighbour)
  * \brief Save neighbour to local cache
  * \param neighbour Address of the neighbour
  */
-void discovery_ipnd_save_neighbour(linkaddr_t * neighbour)
+static void discovery_ipnd_save_neighbour(linkaddr_t * neighbour)
+{
+	discovery_ipnd_save_neighbour_ip(neighbour->u16, NULL, 0);
+}
+
+
+static void discovery_ipnd_save_neighbour_ip(const uint32_t node_id, const ip_addr_t* const ip, const uint16_t port)
 {
 	if( discovery_status == 0 ) {
 		// Not initialized yet
@@ -429,7 +560,7 @@ void discovery_ipnd_save_neighbour(linkaddr_t * neighbour)
 	}
 
 	// If we know that neighbour already, no need to re-add it
-	if( discovery_ipnd_is_neighbour(neighbour) ) {
+	if( discovery_ipnd_refresh_neighbour_ip(ip, port) ) {
 		return;
 	}
 
@@ -441,17 +572,24 @@ void discovery_ipnd_save_neighbour(linkaddr_t * neighbour)
 		return;
 	}
 
-	LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_INF, "Found new neighbour %u.%u", neighbour->u8[0], neighbour->u8[1]);
+	LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_INF, "Found new neighbour ipn:%lu", node_id);
 
 	// Clean the entry struct
 	memset(entry, 0, sizeof(struct discovery_ipnd_neighbour_list_entry));
 
-	linkaddr_copy(&entry->neighbour, neighbour);
+	entry->neighbour.u16 = node_id;
+	if (ip == NULL || port == 0) {
+		entry->ip.addr = IPADDR_NONE;
+		entry->port = 0;
+	} else {
+		IPADDR2_COPY(&(entry->ip), ip);
+		entry->port = port;
+	}
 	entry->timestamp_last = clock_seconds();
 	entry->timestamp_discovered = clock_seconds();
 
 	// Notify the statistics module
-	statistics_contacts_up(neighbour);
+	statistics_contacts_up(node_id);
 
 	list_add(neighbour_list, entry);
 
@@ -546,20 +684,22 @@ void discovery_ipnd_print_list()
 }
 
 const struct discovery_driver discovery_ipnd = {
-		"IPND_DISCOVERY",
-		discovery_ipnd_init,
-		discovery_ipnd_is_neighbour,
-		discovery_ipnd_enable,
-		discovery_ipnd_disable,
-		discovery_ipnd_receive,
-		discovery_ipnd_refresh_neighbour,
-		discovery_ipnd_delete_neighbour,
-		discovery_ipnd_is_neighbour,
-		discovery_ipnd_list_neighbours,
-		discovery_ipnd_stop_pending,
-		discovery_ipnd_start,
-		discovery_ipnd_stop,
-		discovery_ipnd_clear
+		.name			= "IPND_DISCOVERY",
+		.init			= discovery_ipnd_init,
+		.is_neighbour	= discovery_ipnd_is_neighbour,
+		.enable			= discovery_ipnd_enable,
+		.disable		= discovery_ipnd_disable,
+		.receive		= discovery_ipnd_receive,
+		.receive_ip		= discovery_ipnd_receive_ip,
+		.alive			= discovery_ipnd_refresh_neighbour,
+		.alive_ip		= discovery_ipnd_refresh_neighbour_ip,
+		.dead			= discovery_ipnd_delete_neighbour,
+		.discover		= discovery_ipnd_is_neighbour,
+		.neighbours		= discovery_ipnd_list_neighbours,
+		.stop_pending	= discovery_ipnd_stop_pending,
+		.start			= discovery_ipnd_start,
+		.stop			= discovery_ipnd_stop,
+		.clear			= discovery_ipnd_clear
 };
 /** @} */
 /** @} */
