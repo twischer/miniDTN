@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Wolf-Bastian Pšttner.
+ * Copyright (c) 2014, Wolf-Bastian PÃ¶ttner.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,26 +30,28 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "contiki.h"
-#include "process.h"
-
 #include "dtn_apps.h"
 #include "net/uDTN/api.h"
 #include "net/uDTN/agent.h"
 #include "net/uDTN/bundle.h"
+#include "net/uDTN/dtn_process.h"
 
 #define DTN_PING_ENDPOINT	11
 
 /*---------------------------------------------------------------------------*/
-PROCESS(dtnpingecho_process, "DTN Ping Echo process");
+static void dtnpingecho_process(void* args);
 static struct registration_api reg;
 /*---------------------------------------------------------------------------*/
-int dtnpingecho_init(void) {
-	process_start(&dtnpingecho_process, NULL);
+static int dtnpingecho_init(void)
+{
+	if (!dtn_process_create_other_stack(dtnpingecho_process, "DTN Ping Echo process", 256)) {
+		return -1;
+	}
+
 	return 1;
 }
 /*---------------------------------------------------------------------------*/
-PROCESS_THREAD(dtnpingecho_process, ev, data)
+static void dtnpingecho_process(void* args)
 {
 	static uint32_t bundles_recv = 0;
 	uint32_t tmp;
@@ -65,24 +67,27 @@ PROCESS_THREAD(dtnpingecho_process, ev, data)
 	uint8_t payload_buffer[64];
 	uint8_t payload_length;
 
-	PROCESS_BEGIN();
-
-	/* Give agent time to initialize */
-	PROCESS_PAUSE();
-
 	/* Register ping endpoint */
 	reg.status = APP_ACTIVE;
-	reg.application_process = PROCESS_CURRENT();;
+	reg.event_queue = dtn_process_get_event_queue();
 	reg.app_id = DTN_PING_ENDPOINT;
-	process_post(&agent_process, dtn_application_registration_event,&reg);
+	const event_container_t event = {
+		.event = dtn_application_registration_event,
+		.registration = &reg
+	};
+	agent_send_event(&event);
 
 	printf("DTN Ping Echo running on ipn:%lu.%lu\n", dtn_node_id, reg.app_id);
 
 	while (1) {
-		PROCESS_WAIT_EVENT_UNTIL(ev == submit_data_to_application_event);
+		event_container_t ev;
+		const bool event_received = dtn_process_wait_event(submit_data_to_application_event, portMAX_DELAY, &ev);
+		if (!event_received) {
+			continue;
+		}
 
 		// Reconstruct the bundle struct from the event
-		bundlemem = (struct mmem *) data;
+		bundlemem = (struct mmem *) ev.bundlemem;
 
 		block = bundle_get_payload_block(bundlemem);
 		if( block == NULL ) {
@@ -109,7 +114,12 @@ PROCESS_THREAD(dtnpingecho_process, ev, data)
 		printf("PING %lu of %u bytes received from ipn:%lu.%lu\n", bundles_recv, block->block_size, source_node, source_service);
 
 		// Tell the agent, that have processed the bundle
-		process_post(&agent_process, dtn_processing_finished, bundlemem);
+		const event_container_t finished_event = {
+			.event = dtn_processing_finished,
+			.bundlemem = bundlemem
+		};
+		agent_send_event(&finished_event);
+
 		bundlemem = NULL;
 		block = NULL;
 
@@ -139,10 +149,12 @@ PROCESS_THREAD(dtnpingecho_process, ev, data)
 		bundle_add_block(bundlemem, BUNDLE_BLOCK_TYPE_PAYLOAD, BUNDLE_BLOCK_FLAG_NULL, payload_buffer, payload_length);
 
 		// And submit the bundle to the agent
-		process_post(&agent_process, dtn_send_bundle_event, (void *) bundlemem);
+		const event_container_t bundle_event = {
+			.event = dtn_send_bundle_event,
+			.bundlemem = bundlemem
+		};
+		agent_send_event(&bundle_event);
 	}
-
-	PROCESS_END();
 }
 /*---------------------------------------------------------------------------*/
 const struct dtn_app dtnpingecho = {

@@ -60,6 +60,8 @@ bool dtn_process_wait_any_event(const TickType_t xTicksToWait, event_container_t
 
 bool dtn_process_wait_event(const event_t event, const TickType_t xTicksToWait, event_container_t* const event_container)
 {
+	// TODO check if xQueueReceive blocks infinity if using portMAX_DELAY
+	// adapt this methode to block infinitly, too
 	const TickType_t wait_start = xTaskGetTickCount();
 	do {
 		const TickType_t ticks_left = xTicksToWait - (xTaskGetTickCount() - wait_start);
