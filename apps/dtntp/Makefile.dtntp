@@ -1,0 +1,4 @@
+dtntp_src = dtntp.c
+
+# Lib Math is needed for calculations
+TARGET_LIBFILES += -lm
