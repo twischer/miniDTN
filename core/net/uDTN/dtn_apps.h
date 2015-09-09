@@ -12,6 +12,8 @@
 #ifndef DTN_APPS_H
 #define DTN_APPS_H
 
+#include <stdint.h>
+
 extern const struct dtn_app * dtn_apps[];
 
 struct dtn_app {

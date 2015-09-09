@@ -56,6 +56,26 @@ INCLUDE+=-I$(FREERTOS)/portable/GCC/ARM_CM4F
 INCLUDE+=-I$(ROOT_DIR)/Libraries/ub_lib
 INCLUDE+=-I$(ROOT_DIR)/config
 
+# Here comes black magic:
+# We automatically include and start so-called dtn apps
+# Enable an app by adding the following line to your project Makfile:
+# DTN_APPS += APPNAME
+# Apps are stored in Contikis standard "apps" directory
+DTN_APPS_INC := core/net/uDTN/dtn_apps_includes.h
+ifdef DTN_APPS
+  # Make a list of the app structs that are later used to initialize an array
+  DTN_APPS_LIST = { ${foreach APP,$(DTN_APPS),&$(APP),} NULL}
+  
+  # Pass the list of app structs on as a define
+  CDEFS += -DDTN_APPS_LIST="${DTN_APPS_LIST}"
+  
+  # Generate a header file that include an extern forward declaration for all app structs
+  $(shell echo > $(DTN_APPS_INC))
+  ${foreach APP,$(DTN_APPS),$(shell echo extern const struct dtn_app $(APP)\; >> $(DTN_APPS_INC))}
+  
+  MODULES += ${foreach APP,$(DTN_APPS),apps/$(APP) }
+endif
+
 SRC_DIRS:= $(addprefix $(ROOT_DIR)/,$(MODULES))
 INC_DIRS+= $(MODULES)
 INCLUDE+= $(addprefix -I$(ROOT_DIR)/,$(INC_DIRS))
@@ -86,20 +106,6 @@ SRC+=syscalls.c
 SRC+=heap_4.c
 
 # Standard Peripheral Source Files
-#SRC+=stm32f4xx_syscfg.c
-#SRC+=misc.c
-#SRC+=stm32f4xx_adc.c
-#SRC+=stm32f4xx_dac.c
-#SRC+=stm32f4xx_dma.c
-#SRC+=stm32f4xx_exti.c
-#SRC+=stm32f4xx_flash.c
-#SRC+=stm32f4xx_gpio.c
-#SRC+=stm32f4xx_i2c.c
-#SRC+=stm32f4xx_rcc.c
-#SRC+=stm32f4xx_spi.c
-#SRC+=stm32f4xx_tim.c
-#SRC+=stm32f4xx_usart.c
-#SRC+=stm32f4xx_rng.c
 SRC+=sd_diskio.c
 
 
@@ -115,28 +121,28 @@ SRC+=framer-802154.c
 SRC+= $(foreach sdir,$(MODULES),$(wildcard $(sdir)/*.c))
 
 
-CDEFS=-DSTM32F407xx 
-CDEFS+=-DUSE_STDPERIPH_DRIVER
-CDEFS+=-DSTM32F4XX
-CDEFS+=-DHSE_VALUE=8000000
-CDEFS+=-D__FPU_PRESENT=1
-CDEFS+=-D__FPU_USED=1
-CDEFS+=-DARM_MATH_CM4
+CDEFS+= -DSTM32F407xx 
+CDEFS+= -DUSE_STDPERIPH_DRIVER
+CDEFS+= -DSTM32F4XX
+CDEFS+= -DHSE_VALUE=8000000
+CDEFS+= -D__FPU_PRESENT=1
+CDEFS+= -D__FPU_USED=1
+CDEFS+= -DARM_MATH_CM4
 
 # Contiki definitions from old inga platform with an atmega128
-CDEFS+=-DNETSTACK_CONF_WITH_DTN=1
-CDEFS+=-DUIP_CONF_IPV6_RPL=0
-CDEFS+=-DINGA_CONF_REVISION=INGA_V14
+CDEFS+= -DNETSTACK_CONF_WITH_DTN=1
+CDEFS+= -DUIP_CONF_IPV6_RPL=0
+CDEFS+= -DINGA_CONF_REVISION=INGA_V14
 
 # TODO eemprom not suported at this time
 #CDEFS+=-DCONTIKI_CONF_SETTINGS_MANAGER=1
 
-CDEFS+=-DAUTO_CRC_PADDING=2
-CDEFS+=-DRF230BB
-CDEFS+=-DCONTIKI=1
-CDEFS+=-DINGA_BOOTSCREEN_NETSTACK
-CDEFS+=-DINGA_BOOTSCREEN
-CDEFS+=-DINGA_BOOTSCREEN_RADIO
+CDEFS+= -DAUTO_CRC_PADDING=2
+CDEFS+= -DRF230BB
+CDEFS+= -DCONTIKI=1
+CDEFS+= -DINGA_BOOTSCREEN_NETSTACK
+CDEFS+= -DINGA_BOOTSCREEN
+CDEFS+= -DINGA_BOOTSCREEN_RADIO
 
 
 MCUFLAGS=-O$(OPTLVL) $(DBG) -MMD -std=gnu11 -Wall -Wno-address -mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard
@@ -154,6 +160,7 @@ GDB=$(TOOLCHAIN_PATH)/$(TOOLCHAIN_PREFIX)-gdb
 SIZE=$(TOOLCHAIN_PATH)/$(TOOLCHAIN_PREFIX)-size
 
 OBJ = $(SRC:%.c=$(BUILD_BASE)/%.o)
+
 
 $(BUILD_BASE)/%.o: %.c
 	@echo [CC] $(notdir $<)
