@@ -28,7 +28,7 @@ int convergence_layers_send_discovery(const uint8_t* const payload, const uint8_
 	int err = 0;
 
 	static const linkaddr_t bcast_addr = {{0, 0}};
-	if (!convergence_layer_send_discovery(payload, length, &bcast_addr)) {
+	if (!convergence_layer_send_discovery((uint8_t*)payload, length, (linkaddr_t*)&bcast_addr)) {
 		err = -1;
 	}
 

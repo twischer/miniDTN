@@ -21,8 +21,8 @@
 
 #include "dtn_network.h"
 #include "agent.h"
-
 #include "discovery.h"
+#include "convergence_layers.h"
 
 #define DISCOVERY_NEIGHBOUR_CACHE	3
 
@@ -46,7 +46,7 @@ bool discovery_simple_init() {
 	return true;
 }
 
-uint8_t discovery_simple_is_neighbour(linkaddr_t * dest) {
+uint8_t discovery_simple_is_neighbour(const linkaddr_t* const dest) {
 	struct discovery_neighbour_list_entry * entry;
 
 	for (entry = list_head(neighbour_list); entry != NULL ; entry = entry->next) {
@@ -124,7 +124,7 @@ void discovery_simple_send_discover() {
 	convergence_layers_send_discovery((uint8_t *) "", 0);
 }
 
-uint8_t discovery_simple_discover(linkaddr_t * dest) {
+uint8_t discovery_simple_discover(const linkaddr_t* const dest) {
 	LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "someone/agent asks to discover %u.%u", dest->u8[0], dest->u8[1]);
 
 	// Check, if we already know this neighbour

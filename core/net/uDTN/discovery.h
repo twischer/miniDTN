@@ -71,7 +71,7 @@ struct discovery_driver {
 	 * Pass incoming discovery beacons to the discovery module
 	 */
 	void (* receive)(linkaddr_t * source, uint8_t * payload, uint8_t length);
-	void (* receive_ip)(const struct ip_addr* const ip, const uint8_t* const payload, const uint8_t length);
+	void (* receive_ip)(const ip_addr_t* const ip, const uint8_t* const payload, const uint8_t length);
 
 	/**
 	 * Bundle from node has been received, cache this node as available

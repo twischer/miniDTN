@@ -139,7 +139,7 @@ CDEFS+=-DINGA_BOOTSCREEN
 CDEFS+=-DINGA_BOOTSCREEN_RADIO
 
 
-MCUFLAGS=-O$(OPTLVL) $(DBG) -MMD -std=gnu11 -Wall -mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard
+MCUFLAGS=-O$(OPTLVL) $(DBG) -MMD -std=gnu11 -Wall -Wno-address -mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard
 CFLAGS+=$(MCUFLAGS) $(INCLUDE) $(CDEFS)
 
 LDLIBS=-lc -lm -lnosys

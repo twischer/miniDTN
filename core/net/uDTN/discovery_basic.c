@@ -30,8 +30,8 @@
 #include "dtn_network.h"
 #include "agent.h"
 #include "discovery_scheduler.h"
-
 #include "discovery.h"
+#include "convergence_layers.h"
 
 void discovery_basic_neighbour_found(linkaddr_t * neighbour);
 void discovery_basic_refresh_neighbour(linkaddr_t * neighbour);
@@ -117,7 +117,7 @@ bool discovery_basic_init()
  * \param dest Address of the potential neighbour
  * \return 1 if neighbour, 0 otherwise
  */
-uint8_t discovery_basic_is_neighbour(linkaddr_t * dest)
+uint8_t discovery_basic_is_neighbour(const linkaddr_t* const dest)
 {
 	struct discovery_basic_neighbour_list_entry * entry;
 
@@ -137,7 +137,7 @@ uint8_t discovery_basic_is_neighbour(linkaddr_t * dest)
  * \brief Send out discovery to provided address
  * \param destination Address to send the discovery to
  */
-void discovery_basic_send_discovery(linkaddr_t * destination)
+void discovery_basic_send_discovery(const linkaddr_t* const destination)
 {
 	if( discovery_status == 0 ) {
 		return;
@@ -349,7 +349,7 @@ void discovery_basic_save_neighbour(linkaddr_t * neighbour)
  * \param dest Address of the neighbour
  * \return 1 if neighbour is already known in (likely) in range, 0 otherwise
  */
-uint8_t discovery_basic_discover(linkaddr_t * dest)
+uint8_t discovery_basic_discover(const linkaddr_t* const dest)
 {
 
 	LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "agent asks to discover %u.%u", dest->u8[0], dest->u8[1]);
