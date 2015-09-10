@@ -1,5 +1,9 @@
 MODULES+= examples/uDTN/dtnping
 CFLAGS+= -DPROJECT_CONF_H=\"project-conf.h\"
+CFLAGS+= -DINGA_CONF_PAN_ID=0x0780
+CFLAGS+= -DINGA_CONF_PAN_ADDR=0x05B9
+
+
 # Uncomment it for enabling debug messages
 #CFLAGS+= -DENABLE_LOGGING
 
