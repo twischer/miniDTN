@@ -211,7 +211,7 @@ void routing_flooding_new_neighbour(linkaddr_t *dest)
  * \param neighbour Address of the neighbour
  * \return 1 on success, -1 on error
  */
-int routing_flooding_send_bundle(uint32_t bundle_number, linkaddr_t * neighbour)
+static int routing_flooding_send_bundle(uint32_t bundle_number, linkaddr_t * neighbour)
 {
 	struct transmit_ticket_t * ticket = NULL;
 

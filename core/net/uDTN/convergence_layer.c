@@ -211,7 +211,6 @@ int convergence_layer_enqueue_bundle(struct transmit_ticket_t * ticket)
 
 	if( convergence_layer_pending == 0 ) {
 		/* Poll the process to initiate transmission */
-//		process_poll(&convergence_layer_process);
 		xTaskNotify(convergence_layer_task, 0, eNoAction);
 	}
 
@@ -955,7 +954,6 @@ int convergence_layer_status(void * pointer, uint8_t outcome)
 			convergence_layer_backoff_pending = 1;
 		} else {
 			/* Poll to make it faster */
-//			process_poll(&convergence_layer_process);
 			xTaskNotify(convergence_layer_task, 0, eNoAction);
 		}
 
@@ -1304,8 +1302,6 @@ static void convergence_layer_process(void* p)
 	struct transmit_ticket_t * ticket = NULL;
 //	static struct etimer stale_timer;
 	int n;
-
-//	PROCESS_BEGIN();
 
 	/* Initialize ticket storage */
 	memb_init(&transmission_ticket_mem);
