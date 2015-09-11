@@ -19,6 +19,7 @@ typedef struct {
 
 static uint8_t next_message_index = 0;
 static message_t messages[MESSAGE_COUNT];
+static const char* fault_name = NULL;
 
 
 
@@ -63,8 +64,66 @@ static void Unexpected_Interrupt(const char* const name)
 }
 
 
+/**
+ * @see http://www.freertos.org/Debugging-Hard-Faults-On-Cortex-M-Microcontrollers.html
+ */
+void prvGetRegistersFromStack(uint32_t *pulFaultStackAddress)  __attribute__((no_instrument_function));
+void prvGetRegistersFromStack(uint32_t *pulFaultStackAddress)
+{
+/* These are volatile to try and prevent the compiler/linker optimising them
+away as the variables never actually get used. If the debugger won't show the
+values of the variables, make them global my moving their declaration outside
+of this function. */
+  volatile uint32_t r0;
+  volatile uint32_t r1;
+  volatile uint32_t r2;
+  volatile uint32_t r3;
+  volatile uint32_t r12;
+  volatile uint32_t lr; /* Link register. */
+  volatile uint32_t pc; /* Program counter. */
+  volatile uint32_t psr;/* Program status register. */
+
+  r0 = pulFaultStackAddress[0];
+  r1 = pulFaultStackAddress[1];
+  r2 = pulFaultStackAddress[2];
+  r3 = pulFaultStackAddress[3];
+
+  r12 = pulFaultStackAddress[4];
+  lr = pulFaultStackAddress[5];
+  pc = pulFaultStackAddress[6];
+  psr = pulFaultStackAddress[7];
+
+  /* When the following line is hit, the variables contain the register values. */
+  printf("r0 0x%lx, r1 0x%lx, r2 0x%lx, r3 0x%lx, r12 0x%lx, lr 0x%lx, pc 0x%lx, psr 0x%lx\n", r0, r1, r2, r3, r12, lr, pc, psr);
+
+  Unexpected_Interrupt(fault_name);
+}
+
+
+/* The prototype shows it is a naked function - in effect this is just an
+assembly function. */
+void HardFault_Handler( void ) __attribute__( ( naked ) );
+
+/* The fault handler implementation calls a function called
+prvGetRegistersFromStack(). */
+void HardFault_Handler()
+{
+	fault_name = __func__;
+
+	__asm volatile (
+		" tst lr, #4                                                \n"
+		" ite eq                                                    \n"
+		" mrseq r0, msp                                             \n"
+		" mrsne r0, psp                                             \n"
+		" ldr r1, [r0, #24]                                         \n"
+		" ldr r2, handler2_address_const                            \n"
+		" bx r2                                                     \n"
+		" handler2_address_const: .word prvGetRegistersFromStack    \n"
+		);
+}
+
+
 void NMI_Handler() { Unexpected_Interrupt(__func__); }
-void HardFault_Handler() { Unexpected_Interrupt(__func__); }
 void MemManage_Handler() { Unexpected_Interrupt(__func__); }
 void BusFault_Handler() { Unexpected_Interrupt(__func__); }
 void UsageFault_Handler() { Unexpected_Interrupt(__func__); }
