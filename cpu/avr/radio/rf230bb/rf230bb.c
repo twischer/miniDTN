@@ -802,7 +802,7 @@ rf230_init(void)
  
  /* Start the packet receive process */
 //  process_start(&rf230_process, NULL);
-  if ( !xTaskCreate(rf230_process, "RF230BB driver", configMINIMAL_STACK_SIZE+100, NULL, 1, &rf230_task) ) {
+  if ( !xTaskCreate(rf230_process, "RF230BB driver", 0x100, NULL, 1, &rf230_task) ) {
 	  return 0;
   }
  
@@ -1297,7 +1297,6 @@ if (RF230_receive_on) {
   interrupt_time_set = 1;
 #endif /* RF230_CONF_TIMESTAMPS */
 
-//  process_poll(&rf230_process);
   xTaskResumeFromISR(rf230_task);
   
   rf230_pending = 1;

@@ -213,7 +213,7 @@ void dtnping_process(void* p)
 
 bool init()
 {
-	if ( !dtn_process_create_other_stack(dtnping_process, "DTN Ping", 150) ) {
+	if ( !dtn_process_create_other_stack(dtnping_process, "DTN Ping", 0x100) ) {
 		return false;
 	}
 

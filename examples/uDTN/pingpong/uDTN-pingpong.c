@@ -496,18 +496,18 @@ bool init()
 	printf("Starting tests\n");
 
 #if CONF_MODE == MODE_ACTIVE
-	if ( !dtn_process_create_other_stack(ping_process, "Ping", configMINIMAL_STACK_SIZE + 50) ) {
+	if ( !dtn_process_create_other_stack(ping_process, "Ping", 0x100) ) {
 		return false;
 	}
 #elif CONF_MODE == MODE_PASSIVE
-	if ( !dtn_process_create_other_stack(pong_process, "Pong", configMINIMAL_STACK_SIZE + 50) ) {
+	if ( !dtn_process_create_other_stack(pong_process, "Pong", 0x100) ) {
 		return false;
 	}
 #else
-	if ( !dtn_process_create_other_stack(ping_process, "Ping", configMINIMAL_STACK_SIZE + 50) ) {
+	if ( !dtn_process_create_other_stack(ping_process, "Ping", 0x100) ) {
 		return false;
 	}
-	if ( !dtn_process_create_other_stack(pong_process, "Pong", configMINIMAL_STACK_SIZE + 50) ) {
+	if ( !dtn_process_create_other_stack(pong_process, "Pong", 0x100) ) {
 		return false;
 	}
 #endif
