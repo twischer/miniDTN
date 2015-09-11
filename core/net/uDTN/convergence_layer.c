@@ -1196,7 +1196,6 @@ void check_blocked_neighbours() {
 
 	if( convergence_layer_pending == 0 ) {
 		/* Tell the process to resend the bundles */
-//		process_poll(&convergence_layer_process);
 		xTaskNotify(convergence_layer_task, 0, eNoAction);
 	}
 }

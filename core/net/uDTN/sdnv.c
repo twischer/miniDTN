@@ -172,7 +172,8 @@ int sdnv_decode(const uint8_t* bp, size_t len, uint32_t* val)
 	} while (1);
 
 	if ((val_len > MAX_LENGTH) || ((val_len == MAX_LENGTH) && (*start != 0x81))){
-		LOG(LOGD_DTN, LOG_SDNV, LOGL_ERR, "SDNV: val_len >= %u", MAX_LENGTH);
+		LOG(LOGD_DTN, LOG_SDNV, LOGL_ERR, "SDNV: val_len >= %u (%02x %02x %02x %02x ...)",
+			MAX_LENGTH, start[0], start[1], start[2], start[3]);
 		*val = 0;
 		return sdnv_len(start);
 	}

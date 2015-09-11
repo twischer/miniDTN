@@ -21,6 +21,12 @@ bool dtn_process_create(const TaskFunction_t pvTaskCode, const char* const pcNam
 
 bool dtn_process_create_other_stack(const TaskFunction_t pvTaskCode, const char* const pcName, const uint16_t usStackDepth)
 {
+	QueueHandle_t event_queue = NULL;
+	return dtn_process_create_with_queue(pvTaskCode, pcName, usStackDepth, &event_queue);
+}
+
+bool dtn_process_create_with_queue(const TaskFunction_t pvTaskCode, const char* const pcName, const uint16_t usStackDepth, QueueHandle_t* const event_queue)
+{
 	// TODO add parameter and fail if parameter false and function already used for an process
 
 
@@ -29,8 +35,8 @@ bool dtn_process_create_other_stack(const TaskFunction_t pvTaskCode, const char*
 		return false;
 	}
 
-	const QueueHandle_t event_queue = xQueueCreate( DTN_QUEUE_LENGTH, sizeof(event_container_t) );
-	if (event_queue == NULL) {
+	*event_queue = xQueueCreate( DTN_QUEUE_LENGTH, sizeof(event_container_t) );
+	if (*event_queue == NULL) {
 		return false;
 	}
 
@@ -40,7 +46,7 @@ bool dtn_process_create_other_stack(const TaskFunction_t pvTaskCode, const char*
 	 * So this queue belong to this task.
 	 * Save the queue as the application tag of this task.
 	 */
-	vTaskSetApplicationTaskTag(createdTask, event_queue);
+	vTaskSetApplicationTaskTag(createdTask, *event_queue);
 
 	return true;
 }
