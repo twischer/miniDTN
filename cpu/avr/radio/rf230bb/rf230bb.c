@@ -802,7 +802,7 @@ rf230_init(void)
  
  /* Start the packet receive process */
 //  process_start(&rf230_process, NULL);
-  if ( !xTaskCreate(rf230_process, "RF230BB driver", 0x100, NULL, 1, &rf230_task) ) {
+  if ( !xTaskCreate(rf230_process, "RF230BB driver", 0x200, NULL, 1, &rf230_task) ) {
 	  return 0;
   }
  
