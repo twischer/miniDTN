@@ -8,6 +8,7 @@ TOOLCHAIN_PREFIX:=arm-none-eabi
 # TODO use s
 OPTLVL:=0
 DBG:=-g
+#INSTRUMENTATION := -finstrument-functions
 
 STARTUP	:= $(ROOT_DIR)/Drivers/CMSIS/Device/ST/STM32F4xx/Source/Templates/gcc
 
@@ -159,6 +160,15 @@ AR=$(TOOLCHAIN_PATH)/$(TOOLCHAIN_PREFIX)-ar
 GDB=$(TOOLCHAIN_PATH)/$(TOOLCHAIN_PREFIX)-gdb
 
 OBJ = $(SRC:%.c=$(BUILD_BASE)/%.o)
+
+
+#$(BUILD_BASE)/Src/%.o: %.c
+#	@echo [CC] $(INSTRUMENTATION) $(notdir $<)
+#	@$(CC) $(CFLAGS) $(INSTRUMENTATION) $< -c -o $@
+
+$(BUILD_BASE)/core/net/%.o: %.c
+	@echo [CC] $(INSTRUMENTATION) $(notdir $<)
+	@$(CC) $(CFLAGS) $(INSTRUMENTATION) $< -c -o $@
 
 
 $(BUILD_BASE)/%.o: %.c
