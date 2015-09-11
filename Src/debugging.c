@@ -5,6 +5,9 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include "FreeRTOS.h"
+#include "task.h"
+
 
 #define MESSAGE_COUNT	5
 
@@ -18,6 +21,7 @@ static uint8_t next_message_index = 0;
 static message_t messages[MESSAGE_COUNT];
 
 
+
 static inline void message_add(const bool type, void *this_fn, void *call_site)
 {
 	messages[next_message_index].enter = type;
@@ -25,6 +29,8 @@ static inline void message_add(const bool type, void *this_fn, void *call_site)
 	messages[next_message_index].call_site = call_site;
 
 	next_message_index = (next_message_index + 1) % MESSAGE_COUNT;
+
+	vTaskCheckForStackOverflow();
 }
 
 
