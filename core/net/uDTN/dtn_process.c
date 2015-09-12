@@ -9,7 +9,8 @@
  * \author Timo Wischer <t.wischer@tu-bs.de>
  */
 
-
+#include "lib/logging.h"
+#include "agent.h"
 #include "dtn_process.h"
 
 
@@ -32,11 +33,13 @@ bool dtn_process_create_with_queue(const TaskFunction_t pvTaskCode, const char* 
 
 	TaskHandle_t createdTask;
 	if ( !xTaskCreate(pvTaskCode, pcName, usStackDepth, NULL, 1, &createdTask) ) {
+		LOG(LOGD_DTN, LOG_AGENT, LOGL_ERR, "Failed to create task %s", pcName);
 		return false;
 	}
 
 	*event_queue = xQueueCreate( DTN_QUEUE_LENGTH, sizeof(event_container_t) );
 	if (*event_queue == NULL) {
+		LOG(LOGD_DTN, LOG_AGENT, LOGL_ERR, "Failed to create queue for task %s", pcName);
 		return false;
 	}
 
@@ -84,7 +87,7 @@ bool dtn_process_wait_event(const event_t event, const TickType_t xTicksToWait, 
 void dtn_process_send_event(const QueueHandle_t event_queue, const event_t event, const void* const data)
 {
 	if (event_queue == NULL) {
-//		LOG(LOGD_DTN, LOG_AGENT, LOGL_WRN, "Event queue not defined!");
+		LOG(LOGD_DTN, LOG_AGENT, LOGL_ERR, "Event queue not defined!");
 		return;
 	}
 
