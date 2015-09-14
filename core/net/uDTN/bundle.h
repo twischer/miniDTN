@@ -131,9 +131,9 @@ struct bundle_t{
 
 	uint32_t flags;
 	uint32_t dst_node;
-	uint32_t dst_srv;
+	uint64_t dst_srv;
 	uint32_t src_node;
-	uint32_t src_srv;
+	uint64_t src_srv;
 	uint32_t rep_node;
 	uint32_t rep_srv;
 	uint32_t cust_node;
@@ -181,6 +181,7 @@ int bundle_encode_bundle(struct mmem * bundlemem, uint8_t * buffer, int max_len)
  * \return length of the set value on success or 0 on error
  */
 uint8_t bundle_set_attr(struct mmem *bundlemem, uint8_t attr, const uint32_t * const val);
+uint8_t bundle_set_attr_long(struct mmem *bundlemem, uint8_t attr, const uint64_t * const val);
 
 /**
  * \brief Gets an attribute of a bundle
@@ -190,6 +191,7 @@ uint8_t bundle_set_attr(struct mmem *bundlemem, uint8_t attr, const uint32_t * c
  * \return 1 on success or 0 on error
  */
 uint8_t bundle_get_attr(struct mmem *bundlemem, uint8_t attr, uint32_t *val);
+uint8_t bundle_get_attr_long(struct mmem *bundlemem, uint8_t attr, uint64_t *val);
 
 /**
  * \brief Get a new bundle structure allocated

@@ -57,7 +57,6 @@ static void dtnpingecho_process(void* args)
 	uint32_t tmp;
 
 	uint32_t source_node;
-	uint32_t source_service;
 	uint32_t incoming_lifetime;
 
 	struct mmem * bundlemem = NULL;
@@ -105,13 +104,14 @@ static void dtnpingecho_process(void* args)
 
 		// Extract the source information to send a reply back
 		bundle_get_attr(bundlemem, SRC_NODE, &source_node);
-		bundle_get_attr(bundlemem, SRC_SERV, &source_service);
+		uint64_t source_service = 0;
+		bundle_get_attr_long(bundlemem, SRC_SERV, &source_service);
 
 		// Extract lifetime from incoming bundle
 		bundle_get_attr(bundlemem, LIFE_TIME, &incoming_lifetime);
 
 		bundles_recv++;
-		printf("PING %lu of %u bytes received from ipn:%lu.%lu\n", bundles_recv, block->block_size, source_node, source_service);
+		printf("PING %lu of %u bytes received from ipn:%lu.%lu\n", bundles_recv, block->block_size, source_node, (unsigned long)source_service);
 
 		// Tell the agent, that have processed the bundle
 		const event_container_t finished_event = {
@@ -132,7 +132,7 @@ static void dtnpingecho_process(void* args)
 
 		// Set the reply EID to the incoming bundle information
 		bundle_set_attr(bundlemem, DEST_NODE, &source_node);
-		bundle_set_attr(bundlemem, DEST_SERV, &source_service);
+		bundle_set_attr_long(bundlemem, DEST_SERV, &source_service);
 
 		// Set our service to 11 [DTN_PING_ENDPOINT] (IBR-DTN expects that)
 		tmp = DTN_PING_ENDPOINT;
