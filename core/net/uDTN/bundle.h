@@ -138,7 +138,7 @@ struct bundle_t{
 	uint32_t rep_srv;
 	uint32_t cust_node;
 	uint32_t cust_srv;
-	uint32_t tstamp;
+	uint64_t tstamp;
 	uint32_t tstamp_seq;
 
 	uint32_t lifetime;

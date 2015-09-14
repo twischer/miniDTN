@@ -300,7 +300,17 @@ struct mmem *bundle_recover_bundle(uint8_t *buffer, int size)
 	offs += sdnv_decode(&buffer[offs], size-offs, &bundle->cust_srv);
 
 	/* Creation Timestamp */
-	offs += sdnv_decode(&buffer[offs], size-offs, &bundle->tstamp);
+	/*
+	 * Use temp variable, otherwise raises hard fault exception.
+	 * Variable is not aligned for correct offset,
+	 * because of packed attribute.
+	 * For example address has to be a multiply of 8.
+	 * But packed attribute is needed,
+	 * because of memory allocation for the payload block
+	 */
+	uint64_t tstamp = 0;
+	offs += sdnv_decode_long(&buffer[offs], size-offs, &tstamp);
+	bundle->tstamp = tstamp;
 
 	/* Creation Timestamp Sequence Number */
 	offs += sdnv_decode(&buffer[offs], size-offs, &bundle->tstamp_seq);
@@ -467,7 +477,7 @@ int bundle_encode_bundle(struct mmem *bundlemem, uint8_t *buffer, int max_len)
 	offs += ret;
 
 	/* Creation Timestamp */
-	ret = sdnv_encode(bundle->tstamp, &buffer[offs], max_len - offs);
+	ret = sdnv_encode_long(bundle->tstamp, &buffer[offs], max_len - offs);
 	if (ret < 0)
 		return -1;
 	offs += ret;
