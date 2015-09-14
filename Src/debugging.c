@@ -59,6 +59,7 @@ static void Unexpected_Interrupt(const char* const name)
 		printf("%s function %p, from call %p\n", type, messages[message_index].this_fn, messages[message_index].call_site);
 		message_index = (message_index + 1) % MESSAGE_COUNT;
 	}
+	printf("Enable function instrumentation (-finstrument-functions), if the function call trace is undefined.");
 
 	for(;;);
 }
