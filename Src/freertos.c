@@ -82,7 +82,7 @@ void MX_FREERTOS_Init(void) {
 
   /* Create the thread(s) */
   /* definition and creation of defaultTask */
-  osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 160);
+  osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 0x400);
   defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
@@ -122,6 +122,13 @@ void vApplicationStackOverflowHook(TaskHandle_t pxTask, signed char *pcTaskName)
 	 function is called if a stack overflow is detected. */
   taskDISABLE_INTERRUPTS();
   printf("STACK OVERFLOW in task '%s (handle %p)\n", pcTaskName, pxTask);
+  for(;;);
+}
+
+void vApplicationMallocFailedHook()
+{
+  taskDISABLE_INTERRUPTS();
+  printf("ERR: Malloc failed\n");
   for(;;);
 }
      

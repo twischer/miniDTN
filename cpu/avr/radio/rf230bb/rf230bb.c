@@ -201,7 +201,7 @@ static unsigned long total_time_for_transmission, total_transmission_len;
 static int num_transmissions;
 #endif
 
-uint8_t volatile rf230_pending;
+volatile bool rf230_pending;
 
 uint8_t ack_pending=0;
 uint8_t ack_seqnum=0;
@@ -801,8 +801,7 @@ rf230_init(void)
   rf230_warm_reset();
  
  /* Start the packet receive process */
-//  process_start(&rf230_process, NULL);
-  if ( !xTaskCreate(rf230_process, "RF230BB driver", configMINIMAL_STACK_SIZE+100, NULL, 1, &rf230_task) ) {
+  if ( !xTaskCreate(rf230_process, "RF230BB driver", 0x200, NULL, configMAX_PRIORITIES-1, &rf230_task) ) {
 	  return 0;
   }
  
@@ -1297,10 +1296,9 @@ if (RF230_receive_on) {
   interrupt_time_set = 1;
 #endif /* RF230_CONF_TIMESTAMPS */
 
-//  process_poll(&rf230_process);
+  rf230_pending = true;
   xTaskResumeFromISR(rf230_task);
-  
-  rf230_pending = 1;
+
   
 #if RADIOSTATS //TODO:This will double count buffered packets
   RF230_receivepackets++;
@@ -1334,8 +1332,10 @@ static void rf230_process(void* p)
   RF230PROCESSFLAG(99);
 
   while(1) {
-//    PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL);
+	/* only sleep, if there is no received data to process */
+	if (!rf230_pending) {
 	  vTaskSuspend(NULL);
+	}
 	RF230PROCESSFLAG(42);
 
     packetbuf_clear();
@@ -1351,8 +1351,6 @@ static void rf230_process(void* p)
 	if (hal_rx_buffer_overflow()) {
 		PRINTF("rf230_read: Packet lost, because of rx buffer overflow!\n");
 	}
-
-	LED_Off(LED_ORANGE);
 
     PRINTF("rf230_read: %u bytes lqi %u\n",len,rf230_last_correlation);
 #if DEBUG>1
@@ -1485,11 +1483,8 @@ rf230_read(void *buf, unsigned short bufsize)
     rxframe_head=0;
   }
   /* If another packet has been buffered, schedule another receive poll */
-  if (rxframe[rxframe_head].length) {
-    rf230_interrupt();
-  }
-  else {
-    rf230_pending = 0;
+  if (rxframe[rxframe_head].length <= 0) {
+	rf230_pending = false;
   }
   
  /* Point to the checksum */
@@ -1710,5 +1705,5 @@ rf230_pending_packet(void)
 #if RF230_INSERTACK
     if(ack_pending == 1) return 1;
 #endif
-  return rf230_pending;
+  return rf230_pending ? 1 : 0;
 }

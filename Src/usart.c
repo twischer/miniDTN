@@ -41,7 +41,7 @@
 
 /* USER CODE END 0 */
 
-UART_HandleTypeDef huart6;
+UART_HandleTypeDef huart6 = { .Instance = NULL };
 
 /* USART6 init function */
 

@@ -11,6 +11,7 @@
  * \author Wolf-Bastian Poettner <poettner@ibr.cs.tu-bs.de>
  */
 
+#include <stdbool.h>
 #include <string.h> // memset
 
 #include "FreeRTOS.h"
@@ -102,8 +103,7 @@ static uint8_t convergence_layer_pending = 0;
 /**
  * Backoff timer
  */
-struct etimer convergence_layer_backoff;
-uint8_t convergence_layer_backoff_pending = 0;
+static volatile bool convergence_layer_backoff_pending = false;
 
 void convergence_layer_show_tickets();
 
@@ -112,7 +112,7 @@ bool convergence_layer_init(void)
 	// Start CL process
 //	process_start(&convergence_layer_process, NULL);
 
-	if ( !xTaskCreate(convergence_layer_process, "CL process", configMINIMAL_STACK_SIZE+100, NULL, 1, &convergence_layer_task) ) {
+	if ( !xTaskCreate(convergence_layer_process, "CL process", 0x100, NULL, 1, &convergence_layer_task) ) {
 		return false;
 	}
 
@@ -946,16 +946,10 @@ int convergence_layer_status(void * pointer, uint8_t outcome)
 		 */
 		if( outcome == CONVERGENCE_LAYER_STATUS_NOSEND && pointer != NULL ) {
 			/* Use timer to slow the stuff down */
-//			etimer_set(&convergence_layer_backoff, 0.1 * CLOCK_SECOND);
-			// TODO do not block this function call
-			// only call the convergence_process 100ms later
-// TODO			vTaskDelay( pdMS_TO_TICKS(100) );
+			convergence_layer_backoff_pending = true;
 			xTaskNotify(convergence_layer_task, 0, eNoAction);
-
-			convergence_layer_backoff_pending = 1;
 		} else {
 			/* Poll to make it faster */
-//			process_poll(&convergence_layer_process);
 			xTaskNotify(convergence_layer_task, 0, eNoAction);
 		}
 
@@ -1202,7 +1196,6 @@ void check_blocked_neighbours() {
 
 	if( convergence_layer_pending == 0 ) {
 		/* Tell the process to resend the bundles */
-//		process_poll(&convergence_layer_process);
 		xTaskNotify(convergence_layer_task, 0, eNoAction);
 	}
 }
@@ -1317,13 +1310,7 @@ static void convergence_layer_process(void* p)
 
 	LOG(LOGD_DTN, LOG_CL, LOGL_INF, "CL process is running");
 
-
-	/* Set timer */
-//	etimer_set(&stale_timer, CLOCK_SECOND);
-
-
 	while(1) {
-//		PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL || ev == PROCESS_EVENT_CONTINUE || etimer_expired(&stale_timer) || ev == PROCESS_EVENT_TIMER);
 		const BaseType_t notification_received = xTaskNotifyWait( 0, 0, NULL, pdMS_TO_TICKS(1000) );
 		// TODO für convergence_layer_backoff besondere notification verwenden und dann mit vTaskDelay 100ms warten
 		// wenn andere notification dann möglicherweise direkt ausführen
@@ -1333,19 +1320,16 @@ static void convergence_layer_process(void* p)
 // TODO		if(!notification_received) {
 			check_blocked_neighbours();
 			check_blocked_tickets();
-//			etimer_restart(&stale_timer);
 // TODO		} else
+			{
+			/* slow down the transmission to mind collisions */
+			if (convergence_layer_backoff_pending) {
+				vTaskDelay( pdMS_TO_TICKS(100) );
+				convergence_layer_backoff_pending = false;
+			}
 
-			// TODO convergence_layer_backoff_pending not checkt if the convergence timer expired
-		/*if( ev == PROCESS_EVENT_POLL || ev == PROCESS_EVENT_CONTINUE || (convergence_layer_backoff_pending && etimer_expired(&convergence_layer_backoff)) )*/ {
 			convergence_layer_pending = 0;
 
-			// TODO no difference if with or without timeout
-//			/* Stop timer to avoid it firing again */
-//			if ( (convergence_layer_backoff_pending && etimer_expired(&convergence_layer_backoff)) ) {
-//				etimer_stop(&convergence_layer_backoff);
-//				convergence_layer_backoff_pending = 0;
-//			}
 
 			/* If we are currently transmitting, we cannot send another bundle */
 			if( convergence_layer_transmitting ) {

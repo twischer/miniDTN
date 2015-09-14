@@ -196,7 +196,108 @@ uint8_t bundle_set_attr(struct mmem *bundlemem, uint8_t attr, const uint32_t* co
 	return 1;
 }
 
+uint8_t bundle_set_attr_long(struct mmem *bundlemem, uint8_t attr, const uint64_t* const val)
+{
+	struct bundle_t *bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
+	LOG(LOGD_DTN, LOG_BUNDLE, LOGL_DBG, "set attr %lx",*val);
+	switch (attr) {
+		case DEST_NODE:
+			bundle->dst_node = *val;
+			break;
+		case DEST_SERV:
+			bundle->dst_srv = *val;
+			break;
+		case SRC_NODE:
+			bundle->src_node = *val;
+			break;
+		case SRC_SERV:
+			bundle->src_srv = *val;
+			break;
+		case REP_NODE:
+			bundle->rep_node = *val;
+			break;
+		case REP_SERV:
+			bundle->rep_srv = *val;
+			break;
+		case CUST_NODE:
+			bundle->cust_node = *val;
+			break;
+		case CUST_SERV:
+			bundle->cust_srv = *val;
+			break;
+		case TIME_STAMP:
+			bundle->tstamp = *val;
+			break;
+		case TIME_STAMP_SEQ_NR:
+			bundle->tstamp_seq = *val;
+			break;
+		case LIFE_TIME:
+			bundle->lifetime = *val;
+			break;
+		default:
+			LOG(LOGD_DTN, LOG_BUNDLE, LOGL_ERR, "Unknown attribute. Possibly no support for 64 bit values.");
+			return 0;
+	}
+	return 1;
+}
+
 uint8_t bundle_get_attr(struct mmem *bundlemem, uint8_t attr, uint32_t *val)
+{
+	struct bundle_t *bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
+	LOG(LOGD_DTN, LOG_BUNDLE, LOGL_DBG, "get attr: %d in %lx", attr, *val);
+	switch (attr) {
+		case FLAGS:
+			*val = bundle->flags;
+			break;
+		case DEST_NODE:
+			*val = bundle->dst_node;
+			break;
+		case DEST_SERV:
+			*val = bundle->dst_srv;
+			break;
+		case SRC_NODE:
+			*val = bundle->src_node;
+			break;
+		case SRC_SERV:
+			*val = bundle->src_srv;
+			break;
+		case REP_NODE:
+			*val = bundle->rep_node;
+			break;
+		case REP_SERV:
+			*val = bundle->rep_srv;
+			break;
+		case CUST_NODE:
+			*val = bundle->cust_node;
+			break;
+		case CUST_SERV:
+			*val = bundle->cust_srv;
+			break;
+		case TIME_STAMP:
+			*val = bundle->tstamp;
+			break;
+		case TIME_STAMP_SEQ_NR:
+			*val = bundle->tstamp_seq;
+			break;
+		case LIFE_TIME:
+			*val = bundle->lifetime;
+			break;
+		case DIRECTORY_LEN:
+			*val = 0;
+			break;
+		case FRAG_OFFSET:
+			*val = bundle->frag_offs;
+			break;
+		case LENGTH:
+			/* FIXME */
+		default:
+			LOG(LOGD_DTN, LOG_BUNDLE, LOGL_ERR, "Unknown attribute");
+			return 0;
+	}
+	return 1;
+}
+
+uint8_t bundle_get_attr_long(struct mmem *bundlemem, uint8_t attr, uint64_t *val)
 {
 	struct bundle_t *bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 	LOG(LOGD_DTN, LOG_BUNDLE, LOGL_DBG, "get attr: %d in %lx", attr, *val);
@@ -283,13 +384,25 @@ struct mmem *bundle_recover_bundle(uint8_t *buffer, int size)
 	offs += sdnv_decode(&buffer[offs], size-offs, &primary_size);
 	primary_size += offs;
 
+	/*
+	 * Use temp variable, otherwise raises hard fault exception.
+	 * Variable is not aligned for correct offset,
+	 * because of packed attribute.
+	 * For example address has to be a multiply of 8.
+	 * But packed attribute is needed,
+	 * because of memory allocation for the payload block
+	 */
+	uint64_t sdnv_temp = 0;
+
 	/* Destination node + SSP */
 	offs += sdnv_decode(&buffer[offs], size-offs, &bundle->dst_node);
-	offs += sdnv_decode(&buffer[offs], size-offs, &bundle->dst_srv);
+	offs += sdnv_decode_long(&buffer[offs], size-offs, &sdnv_temp);
+	bundle->dst_srv = sdnv_temp;
 
 	/* Source node + SSP */
 	offs += sdnv_decode(&buffer[offs], size-offs, &bundle->src_node);
-	offs += sdnv_decode(&buffer[offs], size-offs, &bundle->src_srv);
+	offs += sdnv_decode_long(&buffer[offs], size-offs, &sdnv_temp);
+	bundle->src_srv = sdnv_temp;
 
 	/* Report-to node + SSP */
 	offs += sdnv_decode(&buffer[offs], size-offs, &bundle->rep_node);
@@ -300,7 +413,8 @@ struct mmem *bundle_recover_bundle(uint8_t *buffer, int size)
 	offs += sdnv_decode(&buffer[offs], size-offs, &bundle->cust_srv);
 
 	/* Creation Timestamp */
-	offs += sdnv_decode(&buffer[offs], size-offs, &bundle->tstamp);
+	offs += sdnv_decode_long(&buffer[offs], size-offs, &sdnv_temp);
+	bundle->tstamp = sdnv_temp;
 
 	/* Creation Timestamp Sequence Number */
 	offs += sdnv_decode(&buffer[offs], size-offs, &bundle->tstamp_seq);
@@ -428,7 +542,7 @@ int bundle_encode_bundle(struct mmem *bundlemem, uint8_t *buffer, int max_len)
 		return -1;
 	offs += ret;
 
-	ret = sdnv_encode(bundle->dst_srv, &buffer[offs], max_len - offs);
+	ret = sdnv_encode_long(bundle->dst_srv, &buffer[offs], max_len - offs);
 	if (ret < 0)
 		return -1;
 	offs += ret;
@@ -439,7 +553,7 @@ int bundle_encode_bundle(struct mmem *bundlemem, uint8_t *buffer, int max_len)
 		return -1;
 	offs += ret;
 
-	ret = sdnv_encode(bundle->src_srv, &buffer[offs], max_len - offs);
+	ret = sdnv_encode_long(bundle->src_srv, &buffer[offs], max_len - offs);
 	if (ret < 0)
 		return -1;
 	offs += ret;
@@ -467,7 +581,7 @@ int bundle_encode_bundle(struct mmem *bundlemem, uint8_t *buffer, int max_len)
 	offs += ret;
 
 	/* Creation Timestamp */
-	ret = sdnv_encode(bundle->tstamp, &buffer[offs], max_len - offs);
+	ret = sdnv_encode_long(bundle->tstamp, &buffer[offs], max_len - offs);
 	if (ret < 0)
 		return -1;
 	offs += ret;

@@ -48,7 +48,7 @@ uint32_t dtn_node_id;
 uint32_t dtn_seq_nr;
 uint32_t dtn_seq_nr_ab;
 uint32_t dtn_last_time_stamp;
-static QueueHandle_t event_queue;
+static QueueHandle_t event_queue = NULL;
 
 void agent_process(void* p);
 
@@ -61,11 +61,9 @@ bool agent_init(void)
 	}
 
 	// Otherwise start the agent process
-	if ( !dtn_process_create_other_stack(agent_process, "AGENT process", configMINIMAL_STACK_SIZE + 100) ) {
+	if ( !dtn_process_create_with_queue(agent_process, "AGENT process", 0x100, &event_queue) ) {
 		return false;
 	}
-
-	event_queue = dtn_process_get_event_queue();
 
 	is_running = true;
 	return true;
@@ -222,7 +220,7 @@ void agent_process(void* p)
 					dtn_last_time_stamp = tv.tv_sec;
 				}
 
-				LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "dtn_send_bundle_event(%p) with seqNo %lu", ev.bundlemem, dtn_seq_nr);
+				LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "dtn_send_bundle_event(%p) with seqNo %lu with timestamp %lu", ev.bundlemem, dtn_seq_nr, tv.tv_sec);
 
 				// Set the outgoing sequence number
 				bundle_set_attr(ev.bundlemem, TIME_STAMP_SEQ_NR, &dtn_seq_nr);
@@ -230,7 +228,7 @@ void agent_process(void* p)
 			} else {
 				// clock state is not sufficient
 				// use age block approach and leave time-stamp set to 0
-				LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "dtn_send_bundle_event(%p) with seqNo %lu", ev.bundlemem, dtn_seq_nr_ab);
+				LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "dtn_send_bundle_event(%p) with seqNo %lu without timestamp", ev.bundlemem, dtn_seq_nr_ab);
 
 				// Set the outgoing sequence number
 				bundle_set_attr(ev.bundlemem, TIME_STAMP_SEQ_NR, &dtn_seq_nr_ab);
