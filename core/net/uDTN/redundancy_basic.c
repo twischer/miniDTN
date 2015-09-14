@@ -50,7 +50,7 @@ uint8_t redundancy_basic_check(uint32_t bundle_number)
 		}
 
 		if( redundance_bundle_list[i] == bundle_number) {
-			LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "REDUNDANCE: bundle %lu is redundant", bundle_number);
+			LOG(LOGD_DTN, LOG_AGENT, LOGL_INF, "REDUNDANCE: bundle %lu is redundant", bundle_number);
 			return 1;
 		}
 	}
