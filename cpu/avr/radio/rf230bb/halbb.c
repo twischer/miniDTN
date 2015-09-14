@@ -465,7 +465,8 @@ void hal_rf230_isr()
 #endif
 #endif
 
-	} else if (interrupt_source & HAL_TRX_END_MASK){
+	}
+	if (interrupt_source & HAL_TRX_END_MASK) {
 		INTERRUPTDEBUG(11);
 
 		const uint8_t state = hal_subregister_read(SR_TRX_STATUS);
@@ -473,11 +474,10 @@ void hal_rf230_isr()
 
 
 			/* Received packet interrupt */
-			LED_On(LED_ORANGE);
-
 			/* Buffer the frame and call rf230_interrupt to schedule poll for rf230 receive process */
 			if (rxframe[rxframe_tail].length) {
 				rx_buffer_overflow = true;
+				LED_On(LED_RED);
 				INTERRUPTDEBUG(42);
 			} else {
 				INTERRUPTDEBUG(12);
@@ -499,16 +499,20 @@ void hal_rf230_isr()
 			}
 #endif
 		}
-	} else if (interrupt_source & HAL_TRX_UR_MASK){
+	}
+	if (interrupt_source & HAL_TRX_UR_MASK){
 		INTERRUPTDEBUG(13);
 		;
-	} else if (interrupt_source & HAL_PLL_UNLOCK_MASK){
+	}
+	if (interrupt_source & HAL_PLL_UNLOCK_MASK){
 		INTERRUPTDEBUG(14);
 		;
-	} else if (interrupt_source & HAL_PLL_LOCK_MASK){
+	}
+	if (interrupt_source & HAL_PLL_LOCK_MASK){
 		INTERRUPTDEBUG(15);
 		;
-	} else if (interrupt_source & HAL_BAT_LOW_MASK){
+	}
+	if (interrupt_source & HAL_BAT_LOW_MASK){
 		/*  Disable BAT_LOW interrupt to prevent endless interrupts. The interrupt */
 		/*  will continously be asserted while the supply voltage is less than the */
 		/*  user-defined voltage threshold. */
@@ -517,10 +521,6 @@ void hal_rf230_isr()
 		hal_register_write(RG_IRQ_MASK, trx_isr_mask);
 		INTERRUPTDEBUG(16);
 		;
-	} else {
-		INTERRUPTDEBUG(99);
-		;
-		LED_On(LED_RED);
 	}
 	LED_Off(LED_BLUE);
 }
