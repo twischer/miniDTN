@@ -2257,6 +2257,15 @@ void vTaskSwitchContext( void )
 		#endif /* configUSE_NEWLIB_REENTRANT */
 	}
 }
+
+void vTaskCheckForStackOverflow(void)
+{
+	if (pxCurrentTCB == NULL) {
+		return;
+	}
+
+	taskFIRST_CHECK_FOR_STACK_OVERFLOW();
+}
 /*-----------------------------------------------------------*/
 
 void vTaskPlaceOnEventList( List_t * const pxEventList, const TickType_t xTicksToWait )

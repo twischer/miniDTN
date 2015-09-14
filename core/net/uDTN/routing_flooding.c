@@ -178,9 +178,7 @@ void routing_flooding_blacklist_delete(linkaddr_t * neighbour)
 bool routing_flooding_init(void)
 {
 	// Start CL process
-//	process_start(&routing_process, NULL);
-
-	if ( !xTaskCreate(routing_process, "FLOOD ROUTE process", 256, NULL, 1, &routing_task) ) {
+	if ( !xTaskCreate(routing_process, "FLOOD ROUTE process", 0x100, NULL, 1, &routing_task) ) {
 		return false;
 	}
 

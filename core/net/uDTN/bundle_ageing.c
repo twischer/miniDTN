@@ -11,6 +11,7 @@
  */
 
 #include <string.h>
+#include "lib/logging.h"
 
 #include "system_clock.h"
 #include "bundle.h"
@@ -78,6 +79,8 @@ uint8_t bundle_ageing_is_expired(struct mmem * bundlemem) {
 	age = bundle_ageing_get_age(bundlemem);
 
 	if( (age / 1000) > bundle->lifetime ) {
+		LOG(LOGD_DTN, LOG_BUNDLE, LOGL_DBG, "Expired (create %u, life %u, aeb %u, rec %u, time %u, age %u)",
+			bundle->tstamp, bundle->lifetime, bundle->aeb_value_ms, bundle->rec_time, xTaskGetTickCount(), age);
 		return 1;
 	}
 

@@ -57,6 +57,11 @@ void MX_USART6_UART_Init(void);
 
 static inline uint16_t USART6_write(uint8_t* const ptr, const uint16_t len)
 {
+	/* only write data, if the UART is already initialized */
+	if (huart6.Instance == NULL) {
+		return 0;
+	}
+
 	HAL_StatusTypeDef ret = HAL_ERROR;
 	do {
 		ret = HAL_UART_Transmit(&huart6, ptr, len, HAL_MAX_DELAY);

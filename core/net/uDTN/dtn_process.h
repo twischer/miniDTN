@@ -26,6 +26,7 @@
 
 bool dtn_process_create(const TaskFunction_t pvTaskCode, const char* const pcName);
 bool dtn_process_create_other_stack(const TaskFunction_t pvTaskCode, const char* const pcName, const uint16_t usStackDepth);
+bool dtn_process_create_with_queue(const TaskFunction_t pvTaskCode, const char* const pcName, const uint16_t usStackDepth, QueueHandle_t* const event_queue);
 
 
 /**
