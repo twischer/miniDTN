@@ -234,7 +234,7 @@ bool convergence_layer_udp_init(void)
  */
 int convergence_layer_udp_send_discovery(const uint8_t* const payload, const uint8_t length)
 {
-	struct netbuf* const buf = netbuf_new ();
+	struct netbuf* const buf = netbuf_new();
 	if (buf == NULL) {
 		LOG(LOGD_DTN, LOG_CL_UDP, LOGL_ERR, "Not enough free memory for allocating a new netbuf.");
 		return -1;
@@ -249,7 +249,7 @@ int convergence_layer_udp_send_discovery(const uint8_t* const payload, const uin
 	if (netconn_sendto(discovery_conn, buf, &mcast_addr, CL_UDP_DISCOVERY_PORT) != ERR_OK) {
 		LOG(LOGD_DTN, LOG_CL_UDP, LOGL_ERR, "Could not send discovery message. Buffer is not existing.");
 		netbuf_delete(buf);
-		return -2;
+		return -3;
 	}
 
 	netbuf_delete(buf);

@@ -41,7 +41,7 @@ struct blocked_neighbour_t {
 	struct blocked_neighbour_t * next;
 
 	/* Address of the neighbour */
-	linkaddr_t neighbour;
+	cl_addr_t neighbour;
 
 	/* Since when is he blocked? */
 	clock_time_t timestamp;
@@ -62,16 +62,14 @@ MEMB(blocked_neighbour_mem, struct blocked_neighbour_t, CONVERGENCE_LAYER_QUEUE)
 /**
  * Internal functions
  */
-int convergence_layer_is_blocked(linkaddr_t * neighbour);
-int convergence_layer_set_blocked(linkaddr_t * neighbour);
-int convergence_layer_set_unblocked(linkaddr_t * neighbour);
+int convergence_layer_is_blocked(const cl_addr_t * const neighbour);
+int convergence_layer_set_blocked(const cl_addr_t* const neighbour);
+int convergence_layer_set_unblocked(const cl_addr_t * const neighbour);
 
 /**
  * CL process
  */
-//PROCESS(convergence_layer_process, "CL process");
 static TaskHandle_t convergence_layer_task;
-
 static void convergence_layer_process(void* p);
 
 /**
@@ -110,8 +108,6 @@ void convergence_layer_show_tickets();
 bool convergence_layer_init(void)
 {
 	// Start CL process
-//	process_start(&convergence_layer_process, NULL);
-
 	if ( !xTaskCreate(convergence_layer_process, "CL process", 0x100, NULL, 1, &convergence_layer_task) ) {
 		return false;
 	}
@@ -204,7 +200,9 @@ int convergence_layer_enqueue_bundle(struct transmit_ticket_t * ticket)
 		return -1;
 	}
 
-	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Enqueuing bundle %lu to %u.%u, queue is at %u entries", ticket->bundle_number, ticket->neighbour.u8[0], ticket->neighbour.u8[1], convergence_layer_queue);
+	char addr_str[CL_ADDR_STRING_LENGTH];
+	cl_addr_string(&ticket->neighbour, addr_str, sizeof(addr_str));
+	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Enqueuing bundle %lu to %s, queue is at %u entries", ticket->bundle_number, addr_str, convergence_layer_queue);
 
 	/* The ticket is now active a ready for transmission */
 	ticket->flags |= CONVERGENCE_LAYER_QUEUE_ACTIVE;
@@ -230,7 +228,9 @@ int convergence_layer_send_bundle(struct transmit_ticket_t * ticket)
 	int segments;
 #endif /* CONVERGENCE_LAYER_SEGMENTATION */
 
-	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Sending bundle %lu to %u.%u with ticket %p", ticket->bundle_number, ticket->neighbour.u8[0], ticket->neighbour.u8[1], ticket);
+	char addr_str[CL_ADDR_STRING_LENGTH];
+	cl_addr_string(&ticket->neighbour, addr_str, sizeof(addr_str));
+	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Sending bundle %lu to %s with ticket %p", ticket->bundle_number, addr_str, ticket);
 
 	if( !(ticket->flags & CONVERGENCE_LAYER_QUEUE_MULTIPART) ) {
 		/* Read the bundle from storage, if it is not in memory */
@@ -416,7 +416,7 @@ int convergence_layer_send_bundle(struct transmit_ticket_t * ticket)
 	convergence_layer_set_blocked(&ticket->neighbour);
 
 	/* And send it out */
-	dtn_network_send(&ticket->neighbour, length, (void *) ticket);
+	dtn_network_send(&ticket->neighbour.lowpan, length, (void *) ticket);
 
 	return 1;
 }
@@ -450,14 +450,21 @@ int convergence_layer_send_discovery(uint8_t * payload, uint8_t length, linkaddr
 	/* Send it out via the MAC */
 	dtn_network_send(neighbour, length + 1, NULL);
 
+	// TODO possibly send discovery with dgram over udp, too
+	// Now it will be only send with udp over the discovery port,
+	// but not with dgram-udp over the bundle port
+
 	return 1;
 }
 
-int convergence_layer_send_ack(linkaddr_t * destination, uint8_t sequence_number, uint8_t type, struct transmit_ticket_t * ticket)
+static int convergence_layer_send_ack(const cl_addr_t* const destination, const uint8_t sequence_number, const uint8_t type,
+							   struct transmit_ticket_t* const ticket)
 {
 	uint8_t * buffer = NULL;
 
-	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Sending ACK or NACK to %u.%u for SeqNo %u with ticket %p", destination->u8[0], destination->u8[1], sequence_number, ticket);
+	char addr_str[CL_ADDR_STRING_LENGTH];
+	cl_addr_string(destination, addr_str, sizeof(addr_str));
+	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Sending ACK or NACK to %s for SeqNo %u with ticket %p", addr_str, sequence_number, ticket);
 
 	/* If we are currently transmitting or waiting for an ACK, do nothing */
 	if( convergence_layer_transmitting ) {
@@ -497,13 +504,14 @@ int convergence_layer_send_ack(linkaddr_t * destination, uint8_t sequence_number
 	/* Now we are transmitting */
 	convergence_layer_transmitting = 1;
 
+	// TODO
 	/* Send it out via the MAC */
-	dtn_network_send(destination, 1, ticket);
+	dtn_network_send((linkaddr_t*)&destination->lowpan, 1, (struct transmit_ticket_t*)ticket);
 
 	return 1;
 }
 
-int convergence_layer_create_send_ack(linkaddr_t * destination, uint8_t sequence_number, uint8_t type)
+static int convergence_layer_create_send_ack(const cl_addr_t* const destination, const uint8_t sequence_number, const uint8_t type)
 {
 	struct transmit_ticket_t * ticket = NULL;
 
@@ -512,7 +520,7 @@ int convergence_layer_create_send_ack(linkaddr_t * destination, uint8_t sequence
 	if( ticket == NULL ) {
 		LOG(LOGD_DTN, LOG_CL, LOGL_WRN, "Unable to allocate ticket to potentially retransmit ACK/NACK");
 	} else {
-		linkaddr_copy(&ticket->neighbour, destination);
+		cl_addr_copy(&ticket->neighbour, destination);
 		ticket->sequence_number = sequence_number;
 		ticket->flags |= CONVERGENCE_LAYER_QUEUE_IN_TRANSIT;
 
@@ -564,7 +572,8 @@ int convergence_layer_resend_ack(struct transmit_ticket_t * ticket)
  * -1 = Temporary error
  * -2 = Permanent error
  */
-int convergence_layer_parse_dataframe(linkaddr_t * source, uint8_t * payload, uint8_t payload_length, uint8_t flags, uint8_t sequence_number, packetbuf_attr_t rssi)
+static int convergence_layer_parse_dataframe(const cl_addr_t* const source, const uint8_t* payload, const uint8_t payload_length,
+											 const uint8_t flags, const uint8_t sequence_number, const packetbuf_attr_t rssi)
 {
 	struct mmem * bundlemem = NULL;
 	struct bundle_t * bundle = NULL;
@@ -586,14 +595,16 @@ int convergence_layer_parse_dataframe(linkaddr_t * source, uint8_t * payload, ui
 			for( ticket = list_head(transmission_ticket_list);
 				 ticket != NULL;
 				 ticket = list_item_next(ticket) ) {
-				if( linkaddr_cmp(&ticket->neighbour, source) && (ticket->flags & CONVERGENCE_LAYER_QUEUE_MULTIPART_RECV) ) {
+				if( cl_addr_cmp(&ticket->neighbour, source) && (ticket->flags & CONVERGENCE_LAYER_QUEUE_MULTIPART_RECV) ) {
 					break;
 				}
 			}
 
 			/* We found a ticket, remove it */
 			if( ticket != NULL ) {
-				LOG(LOGD_DTN, LOG_CL, LOGL_WRN, "Resynced to peer %u.%u, throwing away old buffer", source->u8[0], source->u8[1]);
+				char addr_str[CL_ADDR_STRING_LENGTH];
+				cl_addr_string(source, addr_str, sizeof(addr_str));
+				LOG(LOGD_DTN, LOG_CL, LOGL_WRN, "Resynced to peer %s, throwing away old buffer", addr_str);
 				convergence_layer_free_transmit_ticket(ticket);
 				ticket = NULL;
 			}
@@ -607,7 +618,7 @@ int convergence_layer_parse_dataframe(linkaddr_t * source, uint8_t * payload, ui
 			}
 
 			/* Fill the fields of the ticket */
-			linkaddr_copy(&ticket->neighbour, source);
+			cl_addr_copy(&ticket->neighbour, source);
 			ticket->flags = CONVERGENCE_LAYER_QUEUE_MULTIPART_RECV;
 			ticket->timestamp = xTaskGetTickCount();
 			ticket->sequence_number = sequence_number;
@@ -632,19 +643,23 @@ int convergence_layer_parse_dataframe(linkaddr_t * source, uint8_t * payload, ui
 			for( ticket = list_head(transmission_ticket_list);
 				 ticket != NULL;
 				 ticket = list_item_next(ticket) ) {
-				if( linkaddr_cmp(&ticket->neighbour, source) && (ticket->flags & CONVERGENCE_LAYER_QUEUE_MULTIPART_RECV) ) {
+				if( cl_addr_cmp(&ticket->neighbour, source) && (ticket->flags & CONVERGENCE_LAYER_QUEUE_MULTIPART_RECV) ) {
 					break;
 				}
 			}
 
 			/* Cannot find a ticket, discard segment */
 			if( ticket == NULL ) {
-				LOG(LOGD_DTN, LOG_CL, LOGL_WRN, "Segment from peer %u.%u does not match any bundles in progress, discarding", source->u8[0], source->u8[1]);
+				char addr_str[CL_ADDR_STRING_LENGTH];
+				cl_addr_string(source, addr_str, sizeof(addr_str));
+				LOG(LOGD_DTN, LOG_CL, LOGL_WRN, "Segment from peer %s does not match any bundles in progress, discarding", addr_str);
 				return -1;
 			}
 
 			if( sequence_number != (ticket->sequence_number + 1) % 4 ) {
-				LOG(LOGD_DTN, LOG_CL, LOGL_WRN, "Segment from peer %u.%u is out of sequence. Recv %u, Exp %u", source->u8[0], source->u8[1], sequence_number, (ticket->sequence_number + 1) % 4);
+				char addr_str[CL_ADDR_STRING_LENGTH];
+				cl_addr_string(source, addr_str, sizeof(addr_str));
+				LOG(LOGD_DTN, LOG_CL, LOGL_WRN, "Segment from peer %s is out of sequence. Recv %u, Exp %u", addr_str, sequence_number, (ticket->sequence_number + 1) % 4);
 				return 1;
 			}
 
@@ -674,7 +689,10 @@ int convergence_layer_parse_dataframe(linkaddr_t * source, uint8_t * payload, ui
 			/* We have the last segment, change pointer so that the rest of the function works as planned */
 			payload = (uint8_t *) MMEM_PTR(&ticket->buffer);
 			length = ticket->buffer.size;
-			LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "%u byte multipart bundle received from %u.%u, parsing", length, source->u8[0], source->u8[1]);
+
+			char addr_str[CL_ADDR_STRING_LENGTH];
+			cl_addr_string(source, addr_str, sizeof(addr_str));
+			LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "%u byte multipart bundle received from %s, parsing", length, addr_str);
 		} else {
 			/* We are waiting for more segments, return now */
 			return 1;
@@ -687,7 +705,7 @@ int convergence_layer_parse_dataframe(linkaddr_t * source, uint8_t * payload, ui
 	}
 
 	/* Allocate memory, parse the bundle and set reference counter to 1 */
-	bundlemem = bundle_recover_bundle(payload, length);
+	bundlemem = bundle_recover_bundle((uint8_t*)payload, length);
 
 	/* We do not need the ticket anymore if there was one, deallocate it */
 	if( ticket != NULL ) {
@@ -713,7 +731,9 @@ int convergence_layer_parse_dataframe(linkaddr_t * source, uint8_t * payload, ui
 
 	/* Check for bundle expiration */
 	if( bundle_ageing_is_expired(bundlemem) ) {
-		LOG(LOGD_DTN, LOG_CL, LOGL_ERR, "Bundle received from %u.%u with SeqNo %u is expired", source->u8[0], source->u8[1], sequence_number);
+		char addr_str[CL_ADDR_STRING_LENGTH];
+		cl_addr_string(source, addr_str, sizeof(addr_str));
+		LOG(LOGD_DTN, LOG_CL, LOGL_ERR, "Bundle received from %s with SeqNo %u is expired", addr_str, sequence_number);
 		bundle_decrement(bundlemem);
 
 		/* Send permanent rejection */
@@ -723,10 +743,12 @@ int convergence_layer_parse_dataframe(linkaddr_t * source, uint8_t * payload, ui
 	/* Mark the bundle as "internal" */
 	agent_set_bundle_source(bundle);
 
-	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Bundle from ipn:%lu.%lu (to ipn:%lu.%lu) received from %u.%u with SeqNo %u", bundle->src_node, bundle->src_srv, bundle->dst_node, bundle->dst_srv, source->u8[0], source->u8[1], sequence_number);
+	char addr_str[CL_ADDR_STRING_LENGTH];
+	cl_addr_string(source, addr_str, sizeof(addr_str));
+	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Bundle from ipn:%lu.%lu (to ipn:%lu.%lu) received from %s with SeqNo %u", bundle->src_node, bundle->src_srv, bundle->dst_node, bundle->dst_srv, addr_str, sequence_number);
 
 	/* Store the node from which we received the bundle */
-	linkaddr_copy(&bundle->msrc, source);
+	cl_addr_copy(&bundle->msrc, source);
 
 	/* Store the RSSI for this packet */
 	bundle->rssi = rssi;
@@ -744,7 +766,8 @@ int convergence_layer_parse_dataframe(linkaddr_t * source, uint8_t * payload, ui
 	return -1;
 }
 
-int convergence_layer_parse_ackframe(linkaddr_t * source, uint8_t * payload, uint8_t length, uint8_t sequence_number, uint8_t type, uint8_t flags)
+static int convergence_layer_parse_ackframe(const cl_addr_t* const source, const uint8_t* const payload, const uint8_t length,
+											const uint8_t sequence_number, const uint8_t type, const uint8_t flags)
 {
 	struct transmit_ticket_t * ticket = NULL;
 	struct bundle_t * bundle = NULL;
@@ -754,16 +777,17 @@ int convergence_layer_parse_ackframe(linkaddr_t * source, uint8_t * payload, uin
 
 	if( convergence_layer_pending == 0 ) {
 		/* Poll the process to initiate transmission of the next bundle */
-//		process_poll(&convergence_layer_process);
 		xTaskNotify(convergence_layer_task, 0, eNoAction);
 	}
 
-	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Incoming ACK from %u.%u for SeqNo %u", source->u8[0], source->u8[1], sequence_number);
+	char addr_str[CL_ADDR_STRING_LENGTH];
+	cl_addr_string(source, addr_str, sizeof(addr_str));
+	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Incoming ACK from %s for SeqNo %u", addr_str, sequence_number);
 
 	for(ticket = list_head(transmission_ticket_list);
 		ticket != NULL;
 		ticket = list_item_next(ticket) ) {
-		if( linkaddr_cmp(source, &ticket->neighbour) && (ticket->flags & CONVERGENCE_LAYER_QUEUE_ACK_PEND) ) {
+		if( cl_addr_cmp(source, &ticket->neighbour) && (ticket->flags & CONVERGENCE_LAYER_QUEUE_ACK_PEND) ) {
 			break;
 		}
 	}
@@ -835,26 +859,34 @@ int convergence_layer_parse_ackframe(linkaddr_t * source, uint8_t * payload, uin
 	return 1;
 }
 
-int convergence_layer_incoming_frame(linkaddr_t * source, uint8_t * payload, uint8_t length, packetbuf_attr_t rssi)
+int convergence_layer_incoming_frame(const cl_addr_t* const source, const uint8_t* const payload, const uint8_t length, const packetbuf_attr_t rssi)
 {
-	uint8_t * data_pointer = NULL;
 	uint8_t data_length = 0;
 	uint8_t header;
 	int ret = 0;
 
-	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Incoming frame from %u.%u (header 0x%02x)", source->u8[0], source->u8[1], payload[0]);
+	char addr_str[CL_ADDR_STRING_LENGTH];
+	cl_addr_string(source, addr_str, sizeof(addr_str));
+	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Incoming frame from %s (header 0x%02x)", addr_str, payload[0]);
 
 	/* Notify the discovery module, that we have seen a peer */
-	DISCOVERY.alive(source);
+	if (!source->isIP) {
+		DISCOVERY.alive((linkaddr_t*)&source->lowpan);
+	}
+	// TODO send alive for ip too
+	// change type of addr to cl_addr_t
+	// onyl saving this value in discovery list
 
 	/* Check the COMPAT information */
 	if( (payload[0] & CONVERGENCE_LAYER_MASK_COMPAT) != CONVERGENCE_LAYER_COMPAT ) {
-		LOG(LOGD_DTN, LOG_CL, LOGL_INF, "Ignoring incoming frame from %u.%u", source->u8[0], source->u8[1]);
+		char addr_str[CL_ADDR_STRING_LENGTH];
+		cl_addr_string(source, addr_str, sizeof(addr_str));
+		LOG(LOGD_DTN, LOG_CL, LOGL_INF, "Ignoring incoming frame from %s", addr_str);
 		return -1;
 	}
 
 	header = payload[0];
-	data_pointer = payload + 1;
+	const uint8_t* const data_pointer = payload + 1;
 	data_length = length - 1;
 
 	if( (header & CONVERGENCE_LAYER_MASK_TYPE) == CONVERGENCE_LAYER_TYPE_DATA ) {
@@ -865,7 +897,9 @@ int convergence_layer_incoming_frame(linkaddr_t * source, uint8_t * payload, uin
 		flags = (header & CONVERGENCE_LAYER_MASK_FLAGS) >> 0;
 		sequence_number = (header & CONVERGENCE_LAYER_MASK_SEQNO) >> 2;
 
-		LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Incoming data frame from %u.%u with SeqNo %u and Flags %02X", source->u8[0], source->u8[1], sequence_number, flags);
+		char addr_str[CL_ADDR_STRING_LENGTH];
+		cl_addr_string(source, addr_str, sizeof(addr_str));
+		LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Incoming data frame from %s with SeqNo %u and Flags %02X", addr_str, sequence_number, flags);
 
 		/* Parse the incoming data frame */
 		ret = convergence_layer_parse_dataframe(source, data_pointer, data_length, flags, sequence_number, rssi);
@@ -888,9 +922,15 @@ int convergence_layer_incoming_frame(linkaddr_t * source, uint8_t * payload, uin
 
 	if( (header & CONVERGENCE_LAYER_MASK_TYPE) == CONVERGENCE_LAYER_TYPE_DISCOVERY ) {
 		/* is discovery */
-		LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Incoming discovery frame from %u.%u", source->u8[0], source->u8[1]);
+		char addr_str[CL_ADDR_STRING_LENGTH];
+		cl_addr_string(source, addr_str, sizeof(addr_str));
+		LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Incoming discovery frame from %s", addr_str);
 
-		DISCOVERY.receive(source, data_pointer, data_length);
+		// TODO change receive for cl_addr_t
+		if (!source->isIP) {
+			// TODO make linkaddr const and rmeove cast
+			DISCOVERY.receive((linkaddr_t*)&source->lowpan, (uint8_t*)data_pointer, data_length);
+		}
 
 		return 1;
 	}
@@ -903,7 +943,9 @@ int convergence_layer_incoming_frame(linkaddr_t * source, uint8_t * payload, uin
 		flags = (header & CONVERGENCE_LAYER_MASK_FLAGS) >> 0;
 		sequence_number = (header & CONVERGENCE_LAYER_MASK_SEQNO) >> 2;
 
-		LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Incoming Ack frame from %u.%u with SeqNo %u", source->u8[0], source->u8[1], sequence_number);
+		char addr_str[CL_ADDR_STRING_LENGTH];
+		cl_addr_string(source, addr_str, sizeof(addr_str));
+		LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Incoming Ack frame from %s with SeqNo %u", addr_str, sequence_number);
 
 		convergence_layer_parse_ackframe(source, data_pointer, data_length, sequence_number, CONVERGENCE_LAYER_TYPE_ACK, flags);
 
@@ -918,7 +960,9 @@ int convergence_layer_incoming_frame(linkaddr_t * source, uint8_t * payload, uin
 		flags = (header & CONVERGENCE_LAYER_MASK_FLAGS) >> 0;
 		sequence_number = (header & CONVERGENCE_LAYER_MASK_SEQNO) >> 2;
 
-		LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Incoming Nack frame from %u.%u with SeqNo %u", source->u8[0], source->u8[1], sequence_number);
+		char addr_str[CL_ADDR_STRING_LENGTH];
+		cl_addr_string(source, addr_str, sizeof(addr_str));
+		LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Incoming Nack frame from %s with SeqNo %u", addr_str, sequence_number);
 
 		convergence_layer_parse_ackframe(source, data_pointer, data_length, sequence_number, CONVERGENCE_LAYER_TYPE_NACK, flags);
 
@@ -1095,14 +1139,14 @@ int convergence_layer_delete_bundle(uint32_t bundle_number)
 	return 1;
 }
 
-int convergence_layer_is_blocked(linkaddr_t * neighbour)
+int convergence_layer_is_blocked(const cl_addr_t* const neighbour)
 {
 	struct blocked_neighbour_t * n = NULL;
 
 	for( n = list_head(blocked_neighbour_list);
 		 n != NULL;
 		 n = list_item_next(n) ) {
-		if( linkaddr_cmp(neighbour, &n->neighbour) ) {
+		if( cl_addr_cmp(neighbour, &n->neighbour) ) {
 			return 1;
 		}
 	}
@@ -1110,7 +1154,7 @@ int convergence_layer_is_blocked(linkaddr_t * neighbour)
 	return 0;
 }
 
-int convergence_layer_set_blocked(linkaddr_t * neighbour)
+int convergence_layer_set_blocked(const cl_addr_t* const neighbour)
 {
 	struct blocked_neighbour_t * n = NULL;
 
@@ -1121,28 +1165,32 @@ int convergence_layer_set_blocked(linkaddr_t * neighbour)
 	}
 
 	/* Fill the struct */
-	linkaddr_copy(&n->neighbour, neighbour);
+	cl_addr_copy(&n->neighbour, neighbour);
 	n->timestamp = xTaskGetTickCount();
 
 	/* Add it to the list */
 	list_add(blocked_neighbour_list, n);
 
-	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Block neighbour %u.%u", neighbour->u8[0], neighbour->u8[1]);
+	char addr_str[CL_ADDR_STRING_LENGTH];
+	cl_addr_string(neighbour, addr_str, sizeof(addr_str));
+	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Block neighbour %s", addr_str);
 	return 1;
 }
 
-int convergence_layer_set_unblocked(linkaddr_t * neighbour)
+int convergence_layer_set_unblocked(const cl_addr_t* const neighbour)
 {
 	struct blocked_neighbour_t * n = NULL;
 
 	for( n = list_head(blocked_neighbour_list);
 		 n != NULL;
 		 n = list_item_next(n) ) {
-		if( linkaddr_cmp(neighbour, &n->neighbour) ) {
+		if( cl_addr_cmp(neighbour, &n->neighbour) ) {
 			list_remove(blocked_neighbour_list, n);
 			memb_free(&blocked_neighbour_mem, n);
 
-			LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Unblock neighbour %u.%u", neighbour->u8[0], neighbour->u8[1]);
+			char addr_str[CL_ADDR_STRING_LENGTH];
+			cl_addr_string(neighbour, addr_str, sizeof(addr_str));
+			LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Unblock neighbour %s", addr_str);
 			return 1;
 		}
 	}
@@ -1175,7 +1223,7 @@ void check_blocked_neighbours() {
 	for( ticket = list_head(transmission_ticket_list);
 		 ticket != NULL;
 		 ticket = list_item_next(ticket) ) {
-		if( linkaddr_cmp(&ticket->neighbour, &n->neighbour) && (ticket->flags & CONVERGENCE_LAYER_QUEUE_ACK_PEND) ) {
+		if( cl_addr_cmp(&ticket->neighbour, &n->neighbour) && (ticket->flags & CONVERGENCE_LAYER_QUEUE_ACK_PEND) ) {
 			break;
 		}
 	}
@@ -1183,7 +1231,9 @@ void check_blocked_neighbours() {
 	/* Unblock the neighbour */
 	convergence_layer_set_unblocked(&n->neighbour);
 
-	LOG(LOGD_DTN, LOG_CL, LOGL_WRN, "Neighbour %u.%u stale, removing lock", n->neighbour.u8[0], n->neighbour.u8[1]);
+	char addr_str[CL_ADDR_STRING_LENGTH];
+	cl_addr_string(&n->neighbour, addr_str, sizeof(addr_str));
+	LOG(LOGD_DTN, LOG_CL, LOGL_WRN, "Neighbour %s stale, removing lock", addr_str);
 
 	/* There seems to be no ticket, nothing to do for us */
 	if( ticket == NULL ) {
@@ -1216,7 +1266,10 @@ void check_blocked_tickets() {
 			}
 
 			if( (xTaskGetTickCount() - ticket->timestamp) > pdMS_TO_TICKS(CONVERGENCE_LAYER_MULTIPART_TIMEOUT * 1000) ) {
-				LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Multipart receiving ticket for peer %u.%u timed out, removing", ticket->neighbour.u8[0], ticket->neighbour.u8[1]);
+				char addr_str[CL_ADDR_STRING_LENGTH];
+				cl_addr_string(&ticket->neighbour, addr_str, sizeof(addr_str));
+				LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Multipart receiving ticket for peer %s timed out, removing", addr_str);
+
 				changed = 1;
 				convergence_layer_free_transmit_ticket(ticket);
 				break;
@@ -1225,7 +1278,8 @@ void check_blocked_tickets() {
 	}
 }
 
-int convergence_layer_neighbour_down(linkaddr_t * neighbour) {
+int convergence_layer_neighbour_down(const cl_addr_t* const neighbour)
+{
 	struct transmit_ticket_t * ticket = NULL;
 	int changed = 1;
 
@@ -1258,7 +1312,7 @@ int convergence_layer_neighbour_down(linkaddr_t * neighbour) {
 				break;
 			}
 
-			if( linkaddr_cmp(neighbour, &ticket->neighbour) ) {
+			if( cl_addr_cmp(neighbour, &ticket->neighbour) ) {
 				/* Notify routing module */
 				ROUTING.sent(ticket, ROUTING_STATUS_FAIL);
 
@@ -1285,7 +1339,9 @@ void convergence_layer_show_tickets() {
 		ticket != NULL;
 		ticket = list_item_next(ticket) ) {
 
-		printf("B %10lu to %02u.%02u with SeqNo %u and Flags %02X\n", ticket->bundle_number, ticket->neighbour.u8[0], ticket->neighbour.u8[1], ticket->sequence_number, ticket->flags);
+		char addr_str[CL_ADDR_STRING_LENGTH];
+		cl_addr_string(&ticket->neighbour, addr_str, sizeof(addr_str));
+		printf("B %10lu to %s with SeqNo %u and Flags %02X\n", ticket->bundle_number, addr_str, ticket->sequence_number, ticket->flags);
 	}
 
 	printf("---\n");
@@ -1294,7 +1350,6 @@ void convergence_layer_show_tickets() {
 static void convergence_layer_process(void* p)
 {
 	struct transmit_ticket_t * ticket = NULL;
-//	static struct etimer stale_timer;
 	int n;
 
 	/* Initialize ticket storage */
@@ -1363,8 +1418,10 @@ static void convergence_layer_process(void* p)
 
 				/* Neighbour for which we are currently waiting on app-layer ACKs cannot receive anything now */
 				if( convergence_layer_is_blocked(&ticket->neighbour) ) {
-					LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Neighbour %u.%u is blocked. Not sending bundle %u with ticket %p",
-						ticket->neighbour.u8[0], ticket->neighbour.u8[1], ticket->bundle_number, ticket);
+					char addr_str[CL_ADDR_STRING_LENGTH];
+					cl_addr_string(&ticket->neighbour, addr_str, sizeof(addr_str));
+					LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Neighbour %s is blocked. Not sending bundle %u with ticket %p",
+						addr_str, ticket->bundle_number, ticket);
 					continue;
 				}
 
@@ -1376,5 +1433,4 @@ static void convergence_layer_process(void* p)
 			}
 		}
 	}
-//	PROCESS_END();
 }

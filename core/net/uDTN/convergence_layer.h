@@ -26,6 +26,8 @@
 #include "net/packetbuf.h"
 #include "lib/mmem.h"
 
+#include "cl_address.h"
+
 /**
  * How many outgoing bundles can we queue?
  */
@@ -164,10 +166,6 @@
  */
 #define CONVERGENCE_LAYER_MAX_LENGTH 116
 
-/**
- * Convergence Layer Process
- */
-//PROCESS_NAME(convergence_layer_process);
 
 /**
  * Bundle Queue Entry
@@ -178,7 +176,7 @@ struct transmit_ticket_t {
 	uint16_t flags;
 	uint8_t tries;
 	uint8_t failed_tries;
-	linkaddr_t neighbour;
+	cl_addr_t neighbour;
 	uint32_t bundle_number;
 	uint8_t sequence_number;
 	TickType_t timestamp;
@@ -200,12 +198,12 @@ int convergence_layer_free_transmit_ticket(struct transmit_ticket_t * ticket);
 int convergence_layer_enqueue_bundle(struct transmit_ticket_t * ticket);
 int convergence_layer_send_discovery(uint8_t * payload, uint8_t length, linkaddr_t * neighbour);
 
-int convergence_layer_incoming_frame(linkaddr_t * source, uint8_t * payload, uint8_t length, packetbuf_attr_t rssi);
+int convergence_layer_incoming_frame(const cl_addr_t* const source, const uint8_t* const payload, const uint8_t length, const packetbuf_attr_t rssi);
 int convergence_layer_status(void * pointer, uint8_t status);
 
 int convergence_layer_delete_bundle(uint32_t bundle_number);
 
-int convergence_layer_neighbour_down(linkaddr_t * neighbour);
+int convergence_layer_neighbour_down(const cl_addr_t* const neighbour);
 
 #endif /* CONVERGENCE_LAYER */
 
