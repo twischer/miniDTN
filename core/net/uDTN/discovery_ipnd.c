@@ -42,6 +42,9 @@
 #include "discovery.h"
 
 
+//#define SEND_DGRAM_UDPCL_PORT	1
+
+
 typedef struct {
 	uint16_t sequence_nr;
 	uint32_t node_id;
@@ -69,7 +72,7 @@ void discovery_ipnd_print_list();
 #define DISCOVERY_NEIGHBOUR_CACHE	3
 #define DISCOVERY_NEIGHBOUR_TIMEOUT	(5 * DISCOVERY_CYCLE)
 #define DISCOVERY_IPND_SERVICE		"lowpancl"
-#define DISCOVERY_IPND_SERVICE_UDP	"udpcl"
+#define DISCOVERY_IPND_SERVICE_UDP	"dgram:udpcl"
 #define DISCOVERY_IPND_SERVICE_PORT	"port="
 #define DISCOVERY_IPND_BUFFER_LEN 	70
 #define DISCOVERY_IPND_WHITELIST	0
@@ -394,6 +397,8 @@ static void discovery_ipnd_parse_msg(const uint8_t* const payload, const uint8_t
 	LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "Discovery from ipn:%lu with flags %02X and seqNo %u", attrs->node_id, flags, attrs->sequence_nr);
 }
 
+
+#ifdef SEND_DGRAM_UDPCL_PORT
 /**
  * @brief discovery_ipnd_add_service_udp_cl
  * @param buffer the beacon message buffer
@@ -460,6 +465,8 @@ static int discovery_ipnd_add_service_udp_cl(uint8_t* const buffer, const size_t
 	/* One service block was added */
 	return 1;
 }
+#endif /* SEND_DGRAM_UDPCL_PORT */
+
 
 /**
  * \brief Send out IPND beacon
@@ -496,7 +503,9 @@ static void discovery_ipnd_send()
 	services = &ipnd_buffer[offset++]; // This is a pointer onto the location of the service counter in the outgoing buffer
 	*services = 0; // Start with 0 services
 
+#ifdef SEND_DGRAM_UDPCL_PORT
 	*services += discovery_ipnd_add_service_udp_cl(ipnd_buffer, sizeof(ipnd_buffer), &offset);
+#endif /* SEND_DGRAM_UDPCL_PORT */
 
 	// Allow all registered DTN APPs to add an IPND service block
 	for(h=0; dtn_apps[h] != NULL; h++) {
@@ -508,7 +517,11 @@ static void discovery_ipnd_send()
 	}
 
 	// Now: Send it
-	convergence_layers_send_discovery(ipnd_buffer, offset);
+	const int ret = convergence_layers_send_discovery(ipnd_buffer, offset);
+	if (ret < 0) {
+		LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_WRN, "Discovery beacon message sent failed. (ret: %d)", ret);
+		return;
+	}
 
 	LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "Discovery beacon message sent.");
 }
