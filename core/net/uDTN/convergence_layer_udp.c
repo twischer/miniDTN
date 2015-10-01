@@ -17,9 +17,13 @@
 #include "discovery.h"
 #include "dispatching.h"
 #include "bundle_ageing.h"
+#include "convergence_layer.h"
 
+#ifdef UDP_DISCOVERY_ANNOUNCEMENT
 static ip_addr_t mcast_addr;
 static struct netconn* discovery_conn = NULL;
+#endif /* UDP_DISCOVERY_ANNOUNCEMENT */
+
 static struct netconn* bundle_conn = NULL;
 
 /**
@@ -47,6 +51,40 @@ static int convergence_layer_udp_netbuf_to_array(struct netbuf* buf, const uint8
 }
 
 
+static int convergence_layer_udp_send(struct netconn* const conn, const ip_addr_t* const addr, const uint16_t port,
+									  const uint8_t* const payload, const uint8_t length)
+{
+	/*
+	 * conn has not to be checked for NULL,
+	 * because it will be done by netconn_sendto
+	 */
+
+	// TODO check, if the interface is up
+
+	struct netbuf* const buf = netbuf_new();
+	if (buf == NULL) {
+		LOG(LOGD_DTN, LOG_CL_UDP, LOGL_ERR, "Not enough free memory for allocating a new netbuf.");
+		return -1;
+	}
+
+	if (netbuf_ref(buf, payload, length) != ERR_OK) {
+		LOG(LOGD_DTN, LOG_CL_UDP, LOGL_ERR, "Not enough free memory for allocating a new pbuf.");
+		netbuf_delete(buf);
+		return -2;
+	}
+
+	if (netconn_sendto(conn, buf, (ip_addr_t*)addr, port) != ERR_OK) {
+		LOG(LOGD_DTN, LOG_CL_UDP, LOGL_ERR, "Could not send data. Buffer is not existing.");
+		netbuf_delete(buf);
+		return -3;
+	}
+
+	netbuf_delete(buf);
+	return 0;
+}
+
+
+#ifdef UDP_DISCOVERY_ANNOUNCEMENT
 /**
  * @brief convergence_layer_udp_discovery_thread processes the incoming discovery messages
  * @param arg is not used
@@ -72,6 +110,8 @@ static void convergence_layer_udp_discovery_thread(void *arg)
 		if (netconn_recv(discovery_conn, &buf) == ERR_OK) {
 			const ip_addr_t* const addr = netbuf_fromaddr(buf);
 			const uint16_t port = netbuf_fromport(buf);
+
+			// TODO replace ipaddr_ntoa with ipaddr_ntoa_r to make it reentrant for multi threading
 			LOG(LOGD_DTN, LOG_CL_UDP, LOGL_DBG, "Discovery package received from addr %s port %u", ipaddr_ntoa(addr), port);
 
 			const uint8_t* data = 0;
@@ -91,49 +131,17 @@ static void convergence_layer_udp_discovery_thread(void *arg)
 
 
 /**
- * @brief convergence_layer_udp_incoming_bundle processes an incoming bundle frame
- * @param ip of the sender
- * @param port of the sender
- * @param payload data of the bundle
- * @param lengthsize of the bundle data
- * @return < 0 on fail
+ * @brief convergence_layer_udp_send_discovery sends a discovery message as broadcast
+ * on the ethernet
+ * @param payload
+ * @param length
+ * @return
  */
-static int convergence_layer_udp_incoming_bundle(const ip_addr_t* const ip, const uint16_t port,
-	const uint8_t* const payload, const size_t length)
+int convergence_layer_udp_send_discovery(const uint8_t* const payload, const uint8_t length)
 {
-	/* Allocate memory, parse the bundle and set reference counter to 1 */
-	struct mmem* const bundlemem = bundle_recover_bundle((uint8_t*)payload, length);
-	if(bundlemem == NULL) {
-		LOG(LOGD_DTN, LOG_CL_UDP, LOGL_WRN, "Error recovering bundle. Possibly not enough memory.");
-		return -1;
-	}
-
-	struct bundle_t* const bundle = (struct bundle_t*) MMEM_PTR(bundlemem);
-	if(bundle == NULL) {
-		LOG(LOGD_DTN, LOG_CL_UDP, LOGL_WRN, "Invalid bundle pointer. Possibly not enough memory.");
-		bundle_decrement(bundlemem);
-		return -2;
-	}
-
-	/* Check for bundle expiration */
-	if( bundle_ageing_is_expired(bundlemem) ) {
-		LOG(LOGD_DTN, LOG_CL_UDP, LOGL_ERR, "Bundle received from %s:%u is expired", ipaddr_ntoa(ip), port);
-		bundle_decrement(bundlemem);
-		return -3;
-	}
-
-	/* Mark the bundle as "internal" */
-	agent_set_bundle_source(bundle);
-
-	LOG(LOGD_DTN, LOG_CL_UDP, LOGL_DBG, "Bundle from ipn:%lu.%lu (to ipn:%lu.%lu) received from %s:%u",
-		bundle->src_node, bundle->src_srv, bundle->dst_node, bundle->dst_srv, ipaddr_ntoa(ip), port);
-
-	/* Store the node from which we received the bundle */
-// TODO	linkaddr_copy(&bundle->msrc, source);
-
-	/* Hand over the bundle to dispatching */
-	return dispatching_dispatch_bundle(bundlemem);
+	return convergence_layer_udp_send(discovery_conn, &mcast_addr, CL_UDP_DISCOVERY_PORT, payload, length);
 }
+#endif /* UDP_DISCOVERY_ANNOUNCEMENT */
 
 
 /**
@@ -158,14 +166,21 @@ static void convergence_layer_udp_bundle_thread(void *arg)
 				continue;
 			}
 
-			/* Notify the discovery module, that we have seen a peer */
-			if (convergence_layer_udp_incoming_bundle(addr, port, data, length) < 0) {
-				LOG(LOGD_DTN, LOG_CL_UDP, LOGL_DBG, "Bundle processing from %s:%u failed.", ipaddr_ntoa(addr), port);
-			}
+			cl_addr_t source;
+			source.isIP = true;
+			ip_addr_copy(source.ip, *addr);
+			source.port = port;
+			convergence_layer_incoming_frame(&source, data, length, 0);
 
 			netbuf_delete(buf);
 		}
 	}
+}
+
+
+int convergence_layer_udp_send_data(const ip_addr_t* const addr, const uint8_t* const payload, const uint8_t length)
+{
+	return convergence_layer_udp_send(bundle_conn, addr, CL_UDP_BUNDLE_PORT, payload, length);
 }
 
 
@@ -181,6 +196,7 @@ bool convergence_layer_udp_init(void)
 	logging_domain_level_set(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG);
 
 
+#ifdef UDP_DISCOVERY_ANNOUNCEMENT
 	IP4_ADDR(&mcast_addr, CL_UDP_DISCOVERY_IP_1, CL_UDP_DISCOVERY_IP_2, CL_UDP_DISCOVERY_IP_3, CL_UDP_DISCOVERY_IP_4);
 
 	/* initalize the udp connection for the discovery messages */
@@ -200,6 +216,8 @@ bool convergence_layer_udp_init(void)
 		LOG(LOGD_DTN, LOG_CL_UDP, LOGL_ERR, "UDP-CL discovery task creation failed.");
 		return false;
 	}
+#endif /* UDP_DISCOVERY_ANNOUNCEMENT */
+
 
 	/* initalize the udp connection for the bundle data */
 	bundle_conn = netconn_new(NETCONN_UDP);
@@ -222,36 +240,4 @@ bool convergence_layer_udp_init(void)
 
 	LOG(LOGD_DTN, LOG_CL_UDP, LOGL_DBG, "UDP-CL tasks init done.");
 	return true;
-}
-
-
-/**
- * @brief convergence_layer_udp_send_discovery sends a discovery message as broadcast
- * on the ethernet
- * @param payload
- * @param length
- * @return
- */
-int convergence_layer_udp_send_discovery(const uint8_t* const payload, const uint8_t length)
-{
-	struct netbuf* const buf = netbuf_new();
-	if (buf == NULL) {
-		LOG(LOGD_DTN, LOG_CL_UDP, LOGL_ERR, "Not enough free memory for allocating a new netbuf.");
-		return -1;
-	}
-
-	if (netbuf_ref(buf, payload, length) != ERR_OK) {
-		LOG(LOGD_DTN, LOG_CL_UDP, LOGL_ERR, "Not enough free memory for allocating a new pbuf.");
-		netbuf_delete(buf);
-		return -2;
-	}
-
-	if (netconn_sendto(discovery_conn, buf, &mcast_addr, CL_UDP_DISCOVERY_PORT) != ERR_OK) {
-		LOG(LOGD_DTN, LOG_CL_UDP, LOGL_ERR, "Could not send discovery message. Buffer is not existing.");
-		netbuf_delete(buf);
-		return -3;
-	}
-
-	netbuf_delete(buf);
-	return 0;
 }
