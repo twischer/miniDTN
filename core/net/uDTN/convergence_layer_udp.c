@@ -19,12 +19,14 @@
 #include "bundle_ageing.h"
 #include "convergence_layer.h"
 
+ip_addr_t udp_mcast_addr;
+static struct netconn* bundle_conn = NULL;
+
 #ifdef UDP_DISCOVERY_ANNOUNCEMENT
-static ip_addr_t mcast_addr;
 static struct netconn* discovery_conn = NULL;
 #endif /* UDP_DISCOVERY_ANNOUNCEMENT */
 
-static struct netconn* bundle_conn = NULL;
+
 
 /**
  * @brief convergence_layer_udp_netbuf_to_array convertes a netbuf to an array
@@ -195,10 +197,10 @@ bool convergence_layer_udp_init(void)
 	logging_domain_level_set(LOGD_DTN, LOG_CL_UDP, LOGL_DBG);
 	logging_domain_level_set(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG);
 
+	IP4_ADDR(&udp_mcast_addr, CL_UDP_DISCOVERY_IP_1, CL_UDP_DISCOVERY_IP_2, CL_UDP_DISCOVERY_IP_3, CL_UDP_DISCOVERY_IP_4);
+
 
 #ifdef UDP_DISCOVERY_ANNOUNCEMENT
-	IP4_ADDR(&mcast_addr, CL_UDP_DISCOVERY_IP_1, CL_UDP_DISCOVERY_IP_2, CL_UDP_DISCOVERY_IP_3, CL_UDP_DISCOVERY_IP_4);
-
 	/* initalize the udp connection for the discovery messages */
 	discovery_conn = netconn_new(NETCONN_UDP);
 	if (discovery_conn == NULL) {

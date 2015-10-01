@@ -450,10 +450,6 @@ int convergence_layer_send_discovery(uint8_t * payload, uint8_t length, linkaddr
 	/* Send it out via the MAC */
 	dtn_network_send(neighbour, length + 1, NULL);
 
-	// TODO possibly send discovery with dgram over udp, too
-	// Now it will be only send with udp over the discovery port,
-	// but not with dgram-udp over the bundle port
-
 	return 1;
 }
 

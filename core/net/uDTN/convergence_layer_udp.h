@@ -11,12 +11,14 @@
 #define CL_UDP_DISCOVERY_IP_2	0
 #define CL_UDP_DISCOVERY_IP_3	0
 #define CL_UDP_DISCOVERY_IP_4	142
-#define CL_UDP_BUNDLE_PORT		4556
+#define CL_UDP_BUNDLE_PORT		4565
 
 #ifdef UDP_DISCOVERY_ANNOUNCEMENT
 	#define CL_UDP_DISCOVERY_PORT	4551
 #endif /* UDP_DISCOVERY_ANNOUNCEMENT */
 
+
+ip_addr_t udp_mcast_addr;
 
 bool convergence_layer_udp_init(void);
 int convergence_layer_udp_send_data(const ip_addr_t* const addr, const uint8_t* const payload, const uint8_t length);

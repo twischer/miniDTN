@@ -2453,3 +2453,5 @@ core/net/uDTN/convergence_layers.h
 core/net/uDTN/convergence_layers.c
 core/net/uDTN/cl_address.h
 core/net/uDTN/cl_address.c
+core/net/uDTN/convergence_layer_udp_dgram.c
+core/net/uDTN/convergence_layer_udp_dgram.h

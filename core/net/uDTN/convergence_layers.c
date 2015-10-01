@@ -1,6 +1,7 @@
 #include "convergence_layers.h"
 #include "convergence_layer.h"
 #include "convergence_layer_udp.h"
+#include "convergence_layer_udp_dgram.h"
 
 
 bool convergence_layers_init(void)
@@ -32,9 +33,15 @@ int convergence_layers_send_discovery(const uint8_t* const payload, const uint8_
 		err = -1;
 	}
 
-	if (!convergence_layer_udp_send_discovery(payload, length)) {
-		err = -2;
+	if (convergence_layer_udp_dgram_send_discovery(payload, length) < 0) {
+		err += -2;
 	}
+
+#ifdef UDP_DISCOVERY_ANNOUNCEMENT
+	if (convergence_layer_udp_send_discovery(payload, length) < 0) {
+		err += -4;
+	}
+#endif /* UDP_DISCOVERY_ANNOUNCEMENT */
 
 	return err;
 }
