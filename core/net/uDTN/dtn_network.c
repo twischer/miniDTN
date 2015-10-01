@@ -62,7 +62,7 @@ static void dtn_network_init(void)
  */
 static void dtn_network_input(void) 
 {
-	linkaddr_t source;
+	cl_addr_t source;
 	uint8_t * buffer = NULL;
 	uint8_t length = 0;
 	packetbuf_attr_t rssi = 0;
@@ -70,7 +70,9 @@ static void dtn_network_input(void)
 //	leds_on(LEDS_ALL);
 
 	/* Create a copy here, because otherwise packetbuf_clear will evaporate the address */
-	linkaddr_copy(&source, packetbuf_addr(PACKETBUF_ADDR_SENDER));
+	linkaddr_copy(&source.lowpan, packetbuf_addr(PACKETBUF_ADDR_SENDER));
+	source.isIP = false;
+
 	buffer = packetbuf_dataptr();
 	length = packetbuf_datalen();
 	rssi = packetbuf_attr(PACKETBUF_ATTR_RSSI);

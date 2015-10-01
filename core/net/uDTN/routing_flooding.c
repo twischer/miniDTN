@@ -777,7 +777,9 @@ void routing_flooding_bundle_sent(struct transmit_ticket_t * ticket, uint8_t sta
 		return;
 	}
 
-	LOG(LOGD_DTN, LOG_ROUTE, LOGL_DBG, "bundle for RIME %u.%u / EID %lu delivered to %u.%u", dest_n.u8[0], dest_n.u8[1], entry->destination_node, ticket->neighbour.u8[0], ticket->neighbour.u8[1]);
+	char addr_str[CL_ADDR_STRING_LENGTH];
+	cl_addr_string(&ticket->neighbour, addr_str, sizeof(addr_str));
+	LOG(LOGD_DTN, LOG_ROUTE, LOGL_DBG, "bundle for RIME %u.%u / EID %lu delivered to %s", dest_n.u8[0], dest_n.u8[1], entry->destination_node, addr_str);
 #endif
 
 

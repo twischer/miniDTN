@@ -324,8 +324,9 @@ static void discovery_ipnd_receive(linkaddr_t * source, uint8_t * payload, uint8
 	ipnd_msg_attrs_t attrs;
 	discovery_ipnd_parse_msg(payload, length, &attrs);
 
-	if (source->u16 != attrs.node_id) {
-		LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_WRN, "LoWPAN address is not matching the node ID in the IPN scheme of the discovery message.");
+	if (convert_rime_to_eid(source) != attrs.node_id) {
+		LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_WRN, "LoWPAN address %u.%u is not matching the EID %u in the IPN scheme of the discovery message.",
+			source->u8[0], source->u8[1], attrs.node_id);
 	}
 }
 
