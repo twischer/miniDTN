@@ -51,7 +51,7 @@
 struct blacklist_entry_t {
 	struct blacklist_entry_t * next;
 
-	linkaddr_t node;
+	cl_addr_t node;
 	uint8_t counter;
 	TickType_t timestamp;
 };
@@ -74,7 +74,8 @@ struct routing_entry_t {
 	/** number of nodes the bundle has been sent to already */
 	uint8_t send_to;
 
-	/** addresses of nodes this bundle was sent to */
+	/** addresses of nodes this bundle was sent to (is the EID of the nodes) */
+	// TODO Use uint32_t to support bigger EIDs for UDP-CL
 	linkaddr_t neighbours[ROUTING_NEI_MEM];
 
 	/** bundle destination */
@@ -84,18 +85,18 @@ struct routing_entry_t {
 	uint32_t source_node;
 
 	/** neighbour from which we have received the bundle */
-	linkaddr_t received_from_node;
+	// TODO should be the EID,
+	// because the message should not send over another CL to the same node
+	cl_addr_t received_from_node;
 } __attribute__ ((packed));
 
 /**
  * Routing process
  */
-//PROCESS(routing_process, "FLOOD ROUTE process");
 static TaskHandle_t routing_task;
-
 static void routing_process(void* p);
 
-
+/* only used to produce a logging output after BLACKLIST_THRESHOLD */
 MEMB(blacklist_mem, struct blacklist_entry_t, BLACKLIST_SIZE);
 LIST(blacklist_list);
 
@@ -105,19 +106,42 @@ LIST(routing_list);
 void routing_flooding_send_to_known_neighbours(void);
 void routing_flooding_check_keep_bundle(uint32_t bundle_number);
 
+
+/**
+ * @brief routing_flooding_neighbour_to_addr creates an unified address
+ * from a neighbour entry.
+ * An IP address is higher prior.
+ * So always an IP address is available,
+ * The IP addresse and the port will be used.
+ * @param nei_l
+ * @param neighbour
+ */
+static void routing_flooding_neighbour_to_addr(const struct discovery_neighbour_list_entry* const nei_l, cl_addr_t* const neighbour)
+{
+	if (ip_addr_isany(&nei_l->ip) || nei_l->port == 0) {
+		neighbour->isIP = false;
+		linkaddr_copy(&neighbour->lowpan, &nei_l->neighbour);
+	} else {
+		neighbour->isIP = true;
+		ip_addr_copy(neighbour->ip, nei_l->ip);
+		neighbour->port = nei_l->port;
+	}
+}
+
+
 /**
  * \brief Adds (or refreshes) the entry of 'neighbour' on the blacklist
  * \param neighbour Address of the neighbour
  * \return 1 if neighbour is (now) blacklisted, 0 otherwise
  */
-int routing_flooding_blacklist_add(linkaddr_t * neighbour)
+static int routing_flooding_blacklist_add(const cl_addr_t* const neighbour)
 {
 	struct blacklist_entry_t * entry;
 
 	for(entry = list_head(blacklist_list);
 		entry != NULL;
 		entry = list_item_next(entry)) {
-		if( linkaddr_cmp(neighbour, &entry->node) ) {
+		if( cl_addr_cmp(neighbour, &entry->node) ) {
 			if( (xTaskGetTickCount() - entry->timestamp) > pdMS_TO_TICKS(BLACKLIST_TIMEOUT * 1000) ) {
 				// Reusing existing (timedout) entry
 				entry->counter = 0;
@@ -127,7 +151,9 @@ int routing_flooding_blacklist_add(linkaddr_t * neighbour)
 			entry->timestamp = xTaskGetTickCount();
 
 			if( entry->counter > BLACKLIST_THRESHOLD ) {
-				LOG(LOGD_DTN, LOG_ROUTE, LOGL_INF, "%u.%u blacklisted", neighbour->u8[0], neighbour->u8[1]);
+				char addr_str[CL_ADDR_STRING_LENGTH];
+				cl_addr_string(neighbour, addr_str, sizeof(addr_str));
+				LOG(LOGD_DTN, LOG_ROUTE, LOGL_INF, "%s blacklisted", addr_str);
 				return 1;
 			}
 
@@ -143,7 +169,7 @@ int routing_flooding_blacklist_add(linkaddr_t * neighbour)
 		return 0;
 	}
 
-	linkaddr_copy(&entry->node, neighbour);
+	cl_addr_copy(&entry->node, neighbour);
 	entry->counter = 1;
 	entry->timestamp = xTaskGetTickCount();
 
@@ -156,14 +182,14 @@ int routing_flooding_blacklist_add(linkaddr_t * neighbour)
  * \brief Deletes a neighbour from the blacklist
  * \param neighbour Address of the neighbour
  */
-void routing_flooding_blacklist_delete(linkaddr_t * neighbour)
+static void routing_flooding_blacklist_delete(const cl_addr_t* const neighbour)
 {
 	struct blacklist_entry_t * entry;
 
 	for(entry = list_head(blacklist_list);
 		entry != NULL;
 		entry = list_item_next(entry)) {
-		if( linkaddr_cmp(neighbour, &entry->node) ) {
+		if( cl_addr_cmp(neighbour, &entry->node) ) {
 			list_remove(blacklist_list, entry);
 			memset(entry, 0, sizeof(struct blacklist_entry_t));
 			memb_free(&blacklist_mem, entry);
@@ -209,7 +235,7 @@ void routing_flooding_new_neighbour(linkaddr_t *dest)
  * \param neighbour Address of the neighbour
  * \return 1 on success, -1 on error
  */
-static int routing_flooding_send_bundle(uint32_t bundle_number, linkaddr_t * neighbour)
+static int routing_flooding_send_bundle(uint32_t bundle_number, const cl_addr_t* const neighbour)
 {
 	struct transmit_ticket_t * ticket = NULL;
 
@@ -221,7 +247,7 @@ static int routing_flooding_send_bundle(uint32_t bundle_number, linkaddr_t * nei
 	}
 
 	/* Specify which bundle */
-	linkaddr_copy(&ticket->neighbour, neighbour);
+	cl_addr_copy(&ticket->neighbour, neighbour);
 	ticket->bundle_number = bundle_number;
 
 	/* Put the bundle in the queue */
@@ -271,6 +297,7 @@ int routing_flooding_send_to_local(struct routing_entry_t * entry)
 	return FLOOD_ROUTE_RETURN_CONTINUE;
 }
 
+
 /**
  * \brief Forward a bundle to its destination
  * \param entry Pointer to the routing entry of the bundle
@@ -305,8 +332,12 @@ int routing_flooding_forward_directly(struct routing_entry_t * entry)
 	/* Mark bundle as busy */
 	entry->flags |= ROUTING_FLAG_IN_TRANSIT;
 
+	/* use ip addresse and port for destination, if existing */
+	cl_addr_t neighbour;
+	routing_flooding_neighbour_to_addr(nei_l, &neighbour);
+
 	/* And queue it for sending */
-	h = routing_flooding_send_bundle(entry->bundle_number, &nei_l->neighbour);
+	h = routing_flooding_send_bundle(entry->bundle_number, &neighbour);
 	if( h < 0 ) {
 		/* Enqueuing bundle failed - unblock it */
 		entry->flags &= ~ROUTING_FLAG_IN_TRANSIT;
@@ -346,7 +377,11 @@ int routing_flooding_forward_normal(struct routing_entry_t * entry)
 			continue;
 		}
 
-		if( linkaddr_cmp(&nei_l->neighbour, &entry->received_from_node) ) {
+		/* create a corresponding cl_addr for the neighbour entry */
+		cl_addr_t neighbour;
+		routing_flooding_neighbour_to_addr(nei_l, &neighbour);
+
+		if( cl_addr_cmp(&neighbour, &entry->received_from_node) ) {
 			LOG(LOGD_DTN, LOG_ROUTE, LOGL_DBG, "not sending back to sender");
 
 			/* Go on with the next neighbour */
@@ -371,7 +406,7 @@ int routing_flooding_forward_normal(struct routing_entry_t * entry)
 			entry->flags |= ROUTING_FLAG_IN_TRANSIT;
 
 			/* And queue it for sending */
-			h = routing_flooding_send_bundle(entry->bundle_number, &nei_l->neighbour);
+			h = routing_flooding_send_bundle(entry->bundle_number, &neighbour);
 			if( h < 0 ) {
 				/* Enqueuing bundle failed - unblock it */
 				entry->flags &= ~ROUTING_FLAG_IN_TRANSIT;
@@ -597,7 +632,7 @@ int routing_flooding_new_bundle(uint32_t * bundle_number)
 	entry->bundle_number = *bundle_number;
 	bundle_get_attr(bundlemem, DEST_NODE, &entry->destination_node);
 	bundle_get_attr(bundlemem, SRC_NODE, &entry->source_node);
-	linkaddr_copy(&entry->received_from_node, &bundle->msrc);
+	cl_addr_copy(&entry->received_from_node, &bundle->msrc);
 
 	// Now that we have the bundle, we do not need the allocated memory anymore
 	bundle_decrement(bundlemem);
@@ -723,7 +758,11 @@ void routing_flooding_bundle_sent(struct transmit_ticket_t * ticket, uint8_t sta
 
 #ifndef TEST_DO_NOT_DELETE_ON_DIRECT_DELIVERY
 	linkaddr_t dest_n = convert_eid_to_rime(entry->destination_node);
-	if (linkaddr_cmp(&ticket->neighbour, &dest_n) && status != ROUTING_STATUS_NACK) {
+	// TODO use another check for packages that was send over IP
+	// Have to check, if the ticket was for sending the
+	// package to the destination directly and not to flood with neighbours
+	// exchange .lowpan cmp for ip package
+	if (linkaddr_cmp(&ticket->neighbour.lowpan, &dest_n) && status != ROUTING_STATUS_NACK) {
 		LOG(LOGD_DTN, LOG_ROUTE, LOGL_DBG, "bundle sent to destination node");
 		uint32_t bundle_number = ticket->bundle_number;
 
@@ -743,7 +782,9 @@ void routing_flooding_bundle_sent(struct transmit_ticket_t * ticket, uint8_t sta
 
 
 	if (entry->send_to < ROUTING_NEI_MEM) {
-		linkaddr_copy(&entry->neighbours[entry->send_to], &ticket->neighbour);
+		DISCOVERY.neighbours();
+		// TODO fix it. Not working for IP packages
+		linkaddr_copy(&entry->neighbours[entry->send_to], &ticket->neighbour.lowpan);
 		entry->send_to++;
 		LOG(LOGD_DTN, LOG_ROUTE, LOGL_DBG, "bundle %lu sent to %u nodes", ticket->bundle_number, entry->send_to);
 	} else if (entry->send_to >= ROUTING_NEI_MEM) {
@@ -827,8 +868,6 @@ void routing_flooding_bundle_delivered_locally(struct mmem * bundlemem) {
  */
 void routing_process(void* p)
 {
-//	PROCESS_BEGIN();
-
 	LOG(LOGD_DTN, LOG_ROUTE, LOGL_INF, "FLOOD ROUTE process in running");
 
 	// Initialize memory used to store blacklisted neighbours
@@ -840,13 +879,10 @@ void routing_process(void* p)
 	list_init(routing_list);
 
 	while(1) {
-//		PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL);
 		vTaskSuspend(NULL);
 
 		routing_flooding_send_to_known_neighbours();
 	}
-
-//	PROCESS_END();
 }
 
 const struct routing_driver routing_flooding ={
