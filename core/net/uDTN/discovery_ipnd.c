@@ -87,6 +87,7 @@ void discovery_ipnd_print_list();
 struct discovery_ipnd_neighbour_list_entry {
 	struct discovery_ipnd_neighbour_list_entry *next;
 	// TODO use uint64_t, because compressed bundle header can have such big addresses
+	uint8_t addr_type;
 	linkaddr_t neighbour;
 	ip_addr_t ip;
 	uint16_t port;
@@ -584,7 +585,7 @@ static bool discovery_ipnd_refresh_neighbour_ip(const ip_addr_t* const ip, const
  * \brief Marks a neighbour as 'dead' after multiple transmission attempts have failed
  * \param neighbour Address of the neighbour
  */
-static void discovery_ipnd_delete_neighbour(linkaddr_t * neighbour)
+static void discovery_ipnd_delete_neighbour(const cl_addr_t* const neighbour)
 {
 	struct discovery_ipnd_neighbour_list_entry * entry;
 
@@ -593,7 +594,9 @@ static void discovery_ipnd_delete_neighbour(linkaddr_t * neighbour)
 		return;
 	}
 
-	LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_INF, "Neighbour %u.%u disappeared", neighbour->u8[0], neighbour->u8[1]);
+	char addr_str[CL_ADDR_STRING_LENGTH];
+	cl_addr_string(neighbour, addr_str, sizeof(addr_str));
+	LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_INF, "Neighbour %s disappeared", addr_str);
 
 	// Tell the CL that this neighbour has disappeared
 	convergence_layer_neighbour_down(neighbour);
@@ -601,7 +604,7 @@ static void discovery_ipnd_delete_neighbour(linkaddr_t * neighbour)
 	for(entry = list_head(neighbour_list);
 			entry != NULL;
 			entry = list_item_next(entry)) {
-		if( linkaddr_cmp(&entry->neighbour, neighbour) ) {
+		if( discovery_neighbour_cmp((struct discovery_neighbour_list_entry*)entry, neighbour) ) {
 
 			// Notify the statistics module
 			statistics_contacts_down(&entry->neighbour, entry->timestamp_last - entry->timestamp_discovered);
@@ -651,10 +654,10 @@ static void discovery_ipnd_save_neighbour_ip(const uint32_t node_id, const ip_ad
 
 	entry->neighbour.u16 = node_id;
 	if (ip == NULL || port == 0) {
-		entry->ip.addr = IPADDR_NONE;
+		ip_addr_copy(entry->ip, *IP_ADDR_ANY);
 		entry->port = 0;
 	} else {
-		IPADDR2_COPY(&(entry->ip), ip);
+		ip_addr_copy(entry->ip, *ip);
 		entry->port = port;
 	}
 	entry->timestamp_last = clock_seconds();
@@ -714,7 +717,15 @@ void discovery_ipnd_clear()
 		// Notify the statistics module
 		statistics_contacts_down(&entry->neighbour, entry->timestamp_last - entry->timestamp_discovered);
 
-		convergence_layer_neighbour_down(&entry->neighbour);
+		/* call convergence_layer_neighbour_down for all discovered address types */
+		cl_addr_t addr;
+		if (discovery_neighbour_to_addr((struct discovery_neighbour_list_entry*)entry, ADDRESS_TYPE_FLAG_LOWPAN, &addr) >= 0) {
+			convergence_layer_neighbour_down(&addr);
+		}
+		if (discovery_neighbour_to_addr((struct discovery_neighbour_list_entry*)entry, ADDRESS_TYPE_FLAG_IPV4, &addr) >= 0) {
+			convergence_layer_neighbour_down(&addr);
+		}
+
 		list_remove(neighbour_list, entry);
 		memb_free(&neighbour_mem, entry);
 	}
@@ -733,14 +744,32 @@ static void discovery_ipnd_remove_stale_neighbours(const TimerHandle_t timer)
 				entry = list_item_next(entry)) {
 			if( (clock_seconds() - entry->timestamp_last) > DISCOVERY_NEIGHBOUR_TIMEOUT ) {
 				LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "Neighbour %u.%u timed out: %lu vs. %lu = %lu", entry->neighbour.u8[0], entry->neighbour.u8[1], clock_seconds(), entry->timestamp_last, clock_seconds() - entry->timestamp_last);
-				discovery_ipnd_delete_neighbour(&entry->neighbour);
+
+				/*
+				 * call discovery_ipnd_delete_neighbour for all discovered address types.
+				 * But first, copy all addresses,
+				 * because calling discovery_ipnd_delete_neighbour will destroy
+				 * the neighbour_list entry and
+				 * an not existing struct will be used
+				 * for copiing the addresse in the second call
+				 * of discovery_ipnd_delete_neighbour
+				 */
+				cl_addr_t addr_lowpan;
+				const int lowpan_error = discovery_neighbour_to_addr((struct discovery_neighbour_list_entry*)entry, ADDRESS_TYPE_FLAG_LOWPAN, &addr_lowpan);
+				cl_addr_t addr_ipv4;
+				if (discovery_neighbour_to_addr((struct discovery_neighbour_list_entry*)entry, ADDRESS_TYPE_FLAG_IPV4, &addr_ipv4) >= 0) {
+					discovery_ipnd_delete_neighbour(&addr_ipv4);
+				}
+				if (lowpan_error >= 0) {
+					discovery_ipnd_delete_neighbour(&addr_lowpan);
+				}
+
 				changed = 1;
 				break;
 			}
 		}
 	}
 
-//	ctimer_set(&discovery_timeout_timer, DISCOVERY_NEIGHBOUR_TIMEOUT * CLOCK_SECOND, discovery_ipnd_remove_stale_neighbours, NULL);
 	xTimerReset(discovery_timeout_timer, 0);
 }
 

@@ -22,6 +22,7 @@
 
 #include "net/rime/rime.h"
 #include "lwip/ip_addr.h"
+#include "cl_address.h"
 
 /**
  * Which discovery driver are we going to use?
@@ -33,12 +34,17 @@
 #endif
 
 
-
-//PROCESS_NAME(discovery_process);
+#define ADDRESS_TYPE_FLAG_LOWPAN	(1 << 1)
+#define ADDRESS_TYPE_FLAG_IPV4		(1 << 2)
 
 struct discovery_neighbour_list_entry {
 	struct discovery_neighbour_list_entry *next;
+	// TODO use uint64_t, because compressed bundle header can have such big addresses
+	// TODO change all use struct definitions of this type, too
+	uint8_t addr_type;
 	linkaddr_t neighbour;
+	ip_addr_t ip;
+	uint16_t port;
 };
 
 /** interface for discovery modules */
@@ -82,7 +88,7 @@ struct discovery_driver {
 	/**
 	 * Multiple transmission attempts to this neighbour have failed
 	 */
-	void (* dead)(linkaddr_t * destination);
+	void (* dead)(const cl_addr_t* const neighbour);
 
 	/**
 	 * Starts to discover a neighbour
@@ -116,6 +122,59 @@ struct discovery_driver {
 };
 
 extern const struct discovery_driver DISCOVERY;
+
+
+static inline bool discovery_neighbour_cmp(const struct discovery_neighbour_list_entry* const entry, const cl_addr_t* const addr)
+{
+	if (addr->isIP) {
+		/* check, if the entry contains an IP address */
+		if ( (entry->addr_type & ADDRESS_TYPE_FLAG_IPV4) == 0 ) {
+			return false;
+		}
+		if ( !ip_addr_cmp(&entry->ip, &addr->ip) ) {
+			return false;
+		}
+
+		return (entry->port == addr->port);
+	} else {
+		/* check, if the entry contains a lowpan address */
+		if ( (entry->addr_type & ADDRESS_TYPE_FLAG_LOWPAN) == 0 ) {
+			return false;
+		}
+
+		return linkaddr_cmp(&entry->neighbour, &addr->lowpan);
+	}
+
+	/*
+	 * should not reach this end,
+	 * because of else block
+	 */
+	return false;
+}
+
+
+static inline int discovery_neighbour_to_addr(const struct discovery_neighbour_list_entry* const entry, const uint8_t addr_type, cl_addr_t* const addr)
+{
+	/* check, if reqested type is existing */
+	if ( (entry->addr_type & addr_type) == 0 ) {
+		return -1;
+	}
+
+	if ( (addr_type & ADDRESS_TYPE_FLAG_LOWPAN) == ADDRESS_TYPE_FLAG_LOWPAN ) {
+		addr->isIP = false;
+		linkaddr_copy(&addr->lowpan, &entry->neighbour);
+	} else if ( (addr_type & ADDRESS_TYPE_FLAG_IPV4) == ADDRESS_TYPE_FLAG_IPV4 ) {
+		addr->isIP = true;
+		ip_addr_copy(addr->ip, entry->ip);
+		addr->port = entry->port;
+	} else {
+		/* an unkown type was used */
+		return -2;
+	}
+
+	return 0;
+}
+
 
 #endif
 /** @} */
