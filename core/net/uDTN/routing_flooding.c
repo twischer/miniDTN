@@ -113,18 +113,21 @@ void routing_flooding_check_keep_bundle(uint32_t bundle_number);
  * An IP address is higher prior.
  * So always an IP address is available,
  * The IP addresse and the port will be used.
- * @param nei_l
- * @param neighbour
+ * @param entry
+ * @param addr
  */
-static void routing_flooding_neighbour_to_addr(const struct discovery_neighbour_list_entry* const nei_l, cl_addr_t* const neighbour)
+static int routing_flooding_neighbour_to_addr(const struct discovery_neighbour_list_entry* const entry, cl_addr_t* const addr)
 {
-	if (ip_addr_isany(&nei_l->ip) || nei_l->port == 0) {
-		neighbour->isIP = false;
-		linkaddr_copy(&neighbour->lowpan, &nei_l->neighbour);
+	if (discovery_neighbour_to_addr(entry, ADDRESS_TYPE_FLAG_IPV4, addr) >= 0) {
+		/* ip address successful converted */
+		return 0;
+	} else if (discovery_neighbour_to_addr(entry, ADDRESS_TYPE_FLAG_LOWPAN, addr) >= 0) {
+		/* lowpan address successful converted */
+		return 0;
 	} else {
-		neighbour->isIP = true;
-		ip_addr_copy(neighbour->ip, nei_l->ip);
-		neighbour->port = nei_l->port;
+		LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "Could not find a valid address in discovery list entry for %u.%u",
+			entry->neighbour.u8[0], entry->neighbour.u8[1]);
+		return -1;
 	}
 }
 
@@ -334,7 +337,13 @@ int routing_flooding_forward_directly(struct routing_entry_t * entry)
 
 	/* use ip addresse and port for destination, if existing */
 	cl_addr_t neighbour;
-	routing_flooding_neighbour_to_addr(nei_l, &neighbour);
+	if (routing_flooding_neighbour_to_addr(nei_l, &neighbour) < 0) {
+		/*
+		 * the neighbour address could not be extracted,
+		 * so try to flood the bundle to all nieghbours
+		 */
+		return FLOOD_ROUTE_RETURN_CONTINUE;
+	}
 
 	/* And queue it for sending */
 	h = routing_flooding_send_bundle(entry->bundle_number, &neighbour);
@@ -379,7 +388,13 @@ int routing_flooding_forward_normal(struct routing_entry_t * entry)
 
 		/* create a corresponding cl_addr for the neighbour entry */
 		cl_addr_t neighbour;
-		routing_flooding_neighbour_to_addr(nei_l, &neighbour);
+		if (routing_flooding_neighbour_to_addr(nei_l, &neighbour) < 0) {
+			/*
+			 * the neighbour address could not be extracted,
+			 * so continue with the next list entry
+			 */
+			continue;
+		}
 
 		if( cl_addr_cmp(&neighbour, &entry->received_from_node) ) {
 			LOG(LOGD_DTN, LOG_ROUTE, LOGL_DBG, "not sending back to sender");
@@ -784,8 +799,8 @@ void routing_flooding_bundle_sent(struct transmit_ticket_t * ticket, uint8_t sta
 
 
 	if (entry->send_to < ROUTING_NEI_MEM) {
-		DISCOVERY.neighbours();
 		// TODO fix it. Not working for IP packages
+		// find correct EID for ip address from DISCOVERY.neighbours();
 		linkaddr_copy(&entry->neighbours[entry->send_to], &ticket->neighbour.lowpan);
 		entry->send_to++;
 		LOG(LOGD_DTN, LOG_ROUTE, LOGL_DBG, "bundle %lu sent to %u nodes", ticket->bundle_number, entry->send_to);

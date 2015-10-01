@@ -624,16 +624,25 @@ static void discovery_ipnd_delete_neighbour(const cl_addr_t* const neighbour)
  */
 static void discovery_ipnd_save_neighbour(linkaddr_t * neighbour)
 {
-	discovery_ipnd_save_neighbour_ip(neighbour->u16, NULL, 0);
+	// TODO use eid as parameter of this function
+	discovery_ipnd_save_neighbour_ip(convert_rime_to_eid(neighbour), NULL, 0);
 }
 
 
-static void discovery_ipnd_save_neighbour_ip(const uint32_t node_id, const ip_addr_t* const ip, const uint16_t port)
+static void discovery_ipnd_save_neighbour_ip(const uint32_t eid, const ip_addr_t* const ip, const uint16_t port)
 {
+	// TODO use possibly only eid and cl_addr as parameter and
+	// add only one function for lowpan and ip
+
 	if( discovery_status == 0 ) {
 		// Not initialized yet
 		return;
 	}
+
+	// TODO if the eid already exists,
+	// because of a lowpan discovery
+	// this function will not detect the entry
+	// and a second entry with the same eid for ip will be created
 
 	// If we know that neighbour already, no need to re-add it
 	if( discovery_ipnd_refresh_neighbour_ip(ip, port) ) {
@@ -648,16 +657,18 @@ static void discovery_ipnd_save_neighbour_ip(const uint32_t node_id, const ip_ad
 		return;
 	}
 
-	LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_INF, "Found new neighbour ipn:%lu", node_id);
+	LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_INF, "Found new neighbour ipn:%lu", eid);
 
 	// Clean the entry struct
 	memset(entry, 0, sizeof(struct discovery_ipnd_neighbour_list_entry));
 
-	entry->neighbour.u16 = node_id;
+	entry->neighbour = convert_eid_to_rime(eid);
 	if (ip == NULL || port == 0) {
+		entry->addr_type = ADDRESS_TYPE_FLAG_LOWPAN;
 		ip_addr_copy(entry->ip, *IP_ADDR_ANY);
 		entry->port = 0;
 	} else {
+		entry->addr_type = ADDRESS_TYPE_FLAG_IPV4;
 		ip_addr_copy(entry->ip, *ip);
 		entry->port = port;
 	}
@@ -665,7 +676,7 @@ static void discovery_ipnd_save_neighbour_ip(const uint32_t node_id, const ip_ad
 	entry->timestamp_discovered = clock_seconds();
 
 	// Notify the statistics module
-	statistics_contacts_up(node_id);
+	statistics_contacts_up(eid);
 
 	list_add(neighbour_list, entry);
 
