@@ -2449,6 +2449,7 @@ Src/stm32f4xx_it.c
 Src/tim.c
 Src/usart.c
 core/net/uDTN/convergence_layer_udp.h
+core/net/uDTN/convergence_layer_udp.c
 core/net/uDTN/convergence_layers.h
 core/net/uDTN/convergence_layers.c
 core/net/uDTN/cl_address.h

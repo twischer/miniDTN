@@ -4,6 +4,8 @@
  * \author Timo Wischer <wischer@ibr.cs.tu-bs.de>
  */
 
+#include "convergence_layer_udp.h"
+
 #include "FreeRTOS.h"
 #include "task.h"
 #include "lwip/opt.h"
@@ -12,12 +14,12 @@
 #include "lwip/sys.h"
 #include "lib/logging.h"
 
-#include "convergence_layer_udp.h"
 #include "agent.h"
 #include "discovery.h"
 #include "dispatching.h"
 #include "bundle_ageing.h"
 #include "convergence_layer.h"
+#include "convergence_layer_udp_dgram.h"
 
 ip_addr_t udp_mcast_addr;
 static struct netconn* bundle_conn = NULL;
@@ -175,7 +177,7 @@ static void convergence_layer_udp_bundle_thread(void *arg)
 			source.isIP = true;
 			ip_addr_copy(source.ip, *addr);
 			source.port = port;
-			convergence_layer_incoming_frame(&source, data, length, 0);
+			convergence_layer_udp_dgram_incoming_frame(&source, data, length, 0);
 
 			netbuf_delete(buf);
 		}

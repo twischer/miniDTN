@@ -762,7 +762,7 @@ static int convergence_layer_parse_dataframe(const cl_addr_t* const source, cons
 	return -1;
 }
 
-static int convergence_layer_parse_ackframe(const cl_addr_t* const source, const uint8_t* const payload, const uint8_t length,
+int convergence_layer_parse_ackframe(const cl_addr_t* const source, const uint8_t* const payload, const uint8_t length,
 											const uint8_t sequence_number, const uint8_t type, const uint8_t flags)
 {
 	struct transmit_ticket_t * ticket = NULL;
@@ -855,11 +855,38 @@ static int convergence_layer_parse_ackframe(const cl_addr_t* const source, const
 	return 1;
 }
 
+
+int convergence_layer_incoming_data(const cl_addr_t* const source, const uint8_t* const data_pointer, const uint8_t data_length,
+									const packetbuf_attr_t rssi, const int sequence_number, const int flags)
+{
+	char addr_str[CL_ADDR_STRING_LENGTH];
+	cl_addr_string(source, addr_str, sizeof(addr_str));
+	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Incoming data frame from %s with SeqNo %u and Flags %02X", addr_str, sequence_number, flags);
+
+	/* Parse the incoming data frame */
+	const int ret = convergence_layer_parse_dataframe(source, data_pointer, data_length, flags, sequence_number, rssi);
+
+	if( ret >= 0 ) {
+		/* Send ACK */
+		convergence_layer_create_send_ack(source, sequence_number + 1, CONVERGENCE_LAYER_TYPE_ACK);
+	} else if( ret == -1 ) {
+		/* Send temporary NACK */
+		convergence_layer_create_send_ack(source, sequence_number + 1, CONVERGENCE_LAYER_TYPE_TEMP_NACK);
+	} else if( ret == -2 ) {
+		/* Send permanent NACK */
+		convergence_layer_create_send_ack(source, sequence_number + 1, CONVERGENCE_LAYER_TYPE_NACK);
+	} else {
+		/* FAIL */
+	}
+
+	return 1;
+}
+
+
 int convergence_layer_incoming_frame(const cl_addr_t* const source, const uint8_t* const payload, const uint8_t length, const packetbuf_attr_t rssi)
 {
 	uint8_t data_length = 0;
 	uint8_t header;
-	int ret = 0;
 
 	char addr_str[CL_ADDR_STRING_LENGTH];
 	cl_addr_string(source, addr_str, sizeof(addr_str));
@@ -887,33 +914,10 @@ int convergence_layer_incoming_frame(const cl_addr_t* const source, const uint8_
 
 	if( (header & CONVERGENCE_LAYER_MASK_TYPE) == CONVERGENCE_LAYER_TYPE_DATA ) {
 		/* is data */
-		int flags = 0;
-		int sequence_number = 0;
+		const int flags = (header & CONVERGENCE_LAYER_MASK_FLAGS) >> 0;
+		const int sequence_number = (header & CONVERGENCE_LAYER_MASK_SEQNO) >> 2;
 
-		flags = (header & CONVERGENCE_LAYER_MASK_FLAGS) >> 0;
-		sequence_number = (header & CONVERGENCE_LAYER_MASK_SEQNO) >> 2;
-
-		char addr_str[CL_ADDR_STRING_LENGTH];
-		cl_addr_string(source, addr_str, sizeof(addr_str));
-		LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Incoming data frame from %s with SeqNo %u and Flags %02X", addr_str, sequence_number, flags);
-
-		/* Parse the incoming data frame */
-		ret = convergence_layer_parse_dataframe(source, data_pointer, data_length, flags, sequence_number, rssi);
-
-		if( ret >= 0 ) {
-			/* Send ACK */
-			convergence_layer_create_send_ack(source, sequence_number + 1, CONVERGENCE_LAYER_TYPE_ACK);
-		} else if( ret == -1 ) {
-			/* Send temporary NACK */
-			convergence_layer_create_send_ack(source, sequence_number + 1, CONVERGENCE_LAYER_TYPE_TEMP_NACK);
-		} else if( ret == -2 ) {
-			/* Send permanent NACK */
-			convergence_layer_create_send_ack(source, sequence_number + 1, CONVERGENCE_LAYER_TYPE_NACK);
-		} else {
-			/* FAIL */
-		}
-
-		return 1;
+		return convergence_layer_incoming_data(source, data_pointer, data_length, rssi, sequence_number, flags);
 	}
 
 	if( (header & CONVERGENCE_LAYER_MASK_TYPE) == CONVERGENCE_LAYER_TYPE_DISCOVERY ) {
