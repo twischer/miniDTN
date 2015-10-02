@@ -5,7 +5,7 @@
 #include <lwip/ip_addr.h>
 
 
-//#define UDP_DISCOVERY_ANNOUNCEMENT		1
+#define UDP_DISCOVERY_ANNOUNCEMENT		1
 
 #define CL_UDP_DISCOVERY_IP_1	224
 #define CL_UDP_DISCOVERY_IP_2	0

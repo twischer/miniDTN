@@ -108,7 +108,7 @@ void convergence_layer_show_tickets();
 bool convergence_layer_init(void)
 {
 	// Start CL process
-	if ( !xTaskCreate(convergence_layer_process, "CL process", 0x100, NULL, 1, &convergence_layer_task) ) {
+	if ( !xTaskCreate(convergence_layer_process, "CL process", 0x200, NULL, 1, &convergence_layer_task) ) {
 		return false;
 	}
 

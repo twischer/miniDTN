@@ -42,7 +42,7 @@
 #include "discovery.h"
 
 
-//#define SEND_DGRAM_UDPCL_PORT	1
+#define SEND_DGRAM_UDPCL_PORT	1
 
 
 typedef struct {
@@ -53,7 +53,6 @@ typedef struct {
 
 
 static void discovery_ipnd_refresh_neighbour(linkaddr_t * neighbour);
-static bool discovery_ipnd_refresh_neighbour_ip(const ip_addr_t* const ip, const uint16_t port);
 static void discovery_ipnd_parse_msg(const uint8_t* const payload, const uint8_t length, ipnd_msg_attrs_t* const attrs);
 static void discovery_ipnd_save_neighbour(linkaddr_t * neighbour);
 static void discovery_ipnd_save_neighbour_ip(const uint32_t node_id, const ip_addr_t* const ip, const uint16_t port);
@@ -72,7 +71,7 @@ void discovery_ipnd_print_list();
 #define DISCOVERY_NEIGHBOUR_CACHE	3
 #define DISCOVERY_NEIGHBOUR_TIMEOUT	(5 * DISCOVERY_CYCLE)
 #define DISCOVERY_IPND_SERVICE		"lowpancl"
-#define DISCOVERY_IPND_SERVICE_UDP	"dgram:udpcl"
+#define DISCOVERY_IPND_SERVICE_UDP	"dgram:udp"
 #define DISCOVERY_IPND_SERVICE_PORT	"port="
 #define DISCOVERY_IPND_BUFFER_LEN 	70
 #define DISCOVERY_IPND_WHITELIST	0
@@ -214,11 +213,6 @@ uint8_t discovery_ipnd_parse_eid(uint32_t* const eid, const uint8_t* const buffe
  */
 static void discovery_ipnd_parse_service_param(const uint8_t* const service_param, const uint32_t param_len, ipnd_msg_attrs_t* const attrs)
 {
-	if (attrs->port != 0) {
-		LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_WRN, "Port already set. Not overwritting with parsed service block parameter value.");
-		return;
-	}
-
 	const size_t param_min_len = STATIC_STRLEN(DISCOVERY_IPND_SERVICE_PORT);
 	if (param_len < param_min_len) {
 		/*
@@ -278,6 +272,7 @@ uint8_t discovery_ipnd_parse_service_block(uint32_t eid, const uint8_t* buffer, 
 		/* parse UDP-CL service data, if available */
 		const size_t udpcl_len = STATIC_STRLEN(DISCOVERY_IPND_SERVICE_UDP);
 		if (tag_len == udpcl_len && memcmp(tag_buf, DISCOVERY_IPND_SERVICE_UDP, udpcl_len) == 0) {
+			// TODO warn if the port will be overwritten
 			discovery_ipnd_parse_service_param(buffer, data_len, attrs);
 		}
 
@@ -293,6 +288,7 @@ uint8_t discovery_ipnd_parse_service_block(uint32_t eid, const uint8_t* buffer, 
 		offset += data_len;
 		buffer += data_len;
 	}
+
 
 	return offset;
 }
@@ -362,6 +358,10 @@ static void discovery_ipnd_parse_msg(const uint8_t* const payload, const uint8_t
 
 	/* initialize the return variables */
 	memset(attrs, 0, sizeof(ipnd_msg_attrs_t));
+
+	/* set default dgram:udp cl port */
+	attrs->port = CL_UDP_BUNDLE_PORT;
+
 
 	if( length < 3 ) {
 		// IPND must have at least 3 bytes

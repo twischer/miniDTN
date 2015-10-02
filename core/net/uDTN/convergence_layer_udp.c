@@ -58,10 +58,13 @@ static int convergence_layer_udp_send(struct netconn* const conn, const ip_addr_
 {
 	/*
 	 * conn has not to be checked for NULL,
-	 * because it will be done by netconn_sendto
+	 * because it will be done by netconn_sendto()
 	 */
 
-	// TODO check, if the interface is up
+	if (!netif_is_up(netif_default)) {
+		LOG(LOGD_DTN, LOG_CL_UDP, LOGL_WRN, "Network interface is down. Could not send udp data.");
+		return -5;
+	}
 
 	struct netbuf* const buf = netbuf_new();
 	if (buf == NULL) {
@@ -101,7 +104,7 @@ static void convergence_layer_udp_discovery_thread(void *arg)
 	}
 
 	/* join to the multicast group for the discovery messages */
-	const err_t err = netconn_join_leave_group(discovery_conn, &mcast_addr, IP_ADDR_ANY, NETCONN_JOIN);
+	const err_t err = netconn_join_leave_group(discovery_conn, &udp_mcast_addr, IP_ADDR_ANY, NETCONN_JOIN);
 	if (err != ERR_OK) {
 		LOG(LOGD_DTN, LOG_CL_UDP, LOGL_WRN, "netconn_join_leave_group failed with error %d\n", err);
 	}
@@ -141,7 +144,7 @@ static void convergence_layer_udp_discovery_thread(void *arg)
  */
 int convergence_layer_udp_send_discovery(const uint8_t* const payload, const uint8_t length)
 {
-	return convergence_layer_udp_send(discovery_conn, &mcast_addr, CL_UDP_DISCOVERY_PORT, payload, length);
+	return convergence_layer_udp_send(discovery_conn, &udp_mcast_addr, CL_UDP_DISCOVERY_PORT, payload, length);
 }
 #endif /* UDP_DISCOVERY_ANNOUNCEMENT */
 
