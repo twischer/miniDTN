@@ -10,6 +10,7 @@
  * \author Georg von Zengen <vonzeng@ibr.cs.tu-bs.de>
  * \author Wolf-Bastian Poettner <poettner@ibr.cs.tu-bs.de>
  */
+#include "convergence_layer.h"
 
 #include <stdbool.h>
 #include <string.h> // memset
@@ -21,9 +22,9 @@
 #include "net/netstack.h"
 #include "net/linkaddr.h"
 #include "lib/list.h"
+#include "lib/logging.h"
 
 #include "agent.h"
-#include "lib/logging.h"
 #include "storage.h"
 #include "discovery.h"
 #include "dtn_network.h"
@@ -31,8 +32,9 @@
 #include "bundleslot.h"
 #include "statusreport.h"
 #include "bundle_ageing.h"
+#include "convergence_layer_udp_dgram.h"
 
-#include "convergence_layer.h"
+
 
 /**
  * Structure to keep track of neighbours from which we are currently awaiting app-layer ACKs
@@ -453,25 +455,12 @@ int convergence_layer_send_discovery(uint8_t * payload, uint8_t length, linkaddr
 	return 1;
 }
 
-static int convergence_layer_send_ack(const cl_addr_t* const destination, const uint8_t sequence_number, const uint8_t type,
-							   struct transmit_ticket_t* const ticket)
+
+int convergence_layer_lowpan_dgram_send_ack(const cl_addr_t* const destination, const int sequence_number, const int type,
+											 const void* const reference)
 {
-	uint8_t * buffer = NULL;
-
-	char addr_str[CL_ADDR_STRING_LENGTH];
-	cl_addr_string(destination, addr_str, sizeof(addr_str));
-	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Sending ACK or NACK to %s for SeqNo %u with ticket %p", addr_str, sequence_number, ticket);
-
-	/* If we are currently transmitting or waiting for an ACK, do nothing */
-	if( convergence_layer_transmitting ) {
-		/* This ticket has to be processed ASAP, so set timestamp to 0 */
-		ticket->timestamp = 0;
-
-		return -1;
-	}
-
 	/* Get our buffer */
-	buffer = dtn_network_get_buffer();
+	uint8_t* const buffer = dtn_network_get_buffer();
 	if( buffer == NULL ) {
 		return -1;
 	}
@@ -494,17 +483,39 @@ static int convergence_layer_send_ack(const cl_addr_t* const destination, const 
 		buffer[0] |= (CONVERGENCE_LAYER_FLAGS_FIRST) & CONVERGENCE_LAYER_MASK_FLAGS; // This flag indicates a temporary nack
 	}
 
+	/* Send it out via the MAC */
+	dtn_network_send((linkaddr_t*)&destination->lowpan, 1, (void*)reference);
+
+	return 1;
+}
+
+
+static int convergence_layer_send_ack(const cl_addr_t* const destination, const uint8_t sequence_number, const uint8_t type,
+							   struct transmit_ticket_t* const ticket)
+{
+	char addr_str[CL_ADDR_STRING_LENGTH];
+	cl_addr_string(destination, addr_str, sizeof(addr_str));
+	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Sending ACK or NACK to %s for SeqNo %u with ticket %p", addr_str, sequence_number, ticket);
+
+	/* If we are currently transmitting or waiting for an ACK, do nothing */
+	if( convergence_layer_transmitting ) {
+		/* This ticket has to be processed ASAP, so set timestamp to 0 */
+		ticket->timestamp = 0;
+
+		return -1;
+	}
+
 	/* Note down our latest attempt */
 	ticket->timestamp = xTaskGetTickCount();
 
 	/* Now we are transmitting */
 	convergence_layer_transmitting = 1;
 
-	// TODO
-	/* Send it out via the MAC */
-	dtn_network_send((linkaddr_t*)&destination->lowpan, 1, (struct transmit_ticket_t*)ticket);
-
-	return 1;
+	if (destination->isIP) {
+		return convergence_layer_udp_dgram_send_ack(destination, sequence_number, type, ticket);
+	} else {
+		return convergence_layer_lowpan_dgram_send_ack(destination, sequence_number, type, ticket);
+	}
 }
 
 static int convergence_layer_create_send_ack(const cl_addr_t* const destination, const uint8_t sequence_number, const uint8_t type)
