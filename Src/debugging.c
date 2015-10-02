@@ -8,6 +8,8 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
+#include "debugging.h"
+
 
 #define MESSAGE_COUNT	5
 
@@ -53,13 +55,19 @@ static void Unexpected_Interrupt(const char* const name)
 {
 	printf("Unexpected interrupt %s\n", name);
 
+	print_stack_trace();
+}
+
+
+void print_stack_trace()
+{
 	uint8_t message_index = next_message_index;
 	for (int i=0; i<MESSAGE_COUNT; i++) {
 		const char* const type = messages[message_index].enter ? "ENTER" : "EXIT ";
 		printf("%s function %p, from call %p\n", type, messages[message_index].this_fn, messages[message_index].call_site);
 		message_index = (message_index + 1) % MESSAGE_COUNT;
 	}
-	printf("Enable function instrumentation (-finstrument-functions), if the function call trace is undefined.");
+	printf("Enable function instrumentation (gcc -finstrument-functions), if the function call trace is undefined.");
 
 	for(;;);
 }
