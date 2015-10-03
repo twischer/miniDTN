@@ -312,8 +312,7 @@ static int convergence_layer_dgram_send_bundle(struct transmit_ticket_t* const t
 
 	int ret = -1;
 	if (ticket->neighbour.isIP) {
-		// TODO
-		ret = 1;
+		ret = convergence_layer_udp_dgram_send_bundle(&ticket->neighbour, ticket->sequence_number, flags, payload, length, ticket);
 	} else {
 		ret = convergence_layer_lowpan_dgram_send_bundle(&ticket->neighbour, ticket->sequence_number, flags, payload, length, ticket);
 	}
@@ -331,7 +330,8 @@ static int convergence_layer_dgram_prepare_send_bundle(struct transmit_ticket_t 
 {
 	char addr_str[CL_ADDR_STRING_LENGTH];
 	cl_addr_string(&ticket->neighbour, addr_str, sizeof(addr_str));
-	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Sending bundle %lu to %s with ticket %p", ticket->bundle_number, addr_str, ticket);
+	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Sending bundle %lu to %s with ticket %p (flags 0x%x)",
+		ticket->bundle_number, addr_str, ticket, ticket->flags);
 
 	// TODO not reload bundle, if it was decoded ones
 	if( !(ticket->flags & CONVERGENCE_LAYER_QUEUE_MULTIPART) ) {
@@ -378,6 +378,7 @@ static int convergence_layer_dgram_prepare_send_bundle(struct transmit_ticket_t 
 
 	/* We have to use a heuristic to estimate if the bundle will be a multipart bundle */
 	if( ticket->bundle->size > CONVERGENCE_LAYER_MAX_LENGTH && !(ticket->flags & CONVERGENCE_LAYER_QUEUE_MULTIPART) ) {
+		LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Try to send bundle %lu as mutlipart bundle", ticket->bundle_number);
 		/* This is a bundle for multiple segments and we have our first look at it */
 		ticket->flags |= CONVERGENCE_LAYER_QUEUE_MULTIPART;
 

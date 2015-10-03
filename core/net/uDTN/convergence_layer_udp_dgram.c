@@ -71,15 +71,13 @@ int convergence_layer_udp_dgram_send_ack(const cl_addr_t* const dest, const int 
 	if( type == CONVERGENCE_LAYER_TYPE_ACK ) {
 		// Construct the ACK
 		header_type = HEADER_ACK;
-		header_flags = SEGMENT_FIRST | SEGMENT_LAST;
 	} else if( type == CONVERGENCE_LAYER_TYPE_NACK ) {
 		// Construct the NACK
 		header_type = HEADER_NACK;
-		header_flags = SEGMENT_FIRST | SEGMENT_LAST;
 	} else if( type == CONVERGENCE_LAYER_TYPE_TEMP_NACK ) {
 		// Construct the temporary NACK
 		header_type = HEADER_NACK;
-		header_flags = SEGMENT_FIRST;
+		header_flags |= NACK_TEMPORARY;
 	} else {
 		char addr_str[CL_ADDR_STRING_LENGTH];
 		cl_addr_string(dest, addr_str, sizeof(addr_str));
@@ -89,6 +87,15 @@ int convergence_layer_udp_dgram_send_ack(const cl_addr_t* const dest, const int 
 
 	// TODO use the port, too, because other nodes can use other ports
 	return convergence_layer_udp_dgram_send(&dest->ip, header_type, sequence_number, header_flags, NULL, 0, reference);
+}
+
+
+int convergence_layer_udp_dgram_send_bundle(const cl_addr_t* const dest, const int sequence_number, const uint8_t flags,
+											const uint8_t* const payload, const size_t length, const void* const reference)
+{
+	const HEADER_FLAGS header_flags = flags;
+	// TODO use the port, too, because other nodes can use other ports
+	return convergence_layer_udp_dgram_send(&dest->ip, HEADER_SEGMENT, sequence_number, header_flags, payload, length, reference);
 }
 
 

@@ -199,8 +199,9 @@ bool convergence_layer_udp_init(void)
 {
 	// TODO only for debugging
 	// have to be removed if the udp-cl implementtation has finisched
+	logging_domain_level_set(LOGD_DTN, LOG_CL, LOGL_DBG);
 	logging_domain_level_set(LOGD_DTN, LOG_CL_UDP, LOGL_DBG);
-	logging_domain_level_set(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG);
+//	logging_domain_level_set(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG);
 
 	IP4_ADDR(&udp_mcast_addr, CL_UDP_DISCOVERY_IP_1, CL_UDP_DISCOVERY_IP_2, CL_UDP_DISCOVERY_IP_3, CL_UDP_DISCOVERY_IP_4);
 
