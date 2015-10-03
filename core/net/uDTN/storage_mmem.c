@@ -314,7 +314,7 @@ uint8_t storage_mmem_make_room(struct mmem * bundlemem)
  * \param bundle_number_ptr pointer where the bundle number will be stored (on success)
  * \return 0 on error, 1 on success
  */
-uint8_t storage_mmem_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_number_ptr)
+static uint8_t storage_mmem_save_bundle(struct mmem* const bundlemem, uint32_t* const bundle_number_ptr)
 {
 	struct bundle_t *entrybdl = NULL,
 					*bundle = NULL;
@@ -342,7 +342,7 @@ uint8_t storage_mmem_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_num
 
 		if( bundle->bundle_num == entrybdl->bundle_num ) {
 			LOG(LOGD_DTN, LOG_STORE, LOGL_DBG, "%lu is the same bundle", entry->bundle_num);
-			*bundle_number_ptr = &entry->bundle_num;
+			*bundle_number_ptr = entry->bundle_num;
 			bundle_decrement(bundlemem);
 			return 1;
 		}
@@ -389,7 +389,7 @@ uint8_t storage_mmem_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_num
 	// Set all required fields
 	entry->bundle_num = bundle->bundle_num;
 
-	LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "New Bundle %lu (%lu), Src %lu, Dest %lu, Seq %lu", bundle->bundle_num, entry->bundle_num, bundle->src_node, bundle->dst_node, bundle->tstamp_seq);
+	LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "New Bundle %lu, Src %lu, Dest %lu, Seq %lu", entry->bundle_num, bundle->src_node, bundle->dst_node, bundle->tstamp_seq);
 
 #if BUNDLE_STORAGE_STATUS
 	printf("S %u\n", bundles_in_storage);
@@ -407,7 +407,7 @@ uint8_t storage_mmem_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_num
 
 	// Now copy over the STATIC pointer to the bundle number, so that
 	// the caller can stick it into an event
-	*bundle_number_ptr = &entry->bundle_num;
+	*bundle_number_ptr = entry->bundle_num;
 
 	return 1;
 }

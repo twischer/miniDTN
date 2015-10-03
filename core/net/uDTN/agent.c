@@ -72,21 +72,14 @@ bool agent_init(void)
 /*  Bundle Protocol Prozess */
 void agent_process(void* p)
 {
-	uint32_t * bundle_number_ptr = NULL;
 	udtn_timeval_t tv;
 	uint32_t tmp = 0;
-
-//	PROCESS_BEGIN();
 
 	/* We obtain our dtn_node_id from the RIME address of the node */
 	dtn_node_id = convert_rime_to_eid(&linkaddr_node_addr);
 	dtn_seq_nr = 0;
 	dtn_seq_nr_ab = 0;
 	dtn_last_time_stamp = 0;
-
-	/* We are initialized quite early - give Contiki some time to do its stuff */
-//	process_poll(&agent_process);
-//	PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL);
 
 	mmem_init();
 	udtn_clock_init();
@@ -254,7 +247,8 @@ void agent_process(void* p)
 			bundle->bundle_num = HASH.hash_convenience(bundle->tstamp_seq, bundle->tstamp, bundle->src_node, bundle->src_srv, bundle->frag_offs, payload_length);
 
 			// Save the bundle in storage
-			n = BUNDLE_STORAGE.save_bundle(ev.bundlemem, &bundle_number_ptr);
+			uint32_t bundle_number = 0;
+			n = BUNDLE_STORAGE.save_bundle(ev.bundlemem, &bundle_number);
 
 			// Reset our pointers to avoid using invalid ones
 			bundle = NULL;
@@ -273,7 +267,6 @@ void agent_process(void* p)
 				}
 			} else {
 				/* Bundle could not be saved, notify service */
-//				process_post(source_process, dtn_bundle_store_failed, NULL);
 				const event_container_t event = {
 					.event = dtn_bundle_store_failed,
 				};
@@ -285,7 +278,7 @@ void agent_process(void* p)
 			// Now emulate the event to our agent
 			if( n ) {
 				// TODO
-				ev.bundle_number_ptr = bundle_number_ptr;
+				ev.bundle_number = bundle_number;
 				ev.event = dtn_bundle_in_storage_event;
 			} else {
 				continue;
@@ -304,10 +297,10 @@ void agent_process(void* p)
 		}
 
 		if(ev.event == dtn_bundle_in_storage_event) {
-			LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "bundle %lu in storage", *ev.bundle_number_ptr);
+			LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "bundle %lu in storage", ev.bundle_number);
 
-			if(ROUTING.new_bundle(ev.bundle_number_ptr) < 0){
-				LOG(LOGD_DTN, LOG_AGENT, LOGL_ERR, "routing reports error when announcing new bundle %lu", *ev.bundle_number_ptr);
+			if(ROUTING.new_bundle(ev.bundle_number) < 0){
+				LOG(LOGD_DTN, LOG_AGENT, LOGL_ERR, "routing reports error when announcing new bundle %lu", ev.bundle_number);
 				continue;
 			}
 

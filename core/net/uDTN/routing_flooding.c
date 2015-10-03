@@ -550,14 +550,14 @@ void routing_flooding_check_keep_bundle(uint32_t bundle_number) {
  * \param bundle_number bundle number of the bundle
  * \return >0 on success, <0 on error
  */
-int routing_flooding_new_bundle(uint32_t * bundle_number)
+int routing_flooding_new_bundle(const uint32_t bundle_number)
 {
 	struct routing_list_entry_t * n = NULL;
 	struct routing_entry_t * entry = NULL;
 	struct mmem * bundlemem = NULL;
 	struct bundle_t * bundle = NULL;
 
-	LOG(LOGD_DTN, LOG_ROUTE, LOGL_DBG, "agent announces bundle %lu", *bundle_number);
+	LOG(LOGD_DTN, LOG_ROUTE, LOGL_DBG, "agent announces bundle %lu", bundle_number);
 
 	// Let us see, if we know this bundle already
 	for( n = list_head(routing_list);
@@ -566,8 +566,8 @@ int routing_flooding_new_bundle(uint32_t * bundle_number)
 
 		entry = (struct routing_entry_t *) MMEM_PTR(&n->entry);
 
-		if( entry->bundle_number == *bundle_number ) {
-			LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "agent announces bundle %lu that is already known", *bundle_number);
+		if( entry->bundle_number == bundle_number ) {
+			LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "agent announces bundle %lu that is already known", bundle_number);
 			return -1;
 		}
 	}
@@ -592,9 +592,9 @@ int routing_flooding_new_bundle(uint32_t * bundle_number)
 	}
 
 	// Now go and request the bundle from storage
-	bundlemem = BUNDLE_STORAGE.read_bundle(*bundle_number);
+	bundlemem = BUNDLE_STORAGE.read_bundle(bundle_number);
 	if( bundlemem == NULL ) {
-		LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "unable to read bundle %lu", *bundle_number);
+		LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "unable to read bundle %lu", bundle_number);
 		mmem_free(&n->entry);
 		memb_free(&routing_mem, n);
 		return -1;
@@ -603,7 +603,7 @@ int routing_flooding_new_bundle(uint32_t * bundle_number)
 	// Get our bundle struct and check the pointer
 	bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 	if( bundle == NULL ) {
-		LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "invalid bundle pointer for bundle %lu", *bundle_number);
+		LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "invalid bundle pointer for bundle %lu", bundle_number);
 		mmem_free(&n->entry);
 		memb_free(&routing_mem, n);
 		bundle_decrement(bundlemem);
@@ -644,7 +644,7 @@ int routing_flooding_new_bundle(uint32_t * bundle_number)
 	}
 
 	// Now copy the necessary attributes from the bundle
-	entry->bundle_number = *bundle_number;
+	entry->bundle_number = bundle_number;
 	bundle_get_attr(bundlemem, DEST_NODE, &entry->destination_node);
 	bundle_get_attr(bundlemem, SRC_NODE, &entry->source_node);
 	cl_addr_copy(&entry->received_from_node, &bundle->msrc);

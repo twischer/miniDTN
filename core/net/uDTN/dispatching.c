@@ -90,8 +90,6 @@ int dispatching_check_report(struct mmem * bundlemem) {
 
 int dispatching_dispatch_bundle(struct mmem *bundlemem) {
 	struct bundle_t *bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
-	uint32_t * bundle_number_ptr;
-	uint32_t bundle_number = 0;
 	int n;
 	uint8_t received_report = 0;
 	uint32_t payload_length = 0;
@@ -149,7 +147,8 @@ int dispatching_dispatch_bundle(struct mmem *bundlemem) {
 		// bundle is custody
 		LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "Handing over to custody");
 
-		CUSTODY.decide(bundlemem, &bundle_number_ptr);
+		// TODO do not know which bundle nummer should be used
+//		CUSTODY.decide(bundlemem, &bundle_number_ptr);
 		return 1;
 	}
 
@@ -160,11 +159,10 @@ int dispatching_dispatch_bundle(struct mmem *bundlemem) {
 	}
 
 	// Calculate the bundle number
-	bundle_number = HASH.hash_convenience(bundle->tstamp_seq, bundle->tstamp, bundle->src_node, bundle->src_srv, bundle->frag_offs, payload_length);
-	bundle->bundle_num = bundle_number;
+	bundle->bundle_num = HASH.hash_convenience(bundle->tstamp_seq, bundle->tstamp, bundle->src_node, bundle->src_srv, bundle->frag_offs, payload_length);
 
 	// Check if the bundle has been delivered before
-	if( REDUNDANCE.check(bundle_number) ) {
+	if( REDUNDANCE.check(bundle->bundle_num) ) {
 		bundle_decrement(bundlemem);
 
 		// If the bundle is redundant we still have to report success to make the CL send an ACK
@@ -178,7 +176,8 @@ int dispatching_dispatch_bundle(struct mmem *bundlemem) {
 
 	// regular bundle, no custody
 	LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "Handing over to storage");
-	n = BUNDLE_STORAGE.save_bundle(bundlemem, &bundle_number_ptr);
+	uint32_t bundle_number = 0;
+	n = BUNDLE_STORAGE.save_bundle(bundlemem, &bundle_number);
 	bundlemem = NULL;
 
 	// Send out a "received" status report if requested
@@ -202,10 +201,9 @@ int dispatching_dispatch_bundle(struct mmem *bundlemem) {
 		REDUNDANCE.set(bundle_number);
 
 		// Now we have to send an event to our daemon
-//		process_post(&agent_process, dtn_bundle_in_storage_event, bundle_number_ptr);
 		const event_container_t event = {
 			.event = dtn_bundle_in_storage_event,
-			.bundle_number_ptr = bundle_number_ptr
+			.bundle_number = bundle_number
 		};
 		agent_send_event(&event);
 
