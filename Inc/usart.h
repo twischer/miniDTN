@@ -45,8 +45,6 @@
 
 /* USER CODE END Includes */
 
-extern UART_HandleTypeDef huart6;
-
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */
@@ -55,23 +53,7 @@ void MX_USART6_UART_Init(void);
 
 /* USER CODE BEGIN Prototypes */
 
-static inline uint16_t USART6_write(uint8_t* const ptr, const uint16_t len)
-{
-	/* only write data, if the UART is already initialized */
-	if (huart6.Instance == NULL) {
-		return 0;
-	}
-
-	HAL_StatusTypeDef ret = HAL_ERROR;
-	do {
-		ret = HAL_UART_Transmit(&huart6, ptr, len, HAL_MAX_DELAY);
-		if (ret == HAL_OK) {
-			return len;
-		}
-	} while (ret == HAL_BUSY);
-
-	return 0;
-}
+uint16_t USART6_write(uint8_t* const ptr, const uint16_t len);
 
 /* USER CODE END Prototypes */
 

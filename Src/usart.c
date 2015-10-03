@@ -38,6 +38,12 @@
 #include "gpio.h"
 
 /* USER CODE BEGIN 0 */
+#include <stdbool.h>
+#include "FreeRTOS.h"
+#include "task.h"
+#include "semphr.h"
+
+SemaphoreHandle_t xSemaphore = NULL;
 
 /* USER CODE END 0 */
 
@@ -67,6 +73,8 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
   if(huart->Instance==USART6)
   {
   /* USER CODE BEGIN USART6_MspInit 0 */
+
+	  xSemaphore = xSemaphoreCreateMutex();
 
   /* USER CODE END USART6_MspInit 0 */
     /* Peripheral clock enable */
@@ -113,6 +121,45 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* huart)
 } 
 
 /* USER CODE BEGIN 1 */
+
+uint16_t USART6_write(uint8_t* const ptr, const uint16_t len)
+{
+	// TODO check, if it is an interrupt and enforce the print
+	// needed for debugging output
+
+	/* only write data, if the UART is already initialized */
+	if (huart6.Instance == NULL) {
+		return 0;
+	}
+
+	// TODO onyl ask until the scheduler was started once (speed up)
+	/* only wait for semaphore, if the schedular was already started */
+	const bool is_scheduler_running = (xTaskGetSchedulerState() == taskSCHEDULER_RUNNING);
+	if (is_scheduler_running) {
+		// TODO if scheduler running is true the semaphore was created correctly
+		if (xSemaphore == NULL) {
+			return 0;
+		}
+
+		/* wait till the lock can be get */
+		while ( !xSemaphoreTake(xSemaphore, portMAX_DELAY) ) { }
+	}
+
+	HAL_StatusTypeDef ret = HAL_ERROR;
+	do {
+		// TODO use extra buffer and the DMA to hide latency
+		ret = HAL_UART_Transmit(&huart6, ptr, len, HAL_MAX_DELAY);
+		if (ret == HAL_OK) {
+			break;
+		}
+	} while (ret == HAL_BUSY);
+
+	if (is_scheduler_running) {
+		xSemaphoreGive(xSemaphore);
+	}
+
+	return (ret == HAL_OK) ? len : 0;
+}
 
 /* USER CODE END 1 */
 
