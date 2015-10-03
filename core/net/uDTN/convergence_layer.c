@@ -247,10 +247,6 @@ static int convergence_layer_dgram_encode_bundle(struct transmit_ticket_t* const
 		return -1;
 	}
 
-	/* We do not need the original bundle anymore */
-	bundle_decrement(ticket->bundle);
-	ticket->bundle = NULL;
-
 	/* Initialize the state for this bundle */
 	ticket->offset_sent = 0;
 	ticket->offset_acked = 0;
@@ -326,7 +322,7 @@ static int convergence_layer_dgram_send_bundle(struct transmit_ticket_t* const t
 }
 
 
-static int convergence_layer_dgram_prepare_send_bundle(struct transmit_ticket_t * ticket)
+static int convergence_layer_dgram_prepare_segmentation(struct transmit_ticket_t * ticket)
 {
 	char addr_str[CL_ADDR_STRING_LENGTH];
 	cl_addr_string(&ticket->neighbour, addr_str, sizeof(addr_str));
@@ -377,8 +373,22 @@ static int convergence_layer_dgram_prepare_send_bundle(struct transmit_ticket_t 
 	}
 
 	/* We have to use a heuristic to estimate if the bundle will be a multipart bundle */
-	if( ticket->bundle->size > CONVERGENCE_LAYER_MAX_LENGTH && !(ticket->flags & CONVERGENCE_LAYER_QUEUE_MULTIPART) ) {
-		LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Try to send bundle %lu as mutlipart bundle", ticket->bundle_number);
+	if( ticket->buffer.size > CONVERGENCE_LAYER_MAX_LENGTH && !(ticket->flags & CONVERGENCE_LAYER_QUEUE_MULTIPART) ) {
+		LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Try to send bundle %lu as mutlipart bundle (buf %p, size %lu, flags 0x%x)",
+			ticket->bundle_number, ticket->buffer, ticket->buffer.size, ticket->flags);
+
+		/*
+		 * We do not need the original bundle anymore
+		 * It is already encoded to ticket->buffer.
+		 * The encoding was done by convergence_layer_dgram_encode_bundle().
+		 * The ticket can only be deleted,
+		 * if the first part of the bundle was send.
+		 * If sending of the first part,
+		 * the ageing check has to be repeated.
+		 */
+		bundle_decrement(ticket->bundle);
+		ticket->bundle = NULL;
+
 		/* This is a bundle for multiple segments and we have our first look at it */
 		ticket->flags |= CONVERGENCE_LAYER_QUEUE_MULTIPART;
 
@@ -1451,7 +1461,7 @@ static void convergence_layer_process(void* p)
 				}
 
 				/* Send the bundle just now */
-				convergence_layer_dgram_prepare_send_bundle(ticket);
+				convergence_layer_dgram_prepare_segmentation(ticket);
 
 				/* Radio is busy now, defer */
 				break;
