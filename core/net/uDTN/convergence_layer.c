@@ -329,7 +329,6 @@ static int convergence_layer_dgram_prepare_segmentation(struct transmit_ticket_t
 	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Sending bundle %lu to %s with ticket %p (flags 0x%x)",
 		ticket->bundle_number, addr_str, ticket, ticket->flags);
 
-	// TODO not reload bundle, if it was decoded ones
 	if( !(ticket->flags & CONVERGENCE_LAYER_QUEUE_MULTIPART) ) {
 		/* Read the bundle from storage, if it is not in memory */
 		if( ticket->bundle == NULL ) {

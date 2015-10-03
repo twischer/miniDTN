@@ -112,8 +112,21 @@ int convergence_layer_udp_dgram_incoming_frame(const cl_addr_t* const source, co
 	DISCOVERY.alive_ip(&source->ip, source->port);
 
 	const HEADER_TYPES type = payload[0];
-	const int flags = (payload[1] & 0xFF) >> 4;
+	const HEADER_FLAGS header_flags = (payload[1] & 0xFF) >> 4;
 	const int sequence_number = (payload[1] & 0x0F) >> 0;
+
+	/* convert dgram:udp flags to dgram:lowpan flags */
+	int flags = 0;
+	if (header_flags & SEGMENT_FIRST) {
+		flags |= CONVERGENCE_LAYER_FLAGS_FIRST;
+	}
+	if (header_flags & SEGMENT_LAST) {
+		flags |= CONVERGENCE_LAYER_FLAGS_LAST;
+	}
+	if (header_flags & NACK_TEMPORARY) {
+		/* overwrite, because only one type is possible */
+		flags = CONVERGENCE_LAYER_FLAGS_FIRST;
+	}
 
 	const uint8_t* const data_pointer = payload + 2;
 	const size_t data_length = length - 2;
