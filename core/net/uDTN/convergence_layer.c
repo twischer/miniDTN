@@ -217,19 +217,123 @@ int convergence_layer_enqueue_bundle(struct transmit_ticket_t * ticket)
 	return 1;
 }
 
-int convergence_layer_send_bundle(struct transmit_ticket_t * ticket)
-{
-	struct bundle_t *bundle = NULL;
-	uint16_t length = 0;
-	uint8_t * buffer = NULL;
-	uint8_t buffer_length = 0;
-	int ret;
-	int segments;
 
+static int convergence_layer_dgram_encode_bundle(struct transmit_ticket_t* const ticket)
+{
+	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Encoding bundle %lu", ticket->bundle_number);
+
+	/* Now allocate a buffer to serialize the bundle
+	 * The size is a rough estimation here and will be reallocated later on */
+	if(mmem_alloc(&ticket->buffer, ticket->bundle->size) < 1) {
+		LOG(LOGD_DTN, LOG_CL, LOGL_ERR, "Bundle %lu could not be encoded, not enough memory for %u bytes", ticket->bundle_number, ticket->bundle->size);
+		return -1;
+	}
+
+	/* Encode the bundle into our temporary buffer */
+	const size_t length = bundle_encode_bundle(ticket->bundle, (uint8_t *) MMEM_PTR(&ticket->buffer), ticket->buffer.size);
+
+	if( length < 0 ) {
+		LOG(LOGD_DTN, LOG_CL, LOGL_ERR, "Bundle %lu could not be encoded, error occured", ticket->bundle_number);
+		mmem_free(&ticket->buffer);
+		ticket->buffer.ptr = NULL;
+		return -1;
+	}
+
+	/* Decrease memory size to what is actually needed */
+	if(mmem_realloc(&ticket->buffer, length) < 1) {
+		LOG(LOGD_DTN, LOG_CL, LOGL_ERR, "Bundle %lu could not be encoded, realloc failed", ticket->bundle_number);
+		mmem_free(&ticket->buffer);
+		ticket->buffer.ptr = NULL;
+		return -1;
+	}
+
+	/* We do not need the original bundle anymore */
+	bundle_decrement(ticket->bundle);
+	ticket->bundle = NULL;
+
+	/* Initialize the state for this bundle */
+	ticket->offset_sent = 0;
+	ticket->offset_acked = 0;
+
+	return 0;
+}
+
+
+int convergence_layer_lowpan_dgram_send_bundle(const cl_addr_t* const dest, const int sequence_number, const uint8_t flags,
+											const uint8_t* const payload, const size_t length, const void* const reference)
+{
+	/* Get the outgoing network buffer */
+	uint8_t* const buffer = dtn_network_get_buffer();
+	if( buffer == NULL ) {
+		return -1;
+	}
+
+	/* add one byte for the dgram:lowpan header */
+	const uint8_t length_to_send = length + 1;
+
+	/* fail if the buffer is not big enough */
+	if (length_to_send > dtn_network_get_buffer_length()) {
+		char addr_str[CL_ADDR_STRING_LENGTH];
+		cl_addr_string(dest, addr_str, sizeof(addr_str));
+		LOG(LOGD_DTN, LOG_CL, LOGL_WRN, "DTN network buffer to small for bundle (seq %u, flags %x, len %lu) to  addr %s",
+			sequence_number, flags, length_to_send, addr_str);
+		return -2;
+	}
+
+	/* Initialize the header field */
+	buffer[0] = CONVERGENCE_LAYER_TYPE_DATA & CONVERGENCE_LAYER_MASK_TYPE;
+
+	/* Put the sequence number for this bundle into the outgoing header */
+	buffer[0] |= (sequence_number << 2) & CONVERGENCE_LAYER_MASK_SEQNO;
+	buffer[0] |= flags & CONVERGENCE_LAYER_MASK_FLAGS;
+
+	/* copy the payload */
+	memcpy(&buffer[1], payload, length);
+
+	/* And send it out */
+	// TODO remove const cast
+	dtn_network_send((linkaddr_t*)&dest->lowpan, length_to_send, (void*)reference);
+
+	return 1;
+}
+
+
+static int convergence_layer_dgram_send_bundle(struct transmit_ticket_t* const ticket, const uint8_t flags,
+											   const uint8_t* const payload, const size_t length)
+{
+	/* Flag the bundle as being in transit now */
+	ticket->flags |= CONVERGENCE_LAYER_QUEUE_IN_TRANSIT;
+
+	/* Now we are transmitting */
+	convergence_layer_transmitting = 1;
+
+	/* This neighbour is blocked, until we have received the App Layer ACK or NACK */
+	convergence_layer_set_blocked(&ticket->neighbour);
+
+	int ret = -1;
+	if (ticket->neighbour.isIP) {
+		// TODO
+		ret = 1;
+	} else {
+		ret = convergence_layer_lowpan_dgram_send_bundle(&ticket->neighbour, ticket->sequence_number, flags, payload, length, ticket);
+	}
+
+	if (ret < 0) {
+		bundle_decrement(ticket->bundle);
+		ticket->bundle = NULL;
+	}
+
+	return ret;
+}
+
+
+static int convergence_layer_dgram_prepare_send_bundle(struct transmit_ticket_t * ticket)
+{
 	char addr_str[CL_ADDR_STRING_LENGTH];
 	cl_addr_string(&ticket->neighbour, addr_str, sizeof(addr_str));
 	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Sending bundle %lu to %s with ticket %p", ticket->bundle_number, addr_str, ticket);
 
+	// TODO not reload bundle, if it was decoded ones
 	if( !(ticket->flags & CONVERGENCE_LAYER_QUEUE_MULTIPART) ) {
 		/* Read the bundle from storage, if it is not in memory */
 		if( ticket->bundle == NULL ) {
@@ -242,7 +346,7 @@ int convergence_layer_send_bundle(struct transmit_ticket_t * ticket)
 		}
 
 		/* Get our bundle struct and check the pointer */
-		bundle = (struct bundle_t *) MMEM_PTR(ticket->bundle);
+		const struct bundle_t* const bundle = (struct bundle_t *) MMEM_PTR(ticket->bundle);
 		if( bundle == NULL ) {
 			LOG(LOGD_DTN, LOG_CL, LOGL_ERR, "Invalid bundle pointer for bundle %lu", ticket->bundle_number);
 			bundle_decrement(ticket->bundle);
@@ -264,71 +368,24 @@ int convergence_layer_send_bundle(struct transmit_ticket_t * ticket)
 		}
 	}
 
-	/* Get the outgoing network buffer */
-	buffer = dtn_network_get_buffer();
-	if( buffer == NULL ) {
-		bundle_decrement(ticket->bundle);
-		ticket->bundle = NULL;
+
+	// TODO only enncode bundle ones, if it is a multipart bundle
+	// otherwise sending will always start at the beginning of the package
+	if (convergence_layer_dgram_encode_bundle(ticket) < 0) {
+		ticket->flags &= ~CONVERGENCE_LAYER_QUEUE_MULTIPART;
 		return -1;
 	}
-
-	/* Get the buffer length */
-	buffer_length = dtn_network_get_buffer_length();
-
-	/* Initialize the header field */
-	buffer[0] = CONVERGENCE_LAYER_TYPE_DATA & CONVERGENCE_LAYER_MASK_TYPE;
-
 
 	/* We have to use a heuristic to estimate if the bundle will be a multipart bundle */
 	if( ticket->bundle->size > CONVERGENCE_LAYER_MAX_LENGTH && !(ticket->flags & CONVERGENCE_LAYER_QUEUE_MULTIPART) ) {
 		/* This is a bundle for multiple segments and we have our first look at it */
 		ticket->flags |= CONVERGENCE_LAYER_QUEUE_MULTIPART;
 
-		LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Encoding multipart bundle %lu", ticket->bundle_number);
-
-		/* Now allocate a buffer to serialize the bundle
-		 * The size is a rough estimation here and will be reallocated later on */
-		ret = mmem_alloc(&ticket->buffer, ticket->bundle->size);
-
-		if( ret < 1 ) {
-			LOG(LOGD_DTN, LOG_CL, LOGL_ERR, "Multipart bundle %lu could not be encoded, not enough memory for %u bytes", ticket->bundle_number, ticket->bundle->size);
-			ticket->flags &= ~CONVERGENCE_LAYER_QUEUE_MULTIPART;
-			return -1;
-		}
-
-		/* Encode the bundle into our temporary buffer */
-		length = bundle_encode_bundle(ticket->bundle, (uint8_t *) MMEM_PTR(&ticket->buffer), ticket->buffer.size);
-
-		if( length < 0 ) {
-			LOG(LOGD_DTN, LOG_CL, LOGL_ERR, "Multipart bundle %lu could not be encoded, error occured", ticket->bundle_number);
-			mmem_free(&ticket->buffer);
-			ticket->buffer.ptr = NULL;
-			ticket->flags &= ~CONVERGENCE_LAYER_QUEUE_MULTIPART;
-			return -1;
-		}
-
-		/* Decrease memory size to what is actually needed */
-		ret = mmem_realloc(&ticket->buffer, length);
-
-		if( ret < 1 ) {
-			LOG(LOGD_DTN, LOG_CL, LOGL_ERR, "Multipart bundle %lu could not be encoded, realloc failed", ticket->bundle_number);
-			mmem_free(&ticket->buffer);
-			ticket->buffer.ptr = NULL;
-			ticket->flags &= ~CONVERGENCE_LAYER_QUEUE_MULTIPART;
-			return -1;
-		}
-
-		/* We do not need the original bundle anymore */
-		bundle_decrement(ticket->bundle);
-		ticket->bundle = NULL;
-
 		/* Initialize the state for this bundle */
-		ticket->offset_sent = 0;
-		ticket->offset_acked = 0;
 		ticket->sequence_number = outgoing_sequence_number;
 
 		/* Calculate the number of segments we will need */
-		segments = ( length + (CONVERGENCE_LAYER_MAX_LENGTH / 2) ) / CONVERGENCE_LAYER_MAX_LENGTH;
+		const size_t segments = ( ticket->buffer.size + (CONVERGENCE_LAYER_MAX_LENGTH / 2) ) / CONVERGENCE_LAYER_MAX_LENGTH;
 
 		/* And reserve the sequence number space for this bundle to allow for consequtive numbers */
 		outgoing_sequence_number = (outgoing_sequence_number + segments) % 4;
@@ -337,81 +394,57 @@ int convergence_layer_send_bundle(struct transmit_ticket_t * ticket)
 	/* Check if this is a multipart bundle */
 	if( ticket->flags & CONVERGENCE_LAYER_QUEUE_MULTIPART ) {
 		/* Calculate the remaining length */
-		length = ticket->buffer.size - ticket->offset_acked;
+		const size_t length = ticket->buffer.size - ticket->offset_acked;
 
 		/* Is it possible, that we send a single-part bundle here because the heuristic
 		 * from above failed. So be it.
 		 */
+		uint8_t flags = CONVERGENCE_LAYER_FLAGS_FIRST | CONVERGENCE_LAYER_FLAGS_LAST;
 		if( length <= CONVERGENCE_LAYER_MAX_LENGTH && ticket->offset_acked == 0 ) {
 			/* One bundle per segment, standard flags */
-			buffer[0] |= (CONVERGENCE_LAYER_FLAGS_FIRST | CONVERGENCE_LAYER_FLAGS_LAST) & CONVERGENCE_LAYER_MASK_FLAGS;
+			flags = CONVERGENCE_LAYER_FLAGS_FIRST | CONVERGENCE_LAYER_FLAGS_LAST;
 		} else if( ticket->offset_acked == 0 ) {
 			/* First segment of a bundle */
-			buffer[0] |= CONVERGENCE_LAYER_FLAGS_FIRST & CONVERGENCE_LAYER_MASK_FLAGS;
+			flags = CONVERGENCE_LAYER_FLAGS_FIRST;
 		} else if( length <= CONVERGENCE_LAYER_MAX_LENGTH ) {
 			/* Last segment of a bundle */
-			buffer[0] |= CONVERGENCE_LAYER_FLAGS_LAST & CONVERGENCE_LAYER_MASK_FLAGS;
+			flags = CONVERGENCE_LAYER_FLAGS_LAST;
 		} else if( length > CONVERGENCE_LAYER_MAX_LENGTH) {
 			/* A segment in the middle of a bundle */
-			buffer[0] &= ~CONVERGENCE_LAYER_MASK_FLAGS;
+			flags = 0;
 		}
 
 		/* one byte for the CL header */
-		length += 1;
+		const size_t length_to_sent = (length > (CONVERGENCE_LAYER_MAX_LENGTH - 1)) ? (CONVERGENCE_LAYER_MAX_LENGTH - 1) : length;
 
-		if( length > CONVERGENCE_LAYER_MAX_LENGTH ) {
-			length = CONVERGENCE_LAYER_MAX_LENGTH;
-		}
-
-		if( length > buffer_length ) {
-			length = buffer_length;
-		}
-
-		/* Copy the subset of the bundle into the buffer */
-		memcpy(buffer + 1, ((uint8_t *) MMEM_PTR(&ticket->buffer)) + ticket->offset_acked, length - 1);
+		const uint8_t* const buffer = ((uint8_t*) MMEM_PTR(&ticket->buffer)) + ticket->offset_acked;
+		const int ret = convergence_layer_dgram_send_bundle(ticket, flags, buffer, length_to_sent);
 
 		/* Every segment so far has been acked */
 		if( ticket->offset_sent == ticket->offset_acked ) {
 			/* It is the first time that we are sending this segment */
-			ticket->offset_sent += length - 1;
+			ticket->offset_sent += length_to_sent;
 
 			/* Increment the sequence number for the new segment, except for the first segment */
 			if( ticket->offset_sent != 0 ) {
 				ticket->sequence_number = (ticket->sequence_number + 1) % 4;
 			}
 		}
+
+		return ret;
 	} else {
-		/* one byte for the CL header */
-		length = 1;
-
-		/* One bundle per segment, standard flags */
-		buffer[0] |= (CONVERGENCE_LAYER_FLAGS_FIRST | CONVERGENCE_LAYER_FLAGS_LAST) & CONVERGENCE_LAYER_MASK_FLAGS;
-
-		/* Encode the bundle into the buffer */
-		length += bundle_encode_bundle(ticket->bundle, buffer + 1, buffer_length - 1);
 
 		/* Initialize the sequence number */
 		ticket->sequence_number = outgoing_sequence_number;
 		outgoing_sequence_number = (outgoing_sequence_number + 1) % 4;
+
+		/* One bundle per segment, standard flags */
+		const uint8_t flags = CONVERGENCE_LAYER_FLAGS_FIRST | CONVERGENCE_LAYER_FLAGS_LAST;
+		const uint8_t* const buffer = ((uint8_t*) MMEM_PTR(&ticket->buffer));
+		return convergence_layer_dgram_send_bundle(ticket, flags, buffer, ticket->buffer.size);
 	}
-
-	/* Put the sequence number for this bundle into the outgoing header */
-	buffer[0] |= (ticket->sequence_number << 2) & CONVERGENCE_LAYER_MASK_SEQNO;
-
-	/* Flag the bundle as being in transit now */
-	ticket->flags |= CONVERGENCE_LAYER_QUEUE_IN_TRANSIT;
-
-	/* Now we are transmitting */
-	convergence_layer_transmitting = 1;
-
-	/* This neighbour is blocked, until we have received the App Layer ACK or NACK */
-	convergence_layer_set_blocked(&ticket->neighbour);
-
-	/* And send it out */
-	dtn_network_send(&ticket->neighbour.lowpan, length, (void *) ticket);
-
-	return 1;
 }
+
 
 int convergence_layer_send_discovery(uint8_t * payload, uint8_t length, linkaddr_t * neighbour)
 {
@@ -1417,7 +1450,7 @@ static void convergence_layer_process(void* p)
 				}
 
 				/* Send the bundle just now */
-				convergence_layer_send_bundle(ticket);
+				convergence_layer_dgram_prepare_send_bundle(ticket);
 
 				/* Radio is busy now, defer */
 				break;

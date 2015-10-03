@@ -38,6 +38,7 @@ static inline int convergence_layer_udp_dgram_send(const ip_addr_t* const ip, co
 	/* flags (4-bit) + seqno (4-bit) */
 	buffer[1] = ((flags << 4) & 0xF0) | (sequence_number & 0x0F);
 
+	// TODO use pbuf (see netbuf_ref) instead of copiing the hole frame
 	/* Copy the discovery message */
 	memcpy(buffer + 2, payload, length);
 
