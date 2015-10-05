@@ -78,6 +78,7 @@ int dispatching_check_report(struct mmem * bundlemem) {
 	}
 
 	/* Calculate bundle number */
+	// TODO use full uint64_t values for calulation
 	bundle_number = HASH.hash_convenience(report.bundle_sequence_number, report.bundle_creation_timestamp, report.source_eid_node, report.source_eid_service, report.fragment_offset, report.fragment_length);
 
 	LOG(LOGD_DTN, LOG_AGENT, LOGL_INF, "Received delivery report for bundle %lu from ipn:%lu, deleting", bundle_number, bundle->src_node);
@@ -90,7 +91,6 @@ int dispatching_check_report(struct mmem * bundlemem) {
 
 int dispatching_dispatch_bundle(struct mmem *bundlemem) {
 	struct bundle_t *bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
-	int n;
 	uint8_t received_report = 0;
 	uint32_t payload_length = 0;
 
@@ -159,7 +159,14 @@ int dispatching_dispatch_bundle(struct mmem *bundlemem) {
 	}
 
 	// Calculate the bundle number
+	// TODO use full uint64_t values for calulation
 	bundle->bundle_num = HASH.hash_convenience(bundle->tstamp_seq, bundle->tstamp, bundle->src_node, bundle->src_srv, bundle->frag_offs, payload_length);
+
+	/* use uint32_t temp variables, because printing uint64_t is not working correct */
+	const uint32_t tstamp = bundle->tstamp;
+	const uint32_t src_srv = bundle->src_srv;
+	LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "Set bundle number to %lu. (seq %lu, tstamp %lu, src ipn:%lu.%lu, frag_offs %lu, len %lu)",
+		bundle->bundle_num, bundle->tstamp_seq, tstamp, bundle->src_node, src_srv, bundle->frag_offs, payload_length);
 
 	// Check if the bundle has been delivered before
 	if( REDUNDANCE.check(bundle->bundle_num) ) {
@@ -176,8 +183,10 @@ int dispatching_dispatch_bundle(struct mmem *bundlemem) {
 
 	// regular bundle, no custody
 	LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "Handing over to storage");
+	// TODO bundle number pointer no longer needed, becasue the dtn_bundle_in_storage_event
+	// accepts the full bundle number and copy this number to the queue
 	uint32_t bundle_number = 0;
-	n = BUNDLE_STORAGE.save_bundle(bundlemem, &bundle_number);
+	const int n = BUNDLE_STORAGE.save_bundle(bundlemem, &bundle_number);
 	bundlemem = NULL;
 
 	// Send out a "received" status report if requested
@@ -199,6 +208,8 @@ int dispatching_dispatch_bundle(struct mmem *bundlemem) {
 	if( n ) {
 		// Put the bundle into the list of already seen bundles
 		REDUNDANCE.set(bundle_number);
+
+		LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "dtn_bundle_in_storage_event for bundle %lu", bundle_number);
 
 		// Now we have to send an event to our daemon
 		const event_container_t event = {

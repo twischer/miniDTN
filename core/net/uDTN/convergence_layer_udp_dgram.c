@@ -66,7 +66,7 @@ int convergence_layer_udp_dgram_send_discovery(const uint8_t* const payload, con
 int convergence_layer_udp_dgram_send_ack(const cl_addr_t* const dest, const int sequence_number, const int type, const void* const reference)
 {
 	HEADER_TYPES header_type = HEADER_NACK;
-	HEADER_FLAGS header_flags = SEGMENT_FIRST | SEGMENT_LAST;
+	HEADER_FLAGS header_flags = 0;
 
 	if( type == CONVERGENCE_LAYER_TYPE_ACK ) {
 		// Construct the ACK

@@ -801,14 +801,10 @@ void routing_flooding_bundle_sent(struct transmit_ticket_t * ticket, uint8_t sta
 	routing_flooding_blacklist_delete(&ticket->neighbour);
 
 #ifndef TEST_DO_NOT_DELETE_ON_DIRECT_DELIVERY
-	linkaddr_t dest_n = convert_eid_to_rime(entry->destination_node);
-	// TODO use another check for packages that was send over IP
-	// Have to check, if the ticket was for sending the
-	// package to the destination directly and not to flood with neighbours
-	// exchange .lowpan cmp for ip package
-	if (linkaddr_cmp(&ticket->neighbour.lowpan, &dest_n) && status != ROUTING_STATUS_NACK) {
+	const uint32_t eid = routing_get_eid_of_cl_addr(&ticket->neighbour);
+	if (entry->destination_node == eid && status != ROUTING_STATUS_NACK) {
 		LOG(LOGD_DTN, LOG_ROUTE, LOGL_DBG, "bundle sent to destination node");
-		uint32_t bundle_number = ticket->bundle_number;
+		const uint32_t bundle_number = ticket->bundle_number;
 
 		/* Free up the ticket */
 		convergence_layer_free_transmit_ticket(ticket);
@@ -823,7 +819,7 @@ void routing_flooding_bundle_sent(struct transmit_ticket_t * ticket, uint8_t sta
 
 	char addr_str[CL_ADDR_STRING_LENGTH];
 	cl_addr_string(&ticket->neighbour, addr_str, sizeof(addr_str));
-	LOG(LOGD_DTN, LOG_ROUTE, LOGL_DBG, "bundle for RIME %u.%u / EID %lu delivered to %s", dest_n.u8[0], dest_n.u8[1], entry->destination_node, addr_str);
+	LOG(LOGD_DTN, LOG_ROUTE, LOGL_DBG, "bundle for ipn:%lu delivered to %s", entry->destination_node, addr_str);
 #endif
 
 
