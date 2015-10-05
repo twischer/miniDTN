@@ -702,6 +702,35 @@ void routing_flooding_delete_bundle(uint32_t bundle_number)
 	memb_free(&routing_mem, n);
 }
 
+
+uint32_t routing_get_eid_of_cl_addr(const cl_addr_t* const addr)
+{
+	if (addr->isIP) {
+		struct discovery_neighbour_list_entry* nei_l = DISCOVERY.neighbours();
+		for(; nei_l != NULL; nei_l = list_item_next(nei_l) ) {
+			cl_addr_t nei_addr;
+			if (discovery_neighbour_to_addr(nei_l, ADDRESS_TYPE_FLAG_IPV4, &nei_addr) < 0) {
+				/* convertion of ip address failed, possibly this entry does not contain an IP */
+				continue;
+			}
+
+			if (cl_addr_cmp(addr, &nei_addr)) {
+				break;
+			}
+		}
+
+		if (nei_l == NULL) {
+			return 0;
+		}
+
+		return convert_rime_to_eid(&nei_l->neighbour);
+	} else {
+		// TODO remove const cast
+		return convert_rime_to_eid( (linkaddr_t*)&addr->lowpan );
+	}
+}
+
+
 /**
  * \brief Callback function informing us about the status of a sent bundle
  * \param ticket CL transmit ticket of the bundle
@@ -799,11 +828,16 @@ void routing_flooding_bundle_sent(struct transmit_ticket_t * ticket, uint8_t sta
 
 
 	if (entry->send_to < ROUTING_NEI_MEM) {
-		// TODO fix it. Not working for IP packages
-		// find correct EID for ip address from DISCOVERY.neighbours();
-		linkaddr_copy(&entry->neighbours[entry->send_to], &ticket->neighbour.lowpan);
-		entry->send_to++;
-		LOG(LOGD_DTN, LOG_ROUTE, LOGL_DBG, "bundle %lu sent to %u nodes", ticket->bundle_number, entry->send_to);
+		const uint32_t eid = routing_get_eid_of_cl_addr(&ticket->neighbour);
+		if (eid <= 0) {
+			LOG(LOGD_DTN, LOG_ROUTE, LOGL_WRN, "Could not find EID for bundle %lu", ticket->bundle_number);
+		} else {
+			// TODO use eid in neighbour list
+			const linkaddr_t lowpan = convert_eid_to_rime(eid);
+			linkaddr_copy(&entry->neighbours[entry->send_to], &lowpan);
+			entry->send_to++;
+			LOG(LOGD_DTN, LOG_ROUTE, LOGL_DBG, "bundle %lu sent to %u nodes", ticket->bundle_number, entry->send_to);
+		}
 	} else if (entry->send_to >= ROUTING_NEI_MEM) {
 		// Here we can delete the bundle from storage, because it will not be routed anyway
 		LOG(LOGD_DTN, LOG_ROUTE, LOGL_DBG, "bundle %lu sent to max number of nodes, deleting", ticket->bundle_number);
