@@ -88,8 +88,8 @@ void discovery_ipnd_print_list();
  */
 struct discovery_ipnd_neighbour_list_entry {
 	struct discovery_ipnd_neighbour_list_entry *next;
-	// TODO use uint64_t, because compressed bundle header can have such big addresses
 	uint8_t addr_type;
+	// TODO use uint64_t, because compressed bundle header can have such big addresses
 	linkaddr_t neighbour;
 	ip_addr_t ip;
 	uint16_t port;

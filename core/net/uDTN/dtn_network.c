@@ -77,7 +77,7 @@ static void dtn_network_input(void)
 	length = packetbuf_datalen();
 	rssi = packetbuf_attr(PACKETBUF_ATTR_RSSI);
 
-	convergence_layer_incoming_frame(&source, buffer, length, rssi);
+	convergence_layer_lowpan_dgram_incoming_frame(&source, buffer, length, rssi);
 
 //	leds_off(LEDS_ALL);
 }

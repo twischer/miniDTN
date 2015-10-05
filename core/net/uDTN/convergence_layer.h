@@ -187,7 +187,7 @@ int convergence_layer_free_transmit_ticket(struct transmit_ticket_t * ticket);
 int convergence_layer_enqueue_bundle(struct transmit_ticket_t * ticket);
 int convergence_layer_send_discovery(uint8_t * payload, uint8_t length, linkaddr_t * neighbour);
 
-int convergence_layer_incoming_frame(const cl_addr_t* const source, const uint8_t* const payload, const uint8_t length, const packetbuf_attr_t rssi);
+int convergence_layer_lowpan_dgram_incoming_frame(const cl_addr_t* const source, const uint8_t* const payload, const uint8_t length, const packetbuf_attr_t rssi);
 int convergence_layer_incoming_data(const cl_addr_t* const source, const uint8_t* const data_pointer, const uint8_t data_length,
 									const packetbuf_attr_t rssi, const int sequence_number, const int flags);
 int convergence_layer_parse_ackframe(const cl_addr_t* const source, const uint8_t* const payload, const uint8_t length,

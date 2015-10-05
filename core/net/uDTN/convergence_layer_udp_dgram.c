@@ -101,8 +101,10 @@ int convergence_layer_udp_dgram_send_bundle(const cl_addr_t* const dest, const i
 
 int convergence_layer_udp_dgram_incoming_frame(const cl_addr_t* const source, const uint8_t* const payload, const size_t length, const packetbuf_attr_t rssi)
 {
-	// TODO use addr_t instead of cl_addr_t
-	// vllt so lassen für gleiches interface für dgram:udp und dgram:lowpan
+	if (!source->isIP) {
+		LOG(LOGD_DTN, LOG_CL_UDP, LOGL_ERR, "Source is not an IP address. Could not processed by this CL.");
+		return -1;
+	}
 
 	char addr_str[CL_ADDR_STRING_LENGTH];
 	cl_addr_string(source, addr_str, sizeof(addr_str));

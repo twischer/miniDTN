@@ -917,8 +917,13 @@ int convergence_layer_incoming_data(const cl_addr_t* const source, const uint8_t
 }
 
 
-int convergence_layer_incoming_frame(const cl_addr_t* const source, const uint8_t* const payload, const uint8_t length, const packetbuf_attr_t rssi)
+int convergence_layer_lowpan_dgram_incoming_frame(const cl_addr_t* const source, const uint8_t* const payload, const uint8_t length, const packetbuf_attr_t rssi)
 {
+	if (source->isIP) {
+		LOG(LOGD_DTN, LOG_CL, LOGL_ERR, "Source is not a LOWPAN address. Could not processed by this CL.");
+		return -1;
+	}
+
 	uint8_t data_length = 0;
 	uint8_t header;
 
@@ -927,12 +932,7 @@ int convergence_layer_incoming_frame(const cl_addr_t* const source, const uint8_
 	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Incoming frame from %s (header 0x%02x)", addr_str, payload[0]);
 
 	/* Notify the discovery module, that we have seen a peer */
-	if (!source->isIP) {
-		DISCOVERY.alive((linkaddr_t*)&source->lowpan);
-	}
-	// TODO send alive for ip too
-	// change type of addr to cl_addr_t
-	// onyl saving this value in discovery list
+	DISCOVERY.alive((linkaddr_t*)&source->lowpan);
 
 	/* Check the COMPAT information */
 	if( (payload[0] & CONVERGENCE_LAYER_MASK_COMPAT) != CONVERGENCE_LAYER_COMPAT ) {
@@ -960,11 +960,8 @@ int convergence_layer_incoming_frame(const cl_addr_t* const source, const uint8_
 		cl_addr_string(source, addr_str, sizeof(addr_str));
 		LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Incoming discovery frame from %s", addr_str);
 
-		// TODO change receive for cl_addr_t
-		if (!source->isIP) {
-			// TODO make linkaddr const and rmeove cast
-			DISCOVERY.receive((linkaddr_t*)&source->lowpan, (uint8_t*)data_pointer, data_length);
-		}
+		// TODO make linkaddr const and rmeove const cast
+		DISCOVERY.receive((linkaddr_t*)&source->lowpan, (uint8_t*)data_pointer, data_length);
 
 		return 1;
 	}
@@ -1398,9 +1395,6 @@ static void convergence_layer_process(void* p)
 
 	while(1) {
 		const BaseType_t notification_received = xTaskNotifyWait( 0, 0, NULL, pdMS_TO_TICKS(1000) );
-		// TODO für convergence_layer_backoff besondere notification verwenden und dann mit vTaskDelay 100ms warten
-		// wenn andere notification dann möglicherweise direkt ausführen
-
 		// TODO timer nicht immer neu aufrufen sondern methoden immer anch genau 1000ms ausführen
 		// vielleicht eignenen prozess verwenden
 // TODO		if(!notification_received) {

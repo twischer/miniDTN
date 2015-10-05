@@ -39,7 +39,7 @@
 
 struct discovery_neighbour_list_entry {
 	struct discovery_neighbour_list_entry *next;
-	// TODO change all use struct definitions of this type, too
+	// TODO change all inheriting struct definitions of this type, too
 	uint8_t addr_type;
 	// TODO interpret as EID and use uint32_t, because compressed bundle header can have such big addresses
 	linkaddr_t neighbour;

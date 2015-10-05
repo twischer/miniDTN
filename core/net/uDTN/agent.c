@@ -247,11 +247,13 @@ void agent_process(void* p)
 			// TODO use full uint64_t values for calulation
 			bundle->bundle_num = HASH.hash_convenience(bundle->tstamp_seq, bundle->tstamp, bundle->src_node, bundle->src_srv, bundle->frag_offs, payload_length);
 
+#ifdef ENABLE_LOGGING
 			/* use uint32_t temp variables, because printing uint64_t is not working correct */
 			const uint32_t tstamp = bundle->tstamp;
 			const uint32_t src_srv = bundle->src_srv;
 			LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "Set bundle number to %lu. (seq %lu, tstamp %lu, src ipn:%lu.%lu, frag_offs %lu, len %lu)",
 				bundle->bundle_num, bundle->tstamp_seq, tstamp, bundle->src_node, src_srv, bundle->frag_offs, payload_length);
+#endif /* ENABLE_LOGGING */
 
 			// Save the bundle in storage
 			uint32_t bundle_number = 0;
@@ -287,7 +289,6 @@ void agent_process(void* p)
 				LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "dtn_bundle_in_storage_event for bundle %lu from %lu:%lu",
 					bundle_number, dtn_node_id, app_id);
 
-				// TODO
 				ev.bundle_number = bundle_number;
 				ev.event = dtn_bundle_in_storage_event;
 			} else {

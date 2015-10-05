@@ -116,10 +116,12 @@ static void convergence_layer_udp_discovery_thread(void *arg)
 		static struct netbuf* buf = NULL;
 		if (netconn_recv(discovery_conn, &buf) == ERR_OK) {
 			const ip_addr_t* const addr = netbuf_fromaddr(buf);
-			const uint16_t port = netbuf_fromport(buf);
 
+#ifdef ENABLE_LOGGING
+			const uint16_t port = netbuf_fromport(buf);
 			// TODO replace ipaddr_ntoa with ipaddr_ntoa_r to make it reentrant for multi threading
 			LOG(LOGD_DTN, LOG_CL_UDP, LOGL_DBG, "Discovery package received from addr %s port %u", ipaddr_ntoa(addr), port);
+#endif /* ENABLE_LOGGING */
 
 			const uint8_t* data = 0;
 			uint16_t length = 0;
@@ -197,12 +199,6 @@ int convergence_layer_udp_send_data(const ip_addr_t* const addr, const uint8_t* 
  */
 bool convergence_layer_udp_init(void)
 {
-	// TODO only for debugging
-	// have to be removed if the udp-cl implementtation has finisched
-	logging_domain_level_set(LOGD_DTN, LOG_CL, LOGL_DBG);
-	logging_domain_level_set(LOGD_DTN, LOG_CL_UDP, LOGL_DBG);
-//	logging_domain_level_set(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG);
-
 	IP4_ADDR(&udp_mcast_addr, CL_UDP_DISCOVERY_IP_1, CL_UDP_DISCOVERY_IP_2, CL_UDP_DISCOVERY_IP_3, CL_UDP_DISCOVERY_IP_4);
 
 
