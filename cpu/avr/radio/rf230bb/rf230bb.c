@@ -791,10 +791,12 @@ rf230_init(void)
   uint8_t tvers = hal_register_read(RG_VERSION_NUM);
   uint8_t tmanu = hal_register_read(RG_MAN_ID_0);
 
-  if ((tvers != RF230_REVA) && (tvers != RF230_REVB))
-    PRINTF("rf230: Unsupported version %u\n",tvers);
-  if (tmanu != SUPPORTED_MANUFACTURER_ID) 
-    PRINTF("rf230: Unsupported manufacturer ID %u\n",tmanu);
+  if ((tvers != RF230_REVA) && (tvers != RF230_REVB)) {
+	printf("rf230: Unsupported version %u\n",tvers);
+  }
+  if (tmanu != SUPPORTED_MANUFACTURER_ID) {
+	printf("rf230: Unsupported manufacturer ID %u\n",tmanu);
+  }
 
   PRINTF("rf230: Version %u, ID %u\n",tvers,tmanu);
   
