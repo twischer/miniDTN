@@ -42,7 +42,7 @@
 #include "discovery.h"
 
 
-#define SEND_DGRAM_UDPCL_PORT	1
+#define DISCOVERY_OVER_ETHERNET	1
 
 
 typedef struct {
@@ -398,7 +398,7 @@ static void discovery_ipnd_parse_msg(const uint8_t* const payload, const uint8_t
 }
 
 
-#ifdef SEND_DGRAM_UDPCL_PORT
+#ifdef DISCOVERY_OVER_ETHERNET
 /**
  * @brief discovery_ipnd_add_service_udp_cl
  * @param buffer the beacon message buffer
@@ -503,10 +503,6 @@ static void discovery_ipnd_send()
 	services = &ipnd_buffer[offset++]; // This is a pointer onto the location of the service counter in the outgoing buffer
 	*services = 0; // Start with 0 services
 
-#ifdef SEND_DGRAM_UDPCL_PORT
-	*services += discovery_ipnd_add_service_udp_cl(ipnd_buffer, sizeof(ipnd_buffer), &offset);
-#endif /* SEND_DGRAM_UDPCL_PORT */
-
 	// Allow all registered DTN APPs to add an IPND service block
 	for(h=0; dtn_apps[h] != NULL; h++) {
 		if( dtn_apps[h]->add_ipnd_service_block == NULL ) {
@@ -517,13 +513,24 @@ static void discovery_ipnd_send()
 	}
 
 	// Now: Send it
-	const int ret = convergence_layers_send_discovery(ipnd_buffer, offset);
-	if (ret < 0) {
-		LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_WRN, "Discovery beacon message sent failed. (ret: %d)", ret);
-		return;
+	static const linkaddr_t bcast_addr = {{0, 0}};
+	if (!convergence_layer_send_discovery(ipnd_buffer, offset, (linkaddr_t*)&bcast_addr)) {
+		LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_WRN, "Discovery beacon message sent over lowpan failed.");
+	} else {
+		LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "Discovery beacon message sent over lowpan.");
 	}
 
-	LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "Discovery beacon message sent.");
+
+#ifdef DISCOVERY_OVER_ETHERNET
+	*services += discovery_ipnd_add_service_udp_cl(ipnd_buffer, sizeof(ipnd_buffer), &offset);
+
+	const int ret = convergence_layers_send_discovery_ethernet(ipnd_buffer, offset);
+	if (ret < 0) {
+		LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_WRN, "Discovery beacon message sent over udp failed. (ret %d)", ret);
+	} else {
+		LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "Discovery beacon message sent over udp.");
+	}
+#endif /* DISCOVERY_OVER_ETHERNET */
 }
 
 /**

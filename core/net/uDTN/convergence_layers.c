@@ -24,22 +24,17 @@ bool convergence_layers_init(void)
  * @param length length of the discovery message
  * @return
  */
-int convergence_layers_send_discovery(const uint8_t* const payload, const uint8_t length)
+int convergence_layers_send_discovery_ethernet(const uint8_t* const payload, const uint8_t length)
 {
 	int err = 0;
 
-	static const linkaddr_t bcast_addr = {{0, 0}};
-	if (!convergence_layer_send_discovery((uint8_t*)payload, length, (linkaddr_t*)&bcast_addr)) {
-		err = -1;
-	}
-
 	if (convergence_layer_udp_dgram_send_discovery(payload, length) < 0) {
-		err += -2;
+		err += -1;
 	}
 
 #ifdef UDP_DISCOVERY_ANNOUNCEMENT
 	if (convergence_layer_udp_send_discovery(payload, length) < 0) {
-		err += -4;
+		err += -2;
 	}
 #endif /* UDP_DISCOVERY_ANNOUNCEMENT */
 
