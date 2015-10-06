@@ -47,6 +47,7 @@ static int convergence_layer_udp_netbuf_to_array(struct netbuf* buf, const uint8
 	}
 
 	// TODO merge the data, if the package was splitted
+	// see netbuf_copy
 	if (netbuf_len(buf) != buf->ptr->len) {
 		LOG(LOGD_DTN, LOG_CL_UDP, LOGL_WRN, "Payload is splitted. Possibly not processed correctly.");
 	}
@@ -56,7 +57,8 @@ static int convergence_layer_udp_netbuf_to_array(struct netbuf* buf, const uint8
 
 
 static int convergence_layer_udp_send(struct netconn* const conn, const ip_addr_t* const addr, const uint16_t port,
-									  const uint8_t* const payload, const uint8_t length)
+									  const uint8_t* const payload, const size_t length,
+									  const uint8_t* const payload2, const size_t length2)
 {
 	/*
 	 * conn has not to be checked for NULL,
@@ -80,10 +82,25 @@ static int convergence_layer_udp_send(struct netconn* const conn, const ip_addr_
 		return -2;
 	}
 
+	/* add second buffer to list, if existing */
+	if (payload2 != NULL && length2 > 0) {
+		struct pbuf* const pbuf = pbuf_alloc(PBUF_RAW, 0, PBUF_REF);
+		if (pbuf == NULL) {
+			LOG(LOGD_DTN, LOG_CL_UDP, LOGL_ERR, "Not enough free memory for allocating a second new pbuf.");
+			netbuf_delete(buf);
+			return -3;
+		}
+
+		pbuf->payload = (uint8_t*)payload2;
+		pbuf->len = pbuf->tot_len = length2;
+		pbuf_cat(buf->p, pbuf);
+	}
+
+
 	if (netconn_sendto(conn, buf, (ip_addr_t*)addr, port) != ERR_OK) {
 		LOG(LOGD_DTN, LOG_CL_UDP, LOGL_ERR, "Could not send data. Buffer is not existing.");
 		netbuf_delete(buf);
-		return -3;
+		return -4;
 	}
 
 	netbuf_delete(buf);
@@ -148,7 +165,7 @@ static void convergence_layer_udp_discovery_thread(void *arg)
  */
 int convergence_layer_udp_send_discovery(const uint8_t* const payload, const uint8_t length)
 {
-	return convergence_layer_udp_send(discovery_conn, &udp_mcast_addr, CL_UDP_DISCOVERY_PORT, payload, length);
+	return convergence_layer_udp_send(discovery_conn, &udp_mcast_addr, CL_UDP_DISCOVERY_PORT, payload, length, NULL, 0);
 }
 #endif /* UDP_DISCOVERY_ANNOUNCEMENT */
 
@@ -187,9 +204,10 @@ static void convergence_layer_udp_bundle_thread(void *arg)
 }
 
 
-int convergence_layer_udp_send_data(const ip_addr_t* const addr, const uint8_t* const payload, const uint8_t length)
+int convergence_layer_udp_send_data(const ip_addr_t* const addr, const uint8_t* const payload, const uint8_t length,
+									const uint8_t* const payload2, const uint8_t length2)
 {
-	return convergence_layer_udp_send(bundle_conn, addr, CL_UDP_BUNDLE_PORT, payload, length);
+	return convergence_layer_udp_send(bundle_conn, addr, CL_UDP_BUNDLE_PORT, payload, length, payload2, length2);
 }
 
 

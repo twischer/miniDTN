@@ -6,6 +6,7 @@
 
 
 #define IP_ADDR_STRING_LENGTH	16
+#define UDP_DGRAM_HEADER_LEN	2
 
 /* copiied from IBR-DTN:/daemon/src/net/DatagramConvergenceLayer.h */
 typedef enum
@@ -30,20 +31,15 @@ typedef enum
 static inline int convergence_layer_udp_dgram_send(const ip_addr_t* const ip, const HEADER_TYPES type, const int sequence_number, const HEADER_FLAGS flags,
 											const uint8_t* const payload, const size_t length, const void* const reference)
 {
-	const size_t buffer_length = length + 2;
-	uint8_t buffer[buffer_length];
+	uint8_t buffer[UDP_DGRAM_HEADER_LEN];
 
 	/* Discovery Prefix */
 	buffer[0] = type;
 	/* flags (4-bit) + seqno (4-bit) */
 	buffer[1] = ((flags << 4) & 0xF0) | (sequence_number & 0x0F);
 
-	// TODO use pbuf (see netbuf_ref) instead of copiing the hole frame
-	/* Copy the discovery message */
-	memcpy(buffer + 2, payload, length);
-
 	/* Send it out via the MAC */
-	const int ret = convergence_layer_udp_send_data(ip, buffer, buffer_length);
+	const int ret = convergence_layer_udp_send_data(ip, buffer, sizeof(buffer), payload, length);
 
 	const uint8_t status = (ret < 0) ? CONVERGENCE_LAYER_STATUS_NOSEND : CONVERGENCE_LAYER_STATUS_OK;
 	// TODO remove const cast
