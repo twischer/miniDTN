@@ -5,7 +5,7 @@
 #include "convergence_layer_udp.h"
 
 
-int convergence_layer_udp_dgram_send_discovery(const uint8_t* const payload, const uint8_t length);
+int convergence_layer_udp_dgram_send_discovery(const uint8_t* const payload, const size_t length);
 int convergence_layer_udp_dgram_send_ack(const cl_addr_t* const dest, const int sequence_number, const int type, const void* const reference);
 int convergence_layer_udp_dgram_send_bundle(const cl_addr_t* const dest, const int sequence_number, const uint8_t flags,
 											const uint8_t* const payload, const size_t length, const void* const reference);

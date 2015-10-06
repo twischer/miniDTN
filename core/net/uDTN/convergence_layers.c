@@ -24,7 +24,7 @@ bool convergence_layers_init(void)
  * @param length length of the discovery message
  * @return
  */
-int convergence_layers_send_discovery_ethernet(const uint8_t* const payload, const uint8_t length)
+int convergence_layers_send_discovery_ethernet(const uint8_t* const payload, const size_t length)
 {
 	int err = 0;
 

@@ -162,7 +162,7 @@ struct bundle_t{
  * \param size size of raw data
  * \return Pointer to the MMEM struct containing the bundle
  */
-struct mmem * bundle_recover_bundle(uint8_t * buffer, int size);
+struct mmem * bundle_recover_bundle(const uint8_t* const buffer, const size_t size);
 
 /**
  * \brief Encodes the bundle to raw data

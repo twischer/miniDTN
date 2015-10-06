@@ -7,7 +7,7 @@
 
 
 bool convergence_layers_init(void);
-int convergence_layers_send_discovery_ethernet(const uint8_t* const payload, const uint8_t length);
+int convergence_layers_send_discovery_ethernet(const uint8_t* const payload, const size_t length);
 
 #endif // CONVERGENCE_LAYERS
 

@@ -21,11 +21,11 @@
 ip_addr_t udp_mcast_addr;
 
 bool convergence_layer_udp_init(void);
-int convergence_layer_udp_send_data(const ip_addr_t* const addr, const uint8_t* const payload, const uint8_t length,
-									const uint8_t* const payload2, const uint8_t length2);
+int convergence_layer_udp_send_data(const ip_addr_t* const addr, const uint8_t* const payload, const size_t length,
+									const uint8_t* const payload2, const size_t length2);
 
 #ifdef UDP_DISCOVERY_ANNOUNCEMENT
-int convergence_layer_udp_send_discovery(const uint8_t* const payload, const uint8_t length);
+int convergence_layer_udp_send_discovery(const uint8_t* const payload, const size_t length);
 #endif /* UDP_DISCOVERY_ANNOUNCEMENT */
 
 #endif // CONVERGENCE_LAYER_UDP

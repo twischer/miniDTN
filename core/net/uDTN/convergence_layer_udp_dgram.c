@@ -49,7 +49,7 @@ static inline int convergence_layer_udp_dgram_send(const ip_addr_t* const ip, co
 }
 
 
-int convergence_layer_udp_dgram_send_discovery(const uint8_t* const payload, const uint8_t length)
+int convergence_layer_udp_dgram_send_discovery(const uint8_t* const payload, const size_t length)
 {
 	char addr_str[IP_ADDR_STRING_LENGTH];
 	ipaddr_ntoa_r(&udp_mcast_addr, addr_str, sizeof(addr_str));
@@ -126,8 +126,8 @@ int convergence_layer_udp_dgram_incoming_frame(const cl_addr_t* const source, co
 		flags = CONVERGENCE_LAYER_FLAGS_FIRST;
 	}
 
-	const uint8_t* const data_pointer = payload + 2;
-	const size_t data_length = length - 2;
+	const uint8_t* const data_pointer = payload + UDP_DGRAM_HEADER_LEN;
+	const size_t data_length = length - UDP_DGRAM_HEADER_LEN;
 
 	switch(type) {
 	case HEADER_SEGMENT:

@@ -612,18 +612,17 @@ int convergence_layer_resend_ack(struct transmit_ticket_t * ticket)
  * -1 = Temporary error
  * -2 = Permanent error
  */
-static int convergence_layer_parse_dataframe(const cl_addr_t* const source, const uint8_t* payload, const uint8_t payload_length,
+static int convergence_layer_parse_dataframe(const cl_addr_t* const source, const uint8_t* payload, const size_t payload_length,
 											 const uint8_t flags, const uint8_t sequence_number, const packetbuf_attr_t rssi)
 {
 	struct mmem * bundlemem = NULL;
 	struct bundle_t * bundle = NULL;
 	struct transmit_ticket_t * ticket = NULL;
 	int n;
-	int length;
 	int ret;
 
 	/* Note down the payload length */
-	length = payload_length;
+	size_t length = payload_length;
 
 	if( flags != (CONVERGENCE_LAYER_FLAGS_FIRST | CONVERGENCE_LAYER_FLAGS_LAST ) ) {
 		/* We have a multipart bundle here */
@@ -890,7 +889,7 @@ int convergence_layer_parse_ackframe(const cl_addr_t* const source, const uint8_
 }
 
 
-int convergence_layer_incoming_data(const cl_addr_t* const source, const uint8_t* const data_pointer, const uint8_t data_length,
+int convergence_layer_incoming_data(const cl_addr_t* const source, const uint8_t* const data_pointer, const size_t data_length,
 									const packetbuf_attr_t rssi, const int sequence_number, const int flags)
 {
 	char addr_str[CL_ADDR_STRING_LENGTH];
