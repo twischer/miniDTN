@@ -124,26 +124,36 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* huart)
 
 uint16_t USART6_write(uint8_t* const ptr, const uint16_t len)
 {
-	// TODO check, if it is an interrupt and enforce the print
-	// needed for debugging output
-
 	/* only write data, if the UART is already initialized */
 	if (huart6.Instance == NULL) {
 		return 0;
 	}
 
 	// TODO onyl ask until the scheduler was started once (speed up)
-	/* only wait for semaphore, if the schedular was already started */
 	const bool is_scheduler_running = (xTaskGetSchedulerState() == taskSCHEDULER_RUNNING);
-	if (is_scheduler_running) {
-		// TODO if scheduler running is true the semaphore was created correctly
-		if (xSemaphore == NULL) {
-			return 0;
-		}
 
-		/* wait till the lock can be get */
-		while ( !xSemaphoreTake(xSemaphore, portMAX_DELAY) ) { }
+	const uint16_t irq_nr = (SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk);
+	if (irq_nr == 0) {
+		/* only wait for semaphore, if the schedular was already started */
+		if (is_scheduler_running) {
+			// TODO if scheduler running is true the semaphore was created correctly
+			if (xSemaphore == NULL) {
+				return 0;
+			}
+
+			/* wait till the lock can be get */
+			while ( !xSemaphoreTake(xSemaphore, portMAX_DELAY) ) { }
+		}
+	} else {
+		/*
+		 * Was called from an interrupt.
+		 * Do not try to lock and
+		 * enforce printing of data
+		 */
+		huart6.State = HAL_UART_STATE_READY;
+		__HAL_UNLOCK(&huart6);
 	}
+
 
 	HAL_StatusTypeDef ret = HAL_ERROR;
 	do {
@@ -154,7 +164,7 @@ uint16_t USART6_write(uint8_t* const ptr, const uint16_t len)
 		}
 	} while (ret == HAL_BUSY);
 
-	if (is_scheduler_running) {
+	if (is_scheduler_running && irq_nr == 0) {
 		xSemaphoreGive(xSemaphore);
 	}
 
