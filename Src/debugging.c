@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <string.h>
 #include "FreeRTOS.h"
 #include "task.h"
 
@@ -12,6 +13,8 @@
 
 
 #define MESSAGE_COUNT	5
+
+static const char IDLE_TASK_NAME[] = "IDLE";
 
 typedef struct {
 	bool enter;
@@ -56,6 +59,30 @@ static void Unexpected_Interrupt(const char* const name)
 	printf("Unexpected interrupt %s\n", name);
 
 	print_stack_trace();
+}
+
+
+void task_switch_in(const char* const name)
+{
+	// TODO use more performant comparsion
+	/* ignore idle task switches */
+	if (strncmp(IDLE_TASK_NAME, name, sizeof(IDLE_TASK_NAME)) == 0) {
+		return;
+	}
+
+	printf("IN %s\n", name);
+}
+
+
+void task_switch_out(const char* const name)
+{
+	// TODO use more performant comparsion
+	/* ignore idle task switches */
+	if (strncmp(IDLE_TASK_NAME, name, sizeof(IDLE_TASK_NAME)) == 0) {
+		return;
+	}
+
+	printf("OUT %s\n", name);
 }
 
 

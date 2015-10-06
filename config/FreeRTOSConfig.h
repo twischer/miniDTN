@@ -84,6 +84,7 @@
 
 /* USER CODE BEGIN Includes */   	      
 /* Section where include file can be added */
+#include "debugging.h"
 /* USER CODE END Includes */ 
 
 /* Ensure stdint is only used by the compiler, and not the assembler. */
@@ -176,6 +177,9 @@ standard names. */
 
 /* USER CODE BEGIN Defines */   	      
 /* Section where parameter definitions can be added (for instance, to override default ones in FreeRTOS.h) */
+//#define traceTASK_SWITCHED_IN() task_switch_in(pxCurrentTCB->pcTaskName);
+//#define traceTASK_SWITCHED_OUT() task_switch_out(pxCurrentTCB->pcTaskName);
+
 /* USER CODE END Defines */ 
 
 #endif /* FREERTOS_CONFIG_H */
