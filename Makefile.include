@@ -118,8 +118,19 @@ SRC+=frame802154.c
 SRC+=framer.c
 SRC+=framer-802154.c
 
+# exclude not needed routing, discovery and storage modules
+EXCLUDE += core/net/uDTN/discovery_basic.c
+EXCLUDE += core/net/uDTN/discovery_simple.c
+EXCLUDE += core/net/uDTN/discovery_static.c
+EXCLUDE += core/net/uDTN/routing_chain.c
+EXCLUDE += core/net/uDTN/routing_null.c
+EXCLUDE += core/net/uDTN/storage_coffee.c
+EXCLUDE += core/net/uDTN/storage_flash.c
+
+
 # miniDTN files
-SRC+= $(foreach sdir,$(MODULES),$(wildcard $(sdir)/*.c))
+ALL_SRC := $(foreach sdir,$(MODULES),$(wildcard $(sdir)/*.c))
+SRC += $(filter-out $(EXCLUDE),$(ALL_SRC))
 
 
 CDEFS+= -DSTM32F407xx 
