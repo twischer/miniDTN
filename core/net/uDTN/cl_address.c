@@ -38,7 +38,7 @@ int cl_addr_string(const cl_addr_t* const addr, char* const buf, const size_t bu
 			return -3;
 		}
 	} else {
-		const int ret = snprintf(buf, buflen, "%u", addr->lowpan.u16);
+		const int ret = snprintf(buf, buflen, "pan:%u", ntohs(addr->lowpan.u16));
 		if (ret < 0) {
 			/* there was an encoding error */
 			return -2;

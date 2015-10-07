@@ -51,10 +51,9 @@ typedef struct {
 } ipnd_msg_attrs_t;
 
 
-static void discovery_ipnd_refresh_neighbour(linkaddr_t * neighbour);
+static int discovery_ipnd_refresh_neighbour(const cl_addr_t* const neighbour);
 static void discovery_ipnd_parse_msg(const uint8_t* const payload, const uint8_t length, ipnd_msg_attrs_t* const attrs);
-static void discovery_ipnd_save_neighbour(linkaddr_t * neighbour);
-static void discovery_ipnd_save_neighbour_ip(const uint32_t node_id, const ip_addr_t* const ip, const uint16_t port);
+static int discovery_ipnd_save_neighbour(const uint32_t eid, const cl_addr_t* const addr);
 static void discovery_ipnd_remove_stale_neighbours(const TimerHandle_t timer);
 void discovery_ipnd_print_list();
 
@@ -309,42 +308,31 @@ uint8_t discovery_ipnd_parse_bloomfilter(uint32_t eid, const uint8_t* const buff
  * \param payload Payload pointer of the packet
  * \param length Length of the payload
  */
-static void discovery_ipnd_receive(linkaddr_t * source, uint8_t * payload, uint8_t length)
+static int discovery_ipnd_receive(const cl_addr_t* const addr, const uint8_t* const payload, const uint8_t length)
 {
 	if( discovery_status == 0 ) {
 		// Not initialized yet
-		return;
-	}
-
-	// Save all peer from which we receive packets to the active neighbours list
-	discovery_ipnd_refresh_neighbour(source);
-
-	ipnd_msg_attrs_t attrs;
-	discovery_ipnd_parse_msg(payload, length, &attrs);
-
-	if (convert_rime_to_eid(source) != attrs.node_id) {
-		LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_WRN, "LoWPAN address %u.%u is not matching the EID %u in the IPN scheme of the discovery message.",
-			source->u8[0], source->u8[1], attrs.node_id);
-	}
-}
-
-
-static void discovery_ipnd_receive_ip(const ip_addr_t* const ip, const uint8_t* const payload, const uint8_t length)
-{
-	if( discovery_status == 0 ) {
-		// Not initialized yet
-		return;
+		return -1;
 	}
 
 	ipnd_msg_attrs_t attrs;
 	discovery_ipnd_parse_msg(payload, length, &attrs);
 
-	/*
-	 * save the new neighbour,
-	 * if it not already exists.
-	 * If it already exists refresh only the time stamp.
-	 */
-	discovery_ipnd_save_neighbour_ip(attrs.node_id, ip, attrs.port);
+	/* overwrite the port, if it was ip discovery message */
+	if (addr->isIP) {
+		cl_addr_t bundle_addr;
+		memcpy(&bundle_addr, addr, sizeof(bundle_addr));
+		bundle_addr.port = attrs.port;
+
+		/*
+		 * save the new neighbour,
+		 * if it not already exists.
+		 * If it already exists refresh only the time stamp.
+		 */
+		return discovery_ipnd_save_neighbour(attrs.node_id, &bundle_addr);
+	} else {
+		return discovery_ipnd_save_neighbour(attrs.node_id, addr);
+	}
 }
 
 
@@ -538,9 +526,17 @@ static void discovery_ipnd_send()
  * No:  Create entry
  *
  * \param neighbour Address of the neighbour that should be refreshed
+ * \return <0 error
+ *          0 neighbour not existing
+ *          1 neighbour was updated
  */
-static void discovery_ipnd_refresh_neighbour(linkaddr_t * neighbour)
+static int discovery_ipnd_refresh_neighbour(const cl_addr_t* const neighbour)
 {
+	if (neighbour == NULL) {
+		LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_WRN, "called with NULL pointer address.");
+		return -1;
+	}
+
 #if DISCOVERY_IPND_WHITELIST > 0
 	int i;
 	int found = 0;
@@ -557,49 +553,28 @@ static void discovery_ipnd_refresh_neighbour(linkaddr_t * neighbour)
 	}
 #endif
 
-	struct discovery_ipnd_neighbour_list_entry * entry;
-
 	if( discovery_status == 0 ) {
 		// Not initialized yet
-		return;
-	}
-
-	for(entry = list_head(neighbour_list);
-			entry != NULL;
-			entry = list_item_next(entry)) {
-		if( linkaddr_cmp(&entry->neighbour, neighbour) ) {
-			entry->timestamp_last = clock_seconds();
-			return;
-		}
-	}
-
-	discovery_ipnd_save_neighbour(neighbour);
-}
-
-static bool discovery_ipnd_refresh_neighbour_ip(const ip_addr_t* const ip, const uint16_t port)
-{
-	if( discovery_status == 0 ) {
-		// Not initialized yet
-		return false;
-	}
-
-	if (ip == NULL) {
-		LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_WRN, "discovery_ipnd_refresh_neighbour_ip called with NULL ip address.");
-		return false;
+		return - 2;
 	}
 
 	for(struct discovery_ipnd_neighbour_list_entry* entry = list_head(neighbour_list);
 			entry != NULL;
 			entry = list_item_next(entry)) {
-		if(  ip_addr_cmp( &(entry->ip), ip ) && entry->port == port  ) {
-			entry->timestamp_last = clock_seconds();
-			return true;
+		if(  discovery_neighbour_cmp( (struct discovery_neighbour_list_entry*)entry, neighbour )  ) {
+			if (neighbour->isIP) {
+				// TODO update own time stamp
+				entry->timestamp_last = clock_seconds();
+			} else {
+				entry->timestamp_last = clock_seconds();
+			}
+			return 1;
 		}
 	}
 
-	LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_INF, "New and not registered node at address %s:%u.", ipaddr_ntoa(ip), port);
-	return false;
+	return 0;
 }
+
 
 /**
  * \brief Marks a neighbour as 'dead' after multiple transmission attempts have failed
@@ -637,43 +612,40 @@ static void discovery_ipnd_delete_neighbour(const cl_addr_t* const neighbour)
 	}
 }
 
+
 /**
  * \brief Save neighbour to local cache
  * \param neighbour Address of the neighbour
  */
-static void discovery_ipnd_save_neighbour(linkaddr_t * neighbour)
+static int discovery_ipnd_save_neighbour(const uint32_t eid, const cl_addr_t* const addr)
 {
-	// TODO use eid as parameter of this function
-	discovery_ipnd_save_neighbour_ip(convert_rime_to_eid(neighbour), NULL, 0);
-}
-
-
-static void discovery_ipnd_save_neighbour_ip(const uint32_t eid, const ip_addr_t* const ip, const uint16_t port)
-{
-	// TODO use possibly only eid and cl_addr as parameter and
-	// add only one function for lowpan and ip
-
 	if( discovery_status == 0 ) {
 		// Not initialized yet
-		return;
+		return -1;
 	}
+
+	// If we know that neighbour already, no need to re-add it
+	if(discovery_ipnd_refresh_neighbour(addr) >= 1) {
+		return 0;
+	}
+
 
 	// TODO if the eid already exists,
 	// because of a lowpan discovery
 	// this function will not detect the entry
 	// and a second entry with the same eid for ip will be created
 
-	// If we know that neighbour already, no need to re-add it
-	if( discovery_ipnd_refresh_neighbour_ip(ip, port) ) {
-		return;
+	if (addr->isIP) {
+		// TODO find entry for eid and update ip values
+		//discovery_ipnd_is_neighbour();
+		// return 1;
 	}
 
-	struct discovery_ipnd_neighbour_list_entry * entry;
-	entry = memb_alloc(&neighbour_mem);
+	struct discovery_ipnd_neighbour_list_entry* const entry = memb_alloc(&neighbour_mem);
 
 	if( entry == NULL ) {
 		LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_WRN, "no more space for neighbours");
-		return;
+		return -2;
 	}
 
 	LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_INF, "Found new neighbour ipn:%lu", eid);
@@ -682,16 +654,28 @@ static void discovery_ipnd_save_neighbour_ip(const uint32_t eid, const ip_addr_t
 	memset(entry, 0, sizeof(struct discovery_ipnd_neighbour_list_entry));
 
 	entry->neighbour = convert_eid_to_rime(eid);
-	if (ip == NULL || port == 0) {
+	if (addr->isIP) {
+		entry->addr_type = ADDRESS_TYPE_FLAG_IPV4;
+		ip_addr_copy(entry->ip, addr->ip);
+		entry->port = addr->port;
+		// TODO update ip timestamp
+		entry->timestamp_last = clock_seconds();
+	} else {
 		entry->addr_type = ADDRESS_TYPE_FLAG_LOWPAN;
 		ip_addr_copy(entry->ip, *IP_ADDR_ANY);
 		entry->port = 0;
-	} else {
-		entry->addr_type = ADDRESS_TYPE_FLAG_IPV4;
-		ip_addr_copy(entry->ip, *ip);
-		entry->port = port;
+		entry->timestamp_last = clock_seconds();
+
+		/* rime and eid should be the same
+		 * otherwise the wrong destination will be used
+		 * in further processing
+		 */
+		// TODO remove const cast
+		if (convert_rime_to_eid((linkaddr_t*)&addr->lowpan) == eid) {
+			LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_ERR, "The EID %u and the PAN addresse %u.%u are different. This is not supported.",
+				eid, addr->lowpan.u8[0], addr->lowpan.u8[1]);
+		}
 	}
-	entry->timestamp_last = clock_seconds();
 	entry->timestamp_discovered = clock_seconds();
 
 	// Notify the statistics module
@@ -705,6 +689,8 @@ static void discovery_ipnd_save_neighbour_ip(const uint32_t eid, const ip_addr_t
 		.linkaddr = &entry->neighbour
 	};
 	agent_send_event(&event);
+
+	return 2;
 }
 
 /**
@@ -822,9 +808,7 @@ const struct discovery_driver discovery_ipnd = {
 		.enable			= discovery_ipnd_enable,
 		.disable		= discovery_ipnd_disable,
 		.receive		= discovery_ipnd_receive,
-		.receive_ip		= discovery_ipnd_receive_ip,
 		.alive			= discovery_ipnd_refresh_neighbour,
-		.alive_ip		= discovery_ipnd_refresh_neighbour_ip,
 		.dead			= discovery_ipnd_delete_neighbour,
 		.discover		= discovery_ipnd_is_neighbour,
 		.neighbours		= discovery_ipnd_list_neighbours,

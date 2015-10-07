@@ -329,9 +329,6 @@ int routing_flooding_forward_directly(struct routing_entry_t * entry)
 		return FLOOD_ROUTE_RETURN_CONTINUE;
 	}
 
-	/* We know the neighbour, send it directly */
-	LOG(LOGD_DTN, LOG_ROUTE, LOGL_INF, "send bundle %lu to %u.%u directly", entry->bundle_number, nei_l->neighbour.u8[0], nei_l->neighbour.u8[1]);
-
 	/* Mark bundle as busy */
 	entry->flags |= ROUTING_FLAG_IN_TRANSIT;
 
@@ -344,6 +341,14 @@ int routing_flooding_forward_directly(struct routing_entry_t * entry)
 		 */
 		return FLOOD_ROUTE_RETURN_CONTINUE;
 	}
+
+
+	/* We know the neighbour, send it directly */
+	char addr_str[CL_ADDR_STRING_LENGTH];
+	cl_addr_string(&neighbour, addr_str, sizeof(addr_str));
+	LOG(LOGD_DTN, LOG_ROUTE, LOGL_INF, "send bundle %lu to %u.%u (%s) directly",
+		entry->bundle_number, nei_l->neighbour.u8[0], nei_l->neighbour.u8[1], addr_str);
+
 
 	/* And queue it for sending */
 	h = routing_flooding_send_bundle(entry->bundle_number, &neighbour);
@@ -415,7 +420,10 @@ int routing_flooding_forward_normal(struct routing_entry_t * entry)
 		}
 
 		if(!sent) {
-			LOG(LOGD_DTN, LOG_ROUTE, LOGL_INF, "send bundle %lu to %u.%u", entry->bundle_number, nei_l->neighbour.u8[0], nei_l->neighbour.u8[1]);
+			char addr_str[CL_ADDR_STRING_LENGTH];
+			cl_addr_string(&neighbour, addr_str, sizeof(addr_str));
+			LOG(LOGD_DTN, LOG_ROUTE, LOGL_INF, "send bundle %lu to %u.%u (%s)",
+				entry->bundle_number, entry->neighbours[i].u8[0], entry->neighbours[i].u8[1], addr_str);
 
 			/* Mark bundle as busy */
 			entry->flags |= ROUTING_FLAG_IN_TRANSIT;

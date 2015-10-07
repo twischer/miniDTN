@@ -76,14 +76,13 @@ struct discovery_driver {
 	/**
 	 * Pass incoming discovery beacons to the discovery module
 	 */
-	void (* receive)(linkaddr_t * source, uint8_t * payload, uint8_t length);
-	void (* receive_ip)(const ip_addr_t* const ip, const uint8_t* const payload, const uint8_t length);
+	int (* receive)(const cl_addr_t* const addr, const uint8_t* const payload, const uint8_t length);
 
 	/**
 	 * Bundle from node has been received, cache this node as available
 	 */
-	void (* alive)(linkaddr_t * source);
-	bool (* alive_ip)(const struct ip_addr* const ip, const uint16_t port);
+	int (* alive)(const cl_addr_t* const neighbour);
+	// TODO int (* alive_eid)(const uint32_t eid);
 
 	/**
 	 * Multiple transmission attempts to this neighbour have failed

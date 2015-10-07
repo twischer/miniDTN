@@ -222,7 +222,8 @@ int convergence_layer_lowpan_dgram_incoming_frame(const cl_addr_t* const source,
 	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Incoming frame from %s (header 0x%02x)", addr_str, payload[0]);
 
 	/* Notify the discovery module, that we have seen a peer */
-	DISCOVERY.alive((linkaddr_t*)&source->lowpan);
+	DISCOVERY.alive(source);
+	// TODO call alive_eid, if discovery entry does not already exist
 
 	/* Check the COMPAT information */
 	if( (payload[0] & CONVERGENCE_LAYER_MASK_COMPAT) != CONVERGENCE_LAYER_COMPAT ) {
@@ -250,8 +251,7 @@ int convergence_layer_lowpan_dgram_incoming_frame(const cl_addr_t* const source,
 		cl_addr_string(source, addr_str, sizeof(addr_str));
 		LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Incoming discovery frame from %s", addr_str);
 
-		// TODO make linkaddr const and rmeove const cast
-		DISCOVERY.receive((linkaddr_t*)&source->lowpan, (uint8_t*)data_pointer, data_length);
+		DISCOVERY.receive(source, data_pointer, data_length);
 
 		return 1;
 	}

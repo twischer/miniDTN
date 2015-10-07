@@ -135,9 +135,9 @@ static void convergence_layer_udp_discovery_thread(void *arg)
 		static struct netbuf* buf = NULL;
 		if (netconn_recv(discovery_conn, &buf) == ERR_OK) {
 			const ip_addr_t* const addr = netbuf_fromaddr(buf);
+			const uint16_t port = netbuf_fromport(buf);
 
 #ifdef ENABLE_LOGGING
-			const uint16_t port = netbuf_fromport(buf);
 			// TODO replace ipaddr_ntoa with ipaddr_ntoa_r to make it reentrant for multi threading
 			LOG(LOGD_DTN, LOG_CL_UDP, LOGL_DBG, "Discovery package received from addr %s port %u", ipaddr_ntoa(addr), port);
 #endif /* ENABLE_LOGGING */
@@ -150,7 +150,11 @@ static void convergence_layer_udp_discovery_thread(void *arg)
 			}
 
 			/* Notify the discovery module, that we have seen a peer */
-			DISCOVERY.receive_ip(addr, data, length);
+			cl_addr_t source;
+			source.isIP = true;
+			ip_addr_copy(source.ip, *addr);
+			source.port = port;
+			DISCOVERY.receive(&source, data, length);
 
 			netbuf_delete(buf);
 		}

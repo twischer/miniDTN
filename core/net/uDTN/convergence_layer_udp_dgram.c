@@ -115,7 +115,7 @@ int convergence_layer_udp_dgram_incoming_frame(const cl_addr_t* const source, co
 	LOG(LOGD_DTN, LOG_CL_UDP, LOGL_DBG, "Incoming frame from %s (header 0x%02x 0x%02x)", addr_str, payload[0], payload[1]);
 
 	/* Notify the discovery module, that we have seen a peer */
-	DISCOVERY.alive_ip(&source->ip, source->port);
+	DISCOVERY.alive(source);
 
 	const HEADER_TYPES type = payload[0];
 	const HEADER_FLAGS header_flags = (payload[1] & 0xF0) >> 4;
@@ -145,7 +145,7 @@ int convergence_layer_udp_dgram_incoming_frame(const cl_addr_t* const source, co
 	case HEADER_BROADCAST:
 		/* is discovery */
 		LOG(LOGD_DTN, LOG_CL_UDP, LOGL_DBG, "Incoming discovery frame from %s", addr_str);
-		DISCOVERY.receive_ip(&source->ip, data_pointer, data_length);
+		DISCOVERY.receive(source, data_pointer, data_length);
 		return 1;
 
 	case HEADER_ACK:
