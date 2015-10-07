@@ -91,7 +91,8 @@ struct discovery_ipnd_neighbour_list_entry {
 	linkaddr_t neighbour;
 	ip_addr_t ip;
 	uint16_t port;
-	unsigned long timestamp_last;
+	unsigned long timestamp_last_lowpan;
+	unsigned long timestamp_last_ip;
 	unsigned long timestamp_discovered;
 };
 
@@ -570,16 +571,22 @@ static int discovery_ipnd_refresh_neighbour(const cl_addr_t* const neighbour)
 			entry = list_item_next(entry)) {
 		if(  discovery_neighbour_cmp( (struct discovery_neighbour_list_entry*)entry, neighbour )  ) {
 			if (neighbour->isIP) {
-				// TODO update own time stamp
-				entry->timestamp_last = clock_seconds();
+				entry->timestamp_last_ip = clock_seconds();
 			} else {
-				entry->timestamp_last = clock_seconds();
+				entry->timestamp_last_lowpan = clock_seconds();
 			}
 			return 1;
 		}
 	}
 
 	return 0;
+}
+
+
+static void discovery_ipnd_destroy_neighbour(struct discovery_ipnd_neighbour_list_entry* entry)
+{
+	list_remove(neighbour_list, entry);
+	memb_free(&neighbour_mem, entry);
 }
 
 
@@ -607,13 +614,24 @@ static void discovery_ipnd_delete_neighbour(const cl_addr_t* const neighbour)
 			entry != NULL;
 			entry = list_item_next(entry)) {
 		if( discovery_neighbour_cmp((struct discovery_neighbour_list_entry*)entry, neighbour) ) {
+			/* firstly remove the corresponding address type
+			 * and check, if there are other adresses
+			 */
+			const uint8_t addr_type = neighbour->isIP ? ADDRESS_TYPE_FLAG_IPV4 : ADDRESS_TYPE_FLAG_LOWPAN;
+			entry->addr_type &= ~addr_type;
+
+			if (entry->addr_type != 0) {
+				/* there are other addresses for this neighbour available.
+				 * So do not delete this discovery entry
+				 */
+				return;
+			}
 
 			// Notify the statistics module
-			statistics_contacts_down(&entry->neighbour, entry->timestamp_last - entry->timestamp_discovered);
+			statistics_contacts_down(&entry->neighbour, entry->timestamp_last_lowpan - entry->timestamp_discovered);
+			// TODO statistics_contacts_down(&entry->neighbour, entry->timestamp_last_ip - entry->timestamp_discovered);
 
-			list_remove(neighbour_list, entry);
-			memb_free(&neighbour_mem, entry);
-
+			discovery_ipnd_destroy_neighbour(entry);
 			return;
 		}
 	}
@@ -626,7 +644,7 @@ static void discovery_ipnd_neighbour_update_ip(const cl_addr_t* const addr, stru
 	ip_addr_copy(entry->ip, addr->ip);
 	entry->port = addr->port;
 	// TODO update ip timestamp
-	entry->timestamp_last = clock_seconds();
+	entry->timestamp_last_ip = clock_seconds();
 }
 
 
@@ -680,7 +698,7 @@ static int discovery_ipnd_save_neighbour(const uint32_t eid, const cl_addr_t* co
 		entry->addr_type = ADDRESS_TYPE_FLAG_LOWPAN;
 		ip_addr_copy(entry->ip, *IP_ADDR_ANY);
 		entry->port = 0;
-		entry->timestamp_last = clock_seconds();
+		entry->timestamp_last_lowpan = clock_seconds();
 
 		/* rime and eid should be the same
 		 * otherwise the wrong destination will be used
@@ -748,7 +766,8 @@ void discovery_ipnd_clear()
 		entry = list_head(neighbour_list);
 
 		// Notify the statistics module
-		statistics_contacts_down(&entry->neighbour, entry->timestamp_last - entry->timestamp_discovered);
+		statistics_contacts_down(&entry->neighbour, entry->timestamp_last_lowpan - entry->timestamp_discovered);
+		// TODO statistics_contacts_down(&entry->neighbour, entry->timestamp_last_ip - entry->timestamp_discovered);
 
 		/* call convergence_layer_neighbour_down for all discovered address types */
 		cl_addr_t addr;
@@ -764,42 +783,74 @@ void discovery_ipnd_clear()
 	}
 }
 
+
+static int discovery_ipnd_check_neighbour_timeout(struct discovery_ipnd_neighbour_list_entry* const entry, const unsigned long timestamp_last,
+												  const uint8_t addr_type)
+{
+	const unsigned long diff = clock_seconds() - timestamp_last;
+	if (diff > DISCOVERY_NEIGHBOUR_TIMEOUT) {
+		LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "Neighbour ipn:%u timed out: %lu vs. %lu = %lu", convert_rime_to_eid(&entry->neighbour),
+				clock_seconds(), timestamp_last, diff);
+
+		cl_addr_t addr;
+		if (discovery_neighbour_to_addr((struct discovery_neighbour_list_entry*)entry, addr_type, &addr) < 0) {
+			// TODO possibly remove the entry
+			LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_ERR, "Could not convert address of discovery entry");
+			return -1;
+		} else {
+			discovery_ipnd_delete_neighbour(&addr);
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
+
 static void discovery_ipnd_remove_stale_neighbours(const TimerHandle_t timer)
 {
-	struct discovery_ipnd_neighbour_list_entry * entry;
-	int changed = 1;
+	bool changed = true;
+	while (changed) {
+		changed = false;
 
-	while( changed ) {
-		changed = 0;
-
-		for(entry = list_head(neighbour_list);
+		for(struct discovery_ipnd_neighbour_list_entry* entry = list_head(neighbour_list);
 				entry != NULL;
 				entry = list_item_next(entry)) {
-			if( (clock_seconds() - entry->timestamp_last) > DISCOVERY_NEIGHBOUR_TIMEOUT ) {
-				LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "Neighbour %u.%u timed out: %lu vs. %lu = %lu", entry->neighbour.u8[0], entry->neighbour.u8[1], clock_seconds(), entry->timestamp_last, clock_seconds() - entry->timestamp_last);
-
-				/*
-				 * call discovery_ipnd_delete_neighbour for all discovered address types.
-				 * But first, copy all addresses,
-				 * because calling discovery_ipnd_delete_neighbour will destroy
-				 * the neighbour_list entry and
-				 * an not existing struct will be used
-				 * for copiing the addresse in the second call
-				 * of discovery_ipnd_delete_neighbour
-				 */
-				cl_addr_t addr_lowpan;
-				const int lowpan_error = discovery_neighbour_to_addr((struct discovery_neighbour_list_entry*)entry, ADDRESS_TYPE_FLAG_LOWPAN, &addr_lowpan);
-				cl_addr_t addr_ipv4;
-				if (discovery_neighbour_to_addr((struct discovery_neighbour_list_entry*)entry, ADDRESS_TYPE_FLAG_IPV4, &addr_ipv4) >= 0) {
-					discovery_ipnd_delete_neighbour(&addr_ipv4);
-				}
-				if (lowpan_error >= 0) {
-					discovery_ipnd_delete_neighbour(&addr_lowpan);
-				}
-
-				changed = 1;
+			const bool lowpan_exists = (entry->addr_type & ADDRESS_TYPE_FLAG_LOWPAN);
+			const bool ip_exists = (entry->addr_type & ADDRESS_TYPE_FLAG_IPV4);
+			if (!lowpan_exists && !ip_exists) {
+				LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_ERR, "Entry without an vaild address. Deleting");
+				discovery_ipnd_destroy_neighbour(entry);
+				changed = true;
 				break;
 			}
+
+
+			if (lowpan_exists && discovery_ipnd_check_neighbour_timeout(entry, entry->timestamp_last_lowpan, ADDRESS_TYPE_FLAG_LOWPAN) > 0) {
+				changed = true;
+				/* not break here,
+				 * because possibly the next address type is
+				 * timed out too.
+				 * So the full entry has to be deleted
+				 */
+			}
+
+			if (ip_exists && discovery_ipnd_check_neighbour_timeout(entry, entry->timestamp_last_ip, ADDRESS_TYPE_FLAG_IPV4) > 0) {
+				changed = true;
+				/* not break here,
+				 * because possibly the next address type is
+				 * timed out too.
+				 * So the full entry has to be deleted
+				 */
+			}
+
+			/* list has changed
+			 * so reload list entries
+			 */
+			if (changed) {
+				break;
+			}
+
 		}
 	}
 
