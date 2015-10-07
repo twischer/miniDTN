@@ -496,7 +496,8 @@ static void discovery_ipnd_send()
 	 * Add static Service block
 	 */
 	services = &ipnd_buffer[offset++]; // This is a pointer onto the location of the service counter in the outgoing buffer
-	*services = 0; // Start with 0 services
+	/* first service is the DGRAM:LOWPAN convergence layer */
+	*services = 1;
 
 	// Allow all registered DTN APPs to add an IPND service block
 	for(h=0; dtn_apps[h] != NULL; h++) {
