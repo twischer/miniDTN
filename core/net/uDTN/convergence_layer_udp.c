@@ -65,6 +65,8 @@ static int convergence_layer_udp_send(struct netconn* const conn, const ip_addr_
 	 * because it will be done by netconn_sendto()
 	 */
 
+	// TODO use thread safe netifapi_netif_common instead
+	// posibly not needed, becasue it checks only a flag
 	if (!netif_is_up(netif_default)) {
 		LOG(LOGD_DTN, LOG_CL_UDP, LOGL_WRN, "Network interface is down. Could not send udp data.");
 		return -5;
@@ -97,8 +99,9 @@ static int convergence_layer_udp_send(struct netconn* const conn, const ip_addr_
 	}
 
 
-	if (netconn_sendto(conn, buf, (ip_addr_t*)addr, port) != ERR_OK) {
-		LOG(LOGD_DTN, LOG_CL_UDP, LOGL_ERR, "Could not send data. Buffer is not existing.");
+	const err_t err = netconn_sendto(conn, buf, (ip_addr_t*)addr, port);
+	if (err != ERR_OK) {
+		LOG(LOGD_DTN, LOG_CL_UDP, LOGL_WRN, "Could not send data. Buffer is not existing. (err %d)", err);
 		netbuf_delete(buf);
 		return -4;
 	}
@@ -219,6 +222,7 @@ bool convergence_layer_udp_init(void)
 {
 	IP4_ADDR(&udp_mcast_addr, CL_UDP_DISCOVERY_IP_1, CL_UDP_DISCOVERY_IP_2, CL_UDP_DISCOVERY_IP_3, CL_UDP_DISCOVERY_IP_4);
 
+	// TODO wait for lwip init is done
 
 #ifdef UDP_DISCOVERY_ANNOUNCEMENT
 	/* initalize the udp connection for the discovery messages */
@@ -234,7 +238,7 @@ bool convergence_layer_udp_init(void)
 		return false;
 	}
 
-	if ( !xTaskCreate(convergence_layer_udp_discovery_thread, "UDP-CL discovery", configMINIMAL_STACK_SIZE+100, NULL, 1, NULL) ) {
+	if ( !xTaskCreate(convergence_layer_udp_discovery_thread, "UDP-CL discovery", configMINIMAL_STACK_SIZE+100, NULL, 2, NULL) ) {
 		LOG(LOGD_DTN, LOG_CL_UDP, LOGL_ERR, "UDP-CL discovery task creation failed.");
 		return false;
 	}

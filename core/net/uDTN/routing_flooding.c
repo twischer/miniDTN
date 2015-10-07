@@ -207,7 +207,7 @@ static void routing_flooding_blacklist_delete(const cl_addr_t* const neighbour)
 bool routing_flooding_init(void)
 {
 	// Start CL process
-	if ( !xTaskCreate(routing_process, "FLOOD ROUTE process", 0x100, NULL, 1, &routing_task) ) {
+	if ( !xTaskCreate(routing_process, "FLOOD ROUTE process", 0x100, NULL, 3, &routing_task) ) {
 		return false;
 	}
 

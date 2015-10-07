@@ -32,7 +32,7 @@ bool dtn_process_create_with_queue(const TaskFunction_t pvTaskCode, const char* 
 
 
 	TaskHandle_t createdTask;
-	if ( !xTaskCreate(pvTaskCode, pcName, usStackDepth, NULL, 1, &createdTask) ) {
+	if ( !xTaskCreate(pvTaskCode, pcName, usStackDepth, NULL, 4, &createdTask) ) {
 		LOG(LOGD_DTN, LOG_AGENT, LOGL_ERR, "Failed to create task %s", pcName);
 		return false;
 	}
