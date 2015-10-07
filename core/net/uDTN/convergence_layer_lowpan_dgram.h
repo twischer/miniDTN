@@ -12,6 +12,7 @@ int convergence_layer_lowpan_dgram_send_bundle(const cl_addr_t* const dest, cons
 											   const uint8_t* const payload, const size_t length, const void* const reference);
 int convergence_layer_lowpan_dgram_send_ack(const cl_addr_t* const destination, const int sequence_number, const int type,
 											const void* const reference);
+int convergence_layer_lowpan_dgram_status(const void* const pointer, const uint8_t outcome);
 
 int convergence_layer_lowpan_dgram_incoming_frame(const cl_addr_t* const source, const uint8_t* const payload,
 												  const uint8_t length, const packetbuf_attr_t rssi);

@@ -44,8 +44,7 @@ static inline int convergence_layer_udp_dgram_send(const ip_addr_t* const ip, co
 	const int ret = convergence_layer_udp_send_data(ip, buffer, sizeof(buffer), payload, length);
 
 	const uint8_t status = (ret < 0) ? CONVERGENCE_LAYER_STATUS_NOSEND : CONVERGENCE_LAYER_STATUS_OK;
-	// TODO remove const cast
-	convergence_layer_status((void*)reference, status);
+	convergence_layer_status(reference, status);
 
 	return 1;
 }
@@ -53,7 +52,7 @@ static inline int convergence_layer_udp_dgram_send(const ip_addr_t* const ip, co
 
 size_t convergence_layer_udp_dgram_max_payload_length(void)
 {
-	return MAX_ETH_PAYLOAD - sizeof(struct ip_hdr) - sizeof(struct udp_hdr) - UDP_DGRAM_HEADER_LEN;
+	return ETH_MAX_ETH_PAYLOAD - sizeof(struct ip_hdr) - sizeof(struct udp_hdr) - UDP_DGRAM_HEADER_LEN;
 }
 
 

@@ -78,7 +78,7 @@
 #ifdef CONVERGENCE_LAYER_CONF_MAX_SIZE
 #define CONVERGENCE_LAYER_MAX_SIZE CONVERGENCE_LAYER_CONF_MAX_SIZE
 #else
-#define CONVERGENCE_LAYER_MAX_SIZE 300
+#define CONVERGENCE_LAYER_MAX_SIZE ETH_MAX_ETH_PAYLOAD
 #endif
 
 /**
@@ -147,9 +147,6 @@ struct transmit_ticket_t {
 };
 
 
-// TODO move it to the lowpan_dgram
-int convergence_layer_transmitting;
-
 bool convergence_layer_init(void);
 
 int convergence_layer_free_transmit_ticket(struct transmit_ticket_t * ticket);
@@ -162,7 +159,7 @@ int convergence_layer_incoming_data(const cl_addr_t* const source, const uint8_t
 									const packetbuf_attr_t rssi, const int sequence_number, const int flags);
 int convergence_layer_parse_ackframe(const cl_addr_t* const source, const uint8_t* const payload, const uint8_t length,
 											const uint8_t sequence_number, const uint8_t type, const uint8_t flags);
-int convergence_layer_status(void * pointer, uint8_t status);
+int convergence_layer_status(const void* const pointer, const uint8_t outcome);
 
 int convergence_layer_delete_bundle(uint32_t bundle_number);
 

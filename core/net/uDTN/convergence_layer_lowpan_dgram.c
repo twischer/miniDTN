@@ -42,6 +42,12 @@
 #define CONVERGENCE_LAYER_MAX_LENGTH 116
 
 
+/**
+ * MUTEX to avoid flooding the MAC layer with outgoing bundles
+ */
+static bool convergence_layer_transmitting = false;
+
+
 
 size_t convergence_layer_lowpan_dgram_max_payload_length(void)
 {
@@ -57,7 +63,7 @@ int convergence_layer_lowpan_dgram_send_discovery(uint8_t * payload, uint8_t len
 	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Sending discovery to %u.%u", neighbour->u8[0], neighbour->u8[1]);
 
 	/* If we are currently transmitting or waiting for an ACK, do nothing */
-	if( convergence_layer_transmitting ) {
+	if(convergence_layer_transmitting) {
 		return -1;
 	}
 
@@ -74,7 +80,7 @@ int convergence_layer_lowpan_dgram_send_discovery(uint8_t * payload, uint8_t len
 	memcpy(buffer + 1, payload, length);
 
 	/* Now we are transmitting */
-	convergence_layer_transmitting = 1;
+	convergence_layer_transmitting = true;
 
 	/* Send it out via the MAC */
 	dtn_network_send(neighbour, length + 1, NULL);
@@ -82,10 +88,29 @@ int convergence_layer_lowpan_dgram_send_discovery(uint8_t * payload, uint8_t len
 	return 1;
 }
 
-
+/**
+ * @brief convergence_layer_lowpan_dgram_send_bundle
+ * @param dest
+ * @param sequence_number
+ * @param flags
+ * @param payload
+ * @param length
+ * @param reference
+ * @return <0 an error occured
+ *          0 bundle was not send, because of locked driver
+ *          1 bundle was send
+ */
 int convergence_layer_lowpan_dgram_send_bundle(const cl_addr_t* const dest, const int sequence_number, const uint8_t flags,
 											const uint8_t* const payload, const size_t length, const void* const reference)
 {
+	/* only send the bundle, if no other bundle is sending */
+	if (convergence_layer_transmitting) {
+		return 0;
+	}
+
+	/* Now we are transmitting */
+	convergence_layer_transmitting = true;
+
 	/* Get the outgoing network buffer */
 	uint8_t* const buffer = dtn_network_get_buffer();
 	if( buffer == NULL ) {
@@ -121,10 +146,27 @@ int convergence_layer_lowpan_dgram_send_bundle(const cl_addr_t* const dest, cons
 	return 1;
 }
 
-
+/**
+ * @brief convergence_layer_lowpan_dgram_send_ack
+ * @param destination
+ * @param sequence_number
+ * @param type
+ * @param reference
+ * @return <0 an error occured
+ *          0 bundle was not send, because of locked driver
+ *          1 bundle was send
+ */
 int convergence_layer_lowpan_dgram_send_ack(const cl_addr_t* const destination, const int sequence_number, const int type,
 											 const void* const reference)
 {
+	/* only send the bundle, if no other bundle is sending */
+	if (convergence_layer_transmitting) {
+		return 0;
+	}
+
+	/* Now we are transmitting */
+	convergence_layer_transmitting = true;
+
 	/* Get our buffer */
 	uint8_t* const buffer = dtn_network_get_buffer();
 	if( buffer == NULL ) {
@@ -153,6 +195,15 @@ int convergence_layer_lowpan_dgram_send_ack(const cl_addr_t* const destination, 
 	dtn_network_send((linkaddr_t*)&destination->lowpan, 1, (void*)reference);
 
 	return 1;
+}
+
+
+int convergence_layer_lowpan_dgram_status(const void* const pointer, const uint8_t outcome)
+{
+	/* Something has been sent, so the radio is not blocked anymore */
+	convergence_layer_transmitting = false;
+
+	return convergence_layer_status(pointer, outcome);
 }
 
 

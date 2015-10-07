@@ -76,14 +76,9 @@ static TaskHandle_t convergence_layer_task;
 static void convergence_layer_process(void* p);
 
 /**
- * MUTEX to avoid flooding the MAC layer with outgoing bundles
- */
-int convergence_layer_transmitting = 0;
-
-/**
  * Keep track of the allocated tickets
  */
-int convergence_layer_slots;
+static int convergence_layer_slots = 0;
 
 /**
  * Keep track of the tickets in queue
@@ -285,9 +280,6 @@ static int convergence_layer_dgram_send_bundle(struct transmit_ticket_t* const t
 	/* Flag the bundle as being in transit now */
 	ticket->flags |= CONVERGENCE_LAYER_QUEUE_IN_TRANSIT;
 
-	/* Now we are transmitting */
-	convergence_layer_transmitting = 1;
-
 	/* This neighbour is blocked, until we have received the App Layer ACK or NACK */
 	convergence_layer_set_blocked(&ticket->neighbour);
 
@@ -458,24 +450,20 @@ static int convergence_layer_send_ack(const cl_addr_t* const destination, const 
 	cl_addr_string(destination, addr_str, sizeof(addr_str));
 	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Sending ACK or NACK to %s for SeqNo %u with ticket %p", addr_str, sequence_number, ticket);
 
-	/* If we are currently transmitting or waiting for an ACK, do nothing */
-	if( convergence_layer_transmitting ) {
-		/* This ticket has to be processed ASAP, so set timestamp to 0 */
-		ticket->timestamp = 0;
-
-		return -1;
-	}
-
 	/* Note down our latest attempt */
 	ticket->timestamp = xTaskGetTickCount();
-
-	/* Now we are transmitting */
-	convergence_layer_transmitting = 1;
 
 	if (destination->isIP) {
 		return convergence_layer_udp_dgram_send_ack(destination, sequence_number, type, ticket);
 	} else {
-		return convergence_layer_lowpan_dgram_send_ack(destination, sequence_number, type, ticket);
+		const int ret = convergence_layer_lowpan_dgram_send_ack(destination, sequence_number, type, ticket);
+		if (ret == 0) {
+			/* ack was not send, becasue of an busy radio */
+			/* This ticket has to be processed ASAP, so set timestamp to 0 */
+			ticket->timestamp = 0;
+			return -1;
+		}
+		return ret;
 	}
 }
 
@@ -855,14 +843,11 @@ int convergence_layer_incoming_data(const cl_addr_t* const source, const uint8_t
 }
 
 
-int convergence_layer_status(void * pointer, uint8_t outcome)
+int convergence_layer_status(const void* const pointer, const uint8_t outcome)
 {
-	struct transmit_ticket_t * ticket = NULL;
+	struct transmit_ticket_t* const ticket = (struct transmit_ticket_t*)pointer;
 
 	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "MAC callback for %p with %d", pointer, outcome);
-
-	/* Something has been sent, so the radio is not blocked anymore */
-	convergence_layer_transmitting = 0;
 
 	/* Notify the process to commence transmitting outgoing bundles */
 	if( convergence_layer_pending == 0 ) {
@@ -886,8 +871,6 @@ int convergence_layer_status(void * pointer, uint8_t outcome)
 		/* Must be a discovery message */
 		return 0;
 	}
-
-	ticket = (struct transmit_ticket_t *) pointer;
 
 	if( (ticket->flags & CONVERGENCE_LAYER_QUEUE_ACK) || (ticket->flags & CONVERGENCE_LAYER_QUEUE_NACK) || (ticket->flags & CONVERGENCE_LAYER_QUEUE_TEMP_NACK) ) {
 		/* Unset IN_TRANSIT flag */
@@ -1275,15 +1258,6 @@ static void convergence_layer_process(void* p)
 			convergence_layer_pending = 0;
 
 
-			/* If we are currently transmitting, we cannot send another bundle */
-			if( convergence_layer_transmitting ) {
-				/* We will get polled again when the MAC layers calls us back,
-				 * so lean back and relax
-				 */
-				continue;
-			}
-
-
 			LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Try to send %d available tickets", list_length(transmission_ticket_list));
 
 			/* If we have been woken up, it must have been a poll to transmit outgoing bundles */
@@ -1318,10 +1292,20 @@ static void convergence_layer_process(void* p)
 				}
 
 				/* Send the bundle just now */
-				convergence_layer_dgram_prepare_segmentation(ticket);
+				const int ret = convergence_layer_dgram_prepare_segmentation(ticket);
 
-				/* Radio is busy now, defer */
-				break;
+				if (ret > 0) {
+					// TODO send other ip packages for other neighbours
+					/* package successfully send, break and wait for ack */
+					break;
+				} else if (ret == 0) {
+					/* Radio is busy now look for ip packages */
+					/* We will get polled again when the MAC layers calls us back,
+					 * so lean back and relax
+					 */
+				} else {
+					/* an error occured, try again later */
+				}
 			}
 		}
 	}

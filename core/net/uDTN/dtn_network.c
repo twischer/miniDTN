@@ -106,7 +106,7 @@ static void dtn_network_sent(void * pointer, int status, int num_tx)
 	}
 
 	/* Call the CL */
-	convergence_layer_status(pointer, outcome);
+	convergence_layer_lowpan_dgram_status(pointer, outcome);
 }
 
 uint8_t * dtn_network_get_buffer()
