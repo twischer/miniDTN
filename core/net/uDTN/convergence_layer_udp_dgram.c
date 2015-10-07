@@ -1,5 +1,7 @@
 #include "convergence_layer_udp_dgram.h"
 
+#include <lwip/ip.h>
+#include <lwip/udp.h>
 #include "lib/logging.h"
 #include "agent.h"
 #include "discovery.h"
@@ -46,6 +48,12 @@ static inline int convergence_layer_udp_dgram_send(const ip_addr_t* const ip, co
 	convergence_layer_status((void*)reference, status);
 
 	return 1;
+}
+
+
+size_t convergence_layer_udp_dgram_max_payload_length(void)
+{
+	return MAX_ETH_PAYLOAD - sizeof(struct ip_hdr) - sizeof(struct udp_hdr) - UDP_DGRAM_HEADER_LEN;
 }
 
 

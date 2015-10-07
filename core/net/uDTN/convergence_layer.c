@@ -118,6 +118,23 @@ bool convergence_layer_init(void)
 }
 
 
+size_t convergence_layer_lowpan_dgram_max_payload_length(void)
+{
+	/* the gram lowpan clayer needs 1 byte */
+	return CONVERGENCE_LAYER_MAX_LENGTH - 1;
+}
+
+
+size_t convergence_layer_dgram_max_payload_length(const cl_addr_t* const addr)
+{
+	if (addr->isIP) {
+		return convergence_layer_udp_dgram_max_payload_length();
+	} else  {
+		return convergence_layer_lowpan_dgram_max_payload_length();
+	}
+}
+
+
 uint8_t convergence_layer_dgram_next_sequence_number(const cl_addr_t* const addr, const uint8_t last_seqno)
 {
 	if (addr->isIP) {
@@ -389,7 +406,8 @@ static int convergence_layer_dgram_prepare_segmentation(struct transmit_ticket_t
 	}
 
 
-	if( ticket->buffer.size > CONVERGENCE_LAYER_MAX_LENGTH && !(ticket->flags & CONVERGENCE_LAYER_QUEUE_MULTIPART) ) {
+	const size_t max_payload_length = convergence_layer_dgram_max_payload_length(&ticket->neighbour);
+	if( ticket->buffer.size > max_payload_length && !(ticket->flags & CONVERGENCE_LAYER_QUEUE_MULTIPART) ) {
 		LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Try to send bundle %lu as mutlipart bundle (buf %p, size %lu, flags 0x%x)",
 			ticket->bundle_number, ticket->buffer, ticket->buffer.size, ticket->flags);
 
@@ -412,7 +430,7 @@ static int convergence_layer_dgram_prepare_segmentation(struct transmit_ticket_t
 		ticket->sequence_number = outgoing_sequence_number;
 
 		/* Calculate the number of segments we will need */
-		const size_t segments = ( ticket->buffer.size + (CONVERGENCE_LAYER_MAX_LENGTH / 2) ) / CONVERGENCE_LAYER_MAX_LENGTH;
+		const size_t segments = ( ticket->buffer.size + (max_payload_length / 2) ) / max_payload_length;
 
 		/* And reserve the sequence number space for this bundle to allow for consequtive numbers */
 		outgoing_sequence_number = (outgoing_sequence_number + segments) % 4;
@@ -427,23 +445,22 @@ static int convergence_layer_dgram_prepare_segmentation(struct transmit_ticket_t
 		 * from above failed. So be it.
 		 */
 		uint8_t flags = CONVERGENCE_LAYER_FLAGS_FIRST | CONVERGENCE_LAYER_FLAGS_LAST;
-		if( length <= CONVERGENCE_LAYER_MAX_LENGTH && ticket->offset_acked == 0 ) {
+		if( length <= max_payload_length && ticket->offset_acked == 0 ) {
 			/* One bundle per segment, standard flags */
 			flags = CONVERGENCE_LAYER_FLAGS_FIRST | CONVERGENCE_LAYER_FLAGS_LAST;
 		} else if( ticket->offset_acked == 0 ) {
 			/* First segment of a bundle */
 			flags = CONVERGENCE_LAYER_FLAGS_FIRST;
-		} else if( length <= CONVERGENCE_LAYER_MAX_LENGTH ) {
+		} else if( length <= max_payload_length ) {
 			/* Last segment of a bundle */
 			flags = CONVERGENCE_LAYER_FLAGS_LAST;
-		} else if( length > CONVERGENCE_LAYER_MAX_LENGTH) {
+		} else {
 			/* A segment in the middle of a bundle */
 			flags = 0;
 		}
 
 		/* one byte for the CL header */
-		// TODO differ for ethernet, too (cl consists of 2 bytes)
-		const size_t length_to_sent = (length > (CONVERGENCE_LAYER_MAX_LENGTH - 1)) ? (CONVERGENCE_LAYER_MAX_LENGTH - 1) : length;
+		const size_t length_to_sent = (length > max_payload_length) ? max_payload_length : length;
 
 		/* onl increment the sequenz number, if all packages before were successfully acknowledged*/
 		if( ticket->offset_sent == ticket->offset_acked ) {
