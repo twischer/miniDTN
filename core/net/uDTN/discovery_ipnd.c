@@ -35,7 +35,6 @@
 #include "sdnv.h"
 #include "statistics.h"
 #include "convergence_layers.h"
-#include "convergence_layer_udp.h"
 #include "eid.h"
 #include "discovery_scheduler.h"
 
@@ -514,7 +513,7 @@ static void discovery_ipnd_send()
 
 	// Now: Send it
 	static const linkaddr_t bcast_addr = {{0, 0}};
-	if (!convergence_layer_send_discovery(ipnd_buffer, offset, (linkaddr_t*)&bcast_addr)) {
+	if (!convergence_layer_lowpan_dgram_send_discovery(ipnd_buffer, offset, (linkaddr_t*)&bcast_addr)) {
 		LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_WRN, "Discovery beacon message sent over lowpan failed.");
 	} else {
 		LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "Discovery beacon message sent over lowpan.");

@@ -23,7 +23,7 @@
 #include "dev/leds.h"
 #include "lib/logging.h"
 
-#include "convergence_layer.h"
+#include "convergence_layer_lowpan_dgram.h"
 #include "agent.h"
 #include "rf230bb.h"
 
@@ -67,8 +67,6 @@ static void dtn_network_input(void)
 	uint8_t length = 0;
 	packetbuf_attr_t rssi = 0;
 
-//	leds_on(LEDS_ALL);
-
 	/* Create a copy here, because otherwise packetbuf_clear will evaporate the address */
 	linkaddr_copy(&source.lowpan, packetbuf_addr(PACKETBUF_ADDR_SENDER));
 	source.isIP = false;
@@ -78,8 +76,6 @@ static void dtn_network_input(void)
 	rssi = packetbuf_attr(PACKETBUF_ATTR_RSSI);
 
 	convergence_layer_lowpan_dgram_incoming_frame(&source, buffer, length, rssi);
-
-//	leds_off(LEDS_ALL);
 }
 
 /**

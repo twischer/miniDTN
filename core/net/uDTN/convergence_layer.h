@@ -96,11 +96,6 @@
 #define CONVERGENCE_LAYER_QUEUE_MULTIPART_RECV	0x200
 
 /**
- * CL COMPAT VALUES
- */
-#define CONVERGENCE_LAYER_COMPAT			0x00
-
-/**
  * CL Header Types
  */
 #define CONVERGENCE_LAYER_TYPE_DATA 		0x10
@@ -116,14 +111,6 @@
 #define CONVERGENCE_LAYER_FLAGS_LAST		0x01
 
 /**
- * CL Field Masks
- */
-#define CONVERGENCE_LAYER_MASK_COMPAT		0xC0
-#define CONVERGENCE_LAYER_MASK_TYPE			0x30
-#define CONVERGENCE_LAYER_MASK_SEQNO		0x0C
-#define CONVERGENCE_LAYER_MASK_FLAGS		0x03
-
-/**
  * CL Callback Status
  */
 #define CONVERGENCE_LAYER_STATUS_OK			0x01
@@ -136,26 +123,6 @@
  */
 #define CONVERGENCE_LAYER_PRIORITY_NORMAL	0x01
 #define CONVERGENCE_LAYER_PRIORITY_HIGH		0x02
-
-/**
- * Maximum payload length of one outgoing frame
- *
- * IEEE 802.15.4 MAC Frames: 127 Byte
- * Frame Control Field    2 Byte
- * Sequence Number        1 Byte
- * Dst PAN                2 Byte
- * Dst Address            2 Byte
- * Src PAN                2 Byte
- * Src Address            2 Byte
- * Security Header        0 Byte
- * Frame Check Sequence   2 Byte
- * --- TOTAL:            13 Byte
- *
- * With PAN Compression: 11 Byte
- *
- * 127 Byte - 11 Byte = 116 Byte
- */
-#define CONVERGENCE_LAYER_MAX_LENGTH 116
 
 
 /**
@@ -179,15 +146,18 @@ struct transmit_ticket_t {
 	struct mmem * bundle;
 };
 
+
+// TODO move it to the lowpan_dgram
+int convergence_layer_transmitting;
+
 bool convergence_layer_init(void);
 
-struct transmit_ticket_t * convergence_layer_get_transmit_ticket(void);
 int convergence_layer_free_transmit_ticket(struct transmit_ticket_t * ticket);
+struct transmit_ticket_t * convergence_layer_get_transmit_ticket();
+
 
 int convergence_layer_enqueue_bundle(struct transmit_ticket_t * ticket);
-int convergence_layer_send_discovery(uint8_t * payload, uint8_t length, linkaddr_t * neighbour);
 
-int convergence_layer_lowpan_dgram_incoming_frame(const cl_addr_t* const source, const uint8_t* const payload, const uint8_t length, const packetbuf_attr_t rssi);
 int convergence_layer_incoming_data(const cl_addr_t* const source, const uint8_t* const data_pointer, const size_t data_length,
 									const packetbuf_attr_t rssi, const int sequence_number, const int flags);
 int convergence_layer_parse_ackframe(const cl_addr_t* const source, const uint8_t* const payload, const uint8_t length,

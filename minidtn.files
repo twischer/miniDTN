@@ -2457,3 +2457,6 @@ core/net/uDTN/cl_address.c
 core/net/uDTN/convergence_layer_udp_dgram.c
 core/net/uDTN/convergence_layer_udp_dgram.h
 Inc/debugging.h
+Src/debugging.c
+core/net/uDTN/convergence_layer_lowpan_dgram.h
+core/net/uDTN/convergence_layer_lowpan_dgram.c

@@ -32,6 +32,7 @@
 #include "bundleslot.h"
 #include "statusreport.h"
 #include "bundle_ageing.h"
+#include "convergence_layer_lowpan_dgram.h"
 #include "convergence_layer_udp_dgram.h"
 
 
@@ -64,9 +65,9 @@ MEMB(blocked_neighbour_mem, struct blocked_neighbour_t, CONVERGENCE_LAYER_QUEUE)
 /**
  * Internal functions
  */
-int convergence_layer_is_blocked(const cl_addr_t * const neighbour);
-int convergence_layer_set_blocked(const cl_addr_t* const neighbour);
-int convergence_layer_set_unblocked(const cl_addr_t * const neighbour);
+static int convergence_layer_is_blocked(const cl_addr_t * const neighbour);
+static int convergence_layer_set_blocked(const cl_addr_t* const neighbour);
+static int convergence_layer_set_unblocked(const cl_addr_t * const neighbour);
 
 /**
  * CL process
@@ -77,7 +78,7 @@ static void convergence_layer_process(void* p);
 /**
  * MUTEX to avoid flooding the MAC layer with outgoing bundles
  */
-static int convergence_layer_transmitting = 0;
+int convergence_layer_transmitting = 0;
 
 /**
  * Keep track of the allocated tickets
@@ -105,7 +106,6 @@ static uint8_t convergence_layer_pending = 0;
  */
 static volatile bool convergence_layer_backoff_pending = false;
 
-void convergence_layer_show_tickets();
 
 bool convergence_layer_init(void)
 {
@@ -118,14 +118,7 @@ bool convergence_layer_init(void)
 }
 
 
-size_t convergence_layer_lowpan_dgram_max_payload_length(void)
-{
-	/* the gram lowpan clayer needs 1 byte */
-	return CONVERGENCE_LAYER_MAX_LENGTH - 1;
-}
-
-
-size_t convergence_layer_dgram_max_payload_length(const cl_addr_t* const addr)
+static size_t convergence_layer_dgram_max_payload_length(const cl_addr_t* const addr)
 {
 	if (addr->isIP) {
 		return convergence_layer_udp_dgram_max_payload_length();
@@ -135,7 +128,7 @@ size_t convergence_layer_dgram_max_payload_length(const cl_addr_t* const addr)
 }
 
 
-uint8_t convergence_layer_dgram_next_sequence_number(const cl_addr_t* const addr, const uint8_t last_seqno)
+static uint8_t convergence_layer_dgram_next_sequence_number(const cl_addr_t* const addr, const uint8_t last_seqno)
 {
 	if (addr->isIP) {
 		return (last_seqno + 1) % 16;
@@ -145,7 +138,7 @@ uint8_t convergence_layer_dgram_next_sequence_number(const cl_addr_t* const addr
 }
 
 
-struct transmit_ticket_t * convergence_layer_get_transmit_ticket_priority(uint8_t priority)
+static struct transmit_ticket_t * convergence_layer_get_transmit_ticket_priority(uint8_t priority)
 {
 	struct transmit_ticket_t * ticket = NULL;
 
@@ -184,10 +177,12 @@ struct transmit_ticket_t * convergence_layer_get_transmit_ticket_priority(uint8_
 	return ticket;
 }
 
+
 struct transmit_ticket_t * convergence_layer_get_transmit_ticket()
 {
 	return convergence_layer_get_transmit_ticket_priority(CONVERGENCE_LAYER_PRIORITY_NORMAL);
 }
+
 
 int convergence_layer_free_transmit_ticket(struct transmit_ticket_t * ticket)
 {
@@ -220,6 +215,7 @@ int convergence_layer_free_transmit_ticket(struct transmit_ticket_t * ticket)
 
 	return 1;
 }
+
 
 int convergence_layer_enqueue_bundle(struct transmit_ticket_t * ticket)
 {
@@ -280,45 +276,6 @@ static int convergence_layer_dgram_encode_bundle(struct transmit_ticket_t* const
 	ticket->offset_acked = 0;
 
 	return 0;
-}
-
-
-int convergence_layer_lowpan_dgram_send_bundle(const cl_addr_t* const dest, const int sequence_number, const uint8_t flags,
-											const uint8_t* const payload, const size_t length, const void* const reference)
-{
-	/* Get the outgoing network buffer */
-	uint8_t* const buffer = dtn_network_get_buffer();
-	if( buffer == NULL ) {
-		return -1;
-	}
-
-	/* add one byte for the dgram:lowpan header */
-	const uint8_t length_to_send = length + 1;
-
-	/* fail if the buffer is not big enough */
-	if (length_to_send > dtn_network_get_buffer_length()) {
-		char addr_str[CL_ADDR_STRING_LENGTH];
-		cl_addr_string(dest, addr_str, sizeof(addr_str));
-		LOG(LOGD_DTN, LOG_CL, LOGL_WRN, "DTN network buffer to small for bundle (seq %u, flags %x, len %lu) to  addr %s",
-			sequence_number, flags, length_to_send, addr_str);
-		return -2;
-	}
-
-	/* Initialize the header field */
-	buffer[0] = CONVERGENCE_LAYER_TYPE_DATA & CONVERGENCE_LAYER_MASK_TYPE;
-
-	/* Put the sequence number for this bundle into the outgoing header */
-	buffer[0] |= (sequence_number << 2) & CONVERGENCE_LAYER_MASK_SEQNO;
-	buffer[0] |= flags & CONVERGENCE_LAYER_MASK_FLAGS;
-
-	/* copy the payload */
-	memcpy(&buffer[1], payload, length);
-
-	/* And send it out */
-	// TODO remove const cast
-	dtn_network_send((linkaddr_t*)&dest->lowpan, length_to_send, (void*)reference);
-
-	return 1;
 }
 
 
@@ -494,73 +451,6 @@ static int convergence_layer_dgram_prepare_segmentation(struct transmit_ticket_t
 }
 
 
-int convergence_layer_send_discovery(uint8_t * payload, uint8_t length, linkaddr_t * neighbour)
-{
-	uint8_t * buffer = NULL;
-
-	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Sending discovery to %u.%u", neighbour->u8[0], neighbour->u8[1]);
-
-	/* If we are currently transmitting or waiting for an ACK, do nothing */
-	if( convergence_layer_transmitting ) {
-		return -1;
-	}
-
-	/* Get our buffer */
-	buffer = dtn_network_get_buffer();
-	if( buffer == NULL ) {
-		return -1;
-	}
-
-	/* Discovery Prefix */
-	buffer[0] = CONVERGENCE_LAYER_TYPE_DISCOVERY;
-
-	/* Copy the discovery message and set the length */
-	memcpy(buffer + 1, payload, length);
-
-	/* Now we are transmitting */
-	convergence_layer_transmitting = 1;
-
-	/* Send it out via the MAC */
-	dtn_network_send(neighbour, length + 1, NULL);
-
-	return 1;
-}
-
-
-int convergence_layer_lowpan_dgram_send_ack(const cl_addr_t* const destination, const int sequence_number, const int type,
-											 const void* const reference)
-{
-	/* Get our buffer */
-	uint8_t* const buffer = dtn_network_get_buffer();
-	if( buffer == NULL ) {
-		return -1;
-	}
-
-	if( type == CONVERGENCE_LAYER_TYPE_ACK ) {
-		// Construct the ACK
-		buffer[0] = 0;
-		buffer[0] |= CONVERGENCE_LAYER_TYPE_ACK & CONVERGENCE_LAYER_MASK_TYPE;
-		buffer[0] |= (sequence_number << 2) & CONVERGENCE_LAYER_MASK_SEQNO;
-	} else if( type == CONVERGENCE_LAYER_TYPE_NACK ) {
-		// Construct the NACK
-		buffer[0] = 0;
-		buffer[0] |= CONVERGENCE_LAYER_TYPE_NACK & CONVERGENCE_LAYER_MASK_TYPE;
-		buffer[0] |= (sequence_number << 2) & CONVERGENCE_LAYER_MASK_SEQNO;
-	} else if( type == CONVERGENCE_LAYER_TYPE_TEMP_NACK ) {
-		// Construct the temporary NACK
-		buffer[0] = 0;
-		buffer[0] |= CONVERGENCE_LAYER_TYPE_NACK & CONVERGENCE_LAYER_MASK_TYPE;
-		buffer[0] |= (sequence_number << 2) & CONVERGENCE_LAYER_MASK_SEQNO;
-		buffer[0] |= (CONVERGENCE_LAYER_FLAGS_FIRST) & CONVERGENCE_LAYER_MASK_FLAGS; // This flag indicates a temporary nack
-	}
-
-	/* Send it out via the MAC */
-	dtn_network_send((linkaddr_t*)&destination->lowpan, 1, (void*)reference);
-
-	return 1;
-}
-
-
 static int convergence_layer_send_ack(const cl_addr_t* const destination, const uint8_t sequence_number, const uint8_t type,
 							   struct transmit_ticket_t* const ticket)
 {
@@ -589,6 +479,7 @@ static int convergence_layer_send_ack(const cl_addr_t* const destination, const 
 	}
 }
 
+
 static int convergence_layer_create_send_ack(const cl_addr_t* const destination, const uint8_t sequence_number, const uint8_t type)
 {
 	struct transmit_ticket_t * ticket = NULL;
@@ -614,7 +505,8 @@ static int convergence_layer_create_send_ack(const cl_addr_t* const destination,
 	return convergence_layer_send_ack(destination, sequence_number, type, ticket);
 }
 
-int convergence_layer_resend_ack(struct transmit_ticket_t * ticket)
+
+static int convergence_layer_resend_ack(struct transmit_ticket_t * ticket)
 {
 	/* Check if we really have an ACK/NACK that is currently not beeing transmitted */
 	if( (!(ticket->flags & CONVERGENCE_LAYER_QUEUE_ACK) && !(ticket->flags & CONVERGENCE_LAYER_QUEUE_NACK) && !(ticket->flags & CONVERGENCE_LAYER_QUEUE_TEMP_NACK)) || (ticket->flags & CONVERGENCE_LAYER_QUEUE_IN_TRANSIT) ) {
@@ -963,92 +855,6 @@ int convergence_layer_incoming_data(const cl_addr_t* const source, const uint8_t
 }
 
 
-int convergence_layer_lowpan_dgram_incoming_frame(const cl_addr_t* const source, const uint8_t* const payload, const uint8_t length, const packetbuf_attr_t rssi)
-{
-	if (source->isIP) {
-		LOG(LOGD_DTN, LOG_CL, LOGL_ERR, "Source is not a LOWPAN address. Could not processed by this CL.");
-		return -1;
-	}
-
-	uint8_t data_length = 0;
-	uint8_t header;
-
-	char addr_str[CL_ADDR_STRING_LENGTH];
-	cl_addr_string(source, addr_str, sizeof(addr_str));
-	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Incoming frame from %s (header 0x%02x)", addr_str, payload[0]);
-
-	/* Notify the discovery module, that we have seen a peer */
-	DISCOVERY.alive((linkaddr_t*)&source->lowpan);
-
-	/* Check the COMPAT information */
-	if( (payload[0] & CONVERGENCE_LAYER_MASK_COMPAT) != CONVERGENCE_LAYER_COMPAT ) {
-		char addr_str[CL_ADDR_STRING_LENGTH];
-		cl_addr_string(source, addr_str, sizeof(addr_str));
-		LOG(LOGD_DTN, LOG_CL, LOGL_INF, "Ignoring incoming frame from %s", addr_str);
-		return -1;
-	}
-
-	header = payload[0];
-	const uint8_t* const data_pointer = payload + 1;
-	data_length = length - 1;
-
-	if( (header & CONVERGENCE_LAYER_MASK_TYPE) == CONVERGENCE_LAYER_TYPE_DATA ) {
-		/* is data */
-		const int flags = (header & CONVERGENCE_LAYER_MASK_FLAGS) >> 0;
-		const int sequence_number = (header & CONVERGENCE_LAYER_MASK_SEQNO) >> 2;
-
-		return convergence_layer_incoming_data(source, data_pointer, data_length, rssi, sequence_number, flags);
-	}
-
-	if( (header & CONVERGENCE_LAYER_MASK_TYPE) == CONVERGENCE_LAYER_TYPE_DISCOVERY ) {
-		/* is discovery */
-		char addr_str[CL_ADDR_STRING_LENGTH];
-		cl_addr_string(source, addr_str, sizeof(addr_str));
-		LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Incoming discovery frame from %s", addr_str);
-
-		// TODO make linkaddr const and rmeove const cast
-		DISCOVERY.receive((linkaddr_t*)&source->lowpan, (uint8_t*)data_pointer, data_length);
-
-		return 1;
-	}
-
-	if( (header & CONVERGENCE_LAYER_MASK_TYPE) == CONVERGENCE_LAYER_TYPE_ACK ) {
-		/* is ACK */
-		int flags = 0;
-		int sequence_number = 0;
-
-		flags = (header & CONVERGENCE_LAYER_MASK_FLAGS) >> 0;
-		sequence_number = (header & CONVERGENCE_LAYER_MASK_SEQNO) >> 2;
-
-		char addr_str[CL_ADDR_STRING_LENGTH];
-		cl_addr_string(source, addr_str, sizeof(addr_str));
-		LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Incoming Ack frame from %s with SeqNo %u", addr_str, sequence_number);
-
-		convergence_layer_parse_ackframe(source, data_pointer, data_length, sequence_number, CONVERGENCE_LAYER_TYPE_ACK, flags);
-
-		return 1;
-	}
-
-	if( (header & CONVERGENCE_LAYER_MASK_TYPE) == CONVERGENCE_LAYER_TYPE_NACK ) {
-		/* is NACK */
-		int flags = 0;
-		int sequence_number = 0;
-
-		flags = (header & CONVERGENCE_LAYER_MASK_FLAGS) >> 0;
-		sequence_number = (header & CONVERGENCE_LAYER_MASK_SEQNO) >> 2;
-
-		char addr_str[CL_ADDR_STRING_LENGTH];
-		cl_addr_string(source, addr_str, sizeof(addr_str));
-		LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Incoming Nack frame from %s with SeqNo %u", addr_str, sequence_number);
-
-		convergence_layer_parse_ackframe(source, data_pointer, data_length, sequence_number, CONVERGENCE_LAYER_TYPE_NACK, flags);
-
-		return 1;
-	}
-
-	return 0;
-}
-
 int convergence_layer_status(void * pointer, uint8_t outcome)
 {
 	struct transmit_ticket_t * ticket = NULL;
@@ -1216,7 +1022,8 @@ int convergence_layer_delete_bundle(uint32_t bundle_number)
 	return 1;
 }
 
-int convergence_layer_is_blocked(const cl_addr_t* const neighbour)
+
+static int convergence_layer_is_blocked(const cl_addr_t* const neighbour)
 {
 	struct blocked_neighbour_t * n = NULL;
 
@@ -1231,7 +1038,8 @@ int convergence_layer_is_blocked(const cl_addr_t* const neighbour)
 	return 0;
 }
 
-int convergence_layer_set_blocked(const cl_addr_t* const neighbour)
+
+static int convergence_layer_set_blocked(const cl_addr_t* const neighbour)
 {
 	struct blocked_neighbour_t * n = NULL;
 
@@ -1254,7 +1062,8 @@ int convergence_layer_set_blocked(const cl_addr_t* const neighbour)
 	return 1;
 }
 
-int convergence_layer_set_unblocked(const cl_addr_t* const neighbour)
+
+static int convergence_layer_set_unblocked(const cl_addr_t* const neighbour)
 {
 	struct blocked_neighbour_t * n = NULL;
 
@@ -1275,7 +1084,9 @@ int convergence_layer_set_unblocked(const cl_addr_t* const neighbour)
 	return 0;
 }
 
-void check_blocked_neighbours() {
+
+static void check_blocked_neighbours()
+{
 	struct blocked_neighbour_t * n = NULL;
 	struct transmit_ticket_t * ticket = NULL;
 
@@ -1326,7 +1137,9 @@ void check_blocked_neighbours() {
 	}
 }
 
-void check_blocked_tickets() {
+
+static void check_blocked_tickets()
+{
 	struct transmit_ticket_t * ticket = NULL;
 	int changed = 1;
 
@@ -1408,7 +1221,10 @@ int convergence_layer_neighbour_down(const cl_addr_t* const neighbour)
 	return 1;
 }
 
-void convergence_layer_show_tickets() {
+
+#ifdef DEBUG
+static void convergence_layer_show_tickets()
+{
 	struct transmit_ticket_t * ticket = NULL;
 
 	printf("--- TICKET LIST\n");
@@ -1423,6 +1239,8 @@ void convergence_layer_show_tickets() {
 
 	printf("---\n");
 }
+#endif /* DEBUG */
+
 
 static void convergence_layer_process(void* p)
 {

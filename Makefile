@@ -5,7 +5,7 @@ CFLAGS+= -DINGA_CONF_PAN_ADDR=1466
 
 
 # Uncomment it for enabling debug messages
-#CFLAGS+= -DENABLE_LOGGING
+CFLAGS+= -DENABLE_LOGGING
 CFLAGS+= -DCONF_LOGLEVEL=LOGL_WRN
 
 DTN_APPS += dtnpingecho
