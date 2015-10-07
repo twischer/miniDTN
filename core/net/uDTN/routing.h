@@ -28,7 +28,7 @@
 #include "lib/list.h"
 
 #include "bundle.h"
-#include "convergence_layer.h"
+#include "convergence_layer_dgram.h"
 
 /**
  * Which routing driver are we going to use?

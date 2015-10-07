@@ -34,7 +34,7 @@
 #include "statistics.h"
 #include "hash.h"
 #include "bundle_ageing.h"
-#include "convergence_layer.h"
+#include "convergence_layers.h"
 
 #include "storage.h"
 

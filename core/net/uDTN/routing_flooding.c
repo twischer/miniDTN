@@ -32,7 +32,7 @@
 #include "statistics.h"
 #include "bundleslot.h"
 #include "delivery.h"
-#include "convergence_layer.h"
+#include "convergence_layer_dgram.h"
 #include "registration.h"
 
 #include "routing.h"

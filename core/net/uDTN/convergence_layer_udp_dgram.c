@@ -5,6 +5,7 @@
 #include "lib/logging.h"
 #include "agent.h"
 #include "discovery.h"
+#include "convergence_layer_dgram.h"
 
 
 #define IP_ADDR_STRING_LENGTH	16

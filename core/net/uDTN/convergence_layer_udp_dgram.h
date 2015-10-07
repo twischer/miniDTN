@@ -1,7 +1,8 @@
 #ifndef CONVERGENCE_LAYER_UDP_DGRAM_H
 #define CONVERGENCE_LAYER_UDP_DGRAM_H
 
-#include "convergence_layer.h"
+#include "net/packetbuf.h"
+#include "cl_address.h"
 #include "convergence_layer_udp.h"
 
 

@@ -18,7 +18,6 @@
 #include "discovery.h"
 #include "dispatching.h"
 #include "bundle_ageing.h"
-#include "convergence_layer.h"
 #include "convergence_layer_udp_dgram.h"
 
 ip_addr_t udp_mcast_addr;

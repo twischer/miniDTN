@@ -71,15 +71,6 @@
  */
 #define CONVERGENCE_LAYER_RETRANSMIT_TRIES		(CONVERGENCE_LAYER_TIMEOUT * 1000 / CONVERGENCE_LAYER_RETRANSMIT_TIMEOUT)
 
-/**
- * Specify the maximum bundle size that we guarantee to support
- * Memory is reserved to serialize a bundle of this size
- */
-#ifdef CONVERGENCE_LAYER_CONF_MAX_SIZE
-#define CONVERGENCE_LAYER_MAX_SIZE CONVERGENCE_LAYER_CONF_MAX_SIZE
-#else
-#define CONVERGENCE_LAYER_MAX_SIZE ETH_MAX_ETH_PAYLOAD
-#endif
 
 /**
  * Bundle queue flags

@@ -4,7 +4,7 @@
 #include "dtn_network.h"
 #include "discovery.h"
 #include "agent.h"
-#include "convergence_layer.h"
+#include "convergence_layer_dgram.h"
 
 
 /**

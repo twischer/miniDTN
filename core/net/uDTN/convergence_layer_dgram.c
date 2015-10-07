@@ -10,7 +10,7 @@
  * \author Georg von Zengen <vonzeng@ibr.cs.tu-bs.de>
  * \author Wolf-Bastian Poettner <poettner@ibr.cs.tu-bs.de>
  */
-#include "convergence_layer.h"
+#include "convergence_layer_dgram.h"
 
 #include <stdbool.h>
 #include <string.h> // memset

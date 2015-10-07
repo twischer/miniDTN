@@ -340,8 +340,8 @@ core/net/uDTN/bundle_ageing.c
 core/net/uDTN/bundle_ageing.h
 core/net/uDTN/bundleslot.c
 core/net/uDTN/bundleslot.h
-core/net/uDTN/convergence_layer.c
-core/net/uDTN/convergence_layer.h
+core/net/uDTN/convergence_layer_dgram.c
+core/net/uDTN/convergence_layer_dgram.h
 core/net/uDTN/custody.h
 core/net/uDTN/custody_basic.c
 core/net/uDTN/custody_null.c
