@@ -705,7 +705,7 @@ static int discovery_ipnd_save_neighbour(const uint32_t eid, const cl_addr_t* co
 		 * in further processing
 		 */
 		// TODO remove const cast
-		if (convert_rime_to_eid((linkaddr_t*)&addr->lowpan) == eid) {
+		if (convert_rime_to_eid((linkaddr_t*)&addr->lowpan) != eid) {
 			LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_ERR, "The EID %u and the PAN addresse %u.%u are different. This is not supported.",
 				eid, addr->lowpan.u8[0], addr->lowpan.u8[1]);
 		}
