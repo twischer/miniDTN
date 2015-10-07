@@ -41,7 +41,7 @@
 
 /* Within 'USER CODE' section, code will be kept by default at each generation */
 /* USER CODE BEGIN 0 */
-#define LWIP_DEBUG
+//#define LWIP_DEBUG
 /* USER CODE END 0 */
 
 #ifdef __cplusplus
@@ -60,6 +60,8 @@
 /* Parameters set in STM32CubeMX LwIP Configuration GUI -*/
 /*----- Default Value for LWIP_DHCP: 1 -*/
 #define LWIP_DHCP 0
+/*----- Default Value for SYS_LIGHTWEIGHT_PROT: 0 -*/
+#define SYS_LIGHTWEIGHT_PROT 1
 /*----- Value in opt.h for NO_SYS: 0 -----*/
 #define NO_SYS 0
 /*----- Value in opt.h for MEM_ALIGNMENT: 1 -----*/
