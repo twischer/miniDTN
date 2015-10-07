@@ -361,7 +361,7 @@ void agent_set_bundle_source(struct bundle_t* const bundle)
 void agent_delete_bundle(uint32_t bundle_number){
 	LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "Agent deleting bundle no %lu", bundle_number);
 
-	convergence_layer_delete_bundle(bundle_number);
+	convergence_layer_dgram_delete_bundle(bundle_number);
 	ROUTING.del_bundle(bundle_number);
 	CUSTODY.del_from_list(bundle_number);
 }

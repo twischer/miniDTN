@@ -203,7 +203,7 @@ int convergence_layer_lowpan_dgram_status(const void* const pointer, const uint8
 	/* Something has been sent, so the radio is not blocked anymore */
 	convergence_layer_transmitting = false;
 
-	return convergence_layer_status(pointer, outcome);
+	return convergence_layer_dgram_status(pointer, outcome);
 }
 
 
@@ -241,7 +241,7 @@ int convergence_layer_lowpan_dgram_incoming_frame(const cl_addr_t* const source,
 		const int flags = (header & CONVERGENCE_LAYER_MASK_FLAGS) >> 0;
 		const int sequence_number = (header & CONVERGENCE_LAYER_MASK_SEQNO) >> 2;
 
-		return convergence_layer_incoming_data(source, data_pointer, data_length, rssi, sequence_number, flags);
+		return convergence_layer_dgram_incoming_data(source, data_pointer, data_length, rssi, sequence_number, flags);
 	}
 
 	if( (header & CONVERGENCE_LAYER_MASK_TYPE) == CONVERGENCE_LAYER_TYPE_DISCOVERY ) {
@@ -268,7 +268,7 @@ int convergence_layer_lowpan_dgram_incoming_frame(const cl_addr_t* const source,
 		cl_addr_string(source, addr_str, sizeof(addr_str));
 		LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Incoming Ack frame from %s with SeqNo %u", addr_str, sequence_number);
 
-		convergence_layer_parse_ackframe(source, data_pointer, data_length, sequence_number, CONVERGENCE_LAYER_TYPE_ACK, flags);
+		convergence_layer_dgram_parse_ackframe(source, data_pointer, data_length, sequence_number, CONVERGENCE_LAYER_TYPE_ACK, flags);
 
 		return 1;
 	}
@@ -285,7 +285,7 @@ int convergence_layer_lowpan_dgram_incoming_frame(const cl_addr_t* const source,
 		cl_addr_string(source, addr_str, sizeof(addr_str));
 		LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Incoming Nack frame from %s with SeqNo %u", addr_str, sequence_number);
 
-		convergence_layer_parse_ackframe(source, data_pointer, data_length, sequence_number, CONVERGENCE_LAYER_TYPE_NACK, flags);
+		convergence_layer_dgram_parse_ackframe(source, data_pointer, data_length, sequence_number, CONVERGENCE_LAYER_TYPE_NACK, flags);
 
 		return 1;
 	}

@@ -243,7 +243,7 @@ static int routing_flooding_send_bundle(uint32_t bundle_number, const cl_addr_t*
 	struct transmit_ticket_t * ticket = NULL;
 
 	/* Allocate a transmission ticket */
-	ticket = convergence_layer_get_transmit_ticket();
+	ticket = convergence_layer_dgram_get_transmit_ticket();
 	if( ticket == NULL ) {
 		LOG(LOGD_DTN, LOG_ROUTE, LOGL_WRN, "unable to allocate transmit ticket");
 		return -1;
@@ -254,7 +254,7 @@ static int routing_flooding_send_bundle(uint32_t bundle_number, const cl_addr_t*
 	ticket->bundle_number = bundle_number;
 
 	/* Put the bundle in the queue */
-	convergence_layer_enqueue_bundle(ticket);
+	convergence_layer_dgram_enqueue_bundle(ticket);
 
 	return 1;
 }
@@ -758,7 +758,7 @@ void routing_flooding_bundle_sent(struct transmit_ticket_t * ticket, uint8_t sta
 
 	if( n == NULL ) {
 		/* Free up the ticket */
-		convergence_layer_free_transmit_ticket(ticket);
+		convergence_layer_dgram_free_transmit_ticket(ticket);
 
 		LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "Bundle not in storage");
 		return;
@@ -775,7 +775,7 @@ void routing_flooding_bundle_sent(struct transmit_ticket_t * ticket, uint8_t sta
 		routing_flooding_blacklist_add(&ticket->neighbour);
 
 		/* Free up the ticket */
-		convergence_layer_free_transmit_ticket(ticket);
+		convergence_layer_dgram_free_transmit_ticket(ticket);
 
 		return;
 	}
@@ -789,7 +789,7 @@ void routing_flooding_bundle_sent(struct transmit_ticket_t * ticket, uint8_t sta
 		routing_flooding_check_keep_bundle(ticket->bundle_number);
 
 		/* Free up the ticket */
-		convergence_layer_free_transmit_ticket(ticket);
+		convergence_layer_dgram_free_transmit_ticket(ticket);
 
 		return;
 	}
@@ -807,7 +807,7 @@ void routing_flooding_bundle_sent(struct transmit_ticket_t * ticket, uint8_t sta
 		const uint32_t bundle_number = ticket->bundle_number;
 
 		/* Free up the ticket */
-		convergence_layer_free_transmit_ticket(ticket);
+		convergence_layer_dgram_free_transmit_ticket(ticket);
 		ticket = NULL;
 
 		// Unset the forward flag
@@ -844,7 +844,7 @@ void routing_flooding_bundle_sent(struct transmit_ticket_t * ticket, uint8_t sta
 	}
 
 	/* Free up the ticket */
-	convergence_layer_free_transmit_ticket(ticket);
+	convergence_layer_dgram_free_transmit_ticket(ticket);
 }
 
 /**

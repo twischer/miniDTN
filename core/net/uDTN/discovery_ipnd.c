@@ -619,7 +619,7 @@ static void discovery_ipnd_delete_neighbour(const cl_addr_t* const neighbour)
 	LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_INF, "Neighbour %s disappeared", addr_str);
 
 	// Tell the CL that this neighbour has disappeared
-	convergence_layer_neighbour_down(neighbour);
+	convergence_layer_dgram_neighbour_down(neighbour);
 
 	for(entry = list_head(neighbour_list);
 			entry != NULL;
@@ -751,10 +751,10 @@ void discovery_ipnd_clear()
 		/* call convergence_layer_neighbour_down for all discovered address types */
 		cl_addr_t addr;
 		if (discovery_neighbour_to_addr((struct discovery_neighbour_list_entry*)entry, ADDRESS_TYPE_FLAG_LOWPAN, &addr) >= 0) {
-			convergence_layer_neighbour_down(&addr);
+			convergence_layer_dgram_neighbour_down(&addr);
 		}
 		if (discovery_neighbour_to_addr((struct discovery_neighbour_list_entry*)entry, ADDRESS_TYPE_FLAG_IPV4, &addr) >= 0) {
-			convergence_layer_neighbour_down(&addr);
+			convergence_layer_dgram_neighbour_down(&addr);
 		}
 
 		list_remove(neighbour_list, entry);

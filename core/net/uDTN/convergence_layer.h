@@ -147,23 +147,23 @@ struct transmit_ticket_t {
 };
 
 
-bool convergence_layer_init(void);
+bool convergence_layer_dgram_init(void);
 
-int convergence_layer_free_transmit_ticket(struct transmit_ticket_t * ticket);
-struct transmit_ticket_t * convergence_layer_get_transmit_ticket();
+int convergence_layer_dgram_free_transmit_ticket(struct transmit_ticket_t * ticket);
+struct transmit_ticket_t * convergence_layer_dgram_get_transmit_ticket();
 
 
-int convergence_layer_enqueue_bundle(struct transmit_ticket_t * ticket);
+int convergence_layer_dgram_enqueue_bundle(struct transmit_ticket_t * ticket);
 
-int convergence_layer_incoming_data(const cl_addr_t* const source, const uint8_t* const data_pointer, const size_t data_length,
+int convergence_layer_dgram_incoming_data(const cl_addr_t* const source, const uint8_t* const data_pointer, const size_t data_length,
 									const packetbuf_attr_t rssi, const int sequence_number, const int flags);
-int convergence_layer_parse_ackframe(const cl_addr_t* const source, const uint8_t* const payload, const uint8_t length,
+int convergence_layer_dgram_parse_ackframe(const cl_addr_t* const source, const uint8_t* const payload, const uint8_t length,
 											const uint8_t sequence_number, const uint8_t type, const uint8_t flags);
-int convergence_layer_status(const void* const pointer, const uint8_t outcome);
+int convergence_layer_dgram_status(const void* const pointer, const uint8_t outcome);
 
-int convergence_layer_delete_bundle(uint32_t bundle_number);
+int convergence_layer_dgram_delete_bundle(uint32_t bundle_number);
 
-int convergence_layer_neighbour_down(const cl_addr_t* const neighbour);
+int convergence_layer_dgram_neighbour_down(const cl_addr_t* const neighbour);
 
 #endif /* CONVERGENCE_LAYER */
 

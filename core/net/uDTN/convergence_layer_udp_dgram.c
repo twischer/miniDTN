@@ -44,7 +44,7 @@ static inline int convergence_layer_udp_dgram_send(const ip_addr_t* const ip, co
 	const int ret = convergence_layer_udp_send_data(ip, buffer, sizeof(buffer), payload, length);
 
 	const uint8_t status = (ret < 0) ? CONVERGENCE_LAYER_STATUS_NOSEND : CONVERGENCE_LAYER_STATUS_OK;
-	convergence_layer_status(reference, status);
+	convergence_layer_dgram_status(reference, status);
 
 	return 1;
 }
@@ -139,7 +139,7 @@ int convergence_layer_udp_dgram_incoming_frame(const cl_addr_t* const source, co
 	switch(type) {
 	case HEADER_SEGMENT:
 		/* is data */
-		return convergence_layer_incoming_data(source, data_pointer, data_length, rssi, sequence_number, flags);
+		return convergence_layer_dgram_incoming_data(source, data_pointer, data_length, rssi, sequence_number, flags);
 
 	case HEADER_BROADCAST:
 		/* is discovery */
@@ -150,13 +150,13 @@ int convergence_layer_udp_dgram_incoming_frame(const cl_addr_t* const source, co
 	case HEADER_ACK:
 		/* is ACK */
 		LOG(LOGD_DTN, LOG_CL_UDP, LOGL_DBG, "Incoming Ack frame from %s with SeqNo %u", addr_str, sequence_number);
-		convergence_layer_parse_ackframe(source, data_pointer, data_length, sequence_number, CONVERGENCE_LAYER_TYPE_ACK, flags);
+		convergence_layer_dgram_parse_ackframe(source, data_pointer, data_length, sequence_number, CONVERGENCE_LAYER_TYPE_ACK, flags);
 		return 1;
 
 	case HEADER_NACK:
 		/* is NACK */
 		LOG(LOGD_DTN, LOG_CL_UDP, LOGL_DBG, "Incoming Nack frame from %s with SeqNo %u", addr_str, sequence_number);
-		convergence_layer_parse_ackframe(source, data_pointer, data_length, sequence_number, CONVERGENCE_LAYER_TYPE_NACK, flags);
+		convergence_layer_dgram_parse_ackframe(source, data_pointer, data_length, sequence_number, CONVERGENCE_LAYER_TYPE_NACK, flags);
 		return 1;
 
 	default:

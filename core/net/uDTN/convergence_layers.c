@@ -6,7 +6,7 @@
 
 bool convergence_layers_init(void)
 {
-	if (!convergence_layer_init()) {
+	if (!convergence_layer_dgram_init()) {
 		return false;
 	}
 

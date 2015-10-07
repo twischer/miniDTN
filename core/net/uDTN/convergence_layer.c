@@ -65,15 +65,15 @@ MEMB(blocked_neighbour_mem, struct blocked_neighbour_t, CONVERGENCE_LAYER_QUEUE)
 /**
  * Internal functions
  */
-static int convergence_layer_is_blocked(const cl_addr_t * const neighbour);
-static int convergence_layer_set_blocked(const cl_addr_t* const neighbour);
-static int convergence_layer_set_unblocked(const cl_addr_t * const neighbour);
+static int convergence_layer_dgram_is_blocked(const cl_addr_t * const neighbour);
+static int convergence_layer_dgram_set_blocked(const cl_addr_t* const neighbour);
+static int convergence_layer_dgram_set_unblocked(const cl_addr_t * const neighbour);
 
 /**
  * CL process
  */
 static TaskHandle_t convergence_layer_task;
-static void convergence_layer_process(void* p);
+static void convergence_layer_dgram_process(void* p);
 
 /**
  * Keep track of the allocated tickets
@@ -102,10 +102,10 @@ static uint8_t convergence_layer_pending = 0;
 static volatile bool convergence_layer_backoff_pending = false;
 
 
-bool convergence_layer_init(void)
+bool convergence_layer_dgram_init(void)
 {
 	// Start CL process
-	if ( !xTaskCreate(convergence_layer_process, "CL process", 0x200, NULL, 5, &convergence_layer_task) ) {
+	if ( !xTaskCreate(convergence_layer_dgram_process, "CL process", 0x200, NULL, 5, &convergence_layer_task) ) {
 		return false;
 	}
 
@@ -133,7 +133,7 @@ static uint8_t convergence_layer_dgram_next_sequence_number(const cl_addr_t* con
 }
 
 
-static struct transmit_ticket_t * convergence_layer_get_transmit_ticket_priority(uint8_t priority)
+static struct transmit_ticket_t * convergence_layer_dgram_get_transmit_ticket_priority(uint8_t priority)
 {
 	struct transmit_ticket_t * ticket = NULL;
 
@@ -173,13 +173,13 @@ static struct transmit_ticket_t * convergence_layer_get_transmit_ticket_priority
 }
 
 
-struct transmit_ticket_t * convergence_layer_get_transmit_ticket()
+struct transmit_ticket_t * convergence_layer_dgram_get_transmit_ticket()
 {
-	return convergence_layer_get_transmit_ticket_priority(CONVERGENCE_LAYER_PRIORITY_NORMAL);
+	return convergence_layer_dgram_get_transmit_ticket_priority(CONVERGENCE_LAYER_PRIORITY_NORMAL);
 }
 
 
-int convergence_layer_free_transmit_ticket(struct transmit_ticket_t * ticket)
+int convergence_layer_dgram_free_transmit_ticket(struct transmit_ticket_t * ticket)
 {
 	/* Remove our reference to the bundle */
 	if( ticket->bundle != NULL ) {
@@ -212,7 +212,7 @@ int convergence_layer_free_transmit_ticket(struct transmit_ticket_t * ticket)
 }
 
 
-int convergence_layer_enqueue_bundle(struct transmit_ticket_t * ticket)
+int convergence_layer_dgram_enqueue_bundle(struct transmit_ticket_t * ticket)
 {
 	if( ticket == NULL ) {
 		LOG(LOGD_DTN, LOG_CL, LOGL_WRN, "Cannot enqueue invalid ticket %p", ticket);
@@ -281,7 +281,7 @@ static int convergence_layer_dgram_send_bundle(struct transmit_ticket_t* const t
 	ticket->flags |= CONVERGENCE_LAYER_QUEUE_IN_TRANSIT;
 
 	/* This neighbour is blocked, until we have received the App Layer ACK or NACK */
-	convergence_layer_set_blocked(&ticket->neighbour);
+	convergence_layer_dgram_set_blocked(&ticket->neighbour);
 
 	int ret = -1;
 	if (ticket->neighbour.isIP) {
@@ -443,7 +443,7 @@ static int convergence_layer_dgram_prepare_segmentation(struct transmit_ticket_t
 }
 
 
-static int convergence_layer_send_ack(const cl_addr_t* const destination, const uint8_t sequence_number, const uint8_t type,
+static int convergence_layer_dgram_send_ack(const cl_addr_t* const destination, const uint8_t sequence_number, const uint8_t type,
 							   struct transmit_ticket_t* const ticket)
 {
 	char addr_str[CL_ADDR_STRING_LENGTH];
@@ -468,12 +468,12 @@ static int convergence_layer_send_ack(const cl_addr_t* const destination, const 
 }
 
 
-static int convergence_layer_create_send_ack(const cl_addr_t* const destination, const uint8_t sequence_number, const uint8_t type)
+static int convergence_layer_dgram_create_send_ack(const cl_addr_t* const destination, const uint8_t sequence_number, const uint8_t type)
 {
 	struct transmit_ticket_t * ticket = NULL;
 
 	/* We have to keep track of the outgoing packet, because we have to be able to retransmit */
-	ticket = convergence_layer_get_transmit_ticket_priority(CONVERGENCE_LAYER_PRIORITY_HIGH);
+	ticket = convergence_layer_dgram_get_transmit_ticket_priority(CONVERGENCE_LAYER_PRIORITY_HIGH);
 	if( ticket == NULL ) {
 		LOG(LOGD_DTN, LOG_CL, LOGL_WRN, "Unable to allocate ticket to potentially retransmit ACK/NACK");
 	} else {
@@ -490,11 +490,11 @@ static int convergence_layer_create_send_ack(const cl_addr_t* const destination,
 		}
 	}
 
-	return convergence_layer_send_ack(destination, sequence_number, type, ticket);
+	return convergence_layer_dgram_send_ack(destination, sequence_number, type, ticket);
 }
 
 
-static int convergence_layer_resend_ack(struct transmit_ticket_t * ticket)
+static int convergence_layer_dgram_resend_ack(struct transmit_ticket_t * ticket)
 {
 	/* Check if we really have an ACK/NACK that is currently not beeing transmitted */
 	if( (!(ticket->flags & CONVERGENCE_LAYER_QUEUE_ACK) && !(ticket->flags & CONVERGENCE_LAYER_QUEUE_NACK) && !(ticket->flags & CONVERGENCE_LAYER_QUEUE_TEMP_NACK)) || (ticket->flags & CONVERGENCE_LAYER_QUEUE_IN_TRANSIT) ) {
@@ -519,7 +519,7 @@ static int convergence_layer_resend_ack(struct transmit_ticket_t * ticket)
 		return 0;
 	}
 
-	convergence_layer_send_ack(&ticket->neighbour, ticket->sequence_number, type, ticket);
+	convergence_layer_dgram_send_ack(&ticket->neighbour, ticket->sequence_number, type, ticket);
 
 	return 1;
 }
@@ -530,7 +530,7 @@ static int convergence_layer_resend_ack(struct transmit_ticket_t * ticket)
  * -1 = Temporary error
  * -2 = Permanent error
  */
-static int convergence_layer_parse_dataframe(const cl_addr_t* const source, const uint8_t* payload, const size_t payload_length,
+static int convergence_layer_dgram_parse_dataframe(const cl_addr_t* const source, const uint8_t* payload, const size_t payload_length,
 											 const uint8_t flags, const uint8_t sequence_number, const packetbuf_attr_t rssi)
 {
 	struct mmem * bundlemem = NULL;
@@ -559,12 +559,12 @@ static int convergence_layer_parse_dataframe(const cl_addr_t* const source, cons
 				char addr_str[CL_ADDR_STRING_LENGTH];
 				cl_addr_string(source, addr_str, sizeof(addr_str));
 				LOG(LOGD_DTN, LOG_CL, LOGL_WRN, "Resynced to peer %s, throwing away old buffer", addr_str);
-				convergence_layer_free_transmit_ticket(ticket);
+				convergence_layer_dgram_free_transmit_ticket(ticket);
 				ticket = NULL;
 			}
 
 			/* Allocate a new ticket for the incoming bundle */
-			ticket = convergence_layer_get_transmit_ticket_priority(CONVERGENCE_LAYER_PRIORITY_HIGH);
+			ticket = convergence_layer_dgram_get_transmit_ticket_priority(CONVERGENCE_LAYER_PRIORITY_HIGH);
 
 			if( ticket == NULL ) {
 				LOG(LOGD_DTN, LOG_CL, LOGL_ERR, "Unable to allocate multipart receive ticket");
@@ -582,7 +582,7 @@ static int convergence_layer_parse_dataframe(const cl_addr_t* const source, cons
 
 			if( ret < 1 ) {
 				LOG(LOGD_DTN, LOG_CL, LOGL_ERR, "Unable to allocate multipart receive buffer of %u bytes", length);
-				convergence_layer_free_transmit_ticket(ticket);
+				convergence_layer_dgram_free_transmit_ticket(ticket);
 				ticket = NULL;
 				return -1;
 			}
@@ -630,7 +630,7 @@ static int convergence_layer_parse_dataframe(const cl_addr_t* const source, cons
 
 			if( ret < 1 ) {
 				LOG(LOGD_DTN, LOG_CL, LOGL_ERR, "Unable to re-allocate multipart receive buffer of %u bytes", ticket->buffer.size + length);
-				convergence_layer_free_transmit_ticket(ticket);
+				convergence_layer_dgram_free_transmit_ticket(ticket);
 				return -1;
 			}
 
@@ -660,7 +660,7 @@ static int convergence_layer_parse_dataframe(const cl_addr_t* const source, cons
 
 	/* We do not need the ticket anymore if there was one, deallocate it */
 	if( ticket != NULL ) {
-		convergence_layer_free_transmit_ticket(ticket);
+		convergence_layer_dgram_free_transmit_ticket(ticket);
 		ticket = NULL;
 	}
 
@@ -720,14 +720,14 @@ static int convergence_layer_parse_dataframe(const cl_addr_t* const source, cons
 }
 
 
-int convergence_layer_parse_ackframe(const cl_addr_t* const source, const uint8_t* const payload, const uint8_t length,
+int convergence_layer_dgram_parse_ackframe(const cl_addr_t* const source, const uint8_t* const payload, const uint8_t length,
 											const uint8_t sequence_number, const uint8_t type, const uint8_t flags)
 {
 	struct transmit_ticket_t * ticket = NULL;
 	struct bundle_t * bundle = NULL;
 
 	/* This neighbour is now unblocked */
-	convergence_layer_set_unblocked(source);
+	convergence_layer_dgram_set_unblocked(source);
 
 	if( convergence_layer_pending == 0 ) {
 		/* Poll the process to initiate transmission of the next bundle */
@@ -816,7 +816,7 @@ int convergence_layer_parse_ackframe(const cl_addr_t* const source, const uint8_
 }
 
 
-int convergence_layer_incoming_data(const cl_addr_t* const source, const uint8_t* const data_pointer, const size_t data_length,
+int convergence_layer_dgram_incoming_data(const cl_addr_t* const source, const uint8_t* const data_pointer, const size_t data_length,
 									const packetbuf_attr_t rssi, const int sequence_number, const int flags)
 {
 	char addr_str[CL_ADDR_STRING_LENGTH];
@@ -824,17 +824,17 @@ int convergence_layer_incoming_data(const cl_addr_t* const source, const uint8_t
 	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Incoming data frame from %s with SeqNo %u and Flags %02X", addr_str, sequence_number, flags);
 
 	/* Parse the incoming data frame */
-	const int ret = convergence_layer_parse_dataframe(source, data_pointer, data_length, flags, sequence_number, rssi);
+	const int ret = convergence_layer_dgram_parse_dataframe(source, data_pointer, data_length, flags, sequence_number, rssi);
 
 	if( ret >= 0 ) {
 		/* Send ACK */
-		convergence_layer_create_send_ack(source, sequence_number + 1, CONVERGENCE_LAYER_TYPE_ACK);
+		convergence_layer_dgram_create_send_ack(source, sequence_number + 1, CONVERGENCE_LAYER_TYPE_ACK);
 	} else if( ret == -1 ) {
 		/* Send temporary NACK */
-		convergence_layer_create_send_ack(source, sequence_number + 1, CONVERGENCE_LAYER_TYPE_TEMP_NACK);
+		convergence_layer_dgram_create_send_ack(source, sequence_number + 1, CONVERGENCE_LAYER_TYPE_TEMP_NACK);
 	} else if( ret == -2 ) {
 		/* Send permanent NACK */
-		convergence_layer_create_send_ack(source, sequence_number + 1, CONVERGENCE_LAYER_TYPE_NACK);
+		convergence_layer_dgram_create_send_ack(source, sequence_number + 1, CONVERGENCE_LAYER_TYPE_NACK);
 	} else {
 		/* FAIL */
 	}
@@ -843,7 +843,7 @@ int convergence_layer_incoming_data(const cl_addr_t* const source, const uint8_t
 }
 
 
-int convergence_layer_status(const void* const pointer, const uint8_t outcome)
+int convergence_layer_dgram_status(const void* const pointer, const uint8_t outcome)
 {
 	struct transmit_ticket_t* const ticket = (struct transmit_ticket_t*)pointer;
 
@@ -879,14 +879,14 @@ int convergence_layer_status(const void* const pointer, const uint8_t outcome)
 		/* Must be a NACK or ACK */
 		if( outcome == CONVERGENCE_LAYER_STATUS_OK ) {
 			/* Great! */
-			convergence_layer_free_transmit_ticket(ticket);
+			convergence_layer_dgram_free_transmit_ticket(ticket);
 
 			return 1;
 		}
 
 		/* Fatal error, retry is pointless */
 		if( outcome == CONVERGENCE_LAYER_STATUS_FATAL ) {
-			convergence_layer_free_transmit_ticket(ticket);
+			convergence_layer_dgram_free_transmit_ticket(ticket);
 			return 1;
 		}
 
@@ -902,7 +902,7 @@ int convergence_layer_status(const void* const pointer, const uint8_t outcome)
 		/* Give up on too many retries */
 		if( ticket->tries >= CONVERGENCE_LAYER_RETRANSMIT_TRIES || ticket->failed_tries >= CONVERGENCE_LAYER_FAILED_RETRIES) {
 			LOG(LOGD_DTN, LOG_CL, LOGL_WRN, "CL: Giving up on ticket %p after %d (or %d) tries", ticket, ticket->tries, ticket->failed_tries);
-			convergence_layer_free_transmit_ticket(ticket);
+			convergence_layer_dgram_free_transmit_ticket(ticket);
 
 			return 0;
 		}
@@ -932,7 +932,7 @@ int convergence_layer_status(const void* const pointer, const uint8_t outcome)
 	/* Fatal error, no retry necessary */
 	if( outcome == CONVERGENCE_LAYER_STATUS_FATAL ) {
 		/* This neighbour is now unblocked */
-		convergence_layer_set_unblocked(&ticket->neighbour);
+		convergence_layer_dgram_set_unblocked(&ticket->neighbour);
 
 		/* Notify routing module */
 		ROUTING.sent(ticket, ROUTING_STATUS_ERROR);
@@ -941,7 +941,7 @@ int convergence_layer_status(const void* const pointer, const uint8_t outcome)
 	}
 
 	/* Something went wrong, unblock the neighbour */
-	convergence_layer_set_unblocked(&ticket->neighbour);
+	convergence_layer_dgram_set_unblocked(&ticket->neighbour);
 
 	/* Bundle did not get an ACK, increase try counter */
 	if( outcome == CONVERGENCE_LAYER_STATUS_NOACK ) {
@@ -972,7 +972,7 @@ int convergence_layer_status(const void* const pointer, const uint8_t outcome)
 	return 1;
 }
 
-int convergence_layer_delete_bundle(uint32_t bundle_number)
+int convergence_layer_dgram_delete_bundle(uint32_t bundle_number)
 {
 	struct transmit_ticket_t * ticket = NULL;
 	int changed = 1;
@@ -996,7 +996,7 @@ int convergence_layer_delete_bundle(uint32_t bundle_number)
 		}
 
 		/* free the ticket's memory */
-		convergence_layer_free_transmit_ticket(ticket);
+		convergence_layer_dgram_free_transmit_ticket(ticket);
 
 		changed = 1;
 	}
@@ -1006,7 +1006,7 @@ int convergence_layer_delete_bundle(uint32_t bundle_number)
 }
 
 
-static int convergence_layer_is_blocked(const cl_addr_t* const neighbour)
+static int convergence_layer_dgram_is_blocked(const cl_addr_t* const neighbour)
 {
 	struct blocked_neighbour_t * n = NULL;
 
@@ -1022,7 +1022,7 @@ static int convergence_layer_is_blocked(const cl_addr_t* const neighbour)
 }
 
 
-static int convergence_layer_set_blocked(const cl_addr_t* const neighbour)
+static int convergence_layer_dgram_set_blocked(const cl_addr_t* const neighbour)
 {
 	struct blocked_neighbour_t * n = NULL;
 
@@ -1046,7 +1046,7 @@ static int convergence_layer_set_blocked(const cl_addr_t* const neighbour)
 }
 
 
-static int convergence_layer_set_unblocked(const cl_addr_t* const neighbour)
+static int convergence_layer_dgram_set_unblocked(const cl_addr_t* const neighbour)
 {
 	struct blocked_neighbour_t * n = NULL;
 
@@ -1068,7 +1068,7 @@ static int convergence_layer_set_unblocked(const cl_addr_t* const neighbour)
 }
 
 
-static void check_blocked_neighbours()
+static void convergence_layer_dgram_check_blocked_neighbours()
 {
 	struct blocked_neighbour_t * n = NULL;
 	struct transmit_ticket_t * ticket = NULL;
@@ -1100,7 +1100,7 @@ static void check_blocked_neighbours()
 	}
 
 	/* Unblock the neighbour */
-	convergence_layer_set_unblocked(&n->neighbour);
+	convergence_layer_dgram_set_unblocked(&n->neighbour);
 
 	char addr_str[CL_ADDR_STRING_LENGTH];
 	cl_addr_string(&n->neighbour, addr_str, sizeof(addr_str));
@@ -1121,7 +1121,7 @@ static void check_blocked_neighbours()
 }
 
 
-static void check_blocked_tickets()
+static void convergence_layer_dgram_check_blocked_tickets()
 {
 	struct transmit_ticket_t * ticket = NULL;
 	int changed = 1;
@@ -1144,14 +1144,14 @@ static void check_blocked_tickets()
 				LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Multipart receiving ticket for peer %s timed out, removing", addr_str);
 
 				changed = 1;
-				convergence_layer_free_transmit_ticket(ticket);
+				convergence_layer_dgram_free_transmit_ticket(ticket);
 				break;
 			}
 		}
 	}
 }
 
-int convergence_layer_neighbour_down(const cl_addr_t* const neighbour)
+int convergence_layer_dgram_neighbour_down(const cl_addr_t* const neighbour)
 {
 	struct transmit_ticket_t * ticket = NULL;
 	int changed = 1;
@@ -1179,7 +1179,7 @@ int convergence_layer_neighbour_down(const cl_addr_t* const neighbour)
 				changed = 1;
 
 				/* Free ticket */
-				convergence_layer_free_transmit_ticket(ticket);
+				convergence_layer_dgram_free_transmit_ticket(ticket);
 
 				/* Stop look and start over again */
 				break;
@@ -1199,14 +1199,14 @@ int convergence_layer_neighbour_down(const cl_addr_t* const neighbour)
 	}
 
 	/* Remove potentially stale lock for neighbour */
-	convergence_layer_set_unblocked(neighbour);
+	convergence_layer_dgram_set_unblocked(neighbour);
 
 	return 1;
 }
 
 
 #ifdef DEBUG
-static void convergence_layer_show_tickets()
+static void convergence_layer_dgram_show_tickets()
 {
 	struct transmit_ticket_t * ticket = NULL;
 
@@ -1225,7 +1225,7 @@ static void convergence_layer_show_tickets()
 #endif /* DEBUG */
 
 
-static void convergence_layer_process(void* p)
+static void convergence_layer_dgram_process(void* p)
 {
 	struct transmit_ticket_t * ticket = NULL;
 	int n;
@@ -1245,8 +1245,8 @@ static void convergence_layer_process(void* p)
 		// TODO timer nicht immer neu aufrufen sondern methoden immer anch genau 1000ms ausführen
 		// vielleicht eignenen prozess verwenden
 // TODO		if(!notification_received) {
-			check_blocked_neighbours();
-			check_blocked_tickets();
+			convergence_layer_dgram_check_blocked_neighbours();
+			convergence_layer_dgram_check_blocked_tickets();
 // TODO		} else
 			{
 			/* slow down the transmission to mind collisions */
@@ -1265,7 +1265,7 @@ static void convergence_layer_process(void* p)
 				ticket != NULL;
 				ticket = list_item_next(ticket) ) {
 				if( ((ticket->flags & CONVERGENCE_LAYER_QUEUE_ACK) || (ticket->flags & CONVERGENCE_LAYER_QUEUE_NACK)) && !(ticket->flags & CONVERGENCE_LAYER_QUEUE_IN_TRANSIT) ) {
-					n = convergence_layer_resend_ack(ticket);
+					n = convergence_layer_dgram_resend_ack(ticket);
 					if( n ) {
 						/* Transmission happened */
 						break;
@@ -1283,7 +1283,7 @@ static void convergence_layer_process(void* p)
 				}
 
 				/* Neighbour for which we are currently waiting on app-layer ACKs cannot receive anything now */
-				if( convergence_layer_is_blocked(&ticket->neighbour) ) {
+				if( convergence_layer_dgram_is_blocked(&ticket->neighbour) ) {
 					char addr_str[CL_ADDR_STRING_LENGTH];
 					cl_addr_string(&ticket->neighbour, addr_str, sizeof(addr_str));
 					LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Neighbour %s is blocked. Not sending bundle %u with ticket %p",
