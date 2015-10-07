@@ -110,12 +110,23 @@ void convergence_layer_show_tickets();
 bool convergence_layer_init(void)
 {
 	// Start CL process
-	if ( !xTaskCreate(convergence_layer_process, "CL process", 0x200, NULL, 1, &convergence_layer_task) ) {
+	if ( !xTaskCreate(convergence_layer_process, "CL process", 0x200, NULL, 5, &convergence_layer_task) ) {
 		return false;
 	}
 
 	return true;
 }
+
+
+uint8_t convergence_layer_dgram_next_sequence_number(const cl_addr_t* const addr, const uint8_t last_seqno)
+{
+	if (addr->isIP) {
+		return (last_seqno + 1) % 16;
+	} else  {
+		return (last_seqno + 1) % 4;
+	}
+}
+
 
 struct transmit_ticket_t * convergence_layer_get_transmit_ticket_priority(uint8_t priority)
 {
@@ -329,6 +340,11 @@ static int convergence_layer_dgram_prepare_segmentation(struct transmit_ticket_t
 	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Sending bundle %lu to %s with ticket %p (flags 0x%x)",
 		ticket->bundle_number, addr_str, ticket, ticket->flags);
 
+	/*
+	 * only execute for the first part of a bundle
+	 * not calling again for following parts,
+	 * because of segmentation
+	 */
 	if( !(ticket->flags & CONVERGENCE_LAYER_QUEUE_MULTIPART) ) {
 		/* Read the bundle from storage, if it is not in memory */
 		if( ticket->bundle == NULL ) {
@@ -361,17 +377,18 @@ static int convergence_layer_dgram_prepare_segmentation(struct transmit_ticket_t
 
 			return -1;
 		}
+
+		/*
+		 * Only enncode bundle ones, if it is a multipart bundle
+		 * otherwise sending will always start at the beginning of the package
+		 */
+		if (convergence_layer_dgram_encode_bundle(ticket) < 0) {
+			ticket->flags &= ~CONVERGENCE_LAYER_QUEUE_MULTIPART;
+			return -1;
+		}
 	}
 
 
-	// TODO only enncode bundle ones, if it is a multipart bundle
-	// otherwise sending will always start at the beginning of the package
-	if (convergence_layer_dgram_encode_bundle(ticket) < 0) {
-		ticket->flags &= ~CONVERGENCE_LAYER_QUEUE_MULTIPART;
-		return -1;
-	}
-
-	/* We have to use a heuristic to estimate if the bundle will be a multipart bundle */
 	if( ticket->buffer.size > CONVERGENCE_LAYER_MAX_LENGTH && !(ticket->flags & CONVERGENCE_LAYER_QUEUE_MULTIPART) ) {
 		LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Try to send bundle %lu as mutlipart bundle (buf %p, size %lu, flags 0x%x)",
 			ticket->bundle_number, ticket->buffer, ticket->buffer.size, ticket->flags);
@@ -382,7 +399,7 @@ static int convergence_layer_dgram_prepare_segmentation(struct transmit_ticket_t
 		 * The encoding was done by convergence_layer_dgram_encode_bundle().
 		 * The ticket can only be deleted,
 		 * if the first part of the bundle was send.
-		 * If sending of the first part,
+		 * If trying to send the first part again,
 		 * the ageing check has to be repeated.
 		 */
 		bundle_decrement(ticket->bundle);
@@ -425,7 +442,16 @@ static int convergence_layer_dgram_prepare_segmentation(struct transmit_ticket_t
 		}
 
 		/* one byte for the CL header */
+		// TODO differ for ethernet, too (cl consists of 2 bytes)
 		const size_t length_to_sent = (length > (CONVERGENCE_LAYER_MAX_LENGTH - 1)) ? (CONVERGENCE_LAYER_MAX_LENGTH - 1) : length;
+
+		/* onl increment the sequenz number, if all packages before were successfully acknowledged*/
+		if( ticket->offset_sent == ticket->offset_acked ) {
+			/* Increment the sequence number for the new segment, except for the first segment */
+			if( ticket->offset_sent > 0 ) {
+				ticket->sequence_number = convergence_layer_dgram_next_sequence_number(&ticket->neighbour, ticket->sequence_number);
+			}
+		}
 
 		const uint8_t* const buffer = ((uint8_t*) MMEM_PTR(&ticket->buffer)) + ticket->offset_acked;
 		const int ret = convergence_layer_dgram_send_bundle(ticket, flags, buffer, length_to_sent);
@@ -434,11 +460,6 @@ static int convergence_layer_dgram_prepare_segmentation(struct transmit_ticket_t
 		if( ticket->offset_sent == ticket->offset_acked ) {
 			/* It is the first time that we are sending this segment */
 			ticket->offset_sent += length_to_sent;
-
-			/* Increment the sequence number for the new segment, except for the first segment */
-			if( ticket->offset_sent != 0 ) {
-				ticket->sequence_number = (ticket->sequence_number + 1) % 4;
-			}
 		}
 
 		return ret;
@@ -692,10 +713,12 @@ static int convergence_layer_parse_dataframe(const cl_addr_t* const source, cons
 				return -1;
 			}
 
-			if( sequence_number != (ticket->sequence_number + 1) % 4 ) {
+			const uint8_t reqested_seqno = convergence_layer_dgram_next_sequence_number(source, ticket->sequence_number);
+			if( sequence_number != reqested_seqno ) {
 				char addr_str[CL_ADDR_STRING_LENGTH];
 				cl_addr_string(source, addr_str, sizeof(addr_str));
-				LOG(LOGD_DTN, LOG_CL, LOGL_WRN, "Segment from peer %s is out of sequence. Recv %u, Exp %u", addr_str, sequence_number, (ticket->sequence_number + 1) % 4);
+				LOG(LOGD_DTN, LOG_CL, LOGL_WRN, "Segment from peer %s is out of sequence. Recv %u, Exp %u",
+					addr_str, sequence_number, reqested_seqno);
 				return 1;
 			}
 
@@ -776,7 +799,9 @@ static int convergence_layer_parse_dataframe(const cl_addr_t* const source, cons
 
 	char addr_str[CL_ADDR_STRING_LENGTH];
 	cl_addr_string(source, addr_str, sizeof(addr_str));
-	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Bundle from ipn:%lu.%lu (to ipn:%lu.%lu) received from %s with SeqNo %u", bundle->src_node, bundle->src_srv, bundle->dst_node, bundle->dst_srv, addr_str, sequence_number);
+	/* cast uint64_t values to uint32_t, because printf can not print uint64_t values */
+	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Bundle from ipn:%lu.%lu (to ipn:%lu.%lu) received from %s with SeqNo %u",
+		bundle->src_node, (uint32_t)bundle->src_srv, bundle->dst_node, (uint32_t)bundle->dst_srv, addr_str, sequence_number);
 
 	/* Store the node from which we received the bundle */
 	cl_addr_copy(&bundle->msrc, source);
@@ -797,6 +822,7 @@ static int convergence_layer_parse_dataframe(const cl_addr_t* const source, cons
 	return -1;
 }
 
+
 int convergence_layer_parse_ackframe(const cl_addr_t* const source, const uint8_t* const payload, const uint8_t length,
 											const uint8_t sequence_number, const uint8_t type, const uint8_t flags)
 {
@@ -813,7 +839,7 @@ int convergence_layer_parse_ackframe(const cl_addr_t* const source, const uint8_
 
 	char addr_str[CL_ADDR_STRING_LENGTH];
 	cl_addr_string(source, addr_str, sizeof(addr_str));
-	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Incoming ACK from %s for SeqNo %u", addr_str, sequence_number);
+	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Incoming ACK from %s with SeqNo %u", addr_str, sequence_number);
 
 	for(ticket = list_head(transmission_ticket_list);
 		ticket != NULL;
@@ -841,21 +867,25 @@ int convergence_layer_parse_ackframe(const cl_addr_t* const source, const uint8_
 	/* TODO: Handle temporary NACKs separately here */
 	if( type == CONVERGENCE_LAYER_TYPE_ACK ) {
 		if( ticket->flags & CONVERGENCE_LAYER_QUEUE_MULTIPART ) {
-			if( sequence_number == (ticket->sequence_number + 1) % 4 ) {
+			// TODO differs for udp cl. Use % 16.
+			const uint8_t reqested_seq_no = convergence_layer_dgram_next_sequence_number(source, ticket->sequence_number);
+			if(sequence_number == reqested_seq_no) {
 				// ACK received
 				ticket->offset_acked = ticket->offset_sent;
 
-				if( ticket->offset_acked == ticket->buffer.size ) {
+				if( ticket->offset_acked >= ticket->buffer.size ) {
 					/* Last segment, we are done */
 					LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Last Segment of bundle %lu acked, done", ticket->bundle_number);
 				} else {
 					/* There are more segments, keep on sending */
-					LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "One Segment of bundle %lu acked, more to come", ticket->bundle_number);
+					LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "One Segment of bundle %lu acked, more to come (sent %lu, acked %lu, size %lu)",
+						ticket->bundle_number, ticket->offset_sent, ticket->offset_acked, ticket->buffer.size);
 					return 1;
 				}
 			} else {
 				/* Duplicate or out of sequence ACK, ignore it */
-				LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Duplicate ACK for bundle %lu received", ticket->bundle_number);
+				LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Duplicate ACK for bundle %lu received (seqno %u req seqno %u)",
+					ticket->bundle_number, sequence_number, reqested_seq_no);
 				return 1;
 			}
 		}

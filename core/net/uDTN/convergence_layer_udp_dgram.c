@@ -110,7 +110,7 @@ int convergence_layer_udp_dgram_incoming_frame(const cl_addr_t* const source, co
 	DISCOVERY.alive_ip(&source->ip, source->port);
 
 	const HEADER_TYPES type = payload[0];
-	const HEADER_FLAGS header_flags = (payload[1] & 0xFF) >> 4;
+	const HEADER_FLAGS header_flags = (payload[1] & 0xF0) >> 4;
 	const int sequence_number = (payload[1] & 0x0F) >> 0;
 
 	/* convert dgram:udp flags to dgram:lowpan flags */
