@@ -65,6 +65,7 @@ static void Unexpected_Interrupt(const char* const name)
 void task_switch_in(const char* const name)
 {
 	// TODO use more performant comparsion
+	// compare with xTaskGetIdleTaskHandle( void );
 	/* ignore idle task switches */
 	if (strncmp(IDLE_TASK_NAME, name, sizeof(IDLE_TASK_NAME)) == 0) {
 		return;

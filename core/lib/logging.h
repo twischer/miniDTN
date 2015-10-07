@@ -58,6 +58,8 @@
 
 #include <stdio.h>
 #include <contiki.h>
+#include "FreeRTOS.h"
+#include "task.h"
 
 #define LOGL_DBG 0
 #define LOGL_INF 1
@@ -96,8 +98,8 @@ extern struct log_cfg log_d[LOGD_NUM];
  * \hideinitializer
  */
 #define LOG(logdom, sdom, logl, fmt, ...) do { \
-		logging_logfn(logdom, sdom, logl, "[%s:%s](%s:%d): " fmt, logging_level2str(logl), \
-				logging_dom2str(logdom), __func__, __LINE__, ## __VA_ARGS__); \
+		logging_logfn(logdom, sdom, logl, "[%s:%s]%s(%s:%d): " fmt, logging_level2str(logl), \
+				logging_dom2str(logdom), pcTaskGetTaskName(NULL), __func__, __LINE__, ## __VA_ARGS__); \
 	} while (0)
 #else
 #define LOG(...)
