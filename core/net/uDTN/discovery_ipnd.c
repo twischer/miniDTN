@@ -145,29 +145,36 @@ static bool discovery_ipnd_init()
 	return true;
 }
 
+
+static struct discovery_ipnd_neighbour_list_entry* discovery_ipnd_find_neighbour(const uint32_t eid)
+{
+	if( discovery_status == 0 ) {
+		// Not initialized yet
+		return NULL;
+	}
+
+	const linkaddr_t addr = convert_eid_to_rime(eid);
+
+	for(struct discovery_ipnd_neighbour_list_entry* entry = list_head(neighbour_list);
+			entry != NULL;
+			entry = list_item_next(entry)) {
+		if( linkaddr_cmp(&entry->neighbour, &addr) ) {
+			return entry;
+		}
+	}
+
+	return NULL;
+}
+
+
 /** 
  * \brief Checks if address is currently listed a neighbour
  * \param dest Address of potential neighbour
  * \return 1 if neighbour, 0 otherwise
  */
-uint8_t discovery_ipnd_is_neighbour(const linkaddr_t* const dest)
+static bool discovery_ipnd_is_neighbour(const uint32_t eid)
 {
-	struct discovery_ipnd_neighbour_list_entry * entry;
-
-	if( discovery_status == 0 ) {
-		// Not initialized yet
-		return 0;
-	}
-
-	for(entry = list_head(neighbour_list);
-			entry != NULL;
-			entry = list_item_next(entry)) {
-		if( linkaddr_cmp(&entry->neighbour, dest) ) {
-			return 1;
-		}
-	}
-
-	return 0;
+	return (discovery_ipnd_find_neighbour(eid) != NULL);
 }
 
 /**
@@ -613,6 +620,16 @@ static void discovery_ipnd_delete_neighbour(const cl_addr_t* const neighbour)
 }
 
 
+static void discovery_ipnd_neighbour_update_ip(const cl_addr_t* const addr, struct discovery_ipnd_neighbour_list_entry* const entry)
+{
+	entry->addr_type |= ADDRESS_TYPE_FLAG_IPV4;
+	ip_addr_copy(entry->ip, addr->ip);
+	entry->port = addr->port;
+	// TODO update ip timestamp
+	entry->timestamp_last = clock_seconds();
+}
+
+
 /**
  * \brief Save neighbour to local cache
  * \param neighbour Address of the neighbour
@@ -630,15 +647,18 @@ static int discovery_ipnd_save_neighbour(const uint32_t eid, const cl_addr_t* co
 	}
 
 
-	// TODO if the eid already exists,
-	// because of a lowpan discovery
-	// this function will not detect the entry
-	// and a second entry with the same eid for ip will be created
-
+	/* add informations to an existing LOWPAN entry,
+	 * if the eid matches
+	 */
 	if (addr->isIP) {
-		// TODO find entry for eid and update ip values
-		//discovery_ipnd_is_neighbour();
-		// return 1;
+		struct discovery_ipnd_neighbour_list_entry* const entry = discovery_ipnd_find_neighbour(eid);
+		if (entry != NULL) {
+			/* entry matching the EID already existing
+			 * add the missing parameters
+			 */
+			discovery_ipnd_neighbour_update_ip(addr, entry);
+			return 1;
+		}
 	}
 
 	struct discovery_ipnd_neighbour_list_entry* const entry = memb_alloc(&neighbour_mem);
@@ -655,11 +675,7 @@ static int discovery_ipnd_save_neighbour(const uint32_t eid, const cl_addr_t* co
 
 	entry->neighbour = convert_eid_to_rime(eid);
 	if (addr->isIP) {
-		entry->addr_type = ADDRESS_TYPE_FLAG_IPV4;
-		ip_addr_copy(entry->ip, addr->ip);
-		entry->port = addr->port;
-		// TODO update ip timestamp
-		entry->timestamp_last = clock_seconds();
+		discovery_ipnd_neighbour_update_ip(addr, entry);
 	} else {
 		entry->addr_type = ADDRESS_TYPE_FLAG_LOWPAN;
 		ip_addr_copy(entry->ip, *IP_ADDR_ANY);

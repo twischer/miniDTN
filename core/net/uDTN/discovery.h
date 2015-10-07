@@ -61,7 +61,7 @@ struct discovery_driver {
 	 * return 1 if yes,
 	 * return 0 otherwise
 	 */
-	uint8_t (* is_neighbour)(const linkaddr_t* const dest);
+	bool (* is_neighbour)(const uint32_t eid);
 
 	/**
 	 * Enable discovery module
@@ -92,7 +92,7 @@ struct discovery_driver {
 	/**
 	 * Starts to discover a neighbour
 	 */
-	uint8_t (* discover)(const linkaddr_t* const dest);
+	bool (* discover)(const uint32_t eid);
 
 	/**
 	 * Returns the list of currently known neighbours
