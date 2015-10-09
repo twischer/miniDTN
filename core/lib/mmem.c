@@ -52,7 +52,7 @@
 #ifdef MMEM_CONF_SIZE
 #define MMEM_SIZE MMEM_CONF_SIZE
 #else
-#define MMEM_SIZE 4096
+#define MMEM_SIZE 0x4000
 #endif
 
 #ifdef MMEM_CONF_ALIGNMENT
