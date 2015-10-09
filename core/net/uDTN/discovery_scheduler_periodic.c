@@ -22,18 +22,16 @@
 #include "timers.h"
 
 
-static TimerHandle_t dst;
-
 void discovery_scheduler_periodic_func(const TimerHandle_t timer);
 
 bool discovery_scheduler_periodic_init()
 {
-	dst = xTimerCreate("discovery scheduler timer", pdMS_TO_TICKS(DISCOVERY_CYCLE * 1000), pdFALSE, NULL, discovery_scheduler_periodic_func);
-	if (dst == NULL) {
+	const TimerHandle_t timer = xTimerCreate("discovery scheduler timer", pdMS_TO_TICKS(DISCOVERY_CYCLE * 1000), pdTRUE, NULL, discovery_scheduler_periodic_func);
+	if (timer == NULL) {
 		return false;
 	}
 
-	if ( !xTimerStart(dst, 0) ) {
+	if ( !xTimerStart(timer, 0) ) {
 		return false;
 	}
 
@@ -42,9 +40,6 @@ bool discovery_scheduler_periodic_init()
 
 void discovery_scheduler_periodic_func(const TimerHandle_t timer)
 {
-	/* Rescheudle ourself */
-	xTimerReset(dst, 0);
-
 	/* Trigger discovery module to send a message */
 	DISCOVERY.start(0, 0);
 }
