@@ -12,7 +12,7 @@
 #include "debugging.h"
 
 
-#define MESSAGE_COUNT	5
+#define MESSAGE_COUNT	128
 
 static const char IDLE_TASK_NAME[] = "IDLE";
 
@@ -20,6 +20,7 @@ typedef struct {
 	bool enter;
 	const void* this_fn;
 	const void* call_site;
+	const char* task_name;
 } message_t;
 
 static uint8_t next_message_index = 0;
@@ -33,6 +34,13 @@ static inline void message_add(const bool type, void *this_fn, void *call_site)
 	messages[next_message_index].enter = type;
 	messages[next_message_index].this_fn = this_fn;
 	messages[next_message_index].call_site = call_site;
+
+	/* only try to determine the task name, if the scheduler was started once */
+	static bool is_scheduler_running = false;
+	if (!is_scheduler_running) {
+		is_scheduler_running = (xTaskGetSchedulerState() == taskSCHEDULER_RUNNING);
+	}
+	messages[next_message_index].task_name = is_scheduler_running ? pcTaskGetTaskName(NULL) : "INIT";
 
 	next_message_index = (next_message_index + 1) % MESSAGE_COUNT;
 
@@ -92,7 +100,8 @@ void print_stack_trace()
 	uint8_t message_index = next_message_index;
 	for (int i=0; i<MESSAGE_COUNT; i++) {
 		const char* const type = messages[message_index].enter ? "ENTER" : "EXIT ";
-		printf("%s function %p, from call %p\n", type, messages[message_index].this_fn, messages[message_index].call_site);
+		printf("%s function %p, from call %p, in task '%s'\n", type, messages[message_index].this_fn,
+			   messages[message_index].call_site, messages[message_index].task_name);
 		message_index = (message_index + 1) % MESSAGE_COUNT;
 	}
 	printf("Enable function instrumentation (gcc -finstrument-functions), if the function call trace is undefined.");
