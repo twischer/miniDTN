@@ -28,9 +28,11 @@ int convergence_layers_send_discovery_ethernet(const uint8_t* const payload, con
 {
 	int err = 0;
 
+#if (UDP_DGRAM_DISCOVERY_ANNOUNCEMENT == 1)
 	if (convergence_layer_udp_dgram_send_discovery(payload, length) < 0) {
 		err += -1;
 	}
+#endif
 
 #ifdef UDP_DISCOVERY_ANNOUNCEMENT
 	if (convergence_layer_udp_send_discovery(payload, length) < 0) {

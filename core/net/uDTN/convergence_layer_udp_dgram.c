@@ -56,7 +56,7 @@ size_t convergence_layer_udp_dgram_max_payload_length(void)
 	return ETH_MAX_ETH_PAYLOAD - sizeof(struct ip_hdr) - sizeof(struct udp_hdr) - UDP_DGRAM_HEADER_LEN;
 }
 
-
+#if (UDP_DGRAM_DISCOVERY_ANNOUNCEMENT == 1)
 int convergence_layer_udp_dgram_send_discovery(const uint8_t* const payload, const size_t length)
 {
 	char addr_str[IP_ADDR_STRING_LENGTH];
@@ -65,7 +65,7 @@ int convergence_layer_udp_dgram_send_discovery(const uint8_t* const payload, con
 
 	return convergence_layer_udp_dgram_send(&udp_mcast_addr, HEADER_BROADCAST, 0, SEGMENT_MIDDLE, payload, length, NULL);
 }
-
+#endif
 
 int convergence_layer_udp_dgram_send_ack(const cl_addr_t* const dest, const int sequence_number, const int type, const void* const reference)
 {
