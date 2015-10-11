@@ -135,6 +135,7 @@ to exclude the API function. */
 #define INCLUDE_xTaskGetSchedulerState      1
 #define INCLUDE_xTaskGetSchedulerState      1
 #define INCLUDE_pcTaskGetTaskName           1
+#define INCLUDE_xSemaphoreGetMutexHolder    1
 
 /* Cortex-M specific definitions. */
 #ifdef __NVIC_PRIO_BITS
@@ -178,8 +179,9 @@ standard names. */
 
 /* USER CODE BEGIN Defines */   	      
 /* Section where parameter definitions can be added (for instance, to override default ones in FreeRTOS.h) */
-//#define traceTASK_SWITCHED_IN() task_switch_in(pxCurrentTCB->pcTaskName);
-//#define traceTASK_SWITCHED_OUT() task_switch_out(pxCurrentTCB->pcTaskName);
+#define traceTASK_SWITCHED_IN() task_switch_in(pxCurrentTCB->pcTaskName);
+#define traceTASK_SWITCHED_OUT() task_switch_out(pxCurrentTCB->pcTaskName);
+#define traceTASK_YIELD() task_yield();
 
 /* USER CODE END Defines */ 
 

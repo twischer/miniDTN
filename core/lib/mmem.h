@@ -61,6 +61,8 @@
 
 #include <stdlib.h>
 
+#define LOG_MMEM	0
+
 /*---------------------------------------------------------------------------*/
 /**
  * \brief      Get a pointer to the managed memory
@@ -91,6 +93,12 @@ int mmem_free(struct mmem *);
 int mmem_init(void);
 int mmem_realloc(struct mmem *mem, unsigned int size);
 size_t mmem_avail_memory(void);
+
+/* Can be called by the function instrumentation.
+ * So not using function instrumentation for this function
+ * to midn an infinty loop.
+ */
+void mmem_check(void)  __attribute__((no_instrument_function));
 
 #endif /* MMEM_H_ */
 

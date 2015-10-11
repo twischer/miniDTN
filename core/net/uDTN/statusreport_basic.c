@@ -275,8 +275,10 @@ uint8_t statusreport_basic_send(struct mmem * bundlemem, uint8_t status, uint8_t
 		return 0;
 	}
 
+	LOG(LOGD_DTN, LOG_BUNDLE, LOGL_DBG, "dtn_send_bundle_event for bundle %lu (%p) with seq %lu",
+		bundle->bundle_num, bundlemem, bundle->tstamp_seq);
+
 	// Send out the report
-//	process_post(&agent_process, dtn_send_bundle_event, report_bundle);
 	const event_container_t event = {
 		.event = dtn_send_bundle_event,
 		.bundlemem = report_bundle

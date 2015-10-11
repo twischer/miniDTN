@@ -45,13 +45,18 @@
 
 #include "mmem.h"
 
+#include <stdbool.h>
+#include <string.h>
+#include "stm32f4xx_hal.h"
 #include "FreeRTOS.h"
 #include "task.h"
 #include "semphr.h"
 
 #include "list.h"
 #include "contiki-conf.h"
-#include <string.h>
+#include "lib/logging.h"
+#include "debugging.h"
+
 
 #ifdef MMEM_CONF_SIZE
 #define MMEM_SIZE MMEM_CONF_SIZE
@@ -108,10 +113,17 @@ mmem_alloc(struct mmem *m, unsigned int size)
 		return -1;
 	}
 
+	LOG(LOGD_CORE, LOG_MMEM, LOGL_DBG, "%p %lu %lu", m, size, avail_memory);
+
 	/* Check if we have enough memory left for this allocation. */
 	if(avail_memory < size) {
 		xSemaphoreGive(mutex);
 		return 0;
+	}
+
+	/* fail, if the memory was already allocated */
+	for (struct mmem* n=list_head(mmemlist); n != NULL; n=list_item_next(n)) {
+		configASSERT(n != m);
 	}
 
 	/* We had enough memory so we add this memory block to the end of
@@ -132,6 +144,8 @@ mmem_alloc(struct mmem *m, unsigned int size)
 
 	/* Decrease the amount of available memory. */
 	avail_memory -= m->real_size;
+
+	LOG(LOGD_CORE, LOG_MMEM, LOGL_DBG, "%p %p %lu %p %lu", m, m->ptr, m->real_size, m->next, avail_memory);
 
 	xSemaphoreGive(mutex);
 
@@ -157,6 +171,18 @@ mmem_free(struct mmem *m)
 		return -1;
 	}
 
+	LOG(LOGD_CORE, LOG_MMEM, LOGL_DBG, "%p %p %lu %p %lu", m, m->ptr, m->real_size, m->next, avail_memory);
+
+	/* fail if the memory is not in this list */
+	bool is_in_list = false;
+	for (struct mmem* n=list_head(mmemlist); n != NULL; n=list_item_next(n)) {
+		if (n == m) {
+			is_in_list = true;
+			break;
+		}
+	}
+	configASSERT(is_in_list);
+
 	struct mmem *n;
 
 	if(m->next != NULL) {
@@ -167,8 +193,7 @@ mmem_free(struct mmem *m)
 		 * which overwrites the real_size value.
 		 */
 		const size_t offset = m->next->ptr - m->ptr;
-		// TODO fix bug so this assertion is vital
-		//configASSERT(offset == m->real_size);
+		configASSERT(offset == m->real_size);
 
 		/* Compact the memory after the allocation that is to be removed
 		 * by moving it downwards.
@@ -179,7 +204,7 @@ mmem_free(struct mmem *m)
 		/* Update all the memory pointers that points to memory that is
 	   after the allocation that is to be removed. */
 		for(n = m->next; n != NULL; n = n->next) {
-			n->ptr = (void *)((char *)n->ptr - offset);
+			n->ptr = (void *)((char *)n->ptr - m->real_size);
 		}
 	}
 
@@ -187,6 +212,8 @@ mmem_free(struct mmem *m)
 
 	/* Remove the memory block from the list. */
 	list_remove(mmemlist, m);
+
+	LOG(LOGD_CORE, LOG_MMEM, LOGL_DBG, "%lu", avail_memory);
 
 	xSemaphoreGive(mutex);
 	return 0;
@@ -216,6 +243,8 @@ mmem_realloc(struct mmem *mem, unsigned int size)
 	if ( !xSemaphoreTake(mutex, portMAX_DELAY) ) {
 		return 0;
 	}
+
+	LOG(LOGD_CORE, LOG_MMEM, LOGL_DBG, "%p %p %lu %p %lu %lu", mem, mem->ptr, mem->real_size, mem->next, size, avail_memory);
 
 	int diff = (int)mysize - mem->real_size;
 
@@ -248,6 +277,8 @@ mmem_realloc(struct mmem *mem, unsigned int size)
 	mem->real_size = mysize;
 	avail_memory -= diff;
 
+	LOG(LOGD_CORE, LOG_MMEM, LOGL_DBG, "%p %p %lu %p %lu %lu", mem, mem->ptr, mem->real_size, mem->next, avail_memory);
+
 	xSemaphoreGive(mutex);
 	return 1;
 }
@@ -275,6 +306,9 @@ mmem_init(void)
 	if(mutex != NULL) {
 		return -1;
 	}
+	/* Do not use an recursive mutex,
+	 * because mmem_check() will not work vital then.
+	 */
 	mutex = xSemaphoreCreateMutex();
 	if(mutex == NULL) {
 		return -2;
@@ -286,5 +320,85 @@ mmem_init(void)
 	return 0;
 }
 /*---------------------------------------------------------------------------*/
+/**
+ * @brief mmem_check checks the memory system for consistency
+ */
+void
+mmem_check(void)
+{
+	if (mutex == NULL) {
+		/* initalization not done,
+		 * so data could be wrong
+		 */
+		return;
+	}
+
+	/* In ISR the mutex state could not be checked,
+	 * therefore cancle when called from ISR.
+	 */
+	const uint16_t irq_nr = (SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk);
+	if (irq_nr > 0) {
+		return;
+	}
+
+	/* mutex check is only needed, if the scheduler is running */
+	if (xTaskGetSchedulerState() == taskSCHEDULER_RUNNING) {
+		/* do not check, if any function is in the critical region */
+		if (xSemaphoreGetMutexHolder(mutex) != NULL) {
+			return;
+		}
+	}
+
+
+	if (avail_memory > MMEM_SIZE) {
+		/* only last two entries needed.
+		 * On first check was successfully and on
+		 * second entry check fails
+		 */
+		print_stack_trace_part(2);
+	}
+
+	struct mmem* m = list_head(mmemlist);
+	if (m != NULL) {
+		/* only check the list, if there is an element */
+		for (; m->next != NULL; m = m->next) {
+			if (m->real_size < m->size) {
+				/* only last two entries needed.
+				 * On first check was successfully and on
+				 * second entry check fails
+				 */
+				print_stack_trace_part(2);
+			}
+
+			const size_t offset = m->next->ptr - m->ptr;
+			if (offset != m->real_size) {
+				/* only last two entries needed.
+				 * On first check was successfully and on
+				 * second entry check fails
+				 */
+				print_stack_trace_part(2);
+			}
+
+		}
+
+		/* last element uses different checks */
+		if (m->real_size < m->size) {
+			/* only last two entries needed.
+			 * On first check was successfully and on
+			 * second entry check fails
+			 */
+			print_stack_trace_part(2);
+		}
+
+		const size_t offset = &memory[MMEM_SIZE - avail_memory] - (char*)m->ptr;
+		if (offset != m->real_size) {
+			/* only last two entries needed.
+			 * On first check was successfully and on
+			 * second entry check fails
+			 */
+			print_stack_trace_part(2);
+		}
+	}
+}
 
 /** @} */

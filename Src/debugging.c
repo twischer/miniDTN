@@ -2,14 +2,17 @@
  * Use -finstrument-functions to enable this functionality
  */
 
+#include "debugging.h"
+
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
 #include "FreeRTOS.h"
 #include "task.h"
+#include "lib/mmem.h"
 
-#include "debugging.h"
+
 
 
 #define MESSAGE_COUNT	128
@@ -23,28 +26,63 @@ typedef struct {
 	const char* task_name;
 } message_t;
 
-static uint8_t next_message_index = 0;
+static volatile bool disable_stack_tracing = false;
+static size_t next_message_index = 0;
 static message_t messages[MESSAGE_COUNT];
 static const char* fault_name = NULL;
 
 
-
-static inline void message_add(const bool type, void *this_fn, void *call_site)
+static inline void message_add_task(const bool type, void *this_fn, void *call_site, const char* const task_name)
+		__attribute__((no_instrument_function));
+static inline void message_add_task(const bool type, void *this_fn, void *call_site, const char* const task_name)
 {
+	if (disable_stack_tracing) {
+		return;
+	}
+
 	messages[next_message_index].enter = type;
 	messages[next_message_index].this_fn = this_fn;
 	messages[next_message_index].call_site = call_site;
+	messages[next_message_index].task_name = task_name;
+
+	next_message_index = (next_message_index + 1) % MESSAGE_COUNT;
+}
+
+
+static inline void message_add(const bool type, void *this_fn, void *call_site) __attribute__((no_instrument_function));
+static inline void message_add(const bool type, void *this_fn, void *call_site)
+{
+	if (disable_stack_tracing) {
+		return;
+	}
+
+	static uint32_t recursion_deeps = 0;
+	/* ignore recursive calls */
+	if (recursion_deeps > 0) {
+		return;
+	}
+	recursion_deeps++;
+
 
 	/* only try to determine the task name, if the scheduler was started once */
 	static bool is_scheduler_running = false;
 	if (!is_scheduler_running) {
 		is_scheduler_running = (xTaskGetSchedulerState() == taskSCHEDULER_RUNNING);
 	}
-	messages[next_message_index].task_name = is_scheduler_running ? pcTaskGetTaskName(NULL) : "INIT";
+	const char* const task_name = is_scheduler_running ? pcTaskGetTaskName(NULL) : "INIT";
 
-	next_message_index = (next_message_index + 1) % MESSAGE_COUNT;
+	message_add_task(type, this_fn, call_site, task_name);
 
+
+#if (CHECK_FREERTOS_STACK_OVERFLOW == 1)
 	vTaskCheckForStackOverflow();
+#endif
+
+#if (CHECK_MMEM_CONSISTENCY == 1)
+	mmem_check();
+#endif
+
+	recursion_deeps--;
 }
 
 
@@ -58,17 +96,18 @@ void __cyg_profile_func_enter(void *this_fn, void *call_site)
 void __cyg_profile_func_exit(void *this_fn, void *call_site)  __attribute__((no_instrument_function));
 void __cyg_profile_func_exit(void *this_fn, void *call_site)
 {
+
 	message_add(false, this_fn, call_site);
 }
 
 
+static void Unexpected_Interrupt(const char* const name)  __attribute__((no_instrument_function));
 static void Unexpected_Interrupt(const char* const name)
 {
 	printf("Unexpected interrupt %s\n", name);
 
 	print_stack_trace();
 }
-
 
 void task_switch_in(const char* const name)
 {
@@ -79,12 +118,19 @@ void task_switch_in(const char* const name)
 		return;
 	}
 
+#if (LOG_TASK_SWITCHING == 1)
+	message_add_task(true, NULL, NULL, name);
+#endif
+
+#if (PRINT_TASK_SWITCHING == 1)
 	printf("IN %s\n", name);
+#endif
 }
 
 
 void task_switch_out(const char* const name)
 {
+#if (PRINT_TASK_SWITCHING == 1)
 	// TODO use more performant comparsion
 	/* ignore idle task switches */
 	if (strncmp(IDLE_TASK_NAME, name, sizeof(IDLE_TASK_NAME)) == 0) {
@@ -92,13 +138,32 @@ void task_switch_out(const char* const name)
 	}
 
 	printf("OUT %s\n", name);
+#endif
 }
 
 
-void print_stack_trace()
+void task_yield()
 {
-	uint8_t message_index = next_message_index;
-	for (int i=0; i<MESSAGE_COUNT; i++) {
+	static int i=0;
+	i++;
+}
+
+
+void print_stack_trace_part(const size_t count)
+{
+	/* disabling adding function calls to the stack trace,
+	 * becasue the following functions only called for debugging
+	 * output.
+	 */
+	disable_stack_tracing = true;
+
+	/* calulate the beginning of the reqested stack trace entries.
+	 * <next_message_index> points to the oldes entry.
+	 * To get the <count> last entries loop in the FIFO,
+	 * becasue modulo would wrongly interret negativ values.
+	 */
+	size_t message_index = (next_message_index + (MESSAGE_COUNT - count)) % MESSAGE_COUNT;
+	for (size_t i=0; i<count; i++) {
 		const char* const type = messages[message_index].enter ? "ENTER" : "EXIT ";
 		printf("%s function %p, from call %p, in task '%s'\n", type, messages[message_index].this_fn,
 			   messages[message_index].call_site, messages[message_index].task_name);
@@ -107,6 +172,32 @@ void print_stack_trace()
 	printf("Enable function instrumentation (gcc -finstrument-functions), if the function call trace is undefined.");
 
 	for(;;);
+}
+
+
+void print_stack_trace()
+{
+	print_stack_trace_part(MESSAGE_COUNT);
+}
+
+
+void reset_stack_trace()
+{
+	memset(messages, 0, sizeof(messages));
+}
+
+
+void print_memory(const uint8_t* const data, const size_t length)
+{
+	for (size_t i=0; i<length;) {
+		printf("%p: ", &data[i]);
+
+		const size_t next_new_line = i + 16;
+		for (; i<next_new_line; i++) {
+			printf(" %02x", data[i]);
+		}
+		printf("\n");
+	}
 }
 
 
@@ -148,7 +239,7 @@ of this function. */
 
 /* The prototype shows it is a naked function - in effect this is just an
 assembly function. */
-void HardFault_Handler( void ) __attribute__( ( naked ) );
+void HardFault_Handler( void ) __attribute__((naked,no_instrument_function));
 
 /* The fault handler implementation calls a function called
 prvGetRegistersFromStack(). */
