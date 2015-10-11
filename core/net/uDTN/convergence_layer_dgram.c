@@ -312,6 +312,16 @@ static int convergence_layer_dgram_prepare_segmentation(struct transmit_ticket_t
 	 * because of segmentation
 	 */
 	if( !(ticket->flags & CONVERGENCE_LAYER_QUEUE_MULTIPART) ) {
+		/* free the buffer,
+		 * if sent failed and the encoded bundle is available.
+		 * Have to be encoded again,
+		 * because the aging block has possibly changed.
+		 */
+		if(MMEM_PTR(&ticket->buffer) != NULL) {
+			mmem_free(&ticket->buffer);
+			ticket->buffer.ptr = NULL;
+		}
+
 		/* Read the bundle from storage, if it is not in memory */
 		if( ticket->bundle == NULL ) {
 			ticket->bundle = BUNDLE_STORAGE.read_bundle(ticket->bundle_number);
