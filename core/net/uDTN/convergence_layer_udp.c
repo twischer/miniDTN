@@ -241,7 +241,7 @@ bool convergence_layer_udp_init(void)
 		return false;
 	}
 
-	if ( !xTaskCreate(convergence_layer_udp_discovery_thread, "UDP-CL discovery", configMINIMAL_STACK_SIZE+100, NULL, 2, NULL) ) {
+	if ( !xTaskCreate(convergence_layer_udp_discovery_thread, "UDP DISCO", configMINIMAL_STACK_SIZE+100, NULL, 1, NULL) ) {
 		LOG(LOGD_DTN, LOG_CL_UDP, LOGL_ERR, "UDP-CL discovery task creation failed.");
 		return false;
 	}
@@ -261,7 +261,7 @@ bool convergence_layer_udp_init(void)
 		return false;
 	}
 
-	if ( !xTaskCreate(convergence_layer_udp_bundle_thread, "UDP-CL bundle", configMINIMAL_STACK_SIZE+100, NULL, 1, NULL) ) {
+	if ( !xTaskCreate(convergence_layer_udp_bundle_thread, "UDP DATA", configMINIMAL_STACK_SIZE+100, NULL, 5, NULL) ) {
 		LOG(LOGD_DTN, LOG_CL_UDP, LOGL_ERR, "UDP-CL bundle task creation failed.");
 		return false;
 	}
