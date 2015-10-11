@@ -48,7 +48,7 @@
 #endif
 
 
-SemaphoreHandle_t xSemaphore = NULL;
+static SemaphoreHandle_t xSemaphore = NULL;
 
 /* USER CODE END 0 */
 

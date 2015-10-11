@@ -38,9 +38,6 @@
 
 #include "storage.h"
 
-// defined in mmem.c, no function to access it though
-extern unsigned int avail_memory;
-
 /**
  * Internal representation of a bundle
  *
@@ -93,7 +90,7 @@ void storage_mmem_update_statistics();
  */
 void storage_mmem_update_statistics() {
 	statistics_storage_bundles(bundles_in_storage);
-	statistics_storage_memory(avail_memory);
+	statistics_storage_memory(mmem_avail_memory());
 }
 
 void storage_mmem_format(void)
@@ -360,7 +357,7 @@ static uint8_t storage_mmem_save_bundle(struct mmem* const bundlemem, uint32_t* 
 	/* Always keep at least the maximum size of a bundle free to allow the CL to
 	 * serialize bundles
 	 */
-	if( avail_memory < CONVERGENCE_LAYER_MAX_SIZE ) {
+	if( mmem_avail_memory() < CONVERGENCE_LAYER_MAX_SIZE ) {
 		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "Cannot store bundle, memory below threshold");
 
 		bundle_decrement(bundlemem);
@@ -389,7 +386,8 @@ static uint8_t storage_mmem_save_bundle(struct mmem* const bundlemem, uint32_t* 
 	// Set all required fields
 	entry->bundle_num = bundle->bundle_num;
 
-	LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "New Bundle %lu, Src %lu, Dest %lu, Seq %lu", entry->bundle_num, bundle->src_node, bundle->dst_node, bundle->tstamp_seq);
+	LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "New Bundle %lu, Src %lu, Dest %lu, Seq %lu",
+		entry->bundle_num, bundle->src_node, bundle->dst_node, bundle->tstamp_seq);
 
 #if BUNDLE_STORAGE_STATUS
 	printf("S %u\n", bundles_in_storage);

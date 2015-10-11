@@ -43,8 +43,12 @@
  * 
  */
 
-
 #include "mmem.h"
+
+#include "FreeRTOS.h"
+#include "task.h"
+#include "semphr.h"
+
 #include "list.h"
 #include "contiki-conf.h"
 #include <string.h>
@@ -58,12 +62,23 @@
 #ifdef MMEM_CONF_ALIGNMENT
 #define MMEM_ALIGNMENT MMEM_CONF_ALIGNMENT
 #else
-#define MMEM_ALIGNMENT 2
+#define MMEM_ALIGNMENT 4
 #endif
 
+static SemaphoreHandle_t mutex = NULL;
 LIST(mmemlist);
-unsigned int avail_memory;
+static size_t avail_memory;
 static char memory[MMEM_SIZE];
+
+
+size_t mmem_avail_memory(void)
+{
+	/* only allow reading of this variable
+	 * Otherwise locking is needed
+	 */
+	return avail_memory;
+}
+
 
 /*---------------------------------------------------------------------------*/
 /**
@@ -88,32 +103,41 @@ static char memory[MMEM_SIZE];
 int
 mmem_alloc(struct mmem *m, unsigned int size)
 {
-  /* Check if we have enough memory left for this allocation. */
-  if(avail_memory < size) {
-    return 0;
-  }
+	/* enter the critical section */
+	if ( !xSemaphoreTake(mutex, portMAX_DELAY) ) {
+		return -1;
+	}
 
-  /* We had enough memory so we add this memory block to the end of
-     the list of allocated memory blocks. */
-  list_add(mmemlist, m);
+	/* Check if we have enough memory left for this allocation. */
+	if(avail_memory < size) {
+		xSemaphoreGive(mutex);
+		return 0;
+	}
 
-  /* Set up the pointer so that it points to the first available byte
-     in the memory block. */
-  m->ptr = &memory[MMEM_SIZE - avail_memory];
+	/* We had enough memory so we add this memory block to the end of
+	 the list of allocated memory blocks. */
+	list_add(mmemlist, m);
 
-  /* Remember the size of this memory block. */
-  m->size = size;
-  m->real_size = size;
+	/* Set up the pointer so that it points to the first available byte
+	 in the memory block. */
+	m->ptr = &memory[MMEM_SIZE - avail_memory];
 
-  while( m->real_size % MMEM_ALIGNMENT != 0 ) {
-	  m->real_size ++;
-  }
+	/* Remember the size of this memory block. */
+	m->size = size;
+	m->real_size = size;
 
-  /* Decrease the amount of available memory. */
-  avail_memory -= m->real_size;
-  /* Return non-zero to indicate that we were able to allocate
-     memory. */
-  return 1;
+	while( m->real_size % MMEM_ALIGNMENT != 0 ) {
+		m->real_size ++;
+	}
+
+	/* Decrease the amount of available memory. */
+	avail_memory -= m->real_size;
+
+	xSemaphoreGive(mutex);
+
+	/* Return non-zero to indicate that we were able to allocate
+	 memory. */
+	return 1;
 }
 /*---------------------------------------------------------------------------*/
 /**
@@ -125,28 +149,47 @@ mmem_alloc(struct mmem *m, unsigned int size)
  *             previously has been allocated with mmem_alloc().
  *
  */
-void
+int
 mmem_free(struct mmem *m)
 {
-  struct mmem *n;
+	/* enter the critical section */
+	if ( !xSemaphoreTake(mutex, portMAX_DELAY) ) {
+		return -1;
+	}
 
-  if(m->next != NULL) {
-    /* Compact the memory after the allocation that is to be removed
-       by moving it downwards. */
-    memmove(m->ptr, m->next->ptr,
-	    &memory[MMEM_SIZE - avail_memory] - (char *)m->next->ptr);
-    
-    /* Update all the memory pointers that points to memory that is
-       after the allocation that is to be removed. */
-    for(n = m->next; n != NULL; n = n->next) {
-      n->ptr = (void *)((char *)n->ptr - m->real_size);
-    }
-  }
+	struct mmem *n;
 
-  avail_memory += m->real_size;
+	if(m->next != NULL) {
+		/* if the real_size is not set correctly,
+		 * the pointer movment will fail.
+		 * A reason for an incorecct real_size
+		 * could be an stack overflow
+		 * which overwrites the real_size value.
+		 */
+		const size_t offset = m->next->ptr - m->ptr;
+		// TODO fix bug so this assertion is vital
+		//configASSERT(offset == m->real_size);
 
-  /* Remove the memory block from the list. */
-  list_remove(mmemlist, m);
+		/* Compact the memory after the allocation that is to be removed
+		 * by moving it downwards.
+		 */
+		memmove(m->ptr, m->next->ptr,
+				&memory[MMEM_SIZE - avail_memory] - (char *)m->next->ptr);
+
+		/* Update all the memory pointers that points to memory that is
+	   after the allocation that is to be removed. */
+		for(n = m->next; n != NULL; n = n->next) {
+			n->ptr = (void *)((char *)n->ptr - offset);
+		}
+	}
+
+	avail_memory += m->real_size;
+
+	/* Remove the memory block from the list. */
+	list_remove(mmemlist, m);
+
+	xSemaphoreGive(mutex);
+	return 0;
 }
 
 /*---------------------------------------------------------------------------*/
@@ -163,40 +206,50 @@ mmem_free(struct mmem *m)
 int
 mmem_realloc(struct mmem *mem, unsigned int size)
 {
-  int mysize = size;
+	int mysize = size;
 
-  while( mysize % MMEM_ALIGNMENT != 0 ) {
-	  mysize ++;
-  }
+	while( mysize % MMEM_ALIGNMENT != 0 ) {
+		mysize ++;
+	}
 
-  int diff = (int)mysize - mem->real_size;
+	/* enter the critical section */
+	if ( !xSemaphoreTake(mutex, portMAX_DELAY) ) {
+		return 0;
+	}
 
-  /* Already the correct size */
-  if (diff == 0)
-    return 1;
+	int diff = (int)mysize - mem->real_size;
 
-  /* Check if request is too big */
-  if (diff > 0 && diff > avail_memory) {
-    return 0;
-  }
+	/* Already the correct size */
+	if (diff == 0) {
+		xSemaphoreGive(mutex);
+		return 1;
+	}
 
-  /* We need to do the same thing as in mmem_free */
-  struct mmem *n;
-  if (mem->next != NULL) {
-    memmove((char *)mem->next->ptr+diff, (char *)mem->next->ptr,
-		    &memory[MMEM_SIZE - avail_memory] - (char *)mem->next->ptr);
+	/* Check if request is too big */
+	if (diff > 0 && diff > avail_memory) {
+		xSemaphoreGive(mutex);
+		return 0;
+	}
 
-    /* Update all the memory pointers that points to memory that is
-       after the allocation that is to be moved. */
-    for(n = mem->next; n != NULL; n = n->next) {
-      n->ptr = (void *)((char *)n->ptr + diff);
-    }
-  }
+	/* We need to do the same thing as in mmem_free */
+	struct mmem *n;
+	if (mem->next != NULL) {
+		memmove((char *)mem->next->ptr+diff, (char *)mem->next->ptr,
+				&memory[MMEM_SIZE - avail_memory] - (char *)mem->next->ptr);
 
-  mem->size = size;
-  mem->real_size = mysize;
-  avail_memory -= diff;
-  return 1;
+		/* Update all the memory pointers that points to memory that is
+	after the allocation that is to be moved. */
+		for(n = mem->next; n != NULL; n = n->next) {
+			n->ptr = (void *)((char *)n->ptr + diff);
+		}
+	}
+
+	mem->size = size;
+	mem->real_size = mysize;
+	avail_memory -= diff;
+
+	xSemaphoreGive(mutex);
+	return 1;
 }
 
 /*---------------------------------------------------------------------------*/
@@ -209,16 +262,28 @@ mmem_realloc(struct mmem *mem, unsigned int size)
  *             module.
  *
  */
-void
+int
 mmem_init(void)
 {
-  static int inited = 0;
-  if(inited) {
-    return;
-  }
-  list_init(mmemlist);
-  avail_memory = MMEM_SIZE;
-  inited = 1;
+	/* Only execute the initalisation before the scheduler was started.
+	 * So there exists only one thread and
+	 * no locking is needed for the initialisation
+	 */
+	configASSERT(xTaskGetSchedulerState() == taskSCHEDULER_NOT_STARTED);
+
+	/* cancle, if initialisation was already done */
+	if(mutex != NULL) {
+		return -1;
+	}
+	mutex = xSemaphoreCreateMutex();
+	if(mutex == NULL) {
+		return -2;
+	}
+
+	list_init(mmemlist);
+	avail_memory = MMEM_SIZE;
+
+	return 0;
 }
 /*---------------------------------------------------------------------------*/
 

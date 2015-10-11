@@ -13,6 +13,7 @@
 #ifndef __BUNDLESLOT_H__
 #define __BUNDLESLOT_H__
 
+#include <stdint.h>
 #include <stddef.h>
 
 #include "lib/mmem.h"
@@ -31,9 +32,11 @@ struct bundle_slot_t {
 	struct mmem bundle;
 };
 
+int bundleslot_init();
+
 struct bundle_slot_t *bundleslot_get_free();
 
-void bundleslot_free(struct bundle_slot_t *bs);
+int bundleslot_free(struct bundle_slot_t *bs);
 
 int bundleslot_increment(struct bundle_slot_t *bs);
 

@@ -60,6 +60,22 @@ bool agent_init(void)
 		return true;
 	}
 
+	if (mmem_init() < 0) {
+		return false;
+	}
+	udtn_clock_init();
+	bundle_init();
+	BUNDLE_STORAGE.init();
+	REDUNDANCE.init();
+	CUSTODY.init();
+	ROUTING.init();
+	if (!DISCOVERY_SCHEDULER.init()) {
+		LOG(LOGD_DTN, LOG_AGENT, LOGL_WRN, "Discovery scheduler failed to init.");
+	}
+	DISCOVERY.init();
+	registration_init();
+
+
 	// Otherwise start the agent process
 	if ( !dtn_process_create_with_queue(agent_process, "AGENT process", 0x100, &event_queue) ) {
 		return false;
@@ -81,21 +97,9 @@ void agent_process(void* p)
 	dtn_seq_nr_ab = 0;
 	dtn_last_time_stamp = 0;
 
-	mmem_init();
-	udtn_clock_init();
 	if (!convergence_layers_init()) {
 		printf("CLs init failed\n");
 	}
-
-	BUNDLE_STORAGE.init();
-	REDUNDANCE.init();
-	CUSTODY.init();
-	ROUTING.init();
-	if (!DISCOVERY_SCHEDULER.init()) {
-		LOG(LOGD_DTN, LOG_AGENT, LOGL_WRN, "Discovery scheduler failed to init.");
-	}
-	DISCOVERY.init();
-	registration_init();
 
 	// We use printf here, to make this message visible in every case!
 	printf("Starting DTN Bundle Protocol Agent with EID ipn:%lu\n", dtn_node_id);

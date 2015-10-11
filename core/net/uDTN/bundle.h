@@ -156,6 +156,8 @@ struct bundle_t{
 	uint8_t block_data[];
 } __attribute__ ((packed));
 
+int bundle_init();
+
 /**
  * \brief generates the bundle struct from raw data
  * \param buffer pointer to the buffer with raw data

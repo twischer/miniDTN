@@ -206,6 +206,14 @@ static void routing_flooding_blacklist_delete(const cl_addr_t* const neighbour)
  */
 bool routing_flooding_init(void)
 {
+	// Initialize memory used to store blacklisted neighbours
+	memb_init(&blacklist_mem);
+	list_init(blacklist_list);
+
+	// Initialize memory used to store bundles for routing
+	memb_init(&routing_mem);
+	list_init(routing_list);
+
 	// Start CL process
 	if ( !xTaskCreate(routing_process, "FLOOD ROUTE process", 0x100, NULL, 3, &routing_task) ) {
 		return false;
@@ -923,15 +931,7 @@ void routing_flooding_bundle_delivered_locally(struct mmem * bundlemem) {
  */
 void routing_process(void* p)
 {
-	LOG(LOGD_DTN, LOG_ROUTE, LOGL_INF, "FLOOD ROUTE process in running");
-
-	// Initialize memory used to store blacklisted neighbours
-	memb_init(&blacklist_mem);
-	list_init(blacklist_list);
-
-	// Initialize memory used to store bundles for routing
-	memb_init(&routing_mem);
-	list_init(routing_list);
+	LOG(LOGD_DTN, LOG_ROUTE, LOGL_INF, "FLOOD ROUTE process is running");
 
 	while(1) {
 		vTaskSuspend(NULL);

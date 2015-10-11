@@ -35,6 +35,12 @@ static size_t bundle_decode_block(struct mmem* const bundlemem, const uint8_t* c
 static int bundle_encode_block(struct bundle_block_t *block, uint8_t *buffer, int max_len);
 
 
+int bundle_init()
+{
+	return bundleslot_init();
+}
+
+
 struct mmem * bundle_create_bundle()
 {
 	int ret;

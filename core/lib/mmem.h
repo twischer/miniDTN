@@ -59,6 +59,8 @@
 #ifndef MMEM_H_
 #define MMEM_H_
 
+#include <stdlib.h>
+
 /*---------------------------------------------------------------------------*/
 /**
  * \brief      Get a pointer to the managed memory
@@ -81,13 +83,14 @@ struct mmem {
   void *ptr;
 };
 
-/* XXX: tagga minne med "interrupt usage", vilke gör att man är
+/* XXX: tagga minne med "interrupt usage", vilke gÃ¶r att man Ã¤r
    speciellt varsam under free(). */
 
 int  mmem_alloc(struct mmem *m, unsigned int size);
-void mmem_free(struct mmem *);
-void mmem_init(void);
+int mmem_free(struct mmem *);
+int mmem_init(void);
 int mmem_realloc(struct mmem *mem, unsigned int size);
+size_t mmem_avail_memory(void);
 
 #endif /* MMEM_H_ */
 
