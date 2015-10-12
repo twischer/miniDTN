@@ -97,6 +97,7 @@ extern struct log_cfg log_d[LOGD_NUM];
  *
  * \hideinitializer
  */
+// TODO pcTaskGetTaskName will return wrong task names, if there is currently no task running
 #define LOG(logdom, sdom, logl, fmt, ...) do { \
 		logging_logfn(logdom, sdom, logl, "[%s:%s]%s(%s:%d): " fmt, logging_level2str(logl), \
 				logging_dom2str(logdom), pcTaskGetTaskName(NULL), __func__, __LINE__, ## __VA_ARGS__); \

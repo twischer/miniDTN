@@ -4,6 +4,7 @@
 
 #include "debugging.h"
 
+#include "stm32f4xx.h"
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -30,6 +31,8 @@ static volatile bool disable_stack_tracing = false;
 static size_t next_message_index = 0;
 static message_t messages[MESSAGE_COUNT];
 static const char* fault_name = NULL;
+
+static uint64_t idle_time_us = 0;
 
 
 static inline void message_add_task(const bool type, void *this_fn, void *call_site, const char* const task_name)
@@ -109,14 +112,41 @@ static void Unexpected_Interrupt(const char* const name)
 	print_stack_trace();
 }
 
-void task_switch_in(const char* const name)
+
+static inline void idle_enter()
 {
-	// TODO use more performant comparsion
-	// compare with xTaskGetIdleTaskHandle( void );
+	const TickType_t idle_enter_time = xTaskGetTickCountFromISR();
+	static TickType_t last_idle_enter_time = 0;
+
+	const TickType_t diff = idle_enter_time - last_idle_enter_time;
+	if ( diff > pdMS_TO_TICKS(CPU_USAGE_INTERVAL_MS) ) {
+		last_idle_enter_time = idle_enter_time;
+
+		const uint64_t running_time_us = (uint64_t)diff * 1000 / portTICK_PERIOD_MS;
+		const uint8_t idle = (idle_time_us * 100) / running_time_us;
+		idle_time_us = 0;
+
+		printf("\nCPU %u%%\n\n", (100 - idle));
+	}
+	TIM2->CNT = 0;
+}
+
+static inline void idle_leave()
+{
+	// TODO check for overflow
+	const uint32_t last_idle_time = TIM2->CNT;
+	idle_time_us += last_idle_time;
+}
+
+
+void task_switch_in(const TaskHandle_t task, const char* const name)
+{
 	/* ignore idle task switches */
-	if (strncmp(IDLE_TASK_NAME, name, sizeof(IDLE_TASK_NAME)) == 0) {
+	if (task == xTaskGetIdleTaskHandle()) {
+		idle_enter();
 		return;
 	}
+
 
 #if (LOG_TASK_SWITCHING == 1)
 	message_add_task(true, NULL, NULL, name);
@@ -128,15 +158,15 @@ void task_switch_in(const char* const name)
 }
 
 
-void task_switch_out(const char* const name)
+void task_switch_out(const TaskHandle_t task, const char* const name)
 {
-#if (PRINT_TASK_SWITCHING == 1)
-	// TODO use more performant comparsion
 	/* ignore idle task switches */
-	if (strncmp(IDLE_TASK_NAME, name, sizeof(IDLE_TASK_NAME)) == 0) {
+	if (task == xTaskGetIdleTaskHandle()) {
+		idle_leave();
 		return;
 	}
 
+#if (PRINT_TASK_SWITCHING == 1)
 	printf("OUT %s\n", name);
 #endif
 }

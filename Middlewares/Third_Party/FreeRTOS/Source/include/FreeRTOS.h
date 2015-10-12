@@ -362,6 +362,10 @@ extern "C" {
 	#define traceTASK_SWITCHED_OUT()
 #endif
 
+#ifndef traceTASK_YIELD
+	#define traceTASK_YIELD()
+#endif
+
 #ifndef traceTASK_PRIORITY_INHERIT
 	/* Called when a task attempts to take a mutex that is already held by a
 	lower priority task.  pxTCBOfMutexHolder is a pointer to the TCB of the task
