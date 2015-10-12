@@ -12,6 +12,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "lib/mmem.h"
+#include "delay.h"
 
 
 
@@ -247,6 +248,23 @@ void print_memory(const uint8_t* const data, const size_t length)
 		}
 		printf("\n");
 	}
+}
+
+
+void delay_us_check(void)
+{
+	const uint32_t delay_time_us = 50 * 1000;
+	const uint32_t delay_repeats = 20;
+
+	const TickType_t start = xTaskGetTickCount();
+	for (uint32_t i=0; i<delay_repeats; i++) {
+		delay_us(delay_time_us);
+	}
+
+	const TickType_t end = xTaskGetTickCount();
+	const uint32_t tick_diff_ms = (end - start) / portTICK_PERIOD_MS;
+	const uint32_t delay_diff_ms = delay_time_us * delay_repeats / 1000;
+	printf("delay_us_check %lu - %lu = %lu\n", tick_diff_ms, delay_diff_ms, (tick_diff_ms - delay_diff_ms));
 }
 
 

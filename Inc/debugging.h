@@ -21,7 +21,7 @@
  */
 #define PRINT_TASK_SWITCHING			0
 #define LOG_TASK_SWITCHING				0
-#define PRINT_CPU_USAGE					1
+#define PRINT_CPU_USAGE					0
 #define CPU_USAGE_INTERVAL_MS			1000
 
 
@@ -40,6 +40,7 @@ void print_stack_trace(void)  __attribute__((no_instrument_function));
 void print_stack_trace_part(const size_t count)  __attribute__((no_instrument_function));
 void reset_stack_trace(void);
 void print_memory(const uint8_t* const data, const size_t length);
+void delay_us_check(void);
 
 #endif // DEBUGGING_H
 

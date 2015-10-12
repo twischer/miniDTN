@@ -41,6 +41,7 @@
 #include "hash.h"
 #include "system_clock.h"
 #include "dtn_apps.h"
+#include "debugging.h"
 
 #include "agent.h"
 
@@ -96,6 +97,8 @@ void agent_process(void* p)
 	dtn_seq_nr = 0;
 	dtn_seq_nr_ab = 0;
 	dtn_last_time_stamp = 0;
+
+	//delay_us_check();
 
 	if (!convergence_layers_init()) {
 		printf("CLs init failed\n");
