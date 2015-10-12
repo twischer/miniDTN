@@ -72,8 +72,9 @@ static int convergence_layer_dgram_set_unblocked(const cl_addr_t * const neighbo
 /**
  * CL process
  */
-static TaskHandle_t convergence_layer_task;
+static TaskHandle_t convergence_layer_task = NULL;
 static void convergence_layer_dgram_process(void* p);
+static void convergence_layer_dgram_check_timeouts(void* p);
 
 /**
  * Keep track of the allocated tickets
@@ -91,12 +92,6 @@ static int convergence_layer_queue = 0;
 static uint8_t outgoing_sequence_number = 0;
 
 /**
- * Indicate when a continue event or poll to ourselves is pending to avoid
- * exceeding the event queue size 
- */
-static uint8_t convergence_layer_pending = 0;
-
-/**
  * Backoff timer
  */
 static volatile bool convergence_layer_backoff_pending = false;
@@ -106,6 +101,10 @@ bool convergence_layer_dgram_init(void)
 {
 	// Start CL process
 	if ( !xTaskCreate(convergence_layer_dgram_process, "CL process", 0x200, NULL, 5, &convergence_layer_task) ) {
+		return false;
+	}
+
+	if ( !xTaskCreate(convergence_layer_dgram_check_timeouts, "CL TIMEOUTS", 0x100, NULL, tskIDLE_PRIORITY+1, NULL) ) {
 		return false;
 	}
 
@@ -226,10 +225,8 @@ int convergence_layer_dgram_enqueue_bundle(struct transmit_ticket_t * ticket)
 	/* The ticket is now active a ready for transmission */
 	ticket->flags |= CONVERGENCE_LAYER_QUEUE_ACTIVE;
 
-	if( convergence_layer_pending == 0 ) {
-		/* Poll the process to initiate transmission */
-		xTaskNotify(convergence_layer_task, 0, eNoAction);
-	}
+	/* Poll the process to initiate transmission */
+	vTaskResume(convergence_layer_task);
 
 	convergence_layer_queue++;
 
@@ -739,10 +736,8 @@ int convergence_layer_dgram_parse_ackframe(const cl_addr_t* const source, const 
 	/* This neighbour is now unblocked */
 	convergence_layer_dgram_set_unblocked(source);
 
-	if( convergence_layer_pending == 0 ) {
-		/* Poll the process to initiate transmission of the next bundle */
-		xTaskNotify(convergence_layer_task, 0, eNoAction);
-	}
+	/* Poll the process to initiate transmission of the next bundle */
+	vTaskResume(convergence_layer_task);
 
 	char addr_str[CL_ADDR_STRING_LENGTH];
 	cl_addr_string(source, addr_str, sizeof(addr_str));
@@ -860,22 +855,16 @@ int convergence_layer_dgram_status(const void* const pointer, const uint8_t outc
 	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "MAC callback for %p with %d", pointer, outcome);
 
 	/* Notify the process to commence transmitting outgoing bundles */
-	if( convergence_layer_pending == 0 ) {
-		/* If we did not send (channel busy) and it was a bundle, then slow
-		 * the transmission rate down a bit by using a timer. Otherwise:
-		 * poll the process.
-		 */
-		if( outcome == CONVERGENCE_LAYER_STATUS_NOSEND && pointer != NULL ) {
-			/* Use timer to slow the stuff down */
-			convergence_layer_backoff_pending = true;
-			xTaskNotify(convergence_layer_task, 0, eNoAction);
-		} else {
-			/* Poll to make it faster */
-			xTaskNotify(convergence_layer_task, 0, eNoAction);
-		}
-
-		convergence_layer_pending = 1;
+	/* If we did not send (channel busy) and it was a bundle, then slow
+	 * the transmission rate down a bit by using a timer. Otherwise:
+	 * poll the process.
+	 */
+	if( outcome == CONVERGENCE_LAYER_STATUS_NOSEND && pointer != NULL ) {
+		/* Use timer to slow the stuff down */
+		convergence_layer_backoff_pending = true;
 	}
+	/* Poll to make it faster */
+	vTaskResume(convergence_layer_task);
 
 	if( pointer == NULL ) {
 		/* Must be a discovery message */
@@ -1124,10 +1113,8 @@ static void convergence_layer_dgram_check_blocked_neighbours()
 	/* Otherwise: just reactivate the ticket, it will be transmitted again */
 	ticket->flags |= CONVERGENCE_LAYER_QUEUE_ACTIVE;
 
-	if( convergence_layer_pending == 0 ) {
-		/* Tell the process to resend the bundles */
-		xTaskNotify(convergence_layer_task, 0, eNoAction);
-	}
+	/* Tell the process to resend the bundles */
+	vTaskResume(convergence_layer_task);
 }
 
 
@@ -1160,6 +1147,17 @@ static void convergence_layer_dgram_check_blocked_tickets()
 		}
 	}
 }
+
+
+static void convergence_layer_dgram_check_timeouts(void* p)
+{
+	while (true) {
+		vTaskDelay(pdMS_TO_TICKS(1000));
+		convergence_layer_dgram_check_blocked_neighbours();
+		convergence_layer_dgram_check_blocked_tickets();
+	}
+}
+
 
 int convergence_layer_dgram_neighbour_down(const cl_addr_t* const neighbour)
 {
@@ -1251,71 +1249,62 @@ static void convergence_layer_dgram_process(void* p)
 	LOG(LOGD_DTN, LOG_CL, LOGL_INF, "CL process is running");
 
 	while(1) {
-		const BaseType_t notification_received = xTaskNotifyWait( 0, 0, NULL, pdMS_TO_TICKS(1000) );
-		// TODO timer nicht immer neu aufrufen sondern methoden immer anch genau 1000ms ausführen
-		// vielleicht eignenen prozess verwenden
-// TODO		if(!notification_received) {
-			convergence_layer_dgram_check_blocked_neighbours();
-			convergence_layer_dgram_check_blocked_tickets();
-// TODO		} else
-			{
-			/* slow down the transmission to mind collisions */
-			if (convergence_layer_backoff_pending) {
-				vTaskDelay( pdMS_TO_TICKS(100) );
-				convergence_layer_backoff_pending = false;
+		vTaskSuspend(NULL);
+
+		/* slow down the transmission to mind collisions */
+		if (convergence_layer_backoff_pending) {
+			vTaskDelay( pdMS_TO_TICKS(100) );
+			convergence_layer_backoff_pending = false;
+		}
+
+
+		LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Try to send %d available tickets", list_length(transmission_ticket_list));
+
+		/* If we have been woken up, it must have been a poll to transmit outgoing bundles */
+		for(ticket = list_head(transmission_ticket_list);
+			ticket != NULL;
+			ticket = list_item_next(ticket) ) {
+			if( ((ticket->flags & CONVERGENCE_LAYER_QUEUE_ACK) || (ticket->flags & CONVERGENCE_LAYER_QUEUE_NACK)) && !(ticket->flags & CONVERGENCE_LAYER_QUEUE_IN_TRANSIT) ) {
+				n = convergence_layer_dgram_resend_ack(ticket);
+				if( n ) {
+					/* Transmission happened */
+					break;
+				}
 			}
 
-			convergence_layer_pending = 0;
+			/* Tickets that are in transit have to wait */
+			if( ticket->flags & CONVERGENCE_LAYER_QUEUE_IN_TRANSIT ) {
+				continue;
+			}
 
+			/* Tickets that are in any other state than ACTIVE cannot be transmitted */
+			if( !(ticket->flags & CONVERGENCE_LAYER_QUEUE_ACTIVE) ) {
+				continue;
+			}
 
-			LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Try to send %d available tickets", list_length(transmission_ticket_list));
+			/* Neighbour for which we are currently waiting on app-layer ACKs cannot receive anything now */
+			if( convergence_layer_dgram_is_blocked(&ticket->neighbour) ) {
+				char addr_str[CL_ADDR_STRING_LENGTH];
+				cl_addr_string(&ticket->neighbour, addr_str, sizeof(addr_str));
+				LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Neighbour %s is blocked. Not sending bundle %u with ticket %p",
+					addr_str, ticket->bundle_number, ticket);
+				continue;
+			}
 
-			/* If we have been woken up, it must have been a poll to transmit outgoing bundles */
-			for(ticket = list_head(transmission_ticket_list);
-				ticket != NULL;
-				ticket = list_item_next(ticket) ) {
-				if( ((ticket->flags & CONVERGENCE_LAYER_QUEUE_ACK) || (ticket->flags & CONVERGENCE_LAYER_QUEUE_NACK)) && !(ticket->flags & CONVERGENCE_LAYER_QUEUE_IN_TRANSIT) ) {
-					n = convergence_layer_dgram_resend_ack(ticket);
-					if( n ) {
-						/* Transmission happened */
-						break;
-					}
-				}
+			/* Send the bundle just now */
+			const int ret = convergence_layer_dgram_prepare_segmentation(ticket);
 
-				/* Tickets that are in transit have to wait */
-				if( ticket->flags & CONVERGENCE_LAYER_QUEUE_IN_TRANSIT ) {
-					continue;
-				}
-
-				/* Tickets that are in any other state than ACTIVE cannot be transmitted */
-				if( !(ticket->flags & CONVERGENCE_LAYER_QUEUE_ACTIVE) ) {
-					continue;
-				}
-
-				/* Neighbour for which we are currently waiting on app-layer ACKs cannot receive anything now */
-				if( convergence_layer_dgram_is_blocked(&ticket->neighbour) ) {
-					char addr_str[CL_ADDR_STRING_LENGTH];
-					cl_addr_string(&ticket->neighbour, addr_str, sizeof(addr_str));
-					LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Neighbour %s is blocked. Not sending bundle %u with ticket %p",
-						addr_str, ticket->bundle_number, ticket);
-					continue;
-				}
-
-				/* Send the bundle just now */
-				const int ret = convergence_layer_dgram_prepare_segmentation(ticket);
-
-				if (ret > 0) {
-					// TODO send other ip packages for other neighbours
-					/* package successfully send, break and wait for ack */
-					break;
-				} else if (ret == 0) {
-					/* Radio is busy now look for ip packages */
-					/* We will get polled again when the MAC layers calls us back,
-					 * so lean back and relax
-					 */
-				} else {
-					/* an error occured, try again later */
-				}
+			if (ret > 0) {
+				// TODO send other ip packages for other neighbours
+				/* package successfully send, break and wait for ack */
+				break;
+			} else if (ret == 0) {
+				/* Radio is busy now look for ip packages */
+				/* We will get polled again when the MAC layers calls us back,
+				 * so lean back and relax
+				 */
+			} else {
+				/* an error occured, try again later */
 			}
 		}
 	}
