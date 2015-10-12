@@ -32,7 +32,10 @@ static size_t next_message_index = 0;
 static message_t messages[MESSAGE_COUNT];
 static const char* fault_name = NULL;
 
-static uint64_t idle_time_us = 0;
+#if (PRINT_CPU_USAGE == 1)
+static uint64_t usage_time = 0;
+static TickType_t task_in_time = 0;
+#endif
 
 
 static inline void message_add_task(const bool type, void *this_fn, void *call_site, const char* const task_name)
@@ -113,39 +116,44 @@ static void Unexpected_Interrupt(const char* const name)
 }
 
 
-static inline void idle_enter()
+#if (PRINT_CPU_USAGE == 1)
+static inline void print_cpu_usage()
 {
-	const TickType_t idle_enter_time = xTaskGetTickCountFromISR();
-	static TickType_t last_idle_enter_time = 0;
+	const TickType_t current_time = xTaskGetTickCountFromISR();
+	static TickType_t last_print_time = 0;
 
-	const TickType_t diff = idle_enter_time - last_idle_enter_time;
+	const TickType_t diff = current_time - last_print_time;
 	if ( diff > pdMS_TO_TICKS(CPU_USAGE_INTERVAL_MS) ) {
-		last_idle_enter_time = idle_enter_time;
+		last_print_time = current_time;
 
-		const uint64_t running_time_us = (uint64_t)diff * 1000 / portTICK_PERIOD_MS;
-		const uint8_t idle = (idle_time_us * 100) / running_time_us;
-		idle_time_us = 0;
+		const uint64_t running_time_ms = ((uint64_t)diff) / portTICK_PERIOD_MS;
+		const uint64_t running_time_hsys_clk = running_time_ms * (SystemCoreClock / 1000 / 2);
+		const uint8_t usage = (usage_time * 100) / running_time_hsys_clk;
+		usage_time = 0;
 
-		printf("\nCPU %u%%\n\n", (100 - idle));
+		printf("\nCPU %u%%\n\n", usage);
 	}
-	TIM2->CNT = 0;
 }
-
-static inline void idle_leave()
-{
-	// TODO check for overflow
-	const uint32_t last_idle_time = TIM2->CNT;
-	idle_time_us += last_idle_time;
-}
+#endif
 
 
 void task_switch_in(const TaskHandle_t task, const char* const name)
 {
 	/* ignore idle task switches */
 	if (task == xTaskGetIdleTaskHandle()) {
-		idle_enter();
+#if (PRINT_CPU_USAGE == 1)
+		print_cpu_usage();
+#endif
 		return;
 	}
+
+#if (PRINT_CPU_USAGE == 1)
+	/* reset usage time */
+	TIM3->CNT = 0;
+	/* reset the overflow bit */
+	TIM3->SR &= ~TIM_SR_UIF;
+	task_in_time = xTaskGetTickCountFromISR();
+#endif
 
 
 #if (LOG_TASK_SWITCHING == 1)
@@ -162,9 +170,20 @@ void task_switch_out(const TaskHandle_t task, const char* const name)
 {
 	/* ignore idle task switches */
 	if (task == xTaskGetIdleTaskHandle()) {
-		idle_leave();
 		return;
 	}
+
+#if (PRINT_CPU_USAGE == 1)
+	/* check for overflow */
+	if ((TIM3->SR & TIM_SR_UIF) == TIM_SR_UIF ) {
+		const TickType_t diff = xTaskGetTickCountFromISR() - task_in_time;
+		const uint64_t diff_ms = ((uint64_t)diff) / portTICK_PERIOD_MS;
+		usage_time += diff_ms * (SystemCoreClock / 1000 / 2);
+	} else {
+		const uint32_t last_usage_time = TIM3->CNT;
+		usage_time += last_usage_time;
+	}
+#endif
 
 #if (PRINT_TASK_SWITCHING == 1)
 	printf("OUT %s\n", name);
