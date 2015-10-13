@@ -25,19 +25,22 @@
 #define CPU_USAGE_INTERVAL_MS			1000
 
 
-/* copied from task.h.
- * Could not include task.h here,
+/* copied from task.h and queue.h.
+ * These files can not include here,
  * becasue there would be an include recursion
  */
 typedef void * TaskHandle_t;
+typedef void * QueueHandle_t;
 
 
 void task_switch_in(const TaskHandle_t task, const char* const name)  __attribute__((no_instrument_function));
 void task_switch_out(const TaskHandle_t task, const char* const name)  __attribute__((no_instrument_function));
 void task_yield()  __attribute__((no_instrument_function));
+void task_blocked(QueueHandle_t queue)  __attribute__((no_instrument_function));
 
 void print_stack_trace(void)  __attribute__((no_instrument_function));
 void print_stack_trace_part(const size_t count)  __attribute__((no_instrument_function));
+void print_stack_trace_part_not_blocking(const size_t count)  __attribute__((no_instrument_function));
 void reset_stack_trace(void);
 void print_memory(const uint8_t* const data, const size_t length);
 void delay_us_check(void);

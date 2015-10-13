@@ -11,6 +11,7 @@
 #include <string.h>
 #include "FreeRTOS.h"
 #include "task.h"
+#include "semphr.h"
 #include "lib/mmem.h"
 #include "delay.h"
 
@@ -199,7 +200,26 @@ void task_yield()
 }
 
 
-void print_stack_trace_part(const size_t count)
+void task_blocked(QueueHandle_t queue)
+{
+	/* do not process queues onyl semaphores and mutex */
+	const uint8_t type = ucQueueGetQueueType(queue);
+	if (type == queueQUEUE_TYPE_SET) {
+		return;
+	}
+
+	const char* const blocked_task_name = pcTaskGetTaskName(NULL);
+
+	const TaskHandle_t holder = xSemaphoreGetMutexHolder(queue);
+	const char* const blocking_task_name = (holder != NULL) ? pcTaskGetTaskName(holder) : "UNKNOWN";
+
+	print_stack_trace_part_not_blocking(5);
+	printf("Task '%s' is blocking on queue %p with type %u. Task '%s' has the lock.\n",
+		   blocked_task_name, queue, type, blocking_task_name);
+}
+
+
+void print_stack_trace_part_not_blocking(const size_t count)
 {
 	/* disabling adding function calls to the stack trace,
 	 * becasue the following functions only called for debugging
@@ -219,8 +239,14 @@ void print_stack_trace_part(const size_t count)
 			   messages[message_index].call_site, messages[message_index].task_name);
 		message_index = (message_index + 1) % MESSAGE_COUNT;
 	}
-	printf("Enable function instrumentation (gcc -finstrument-functions), if the function call trace is undefined.");
+}
 
+
+void print_stack_trace_part(const size_t count)
+{
+	print_stack_trace_part_not_blocking(count);
+
+	printf("Enable function instrumentation (gcc -finstrument-functions), if the function call trace is undefined.\n");
 	for(;;);
 }
 

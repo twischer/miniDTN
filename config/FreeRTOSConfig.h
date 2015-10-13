@@ -182,6 +182,7 @@ standard names. */
 #define traceTASK_SWITCHED_IN() task_switch_in(pxCurrentTCB, pxCurrentTCB->pcTaskName);
 #define traceTASK_SWITCHED_OUT() task_switch_out(pxCurrentTCB, pxCurrentTCB->pcTaskName);
 //#define traceTASK_YIELD() task_yield();
+//#define traceBLOCKING_ON_QUEUE_RECEIVE(xQueue) task_blocked(xQueue);
 
 /* USER CODE END Defines */ 
 
