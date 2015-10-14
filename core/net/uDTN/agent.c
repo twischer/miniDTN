@@ -76,6 +76,10 @@ bool agent_init(void)
 	DISCOVERY.init();
 	registration_init();
 
+	if (!convergence_layers_init()) {
+		printf("CLs init failed\n");
+	}
+
 
 	// Otherwise start the agent process
 	if ( !dtn_process_create_with_queue(agent_process, "AGENT process", 0x200, &event_queue) ) {
@@ -100,8 +104,8 @@ void agent_process(void* p)
 
 	//delay_us_check();
 
-	if (!convergence_layers_init()) {
-		printf("CLs init failed\n");
+	if (!convergence_layer_udp_init()) {
+		printf("UDP-CL init failed\n");
 	}
 
 	// We use printf here, to make this message visible in every case!

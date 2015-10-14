@@ -17,6 +17,7 @@
 
 #include "FreeRTOS.h"
 #include "task.h"
+#include "semphr.h"
 
 #include "net/packetbuf.h"
 #include "net/netstack.h"
@@ -72,7 +73,6 @@ static int convergence_layer_dgram_set_unblocked(const cl_addr_t * const neighbo
 /**
  * CL process
  */
-static TaskHandle_t convergence_layer_task = NULL;
 static void convergence_layer_dgram_process(void* p);
 static void convergence_layer_dgram_check_timeouts(void* p);
 
@@ -96,11 +96,29 @@ static uint8_t outgoing_sequence_number = 0;
  */
 static volatile bool convergence_layer_backoff_pending = false;
 
+static SemaphoreHandle_t transmit_reqest_sem = NULL;
+
 
 bool convergence_layer_dgram_init(void)
 {
+	/* Only execute the initalisation before the scheduler was started.
+	 * So there exists only one thread and
+	 * no locking is needed for the initialisation
+	 */
+	configASSERT(xTaskGetSchedulerState() == taskSCHEDULER_NOT_STARTED);
+
+	/* cancle, if initialisation was already done */
+	configASSERT(transmit_reqest_sem == NULL);
+
+	// TODO possibly increase semaphore size to speed up the transmission
+	transmit_reqest_sem = xSemaphoreCreateCounting(1, 0);
+	if(transmit_reqest_sem == NULL) {
+		return false;
+	}
+
+
 	// Start CL process
-	if ( !xTaskCreate(convergence_layer_dgram_process, "CL process", 0x200, NULL, 5, &convergence_layer_task) ) {
+	if ( !xTaskCreate(convergence_layer_dgram_process, "CL process", 0x200, NULL, 5, NULL) ) {
 		return false;
 	}
 
@@ -226,7 +244,7 @@ int convergence_layer_dgram_enqueue_bundle(struct transmit_ticket_t * ticket)
 	ticket->flags |= CONVERGENCE_LAYER_QUEUE_ACTIVE;
 
 	/* Poll the process to initiate transmission */
-	vTaskResume(convergence_layer_task);
+	xSemaphoreGive(transmit_reqest_sem);
 
 	convergence_layer_queue++;
 
@@ -737,7 +755,8 @@ int convergence_layer_dgram_parse_ackframe(const cl_addr_t* const source, const 
 	convergence_layer_dgram_set_unblocked(source);
 
 	/* Poll the process to initiate transmission of the next bundle */
-	vTaskResume(convergence_layer_task);
+	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Resume sending task because of ack (seq %u flags 0x%x)", sequence_number, flags);
+	xSemaphoreGive(transmit_reqest_sem);
 
 	char addr_str[CL_ADDR_STRING_LENGTH];
 	cl_addr_string(source, addr_str, sizeof(addr_str));
@@ -864,7 +883,7 @@ int convergence_layer_dgram_status(const void* const pointer, const uint8_t outc
 		convergence_layer_backoff_pending = true;
 	}
 	/* Poll to make it faster */
-	vTaskResume(convergence_layer_task);
+	xSemaphoreGive(transmit_reqest_sem);
 
 	if( pointer == NULL ) {
 		/* Must be a discovery message */
@@ -1114,7 +1133,7 @@ static void convergence_layer_dgram_check_blocked_neighbours()
 	ticket->flags |= CONVERGENCE_LAYER_QUEUE_ACTIVE;
 
 	/* Tell the process to resend the bundles */
-	vTaskResume(convergence_layer_task);
+	xSemaphoreGive(transmit_reqest_sem);
 }
 
 
@@ -1249,7 +1268,7 @@ static void convergence_layer_dgram_process(void* p)
 	LOG(LOGD_DTN, LOG_CL, LOGL_INF, "CL process is running");
 
 	while(1) {
-		vTaskSuspend(NULL);
+		while (!xSemaphoreTake(transmit_reqest_sem, portMAX_DELAY) ) { }
 
 		/* slow down the transmission to mind collisions */
 		if (convergence_layer_backoff_pending) {

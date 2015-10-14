@@ -235,8 +235,12 @@ void print_stack_trace_part_not_blocking(const size_t count)
 	size_t message_index = (next_message_index + (MESSAGE_COUNT - count)) % MESSAGE_COUNT;
 	for (size_t i=0; i<count; i++) {
 		const char* const type = messages[message_index].enter ? "ENTER" : "EXIT ";
+		const char* task_name = messages[message_index].task_name;
+		if (task_name == NULL) {
+			task_name = "UNKNOWN";
+		}
 		printf("%s function %p, from call %p, in task '%s'\n", type, messages[message_index].this_fn,
-			   messages[message_index].call_site, messages[message_index].task_name);
+			   messages[message_index].call_site, task_name);
 		message_index = (message_index + 1) % MESSAGE_COUNT;
 	}
 }

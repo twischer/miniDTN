@@ -10,10 +10,6 @@ bool convergence_layers_init(void)
 		return false;
 	}
 
-	if (!convergence_layer_udp_init()) {
-		return false;
-	}
-
 	return true;
 }
 
