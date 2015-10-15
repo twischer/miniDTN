@@ -150,10 +150,12 @@ void task_switch_in(const TaskHandle_t task, const char* const name)
 	}
 
 #if (PRINT_CPU_USAGE == 1)
+	// TODO measure time between switch outs for non idle tasks.
+	// So the sceduling time will be measured, too.
 	/* reset usage time */
-	TIM3->CNT = 0;
+	TIM5->CNT = 0;
 	/* reset the overflow bit */
-	TIM3->SR &= ~TIM_SR_UIF;
+	TIM5->SR &= ~TIM_SR_UIF;
 	task_in_time = xTaskGetTickCountFromISR();
 #endif
 
@@ -177,7 +179,7 @@ void task_switch_out(const TaskHandle_t task, const char* const name)
 
 #if (PRINT_CPU_USAGE == 1)
 	/* check for overflow */
-	if ((TIM3->SR & TIM_SR_UIF) == TIM_SR_UIF ) {
+	if ((TIM5->SR & TIM_SR_UIF) == TIM_SR_UIF ) {
 		const TickType_t diff = xTaskGetTickCountFromISR() - task_in_time;
 		const uint64_t diff_ms = ((uint64_t)diff) / portTICK_PERIOD_MS;
 		usage_time += diff_ms * (SystemCoreClock / 1000 / 2);
