@@ -173,6 +173,7 @@ mmem_free(struct mmem *m)
 
 	LOG(LOGD_CORE, LOG_MMEM, LOGL_DBG, "%p %p %lu %p %lu", m, m->ptr, m->real_size, m->next, avail_memory);
 
+#if (configASSERT_DEFINED == 1)
 	/* fail if the memory is not in this list */
 	bool is_in_list = false;
 	for (struct mmem* n=list_head(mmemlist); n != NULL; n=list_item_next(n)) {
@@ -182,6 +183,7 @@ mmem_free(struct mmem *m)
 		}
 	}
 	configASSERT(is_in_list);
+#endif /* configASSERT_DEFINED */
 
 	struct mmem *n;
 
@@ -192,8 +194,7 @@ mmem_free(struct mmem *m)
 		 * could be an stack overflow
 		 * which overwrites the real_size value.
 		 */
-		const size_t offset = m->next->ptr - m->ptr;
-		configASSERT(offset == m->real_size);
+		configASSERT( (m->next->ptr - m->ptr) == m->real_size );
 
 		/* Compact the memory after the allocation that is to be removed
 		 * by moving it downwards.
