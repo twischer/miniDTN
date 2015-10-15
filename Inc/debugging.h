@@ -24,6 +24,12 @@
 #define PRINT_CPU_USAGE					0
 #define CPU_USAGE_INTERVAL_MS			1000
 
+/* if enabling logging of FreeRTOS task blocking,
+ * the tracing of FreeRTOS has to be enabled.
+ * #define traceBLOCKING_ON_QUEUE_RECEIVE(xQueue) task_blocked(xQueue);
+ */
+#define PRINT_BLOCKING_TASKS            0
+
 
 /* copied from task.h and queue.h.
  * These files can not include here,
@@ -36,7 +42,10 @@ typedef void * QueueHandle_t;
 void task_switch_in(const TaskHandle_t task, const char* const name)  __attribute__((no_instrument_function));
 void task_switch_out(const TaskHandle_t task, const char* const name)  __attribute__((no_instrument_function));
 void task_yield()  __attribute__((no_instrument_function));
+
+#if (PRINT_BLOCKING_TASKS == 1)
 void task_blocked(QueueHandle_t queue)  __attribute__((no_instrument_function));
+#endif
 
 void print_stack_trace(void)  __attribute__((no_instrument_function));
 void print_stack_trace_part(const size_t count)  __attribute__((no_instrument_function));

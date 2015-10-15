@@ -1334,6 +1334,7 @@ static void rf230_process(void* p)
   RF230PROCESSFLAG(99);
 
   while(1) {
+	  // TODO use counting semaphore instead
 	/* only sleep, if there is no received data to process */
 	if (!rf230_pending) {
 	  vTaskSuspend(NULL);

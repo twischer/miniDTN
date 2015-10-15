@@ -93,7 +93,7 @@ struct routing_entry_t {
 /**
  * Routing process
  */
-static TaskHandle_t routing_task;
+static TaskHandle_t routing_task = NULL;
 static void routing_process(void* p);
 
 /* only used to produce a logging output after BLACKLIST_THRESHOLD */

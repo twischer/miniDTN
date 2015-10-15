@@ -103,15 +103,15 @@
 #define configMINIMAL_STACK_SIZE                 ((uint16_t)0x100)
 #define configTOTAL_HEAP_SIZE                    ((size_t)0x8000)
 #define configMAX_TASK_NAME_LEN                  ( 16 )
-#define configUSE_TRACE_FACILITY                 1
+#define configUSE_TRACE_FACILITY                 0
 #define configUSE_16_BIT_TICKS                   0
 #define configUSE_MUTEXES                        1
 #define configQUEUE_REGISTRY_SIZE                8
-#define configCHECK_FOR_STACK_OVERFLOW           2
+#define configCHECK_FOR_STACK_OVERFLOW           0
 #define configUSE_MALLOC_FAILED_HOOK             1
 #define configUSE_RECURSIVE_MUTEXES              1
 #define configUSE_COUNTING_SEMAPHORES            1
-#define configUSE_APPLICATION_TASK_TAG	1
+#define configUSE_APPLICATION_TASK_TAG           1
 
 /* Co-routine definitions. */
 #define configUSE_CO_ROUTINES 		0
@@ -165,7 +165,7 @@ See http://www.FreeRTOS.org/RTOS-Cortex-M3-M4.html. */
 /* Normal assert() semantics without relying on the provision of an assert.h
 header file. */
 /* USER CODE BEGIN 1 */   
-#define configASSERT( x ) if ((x) == 0) {taskDISABLE_INTERRUPTS(); for( ;; );} 
+//#define configASSERT( x ) if ((x) == 0) {taskDISABLE_INTERRUPTS(); for( ;; );}
 /* USER CODE END 1 */
 
 /* Definitions that map the FreeRTOS port interrupt handlers to their CMSIS
@@ -179,8 +179,8 @@ standard names. */
 
 /* USER CODE BEGIN Defines */   	      
 /* Section where parameter definitions can be added (for instance, to override default ones in FreeRTOS.h) */
-#define traceTASK_SWITCHED_IN() task_switch_in(pxCurrentTCB, pxCurrentTCB->pcTaskName);
-#define traceTASK_SWITCHED_OUT() task_switch_out(pxCurrentTCB, pxCurrentTCB->pcTaskName);
+//#define traceTASK_SWITCHED_IN() task_switch_in(pxCurrentTCB, pxCurrentTCB->pcTaskName);
+//#define traceTASK_SWITCHED_OUT() task_switch_out(pxCurrentTCB, pxCurrentTCB->pcTaskName);
 //#define traceTASK_YIELD() task_yield();
 //#define traceBLOCKING_ON_QUEUE_RECEIVE(xQueue) task_blocked(xQueue);
 

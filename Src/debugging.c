@@ -200,6 +200,7 @@ void task_yield()
 }
 
 
+#if (PRINT_BLOCKING_TASKS == 1)
 void task_blocked(QueueHandle_t queue)
 {
 	/* do not process queues onyl semaphores and mutex */
@@ -217,6 +218,7 @@ void task_blocked(QueueHandle_t queue)
 	printf("Task '%s' is blocking on queue %p with type %u. Task '%s' has the lock.\n",
 		   blocked_task_name, queue, type, blocking_task_name);
 }
+#endif
 
 
 void print_stack_trace_part_not_blocking(const size_t count)
