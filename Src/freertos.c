@@ -44,7 +44,7 @@
 /* USER CODE END Includes */
 
 /* Variables -----------------------------------------------------------------*/
-osThreadId defaultTaskHandle;
+osThreadId FatLwipInitHandle;
 
 /* USER CODE BEGIN Variables */
 
@@ -83,9 +83,9 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE END RTOS_TIMERS */
 
   /* Create the thread(s) */
-  /* definition and creation of defaultTask */
+  /* definition and creation of FatLwipInit */
   osThreadDef(FatLwipInit, StartDefaultTask, osPriorityRealtime, 0, 0x400);
-  defaultTaskHandle = osThreadCreate(osThread(FatLwipInit), NULL);
+  FatLwipInitHandle = osThreadCreate(osThread(FatLwipInit), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
