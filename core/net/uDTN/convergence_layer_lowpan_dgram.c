@@ -66,7 +66,7 @@ static int convergence_layer_lowpan_dgram_init()
 static size_t convergence_layer_lowpan_dgram_max_payload_length(void)
 {
 	/* the gram lowpan clayer needs 1 byte */
-	return CONVERGENCE_LAYER_MAX_LENGTH - 1;
+	return CONVERGENCE_LAYER_MAX_LENGTH - sizeof(struct lowpan_dgram_hdr);
 }
 
 
@@ -98,14 +98,14 @@ static int convergence_layer_lowpan_dgram_send_discovery(const uint8_t* const pa
 
 	/* Copy the discovery message and set the length */
 	// TODO check for max dtn buffer length
-	memcpy(buffer + 1, payload, length);
+	memcpy(buffer + sizeof(struct lowpan_dgram_hdr), payload, length);
 
 	/* Now we are transmitting */
 	convergence_layer_transmitting = true;
 
 	/* Send it out via the MAC */
 	static linkaddr_t bcast_addr = {{0, 0}};
-	dtn_network_send(&bcast_addr, length + 1, NULL);
+	dtn_network_send(&bcast_addr, length + sizeof(struct lowpan_dgram_hdr), NULL);
 
 	return 1;
 }
@@ -142,7 +142,7 @@ static int convergence_layer_lowpan_dgram_send_bundle(const cl_addr_t* const des
 	}
 
 	/* add one byte for the dgram:lowpan header */
-	const uint8_t length_to_send = length + 1;
+	const uint8_t length_to_send = length + sizeof(struct lowpan_dgram_hdr);
 
 	/* fail if the buffer is not big enough */
 	if (length_to_send > dtn_network_get_buffer_length()) {
@@ -218,7 +218,7 @@ static int convergence_layer_lowpan_dgram_send_ack(const cl_addr_t* const destin
 	}
 
 	/* Send it out via the MAC */
-	dtn_network_send((linkaddr_t*)&destination->lowpan, 1, (void*)reference);
+	dtn_network_send((linkaddr_t*)&destination->lowpan, sizeof(struct lowpan_dgram_hdr), (void*)reference);
 
 	return 1;
 }
@@ -257,8 +257,8 @@ static int convergence_layer_lowpan_dgram_incoming_frame(const cl_addr_t* const 
 	}
 
 	header = payload[0];
-	const uint8_t* const data_pointer = payload + 1;
-	data_length = length - 1;
+	const uint8_t* const data_pointer = payload + sizeof(struct lowpan_dgram_hdr);
+	data_length = length - sizeof(struct lowpan_dgram_hdr);
 
 	if( (header & CONVERGENCE_LAYER_MASK_TYPE) == CONVERGENCE_LAYER_TYPE_DATA ) {
 		/* is data */

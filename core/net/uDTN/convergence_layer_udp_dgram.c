@@ -9,7 +9,6 @@
 
 
 #define IP_ADDR_STRING_LENGTH	16
-#define UDP_DGRAM_HEADER_LEN	2
 
 /* copiied from IBR-DTN:/daemon/src/net/DatagramConvergenceLayer.h */
 typedef enum
@@ -50,7 +49,8 @@ static int convergence_layer_udp_dgram_init()
 static inline int convergence_layer_udp_dgram_send(const ip_addr_t* const ip, const HEADER_TYPES type, const int sequence_number, const HEADER_FLAGS flags,
 											const uint8_t* const payload, const size_t length, const void* const reference)
 {
-	uint8_t buffer[UDP_DGRAM_HEADER_LEN];
+	// TODO use structure for package building
+	uint8_t buffer[sizeof(struct udp_dgram_hdr)];
 
 	/* Discovery Prefix */
 	buffer[0] = type;
@@ -69,7 +69,7 @@ static inline int convergence_layer_udp_dgram_send(const ip_addr_t* const ip, co
 
 static size_t convergence_layer_udp_dgram_max_payload_length(void)
 {
-	return ETH_MAX_ETH_PAYLOAD - sizeof(struct ip_hdr) - sizeof(struct udp_hdr) - UDP_DGRAM_HEADER_LEN;
+	return ETH_MAX_ETH_PAYLOAD - sizeof(struct ip_hdr) - sizeof(struct udp_hdr) - sizeof(struct udp_dgram_hdr);
 }
 
 
@@ -161,8 +161,8 @@ static int convergence_layer_udp_dgram_incoming_frame(const cl_addr_t* const sou
 		flags = CONVERGENCE_LAYER_FLAGS_FIRST;
 	}
 
-	const uint8_t* const data_pointer = payload + UDP_DGRAM_HEADER_LEN;
-	const size_t data_length = length - UDP_DGRAM_HEADER_LEN;
+	const uint8_t* const data_pointer = payload + sizeof(struct udp_dgram_hdr);
+	const size_t data_length = length - sizeof(struct udp_dgram_hdr);
 
 	switch(type) {
 	case HEADER_SEGMENT:
