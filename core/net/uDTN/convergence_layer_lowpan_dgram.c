@@ -42,6 +42,15 @@
 #define CONVERGENCE_LAYER_MAX_LENGTH 116
 
 
+struct lowpan_dgram_hdr
+{
+	uint8_t compat : 2;
+	uint8_t type : 2;
+	uint8_t seqno : 2;
+	uint8_t flags : 2;
+}  __attribute__ ((packed));
+
+
 /**
  * MUTEX to avoid flooding the MAC layer with outgoing bundles
  */
@@ -116,6 +125,8 @@ static int convergence_layer_lowpan_dgram_send_discovery(const uint8_t* const pa
 static int convergence_layer_lowpan_dgram_send_bundle(const cl_addr_t* const dest, const int sequence_number, const uint8_t flags,
 											const uint8_t* const payload, const size_t length, const void* const reference)
 {
+	configASSERT(dest->clayer == &clayer_lowpan_dgram);
+
 	/* only send the bundle, if no other bundle is sending */
 	if (convergence_layer_transmitting) {
 		return 0;
@@ -172,6 +183,8 @@ static int convergence_layer_lowpan_dgram_send_bundle(const cl_addr_t* const des
 static int convergence_layer_lowpan_dgram_send_ack(const cl_addr_t* const destination, const int sequence_number, const int type,
 											 const void* const reference)
 {
+	configASSERT(destination->clayer == &clayer_lowpan_dgram);
+
 	/* only send the bundle, if no other bundle is sending */
 	if (convergence_layer_transmitting) {
 		return 0;
@@ -222,10 +235,7 @@ int convergence_layer_lowpan_dgram_status(const void* const pointer, const uint8
 
 static int convergence_layer_lowpan_dgram_incoming_frame(const cl_addr_t* const source, const uint8_t* const payload, const size_t length, const packetbuf_attr_t rssi)
 {
-	if (source->isIP) {
-		LOG(LOGD_DTN, LOG_CL, LOGL_ERR, "Source is not a LOWPAN address. Could not processed by this CL.");
-		return -1;
-	}
+	configASSERT(source->clayer == &clayer_lowpan_dgram);
 
 	uint8_t data_length = 0;
 	uint8_t header;

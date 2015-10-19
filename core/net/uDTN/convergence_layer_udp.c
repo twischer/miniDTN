@@ -151,10 +151,8 @@ static void convergence_layer_udp_discovery_thread(void *arg)
 
 			/* Notify the discovery module, that we have seen a peer */
 			cl_addr_t source;
-			source.clayer = &clayer_udp_dgram;
-			source.isIP = true;
-			ip_addr_copy(source.ip, *addr);
-			source.port = port;
+			cl_addr_build_udp_dgram(addr, port, &source);
+
 			DISCOVERY.receive(&source, data, length);
 
 			netbuf_delete(buf);
@@ -200,10 +198,8 @@ static void convergence_layer_udp_bundle_thread(void *arg)
 			}
 
 			cl_addr_t source;
-			source.clayer = &clayer_udp_dgram;
-			source.isIP = true;
-			ip_addr_copy(source.ip, *addr);
-			source.port = port;
+			cl_addr_build_udp_dgram(addr, port, &source);
+
 			source.clayer->input(&source, data, length, 0);
 
 			netbuf_delete(buf);
@@ -238,7 +234,7 @@ int convergence_layer_udp_init(void)
 	}
 
 	if (netconn_bind(discovery_conn, IP_ADDR_ANY, CL_UDP_DISCOVERY_PORT) != ERR_OK) {
-		LOG(LOGD_DTN, LOG_CL_UDP, LOGL_ERR, "ERR: netconn_bind failed\n");
+		LOG(LOGD_DTN, LOG_CL_UDP, LOGL_ERR, "netconn_bind failed\n");
 		netconn_delete(discovery_conn);
 		return -2;
 	}

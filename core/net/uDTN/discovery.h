@@ -162,14 +162,9 @@ static inline int discovery_neighbour_to_addr(const struct discovery_neighbour_l
 	}
 
 	if ( (addr_type & ADDRESS_TYPE_FLAG_LOWPAN) == ADDRESS_TYPE_FLAG_LOWPAN ) {
-		addr->clayer = &clayer_lowpan_dgram;
-		addr->isIP = false;
-		linkaddr_copy(&addr->lowpan, &entry->neighbour);
+		cl_addr_build_lowpan_dgram(&entry->neighbour, addr);
 	} else if ( (addr_type & ADDRESS_TYPE_FLAG_IPV4) == ADDRESS_TYPE_FLAG_IPV4 ) {
-		addr->clayer = &clayer_udp_dgram;
-		addr->isIP = true;
-		ip_addr_copy(addr->ip, entry->ip);
-		addr->port = entry->port;
+		cl_addr_build_udp_dgram(&entry->ip, entry->port, addr);
 	} else {
 		/* an unkown type was used */
 		return -2;

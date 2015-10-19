@@ -37,6 +37,8 @@ typedef struct {
 } cl_addr_t;
 
 
+int cl_addr_build_lowpan_dgram(const linkaddr_t* const addr, cl_addr_t* const cl_addr);
+int cl_addr_build_udp_dgram(const ip_addr_t* const addr, const uint16_t port, cl_addr_t* const cl_addr);
 
 bool cl_addr_cmp(const cl_addr_t* const src1, const cl_addr_t* const src2);
 int cl_addr_string(const cl_addr_t* const addr, char* const buf, const size_t buflen);

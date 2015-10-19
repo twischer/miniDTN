@@ -31,6 +31,15 @@ typedef enum
 } HEADER_FLAGS;
 
 
+struct udp_dgram_hdr
+{
+	uint8_t type;
+	uint8_t flags : 4;
+	uint8_t seqno : 4;
+}  __attribute__ ((packed));
+
+
+
 static int convergence_layer_udp_dgram_init()
 {
 	/* needed initaliziation will be done by convergence_layer_udp_init() */
@@ -86,6 +95,8 @@ static int convergence_layer_udp_dgram_send_discovery(const uint8_t* const paylo
 
 static int convergence_layer_udp_dgram_send_ack(const cl_addr_t* const dest, const int sequence_number, const int type, const void* const reference)
 {
+	configASSERT(dest->clayer == &clayer_udp_dgram);
+
 	HEADER_TYPES header_type = HEADER_NACK;
 	HEADER_FLAGS header_flags = 0;
 
@@ -114,6 +125,8 @@ static int convergence_layer_udp_dgram_send_ack(const cl_addr_t* const dest, con
 static int convergence_layer_udp_dgram_send_bundle(const cl_addr_t* const dest, const int sequence_number, const uint8_t flags,
 											const uint8_t* const payload, const size_t length, const void* const reference)
 {
+	configASSERT(dest->clayer == &clayer_udp_dgram);
+
 	const HEADER_FLAGS header_flags = flags;
 	// TODO use the port, too, because other nodes can use other ports
 	return convergence_layer_udp_dgram_send(&dest->ip, HEADER_SEGMENT, sequence_number, header_flags, payload, length, reference);
@@ -122,10 +135,7 @@ static int convergence_layer_udp_dgram_send_bundle(const cl_addr_t* const dest, 
 
 static int convergence_layer_udp_dgram_incoming_frame(const cl_addr_t* const source, const uint8_t* const payload, const size_t length, const packetbuf_attr_t rssi)
 {
-	if (!source->isIP) {
-		LOG(LOGD_DTN, LOG_CL_UDP, LOGL_ERR, "Source is not an IP address. Could not processed by this CL.");
-		return -1;
-	}
+	configASSERT(source->clayer == &clayer_udp_dgram);
 
 	char addr_str[CL_ADDR_STRING_LENGTH];
 	cl_addr_string(source, addr_str, sizeof(addr_str));

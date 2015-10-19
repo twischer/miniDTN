@@ -327,7 +327,7 @@ static int discovery_ipnd_receive(const cl_addr_t* const addr, const uint8_t* co
 	discovery_ipnd_parse_msg(payload, length, &attrs);
 
 	/* overwrite the port, if it was ip discovery message */
-	if (addr->isIP) {
+	if (addr->clayer == &clayer_udp_dgram) {
 		cl_addr_t bundle_addr;
 		memcpy(&bundle_addr, addr, sizeof(bundle_addr));
 		bundle_addr.port = attrs.port;
@@ -338,8 +338,11 @@ static int discovery_ipnd_receive(const cl_addr_t* const addr, const uint8_t* co
 		 * If it already exists refresh only the time stamp.
 		 */
 		return discovery_ipnd_save_neighbour(attrs.node_id, &bundle_addr);
-	} else {
+	} else if (addr->clayer == &clayer_lowpan_dgram) {
 		return discovery_ipnd_save_neighbour(attrs.node_id, addr);
+	} else {
+		LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_ERR, "Unknown convergence layer %p used.", addr->clayer);
+		return -1;
 	}
 }
 
