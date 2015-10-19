@@ -12,11 +12,19 @@
  */
 #define CL_ADDR_STRING_LENGTH	22
 
+
+/* convergence_layers.h could not included here,
+ * becasue it would result in an infinite recursion
+ */
+struct convergence_layer;
+
+
 /**
  * Unified destination addresses
  * of the DTN neighbours
  */
 typedef struct {
+	const struct convergence_layer* clayer;
 	bool isIP;
 	union {
 		linkaddr_t lowpan;

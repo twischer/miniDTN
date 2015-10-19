@@ -69,13 +69,14 @@ static void dtn_network_input(void)
 
 	/* Create a copy here, because otherwise packetbuf_clear will evaporate the address */
 	linkaddr_copy(&source.lowpan, packetbuf_addr(PACKETBUF_ADDR_SENDER));
+	source.clayer = &clayer_lowpan_dgram;
 	source.isIP = false;
 
 	buffer = packetbuf_dataptr();
 	length = packetbuf_datalen();
 	rssi = packetbuf_attr(PACKETBUF_ATTR_RSSI);
 
-	convergence_layer_lowpan_dgram_incoming_frame(&source, buffer, length, rssi);
+	clayer_lowpan_dgram.input(&source, buffer, length, rssi);
 }
 
 /**
@@ -105,6 +106,7 @@ static void dtn_network_sent(void * pointer, int status, int num_tx)
 		break;
 	}
 
+	// TODO add parameter to dtn_network_sent to set callback by calling
 	/* Call the CL */
 	convergence_layer_lowpan_dgram_status(pointer, outcome);
 }

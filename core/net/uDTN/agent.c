@@ -104,7 +104,7 @@ void agent_process(void* p)
 
 	//delay_us_check();
 
-	if (!convergence_layer_udp_init()) {
+	if (convergence_layer_udp_init() < 0) {
 		printf("UDP-CL init failed\n");
 	}
 

@@ -138,7 +138,7 @@ struct transmit_ticket_t {
 };
 
 
-bool convergence_layer_dgram_init(void);
+int convergence_layer_dgram_init(void);
 
 int convergence_layer_dgram_free_transmit_ticket(struct transmit_ticket_t * ticket);
 struct transmit_ticket_t * convergence_layer_dgram_get_transmit_ticket();

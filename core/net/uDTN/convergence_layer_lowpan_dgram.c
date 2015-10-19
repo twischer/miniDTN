@@ -48,15 +48,26 @@
 static bool convergence_layer_transmitting = false;
 
 
+static int convergence_layer_lowpan_dgram_init()
+{
+	return convergence_layer_dgram_init();
+}
 
-size_t convergence_layer_lowpan_dgram_max_payload_length(void)
+
+static size_t convergence_layer_lowpan_dgram_max_payload_length(void)
 {
 	/* the gram lowpan clayer needs 1 byte */
 	return CONVERGENCE_LAYER_MAX_LENGTH - 1;
 }
 
 
-int convergence_layer_lowpan_dgram_send_discovery(uint8_t * payload, uint8_t length, linkaddr_t * neighbour)
+static uint8_t convergence_layer_lowpan_dgram_next_sequence_number(const uint8_t last_seqno)
+{
+	return (last_seqno + 1) % 4;
+}
+
+
+static int convergence_layer_lowpan_dgram_send_discovery(const uint8_t* const payload, const size_t length)
 {
 	uint8_t * buffer = NULL;
 
@@ -77,13 +88,15 @@ int convergence_layer_lowpan_dgram_send_discovery(uint8_t * payload, uint8_t len
 	buffer[0] = CONVERGENCE_LAYER_TYPE_DISCOVERY;
 
 	/* Copy the discovery message and set the length */
+	// TODO check for max dtn buffer length
 	memcpy(buffer + 1, payload, length);
 
 	/* Now we are transmitting */
 	convergence_layer_transmitting = true;
 
 	/* Send it out via the MAC */
-	dtn_network_send(neighbour, length + 1, NULL);
+	static linkaddr_t bcast_addr = {{0, 0}};
+	dtn_network_send(&bcast_addr, length + 1, NULL);
 
 	return 1;
 }
@@ -100,7 +113,7 @@ int convergence_layer_lowpan_dgram_send_discovery(uint8_t * payload, uint8_t len
  *          0 bundle was not send, because of locked driver
  *          1 bundle was send
  */
-int convergence_layer_lowpan_dgram_send_bundle(const cl_addr_t* const dest, const int sequence_number, const uint8_t flags,
+static int convergence_layer_lowpan_dgram_send_bundle(const cl_addr_t* const dest, const int sequence_number, const uint8_t flags,
 											const uint8_t* const payload, const size_t length, const void* const reference)
 {
 	/* only send the bundle, if no other bundle is sending */
@@ -156,7 +169,7 @@ int convergence_layer_lowpan_dgram_send_bundle(const cl_addr_t* const dest, cons
  *          0 bundle was not send, because of locked driver
  *          1 bundle was send
  */
-int convergence_layer_lowpan_dgram_send_ack(const cl_addr_t* const destination, const int sequence_number, const int type,
+static int convergence_layer_lowpan_dgram_send_ack(const cl_addr_t* const destination, const int sequence_number, const int type,
 											 const void* const reference)
 {
 	/* only send the bundle, if no other bundle is sending */
@@ -207,7 +220,7 @@ int convergence_layer_lowpan_dgram_status(const void* const pointer, const uint8
 }
 
 
-int convergence_layer_lowpan_dgram_incoming_frame(const cl_addr_t* const source, const uint8_t* const payload, const uint8_t length, const packetbuf_attr_t rssi)
+static int convergence_layer_lowpan_dgram_incoming_frame(const cl_addr_t* const source, const uint8_t* const payload, const size_t length, const packetbuf_attr_t rssi)
 {
 	if (source->isIP) {
 		LOG(LOGD_DTN, LOG_CL, LOGL_ERR, "Source is not a LOWPAN address. Could not processed by this CL.");
@@ -293,3 +306,14 @@ int convergence_layer_lowpan_dgram_incoming_frame(const cl_addr_t* const source,
 	return 0;
 }
 
+
+const struct convergence_layer clayer_lowpan_dgram = {
+	.name = "dgram:lowpan",
+	.init = convergence_layer_lowpan_dgram_init,
+	.max_payload_length = convergence_layer_lowpan_dgram_max_payload_length,
+	.next_seqno = convergence_layer_lowpan_dgram_next_sequence_number,
+	.send_discovery = convergence_layer_lowpan_dgram_send_discovery,
+	.send_ack = convergence_layer_lowpan_dgram_send_ack,
+	.send_bundle = convergence_layer_lowpan_dgram_send_bundle,
+	.input = convergence_layer_lowpan_dgram_incoming_frame
+};

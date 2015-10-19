@@ -99,7 +99,7 @@ static volatile bool convergence_layer_backoff_pending = false;
 static SemaphoreHandle_t transmit_reqest_sem = NULL;
 
 
-bool convergence_layer_dgram_init(void)
+int convergence_layer_dgram_init(void)
 {
 	/* Only execute the initalisation before the scheduler was started.
 	 * So there exists only one thread and
@@ -113,40 +113,20 @@ bool convergence_layer_dgram_init(void)
 	// TODO possibly increase semaphore size to speed up the transmission
 	transmit_reqest_sem = xSemaphoreCreateCounting(1, 0);
 	if(transmit_reqest_sem == NULL) {
-		return false;
+		return -1;
 	}
 
 
 	// Start CL process
 	if ( !xTaskCreate(convergence_layer_dgram_process, "CL process", 0x200, NULL, 5, NULL) ) {
-		return false;
+		return -2;
 	}
 
 	if ( !xTaskCreate(convergence_layer_dgram_check_timeouts, "CL TIMEOUTS", 0x100, NULL, tskIDLE_PRIORITY+1, NULL) ) {
-		return false;
+		return -3;
 	}
 
-	return true;
-}
-
-
-static size_t convergence_layer_dgram_max_payload_length(const cl_addr_t* const addr)
-{
-	if (addr->isIP) {
-		return convergence_layer_udp_dgram_max_payload_length();
-	} else  {
-		return convergence_layer_lowpan_dgram_max_payload_length();
-	}
-}
-
-
-static uint8_t convergence_layer_dgram_next_sequence_number(const cl_addr_t* const addr, const uint8_t last_seqno)
-{
-	if (addr->isIP) {
-		return (last_seqno + 1) % 16;
-	} else  {
-		return (last_seqno + 1) % 4;
-	}
+	return -4;
 }
 
 
@@ -298,13 +278,7 @@ static int convergence_layer_dgram_send_bundle(struct transmit_ticket_t* const t
 	/* This neighbour is blocked, until we have received the App Layer ACK or NACK */
 	convergence_layer_dgram_set_blocked(&ticket->neighbour);
 
-	int ret = -1;
-	if (ticket->neighbour.isIP) {
-		ret = convergence_layer_udp_dgram_send_bundle(&ticket->neighbour, ticket->sequence_number, flags, payload, length, ticket);
-	} else {
-		ret = convergence_layer_lowpan_dgram_send_bundle(&ticket->neighbour, ticket->sequence_number, flags, payload, length, ticket);
-	}
-
+	const int ret = ticket->neighbour.clayer->send_bundle(&ticket->neighbour, ticket->sequence_number, flags, payload, length, ticket);
 	if (ret < 0) {
 		bundle_decrement(ticket->bundle);
 		ticket->bundle = NULL;
@@ -380,7 +354,7 @@ static int convergence_layer_dgram_prepare_segmentation(struct transmit_ticket_t
 	}
 
 
-	const size_t max_payload_length = convergence_layer_dgram_max_payload_length(&ticket->neighbour);
+	const size_t max_payload_length = ticket->neighbour.clayer->max_payload_length();
 	if( ticket->buffer.size > max_payload_length && !(ticket->flags & CONVERGENCE_LAYER_QUEUE_MULTIPART) ) {
 		LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Try to send bundle %lu as mutlipart bundle (buf %p, size %lu, flags 0x%x)",
 			ticket->bundle_number, ticket->buffer, ticket->buffer.size, ticket->flags);
@@ -440,7 +414,7 @@ static int convergence_layer_dgram_prepare_segmentation(struct transmit_ticket_t
 		if( ticket->offset_sent == ticket->offset_acked ) {
 			/* Increment the sequence number for the new segment, except for the first segment */
 			if( ticket->offset_sent > 0 ) {
-				ticket->sequence_number = convergence_layer_dgram_next_sequence_number(&ticket->neighbour, ticket->sequence_number);
+				ticket->sequence_number = ticket->neighbour.clayer->next_seqno(ticket->sequence_number);
 			}
 		}
 
@@ -478,18 +452,15 @@ static int convergence_layer_dgram_send_ack(const cl_addr_t* const destination, 
 	/* Note down our latest attempt */
 	ticket->timestamp = xTaskGetTickCount();
 
-	if (destination->isIP) {
-		return convergence_layer_udp_dgram_send_ack(destination, sequence_number, type, ticket);
-	} else {
-		const int ret = convergence_layer_lowpan_dgram_send_ack(destination, sequence_number, type, ticket);
-		if (ret == 0) {
-			/* ack was not send, becasue of an busy radio */
-			/* This ticket has to be processed ASAP, so set timestamp to 0 */
-			ticket->timestamp = 0;
-			return -1;
-		}
-		return ret;
+	const int ret = destination->clayer->send_ack(destination, sequence_number, type, ticket);
+	if (ret == 0) {
+		/* ack was not send, becasue of an busy radio */
+		/* This ticket has to be processed ASAP, so set timestamp to 0 */
+		ticket->timestamp = 0;
+		return -1;
 	}
+
+	return ret;
 }
 
 
@@ -635,7 +606,7 @@ static int convergence_layer_dgram_parse_dataframe(const cl_addr_t* const source
 				return -1;
 			}
 
-			const uint8_t reqested_seqno = convergence_layer_dgram_next_sequence_number(source, ticket->sequence_number);
+			const uint8_t reqested_seqno = source->clayer->next_seqno(ticket->sequence_number);
 			if( sequence_number != reqested_seqno ) {
 				char addr_str[CL_ADDR_STRING_LENGTH];
 				cl_addr_string(source, addr_str, sizeof(addr_str));
@@ -789,7 +760,7 @@ int convergence_layer_dgram_parse_ackframe(const cl_addr_t* const source, const 
 	if( type == CONVERGENCE_LAYER_TYPE_ACK ) {
 		if( ticket->flags & CONVERGENCE_LAYER_QUEUE_MULTIPART ) {
 			// TODO differs for udp cl. Use % 16.
-			const uint8_t reqested_seq_no = convergence_layer_dgram_next_sequence_number(source, ticket->sequence_number);
+			const uint8_t reqested_seq_no = source->clayer->next_seqno(ticket->sequence_number);
 			if(sequence_number == reqested_seq_no) {
 				// ACK received
 				ticket->offset_acked = ticket->offset_sent;

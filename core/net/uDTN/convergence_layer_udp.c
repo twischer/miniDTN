@@ -151,6 +151,7 @@ static void convergence_layer_udp_discovery_thread(void *arg)
 
 			/* Notify the discovery module, that we have seen a peer */
 			cl_addr_t source;
+			source.clayer = &clayer_udp_dgram;
 			source.isIP = true;
 			ip_addr_copy(source.ip, *addr);
 			source.port = port;
@@ -199,10 +200,11 @@ static void convergence_layer_udp_bundle_thread(void *arg)
 			}
 
 			cl_addr_t source;
+			source.clayer = &clayer_udp_dgram;
 			source.isIP = true;
 			ip_addr_copy(source.ip, *addr);
 			source.port = port;
-			convergence_layer_udp_dgram_incoming_frame(&source, data, length, 0);
+			source.clayer->input(&source, data, length, 0);
 
 			netbuf_delete(buf);
 		}
@@ -221,7 +223,7 @@ int convergence_layer_udp_send_data(const ip_addr_t* const addr, const uint8_t* 
  * @brief convergence_layer_udp_init initializes all components for the UDP-CL
  * @return true on success
  */
-bool convergence_layer_udp_init(void)
+int convergence_layer_udp_init(void)
 {
 	IP4_ADDR(&udp_mcast_addr, CL_UDP_DISCOVERY_IP_1, CL_UDP_DISCOVERY_IP_2, CL_UDP_DISCOVERY_IP_3, CL_UDP_DISCOVERY_IP_4);
 
@@ -232,18 +234,18 @@ bool convergence_layer_udp_init(void)
 	discovery_conn = netconn_new(NETCONN_UDP);
 	if (discovery_conn == NULL) {
 		LOG(LOGD_DTN, LOG_CL_UDP, LOGL_ERR, "netconn_new failed\n");
-		return false;
+		return -1;
 	}
 
 	if (netconn_bind(discovery_conn, IP_ADDR_ANY, CL_UDP_DISCOVERY_PORT) != ERR_OK) {
 		LOG(LOGD_DTN, LOG_CL_UDP, LOGL_ERR, "ERR: netconn_bind failed\n");
 		netconn_delete(discovery_conn);
-		return false;
+		return -2;
 	}
 
 	if ( !xTaskCreate(convergence_layer_udp_discovery_thread, "UDP DISCO", configMINIMAL_STACK_SIZE+100, NULL, 1, NULL) ) {
 		LOG(LOGD_DTN, LOG_CL_UDP, LOGL_ERR, "UDP-CL discovery task creation failed.");
-		return false;
+		return -3;
 	}
 #endif /* UDP_DISCOVERY_ANNOUNCEMENT */
 
@@ -252,21 +254,21 @@ bool convergence_layer_udp_init(void)
 	bundle_conn = netconn_new(NETCONN_UDP);
 	if (bundle_conn == NULL) {
 		LOG(LOGD_DTN, LOG_CL_UDP, LOGL_ERR, "netconn_new failed\n");
-		return false;
+		return -4;
 	}
 
 	if (netconn_bind(bundle_conn, IP_ADDR_ANY, CL_UDP_BUNDLE_PORT) != ERR_OK) {
 		LOG(LOGD_DTN, LOG_CL_UDP, LOGL_ERR, "netconn_bind failed\n");
 		netconn_delete(bundle_conn);
-		return false;
+		return -5;
 	}
 
 	if ( !xTaskCreate(convergence_layer_udp_bundle_thread, "UDP DATA", configMINIMAL_STACK_SIZE+100, NULL, 5, NULL) ) {
 		LOG(LOGD_DTN, LOG_CL_UDP, LOGL_ERR, "UDP-CL bundle task creation failed.");
-		return false;
+		return -6;
 	}
 
 
 	LOG(LOGD_DTN, LOG_CL_UDP, LOGL_DBG, "UDP-CL tasks init done.");
-	return true;
+	return 1;
 }

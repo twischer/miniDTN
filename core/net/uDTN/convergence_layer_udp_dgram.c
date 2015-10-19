@@ -31,6 +31,13 @@ typedef enum
 } HEADER_FLAGS;
 
 
+static int convergence_layer_udp_dgram_init()
+{
+	/* needed initaliziation will be done by convergence_layer_udp_init() */
+	return 1;
+}
+
+
 static inline int convergence_layer_udp_dgram_send(const ip_addr_t* const ip, const HEADER_TYPES type, const int sequence_number, const HEADER_FLAGS flags,
 											const uint8_t* const payload, const size_t length, const void* const reference)
 {
@@ -51,23 +58,33 @@ static inline int convergence_layer_udp_dgram_send(const ip_addr_t* const ip, co
 }
 
 
-size_t convergence_layer_udp_dgram_max_payload_length(void)
+static size_t convergence_layer_udp_dgram_max_payload_length(void)
 {
 	return ETH_MAX_ETH_PAYLOAD - sizeof(struct ip_hdr) - sizeof(struct udp_hdr) - UDP_DGRAM_HEADER_LEN;
 }
 
-#if (UDP_DGRAM_DISCOVERY_ANNOUNCEMENT == 1)
-int convergence_layer_udp_dgram_send_discovery(const uint8_t* const payload, const size_t length)
+
+static uint8_t convergence_layer_udp_dgram_next_sequence_number(const uint8_t last_seqno)
 {
+	return (last_seqno + 1) % 16;
+}
+
+
+static int convergence_layer_udp_dgram_send_discovery(const uint8_t* const payload, const size_t length)
+{
+#if (UDP_DGRAM_DISCOVERY_ANNOUNCEMENT == 1)
 	char addr_str[IP_ADDR_STRING_LENGTH];
 	ipaddr_ntoa_r(&udp_mcast_addr, addr_str, sizeof(addr_str));
 	LOG(LOGD_DTN, LOG_CL_UDP, LOGL_DBG, "Sending discovery to %s", addr_str);
 
 	return convergence_layer_udp_dgram_send(&udp_mcast_addr, HEADER_BROADCAST, 0, SEGMENT_MIDDLE, payload, length, NULL);
-}
+#else
+	return 0;
 #endif
+}
 
-int convergence_layer_udp_dgram_send_ack(const cl_addr_t* const dest, const int sequence_number, const int type, const void* const reference)
+
+static int convergence_layer_udp_dgram_send_ack(const cl_addr_t* const dest, const int sequence_number, const int type, const void* const reference)
 {
 	HEADER_TYPES header_type = HEADER_NACK;
 	HEADER_FLAGS header_flags = 0;
@@ -94,7 +111,7 @@ int convergence_layer_udp_dgram_send_ack(const cl_addr_t* const dest, const int 
 }
 
 
-int convergence_layer_udp_dgram_send_bundle(const cl_addr_t* const dest, const int sequence_number, const uint8_t flags,
+static int convergence_layer_udp_dgram_send_bundle(const cl_addr_t* const dest, const int sequence_number, const uint8_t flags,
 											const uint8_t* const payload, const size_t length, const void* const reference)
 {
 	const HEADER_FLAGS header_flags = flags;
@@ -103,7 +120,7 @@ int convergence_layer_udp_dgram_send_bundle(const cl_addr_t* const dest, const i
 }
 
 
-int convergence_layer_udp_dgram_incoming_frame(const cl_addr_t* const source, const uint8_t* const payload, const size_t length, const packetbuf_attr_t rssi)
+static int convergence_layer_udp_dgram_incoming_frame(const cl_addr_t* const source, const uint8_t* const payload, const size_t length, const packetbuf_attr_t rssi)
 {
 	if (!source->isIP) {
 		LOG(LOGD_DTN, LOG_CL_UDP, LOGL_ERR, "Source is not an IP address. Could not processed by this CL.");
@@ -164,3 +181,15 @@ int convergence_layer_udp_dgram_incoming_frame(const cl_addr_t* const source, co
 		return 0;
 	}
 }
+
+
+const struct convergence_layer clayer_udp_dgram = {
+	.name = "dgram:udp",
+	.init = convergence_layer_udp_dgram_init,
+	.max_payload_length = convergence_layer_udp_dgram_max_payload_length,
+	.next_seqno = convergence_layer_udp_dgram_next_sequence_number,
+	.send_discovery = convergence_layer_udp_dgram_send_discovery,
+	.send_ack = convergence_layer_udp_dgram_send_ack,
+	.send_bundle = convergence_layer_udp_dgram_send_bundle,
+	.input = convergence_layer_udp_dgram_incoming_frame
+};

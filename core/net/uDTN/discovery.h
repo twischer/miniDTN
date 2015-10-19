@@ -23,6 +23,8 @@
 #include "net/rime/rime.h"
 #include "lwip/ip_addr.h"
 #include "cl_address.h"
+#include "convergence_layer_lowpan_dgram.h"
+#include "convergence_layer_udp_dgram.h"
 
 /**
  * Which discovery driver are we going to use?
@@ -160,9 +162,11 @@ static inline int discovery_neighbour_to_addr(const struct discovery_neighbour_l
 	}
 
 	if ( (addr_type & ADDRESS_TYPE_FLAG_LOWPAN) == ADDRESS_TYPE_FLAG_LOWPAN ) {
+		addr->clayer = &clayer_lowpan_dgram;
 		addr->isIP = false;
 		linkaddr_copy(&addr->lowpan, &entry->neighbour);
 	} else if ( (addr_type & ADDRESS_TYPE_FLAG_IPV4) == ADDRESS_TYPE_FLAG_IPV4 ) {
+		addr->clayer = &clayer_udp_dgram;
 		addr->isIP = true;
 		ip_addr_copy(addr->ip, entry->ip);
 		addr->port = entry->port;

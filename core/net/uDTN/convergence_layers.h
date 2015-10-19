@@ -1,11 +1,9 @@
 #ifndef CONVERGENCE_LAYERS
 #define CONVERGENCE_LAYERS
 
-// TODO can be removed,
-// if all convergence_layer_dgram calls hidden behind the convergence_layers abstraction
-#include "convergence_layer_dgram.h"
-#include "convergence_layer_lowpan_dgram.h"
-#include "convergence_layer_udp.h"
+#include "net/packetbuf.h"
+#include "cl_address.h"
+
 
 /**
  * Specify the maximum bundle size that we guarantee to support
@@ -16,6 +14,27 @@
 #else
 #define CONVERGENCE_LAYER_MAX_SIZE ETH_MAX_ETH_PAYLOAD
 #endif
+
+
+struct convergence_layer {
+	char *name;
+
+	int (* init)();
+
+	size_t (* max_payload_length)();
+
+	uint8_t (* next_seqno)(const uint8_t last_seqno);
+
+	int (* send_discovery)(const uint8_t* const payload, const size_t length);
+
+	int (* send_ack)(const cl_addr_t* const dest, const int seqno, const int type, const void* const reference);
+
+	int (* send_bundle)(const cl_addr_t* const dest, const int seqno, const uint8_t flags,
+						const uint8_t* const payload, const size_t length, const void* const reference);
+
+	int (* input)(const cl_addr_t* const source, const uint8_t* const payload, const size_t length, const packetbuf_attr_t rssi);
+};
+
 
 
 bool convergence_layers_init(void);
