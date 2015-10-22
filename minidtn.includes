@@ -201,3 +201,4 @@ platform/xmega-a3bu-xplained/apps/settings_set
 platform/xmega-a3bu-xplained/dev
 platform/z1
 platform/z1/dev
+examples/uDTN/dtnsend

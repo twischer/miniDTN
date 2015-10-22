@@ -2461,3 +2461,5 @@ Src/debugging.c
 core/net/uDTN/convergence_layer_lowpan_dgram.h
 core/net/uDTN/convergence_layer_lowpan_dgram.c
 Src/rng.c
+examples/uDTN/dtnsend/uDTN-sender.c
+examples/uDTN/dtnsend/project-conf.h
