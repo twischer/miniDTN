@@ -22,12 +22,12 @@
   <tasks>
     <task id="1" name="Voruntersuchungen" note="" work="316800" start="20150617T000000Z" end="20150701T170000Z" work-start="20150617T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
       <task id="2" name="Thesis: Einleitung" note="" work="28800" start="20150617T000000Z" end="20150617T170000Z" work-start="20150617T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
-      <task id="3" name="Thesis: Betriebssysteme f&#xFC;r &#xB5;C" note="" work="144000" start="20150617T170000Z" end="20150624T170000Z" work-start="20150618T080000Z" percent-complete="50" priority="0" type="normal" scheduling="fixed-work">
+      <task id="3" name="Thesis: Betriebssysteme f&#xFC;r &#xB5;C" note="" work="144000" start="20150617T170000Z" end="20150624T170000Z" work-start="20150618T080000Z" percent-complete="90" priority="0" type="normal" scheduling="fixed-work">
         <predecessors>
           <predecessor id="1" predecessor-id="2" type="FS"/>
         </predecessors>
       </task>
-      <task id="4" name="Thesis: Existierende DTN-Implementierungen" note="" work="144000" start="20150624T170000Z" end="20150701T170000Z" work-start="20150625T080000Z" percent-complete="50" priority="0" type="normal" scheduling="fixed-work">
+      <task id="4" name="Thesis: Existierende DTN-Implementierungen" note="" work="144000" start="20150624T170000Z" end="20150701T170000Z" work-start="20150625T080000Z" percent-complete="90" priority="0" type="normal" scheduling="fixed-work">
         <predecessors>
           <predecessor id="1" predecessor-id="3" type="FS"/>
         </predecessors>
@@ -38,7 +38,7 @@
         <predecessor id="1" predecessor-id="1" type="FS"/>
       </predecessors>
       <task id="6" name="&#xB5;DTN portieren" note="" work="288000" start="20150701T170000Z" end="20150715T170000Z" work-start="20150702T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work"/>
-      <task id="7" name="Thesis: &#xC4;nderungen der Contiki-Prozesse zu freeRTOS-Tasks" note="" work="144000" start="20150715T170000Z" end="20150722T170000Z" work-start="20150716T080000Z" percent-complete="95" priority="0" type="normal" scheduling="fixed-work">
+      <task id="7" name="Thesis: &#xC4;nderungen der Contiki-Prozesse zu freeRTOS-Tasks" note="" work="144000" start="20150715T170000Z" end="20150722T170000Z" work-start="20150716T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work">
         <predecessors>
           <predecessor id="1" predecessor-id="6" type="FS"/>
         </predecessors>
@@ -63,7 +63,7 @@
           <predecessor id="1" predecessor-id="10" type="FS"/>
         </predecessors>
       </task>
-      <task id="12" name="Thesis: Treiber HAL beschreiben (SPI Performanz)" note="" work="144000" start="20150811T170000Z" end="20150818T170000Z" work-start="20150812T080000Z" percent-complete="95" priority="0" type="normal" scheduling="fixed-work">
+      <task id="12" name="Thesis: Treiber HAL beschreiben (SPI Performanz)" note="" work="144000" start="20150811T170000Z" end="20150818T170000Z" work-start="20150812T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work">
         <predecessors>
           <predecessor id="1" predecessor-id="11" type="FS"/>
         </predecessors>
@@ -84,7 +84,7 @@
         <predecessor id="1" predecessor-id="14" type="FS"/>
       </predecessors>
       <task id="16" name="CL f&#xFC;r IEEE 802.15.4 analysieren" note="" work="86400" start="20150819T170000Z" end="20150824T170000Z" work-start="20150820T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work"/>
-      <task id="17" name="Schnittstelle f&#xFC;r weitere CL schaffen" note="" work="144000" start="20150824T170000Z" end="20150831T170000Z" work-start="20150825T080000Z" percent-complete="40" priority="0" type="normal" scheduling="fixed-work">
+      <task id="17" name="Schnittstelle f&#xFC;r weitere CL schaffen" note="" work="144000" start="20150824T170000Z" end="20150831T170000Z" work-start="20150825T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work">
         <predecessors>
           <predecessor id="1" predecessor-id="16" type="FS"/>
         </predecessors>
@@ -118,13 +118,13 @@
         <predecessors>
           <predecessor id="1" predecessor-id="22" type="FS"/>
         </predecessors>
-        <task id="24" name="Thesis: M&#xF6;gliche Algorithmen f&#xFC;r UDP + IEEE 802.15.4" note="" work="57600" start="20151008T170000Z" end="20151012T170000Z" work-start="20151009T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
+        <task id="24" name="Thesis: M&#xF6;gliche Algorithmen f&#xFC;r UDP + IEEE 802.15.4" note="" work="57600" start="20151008T170000Z" end="20151012T170000Z" work-start="20151009T080000Z" percent-complete="90" priority="0" type="normal" scheduling="fixed-work"/>
         <task id="25" name="Einfachsten Algorithmus implementieren" note="" work="86400" start="20151012T170000Z" end="20151015T170000Z" work-start="20151013T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work">
           <predecessors>
             <predecessor id="1" predecessor-id="24" type="FS"/>
           </predecessors>
         </task>
-        <task id="26" name="Gleichzeitigen Betrieb von IEEE 802.15.4 und Ethernet testen" note="" work="86400" start="20151015T170000Z" end="20151020T170000Z" work-start="20151016T080000Z" percent-complete="70" priority="0" type="normal" scheduling="fixed-work">
+        <task id="26" name="Gleichzeitigen Betrieb von IEEE 802.15.4 und Ethernet testen" note="" work="86400" start="20151015T170000Z" end="20151020T170000Z" work-start="20151016T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work">
           <predecessors>
             <predecessor id="1" predecessor-id="25" type="FS"/>
           </predecessors>
