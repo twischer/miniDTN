@@ -35,6 +35,7 @@
 #include "cmsis_os.h"
 #include "fatfs.h"
 #include "lwip.h"
+#include "rng.h"
 #include "sdio.h"
 #include "spi.h"
 #include "tim.h"
@@ -64,7 +65,6 @@ void MX_FREERTOS_Init(void);
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
 extern bool init();
-extern void udpecho_init();
 
 /* USER CODE END PFP */
 
@@ -89,9 +89,11 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_RNG_Init();
   MX_SDIO_SD_Init();
   MX_SPI2_Init();
   MX_TIM2_Init();
+  MX_TIM5_Init();
   MX_USART6_UART_Init();
 
   /* USER CODE BEGIN 2 */
@@ -124,9 +126,6 @@ int main(void)
 	printf("miniDTN user task init failed\n");
 	return -1;
   }
-
-  /* Initialize udp echo server */
-  udpecho_init();
 
   LED_On(LED_GREEN);
 

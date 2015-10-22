@@ -1,6 +1,6 @@
-# STM32F4-FreeRTOS
+# miniDTN
 
-A demo project of FreeRTOS running on a STM32F4 Discovery board.
+A DTN implementation for an ARM Cortex-M4.
 
 ## Steps to run this example
 

@@ -146,7 +146,14 @@ void HAL_ETH_MspInit(ETH_HandleTypeDef* heth)
 
     /* Peripheral interrupt init*/
     HAL_NVIC_SetPriority(ETH_IRQn, 5, 0);
-    HAL_NVIC_EnableIRQ(ETH_IRQn);
+
+	/*
+	 * Call HAL_NVIC_EnableIRQ(ETH_IRQn) after
+	 * creating the the semaphore s_xSemaphore.
+	 * Otherwise a NULL pointing semaphore will
+	 * possibly be used.
+	 */
+
   /* USER CODE BEGIN ETH_MspInit 1 */
 
   /* USER CODE END ETH_MspInit 1 */
@@ -270,6 +277,20 @@ static void low_level_init(struct netif *netif)
   #else 
     netif->flags |= NETIF_FLAG_BROADCAST;
   #endif /* LWIP_ARP */
+
+
+  #if LWIP_IGMP
+  {
+	ETH_MACInitTypeDef macconf;
+	memset(&macconf, 0, sizeof(macconf));
+	macconf.PassControlFrames = ETH_PASSCONTROLFRAMES_BLOCKALL;
+	macconf.MulticastFramesFilter = ETH_MULTICASTFRAMESFILTER_NONE;
+
+	if (HAL_ETH_ConfigMAC(&heth, &macconf) == HAL_OK) {
+	  netif->flags |= NETIF_FLAG_IGMP;
+	}
+  }
+  #endif
   
 /* create a binary semaphore used for informing ethernetif of frame reception */
   osSemaphoreDef(SEM);
@@ -278,6 +299,9 @@ static void low_level_init(struct netif *netif)
 /* create the task that handles the ETH_MAC */
   osThreadDef(EthIf, ethernetif_input, osPriorityRealtime, 0, INTERFACE_THREAD_STACK_SIZE);
   osThreadCreate (osThread(EthIf), netif);
+
+  /* enable the ETH IRQ after initializing the semaphore */
+  HAL_NVIC_EnableIRQ(ETH_IRQn);
  
   /* Enable MAC and DMA transmission and reception */
   HAL_ETH_Start(&heth);

@@ -58,6 +58,8 @@
 
 #include <stdio.h>
 #include <contiki.h>
+#include "FreeRTOS.h"
+#include "task.h"
 
 #define LOGL_DBG 0
 #define LOGL_INF 1
@@ -73,7 +75,7 @@
 #define LOGD_DTN  4
 #define LOGD_NUM  5 /* Always last! */
 
-#define SUBDOMS 10
+#define SUBDOMS 11
 
 struct log_cfg {
 	uint8_t subl[SUBDOMS];
@@ -95,9 +97,10 @@ extern struct log_cfg log_d[LOGD_NUM];
  *
  * \hideinitializer
  */
+// TODO pcTaskGetTaskName will return wrong task names, if there is currently no task running
 #define LOG(logdom, sdom, logl, fmt, ...) do { \
-		logging_logfn(logdom, sdom, logl, "[%s:%s](%s:%d): " fmt, logging_level2str(logl), \
-				logging_dom2str(logdom), __func__, __LINE__, ## __VA_ARGS__); \
+		logging_logfn(logdom, sdom, logl, "[%s:%s]%s(%s:%d): " fmt, logging_level2str(logl), \
+				logging_dom2str(logdom), pcTaskGetTaskName(NULL), __func__, __LINE__, ## __VA_ARGS__); \
 	} while (0)
 #else
 #define LOG(...)

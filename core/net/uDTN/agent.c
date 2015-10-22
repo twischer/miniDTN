@@ -37,10 +37,11 @@
 #include "discovery.h"
 #include "discovery_scheduler.h"
 #include "statistics.h"
-#include "convergence_layer.h"
+#include "convergence_layers.h"
 #include "hash.h"
 #include "system_clock.h"
 #include "dtn_apps.h"
+#include "debugging.h"
 
 #include "agent.h"
 
@@ -60,8 +61,28 @@ bool agent_init(void)
 		return true;
 	}
 
+	if (mmem_init() < 0) {
+		return false;
+	}
+	udtn_clock_init();
+	bundle_init();
+	BUNDLE_STORAGE.init();
+	REDUNDANCE.init();
+	CUSTODY.init();
+	ROUTING.init();
+	if (!DISCOVERY_SCHEDULER.init()) {
+		LOG(LOGD_DTN, LOG_AGENT, LOGL_WRN, "Discovery scheduler failed to init.");
+	}
+	DISCOVERY.init();
+	registration_init();
+
+	if (!convergence_layers_init()) {
+		printf("CLs init failed\n");
+	}
+
+
 	// Otherwise start the agent process
-	if ( !dtn_process_create_with_queue(agent_process, "AGENT process", 0x100, &event_queue) ) {
+	if ( !dtn_process_create_with_queue(agent_process, "AGENT process", 0x200, &event_queue) ) {
 		return false;
 	}
 
@@ -72,11 +93,8 @@ bool agent_init(void)
 /*  Bundle Protocol Prozess */
 void agent_process(void* p)
 {
-	uint32_t * bundle_number_ptr = NULL;
 	udtn_timeval_t tv;
 	uint32_t tmp = 0;
-
-//	PROCESS_BEGIN();
 
 	/* We obtain our dtn_node_id from the RIME address of the node */
 	dtn_node_id = convert_rime_to_eid(&linkaddr_node_addr);
@@ -84,20 +102,11 @@ void agent_process(void* p)
 	dtn_seq_nr_ab = 0;
 	dtn_last_time_stamp = 0;
 
-	/* We are initialized quite early - give Contiki some time to do its stuff */
-//	process_poll(&agent_process);
-//	PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL);
+	//delay_us_check();
 
-	mmem_init();
-	udtn_clock_init();
-	convergence_layer_init();
-	BUNDLE_STORAGE.init();
-	REDUNDANCE.init();
-	CUSTODY.init();
-	ROUTING.init();
-	DISCOVERY_SCHEDULER.init();
-	DISCOVERY.init();
-	registration_init();
+	if (convergence_layer_udp_init() < 0) {
+		printf("UDP-CL init failed\n");
+	}
 
 	// We use printf here, to make this message visible in every case!
 	printf("Starting DTN Bundle Protocol Agent with EID ipn:%lu\n", dtn_node_id);
@@ -246,10 +255,20 @@ void agent_process(void* p)
 			}
 
 			// Calculate the bundle number
+			// TODO use full uint64_t values for calulation
 			bundle->bundle_num = HASH.hash_convenience(bundle->tstamp_seq, bundle->tstamp, bundle->src_node, bundle->src_srv, bundle->frag_offs, payload_length);
 
+#ifdef ENABLE_LOGGING
+			/* use uint32_t temp variables, because printing uint64_t is not working correct */
+			const uint32_t tstamp = bundle->tstamp;
+			const uint32_t src_srv = bundle->src_srv;
+			LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "Set bundle number to %lu. (seq %lu, tstamp %lu, src ipn:%lu.%lu, frag_offs %lu, len %lu)",
+				bundle->bundle_num, bundle->tstamp_seq, tstamp, bundle->src_node, src_srv, bundle->frag_offs, payload_length);
+#endif /* ENABLE_LOGGING */
+
 			// Save the bundle in storage
-			n = BUNDLE_STORAGE.save_bundle(ev.bundlemem, &bundle_number_ptr);
+			uint32_t bundle_number = 0;
+			n = BUNDLE_STORAGE.save_bundle(ev.bundlemem, &bundle_number);
 
 			// Reset our pointers to avoid using invalid ones
 			bundle = NULL;
@@ -268,7 +287,6 @@ void agent_process(void* p)
 				}
 			} else {
 				/* Bundle could not be saved, notify service */
-//				process_post(source_process, dtn_bundle_store_failed, NULL);
 				const event_container_t event = {
 					.event = dtn_bundle_store_failed,
 				};
@@ -279,8 +297,10 @@ void agent_process(void* p)
 
 			// Now emulate the event to our agent
 			if( n ) {
-				// TODO
-				ev.bundle_number_ptr = bundle_number_ptr;
+				LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "dtn_bundle_in_storage_event for bundle %lu from %lu:%lu",
+					bundle_number, dtn_node_id, app_id);
+
+				ev.bundle_number = bundle_number;
 				ev.event = dtn_bundle_in_storage_event;
 			} else {
 				continue;
@@ -299,10 +319,10 @@ void agent_process(void* p)
 		}
 
 		if(ev.event == dtn_bundle_in_storage_event) {
-			LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "bundle %lu in storage", *ev.bundle_number_ptr);
+			LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "bundle %lu in storage", ev.bundle_number);
 
-			if(ROUTING.new_bundle(ev.bundle_number_ptr) < 0){
-				LOG(LOGD_DTN, LOG_AGENT, LOGL_ERR, "routing reports error when announcing new bundle %lu", *ev.bundle_number_ptr);
+			if(ROUTING.new_bundle(ev.bundle_number) < 0){
+				LOG(LOGD_DTN, LOG_AGENT, LOGL_ERR, "routing reports error when announcing new bundle %lu", ev.bundle_number);
 				continue;
 			}
 
@@ -352,7 +372,7 @@ void agent_set_bundle_source(struct bundle_t* const bundle)
 void agent_delete_bundle(uint32_t bundle_number){
 	LOG(LOGD_DTN, LOG_AGENT, LOGL_DBG, "Agent deleting bundle no %lu", bundle_number);
 
-	convergence_layer_delete_bundle(bundle_number);
+	convergence_layer_dgram_delete_bundle(bundle_number);
 	ROUTING.del_bundle(bundle_number);
 	CUSTODY.del_from_list(bundle_number);
 }

@@ -31,8 +31,14 @@
 /**
  * "Internal" functions
  */
-static int bundle_decode_block(struct mmem *bundlemem, uint8_t *buffer, int max_len);
+static size_t bundle_decode_block(struct mmem* const bundlemem, const uint8_t* const buffer, const size_t max_len);
 static int bundle_encode_block(struct bundle_block_t *block, uint8_t *buffer, int max_len);
+
+
+int bundle_init()
+{
+	return bundleslot_init();
+}
 
 
 struct mmem * bundle_create_bundle()
@@ -353,10 +359,10 @@ uint8_t bundle_get_attr_long(struct mmem *bundlemem, uint8_t attr, uint64_t *val
 	return 1;
 }
 
-struct mmem *bundle_recover_bundle(uint8_t *buffer, int size)
+struct mmem *bundle_recover_bundle(const uint8_t* const buffer, const size_t size)
 {
 	uint32_t primary_size, value;
-	int offs = 0;
+	size_t offs = 0;
 	struct mmem *bundlemem;
 	struct bundle_t *bundle;
 	int ret = 0;
@@ -464,10 +470,11 @@ err:
 
 }
 
-static int bundle_decode_block(struct mmem *bundlemem, uint8_t *buffer, int max_len)
+static size_t bundle_decode_block(struct mmem* const bundlemem, const uint8_t* const buffer, const size_t max_len)
 {
 	uint8_t type;
-	int block_offs, offs = 0;
+	int block_offs = 0;
+	size_t offs = 0;
 	uint32_t flags, size;
 	struct bundle_t *bundle;
 	struct bundle_block_t *block;
@@ -489,7 +496,8 @@ static int bundle_decode_block(struct mmem *bundlemem, uint8_t *buffer, int max_
 	block_offs = bundlemem->size;
 
 	if( type == BUNDLE_BLOCK_TYPE_AEB ) {
-		return offs + bundle_ageing_parse_age_extension_block(bundlemem, type, flags, &buffer[offs], size);
+		// TODO remove const cast
+		return offs + bundle_ageing_parse_age_extension_block(bundlemem, type, flags, (uint8_t*)&buffer[offs], size);
 	}
 
 	n = mmem_realloc(bundlemem, bundlemem->size + sizeof(struct bundle_block_t) + size);

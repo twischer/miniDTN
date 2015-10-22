@@ -26,7 +26,7 @@ bool discovery_static_init()
 	return true;
 }
 
-uint8_t discovery_static_is_neighbour(linkaddr_t * dest)
+uint8_t discovery_static_is_neighbour(const linkaddr_t* const dest)
 {
 	return 1;
 }
@@ -51,7 +51,7 @@ void discovery_static_alive(linkaddr_t * source)
 
 }
 
-uint8_t discovery_static_discover(linkaddr_t * dest)
+uint8_t discovery_static_discover(const linkaddr_t* const dest)
 {
 	return 1;
 }

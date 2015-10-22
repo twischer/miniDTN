@@ -2,36 +2,95 @@
  * Use -finstrument-functions to enable this functionality
  */
 
+#include "debugging.h"
+
+#include "stm32f4xx.h"
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <string.h>
 #include "FreeRTOS.h"
 #include "task.h"
+#include "semphr.h"
+#include "lib/mmem.h"
+#include "delay.h"
 
 
-#define MESSAGE_COUNT	5
+
+
+#define MESSAGE_COUNT	128
+
+static const char IDLE_TASK_NAME[] = "IDLE";
 
 typedef struct {
 	bool enter;
 	const void* this_fn;
 	const void* call_site;
+	const char* task_name;
 } message_t;
 
-static uint8_t next_message_index = 0;
+static volatile bool disable_stack_tracing = false;
+static size_t next_message_index = 0;
 static message_t messages[MESSAGE_COUNT];
 static const char* fault_name = NULL;
 
+#if (PRINT_CPU_USAGE == 1)
+static uint64_t usage_time = 0;
+static TickType_t task_in_time = 0;
+#endif
 
 
-static inline void message_add(const bool type, void *this_fn, void *call_site)
+static inline void message_add_task(const bool type, void *this_fn, void *call_site, const char* const task_name)
+		__attribute__((no_instrument_function));
+static inline void message_add_task(const bool type, void *this_fn, void *call_site, const char* const task_name)
 {
+	if (disable_stack_tracing) {
+		return;
+	}
+
 	messages[next_message_index].enter = type;
 	messages[next_message_index].this_fn = this_fn;
 	messages[next_message_index].call_site = call_site;
+	messages[next_message_index].task_name = task_name;
 
 	next_message_index = (next_message_index + 1) % MESSAGE_COUNT;
+}
 
+
+static inline void message_add(const bool type, void *this_fn, void *call_site) __attribute__((no_instrument_function));
+static inline void message_add(const bool type, void *this_fn, void *call_site)
+{
+	if (disable_stack_tracing) {
+		return;
+	}
+
+	static uint32_t recursion_deeps = 0;
+	/* ignore recursive calls */
+	if (recursion_deeps > 0) {
+		return;
+	}
+	recursion_deeps++;
+
+
+	/* only try to determine the task name, if the scheduler was started once */
+	static bool is_scheduler_running = false;
+	if (!is_scheduler_running) {
+		is_scheduler_running = (xTaskGetSchedulerState() == taskSCHEDULER_RUNNING);
+	}
+	const char* const task_name = is_scheduler_running ? pcTaskGetTaskName(NULL) : "INIT";
+
+	message_add_task(type, this_fn, call_site, task_name);
+
+
+#if (CHECK_FREERTOS_STACK_OVERFLOW == 1)
 	vTaskCheckForStackOverflow();
+#endif
+
+#if (CHECK_MMEM_CONSISTENCY == 1)
+	mmem_check();
+#endif
+
+	recursion_deeps--;
 }
 
 
@@ -45,22 +104,201 @@ void __cyg_profile_func_enter(void *this_fn, void *call_site)
 void __cyg_profile_func_exit(void *this_fn, void *call_site)  __attribute__((no_instrument_function));
 void __cyg_profile_func_exit(void *this_fn, void *call_site)
 {
+
 	message_add(false, this_fn, call_site);
 }
 
 
+static void Unexpected_Interrupt(const char* const name)  __attribute__((no_instrument_function));
 static void Unexpected_Interrupt(const char* const name)
 {
 	printf("Unexpected interrupt %s\n", name);
 
-	uint8_t message_index = next_message_index;
-	for (int i=0; i<MESSAGE_COUNT; i++) {
-		const char* const type = messages[message_index].enter ? "ENTER" : "EXIT ";
-		printf("%s function %p, from call %p\n", type, messages[message_index].this_fn, messages[message_index].call_site);
-		message_index = (message_index + 1) % MESSAGE_COUNT;
+	print_stack_trace();
+}
+
+
+#if (PRINT_CPU_USAGE == 1)
+static inline void print_cpu_usage()
+{
+	const TickType_t current_time = xTaskGetTickCountFromISR();
+	static TickType_t last_print_time = 0;
+
+	const TickType_t diff = current_time - last_print_time;
+	if ( diff > pdMS_TO_TICKS(CPU_USAGE_INTERVAL_MS) ) {
+		last_print_time = current_time;
+
+		const uint64_t running_time_ms = ((uint64_t)diff) / portTICK_PERIOD_MS;
+		const uint64_t running_time_hsys_clk = running_time_ms * (SystemCoreClock / 1000 / 2);
+		const uint8_t usage = (usage_time * 100) / running_time_hsys_clk;
+		usage_time = 0;
+
+		printf("\nCPU %u%%\n\n", usage);
+	}
+}
+#endif
+
+
+void task_switch_in(const TaskHandle_t task, const char* const name)
+{
+	/* ignore idle task switches */
+	if (task == xTaskGetIdleTaskHandle()) {
+#if (PRINT_CPU_USAGE == 1)
+		print_cpu_usage();
+#endif
+		return;
 	}
 
+#if (PRINT_CPU_USAGE == 1)
+	// TODO measure time between switch outs for non idle tasks.
+	// So the sceduling time will be measured, too.
+	/* reset usage time */
+	TIM5->CNT = 0;
+	/* reset the overflow bit */
+	TIM5->SR &= ~TIM_SR_UIF;
+	task_in_time = xTaskGetTickCountFromISR();
+#endif
+
+
+#if (LOG_TASK_SWITCHING == 1)
+	message_add_task(true, NULL, NULL, name);
+#endif
+
+#if (PRINT_TASK_SWITCHING == 1)
+	printf("IN %s\n", name);
+#endif
+}
+
+
+void task_switch_out(const TaskHandle_t task, const char* const name)
+{
+	/* ignore idle task switches */
+	if (task == xTaskGetIdleTaskHandle()) {
+		return;
+	}
+
+#if (PRINT_CPU_USAGE == 1)
+	/* check for overflow */
+	if ((TIM5->SR & TIM_SR_UIF) == TIM_SR_UIF ) {
+		const TickType_t diff = xTaskGetTickCountFromISR() - task_in_time;
+		const uint64_t diff_ms = ((uint64_t)diff) / portTICK_PERIOD_MS;
+		usage_time += diff_ms * (SystemCoreClock / 1000 / 2);
+	} else {
+		const uint32_t last_usage_time = TIM3->CNT;
+		usage_time += last_usage_time;
+	}
+#endif
+
+#if (PRINT_TASK_SWITCHING == 1)
+	printf("OUT %s\n", name);
+#endif
+}
+
+
+void task_yield()
+{
+	static int i=0;
+	i++;
+}
+
+
+#if (PRINT_BLOCKING_TASKS == 1)
+void task_blocked(QueueHandle_t queue)
+{
+	/* do not process queues onyl semaphores and mutex */
+	const uint8_t type = ucQueueGetQueueType(queue);
+	if (type == queueQUEUE_TYPE_SET) {
+		return;
+	}
+
+	const char* const blocked_task_name = pcTaskGetTaskName(NULL);
+
+	const TaskHandle_t holder = xSemaphoreGetMutexHolder(queue);
+	const char* const blocking_task_name = (holder != NULL) ? pcTaskGetTaskName(holder) : "UNKNOWN";
+
+	print_stack_trace_part_not_blocking(5);
+	printf("Task '%s' is blocking on queue %p with type %u. Task '%s' has the lock.\n",
+		   blocked_task_name, queue, type, blocking_task_name);
+}
+#endif
+
+
+void print_stack_trace_part_not_blocking(const size_t count)
+{
+	/* disabling adding function calls to the stack trace,
+	 * becasue the following functions only called for debugging
+	 * output.
+	 */
+	disable_stack_tracing = true;
+
+	/* calulate the beginning of the reqested stack trace entries.
+	 * <next_message_index> points to the oldes entry.
+	 * To get the <count> last entries loop in the FIFO,
+	 * becasue modulo would wrongly interret negativ values.
+	 */
+	size_t message_index = (next_message_index + (MESSAGE_COUNT - count)) % MESSAGE_COUNT;
+	for (size_t i=0; i<count; i++) {
+		const char* const type = messages[message_index].enter ? "ENTER" : "EXIT ";
+		const char* task_name = messages[message_index].task_name;
+		if (task_name == NULL) {
+			task_name = "UNKNOWN";
+		}
+		printf("%s function %p, from call %p, in task '%s'\n", type, messages[message_index].this_fn,
+			   messages[message_index].call_site, task_name);
+		message_index = (message_index + 1) % MESSAGE_COUNT;
+	}
+}
+
+
+void print_stack_trace_part(const size_t count)
+{
+	print_stack_trace_part_not_blocking(count);
+
+	printf("Enable function instrumentation (gcc -finstrument-functions), if the function call trace is undefined.\n");
 	for(;;);
+}
+
+
+void print_stack_trace()
+{
+	print_stack_trace_part(MESSAGE_COUNT);
+}
+
+
+void reset_stack_trace()
+{
+	memset(messages, 0, sizeof(messages));
+}
+
+
+void print_memory(const uint8_t* const data, const size_t length)
+{
+	for (size_t i=0; i<length;) {
+		printf("%p: ", &data[i]);
+
+		const size_t next_new_line = i + 16;
+		for (; i<next_new_line; i++) {
+			printf(" %02x", data[i]);
+		}
+		printf("\n");
+	}
+}
+
+
+void delay_us_check(void)
+{
+	const uint32_t delay_time_us = 50 * 1000;
+	const uint32_t delay_repeats = 20;
+
+	const TickType_t start = xTaskGetTickCount();
+	for (uint32_t i=0; i<delay_repeats; i++) {
+		delay_us(delay_time_us);
+	}
+
+	const TickType_t end = xTaskGetTickCount();
+	const uint32_t tick_diff_ms = (end - start) / portTICK_PERIOD_MS;
+	const uint32_t delay_diff_ms = delay_time_us * delay_repeats / 1000;
+	printf("delay_us_check %lu - %lu = %lu\n", tick_diff_ms, delay_diff_ms, (tick_diff_ms - delay_diff_ms));
 }
 
 
@@ -102,7 +340,7 @@ of this function. */
 
 /* The prototype shows it is a naked function - in effect this is just an
 assembly function. */
-void HardFault_Handler( void ) __attribute__( ( naked ) );
+void HardFault_Handler( void ) __attribute__((naked,no_instrument_function));
 
 /* The fault handler implementation calls a function called
 prvGetRegistersFromStack(). */

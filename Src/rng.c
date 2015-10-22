@@ -1,8 +1,8 @@
 /**
   ******************************************************************************
-  * File Name          : USART.h
+  * File Name          : RNG.c
   * Description        : This file provides code for the configuration
-  *                      of the USART instances.
+  *                      of the RNG instances.
   ******************************************************************************
   *
   * COPYRIGHT(c) 2015 STMicroelectronics
@@ -31,38 +31,72 @@
   *
   ******************************************************************************
   */
-/* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __usart_H
-#define __usart_H
-#ifdef __cplusplus
- extern "C" {
-#endif
 
 /* Includes ------------------------------------------------------------------*/
-#include "stm32f4xx_hal.h"
+#include "rng.h"
 
-/* USER CODE BEGIN Includes */
+/* USER CODE BEGIN 0 */
 
-/* USER CODE END Includes */
+/* USER CODE END 0 */
 
-extern UART_HandleTypeDef huart6;
+RNG_HandleTypeDef hrng;
 
-/* USER CODE BEGIN Private defines */
+/* RNG init function */
+void MX_RNG_Init(void)
+{
 
-/* USER CODE END Private defines */
+  hrng.Instance = RNG;
+  HAL_RNG_Init(&hrng);
 
-void MX_USART6_UART_Init(void);
-
-/* USER CODE BEGIN Prototypes */
-
-uint16_t USART6_write(uint8_t* const ptr, const uint16_t len);
-
-/* USER CODE END Prototypes */
-
-#ifdef __cplusplus
 }
-#endif
-#endif /*__ usart_H */
+
+void HAL_RNG_MspInit(RNG_HandleTypeDef* hrng)
+{
+
+  if(hrng->Instance==RNG)
+  {
+  /* USER CODE BEGIN RNG_MspInit 0 */
+
+  /* USER CODE END RNG_MspInit 0 */
+    /* Peripheral clock enable */
+    __RNG_CLK_ENABLE();
+  /* USER CODE BEGIN RNG_MspInit 1 */
+
+  /* USER CODE END RNG_MspInit 1 */
+  }
+}
+
+void HAL_RNG_MspDeInit(RNG_HandleTypeDef* hrng)
+{
+
+  if(hrng->Instance==RNG)
+  {
+  /* USER CODE BEGIN RNG_MspDeInit 0 */
+
+  /* USER CODE END RNG_MspDeInit 0 */
+    /* Peripheral clock disable */
+    __RNG_CLK_DISABLE();
+  }
+  /* USER CODE BEGIN RNG_MspDeInit 1 */
+
+  /* USER CODE END RNG_MspDeInit 1 */
+} 
+
+/* USER CODE BEGIN 1 */
+
+uint32_t HAL_RNG_get_random_number()
+{
+	static uint32_t random_number = 0;
+	if(HAL_RNG_GenerateRandomNumber(&hrng, &random_number) != HAL_OK)
+	{
+		printf("HAL_RNG_GenerateRandomNumber failed\n");
+		random_number += 13;
+	}
+
+	return random_number;
+}
+
+/* USER CODE END 1 */
 
 /**
   * @}

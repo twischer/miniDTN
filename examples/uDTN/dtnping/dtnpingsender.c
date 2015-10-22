@@ -50,6 +50,8 @@
 #define DTN_PING_ENDPOINT	11
 #define DTN_PING_LENGTH		64
 
+#define DTN_SERVICE			(DTN_PING_ENDPOINT + 1)
+
 /*---------------------------------------------------------------------------*/
 static struct registration_api reg;
 /*---------------------------------------------------------------------------*/
@@ -70,14 +72,13 @@ void dtnping_process(void* p)
 	struct bundle_block_t * block = NULL;
 
 	/* Give agent time to initialize */
-//	PROCESS_PAUSE();
 	vTaskDelay( pdMS_TO_TICKS(1000) );
 
 
 	/* Register ping endpoint */
 	reg.status = APP_ACTIVE;
 	reg.event_queue = dtn_process_get_event_queue();
-	reg.app_id = DTN_PING_ENDPOINT+1;
+	reg.app_id = DTN_SERVICE;
 	const event_container_t event = {
 		.event = dtn_application_registration_event,
 		.registration = &reg
@@ -108,13 +109,13 @@ void dtnping_process(void* p)
 		tmp = dtn_node_id;
 		bundle_set_attr(bundlemem, SRC_NODE, &tmp);
 		bundle_set_attr(bundlemem, CUST_NODE, &tmp);
-		bundle_set_attr(bundlemem, CUST_SERV, &tmp);
 		bundle_set_attr(bundlemem, REP_NODE, &tmp);
-		bundle_set_attr(bundlemem, REP_SERV, &tmp);
 
 		// Set our service to 11 [DTN_PING_ENDPOINT] (IBR-DTN expects that)
-		tmp = DTN_PING_ENDPOINT+1;
+		tmp = DTN_SERVICE;
 		bundle_set_attr(bundlemem, SRC_SERV, &tmp);
+		bundle_set_attr(bundlemem, CUST_SERV, &tmp);
+		bundle_set_attr(bundlemem, REP_SERV, &tmp);
 
 		// Now set the flags
 		tmp = BUNDLE_FLAG_SINGLETON;

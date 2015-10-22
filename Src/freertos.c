@@ -39,10 +39,12 @@
 /* USER CODE BEGIN Includes */     
 #include <stdio.h>
 #include "stm32f4xx_hal.h"
+
+#include "debugging.h"
 /* USER CODE END Includes */
 
 /* Variables -----------------------------------------------------------------*/
-osThreadId defaultTaskHandle;
+osThreadId FatLwipInitHandle;
 
 /* USER CODE BEGIN Variables */
 
@@ -81,9 +83,9 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE END RTOS_TIMERS */
 
   /* Create the thread(s) */
-  /* definition and creation of defaultTask */
-  osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 0x400);
-  defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
+  /* definition and creation of FatLwipInit */
+  osThreadDef(FatLwipInit, StartDefaultTask, osPriorityRealtime, 0, 0x400);
+  FatLwipInitHandle = osThreadCreate(osThread(FatLwipInit), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -106,30 +108,31 @@ void StartDefaultTask(void const * argument)
   /* USER CODE BEGIN StartDefaultTask */
   printf("FATFS and LWIP init done\n");
 
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
+  vTaskDelete(NULL);
+  return;
+
   /* USER CODE END StartDefaultTask */
 }
 
 /* USER CODE BEGIN Application */
 
-void vApplicationStackOverflowHook(TaskHandle_t pxTask, signed char *pcTaskName) {
+void vApplicationStackOverflowHook(TaskHandle_t pxTask, signed char *pcTaskName)
+{
   /* Run time stack overflow checking is performed if
 	 configCHECK_FOR_STACK_OVERFLOW is defined to 1 or 2.  This hook
 	 function is called if a stack overflow is detected. */
   taskDISABLE_INTERRUPTS();
-  printf("STACK OVERFLOW in task '%s (handle %p)\n", pcTaskName, pxTask);
-  for(;;);
+  printf("STACK OVERFLOW in task '%s' (handle %p)\n", pcTaskName, pxTask);
+
+  print_stack_trace();
 }
 
 void vApplicationMallocFailedHook()
 {
   taskDISABLE_INTERRUPTS();
   printf("ERR: Malloc failed\n");
-  for(;;);
+
+  print_stack_trace();
 }
      
 /* USER CODE END Application */

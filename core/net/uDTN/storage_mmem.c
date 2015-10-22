@@ -34,12 +34,9 @@
 #include "statistics.h"
 #include "hash.h"
 #include "bundle_ageing.h"
-#include "convergence_layer.h"
+#include "convergence_layers.h"
 
 #include "storage.h"
-
-// defined in mmem.c, no function to access it though
-extern unsigned int avail_memory;
 
 /**
  * Internal representation of a bundle
@@ -93,7 +90,7 @@ void storage_mmem_update_statistics();
  */
 void storage_mmem_update_statistics() {
 	statistics_storage_bundles(bundles_in_storage);
-	statistics_storage_memory(avail_memory);
+	statistics_storage_memory(mmem_avail_memory());
 }
 
 void storage_mmem_format(void)
@@ -314,7 +311,7 @@ uint8_t storage_mmem_make_room(struct mmem * bundlemem)
  * \param bundle_number_ptr pointer where the bundle number will be stored (on success)
  * \return 0 on error, 1 on success
  */
-uint8_t storage_mmem_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_number_ptr)
+static uint8_t storage_mmem_save_bundle(struct mmem* const bundlemem, uint32_t* const bundle_number_ptr)
 {
 	struct bundle_t *entrybdl = NULL,
 					*bundle = NULL;
@@ -342,7 +339,7 @@ uint8_t storage_mmem_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_num
 
 		if( bundle->bundle_num == entrybdl->bundle_num ) {
 			LOG(LOGD_DTN, LOG_STORE, LOGL_DBG, "%lu is the same bundle", entry->bundle_num);
-			*bundle_number_ptr = &entry->bundle_num;
+			*bundle_number_ptr = entry->bundle_num;
 			bundle_decrement(bundlemem);
 			return 1;
 		}
@@ -360,7 +357,7 @@ uint8_t storage_mmem_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_num
 	/* Always keep at least the maximum size of a bundle free to allow the CL to
 	 * serialize bundles
 	 */
-	if( avail_memory < CONVERGENCE_LAYER_MAX_SIZE ) {
+	if( mmem_avail_memory() < CONVERGENCE_LAYER_MAX_SIZE ) {
 		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "Cannot store bundle, memory below threshold");
 
 		bundle_decrement(bundlemem);
@@ -389,7 +386,8 @@ uint8_t storage_mmem_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_num
 	// Set all required fields
 	entry->bundle_num = bundle->bundle_num;
 
-	LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "New Bundle %lu (%lu), Src %lu, Dest %lu, Seq %lu", bundle->bundle_num, entry->bundle_num, bundle->src_node, bundle->dst_node, bundle->tstamp_seq);
+	LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "New Bundle %lu, Src %lu, Dest %lu, Seq %lu",
+		entry->bundle_num, bundle->src_node, bundle->dst_node, bundle->tstamp_seq);
 
 #if BUNDLE_STORAGE_STATUS
 	printf("S %u\n", bundles_in_storage);
@@ -407,7 +405,7 @@ uint8_t storage_mmem_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_num
 
 	// Now copy over the STATIC pointer to the bundle number, so that
 	// the caller can stick it into an event
-	*bundle_number_ptr = &entry->bundle_num;
+	*bundle_number_ptr = entry->bundle_num;
 
 	return 1;
 }

@@ -23,7 +23,10 @@
 #include "FreeRTOS.h"
 
 #include "net/linkaddr.h"
+#include "net/packetbuf.h"
 #include "lib/mmem.h"
+
+#include "cl_address.h"
 
 /**
  * How many outgoing bundles can we queue?
@@ -68,24 +71,6 @@
  */
 #define CONVERGENCE_LAYER_RETRANSMIT_TRIES		(CONVERGENCE_LAYER_TIMEOUT * 1000 / CONVERGENCE_LAYER_RETRANSMIT_TIMEOUT)
 
-/**
- * Specify the maximum bundle size that we guarantee to support
- * Memory is reserved to serialize a bundle of this size
- */
-#ifdef CONVERGENCE_LAYER_CONF_MAX_SIZE
-#define CONVERGENCE_LAYER_MAX_SIZE CONVERGENCE_LAYER_CONF_MAX_SIZE
-#else
-#define CONVERGENCE_LAYER_MAX_SIZE 300
-#endif
-
-/**
- * Shall we support segmentation?
- */
-#ifdef CONVERGENCE_LAYER_CONF_SEGMENTATION
-#define CONVERGENCE_LAYER_SEGMENTATION CONVERGENCE_LAYER_CONF_SEGMENTATION
-#else
-#define CONVERGENCE_LAYER_SEGMENTATION 1
-#endif
 
 /**
  * Bundle queue flags
@@ -100,11 +85,6 @@
 #define CONVERGENCE_LAYER_QUEUE_TEMP_NACK	0x80
 #define CONVERGENCE_LAYER_QUEUE_MULTIPART	0x100
 #define CONVERGENCE_LAYER_QUEUE_MULTIPART_RECV	0x200
-
-/**
- * CL COMPAT VALUES
- */
-#define CONVERGENCE_LAYER_COMPAT			0x00
 
 /**
  * CL Header Types
@@ -122,14 +102,6 @@
 #define CONVERGENCE_LAYER_FLAGS_LAST		0x01
 
 /**
- * CL Field Masks
- */
-#define CONVERGENCE_LAYER_MASK_COMPAT		0xC0
-#define CONVERGENCE_LAYER_MASK_TYPE			0x30
-#define CONVERGENCE_LAYER_MASK_SEQNO		0x0C
-#define CONVERGENCE_LAYER_MASK_FLAGS		0x03
-
-/**
  * CL Callback Status
  */
 #define CONVERGENCE_LAYER_STATUS_OK			0x01
@@ -143,30 +115,6 @@
 #define CONVERGENCE_LAYER_PRIORITY_NORMAL	0x01
 #define CONVERGENCE_LAYER_PRIORITY_HIGH		0x02
 
-/**
- * Maximum payload length of one outgoing frame
- *
- * IEEE 802.15.4 MAC Frames: 127 Byte
- * Frame Control Field    2 Byte
- * Sequence Number        1 Byte
- * Dst PAN                2 Byte
- * Dst Address            2 Byte
- * Src PAN                2 Byte
- * Src Address            2 Byte
- * Security Header        0 Byte
- * Frame Check Sequence   2 Byte
- * --- TOTAL:            13 Byte
- *
- * With PAN Compression: 11 Byte
- *
- * 127 Byte - 11 Byte = 116 Byte
- */
-#define CONVERGENCE_LAYER_MAX_LENGTH 116
-
-/**
- * Convergence Layer Process
- */
-//PROCESS_NAME(convergence_layer_process);
 
 /**
  * Bundle Queue Entry
@@ -177,34 +125,36 @@ struct transmit_ticket_t {
 	uint16_t flags;
 	uint8_t tries;
 	uint8_t failed_tries;
-	linkaddr_t neighbour;
+	cl_addr_t neighbour;
 	uint32_t bundle_number;
 	uint8_t sequence_number;
 	TickType_t timestamp;
 
-#if CONVERGENCE_LAYER_SEGMENTATION
 	int offset_sent;
 	int offset_acked;
 	struct mmem buffer;
-#endif
 
 	struct mmem * bundle;
 };
 
-bool convergence_layer_init(void);
 
-struct transmit_ticket_t * convergence_layer_get_transmit_ticket(void);
-int convergence_layer_free_transmit_ticket(struct transmit_ticket_t * ticket);
+int convergence_layer_dgram_init(void);
 
-int convergence_layer_enqueue_bundle(struct transmit_ticket_t * ticket);
-int convergence_layer_send_discovery(uint8_t * payload, uint8_t length, linkaddr_t * neighbour);
+int convergence_layer_dgram_free_transmit_ticket(struct transmit_ticket_t * ticket);
+struct transmit_ticket_t * convergence_layer_dgram_get_transmit_ticket();
 
-int convergence_layer_incoming_frame(linkaddr_t * source, uint8_t * payload, uint8_t length, packetbuf_attr_t rssi);
-int convergence_layer_status(void * pointer, uint8_t status);
 
-int convergence_layer_delete_bundle(uint32_t bundle_number);
+int convergence_layer_dgram_enqueue_bundle(struct transmit_ticket_t * ticket);
 
-int convergence_layer_neighbour_down(linkaddr_t * neighbour);
+int convergence_layer_dgram_incoming_data(const cl_addr_t* const source, const uint8_t* const data_pointer, const size_t data_length,
+									const packetbuf_attr_t rssi, const int sequence_number, const int flags);
+int convergence_layer_dgram_parse_ackframe(const cl_addr_t* const source, const uint8_t* const payload, const uint8_t length,
+											const uint8_t sequence_number, const uint8_t type, const uint8_t flags);
+int convergence_layer_dgram_status(const void* const pointer, const uint8_t outcome);
+
+int convergence_layer_dgram_delete_bundle(uint32_t bundle_number);
+
+int convergence_layer_dgram_neighbour_down(const cl_addr_t* const neighbour);
 
 #endif /* CONVERGENCE_LAYER */
 

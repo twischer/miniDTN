@@ -71,7 +71,7 @@ void statistics_bundle_delivered(uint8_t count);
 void statistics_storage_bundles(uint8_t bundles);
 void statistics_storage_memory(uint16_t free);
 
-void statistics_contacts_up(linkaddr_t * peer);
+void statistics_contacts_up(const uint32_t peer);
 void statistics_contacts_down(linkaddr_t * peer, uint16_t duration);
 
 #endif /* STATISTICS_H */

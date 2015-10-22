@@ -38,6 +38,17 @@
 #include "gpio.h"
 
 /* USER CODE BEGIN 0 */
+#include <stdbool.h>
+#include "FreeRTOS.h"
+#include "task.h"
+#include "semphr.h"
+
+#ifndef UART_BAUDRATE
+#define UART_BAUDRATE	115200
+#endif
+
+
+static SemaphoreHandle_t xSemaphore = NULL;
 
 /* USER CODE END 0 */
 
@@ -49,7 +60,7 @@ void MX_USART6_UART_Init(void)
 {
 
   huart6.Instance = USART6;
-  huart6.Init.BaudRate = 115200;
+  huart6.Init.BaudRate = UART_BAUDRATE;
   huart6.Init.WordLength = UART_WORDLENGTH_8B;
   huart6.Init.StopBits = UART_STOPBITS_1;
   huart6.Init.Parity = UART_PARITY_NONE;
@@ -67,6 +78,8 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
   if(huart->Instance==USART6)
   {
   /* USER CODE BEGIN USART6_MspInit 0 */
+
+	  xSemaphore = xSemaphoreCreateMutex();
 
   /* USER CODE END USART6_MspInit 0 */
     /* Peripheral clock enable */
@@ -113,6 +126,55 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* huart)
 } 
 
 /* USER CODE BEGIN 1 */
+
+uint16_t USART6_write(uint8_t* const ptr, const uint16_t len)
+{
+	/* only write data, if the UART is already initialized */
+	if (huart6.Instance == NULL) {
+		return 0;
+	}
+
+	// TODO onyl ask until the scheduler was started once (speed up)
+	const bool is_scheduler_running = (xTaskGetSchedulerState() == taskSCHEDULER_RUNNING);
+
+	const uint16_t irq_nr = (SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk);
+	if (irq_nr == 0) {
+		/* only wait for semaphore, if the schedular was already started */
+		if (is_scheduler_running) {
+			// TODO if scheduler running is true the semaphore was created correctly
+			if (xSemaphore == NULL) {
+				return 0;
+			}
+
+			/* wait till the lock can be get */
+			while ( !xSemaphoreTake(xSemaphore, portMAX_DELAY) ) { }
+		}
+	} else {
+		/*
+		 * Was called from an interrupt.
+		 * Do not try to lock and
+		 * enforce printing of data
+		 */
+		huart6.State = HAL_UART_STATE_READY;
+		__HAL_UNLOCK(&huart6);
+	}
+
+
+	HAL_StatusTypeDef ret = HAL_ERROR;
+	do {
+		// TODO use extra buffer and the DMA to hide latency
+		ret = HAL_UART_Transmit(&huart6, ptr, len, HAL_MAX_DELAY);
+		if (ret == HAL_OK) {
+			break;
+		}
+	} while (ret == HAL_BUSY);
+
+	if (is_scheduler_running && irq_nr == 0) {
+		xSemaphoreGive(xSemaphore);
+	}
+
+	return (ret == HAL_OK) ? len : 0;
+}
 
 /* USER CODE END 1 */
 

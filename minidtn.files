@@ -340,8 +340,8 @@ core/net/uDTN/bundle_ageing.c
 core/net/uDTN/bundle_ageing.h
 core/net/uDTN/bundleslot.c
 core/net/uDTN/bundleslot.h
-core/net/uDTN/convergence_layer.c
-core/net/uDTN/convergence_layer.h
+core/net/uDTN/convergence_layer_dgram.c
+core/net/uDTN/convergence_layer_dgram.h
 core/net/uDTN/custody.h
 core/net/uDTN/custody_basic.c
 core/net/uDTN/custody_null.c
@@ -2448,3 +2448,16 @@ Src/stm32f4xx_hal_msp.c
 Src/stm32f4xx_it.c
 Src/tim.c
 Src/usart.c
+core/net/uDTN/convergence_layer_udp.h
+core/net/uDTN/convergence_layer_udp.c
+core/net/uDTN/convergence_layers.h
+core/net/uDTN/convergence_layers.c
+core/net/uDTN/cl_address.h
+core/net/uDTN/cl_address.c
+core/net/uDTN/convergence_layer_udp_dgram.c
+core/net/uDTN/convergence_layer_udp_dgram.h
+Inc/debugging.h
+Src/debugging.c
+core/net/uDTN/convergence_layer_lowpan_dgram.h
+core/net/uDTN/convergence_layer_lowpan_dgram.c
+Src/rng.c

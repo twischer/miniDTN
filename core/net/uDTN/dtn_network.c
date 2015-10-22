@@ -23,7 +23,7 @@
 #include "dev/leds.h"
 #include "lib/logging.h"
 
-#include "convergence_layer.h"
+#include "convergence_layer_lowpan_dgram.h"
 #include "agent.h"
 #include "rf230bb.h"
 
@@ -44,6 +44,7 @@ static void dtn_network_init(void)
 	logging_domain_level_set(LOGD_DTN, LOG_SLOTS, LOGLEVEL);
 	logging_domain_level_set(LOGD_DTN, LOG_AGENT, LOGLEVEL);
 	logging_domain_level_set(LOGD_DTN, LOG_CL, LOGLEVEL);
+	logging_domain_level_set(LOGD_DTN, LOG_CL_UDP, LOGLEVEL);
 	logging_domain_level_set(LOGD_DTN, LOG_DISCOVERY, LOGLEVEL);
 
 	/* Clear the packet buffer */
@@ -61,22 +62,15 @@ static void dtn_network_init(void)
  */
 static void dtn_network_input(void) 
 {
-	linkaddr_t source;
-	uint8_t * buffer = NULL;
-	uint8_t length = 0;
-	packetbuf_attr_t rssi = 0;
-
-//	leds_on(LEDS_ALL);
-
 	/* Create a copy here, because otherwise packetbuf_clear will evaporate the address */
-	linkaddr_copy(&source, packetbuf_addr(PACKETBUF_ADDR_SENDER));
-	buffer = packetbuf_dataptr();
-	length = packetbuf_datalen();
-	rssi = packetbuf_attr(PACKETBUF_ATTR_RSSI);
+	cl_addr_t source;
+	cl_addr_build_lowpan_dgram(packetbuf_addr(PACKETBUF_ADDR_SENDER), &source);
 
-	convergence_layer_incoming_frame(&source, buffer, length, rssi);
+	const uint8_t* const buffer = packetbuf_dataptr();
+	const uint8_t length = packetbuf_datalen();
+	const packetbuf_attr_t rssi = packetbuf_attr(PACKETBUF_ATTR_RSSI);
 
-//	leds_off(LEDS_ALL);
+	source.clayer->input(&source, buffer, length, rssi);
 }
 
 /**
@@ -106,8 +100,9 @@ static void dtn_network_sent(void * pointer, int status, int num_tx)
 		break;
 	}
 
+	// TODO add parameter to dtn_network_sent to set callback by calling
 	/* Call the CL */
-	convergence_layer_status(pointer, outcome);
+	convergence_layer_lowpan_dgram_status(pointer, outcome);
 }
 
 uint8_t * dtn_network_get_buffer()

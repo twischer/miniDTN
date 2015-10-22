@@ -113,7 +113,7 @@ typedef struct {
 		/* used by dtn_application_registration_event, dtn_application_status_event, dtn_application_remove_event */
 		struct registration_api* registration;
 		/* used by dtn_bundle_in_storage_event */
-		uint32_t* bundle_number_ptr;
+		uint32_t bundle_number;
 		/* used by dtn_beacon_event */
 		linkaddr_t* linkaddr;
 	};

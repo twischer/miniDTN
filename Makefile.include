@@ -118,8 +118,19 @@ SRC+=frame802154.c
 SRC+=framer.c
 SRC+=framer-802154.c
 
+# exclude not needed routing, discovery and storage modules
+EXCLUDE += core/net/uDTN/discovery_basic.c
+EXCLUDE += core/net/uDTN/discovery_simple.c
+EXCLUDE += core/net/uDTN/discovery_static.c
+EXCLUDE += core/net/uDTN/routing_chain.c
+EXCLUDE += core/net/uDTN/routing_null.c
+EXCLUDE += core/net/uDTN/storage_coffee.c
+EXCLUDE += core/net/uDTN/storage_flash.c
+
+
 # miniDTN files
-SRC+= $(foreach sdir,$(MODULES),$(wildcard $(sdir)/*.c))
+ALL_SRC := $(foreach sdir,$(MODULES),$(wildcard $(sdir)/*.c))
+SRC += $(filter-out $(EXCLUDE),$(ALL_SRC))
 
 
 CDEFS+= -DSTM32F407xx 
@@ -146,7 +157,7 @@ CDEFS+= -DINGA_BOOTSCREEN
 CDEFS+= -DINGA_BOOTSCREEN_RADIO
 
 
-MCUFLAGS=-O$(OPTLVL) $(DBG) -MMD -std=gnu11 -Wall -mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard
+MCUFLAGS=-O$(OPTLVL) $(DBG) -MMD -std=gnu11 -Wall -Wno-address -mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard
 CFLAGS+=$(MCUFLAGS) $(INCLUDE) $(CDEFS)
 
 LDLIBS=-lc -lm -lnosys
@@ -158,22 +169,53 @@ OBJCOPY=$(TOOLCHAIN_PATH)/$(TOOLCHAIN_PREFIX)-objcopy
 AS=$(TOOLCHAIN_PATH)/$(TOOLCHAIN_PREFIX)-as
 AR=$(TOOLCHAIN_PATH)/$(TOOLCHAIN_PREFIX)-ar
 GDB=$(TOOLCHAIN_PATH)/$(TOOLCHAIN_PREFIX)-gdb
+SIZE=$(TOOLCHAIN_PATH)/$(TOOLCHAIN_PREFIX)-size
 
 OBJ = $(SRC:%.c=$(BUILD_BASE)/%.o)
 
+# always exclude some source files from function instrumentation,
+# because it would hardly slow down the system
+#Exclude STM32F4 driver and HAL
+$(BUILD_BASE)/Drivers/STM32F4xx_HAL_Driver/Src/%.o: %.c
+	@echo [CC] $(notdir $<)
+	@$(CC) $(CFLAGS) $< -c -o $@
 
-#$(BUILD_BASE)/Src/%.o: %.c
-#	@echo [CC] $(INSTRUMENTATION) $(notdir $<)
-#	@$(CC) $(CFLAGS) $(INSTRUMENTATION) $< -c -o $@
+$(BUILD_BASE)/Drivers/CMSIS/Device/ST/STM32F4xx/Source/Templates/%.o: %.c
+	@echo [CC] $(notdir $<)
+	@$(CC) $(CFLAGS) $< -c -o $@
 
-$(BUILD_BASE)/core/net/%.o: %.c
-	@echo [CC] $(INSTRUMENTATION) $(notdir $<)
-	@$(CC) $(CFLAGS) $(INSTRUMENTATION) $< -c -o $@
+# Exclude FreeRTOS
+$(BUILD_BASE)/$(FREERTOS)/%.o: %.c
+	@echo [CC] $(notdir $<)
+	@$(CC) $(CFLAGS) $< -c -o $@
+	
+$(BUILD_BASE)/$(FREERTOS)/CMSIS_RTOS/%.o: %.c
+	@echo [CC] $(notdir $<)
+	@$(CC) $(CFLAGS) $< -c -o $@
+	
+$(BUILD_BASE)/$(FREERTOS)/portable/GCC/ARM_CM4F/%.o: %.c
+	@echo [CC] $(notdir $<)
+	@$(CC) $(CFLAGS) $< -c -o $@
+	
+$(BUILD_BASE)/heap_4.o: heap_4.c
+	@echo [CC] $(notdir $<)
+	@$(CC) $(CFLAGS) $< -c -o $@
+
+# Exclude system ISRs
+$(BUILD_BASE)/Src/stm32f4xx_it.o: Src/stm32f4xx_it.c
+	@echo [CC] $(notdir $<)
+	@$(CC) $(CFLAGS) $< -c -o $@
+
+# Exclude debugging from function instrumentation
+# becasue it should not affect the stack trace
+$(BUILD_BASE)/Src/debugging.o: Src/debugging.c
+	@echo [CC] $(notdir $<)
+	@$(CC) $(CFLAGS) $< -c -o $@
 
 
 $(BUILD_BASE)/%.o: %.c
-	@echo [CC] $(notdir $<)
-	@$(CC) $(CFLAGS) $< -c -o $@
+	@echo [CC] $(INSTRUMENTATION) $(notdir $<)
+	@$(CC) $(CFLAGS) $(INSTRUMENTATION) $< -c -o $@
 
 
 all: checkdirs $(OBJ)
@@ -185,6 +227,8 @@ all: checkdirs $(OBJ)
 	@$(OBJCOPY) -O ihex $(BIN_DIR)/$(TARGET).elf $(BIN_DIR)/$(TARGET).hex
 	@echo [OBJCOPY] $(TARGET).bin
 	@$(OBJCOPY) -O binary $(BIN_DIR)/$(TARGET).elf $(BIN_DIR)/$(TARGET).bin
+	@$(SIZE) -A -x $(BIN_DIR)/$(TARGET).elf | grep "\.data\|\.ccmram\|\.bss"
+	@echo "RAM size:           0x1FFFF (128kB)"
 
 
 checkdirs: $(BUILD_DIR) $(BIN_DIR)

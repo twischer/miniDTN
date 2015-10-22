@@ -24,7 +24,7 @@
 #include "queue.h"
 
 #include "lib/mmem.h"
-#include "net/linkaddr.h"
+#include "cl_address.h"
 #include "net/packetbuf.h"
 
 #ifndef __BUNDLE_H__
@@ -148,7 +148,7 @@ struct bundle_t{
 
 	packetbuf_attr_t rssi;
 	QueueHandle_t source_event_queue;
-	linkaddr_t msrc;
+	cl_addr_t msrc;
 
 	uint32_t aeb_value_ms;
 
@@ -156,13 +156,15 @@ struct bundle_t{
 	uint8_t block_data[];
 } __attribute__ ((packed));
 
+int bundle_init();
+
 /**
  * \brief generates the bundle struct from raw data
  * \param buffer pointer to the buffer with raw data
  * \param size size of raw data
  * \return Pointer to the MMEM struct containing the bundle
  */
-struct mmem * bundle_recover_bundle(uint8_t * buffer, int size);
+struct mmem * bundle_recover_bundle(const uint8_t* const buffer, const size_t size);
 
 /**
  * \brief Encodes the bundle to raw data

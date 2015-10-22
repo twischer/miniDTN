@@ -1,8 +1,8 @@
 /**
   ******************************************************************************
-  * File Name          : USART.h
+  * File Name          : RNG.h
   * Description        : This file provides code for the configuration
-  *                      of the USART instances.
+  *                      of the RNG instances.
   ******************************************************************************
   *
   * COPYRIGHT(c) 2015 STMicroelectronics
@@ -32,8 +32,8 @@
   ******************************************************************************
   */
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __usart_H
-#define __usart_H
+#ifndef __rng_H
+#define __rng_H
 #ifdef __cplusplus
  extern "C" {
 #endif
@@ -45,24 +45,24 @@
 
 /* USER CODE END Includes */
 
-extern UART_HandleTypeDef huart6;
+extern RNG_HandleTypeDef hrng;
 
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */
 
-void MX_USART6_UART_Init(void);
+void MX_RNG_Init(void);
 
 /* USER CODE BEGIN Prototypes */
 
-uint16_t USART6_write(uint8_t* const ptr, const uint16_t len);
+uint32_t HAL_RNG_get_random_number();
 
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus
 }
 #endif
-#endif /*__ usart_H */
+#endif /*__ rng_H */
 
 /**
   * @}

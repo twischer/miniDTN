@@ -33,13 +33,14 @@
 #define __CC_H__
 
 #include "cpu.h"
+#include "rng.h"
 
 typedef unsigned   char    u8_t;
 typedef signed     char    s8_t;
 typedef unsigned   short   u16_t;
 typedef signed     short   s16_t;
-typedef unsigned   long    u32_t;
-typedef signed     long    s32_t;
+typedef unsigned   int     u32_t;
+typedef signed     int     s32_t;
 typedef u32_t mem_ptr_t;
 typedef int sys_prot_t;
 
@@ -54,6 +55,7 @@ typedef int sys_prot_t;
 
 
 
+#define LWIP_RAND HAL_RNG_get_random_number
 
 
 /* define compiler specific symbols */

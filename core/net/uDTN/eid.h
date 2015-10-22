@@ -41,7 +41,7 @@ int eid_parse_host(char * buffer, uint8_t length, uint32_t * node_id);
  *
  * \return Returns length of parsed EID on success or -1 on error
  */
-int eid_parse_host_length(uint8_t * buffer, uint8_t length, uint32_t * node_id);
+int eid_parse_host_length(const uint8_t* const buffer, const uint8_t length, uint32_t* const node_id);
 
 /**
  * \brief Parses an incoming string for the scheme specific part (SSP) and fills out the EID parts
