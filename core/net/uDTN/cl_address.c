@@ -45,6 +45,7 @@ bool cl_addr_cmp(const cl_addr_t* const src1, const cl_addr_t* const src2)
 int cl_addr_string(const cl_addr_t* const addr, char* const buf, const size_t buflen)
 {
 	if (addr->isIP) {
+		// TODO nach IP2STR und IPSTR suchen
 		if (ipaddr_ntoa_r(&addr->ip, buf, buflen) == NULL) {
 			return -1;
 		}

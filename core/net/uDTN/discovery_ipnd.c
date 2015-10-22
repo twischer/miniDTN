@@ -129,7 +129,6 @@ static bool discovery_ipnd_init()
 #endif
 
 	// Set the neighbour timeout timer
-//	ctimer_set(&discovery_timeout_timer, DISCOVERY_NEIGHBOUR_TIMEOUT * CLOCK_SECOND, discovery_ipnd_remove_stale_neighbours, NULL);
 	discovery_timeout_timer = xTimerCreate("discovery timeout timer", pdMS_TO_TICKS(DISCOVERY_NEIGHBOUR_TIMEOUT * 1000),
 										   pdFALSE, NULL, discovery_ipnd_remove_stale_neighbours);
 	if (discovery_timeout_timer == NULL) {
@@ -620,7 +619,7 @@ static void discovery_ipnd_delete_neighbour(const cl_addr_t* const neighbour)
 			/* firstly remove the corresponding address type
 			 * and check, if there are other adresses
 			 */
-			const uint8_t addr_type = neighbour->isIP ? ADDRESS_TYPE_FLAG_IPV4 : ADDRESS_TYPE_FLAG_LOWPAN;
+			const uint8_t addr_type = neighbour->isIP ? CL_TYPE_FLAG_DGRAM_UDP : CL_TYPE_FLAG_DGRAM_LOWPAN;
 			entry->addr_type &= ~addr_type;
 
 			if (entry->addr_type != 0) {
@@ -643,7 +642,7 @@ static void discovery_ipnd_delete_neighbour(const cl_addr_t* const neighbour)
 
 static void discovery_ipnd_neighbour_update_ip(const cl_addr_t* const addr, struct discovery_ipnd_neighbour_list_entry* const entry)
 {
-	entry->addr_type |= ADDRESS_TYPE_FLAG_IPV4;
+	entry->addr_type |= CL_TYPE_FLAG_DGRAM_UDP;
 	ip_addr_copy(entry->ip, addr->ip);
 	entry->port = addr->port;
 	// TODO update ip timestamp
@@ -698,7 +697,7 @@ static int discovery_ipnd_save_neighbour(const uint32_t eid, const cl_addr_t* co
 	if (addr->isIP) {
 		discovery_ipnd_neighbour_update_ip(addr, entry);
 	} else {
-		entry->addr_type = ADDRESS_TYPE_FLAG_LOWPAN;
+		entry->addr_type = CL_TYPE_FLAG_DGRAM_LOWPAN;
 		ip_addr_copy(entry->ip, *IP_ADDR_ANY);
 		entry->port = 0;
 		entry->timestamp_last_lowpan = clock_seconds();
@@ -774,10 +773,10 @@ void discovery_ipnd_clear()
 
 		/* call convergence_layer_neighbour_down for all discovered address types */
 		cl_addr_t addr;
-		if (discovery_neighbour_to_addr((struct discovery_neighbour_list_entry*)entry, ADDRESS_TYPE_FLAG_LOWPAN, &addr) >= 0) {
+		if (discovery_neighbour_to_addr((struct discovery_neighbour_list_entry*)entry, CL_TYPE_FLAG_DGRAM_LOWPAN, &addr) >= 0) {
 			convergence_layer_dgram_neighbour_down(&addr);
 		}
-		if (discovery_neighbour_to_addr((struct discovery_neighbour_list_entry*)entry, ADDRESS_TYPE_FLAG_IPV4, &addr) >= 0) {
+		if (discovery_neighbour_to_addr((struct discovery_neighbour_list_entry*)entry, CL_TYPE_FLAG_DGRAM_UDP, &addr) >= 0) {
 			convergence_layer_dgram_neighbour_down(&addr);
 		}
 
@@ -819,8 +818,8 @@ static void discovery_ipnd_remove_stale_neighbours(const TimerHandle_t timer)
 		for(struct discovery_ipnd_neighbour_list_entry* entry = list_head(neighbour_list);
 				entry != NULL;
 				entry = list_item_next(entry)) {
-			const bool lowpan_exists = (entry->addr_type & ADDRESS_TYPE_FLAG_LOWPAN);
-			const bool ip_exists = (entry->addr_type & ADDRESS_TYPE_FLAG_IPV4);
+			const bool lowpan_exists = (entry->addr_type & CL_TYPE_FLAG_DGRAM_LOWPAN);
+			const bool ip_exists = (entry->addr_type & CL_TYPE_FLAG_DGRAM_UDP);
 			if (!lowpan_exists && !ip_exists) {
 				LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_ERR, "Entry without an vaild address. Deleting");
 				discovery_ipnd_destroy_neighbour(entry);
@@ -829,7 +828,7 @@ static void discovery_ipnd_remove_stale_neighbours(const TimerHandle_t timer)
 			}
 
 
-			if (lowpan_exists && discovery_ipnd_check_neighbour_timeout(entry, entry->timestamp_last_lowpan, ADDRESS_TYPE_FLAG_LOWPAN) > 0) {
+			if (lowpan_exists && discovery_ipnd_check_neighbour_timeout(entry, entry->timestamp_last_lowpan, CL_TYPE_FLAG_DGRAM_LOWPAN) > 0) {
 				changed = true;
 				/* not break here,
 				 * because possibly the next address type is
@@ -838,7 +837,7 @@ static void discovery_ipnd_remove_stale_neighbours(const TimerHandle_t timer)
 				 */
 			}
 
-			if (ip_exists && discovery_ipnd_check_neighbour_timeout(entry, entry->timestamp_last_ip, ADDRESS_TYPE_FLAG_IPV4) > 0) {
+			if (ip_exists && discovery_ipnd_check_neighbour_timeout(entry, entry->timestamp_last_ip, CL_TYPE_FLAG_DGRAM_UDP) > 0) {
 				changed = true;
 				/* not break here,
 				 * because possibly the next address type is

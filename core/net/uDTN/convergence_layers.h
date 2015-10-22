@@ -17,22 +17,22 @@
 
 
 struct convergence_layer {
-	char *name;
+	const char* const name;
 
-	int (* init)();
+	int (* const init)(void);
 
-	size_t (* max_payload_length)();
+	size_t (* const max_payload_length)(void);
 
-	uint8_t (* next_seqno)(const uint8_t last_seqno);
+	uint8_t (* const next_seqno)(const uint8_t last_seqno);
 
-	int (* send_discovery)(const uint8_t* const payload, const size_t length);
+	int (* const send_discovery)(const uint8_t* const payload, const size_t length);
 
-	int (* send_ack)(const cl_addr_t* const dest, const int seqno, const int type, const void* const reference);
+	int (* const send_ack)(const cl_addr_t* const dest, const int seqno, const int type, const void* const reference);
 
-	int (* send_bundle)(const cl_addr_t* const dest, const int seqno, const uint8_t flags,
+	int (* const send_bundle)(const cl_addr_t* const dest, const int seqno, const uint8_t flags,
 						const uint8_t* const payload, const size_t length, const void* const reference);
 
-	int (* input)(const cl_addr_t* const source, const uint8_t* const payload, const size_t length, const packetbuf_attr_t rssi);
+	int (* const input)(const cl_addr_t* const source, const uint8_t* const payload, const size_t length, const packetbuf_attr_t rssi);
 };
 
 

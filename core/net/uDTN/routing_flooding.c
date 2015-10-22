@@ -118,15 +118,16 @@ void routing_flooding_check_keep_bundle(uint32_t bundle_number);
  */
 static int routing_flooding_neighbour_to_addr(const struct discovery_neighbour_list_entry* const entry, cl_addr_t* const addr)
 {
-	if (discovery_neighbour_to_addr(entry, ADDRESS_TYPE_FLAG_IPV4, addr) >= 0) {
+	if (discovery_neighbour_to_addr(entry, CL_TYPE_FLAG_DGRAM_UDP, addr) >= 0) {
 		/* ip address successful converted */
 		return 0;
-	} else if (discovery_neighbour_to_addr(entry, ADDRESS_TYPE_FLAG_LOWPAN, addr) >= 0) {
+	} else if (discovery_neighbour_to_addr(entry, CL_TYPE_FLAG_DGRAM_LOWPAN, addr) >= 0) {
 		/* lowpan address successful converted */
 		return 0;
 	} else {
 		LOG(LOGD_DTN, LOG_ROUTE, LOGL_ERR, "Could not find a valid address in discovery list entry for %u.%u",
 			entry->neighbour.u8[0], entry->neighbour.u8[1]);
+		configASSERT(false);
 		return -1;
 	}
 }
@@ -725,7 +726,7 @@ uint32_t routing_get_eid_of_cl_addr(const cl_addr_t* const addr)
 		struct discovery_neighbour_list_entry* nei_l = DISCOVERY.neighbours();
 		for(; nei_l != NULL; nei_l = list_item_next(nei_l) ) {
 			cl_addr_t nei_addr;
-			if (discovery_neighbour_to_addr(nei_l, ADDRESS_TYPE_FLAG_IPV4, &nei_addr) < 0) {
+			if (discovery_neighbour_to_addr(nei_l, CL_TYPE_FLAG_DGRAM_UDP, &nei_addr) < 0) {
 				/* convertion of ip address failed, possibly this entry does not contain an IP */
 				continue;
 			}

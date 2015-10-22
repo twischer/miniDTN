@@ -86,10 +86,11 @@ void HAL_RNG_MspDeInit(RNG_HandleTypeDef* hrng)
 
 uint32_t HAL_RNG_get_random_number()
 {
-	uint32_t random_number = 0;
+	static uint32_t random_number = 0;
 	if(HAL_RNG_GenerateRandomNumber(&hrng, &random_number) != HAL_OK)
 	{
 		printf("HAL_RNG_GenerateRandomNumber failed\n");
+		random_number += 13;
 	}
 
 	return random_number;

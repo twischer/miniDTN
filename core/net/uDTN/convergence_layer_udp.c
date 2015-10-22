@@ -59,10 +59,7 @@ static int convergence_layer_udp_send(struct netconn* const conn, const ip_addr_
 									  const uint8_t* const payload, const size_t length,
 									  const uint8_t* const payload2, const size_t length2)
 {
-	/*
-	 * conn has not to be checked for NULL,
-	 * because it will be done by netconn_sendto()
-	 */
+	configASSERT(conn != NULL && addr != NULL && payload != NULL && length > 0);
 
 	// TODO use thread safe netifapi_netif_common instead
 	// posibly not needed, becasue it checks only a flag
