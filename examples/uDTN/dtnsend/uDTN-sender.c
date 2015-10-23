@@ -116,7 +116,13 @@ static void udtn_sender_process(void* p)
 #endif
 
 	/* Give the receiver a second to start up */
-	vTaskDelay( pdMS_TO_TICKS(1000) );
+	vTaskDelay( pdMS_TO_TICKS(6000) );
+
+
+	/* Add the payload */
+	static uint8_t userdata[BUNDLE_SIZE];
+	for(int i=0; i<BUNDLE_SIZE; i++)
+		userdata[i] = (i % 0xFF);
 
 	printf("Init done, starting test\n");
 
@@ -171,7 +177,7 @@ static void udtn_sender_process(void* p)
 
 		/* Only proceed, when we have enough storage left */
 		if( BUNDLE_STORAGE.free_space(NULL) < (BUNDLE_STORAGE_SIZE-1) ) {
-//			process_post(&udtn_sender_process, PROCESS_EVENT_CONTINUE, NULL);
+			BUNDLE_STORAGE.wait_for_changes();
 			continue;
 		}
 
@@ -211,13 +217,7 @@ static void udtn_sender_process(void* p)
 		tmp=2000;
 		bundle_set_attr(bundle_outgoing, LIFE_TIME, &tmp);
 
-		/* Add the payload */
-		static uint8_t userdata[BUNDLE_SIZE];
-		for(int i=0; i<BUNDLE_SIZE; i++)
-			userdata[i] = (i % 0xFF);
-
-		const int n = bundle_add_block(bundle_outgoing, BUNDLE_BLOCK_TYPE_PAYLOAD, BUNDLE_BLOCK_FLAG_NULL, userdata, BUNDLE_SIZE);
-		if( n == -1 ) {
+		if (bundle_add_block(bundle_outgoing, BUNDLE_BLOCK_TYPE_PAYLOAD, BUNDLE_BLOCK_FLAG_NULL, userdata, BUNDLE_SIZE) < 0) {
 			printf("not enough room for block\n");
 			bundle_decrement(bundle_outgoing);
 			continue;
@@ -235,10 +235,13 @@ static void udtn_sender_process(void* p)
 			event_container_t ev;
 			const bool event_received = dtn_process_wait_any_event(portMAX_DELAY, &ev);
 			if (!event_received) {
+				printf("Timeout\n");
 				break;
 			}
 
 			if (ev.event == dtn_bundle_store_failed) {
+				printf("Send failed\n");
+				taskYIELD();
 				break;
 			}
 
@@ -248,9 +251,10 @@ static void udtn_sender_process(void* p)
 				if (bundles_sent % REPORTING_INTERVAL == 0) {
 					printf("%i\n", bundles_sent);
 				}
+				break;
 			}
 
-			/* if there is an unknown event, wait for the next one */
+			/* if there was an unknown event, wait for the next one */
 		}
 	}
 }
@@ -258,7 +262,7 @@ static void udtn_sender_process(void* p)
 
 bool init()
 {
-	if ( !dtn_process_create_other_stack(udtn_sender_process, "DTN Sender", 0x100) ) {
+	if ( !dtn_process_create_other_stack(udtn_sender_process, "DTN Sender", 0x200) ) {
 		return false;
 	}
 

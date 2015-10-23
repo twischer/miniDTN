@@ -113,6 +113,8 @@ struct storage_driver {
 	uint16_t (* get_bundle_num)(void);
 	/** returns pointer to list of bundles */
 	struct storage_entry_t * (* get_bundles)(void);
+	/** block until the count of saved bundles has changed */
+	void (* const wait_for_changes)(void);
 	/** initializes the underlying medium to delete everything */
 	void (* format)();
 };

@@ -21,7 +21,9 @@
 #include <string.h>
 
 #include "FreeRTOS.h"
+#include "task.h"
 #include "timers.h"
+#include "semphr.h"
 
 #include "lib/mmem.h"
 #include "lib/list.h"
@@ -77,6 +79,8 @@ static uint16_t bundles_in_storage;
 /** Is used to periodically traverse all bundles and delete those that are expired */
 static TimerHandle_t r_store_timer;
 
+static SemaphoreHandle_t wait_for_changes_sem = NULL;
+
 /**
  * "Internal" functions
  */
@@ -105,6 +109,24 @@ void storage_mmem_format(void)
 bool storage_mmem_init(void)
 {
 	LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "storage_mmem init");
+
+	/* Only execute the initalisation before the scheduler was started.
+	 * So there exists only one thread and
+	 * no locking is needed for the initialisation
+	 */
+	configASSERT(xTaskGetSchedulerState() == taskSCHEDULER_NOT_STARTED);
+
+	/* cancle, if initialisation was already done */
+	if(wait_for_changes_sem != NULL) {
+		return -1;
+	}
+	/* Do not use an recursive mutex,
+	 * because mmem_check() will not work vital then.
+	 */
+	wait_for_changes_sem = xSemaphoreCreateCounting(1, 0);
+	if(wait_for_changes_sem == NULL) {
+		return -2;
+	}
 
 	// Initialize the bundle list
 	list_init(bundle_list);
@@ -407,6 +429,9 @@ static uint8_t storage_mmem_save_bundle(struct mmem* const bundlemem, uint32_t* 
 	// the caller can stick it into an event
 	*bundle_number_ptr = entry->bundle_num;
 
+	/* storage status has changed */
+	xSemaphoreGive(wait_for_changes_sem);
+
 	return 1;
 }
 
@@ -476,6 +501,9 @@ uint8_t storage_mmem_delete_bundle(uint32_t bundle_number, uint8_t reason)
 	printf("D %u\n", bundles_in_storage);
 #endif
 
+	/* storage status has changed */
+	xSemaphoreGive(wait_for_changes_sem);
+
 	return 1;
 }
 
@@ -543,6 +571,13 @@ struct storage_entry_t * storage_mmem_get_bundles(void)
 	return (struct storage_entry_t *) list_head(bundle_list);
 }
 
+static void storage_mmem_wait_for_changes(void)
+{
+	if ( !xSemaphoreTake(wait_for_changes_sem, portMAX_DELAY) ) {
+		LOG(LOGD_DTN, LOG_STORE, LOGL_WRN, "Wait for changes failed");
+	}
+}
+
 /**
  * \brief Mark a bundle as locked so that it will not be deleted even if we are running out of space
  *
@@ -607,6 +642,7 @@ const struct storage_driver storage_mmem = {
 	storage_mmem_get_free_space,
 	storage_mmem_get_bundle_numbers,
 	storage_mmem_get_bundles,
+	storage_mmem_wait_for_changes,
 	storage_mmem_format,
 };
 
