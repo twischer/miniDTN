@@ -425,6 +425,12 @@ volatile char rf230interruptflag;
 #endif
 
 
+static inline void hal_disable_not_needed_irqs()
+{
+	hal_register_write(RG_IRQ_MASK, HAL_TRX_END_MASK | HAL_TRX_UR_MASK);
+}
+
+
 /* Separate RF230 has a single radio interrupt and the source must be read from the IRQ_STATUS register */
 void hal_rf230_isr()
 {
@@ -449,7 +455,7 @@ void hal_rf230_isr()
 
 	HAL_SPI_TRANSFER_CLOSE();
 
-
+//	printf("I%x", interrupt_source);
 
 	/*Handle the incomming interrupt. Prioritized.*/
 	if ((interrupt_source & HAL_RX_START_MASK)) {
@@ -463,6 +469,10 @@ void hal_rf230_isr()
 #else  // Faster with 1-clock multiply. Raven and Jackdaw have 2-clock multiply so same speed while saving 2 bytes of program memory
 		rf230_last_rssi = 3 * hal_subregister_read(SR_RSSI);
 #endif
+#else
+		// TODO time critical read access with frame buffer empty indecator
+		// see datasheet page 126
+		hal_disable_not_needed_irqs();
 #endif
 
 	}
@@ -470,8 +480,8 @@ void hal_rf230_isr()
 		INTERRUPTDEBUG(11);
 
 		const uint8_t state = hal_subregister_read(SR_TRX_STATUS);
+//		printf("S%u", state);
 		if((state == BUSY_RX_AACK) || (state == RX_ON) || (state == BUSY_RX) || (state == RX_AACK_ON)) {
-
 
 			/* Received packet interrupt */
 			/* Buffer the frame and call rf230_interrupt to schedule poll for rf230 receive process */
@@ -500,15 +510,18 @@ void hal_rf230_isr()
 #endif
 		}
 	}
-	if (interrupt_source & HAL_TRX_UR_MASK){
+	if (interrupt_source & HAL_TRX_UR_MASK) {
+		configASSERT(false);
 		INTERRUPTDEBUG(13);
 		;
 	}
-	if (interrupt_source & HAL_PLL_UNLOCK_MASK){
+	if (interrupt_source & HAL_PLL_UNLOCK_MASK) {
+		hal_disable_not_needed_irqs();
 		INTERRUPTDEBUG(14);
 		;
 	}
 	if (interrupt_source & HAL_PLL_LOCK_MASK){
+		hal_disable_not_needed_irqs();
 		INTERRUPTDEBUG(15);
 		;
 	}
@@ -516,12 +529,22 @@ void hal_rf230_isr()
 		/*  Disable BAT_LOW interrupt to prevent endless interrupts. The interrupt */
 		/*  will continously be asserted while the supply voltage is less than the */
 		/*  user-defined voltage threshold. */
-		uint8_t trx_isr_mask = hal_register_read(RG_IRQ_MASK);
-		trx_isr_mask &= ~HAL_BAT_LOW_MASK;
-		hal_register_write(RG_IRQ_MASK, trx_isr_mask);
+		hal_disable_not_needed_irqs();
 		INTERRUPTDEBUG(16);
 		;
 	}
+
+#if (configASSERT_DEFINED == 1)
+	/* check wether all interrupts were processed */
+	HAL_SPI_TRANSFER_OPEN();
+	HAL_SPI_TRANSFER_WRITE(0x80 | RG_IRQ_STATUS);
+	HAL_SPI_TRANSFER_WAIT();
+	interrupt_source = HAL_SPI_TRANSFER(0);
+	HAL_SPI_TRANSFER_CLOSE();
+
+	configASSERT(interrupt_source == 0);
+#endif
+
 	LED_Off(LED_BLUE);
 }
 #   endif /* defined(DOXYGEN) */
