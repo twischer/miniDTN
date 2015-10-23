@@ -80,7 +80,7 @@ static int convergence_layer_lowpan_dgram_send_discovery(const uint8_t* const pa
 {
 	uint8_t * buffer = NULL;
 
-	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Sending discovery to %u.%u", neighbour->u8[0], neighbour->u8[1]);
+	LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Sending broadcast discovery");
 
 	/* If we are currently transmitting or waiting for an ACK, do nothing */
 	if(convergence_layer_transmitting) {

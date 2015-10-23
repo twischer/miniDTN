@@ -1243,7 +1243,10 @@ static void convergence_layer_dgram_process(void* p)
 
 		/* slow down the transmission to mind collisions */
 		if (convergence_layer_backoff_pending) {
-			vTaskDelay( pdMS_TO_TICKS(100) );
+			/* @ 250kBit/s in one ms can be received till 31 Byte
+			 * So one ms is in most cases enough delay
+			*/
+			vTaskDelay( pdMS_TO_TICKS(1) );
 			convergence_layer_backoff_pending = false;
 		}
 

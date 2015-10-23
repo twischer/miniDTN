@@ -23,16 +23,17 @@ bool dtn_process_create(const TaskFunction_t pvTaskCode, const char* const pcNam
 bool dtn_process_create_other_stack(const TaskFunction_t pvTaskCode, const char* const pcName, const uint16_t usStackDepth)
 {
 	QueueHandle_t event_queue = NULL;
-	return dtn_process_create_with_queue(pvTaskCode, pcName, usStackDepth, &event_queue);
+	return dtn_process_create_with_queue(pvTaskCode, pcName, usStackDepth, 1, &event_queue);
 }
 
-bool dtn_process_create_with_queue(const TaskFunction_t pvTaskCode, const char* const pcName, const uint16_t usStackDepth, QueueHandle_t* const event_queue)
+bool dtn_process_create_with_queue(const TaskFunction_t pvTaskCode, const char* const pcName, const uint16_t usStackDepth,
+								   const UBaseType_t uxPriority, QueueHandle_t* const event_queue)
 {
 	// TODO add parameter and fail if parameter false and function already used for an process
 
 
 	TaskHandle_t createdTask;
-	if ( !xTaskCreate(pvTaskCode, pcName, usStackDepth, NULL, 4, &createdTask) ) {
+	if ( !xTaskCreate(pvTaskCode, pcName, usStackDepth, NULL, uxPriority, &createdTask) ) {
 		LOG(LOGD_DTN, LOG_AGENT, LOGL_ERR, "Failed to create task %s", pcName);
 		return false;
 	}

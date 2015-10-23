@@ -54,5 +54,11 @@ void reset_stack_trace(void);
 void print_memory(const uint8_t* const data, const size_t length);
 void delay_us_check(void);
 
+
+#define TIME_DIFF_START() time_diff_start(__FILE__, __LINE__);
+#define TIME_DIFF_STOP() time_diff_stop(__FILE__, __LINE__);
+void time_diff_start(const char* const file, const int line);
+void time_diff_stop(const char* const file, const int line);
+
 #endif // DEBUGGING_H
 
