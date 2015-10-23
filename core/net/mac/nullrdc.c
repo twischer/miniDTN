@@ -131,8 +131,10 @@ send_one_packet(mac_callback_t sent, void *ptr)
 
     is_broadcast = packetbuf_holds_broadcast();
 
-	if(rf230_driver.receiving_packet() ||
-	   (!is_broadcast && rf230_driver.pending_packet())) {
+	const int is_receivng = rf230_driver.receiving_packet();
+	const int is_pending = rf230_driver.pending_packet();
+	if(is_receivng ||
+	   (!is_broadcast && is_pending)) {
 
       /* Currently receiving a packet over air or the radio has
          already received a packet that needs to be read before

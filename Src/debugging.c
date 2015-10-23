@@ -39,6 +39,29 @@ static uint64_t usage_time = 0;
 static TickType_t task_in_time = 0;
 #endif
 
+static TickType_t time_diff_start_ticks = 0;
+void time_diff_start(const char* const file, const int line)
+{
+	if (time_diff_start_ticks > 0) {
+		printf("ERR: Last time diff not already stopped from %s:%u\n", file, line);
+		time_diff_stop(file, line);
+	}
+
+	time_diff_start_ticks = xTaskGetTickCount();
+}
+
+void time_diff_stop(const char* const file, const int line)
+{
+	if (time_diff_start_ticks <= 0) {
+		printf("ERR: Time diff not started from %s:%u\n", file, line);
+		return;
+	}
+	const TickType_t diff = xTaskGetTickCount() - time_diff_start_ticks;
+	time_diff_start_ticks = 0;
+
+	printf("TIME %lu from %s:%u\n", diff / portTICK_PERIOD_MS, file, line);
+}
+
 
 static inline void message_add_task(const bool type, void *this_fn, void *call_site, const char* const task_name)
 		__attribute__((no_instrument_function));
