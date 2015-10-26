@@ -1,5 +1,6 @@
 MODULES+= examples/uDTN/dtnping
 #MODULES+= examples/uDTN/dtnsend
+#MODULES+= examples/uDTN/throughput
 
 CFLAGS+= -DPROJECT_CONF_H=\"project-conf.h\"
 CFLAGS+= -DINGA_CONF_PAN_ID=0x0780
