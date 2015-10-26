@@ -122,7 +122,7 @@ uint8_t dtn_network_get_buffer_length() {
 	return PACKETBUF_SIZE;
 }
 
-void dtn_network_send(linkaddr_t * destination, uint8_t length, void * reference)
+int dtn_network_send(linkaddr_t * destination, uint8_t length, void * reference)
 {
 //	leds_on(LEDS_YELLOW);
 
@@ -136,7 +136,7 @@ void dtn_network_send(linkaddr_t * destination, uint8_t length, void * reference
 	packetbuf_set_attr(PACKETBUF_ATTR_FRAME_TYPE, FRAME802154_DATAFRAME);
 
 	/* Send it out via the MAC */
-	nullrdc_driver.send(&dtn_network_sent, reference);
+	return nullrdc_driver.send(&dtn_network_sent, reference);
 
 //	leds_off(LEDS_YELLOW);
 }

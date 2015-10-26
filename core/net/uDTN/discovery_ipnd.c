@@ -511,10 +511,15 @@ static void discovery_ipnd_send()
 	}
 
 	// Now: Send it
-	if (clayer_lowpan_dgram.send_discovery(ipnd_buffer, offset) < 0) {
+	/* retry sending, if the tranceiver is busy */
+	for (int i=0; i<10; i++) {
+		if (clayer_lowpan_dgram.send_discovery(ipnd_buffer, offset) >= 1) {
+			LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_WRN, "Discovery beacon message sent over lowpan.");
+			break;
+		}
+
 		LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_WRN, "Discovery beacon message sent over lowpan failed.");
-	} else {
-		LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "Discovery beacon message sent over lowpan.");
+		vTaskDelay(pdMS_TO_TICKS(1));
 	}
 
 

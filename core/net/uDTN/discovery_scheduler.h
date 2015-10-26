@@ -27,7 +27,7 @@
 #ifdef DISCOVERY_CONF_CYCLE
 #define DISCOVERY_CYCLE DISCOVERY_CONF_CYCLE
 #else
-#define DISCOVERY_CYCLE 5
+#define DISCOVERY_CYCLE 1
 #endif
 
 /** interface for discovery scheduler modules **/

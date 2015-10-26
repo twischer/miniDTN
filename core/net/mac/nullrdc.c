@@ -228,10 +228,10 @@ send_one_packet(mac_callback_t sent, void *ptr)
   return last_sent_ok;
 }
 /*---------------------------------------------------------------------------*/
-static void
+static int
 send_packet(mac_callback_t sent, void *ptr)
 {
-  send_one_packet(sent, ptr);
+  return send_one_packet(sent, ptr);
 }
 /*---------------------------------------------------------------------------*/
 static void
