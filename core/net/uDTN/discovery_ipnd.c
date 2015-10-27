@@ -514,7 +514,7 @@ static void discovery_ipnd_send()
 	/* retry sending, if the tranceiver is busy */
 	for (int i=0; i<10; i++) {
 		if (clayer_lowpan_dgram.send_discovery(ipnd_buffer, offset) >= 1) {
-			LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_WRN, "Discovery beacon message sent over lowpan.");
+			LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "Discovery beacon message sent over lowpan.");
 			break;
 		}
 
