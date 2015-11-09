@@ -778,7 +778,6 @@ int convergence_layer_dgram_parse_ackframe(const cl_addr_t* const source, const 
 	/* TODO: Handle temporary NACKs separately here */
 	if( type == CONVERGENCE_LAYER_TYPE_ACK ) {
 		if( ticket->flags & CONVERGENCE_LAYER_QUEUE_MULTIPART ) {
-			// TODO differs for udp cl. Use % 16.
 			const uint8_t reqested_seq_no = source->clayer->next_seqno(ticket->sequence_number);
 			if(sequence_number == reqested_seq_no) {
 				// ACK received
