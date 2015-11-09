@@ -540,6 +540,12 @@ static int convergence_layer_dgram_parse_dataframe(const cl_addr_t* const source
 
 	if( flags != (CONVERGENCE_LAYER_FLAGS_FIRST | CONVERGENCE_LAYER_FLAGS_LAST ) ) {
 		/* We have a multipart bundle here */
+
+		/* is used to detected an resend of the last segement,
+		 * if the ticket was already deleted
+		 */
+		static uint8_t last_multipart_seqno = 0;
+
 		if( flags == CONVERGENCE_LAYER_FLAGS_FIRST ) {
 			/* Beginning of a new bundle from a peer, remove old tickets */
 			for( ticket = list_head(transmission_ticket_list);
@@ -572,6 +578,7 @@ static int convergence_layer_dgram_parse_dataframe(const cl_addr_t* const source
 			ticket->flags = CONVERGENCE_LAYER_QUEUE_MULTIPART_RECV;
 			ticket->timestamp = xTaskGetTickCount();
 			ticket->sequence_number = sequence_number;
+			last_multipart_seqno = sequence_number;
 
 			/* Now allocate some memory */
 			ret = mmem_alloc(&ticket->buffer, length);
@@ -600,10 +607,21 @@ static int convergence_layer_dgram_parse_dataframe(const cl_addr_t* const source
 
 			/* Cannot find a ticket, discard segment */
 			if( ticket == NULL ) {
-				char addr_str[CL_ADDR_STRING_LENGTH];
-				cl_addr_string(source, addr_str, sizeof(addr_str));
-				LOG(LOGD_DTN, LOG_CL, LOGL_WRN, "Segment from peer %s does not match any bundles in progress, discarding", addr_str);
-				return -1;
+				if (last_multipart_seqno != sequence_number) {
+					char addr_str[CL_ADDR_STRING_LENGTH];
+					cl_addr_string(source, addr_str, sizeof(addr_str));
+					LOG(LOGD_DTN, LOG_CL, LOGL_WRN, "Segment from peer %s does not match any bundles in progress, discarding", addr_str);
+					return -1;
+				} else {
+					/* This segment was resend,
+					 * beacuse possibly the ACK was not received vital by the other node.
+					 * So send a second ACK and
+					 * ignore this data
+					 */
+					// TODO this check will only work, if no other node sends multipart bundles, too
+					// possibly keep the ticket till the dtn nieghbour starts with sending the next bundle
+					return 0;
+				}
 			}
 
 			const uint8_t reqested_seqno = source->clayer->next_seqno(ticket->sequence_number);
@@ -617,6 +635,7 @@ static int convergence_layer_dgram_parse_dataframe(const cl_addr_t* const source
 
 			/* Store the last received and valid sequence number */
 			ticket->sequence_number = sequence_number;
+			last_multipart_seqno = sequence_number;
 
 			/* Note down the old length to know where to start */
 			n = ticket->buffer.size;
@@ -759,7 +778,6 @@ int convergence_layer_dgram_parse_ackframe(const cl_addr_t* const source, const 
 	/* TODO: Handle temporary NACKs separately here */
 	if( type == CONVERGENCE_LAYER_TYPE_ACK ) {
 		if( ticket->flags & CONVERGENCE_LAYER_QUEUE_MULTIPART ) {
-			// TODO differs for udp cl. Use % 16.
 			const uint8_t reqested_seq_no = source->clayer->next_seqno(ticket->sequence_number);
 			if(sequence_number == reqested_seq_no) {
 				// ACK received

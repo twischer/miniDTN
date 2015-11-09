@@ -40,26 +40,24 @@
 
 #include <stdio.h>
 
+#include "FreeRTOS.h"
+#include "task.h"
+
 #include "contiki.h"
-#include "watchdog.h"
-#include "sys/profiling/profiling.h"
-#include "sys/test.h"
-#include "process.h"
 #include "net/netstack.h"
 #include "net/packetbuf.h"
-#include "dev/leds.h"
-#include "etimer.h"
 
 #include "net/uDTN/api.h"
 #include "net/uDTN/agent.h"
 #include "net/uDTN/bundle.h"
 #include "net/uDTN/sdnv.h"
 #include "net/uDTN/storage.h"
+#include "dtn_process.h"
 
 #ifdef CONF_BUNDLE_SIZE
 #define BUNDLE_SIZE CONF_BUNDLE_SIZE
 #else
-#define BUNDLE_SIZE 80
+#define BUNDLE_SIZE 64
 #endif
 
 #ifdef CONF_BUNDLES
@@ -78,26 +76,16 @@
 #define WAITING_TIME CONF_WAITING_TIME
 #endif
 
-/*---------------------------------------------------------------------------*/
-PROCESS(udtn_sink_process, "uDTN Sink process");
-AUTOSTART_PROCESSES(&udtn_sink_process);
-/*---------------------------------------------------------------------------*/
 
-PROCESS_THREAD(udtn_sink_process, ev, data)
+static void udtn_sink_process(void* p)
 {
-	static struct registration_api reg;
-	static struct etimer timer;
 	static uint16_t bundles_recv = 0;
 	static uint16_t bundles_error = 0;
-	static uint32_t time_start, time_stop;
-	static uint8_t userdata[2];
-	uint32_t tmp;
-	static uint32_t seqno;
-	static uint32_t old_seqno = 0xFFFFFFFF;
-	struct mmem * bundle_incoming;
-	static struct mmem * bundle_outgoing;
+	static TickType_t time_start = 0;
+//	static uint8_t userdata[2];
+//	static uint32_t old_seqno = 0xFFFFFFFF;
+//	static struct mmem * bundle_outgoing;
 
-	PROCESS_BEGIN();
 
 #ifdef WAITING_TIME
 	/* make this node wait a couple of minutes until startup */
@@ -109,108 +97,90 @@ PROCESS_THREAD(udtn_sink_process, ev, data)
 	printf("Starting Test\n");
 #endif
 
-	profiling_init();
-	profiling_start();
-
 	/* Wait for the agent to be initialized */
-	PROCESS_PAUSE();
+	vTaskDelay( pdMS_TO_TICKS(1000) );
 
 	/* Register our endpoint to receive bundles */
+	static struct registration_api reg;
 	reg.status = APP_ACTIVE;
-	reg.application_process = PROCESS_CURRENT();
+	reg.event_queue = dtn_process_get_event_queue();
 	reg.app_id = 25;
-	process_post(&agent_process, dtn_application_registration_event, &reg);
+	const event_container_t event = {
+		.event = dtn_application_registration_event,
+		.registration = &reg
+	};
+	agent_send_event(&event);
 
-	/* Profile initialization separately */
-	profiling_stop();
-	watchdog_stop();
-	profiling_report("init", 0);
-	watchdog_start();
 	printf("Init done, starting test\n");
 
-	profiling_init();
-	profiling_start();
-
 	while (1) {
-		etimer_set(&timer, CLOCK_SECOND*10);
-		PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&timer) ||
-				ev == submit_data_to_application_event);
+		event_container_t ev;
+		const bool event_received = dtn_process_wait_event(submit_data_to_application_event, pdMS_TO_TICKS(4 * 1000 * 1000), &ev);
 
 		/* Check for timeout */
-		if (etimer_expired(&timer)) {
-			if (clock_seconds()-(time_start/CLOCK_SECOND) > 18000) {
-				profiling_stop();
-				watchdog_stop();
-				profiling_report("timeout", 0);
-				watchdog_start();
-				TEST_FAIL("Didn't receive enough bundles");
-				PROCESS_EXIT();
-			}
-
-			if( ev != submit_data_to_application_event ) {
-				/* No timeout - restart while-loop */
-				continue;
-			}
+		if (!event_received) {
+			printf("TEST_FAIL: Didn't receive enough bundles");
+			break;
 		}
 
-		/* If the etimer didn't expire we're getting a submit_data_to_application_event */
-		bundle_incoming = (struct mmem *) data;
-
-		leds_toggle(1);
+//		leds_toggle(1);
 
 		/* Verify the content of the bundle */
-		struct bundle_block_t * block = bundle_get_payload_block(bundle_incoming);
-		int i;
+		struct bundle_block_t * block = bundle_get_payload_block(ev.bundlemem);
 		int error = 0;
 
 		if( block == NULL ) {
 			printf("Payload: no block\n");
 			error = 1;
 		} else {
-			if( block->block_size != BUNDLE_SIZE ) {
-				printf("Payload: length is %d, should be %d\n", block->block_size, BUNDLE_SIZE);
-				error = 1;
-			}
+//			if( block->block_size != BUNDLE_SIZE ) {
+//				printf("Payload: length is %d, should be %d\n", block->block_size, BUNDLE_SIZE);
+//				error = 1;
+//			}
 
-			for(i=0; i<BUNDLE_SIZE; i++) {
-				if( block->payload[i] != (i % 255) ) {
-					printf("Payload: byte %d mismatch. Should be %02X, is %02X\n", i, i, block->payload[i]);
-					error = 1;
-				}
-			}
+//			for(i=0; i<BUNDLE_SIZE; i++) {
+//				if( block->payload[i] != (i % 255) ) {
+//					printf("Payload: byte %d mismatch. Should be %02X, is %02X\n", i, i, block->payload[i]);
+//					error = 1;
+//				}
+//			}
 		}
 
 		if( error ) {
 			bundles_error ++;
 
 			/* Tell the agent, that we have processed the bundle */
-			process_post(&agent_process, dtn_processing_finished, bundle_incoming);
+			ev.event = dtn_processing_finished;
+			agent_send_event(&ev);
 
 			continue;
 		}
 
-		bundle_get_attr(bundle_incoming, TIME_STAMP_SEQ_NR, &seqno);
-		bundle_get_attr(bundle_incoming, SRC_NODE, &tmp);
+//		static uint32_t seqno = 0;
+//		bundle_get_attr(ev.bundlemem, TIME_STAMP_SEQ_NR, &seqno);
+//		static uint32_t tmp = 0;
+//		bundle_get_attr(bundle_incoming, SRC_NODE, &tmp);
 
-		if( seqno == old_seqno ) {
-			printf("Duplicate bundle, ignoring\n");
+//		if( seqno == old_seqno ) {
+//			printf("Duplicate bundle, ignoring\n");
 
-			/* Tell the agent, that we have processed the bundle */
-			process_post(&agent_process, dtn_processing_finished, bundle_incoming);
+//			/* Tell the agent, that we have processed the bundle */
+//			process_post(&agent_process, dtn_processing_finished, bundle_incoming);
 
-			continue;
-		}
+//			continue;
+//		}
 
-		old_seqno = seqno;
+//		old_seqno = seqno;
 
 		/* Tell the agent, that we have processed the bundle */
-		process_post(&agent_process, dtn_processing_finished, bundle_incoming);
+		ev.event = dtn_processing_finished;
+		agent_send_event(&ev);
 
 		bundles_recv++;
 
 		/* Start counting time after the first bundle arrived */
 		if (bundles_recv == 1) {
-			time_start = test_precise_timestamp();
+			time_start = xTaskGetTickCount();
 		}
 
 		if (bundles_recv % REPORTING_INTERVAL == 0)
@@ -219,70 +189,82 @@ PROCESS_THREAD(udtn_sink_process, ev, data)
 		/* Report profiling data after receiving BUNDLES bundles
 		   Ideally seq. no 0-999 */
 		if (bundles_recv==BUNDLES) {
-			leds_off(1);
-			profiling_stop();
-			time_stop = test_precise_timestamp();
+//			leds_off(1);
+			const TickType_t time_stop = xTaskGetTickCount();
+			const TickType_t diff = time_stop - time_start;
 
-			watchdog_stop();
-			profiling_report("recv-bundles", 0);
-			TEST_REPORT("throughput", BUNDLES*CLOCK_SECOND, time_stop-time_start, "bundles/s");
-			TEST_REPORT("errors", bundles_error, 1, "erronous bundles");
-			TEST_REPORT("throughput_bytes", BUNDLES * BUNDLE_SIZE * CLOCK_SECOND, time_stop-time_start, "bytes/s");
+			/* use uint64_t, beacuse of throughput calulation */
+			const uint32_t block_size = block->block_size;
+			printf("size %lu\n", block_size);
+			printf("time %lu ms\n", diff / portTICK_PERIOD_MS);
 
-			/* Packet loss in percent
-			   We received 1000 bundles, if seqno is 999 bundleloss is 0%
-			   If seqno is 1999 bundleloss is 50% (1000 received, 1000 lost) */
-			TEST_REPORT("packetloss", (seqno-(BUNDLES-1))*100, seqno+1, "\%");
-			TEST_PASS();
-			watchdog_start();
+			const uint32_t bundles_per_sec = BUNDLES * 1000 * portTICK_PERIOD_MS / diff;
+			printf("throughput %lu bundles/s\n", bundles_per_sec);
+			printf("errors %u\n", bundles_error);
+
+			const uint64_t bundles_payload = ((uint64_t)block_size) * BUNDLES * 1000 * portTICK_PERIOD_MS / diff;
+			printf("throughput_bytes %lu bytes/s\n", (uint32_t)bundles_payload);
+
+//			/* Packet loss in percent
+//			   We received 1000 bundles, if seqno is 999 bundleloss is 0%
+//			   If seqno is 1999 bundleloss is 50% (1000 received, 1000 lost) */
+//			printf("packetloss %lu %%\n", (seqno-(BUNDLES-1))*100/(seqno+1));
 		}
 
-		if( bundles_recv >= BUNDLES && BUNDLE_STORAGE.free_space(NULL) > 0 ) {
-			bundle_outgoing = bundle_create_bundle();
+//		if( bundles_recv >= BUNDLES && BUNDLE_STORAGE.free_space(NULL) > 0 ) {
+//			bundle_outgoing = bundle_create_bundle();
 
-			if( bundle_outgoing == NULL ) {
-				printf("create_bundle failed\n");
-				continue;
-			}
+//			if( bundle_outgoing == NULL ) {
+//				printf("create_bundle failed\n");
+//				continue;
+//			}
 
-			/* tmp already holds the src address of the sender */
-			bundle_set_attr(bundle_outgoing, DEST_NODE, &tmp);
-			tmp=25;
-			bundle_set_attr(bundle_outgoing, DEST_SERV, &tmp);
+//			/* tmp already holds the src address of the sender */
+//			bundle_set_attr(bundle_outgoing, DEST_NODE, &tmp);
+//			tmp=25;
+//			bundle_set_attr(bundle_outgoing, DEST_SERV, &tmp);
 
-			/* Bundle flags */
-			tmp=BUNDLE_FLAG_SINGLETON | BUNDLE_PRIORITY_EXPEDITED;
-			bundle_set_attr(bundle_outgoing, FLAGS, &tmp);
+//			/* Bundle flags */
+//			tmp=BUNDLE_FLAG_SINGLETON | BUNDLE_PRIORITY_EXPEDITED;
+//			bundle_set_attr(bundle_outgoing, FLAGS, &tmp);
 
-			/* Bundle lifetime */
-			tmp=2000;
-			bundle_set_attr(bundle_outgoing, LIFE_TIME, &tmp);
+//			/* Bundle lifetime */
+//			tmp=2000;
+//			bundle_set_attr(bundle_outgoing, LIFE_TIME, &tmp);
 
-			/* Add the payload */
-			userdata[0] = 'o';
-			userdata[1] = 'k';
-			bundle_add_block(bundle_outgoing, BUNDLE_BLOCK_TYPE_PAYLOAD, BUNDLE_BLOCK_FLAG_NULL, userdata, 2);
+//			/* Add the payload */
+//			userdata[0] = 'o';
+//			userdata[1] = 'k';
+//			bundle_add_block(bundle_outgoing, BUNDLE_BLOCK_TYPE_PAYLOAD, BUNDLE_BLOCK_FLAG_NULL, userdata, 2);
 
-			/* Send out the bundle */
-			process_post(&agent_process, dtn_send_bundle_event, (void *) bundle_outgoing);
+//			/* Send out the bundle */
+//			process_post(&agent_process, dtn_send_bundle_event, (void *) bundle_outgoing);
 
-			printf("bundle sent, waiting for event...\n");
+//			printf("bundle sent, waiting for event...\n");
 
-			/* Wait for the agent to process our outgoing bundle */
-			PROCESS_WAIT_UNTIL(ev == dtn_bundle_stored || ev == dtn_bundle_store_failed);
+//			/* Wait for the agent to process our outgoing bundle */
+//			PROCESS_WAIT_UNTIL(ev == dtn_bundle_stored || ev == dtn_bundle_store_failed);
 
-			if( ev == dtn_bundle_stored ) {
-				/* Deactivate our registration, so that we do not receive bundles anymore */
-				reg.status = 0;
-				process_post(&agent_process, dtn_application_status_event, &reg);
+//			if( ev == dtn_bundle_stored ) {
+//				/* Deactivate our registration, so that we do not receive bundles anymore */
+//				reg.status = 0;
+//				process_post(&agent_process, dtn_application_status_event, &reg);
 
-				watchdog_start();
-				PROCESS_EXIT();
-			} else {
-				printf("bundle send failed\n");
-			}
-		}
+//				watchdog_start();
+//				PROCESS_EXIT();
+//			} else {
+//				printf("bundle send failed\n");
+//			}
+//		}
 	}
-	PROCESS_END();
 }
 /*---------------------------------------------------------------------------*/
+
+bool init()
+{
+	if ( !dtn_process_create_other_stack(udtn_sink_process, "Throughput", 0x100) ) {
+		return false;
+	}
+
+  return true;
+}

@@ -22,18 +22,18 @@
   <tasks>
     <task id="1" name="Voruntersuchungen" note="" work="316800" start="20150617T000000Z" end="20150701T170000Z" work-start="20150617T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
       <task id="2" name="Thesis: Einleitung" note="" work="28800" start="20150617T000000Z" end="20150617T170000Z" work-start="20150617T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
-      <task id="3" name="Thesis: Betriebssysteme f&#xFC;r &#xB5;C" note="" work="144000" start="20150617T170000Z" end="20150624T170000Z" work-start="20150618T080000Z" percent-complete="90" priority="0" type="normal" scheduling="fixed-work">
+      <task id="3" name="Thesis: Betriebssysteme f&#xFC;r &#xB5;C" note="" work="144000" start="20150617T170000Z" end="20150624T170000Z" work-start="20150618T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work">
         <predecessors>
           <predecessor id="1" predecessor-id="2" type="FS"/>
         </predecessors>
       </task>
-      <task id="4" name="Thesis: Existierende DTN-Implementierungen" note="" work="144000" start="20150624T170000Z" end="20150701T170000Z" work-start="20150625T080000Z" percent-complete="90" priority="0" type="normal" scheduling="fixed-work">
+      <task id="4" name="Thesis: Existierende DTN-Implementierungen" note="" work="144000" start="20150624T170000Z" end="20150701T170000Z" work-start="20150625T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work">
         <predecessors>
           <predecessor id="1" predecessor-id="3" type="FS"/>
         </predecessors>
       </task>
     </task>
-    <task id="5" name="Portierung f&#xFC;r freeRTOS + STM32F4" note="" work="1008000" start="20150701T170000Z" end="20150819T170000Z" work-start="20150702T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
+    <task id="5" name="Portierung f&#xFC;r freeRTOS + STM32F4" note="" work="1008000" start="20150701T170000Z" end="20150819T170000Z" work-start="20150702T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work">
       <predecessors>
         <predecessor id="1" predecessor-id="1" type="FS"/>
       </predecessors>
@@ -74,12 +74,12 @@
         </predecessors>
       </task>
     </task>
-    <task id="14" name="miniDTN mit IEEE 802.15.4 CL f&#xFC;r STM32F4 mit freeRTOS" note="" work="0" start="20150819T170000Z" end="20150819T170000Z" work-start="20150819T170000Z" percent-complete="0" priority="0" type="milestone" scheduling="fixed-work">
+    <task id="14" name="miniDTN mit IEEE 802.15.4 CL f&#xFC;r STM32F4 mit freeRTOS" note="" work="0" start="20150819T170000Z" end="20150819T170000Z" work-start="20150819T170000Z" percent-complete="100" priority="0" type="milestone" scheduling="fixed-work">
       <predecessors>
         <predecessor id="1" predecessor-id="5" type="FS"/>
       </predecessors>
     </task>
-    <task id="15" name="UDP-Konvergenzschicht" note="" work="1267200" start="20150819T170000Z" end="20151020T170000Z" work-start="20150820T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
+    <task id="15" name="UDP-Konvergenzschicht" note="" work="1267200" start="20150819T170000Z" end="20151020T170000Z" work-start="20150820T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work">
       <predecessors>
         <predecessor id="1" predecessor-id="14" type="FS"/>
       </predecessors>
@@ -109,16 +109,16 @@
           <predecessor id="1" predecessor-id="20" type="FS"/>
         </predecessors>
       </task>
-      <task id="22" name="miniDTN mit UDP-CL f&#xFC;r STM32F4 mit freeRTOS" note="" work="0" start="20151008T170000Z" end="20151008T170000Z" work-start="20151008T170000Z" percent-complete="0" priority="0" type="milestone" scheduling="fixed-work">
+      <task id="22" name="miniDTN mit UDP-CL f&#xFC;r STM32F4 mit freeRTOS" note="" work="0" start="20151008T170000Z" end="20151008T170000Z" work-start="20151008T170000Z" percent-complete="100" priority="0" type="milestone" scheduling="fixed-work">
         <predecessors>
           <predecessor id="1" predecessor-id="21" type="FS"/>
         </predecessors>
       </task>
-      <task id="23" name="Routing" note="" work="230400" start="20151008T170000Z" end="20151020T170000Z" work-start="20151009T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
+      <task id="23" name="Routing" note="" work="230400" start="20151008T170000Z" end="20151020T170000Z" work-start="20151009T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work">
         <predecessors>
           <predecessor id="1" predecessor-id="22" type="FS"/>
         </predecessors>
-        <task id="24" name="Thesis: M&#xF6;gliche Algorithmen f&#xFC;r UDP + IEEE 802.15.4" note="" work="57600" start="20151008T170000Z" end="20151012T170000Z" work-start="20151009T080000Z" percent-complete="90" priority="0" type="normal" scheduling="fixed-work"/>
+        <task id="24" name="Thesis: M&#xF6;gliche Algorithmen f&#xFC;r UDP + IEEE 802.15.4" note="" work="57600" start="20151008T170000Z" end="20151012T170000Z" work-start="20151009T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work"/>
         <task id="25" name="Einfachsten Algorithmus implementieren" note="" work="86400" start="20151012T170000Z" end="20151015T170000Z" work-start="20151013T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work">
           <predecessors>
             <predecessor id="1" predecessor-id="24" type="FS"/>
@@ -131,87 +131,87 @@
         </task>
       </task>
     </task>
-    <task id="27" name="miniDTN mit IEEE 802.15.4 + UDP-CL f&#xFC;r STM32F4 mit freeRTOS" note="" work="0" start="20151020T170000Z" end="20151020T170000Z" work-start="20151020T170000Z" percent-complete="0" priority="0" type="milestone" scheduling="fixed-work">
+    <task id="27" name="miniDTN mit IEEE 802.15.4 + UDP-CL f&#xFC;r STM32F4 mit freeRTOS" note="" work="0" start="20151020T170000Z" end="20151020T170000Z" work-start="20151020T170000Z" percent-complete="100" priority="0" type="milestone" scheduling="fixed-work">
       <predecessors>
         <predecessor id="1" predecessor-id="15" type="FS"/>
       </predecessors>
     </task>
-    <task id="28" name="Thesis" note="" work="57600" start="20151020T170000Z" end="20151022T170000Z" work-start="20151021T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
+    <task id="28" name="Thesis" note="" work="172800" start="20151020T170000Z" end="20151028T170000Z" work-start="20151021T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
       <predecessors>
         <predecessor id="1" predecessor-id="27" type="FS"/>
       </predecessors>
-      <task id="29" name="Evaluation" note="" work="28800" start="20151020T170000Z" end="20151021T170000Z" work-start="20151021T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
-      <task id="30" name="Ausblick" note="" work="28800" start="20151021T170000Z" end="20151022T170000Z" work-start="20151022T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
+      <task id="29" name="Evaluation" note="" work="144000" start="20151020T170000Z" end="20151027T170000Z" work-start="20151021T080000Z" percent-complete="20" priority="0" type="normal" scheduling="fixed-work"/>
+      <task id="30" name="Ausblick" note="" work="28800" start="20151027T170000Z" end="20151028T170000Z" work-start="20151028T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
         <predecessors>
           <predecessor id="1" predecessor-id="29" type="FS"/>
         </predecessors>
       </task>
     </task>
-    <task id="31" name="Switchover-Konzepte" note="" work="288000" start="20151022T170000Z" end="20151105T170000Z" work-start="20151023T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
+    <task id="31" name="Switchover-Konzepte" note="" work="288000" start="20151028T170000Z" end="20151111T170000Z" work-start="20151029T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work">
       <predecessors>
         <predecessor id="1" predecessor-id="28" type="FS"/>
       </predecessors>
-      <task id="32" name="Thesis: Ausl&#xF6;ser f&#xFC;r Switchover suchen und beschreiben" note="" work="86400" start="20151022T170000Z" end="20151027T170000Z" work-start="20151023T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
-      <task id="33" name="Thesis: M&#xF6;gliche Kommunikationswege beschreiben" note="" work="86400" start="20151027T170000Z" end="20151030T170000Z" work-start="20151028T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
+      <task id="32" name="Thesis: Ausl&#xF6;ser f&#xFC;r Switchover suchen und beschreiben" note="" work="86400" start="20151028T170000Z" end="20151102T170000Z" work-start="20151029T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work"/>
+      <task id="33" name="Thesis: M&#xF6;gliche Kommunikationswege beschreiben" note="" work="86400" start="20151102T170000Z" end="20151105T170000Z" work-start="20151103T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work">
         <predecessors>
           <predecessor id="1" predecessor-id="32" type="FS"/>
         </predecessors>
-        <task id="34" name="N&#xF6;tige Daten" note="" work="28800" start="20151027T170000Z" end="20151028T170000Z" work-start="20151028T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
-        <task id="35" name="Datenkonsistenz" note="" work="28800" start="20151028T170000Z" end="20151029T170000Z" work-start="20151029T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
+        <task id="34" name="N&#xF6;tige Daten" note="" work="28800" start="20151102T170000Z" end="20151103T170000Z" work-start="20151103T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work"/>
+        <task id="35" name="Datenkonsistenz" note="" work="28800" start="20151103T170000Z" end="20151104T170000Z" work-start="20151104T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work">
           <predecessors>
             <predecessor id="1" predecessor-id="34" type="FS"/>
           </predecessors>
         </task>
-        <task id="36" name="M&#xF6;gliche Bussysteme" note="" work="28800" start="20151029T170000Z" end="20151030T170000Z" work-start="20151030T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
+        <task id="36" name="M&#xF6;gliche Bussysteme" note="" work="28800" start="20151104T170000Z" end="20151105T170000Z" work-start="20151105T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work">
           <predecessors>
             <predecessor id="1" predecessor-id="35" type="FS"/>
           </predecessors>
         </task>
       </task>
-      <task id="37" name="Thesis: Mit USB als Massenspeicher" note="" work="115200" start="20151030T170000Z" end="20151105T170000Z" work-start="20151102T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
+      <task id="37" name="Thesis: Mit USB als Massenspeicher" note="" work="115200" start="20151105T170000Z" end="20151111T170000Z" work-start="20151106T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work">
         <predecessors>
           <predecessor id="1" predecessor-id="33" type="FS"/>
         </predecessors>
-        <task id="38" name="Beispiele von Implementierungen" note="" work="57600" start="20151030T170000Z" end="20151103T170000Z" work-start="20151102T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
-        <task id="39" name="Vorteile / Nachteile" note="" work="28800" start="20151103T170000Z" end="20151104T170000Z" work-start="20151104T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
+        <task id="38" name="Beispiele von Implementierungen" note="" work="57600" start="20151105T170000Z" end="20151109T170000Z" work-start="20151106T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work"/>
+        <task id="39" name="Vorteile / Nachteile" note="" work="28800" start="20151109T170000Z" end="20151110T170000Z" work-start="20151110T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work">
           <predecessors>
             <predecessor id="1" predecessor-id="38" type="FS"/>
           </predecessors>
         </task>
-        <task id="40" name="Aufwecken des Linux-Knoten" note="" work="28800" start="20151104T170000Z" end="20151105T170000Z" work-start="20151105T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
+        <task id="40" name="Aufwecken des Linux-Knoten" note="" work="28800" start="20151110T170000Z" end="20151111T170000Z" work-start="20151111T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work">
           <predecessors>
             <predecessor id="1" predecessor-id="39" type="FS"/>
           </predecessors>
         </task>
       </task>
     </task>
-    <task id="41" name="Erste Version der vollst&#xE4;ndigen Thesis" note="" work="0" start="20151105T170000Z" end="20151105T170000Z" work-start="20151105T170000Z" percent-complete="0" priority="0" type="milestone" scheduling="fixed-work">
+    <task id="41" name="Erste Version der vollst&#xE4;ndigen Thesis" note="" work="0" start="20151111T170000Z" end="20151111T170000Z" work-start="20151111T170000Z" percent-complete="0" priority="0" type="milestone" scheduling="fixed-work">
       <predecessors>
         <predecessor id="1" predecessor-id="31" type="FS"/>
       </predecessors>
     </task>
-    <task id="42" name="Endausarbeitung" note="" work="720000" start="20151105T170000Z" end="20151210T170000Z" work-start="20151106T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
+    <task id="42" name="Endausarbeitung" note="" work="720000" start="20151111T170000Z" end="20151216T170000Z" work-start="20151112T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
       <predecessors>
         <predecessor id="1" predecessor-id="41" type="FS"/>
       </predecessors>
-      <task id="43" name="Korrektur lesen" note="" work="144000" start="20151105T170000Z" end="20151112T170000Z" work-start="20151106T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
-      <task id="44" name="Externe Reviews" note="" work="288000" start="20151112T170000Z" end="20151126T170000Z" work-start="20151113T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
+      <task id="43" name="Korrektur lesen" note="" work="144000" start="20151111T170000Z" end="20151118T170000Z" work-start="20151112T080000Z" percent-complete="60" priority="0" type="normal" scheduling="fixed-work"/>
+      <task id="44" name="Externe Reviews" note="" work="288000" start="20151118T170000Z" end="20151202T170000Z" work-start="20151119T080000Z" percent-complete="40" priority="0" type="normal" scheduling="fixed-work">
         <predecessors>
           <predecessor id="1" predecessor-id="43" type="FS"/>
         </predecessors>
       </task>
-      <task id="45" name="Verbesserungen einarbeiten" note="" work="144000" start="20151126T170000Z" end="20151203T170000Z" work-start="20151127T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
+      <task id="45" name="Verbesserungen einarbeiten" note="" work="144000" start="20151202T170000Z" end="20151209T170000Z" work-start="20151203T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
         <predecessors>
           <predecessor id="1" predecessor-id="44" type="FS"/>
         </predecessors>
       </task>
-      <task id="46" name="Drucken und Binden" note="" work="144000" start="20151203T170000Z" end="20151210T170000Z" work-start="20151204T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
+      <task id="46" name="Drucken und Binden" note="" work="144000" start="20151209T170000Z" end="20151216T170000Z" work-start="20151210T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
         <predecessors>
           <predecessor id="1" predecessor-id="45" type="FS"/>
         </predecessors>
       </task>
     </task>
-    <task id="47" name="Abgabe" note="" work="0" start="20151210T170000Z" end="20151210T170000Z" work-start="20151210T170000Z" percent-complete="0" priority="0" type="milestone" scheduling="fixed-work">
+    <task id="47" name="Abgabe" note="" work="0" start="20151216T170000Z" end="20151216T170000Z" work-start="20151216T170000Z" percent-complete="0" priority="0" type="milestone" scheduling="fixed-work">
       <predecessors>
         <predecessor id="1" predecessor-id="42" type="FS"/>
       </predecessors>

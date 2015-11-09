@@ -33,7 +33,7 @@ extern const struct mac_driver *dtn_network_mac;
  * \param length Length of the outgoing frame
  * \param reference Reference that will be passed on into the callback
  */
-void dtn_network_send(linkaddr_t * destination, uint8_t length, void * reference);
+int dtn_network_send(linkaddr_t * destination, uint8_t length, void * reference);
 
 /**
  * \brief Returns the pointer to a buffer that can be used to contruct packets

@@ -71,7 +71,7 @@ struct rdc_driver {
   void (* init)(void);
 
   /** Send a packet from the Rime buffer  */
-  void (* send)(mac_callback_t sent_callback, void *ptr);
+  int (* send)(mac_callback_t sent_callback, void *ptr);
 
   /** Send a packet list */
   void (* send_list)(mac_callback_t sent_callback, void *ptr, struct rdc_buf_list *list);

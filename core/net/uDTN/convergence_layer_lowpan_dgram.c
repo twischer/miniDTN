@@ -75,7 +75,14 @@ static uint8_t convergence_layer_lowpan_dgram_next_sequence_number(const uint8_t
 	return (last_seqno + 1) % 4;
 }
 
-
+/**
+ * @brief convergence_layer_lowpan_dgram_send_discovery
+ * @param payload
+ * @param length
+ * @return  1 the package was send
+ *          0 no package was send, becasue of possibly busy transmitter
+ *         <0 an error occured
+ */
 static int convergence_layer_lowpan_dgram_send_discovery(const uint8_t* const payload, const size_t length)
 {
 	uint8_t * buffer = NULL;
@@ -105,9 +112,7 @@ static int convergence_layer_lowpan_dgram_send_discovery(const uint8_t* const pa
 
 	/* Send it out via the MAC */
 	static linkaddr_t bcast_addr = {{0, 0}};
-	dtn_network_send(&bcast_addr, length + sizeof(struct lowpan_dgram_hdr), NULL);
-
-	return 1;
+	return dtn_network_send(&bcast_addr, length + sizeof(struct lowpan_dgram_hdr), NULL);
 }
 
 /**

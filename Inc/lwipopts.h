@@ -65,10 +65,14 @@
 #define NO_SYS 0
 /*----- Value in opt.h for MEM_ALIGNMENT: 1 -----*/
 #define MEM_ALIGNMENT 4
+/*----- Default Value for MEM_SIZE: 1600 -*/
+#define MEM_SIZE 4096
 /*----- Value in opt.h for LWIP_ETHERNET: (LWIP_ARP || PPPOE_SUPPORT) -*/
 #define LWIP_ETHERNET 1
 /*----- Default Value for LWIP_IGMP: 0 -*/
 #define LWIP_IGMP 1
+/*----- Default Value for PBUF_POOL_BUFSIZE: 592 -*/
+#define PBUF_POOL_BUFSIZE 1600
 /*----- Value in opt.h for TCPIP_THREAD_STACKSIZE: 0 -----*/
 #define TCPIP_THREAD_STACKSIZE 1024
 /*----- Value in opt.h for TCPIP_THREAD_PRIO: 1 -----*/

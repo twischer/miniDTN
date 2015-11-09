@@ -1077,6 +1077,8 @@ rf230_transmit(unsigned short payload_len)
     tx_result = RADIO_TX_ERR;
   }
 
+//  printf("%lu[%s] send res:%u\n", (xTaskGetTickCount() / portTICK_PERIOD_MS), pcTaskGetTaskName(NULL), tx_result);
+
   return tx_result;
 }
 /*---------------------------------------------------------------------------*/
