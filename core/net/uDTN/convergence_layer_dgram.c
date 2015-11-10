@@ -377,11 +377,15 @@ static int convergence_layer_dgram_prepare_segmentation(struct transmit_ticket_t
 		/* Initialize the state for this bundle */
 		ticket->sequence_number = outgoing_sequence_number;
 
-		/* Calculate the number of segments we will need */
-		const size_t segments = ( ticket->buffer.size + (max_payload_length / 2) ) / max_payload_length;
+		/* Calculate the number of segments we will need.
+		 * In worst case the last byte will be send in an own segment.
+		 */
+		const size_t segments = ( ticket->buffer.size + (max_payload_length - 1) ) / max_payload_length;
 
-		/* And reserve the sequence number space for this bundle to allow for consequtive numbers */
-		outgoing_sequence_number = (outgoing_sequence_number + segments) % 4;
+		/* And reserve the sequence number space for this bundle to allow for consequtive numbers.
+		 * Subtract one because next_seqno() will add one again
+		 */
+		outgoing_sequence_number = ticket->neighbour.clayer->next_seqno(outgoing_sequence_number + segments - 1);
 	}
 
 	/* Check if this is a multipart bundle */
@@ -432,7 +436,7 @@ static int convergence_layer_dgram_prepare_segmentation(struct transmit_ticket_t
 
 		/* Initialize the sequence number */
 		ticket->sequence_number = outgoing_sequence_number;
-		outgoing_sequence_number = (outgoing_sequence_number + 1) % 4;
+		outgoing_sequence_number = ticket->neighbour.clayer->next_seqno(outgoing_sequence_number);
 
 		/* One bundle per segment, standard flags */
 		const uint8_t flags = CONVERGENCE_LAYER_FLAGS_FIRST | CONVERGENCE_LAYER_FLAGS_LAST;
