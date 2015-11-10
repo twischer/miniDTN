@@ -391,7 +391,7 @@ core/net/uDTN/statusreport.h
 core/net/uDTN/statusreport_basic.c
 core/net/uDTN/statusreport_null.c
 core/net/uDTN/storage.h
-core/net/uDTN/storage_coffee.c
+core/net/uDTN/storage_fatfs.c
 core/net/uDTN/storage_flash.c
 core/net/uDTN/storage_mmem.c
 core/net/uDTN/system_clock.c
