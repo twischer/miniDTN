@@ -103,7 +103,6 @@ LIST(neighbour_list);
 MEMB(neighbour_mem, struct discovery_ipnd_neighbour_list_entry, DISCOVERY_NEIGHBOUR_CACHE);
 
 static uint8_t discovery_status = 0;
-static TimerHandle_t discovery_timeout_timer = NULL;
 uint16_t discovery_sequencenumber = 0;
 
 linkaddr_t discovery_whitelist[DISCOVERY_IPND_WHITELIST];
@@ -129,8 +128,8 @@ static bool discovery_ipnd_init()
 #endif
 
 	// Set the neighbour timeout timer
-	discovery_timeout_timer = xTimerCreate("discovery timeout timer", pdMS_TO_TICKS(DISCOVERY_NEIGHBOUR_TIMEOUT * 1000),
-										   pdFALSE, NULL, discovery_ipnd_remove_stale_neighbours);
+	const TimerHandle_t discovery_timeout_timer = xTimerCreate("discovery timeout timer", pdMS_TO_TICKS(DISCOVERY_NEIGHBOUR_TIMEOUT * 1000),
+															   pdTRUE, NULL, discovery_ipnd_remove_stale_neighbours);
 	if (discovery_timeout_timer == NULL) {
 		return false;
 	}
@@ -796,7 +795,7 @@ static int discovery_ipnd_check_neighbour_timeout(struct discovery_ipnd_neighbou
 {
 	const unsigned long diff = clock_seconds() - timestamp_last;
 	if (diff > DISCOVERY_NEIGHBOUR_TIMEOUT) {
-		LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_DBG, "Neighbour ipn:%u timed out: %lu vs. %lu = %lu", convert_rime_to_eid(&entry->neighbour),
+		LOG(LOGD_DTN, LOG_DISCOVERY, LOGL_WRN, "Neighbour ipn:%u timed out: %lu vs. %lu = %lu", convert_rime_to_eid(&entry->neighbour),
 				clock_seconds(), timestamp_last, diff);
 
 		cl_addr_t addr;
@@ -860,8 +859,6 @@ static void discovery_ipnd_remove_stale_neighbours(const TimerHandle_t timer)
 
 		}
 	}
-
-	xTimerReset(discovery_timeout_timer, 0);
 }
 
 void discovery_ipnd_print_list()

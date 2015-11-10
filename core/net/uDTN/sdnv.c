@@ -21,8 +21,8 @@
 #include "sdnv.h"
 
 /** maximum sdnv length */
-#define MAX_LENGTH 4
-#define MAX_LENGTH_LONG 8
+#define MAX_LENGTH 5
+#define MAX_LENGTH_LONG 10
 
 int sdnv_encode_long(uint64_t val, uint8_t* bp, size_t len)
 {
@@ -132,7 +132,7 @@ int sdnv_decode_long(const uint8_t* bp, size_t len, uint64_t* val)
 		--len;
 	} while (1);
 
-	if ((val_len > MAX_LENGTH_LONG) || ((val_len == MAX_LENGTH_LONG) && (*start != 0x81))){
+	if ((val_len > MAX_LENGTH_LONG) || ((val_len == MAX_LENGTH_LONG) && (*start > 0x81))){
 		LOG(LOGD_DTN, LOG_SDNV, LOGL_ERR, "SDNV: val_len >= %u", MAX_LENGTH_LONG);
 		*val = 0;
 		return sdnv_len(start);
@@ -171,7 +171,11 @@ int sdnv_decode(const uint8_t* bp, size_t len, uint32_t* val)
 		--len;
 	} while (1);
 
-	if ((val_len > MAX_LENGTH) || ((val_len == MAX_LENGTH) && (*start != 0x81))){
+	/* failes, if more than 32 value bits available
+	 * Only the first 4 bits of the first byte should be set,
+	 * if a 5 byte SDNV was processed
+	 */
+	if ((val_len > MAX_LENGTH) || ((val_len == MAX_LENGTH) && (*start > 0x8F))){
 		LOG(LOGD_DTN, LOG_SDNV, LOGL_ERR, "SDNV: val_len >= %u (%02x %02x %02x %02x ...)",
 			MAX_LENGTH, start[0], start[1], start[2], start[3]);
 		*val = 0;
