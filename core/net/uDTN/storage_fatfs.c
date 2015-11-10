@@ -4,13 +4,14 @@
  */
 
 /**
- * \defgroup bundle_storage_coffee COFFEE-based persistent Storage
+ * \defgroup bundle_storage_fatfs FATFS-based persistent Storage
  *
  * @{
  */
 
 /**
  * \file 
+ * \author Timo Wischer <wischer@ibr.cs.tu-bs.de>
  * \author Georg von Zengen <vonzeng@ibr.cs.tu-bs.de>
  * \author Wolf-Bastian Poettner <poettner@ibr.cs.tu-bs.de>
  */
@@ -95,15 +96,15 @@ static uint8_t bundle_list_changed = 0;
 /**
  * "Internal" functions
  */
-static void storage_coffee_prune(const TimerHandle_t timer);
-uint8_t storage_coffee_delete_bundle(uint32_t bundle_number, uint8_t reason);
-struct mmem * storage_coffee_read_bundle(uint32_t bundle_number);
-void storage_coffee_reconstruct_bundles();
+static void storage_fatfs_prune(const TimerHandle_t timer);
+static uint8_t storage_fatfs_delete_bundle(uint32_t bundle_number, uint8_t reason);
+static struct mmem * storage_fatfs_read_bundle(uint32_t bundle_number);
+static void storage_fatfs_reconstruct_bundles();
 
 /**
  * \brief called by agent at startup
  */
-bool storage_coffee_init(void)
+static bool storage_fatfs_init(void)
 {
 	// Initialize the bundle list
 	list_init(bundle_list);
@@ -123,12 +124,11 @@ bool storage_coffee_init(void)
 	RADIO_SAFE_STATE_OFF();
 #else
 	// Try to restore our bundle list from the file system
-	storage_coffee_reconstruct_bundles();
+	storage_fatfs_reconstruct_bundles();
 #endif
 
 	// Set the timer to regularly prune expired bundles
-//	ctimer_set(&g_store_timer, CLOCK_SECOND*5, storage_coffee_prune, NULL);
-	const TimerHandle_t store_timer = xTimerCreate("store timer", pdMS_TO_TICKS(5000), pdFALSE, NULL, storage_coffee_prune);
+	const TimerHandle_t store_timer = xTimerCreate("store timer", pdMS_TO_TICKS(5000), pdTRUE, NULL, storage_fatfs_prune);
 	if (store_timer == NULL) {
 		return false;
 	}
@@ -143,7 +143,7 @@ bool storage_coffee_init(void)
 /**
  * \brief Restore bundles stored in CFS
  */
-void storage_coffee_reconstruct_bundles()
+static void storage_fatfs_reconstruct_bundles()
 {
 	struct file_list_entry_t * entry = NULL;
 	DIR directory_iterator;
@@ -215,7 +215,7 @@ void storage_coffee_reconstruct_bundles()
 
 		/* Now read bundle from storage to update the rest of the entry */
 //		RADIO_SAFE_STATE_OFF();
-		bundleptr = storage_coffee_read_bundle(entry->bundle_num);
+		bundleptr = storage_fatfs_read_bundle(entry->bundle_num);
 //		RADIO_SAFE_STATE_ON();
 
 		if( bundleptr == NULL ) {
@@ -253,7 +253,7 @@ void storage_coffee_reconstruct_bundles()
 /**
  * \brief deletes expired bundles from storage
  */
-static void storage_coffee_prune(const TimerHandle_t timer)
+static void storage_fatfs_prune(const TimerHandle_t timer)
 {
 	uint32_t elapsed_time;
 	struct file_list_entry_t * entry = NULL;
@@ -266,19 +266,15 @@ static void storage_coffee_prune(const TimerHandle_t timer)
 
 		if( entry->lifetime < elapsed_time ) {
 			LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "bundle lifetime expired of bundle %lu", entry->bundle_num);
-			storage_coffee_delete_bundle(entry->bundle_num, REASON_LIFETIME_EXPIRED);
+			storage_fatfs_delete_bundle(entry->bundle_num, REASON_LIFETIME_EXPIRED);
 		}
 	}
-
-	// Restart the timer
-//	ctimer_restart(&g_store_timer);
-	xTimerReset(timer, 0);
 }
 
 /**
  * \brief Sets the storage to its initial state
  */
-void storage_coffee_reinit(void)
+static void storage_fatfs_reinit(void)
 {
 	// Remove all bundles from storage
 	while(bundles_in_storage > 0) {
@@ -289,7 +285,7 @@ void storage_coffee_reinit(void)
 			break;
 		}
 
-		storage_coffee_delete_bundle(entry->bundle_num, REASON_DEPLETED_STORAGE);
+		storage_fatfs_delete_bundle(entry->bundle_num, REASON_DEPLETED_STORAGE);
 	}
 
 	// And reset our counters
@@ -301,10 +297,10 @@ void storage_coffee_reinit(void)
  * \param bundlemem Pointer to the MMEM struct containing the bundle
  * \return 1 on success, 0 if no room could be made free
  */
-uint8_t storage_coffee_make_room(struct mmem * bundlemem)
+static uint8_t storage_fatfs_make_room(struct mmem * bundlemem)
 {
 	/* Delete expired bundles first */
-	storage_coffee_prune(NULL);
+	storage_fatfs_prune(NULL);
 
 	/* If we do not have a pointer, we cannot compare - do nothing */
 	if( bundlemem == NULL ) {
@@ -359,7 +355,7 @@ uint8_t storage_coffee_make_room(struct mmem * bundlemem)
 		}
 
 		/* Delete Bundle */
-		storage_coffee_delete_bundle(entry->bundle_num, REASON_DEPLETED_STORAGE);
+		storage_fatfs_delete_bundle(entry->bundle_num, REASON_DEPLETED_STORAGE);
 	}
 #elif (BUNDLE_STORAGE_BEHAVIOUR == BUNDLE_STORAGE_BEHAVIOUR_DELETE_OLDER || BUNDLE_STORAGE_BEHAVIOUR == BUNDLE_STORAGE_BEHAVIOUR_DELETE_YOUNGER )
 	struct bundle_t * bundle = NULL;
@@ -408,7 +404,7 @@ uint8_t storage_coffee_make_room(struct mmem * bundlemem)
 		}
 
 		/* Delete Bundle */
-		storage_coffee_delete_bundle(entry->bundle_num, REASON_DEPLETED_STORAGE);
+		storage_fatfs_delete_bundle(entry->bundle_num, REASON_DEPLETED_STORAGE);
 	}
 #else
 #error No Bundle Deletion Strategy defined
@@ -424,7 +420,7 @@ uint8_t storage_coffee_make_room(struct mmem * bundlemem)
  * \param bundle_number_ptr The pointer to the bundle number will be stored here
  * \return 1 on success, 0 otherwise
  */
-static uint8_t storage_coffee_save_bundle(struct mmem* const bundlemem, uint32_t* const bundle_number_ptr)
+static uint8_t storage_fatfs_save_bundle(struct mmem* const bundlemem, uint32_t* const bundle_number_ptr)
 {
 	struct bundle_t * bundle = NULL;
 	struct file_list_entry_t * entry = NULL;
@@ -458,7 +454,7 @@ static uint8_t storage_coffee_save_bundle(struct mmem* const bundlemem, uint32_t
 		}
 	}
 
-	if( !storage_coffee_make_room(bundlemem) ) {
+	if( !storage_fatfs_make_room(bundlemem) ) {
 		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "Cannot store bundle, no room");
 
 		/* Throw away bundle to not take up RAM */
@@ -467,7 +463,7 @@ static uint8_t storage_coffee_save_bundle(struct mmem* const bundlemem, uint32_t
 		return 0;
 	}
 
-	/* Update the pointer to the bundle, address may have changed due to storage_coffee_make_room and MMEM reallocations */
+	/* Update the pointer to the bundle, address may have changed due to storage_fatfs_make_room and MMEM reallocations */
 	bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 
 	// Allocate some memory for our bundle
@@ -567,7 +563,7 @@ static uint8_t storage_coffee_save_bundle(struct mmem* const bundlemem, uint32_t
  * \param reason reason code
  * \return 1 on success or 0 on error
  */
-uint8_t storage_coffee_delete_bundle(uint32_t bundle_number, uint8_t reason)
+static uint8_t storage_fatfs_delete_bundle(uint32_t bundle_number, uint8_t reason)
 {
 	struct bundle_t * bundle = NULL;
 	struct file_list_entry_t * entry = NULL;
@@ -595,7 +591,7 @@ uint8_t storage_coffee_delete_bundle(uint32_t bundle_number, uint8_t reason)
 	// Figure out the source to send status report
 	if( reason != REASON_DELIVERED ) {
 		if( (entry->bundle_flags & BUNDLE_FLAG_CUST_REQ ) || (entry->bundle_flags & BUNDLE_FLAG_REP_DELETE) ){
-			bundlemem = storage_coffee_read_bundle(bundle_number);
+			bundlemem = storage_fatfs_read_bundle(bundle_number);
 			if( bundlemem == NULL ) {
 				LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to read back bundle %lu", bundle_number);
 				return 0;
@@ -647,7 +643,7 @@ uint8_t storage_coffee_delete_bundle(uint32_t bundle_number, uint8_t reason)
  * \param bundle_number bundle number to read
  * \return pointer to the MMEM struct containing the bundle (caller has to free)
  */
-struct mmem * storage_coffee_read_bundle(uint32_t bundle_number)
+static struct mmem * storage_fatfs_read_bundle(uint32_t bundle_number)
 {
 	struct bundle_t * bundle = NULL;
 	struct file_list_entry_t * entry = NULL;
@@ -742,7 +738,7 @@ struct mmem * storage_coffee_read_bundle(uint32_t bundle_number)
  * \param bundlemem pointer to a bundle struct (not used here)
  * \return number of free slots
  */
-uint16_t storage_coffee_get_free_space(struct mmem * bundlemem)
+static uint16_t storage_fatfs_get_free_space(struct mmem * bundlemem)
 {
 	return BUNDLE_STORAGE_SIZE - bundles_in_storage;
 }
@@ -751,7 +747,7 @@ uint16_t storage_coffee_get_free_space(struct mmem * bundlemem)
  * \brief Get the number of slots available in storage
  * \returns the number of free slots
  */
-uint16_t storage_coffee_get_bundle_numbers(void){
+static uint16_t storage_fatfs_get_bundle_numbers(void){
 	return bundles_in_storage;
 }
 
@@ -759,7 +755,7 @@ uint16_t storage_coffee_get_bundle_numbers(void){
  * \brief Get the bundle list
  * \returns pointer to first bundle list entry
  */
-struct storage_entry_t * storage_coffee_get_bundles(void)
+static struct storage_entry_t * storage_fatfs_get_bundles(void)
 {
 	return (struct storage_entry_t *) list_head(bundle_list);
 }
@@ -770,7 +766,7 @@ struct storage_entry_t * storage_coffee_get_bundles(void)
  * \param bundle_num Bundle number
  * \return 1 on success or 0 on error
  */
-uint8_t storage_coffee_lock_bundle(uint32_t bundle_num)
+static uint8_t storage_fatfs_lock_bundle(uint32_t bundle_num)
 {
 	struct file_list_entry_t * entry = NULL;
 
@@ -795,7 +791,7 @@ uint8_t storage_coffee_lock_bundle(uint32_t bundle_num)
 /**
  * \brief Mark a bundle as unlocked after being locked previously
  */
-void storage_coffee_unlock_bundle(uint32_t bundle_num)
+static void storage_fatfs_unlock_bundle(uint32_t bundle_num)
 {
 	struct file_list_entry_t * entry = NULL;
 
@@ -815,18 +811,18 @@ void storage_coffee_unlock_bundle(uint32_t bundle_num)
 	entry->flags &= ~STORAGE_COFFEE_FLAGS_LOCKED;
 }
 
-const struct storage_driver storage_coffee = {
-	"STORAGE_COFFEE",
-	storage_coffee_init,
-	storage_coffee_reinit,
-	storage_coffee_save_bundle,
-	storage_coffee_delete_bundle,
-	storage_coffee_read_bundle,
-	storage_coffee_lock_bundle,
-	storage_coffee_unlock_bundle,
-	storage_coffee_get_free_space,
-	storage_coffee_get_bundle_numbers,
-	storage_coffee_get_bundles,
+const struct storage_driver storage_fatfs = {
+	"STORAGE_FATFS",
+	storage_fatfs_init,
+	storage_fatfs_reinit,
+	storage_fatfs_save_bundle,
+	storage_fatfs_delete_bundle,
+	storage_fatfs_read_bundle,
+	storage_fatfs_lock_bundle,
+	storage_fatfs_unlock_bundle,
+	storage_fatfs_get_free_space,
+	storage_fatfs_get_bundle_numbers,
+	storage_fatfs_get_bundles,
 };
 /** @} */
 /** @} */
