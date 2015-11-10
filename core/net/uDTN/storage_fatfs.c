@@ -116,13 +116,18 @@ static bool storage_fatfs_init(void)
 	bundle_list_changed = 0;
 
 #if BUNDLE_STORAGE_INIT
-	RADIO_SAFE_STATE_ON();
+//	RADIO_SAFE_STATE_ON();
 
 	LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "Formatting flash");
-	cfs_coffee_format();
+	if (f_mkfs("0:/", true, 512) != FR_OK) {
+		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "Formatting failed!");
+		return false;
+	}
 
-	RADIO_SAFE_STATE_OFF();
+//	RADIO_SAFE_STATE_OFF();
 #else
+	// TODO f_mount() possibly not needed
+
 	// Try to restore our bundle list from the file system
 	storage_fatfs_reconstruct_bundles();
 #endif
