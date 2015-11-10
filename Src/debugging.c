@@ -62,6 +62,24 @@ void time_diff_stop(const char* const file, const int line)
 	printf("TIME %lu from %s:%u\n", diff / portTICK_PERIOD_MS, file, line);
 }
 
+void time_diff_assert_too_big(const TickType_t max_time_diff, const char* const file, const int line)
+{
+	if (time_diff_start_ticks <= 0) {
+		printf("ERR: Time diff not started from %s:%u\n", file, line);
+		return;
+	}
+
+	const TickType_t diff = xTaskGetTickCount() - time_diff_start_ticks;
+	if (diff > max_time_diff) {
+		printf("ASSERTION: Time bigger than %lu from %s:%u\n", max_time_diff, file, line);
+		time_diff_stop(file, line);
+		for(;;);
+	}
+
+	/* reset time diff for next start call */
+	time_diff_start_ticks = 0;
+}
+
 
 static inline void message_add_task(const bool type, void *this_fn, void *call_site, const char* const task_name)
 		__attribute__((no_instrument_function));
@@ -275,6 +293,8 @@ void print_stack_trace_part_not_blocking(const size_t count)
 
 void print_stack_trace_part(const size_t count)
 {
+	taskDISABLE_INTERRUPTS();
+
 	print_stack_trace_part_not_blocking(count);
 
 	printf("Enable function instrumentation (gcc -finstrument-functions), if the function call trace is undefined.\n");

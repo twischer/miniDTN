@@ -35,6 +35,7 @@
  * These files can not include here,
  * becasue there would be an include recursion
  */
+typedef uint32_t TickType_t;
 typedef void * TaskHandle_t;
 typedef void * QueueHandle_t;
 
@@ -57,8 +58,11 @@ void delay_us_check(void);
 
 #define TIME_DIFF_START() time_diff_start(__FILE__, __LINE__);
 #define TIME_DIFF_STOP() time_diff_stop(__FILE__, __LINE__);
+#define TIME_DIFF_ASSERT(max_diff) time_diff_assert_too_big(max_diff, __FILE__, __LINE__);
+
 void time_diff_start(const char* const file, const int line);
 void time_diff_stop(const char* const file, const int line);
+void time_diff_assert_too_big(const TickType_t max_time_diff, const char* const file, const int line);
 
 #endif // DEBUGGING_H
 
