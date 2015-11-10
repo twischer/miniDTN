@@ -122,7 +122,7 @@ static void udtn_sender_process(void* p)
 	/* Add the payload */
 	static uint8_t userdata[BUNDLE_SIZE];
 	for(int i=0; i<BUNDLE_SIZE; i++)
-		userdata[i] = (i % 0xFF);
+		userdata[i] = (i & 0xFF);
 
 	printf("Init done, starting test\n");
 
