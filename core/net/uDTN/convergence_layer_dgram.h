@@ -50,10 +50,10 @@
 #define CONVERGENCE_LAYER_FAILED_RETRIES		15
 
 /**
- * How long shall we wait for an app-layer ACK or NACK? [in seconds]
+ * How long shall we wait for an app-layer ACK or NACK? [in milli seconds]
  */
 #ifndef CONVERGENCE_LAYER_TIMEOUT
-#define CONVERGENCE_LAYER_TIMEOUT				5
+#define CONVERGENCE_LAYER_TIMEOUT				200
 #endif
 
 /**
@@ -64,12 +64,12 @@
 /**
  * How long shell we wait before retransmitting an app-layer ACK or NACK? [in milli seconds]
  */
-#define CONVERGENCE_LAYER_RETRANSMIT_TIMEOUT	500
+#define CONVERGENCE_LAYER_RETRANSMIT_TIMEOUT	100
 
 /**
  * How often shall we retransmit?
  */
-#define CONVERGENCE_LAYER_RETRANSMIT_TRIES		(CONVERGENCE_LAYER_TIMEOUT * 1000 / CONVERGENCE_LAYER_RETRANSMIT_TIMEOUT)
+#define CONVERGENCE_LAYER_RETRANSMIT_TRIES		(CONVERGENCE_LAYER_TIMEOUT / CONVERGENCE_LAYER_RETRANSMIT_TIMEOUT)
 
 
 /**

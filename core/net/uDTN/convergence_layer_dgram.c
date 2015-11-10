@@ -1084,7 +1084,7 @@ static void convergence_layer_dgram_check_blocked_neighbours()
 		 n != NULL;
 		 n = list_item_next(n) ) {
 
-		if( (xTaskGetTickCount() - n->timestamp) >= pdMS_TO_TICKS(CONVERGENCE_LAYER_TIMEOUT * 1000) ) {
+		if( (xTaskGetTickCount() - n->timestamp) >= pdMS_TO_TICKS(CONVERGENCE_LAYER_TIMEOUT) ) {
 			/* We have a neighbour that takes quite long to reply apparently -
 			 * unblock him and resend the pending bundle
 			 */
@@ -1146,7 +1146,7 @@ static void convergence_layer_dgram_check_blocked_tickets()
 			if( (xTaskGetTickCount() - ticket->timestamp) > pdMS_TO_TICKS(CONVERGENCE_LAYER_MULTIPART_TIMEOUT * 1000) ) {
 				char addr_str[CL_ADDR_STRING_LENGTH];
 				cl_addr_string(&ticket->neighbour, addr_str, sizeof(addr_str));
-				LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "Multipart receiving ticket for peer %s timed out, removing", addr_str);
+				LOG(LOGD_DTN, LOG_CL, LOGL_WRN, "Multipart receiving ticket for peer %s timed out, removing", addr_str);
 
 				changed = 1;
 				convergence_layer_dgram_free_transmit_ticket(ticket);
@@ -1160,7 +1160,7 @@ static void convergence_layer_dgram_check_blocked_tickets()
 static void convergence_layer_dgram_check_timeouts(void* p)
 {
 	while (true) {
-		vTaskDelay(pdMS_TO_TICKS(1000));
+		vTaskDelay(pdMS_TO_TICKS(100));
 		convergence_layer_dgram_check_blocked_neighbours();
 		convergence_layer_dgram_check_blocked_tickets();
 	}
