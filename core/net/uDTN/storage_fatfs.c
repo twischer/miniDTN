@@ -21,13 +21,11 @@
 
 #include "FreeRTOS.h"
 #include "timers.h"
+#include "ff.h"
 
 #include "net/netstack.h"
-#include "cfs/cfs.h"
 #include "lib/mmem.h"
 #include "lib/memb.h"
-#include "cfs/coffee/cfs-coffee.h"
-#include "dev/watchdog.h"
 #include "lib/list.h"
 #include "lib/logging.h"
 
@@ -60,6 +58,7 @@ struct file_list_entry_t {
 	uint32_t lifetime;
 	uint32_t bundle_flags;
 
+	// TODO use size_t
 	uint16_t file_size;
 
 	/** Flags */
@@ -82,16 +81,16 @@ static uint16_t bundles_in_storage;
 /** Flag to indicate whether the bundle list has changed since last writing the list file */
 static uint8_t bundle_list_changed = 0;
 
-/**
- * COFFEE is so slow, that we are loosing radio packets while using the flash. Unfortunately, the
- * radio is sending LL ACKs for these packets, so the other side does not know.
- * Therefore, we have to disable the radio while reading or writing COFFEE, to avoid sending
- * ACKs for packets that we cannot read out of the buffer.
- *
- * FIXME: This HACK is *very* ugly and poor design.
- */
-#define RADIO_SAFE_STATE_ON()		NETSTACK_MAC.off(0)
-#define RADIO_SAFE_STATE_OFF()		NETSTACK_MAC.on()
+///**
+// * COFFEE is so slow, that we are loosing radio packets while using the flash. Unfortunately, the
+// * radio is sending LL ACKs for these packets, so the other side does not know.
+// * Therefore, we have to disable the radio while reading or writing COFFEE, to avoid sending
+// * ACKs for packets that we cannot read out of the buffer.
+// *
+// * FIXME: This HACK is *very* ugly and poor design.
+// */
+//#define RADIO_SAFE_STATE_ON()		NETSTACK_MAC.off(0)
+//#define RADIO_SAFE_STATE_OFF()		NETSTACK_MAC.on()
 
 /**
  * "Internal" functions
@@ -146,45 +145,42 @@ bool storage_coffee_init(void)
  */
 void storage_coffee_reconstruct_bundles()
 {
-	int n;
 	struct file_list_entry_t * entry = NULL;
-	struct cfs_dir directory_iterator;
-	struct cfs_dirent directory_entry;
-	char * delimeter = NULL;
-	uint32_t bundle_number = 0;
+	DIR directory_iterator;
 	struct mmem * bundleptr = NULL;
 	struct bundle_t * bundle = NULL;
 	uint8_t found = 0;
 
-	RADIO_SAFE_STATE_ON();
+//	RADIO_SAFE_STATE_ON();
 
-	n = cfs_opendir(&directory_iterator, "/");
+	const FRESULT n = f_opendir(&directory_iterator, "/");
 	if( n == -1 ) {
 		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to list directory /");
-		RADIO_SAFE_STATE_OFF();
+//		RADIO_SAFE_STATE_OFF();
 		return;
 	}
 
-	while( cfs_readdir(&directory_iterator, &directory_entry) != -1 ) {
+	FILINFO directory_entry;
+	while( f_readdir(&directory_iterator, &directory_entry) != -1 ) {
 		/* Check if there is a . in the filename */
-		delimeter = strchr(directory_entry.name, '.');
+		char* const delimeter = strchr(directory_entry.lfname, '.');
 
 		if( delimeter == NULL ) {
 			/* filename is invalid */
-			LOG(LOGD_DTN, LOG_STORE, LOGL_WRN, "filename %s is invalid, skipping", directory_entry.name);
+			LOG(LOGD_DTN, LOG_STORE, LOGL_WRN, "filename %s is invalid, skipping", directory_entry.lfname);
 			continue;
 		}
 
 		/* Check if the extension is b */
 		if( *(delimeter+1) != 'b' ) {
 			/* filename is invalid */
-			LOG(LOGD_DTN, LOG_STORE, LOGL_WRN, "filename %s is invalid, skipping", directory_entry.name);
+			LOG(LOGD_DTN, LOG_STORE, LOGL_WRN, "filename %s is invalid, skipping", directory_entry.lfname);
 			continue;
 		}
 
 		/* Get the bundle number from the filename */
-		delimeter = '\0';
-		bundle_number = strtoul(directory_entry.name, NULL, 10);
+		delimeter[0] = '\0';
+		const uint32_t bundle_number = strtoul(directory_entry.lfname, NULL, 10);
 
 		/* Check if this bundle is in storage already */
 		found = 0;
@@ -211,16 +207,16 @@ void storage_coffee_reconstruct_bundles()
 
 		/* Fill in the entry */
 		entry->bundle_num = bundle_number;
-		entry->file_size = directory_entry.size;
+		entry->file_size = directory_entry.fsize;
 
 		/* Add bundle to the list */
 		list_add(bundle_list, entry);
 		bundles_in_storage ++;
 
 		/* Now read bundle from storage to update the rest of the entry */
-		RADIO_SAFE_STATE_OFF();
+//		RADIO_SAFE_STATE_OFF();
 		bundleptr = storage_coffee_read_bundle(entry->bundle_num);
-		RADIO_SAFE_STATE_ON();
+//		RADIO_SAFE_STATE_ON();
 
 		if( bundleptr == NULL ) {
 			LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to restore bundle %lu", entry->bundle_num);
@@ -247,11 +243,11 @@ void storage_coffee_reconstruct_bundles()
 	}
 
 	/* Close directory handle */
-	cfs_closedir(&directory_iterator);
+	f_closedir(&directory_iterator);
 
 	LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "Restored %u bundles from CFS", bundles_in_storage);
 
-	RADIO_SAFE_STATE_OFF();
+//	RADIO_SAFE_STATE_OFF();
 }
 
 /**
@@ -428,12 +424,11 @@ uint8_t storage_coffee_make_room(struct mmem * bundlemem)
  * \param bundle_number_ptr The pointer to the bundle number will be stored here
  * \return 1 on success, 0 otherwise
  */
-uint8_t storage_coffee_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_number_ptr)
+static uint8_t storage_coffee_save_bundle(struct mmem* const bundlemem, uint32_t* const bundle_number_ptr)
 {
 	struct bundle_t * bundle = NULL;
 	struct file_list_entry_t * entry = NULL;
 	char bundle_filename[STORAGE_FILE_NAME_LENGTH];
-	int fd_write;
 	int n;
 
 	if( bundlemem == NULL ) {
@@ -457,7 +452,7 @@ uint8_t storage_coffee_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_n
 
 		if( bundle->bundle_num == entry->bundle_num ) {
 			LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "%lu is the same bundle", entry->bundle_num);
-			*bundle_number_ptr = &entry->bundle_num;
+			*bundle_number_ptr = entry->bundle_num;
 			bundle_decrement(bundlemem);
 			return entry->bundle_num;
 		}
@@ -504,45 +499,48 @@ uint8_t storage_coffee_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_n
 		return 0;
 	}
 
-	RADIO_SAFE_STATE_ON();
+//	RADIO_SAFE_STATE_ON();
 
 	// Store the bundle into the file
-	n = cfs_coffee_reserve(bundle_filename, bundlemem->size);
-	if( n < 0 ) {
-		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to reserve %u bytes for bundle", bundlemem->size);
-		memb_free(&bundle_mem, entry);
-		bundle_decrement(bundlemem);
-		RADIO_SAFE_STATE_OFF();
-		return 0;
-	}
+//	n = cfs_coffee_reserve(bundle_filename, bundlemem->size);
+//	if( n < 0 ) {
+//		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to reserve %u bytes for bundle", bundlemem->size);
+//		memb_free(&bundle_mem, entry);
+//		bundle_decrement(bundlemem);
+//		RADIO_SAFE_STATE_OFF();
+//		return 0;
+//	}
 
 	// Open the output file
-	fd_write = cfs_open(bundle_filename, CFS_WRITE);
-	if( fd_write == -1 ) {
+	FIL fd_write;
+	if(f_open(&fd_write, bundle_filename, FA_CREATE_NEW | FA_WRITE) != FR_OK) {
 		// Unable to open file, abort here
 		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to open file %s, cannot save bundle", bundle_filename);
 		memb_free(&bundle_mem, entry);
 		bundle_decrement(bundlemem);
-		RADIO_SAFE_STATE_OFF();
+//		RADIO_SAFE_STATE_OFF();
 		return 0;
 	}
 
 	// Write our complete bundle
-	n = cfs_write(fd_write, bundle, bundlemem->size);
-	if( n != bundlemem->size ) {
+
+	UINT bytes_written = 0;
+	const FRESULT ret = f_write(&fd_write, bundle, bundlemem->size, &bytes_written);
+	if(ret != FR_OK || bytes_written != bundlemem->size) {
 		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to write %u bytes to file %s, aborting", bundlemem->size, bundle_filename);
-		cfs_close(fd_write);
-		cfs_remove(bundle_filename);
+		f_close(&fd_write);
+		f_unlink(bundle_filename);
+
 		memb_free(&bundle_mem, entry);
 		bundle_decrement(bundlemem);
-		RADIO_SAFE_STATE_OFF();
+//		RADIO_SAFE_STATE_OFF();
 		return 0;
 	}
 
 	// And close the file
-	cfs_close(fd_write);
+	f_close(&fd_write);
 
-	RADIO_SAFE_STATE_OFF();
+//	RADIO_SAFE_STATE_OFF();
 
 	LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "New Bundle %lu (%lu), Src %lu.%lu, Dest %lu.%lu, Seq %lu", bundle->bundle_num, entry->bundle_num, bundle->src_node, bundle->src_srv, bundle->dst_node, bundle->dst_srv, bundle->tstamp_seq);
 
@@ -558,7 +556,7 @@ uint8_t storage_coffee_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_n
 
 	// Now copy over the STATIC pointer to the bundle number, so that
 	// the caller can stick it into an event
-	*bundle_number_ptr = &entry->bundle_num;
+	*bundle_number_ptr = entry->bundle_num;
 
 	return 1;
 }
@@ -628,11 +626,11 @@ uint8_t storage_coffee_delete_bundle(uint32_t bundle_number, uint8_t reason)
 		return 0;
 	}
 
-	RADIO_SAFE_STATE_ON();
+//	RADIO_SAFE_STATE_ON();
 
-	cfs_remove(bundle_filename);
+	f_unlink(bundle_filename);
 
-	RADIO_SAFE_STATE_OFF();
+//	RADIO_SAFE_STATE_OFF();
 
 	// Mark the bundle list as changed
 	bundle_list_changed = 1;
@@ -655,7 +653,6 @@ struct mmem * storage_coffee_read_bundle(uint32_t bundle_number)
 	struct file_list_entry_t * entry = NULL;
 	struct mmem * bundlemem = NULL;
 	char bundle_filename[STORAGE_FILE_NAME_LENGTH];
-	int fd_read;
 	int n;
 
 	LOG(LOGD_DTN, LOG_STORE, LOGL_DBG, "Reading Bundle %lu", bundle_number);
@@ -696,11 +693,11 @@ struct mmem * storage_coffee_read_bundle(uint32_t bundle_number)
 		return NULL;
 	}
 
-	RADIO_SAFE_STATE_ON();
+//	RADIO_SAFE_STATE_ON();
 
 	// Open the output file
-	fd_read = cfs_open(bundle_filename, CFS_READ);
-	if( fd_read == -1 ) {
+	FIL fd_read;
+	if(f_open(&fd_read, bundle_filename, FA_OPEN_EXISTING | FA_READ) != FR_OK) {
 		// Unable to open file, abort here
 		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to open file %s, cannot read bundle", bundle_filename);
 		bundle_decrement(bundlemem);
@@ -708,18 +705,19 @@ struct mmem * storage_coffee_read_bundle(uint32_t bundle_number)
 	}
 
 	// Read our complete bundle
-	n = cfs_read(fd_read, MMEM_PTR(bundlemem), bundlemem->size);
-	if( n != bundlemem->size ) {
+	UINT bytes_read = 0;
+	const FRESULT ret = f_read(&fd_read, MMEM_PTR(bundlemem), bundlemem->size, &bytes_read);
+	if(ret != FR_OK || bytes_read != bundlemem->size) {
 		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to read %u bytes from file %s, aborting", bundlemem->size, bundle_filename);
 		bundle_decrement(bundlemem);
-		cfs_close(fd_read);
+		f_close(&fd_read);
 		return NULL;
 	}
 
 	// And close the file
-	cfs_close(fd_read);
+	f_close(&fd_read);
 
-	RADIO_SAFE_STATE_OFF();
+//	RADIO_SAFE_STATE_OFF();
 
 	/* Get the bundle pointer */
 	bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
