@@ -172,33 +172,51 @@ static void storage_fatfs_reconstruct_bundles()
 //	RADIO_SAFE_STATE_ON();
 
 	const FRESULT n = f_opendir(&directory_iterator, "/");
-	if( n == -1 ) {
-		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to list directory /");
+	if(n != FR_OK) {
+		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to list directory / (err %u)", n);
 //		RADIO_SAFE_STATE_OFF();
 		return;
 	}
 
 	FILINFO directory_entry;
-	while( f_readdir(&directory_iterator, &directory_entry) != -1 ) {
+#if _USE_LFN
+	/* not using static buffer becasue this is only needed on intialization */
+	char lfn[_MAX_LFN + 1];   /* Buffer to store the LFN */
+	directory_entry.lfname = lfn;
+	directory_entry.lfsize = sizeof(lfn);
+#endif
+
+	while( f_readdir(&directory_iterator, &directory_entry) == FR_OK ) {
+		if (directory_entry.fname[0] == 0) {
+			/* end of directory */
+			break;
+		}
+
+		if (directory_entry.fattrib & AM_DIR) {
+			/* ignore directories */
+			continue;
+		}
+
 		/* Check if there is a . in the filename */
-		char* const delimeter = strchr(directory_entry.lfname, '.');
+		const char* const filename =  directory_entry.lfname[0] ? directory_entry.lfname : directory_entry.fname;
+		char* const delimeter = strchr(filename, '.');
 
 		if( delimeter == NULL ) {
 			/* filename is invalid */
-			LOG(LOGD_DTN, LOG_STORE, LOGL_WRN, "filename %s is invalid, skipping", directory_entry.lfname);
+			LOG(LOGD_DTN, LOG_STORE, LOGL_WRN, "filename %s is invalid, skipping", filename);
 			continue;
 		}
 
 		/* Check if the extension is b */
 		if( *(delimeter+1) != 'b' ) {
 			/* filename is invalid */
-			LOG(LOGD_DTN, LOG_STORE, LOGL_WRN, "filename %s is invalid, skipping", directory_entry.lfname);
+			LOG(LOGD_DTN, LOG_STORE, LOGL_WRN, "filename %s is invalid, skipping", filename);
 			continue;
 		}
 
 		/* Get the bundle number from the filename */
 		delimeter[0] = '\0';
-		const uint32_t bundle_number = strtoul(directory_entry.lfname, NULL, 10);
+		const uint32_t bundle_number = strtoul(filename, NULL, 10);
 
 		/* Check if this bundle is in storage already */
 		found = 0;
@@ -225,7 +243,7 @@ static void storage_fatfs_reconstruct_bundles()
 
 		/* Fill in the entry */
 		entry->bundle_num = bundle_number;
-		entry->file_size = directory_entry.fsize;
+		entry->file_size = f_size(&directory_entry);
 
 		/* Add bundle to the list */
 		list_add(bundle_list, entry);
