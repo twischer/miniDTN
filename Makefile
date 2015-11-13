@@ -5,7 +5,11 @@ MODULES+= examples/uDTN/dtnping
 CFLAGS+= -DPROJECT_CONF_H=\"project-conf.h\"
 CFLAGS+= -DINGA_CONF_PAN_ID=0x0780
 CFLAGS+= -DINGA_CONF_PAN_ADDR=1466
+
+
 CFLAGS+= -DBUNDLE_CONF_STORAGE=storage_fatfs
+# Enable for fromating the sd card on every start up
+#CFLAGS+= -DBUNDLE_CONF_STORAGE_INIT=1
 
 
 # uncomment for enabling LwIP debug messages

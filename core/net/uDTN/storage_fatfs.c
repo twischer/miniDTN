@@ -82,6 +82,8 @@ static uint16_t bundles_in_storage;
 /** Flag to indicate whether the bundle list has changed since last writing the list file */
 static uint8_t bundle_list_changed = 0;
 
+static FATFS fatfs;
+
 ///**
 // * COFFEE is so slow, that we are loosing radio packets while using the flash. Unfortunately, the
 // * radio is sending LL ACKs for these packets, so the other side does not know.
@@ -99,7 +101,11 @@ static uint8_t bundle_list_changed = 0;
 static void storage_fatfs_prune(const TimerHandle_t timer);
 static uint8_t storage_fatfs_delete_bundle(uint32_t bundle_number, uint8_t reason);
 static struct mmem * storage_fatfs_read_bundle(uint32_t bundle_number);
+
+#if (BUNDLE_STORAGE_INIT == 0)
 static void storage_fatfs_reconstruct_bundles();
+#endif
+
 
 /**
  * \brief called by agent at startup
@@ -115,19 +121,25 @@ static bool storage_fatfs_init(void)
 	bundles_in_storage = 0;
 	bundle_list_changed = 0;
 
+	const FRESULT ret = f_mount(&fatfs, "0:/", 1);
+	if (ret != FR_OK) {
+		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "Mounting sd card failed with error code %u!", ret);
+		return false;
+	}
+
 #if BUNDLE_STORAGE_INIT
 //	RADIO_SAFE_STATE_ON();
 
 	LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "Formatting flash");
-	if (f_mkfs("0:/", true, 512) != FR_OK) {
-		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "Formatting failed!");
+
+	const FRESULT res = f_mkfs("0:/", 0, 0);
+	if (res != FR_OK) {
+		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "Formatting failed with error code %u!", res);
 		return false;
 	}
 
 //	RADIO_SAFE_STATE_OFF();
 #else
-	// TODO f_mount() possibly not needed
-
 	// Try to restore our bundle list from the file system
 	storage_fatfs_reconstruct_bundles();
 #endif
@@ -145,6 +157,7 @@ static bool storage_fatfs_init(void)
 	return true;
 }
 
+#if (BUNDLE_STORAGE_INIT == 0)
 /**
  * \brief Restore bundles stored in CFS
  */
@@ -254,6 +267,8 @@ static void storage_fatfs_reconstruct_bundles()
 
 //	RADIO_SAFE_STATE_OFF();
 }
+#endif
+
 
 /**
  * \brief deletes expired bundles from storage
@@ -514,9 +529,10 @@ static uint8_t storage_fatfs_save_bundle(struct mmem* const bundlemem, uint32_t*
 
 	// Open the output file
 	FIL fd_write;
-	if(f_open(&fd_write, bundle_filename, FA_CREATE_NEW | FA_WRITE) != FR_OK) {
+	const FRESULT res = f_open(&fd_write, bundle_filename, FA_CREATE_NEW | FA_WRITE);
+	if (res != FR_OK) {
 		// Unable to open file, abort here
-		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to open file %s, cannot save bundle", bundle_filename);
+		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to open file %s, cannot save bundle (err %u)", bundle_filename, res);
 		memb_free(&bundle_mem, entry);
 		bundle_decrement(bundlemem);
 //		RADIO_SAFE_STATE_OFF();
