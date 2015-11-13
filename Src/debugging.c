@@ -18,7 +18,7 @@
 
 
 
-#define MESSAGE_COUNT	128
+#define MESSAGE_COUNT	32
 
 static const char IDLE_TASK_NAME[] = "IDLE";
 
