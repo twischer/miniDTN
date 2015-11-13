@@ -40,6 +40,7 @@
 #include <stdio.h>
 #include "stm32f4xx_hal.h"
 
+#include "storage.h"
 #include "debugging.h"
 /* USER CODE END Includes */
 
@@ -107,6 +108,8 @@ void StartDefaultTask(void const * argument)
 
   /* USER CODE BEGIN StartDefaultTask */
   printf("FATFS and LWIP init done\n");
+
+  BUNDLE_STORAGE.init();
 
   vTaskDelete(NULL);
   return;
