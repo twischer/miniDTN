@@ -100,16 +100,11 @@ void MX_FREERTOS_Init(void) {
 /* StartDefaultTask function */
 void StartDefaultTask(void const * argument)
 {
-  /* init code for FATFS */
-  MX_FATFS_Init();
-
   /* init code for LWIP */
   MX_LWIP_Init();
 
   /* USER CODE BEGIN StartDefaultTask */
-  printf("FATFS and LWIP init done\n");
-
-  BUNDLE_STORAGE.init();
+  printf("LWIP init done\n");
 
   vTaskDelete(NULL);
   return;

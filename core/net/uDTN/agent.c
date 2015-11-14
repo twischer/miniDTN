@@ -66,6 +66,11 @@ bool agent_init(void)
 	}
 	udtn_clock_init();
 	bundle_init();
+
+	if (!BUNDLE_STORAGE.init()) {
+		return false;
+	}
+
 	REDUNDANCE.init();
 	CUSTODY.init();
 	ROUTING.init();

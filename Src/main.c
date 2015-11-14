@@ -97,8 +97,11 @@ int main(void)
   MX_USART6_UART_Init();
 
   /* USER CODE BEGIN 2 */
-
   printf("UART init done.\n");
+
+  /* init code for FATFS */
+  MX_FATFS_Init();
+  printf("FATFS init done.\n");
 
   /* init the network stack */
   // TODO should be moved to own file

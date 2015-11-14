@@ -11,6 +11,7 @@
  * in Makefile.include to enable function instrumentation
  * for nearly all source files.
  */
+#define configCHECK_FOR_STACK_OVERFLOW	0
 #define CHECK_FREERTOS_STACK_OVERFLOW	0
 #define CHECK_MMEM_CONSISTENCY			0
 

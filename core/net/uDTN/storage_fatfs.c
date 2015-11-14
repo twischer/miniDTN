@@ -200,8 +200,14 @@ static void storage_fatfs_reconstruct_bundles()
 
 		/* Check if there is a . in the filename */
 		const char* const filename =  directory_entry.lfname[0] ? directory_entry.lfname : directory_entry.fname;
-		char* const delimeter = strchr(filename, '.');
 
+		if (f_size(&directory_entry) < sizeof(struct bundle_t)) {
+			/* ignore files with a too small size */
+			LOG(LOGD_DTN, LOG_STORE, LOGL_WRN, "filename %s is too small, skipping (size %lu)", filename, f_size(&directory_entry));
+			continue;
+		}
+
+		char* const delimeter = strchr(filename, '.');
 		if( delimeter == NULL ) {
 			/* filename is invalid */
 			LOG(LOGD_DTN, LOG_STORE, LOGL_WRN, "filename %s is invalid, skipping", filename);
