@@ -556,10 +556,11 @@ static uint8_t storage_fatfs_save_bundle(struct mmem* const bundlemem, uint32_t*
 
 	// Open the output file
 	FIL fd_write;
-	const FRESULT res = f_open(&fd_write, bundle_filename, FA_CREATE_NEW | FA_WRITE);
+	const FRESULT res = f_open(&fd_write, bundle_filename, FA_CREATE_ALWAYS | FA_WRITE);
 	if (res != FR_OK) {
 		// Unable to open file, abort here
 		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to open file %s, cannot save bundle (err %u)", bundle_filename, res);
+		f_close(&fd_write);
 		memb_free(&bundle_mem, entry);
 		bundle_decrement(bundlemem);
 //		RADIO_SAFE_STATE_OFF();
@@ -567,11 +568,11 @@ static uint8_t storage_fatfs_save_bundle(struct mmem* const bundlemem, uint32_t*
 	}
 
 	// Write our complete bundle
-
 	UINT bytes_written = 0;
 	const FRESULT ret = f_write(&fd_write, bundle, bundlemem->size, &bytes_written);
 	if(ret != FR_OK || bytes_written != bundlemem->size) {
-		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to write %u bytes to file %s, aborting", bundlemem->size, bundle_filename);
+		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to write %u bytes to file %s, aborting (err %u)",
+			bundlemem->size, bundle_filename, res);
 		f_close(&fd_write);
 		f_unlink(bundle_filename);
 
@@ -742,10 +743,12 @@ static struct mmem * storage_fatfs_read_bundle(uint32_t bundle_number)
 
 	// Open the output file
 	FIL fd_read;
-	if(f_open(&fd_read, bundle_filename, FA_OPEN_EXISTING | FA_READ) != FR_OK) {
+	const FRESULT open_res = f_open(&fd_read, bundle_filename, FA_OPEN_EXISTING | FA_READ);
+	if(open_res != FR_OK) {
 		// Unable to open file, abort here
-		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to open file %s, cannot read bundle", bundle_filename);
+		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to open file %s, cannot read bundle (err %u)", bundle_filename, open_res);
 		bundle_decrement(bundlemem);
+		f_close(&fd_read);
 		return NULL;
 	}
 
