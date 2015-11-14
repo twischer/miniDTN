@@ -86,7 +86,7 @@ bool agent_init(void)
 
 
 	// Otherwise start the agent process
-	if ( !dtn_process_create_with_queue(agent_process, "AGENT process", 0x200, 4, &event_queue) ) {
+	if ( !dtn_process_create_with_queue(agent_process, "AGENT process", 0x300, 4, &event_queue) ) {
 		return false;
 	}
 
