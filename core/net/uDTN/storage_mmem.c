@@ -296,16 +296,19 @@ uint8_t storage_mmem_make_room(struct mmem * bundlemem)
 				continue;
 			}
 
+			const uint32_t new_age = bundle_new->lifetime - ( (xTaskGetTickCount() - bundle_new->rec_time) / 1000 / portTICK_PERIOD_MS );
+			const uint32_t old_age = bundle_old->lifetime - ( (xTaskGetTickCount() - bundle_old->rec_time) / 1000 / portTICK_PERIOD_MS );
 #if BUNDLE_STORAGE_BEHAVIOUR == BUNDLE_STORAGE_BEHAVIOUR_DELETE_OLDER
 			/* If the new bundle has a longer lifetime than the bundle in our storage,
 			 * delete the bundle from storage to make room
 			 */
-			if( bundle_new->lifetime - (xTaskGetTickCount() - bundle_new->rec_time) / 1000 / portTICK_PERIOD_MS >= bundle_old->lifetime - (xTaskGetTickCount() - bundle_old->rec_time) / 1000 / portTICK_PERIOD_MS ) {
+			if(new_age >= old_age) {
 				break;
 			}
 #elif BUNDLE_STORAGE_BEHAVIOUR == BUNDLE_STORAGE_BEHAVIOUR_DELETE_YOUNGER
 			/* Delete youngest bundle in storage */
-			if( bundle_new->lifetime - (clock_time() - bundle_new->rec_time) / CLOCK_SECOND >= bundle_old->lifetime - (clock_time() - bundle_old->rec_time) / CLOCK_SECOND ) {
+			// TODO possibly wrong comparsion
+			if(new_age >= old_age) {
 				break;
 			}
 #endif

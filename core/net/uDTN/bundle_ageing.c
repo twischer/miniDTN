@@ -54,7 +54,7 @@ uint32_t bundle_ageing_get_age(struct mmem * bundlemem) {
 	}
 
 	// We have to rely on the age block information
-	return bundle->aeb_value_ms + ((uint32_t) xTaskGetTickCount() - bundle->rec_time) / portTICK_PERIOD_MS;
+	return bundle->aeb_value_ms + (xTaskGetTickCount() - bundle->rec_time) / portTICK_PERIOD_MS;
 }
 
 /**
