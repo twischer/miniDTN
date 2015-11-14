@@ -55,7 +55,8 @@ struct file_list_entry_t {
 
 	uint32_t bundle_num;
 
-	uint32_t rec_time;
+	/* local bundle creation time (in freeRTOS ticks) */
+	TickType_t rec_time;
 	uint32_t lifetime;
 	uint32_t bundle_flags;
 
@@ -180,8 +181,8 @@ static void storage_fatfs_reconstruct_bundles()
 
 	FILINFO directory_entry;
 #if _USE_LFN
-	/* not using static buffer becasue this is only needed on intialization */
-	char lfn[_MAX_LFN + 1];   /* Buffer to store the LFN */
+	/* not using static buffer, becasue this is only needed on intialization */
+	char lfn[_MAX_LFN + 1];
 	directory_entry.lfname = lfn;
 	directory_entry.lfsize = sizeof(lfn);
 #endif
@@ -293,14 +294,13 @@ static void storage_fatfs_reconstruct_bundles()
  */
 static void storage_fatfs_prune(const TimerHandle_t timer)
 {
-	uint32_t elapsed_time;
 	struct file_list_entry_t * entry = NULL;
 
 	// Delete expired bundles from storage
 	for(entry = list_head(bundle_list);
 			entry != NULL;
 			entry = list_item_next(entry)) {
-		elapsed_time = clock_seconds() - entry->rec_time;
+		const TickType_t elapsed_time = (xTaskGetTickCount() - entry->rec_time) / portTICK_PERIOD_MS / 1000;
 
 		if( entry->lifetime < elapsed_time ) {
 			LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "bundle lifetime expired of bundle %lu", entry->bundle_num);
@@ -420,16 +420,19 @@ static uint8_t storage_fatfs_make_room(struct mmem * bundlemem)
 				continue;
 			}
 
+			const uint32_t new_age = bundle->lifetime - ( (xTaskGetTickCount() - bundle->rec_time) / 1000 / portTICK_PERIOD_MS );
+			const uint32_t old_age = entry->lifetime - ( (xTaskGetTickCount() - entry->rec_time) / 1000 / portTICK_PERIOD_MS );
 #if BUNDLE_STORAGE_BEHAVIOUR == BUNDLE_STORAGE_BEHAVIOUR_DELETE_OLDER
 			/* If the new bundle has a longer lifetime than the bundle in our storage,
 			 * delete the bundle from storage to make room
 			 */
-			if( bundle->lifetime - (clock_seconds() - bundle->rec_time) >= entry->lifetime - (clock_seconds() - entry->rec_time) ) {
+			if (new_age >= old_age) {
 				break;
 			}
 #elif BUNDLE_STORAGE_BEHAVIOUR == BUNDLE_STORAGE_BEHAVIOUR_DELETE_YOUNGER
 			/* Delete youngest bundle in storage */
-			if( bundle->lifetime - (clock_seconds() - bundle->rec_time) >= entry->lifetime - (clock_seconds() - entry->rec_time) ) {
+			// TODO possibly wrong comparsion
+			if(new_age >= old_age) {
 				break;
 			}
 #endif
@@ -577,7 +580,9 @@ static uint8_t storage_fatfs_save_bundle(struct mmem* const bundlemem, uint32_t*
 
 //	RADIO_SAFE_STATE_OFF();
 
-	LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "New Bundle %lu (%lu), Src %lu.%lu, Dest %lu.%lu, Seq %lu", bundle->bundle_num, entry->bundle_num, bundle->src_node, bundle->src_srv, bundle->dst_node, bundle->dst_srv, bundle->tstamp_seq);
+	LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "New Bundle %lu (%lu), Src %lu.%lu, Dest %lu.%lu, Seq %lu",
+		bundle->bundle_num, entry->bundle_num, bundle->src_node, bundle->src_srv,
+		bundle->dst_node, bundle->dst_srv, bundle->tstamp_seq);
 
 	// Add bundle to the list
 	list_add(bundle_list, entry);
@@ -684,7 +689,6 @@ static uint8_t storage_fatfs_delete_bundle(uint32_t bundle_number, uint8_t reaso
  */
 static struct mmem * storage_fatfs_read_bundle(uint32_t bundle_number)
 {
-	struct bundle_t * bundle = NULL;
 	struct file_list_entry_t * entry = NULL;
 	struct mmem * bundlemem = NULL;
 	char bundle_filename[STORAGE_FILE_NAME_LENGTH];
@@ -753,21 +757,6 @@ static struct mmem * storage_fatfs_read_bundle(uint32_t bundle_number)
 	f_close(&fd_read);
 
 //	RADIO_SAFE_STATE_OFF();
-
-	/* Get the bundle pointer */
-	bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
-
-	/* How long did this bundle rot in our storage? */
-	uint32_t elapsed_time = clock_seconds() - bundle->rec_time;
-
-	/* Update lifetime of bundle */
-	if( bundle->lifetime < elapsed_time ) {
-		bundle->lifetime = 0;
-		bundle->rec_time = clock_seconds();
-	} else {
-		bundle->lifetime = bundle->lifetime - elapsed_time;
-		bundle->rec_time = clock_seconds();
-	}
 
 	return bundlemem;
 }

@@ -122,7 +122,7 @@ int convergence_layer_dgram_init(void)
 		return -2;
 	}
 
-	if ( !xTaskCreate(convergence_layer_dgram_check_timeouts, "CL TIMEOUTS", 0x100, NULL, tskIDLE_PRIORITY+1, NULL) ) {
+	if ( !xTaskCreate(convergence_layer_dgram_check_timeouts, "CL TIMEOUTS", 0x200, NULL, tskIDLE_PRIORITY+1, NULL) ) {
 		return -3;
 	}
 
