@@ -118,7 +118,7 @@ int convergence_layer_dgram_init(void)
 
 
 	// Start CL process
-	if ( !xTaskCreate(convergence_layer_dgram_process, "CL process", 0x200, NULL, 5, NULL) ) {
+	if ( !xTaskCreate(convergence_layer_dgram_process, "CL process", 0x300, NULL, 5, NULL) ) {
 		return -2;
 	}
 
