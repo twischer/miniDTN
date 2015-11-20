@@ -726,7 +726,6 @@ UINT inc_lock (	/* Increment object open counter and returns its index (0:Intern
 }
 
 
-static
 FRESULT dec_lock (	/* Decrement object open counter */
 	UINT i			/* Semaphore index (1..) */
 )
