@@ -288,6 +288,11 @@ void print_stack_trace_part_not_blocking(const size_t count)
 			   messages[message_index].call_site, task_name);
 		message_index = (message_index + 1) % MESSAGE_COUNT;
 	}
+
+	/* enable stack tracing again,
+	 * becasue this function can return
+	 */
+	disable_stack_tracing = false;
 }
 
 
