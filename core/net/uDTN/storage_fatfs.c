@@ -108,6 +108,31 @@ static void storage_fatfs_reconstruct_bundles();
 #endif
 
 
+
+static void storage_fatfs_file_close(FIL* const fd, const char* const filename)
+{
+	uint8_t tries = 5;
+
+	FRESULT close_res = FR_OK;
+	do {
+		close_res = f_close(fd);
+		if(close_res != FR_OK) {
+			LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to close file %s (err %u)", filename, close_res);
+
+			tries--;
+			if (tries <= 0) {
+				LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "Closing file failed. Discard file contant and unlock file handle.");
+				dec_lock(fd->lockid);
+				break;
+			}
+
+			/* wait one ms to not blocking other tasks */
+			vTaskDelay(pdMS_TO_TICKS(1));
+		}
+	} while (close_res != FR_OK);
+}
+
+
 /**
  * \brief called by agent at startup
  */
@@ -244,7 +269,8 @@ static void storage_fatfs_reconstruct_bundles()
 		/* Allocate a directory entry for the bundle */
 		entry = memb_alloc(&bundle_mem);
 		if( entry == NULL ) {
-			LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to allocate struct, cannot restore bundle");
+			LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to allocate struct, cannot restore bundle (file %s, size %u)",
+				filename, f_size(&directory_entry));
 			continue;
 		}
 
@@ -554,13 +580,14 @@ static uint8_t storage_fatfs_save_bundle(struct mmem* const bundlemem, uint32_t*
 //		return 0;
 //	}
 
+	LOG(LOGD_DTN, LOG_STORE, LOGL_DBG, "open file %s", bundle_filename);
 	// Open the output file
 	FIL fd_write;
 	const FRESULT res = f_open(&fd_write, bundle_filename, FA_CREATE_ALWAYS | FA_WRITE);
 	if (res != FR_OK) {
 		// Unable to open file, abort here
 		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to open file %s, cannot save bundle (err %u)", bundle_filename, res);
-		f_close(&fd_write);
+		storage_fatfs_file_close(&fd_write, bundle_filename);
 		memb_free(&bundle_mem, entry);
 		bundle_decrement(bundlemem);
 //		RADIO_SAFE_STATE_OFF();
@@ -571,9 +598,9 @@ static uint8_t storage_fatfs_save_bundle(struct mmem* const bundlemem, uint32_t*
 	UINT bytes_written = 0;
 	const FRESULT ret = f_write(&fd_write, bundle, bundlemem->size, &bytes_written);
 	if(ret != FR_OK || bytes_written != bundlemem->size) {
-		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to write %u bytes to file %s, aborting (err %u)",
-			bundlemem->size, bundle_filename, res);
-		f_close(&fd_write);
+		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to write %u bytes to file %s, aborting (err %u, written %u)",
+			bundlemem->size, bundle_filename, res, bytes_written);
+		storage_fatfs_file_close(&fd_write, bundle_filename);
 		f_unlink(bundle_filename);
 
 		memb_free(&bundle_mem, entry);
@@ -583,7 +610,8 @@ static uint8_t storage_fatfs_save_bundle(struct mmem* const bundlemem, uint32_t*
 	}
 
 	// And close the file
-	f_close(&fd_write);
+	storage_fatfs_file_close(&fd_write, bundle_filename);
+	LOG(LOGD_DTN, LOG_STORE, LOGL_DBG, "file %s closed", bundle_filename);
 
 //	RADIO_SAFE_STATE_OFF();
 
@@ -748,7 +776,7 @@ static struct mmem * storage_fatfs_read_bundle(uint32_t bundle_number)
 		// Unable to open file, abort here
 		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to open file %s, cannot read bundle (err %u)", bundle_filename, open_res);
 		bundle_decrement(bundlemem);
-		f_close(&fd_read);
+		storage_fatfs_file_close(&fd_read, bundle_filename);
 		return NULL;
 	}
 
@@ -758,12 +786,12 @@ static struct mmem * storage_fatfs_read_bundle(uint32_t bundle_number)
 	if(ret != FR_OK || bytes_read != bundlemem->size) {
 		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to read %u bytes from file %s, aborting", bundlemem->size, bundle_filename);
 		bundle_decrement(bundlemem);
-		f_close(&fd_read);
+		storage_fatfs_file_close(&fd_read, bundle_filename);
 		return NULL;
 	}
 
 	// And close the file
-	f_close(&fd_read);
+	storage_fatfs_file_close(&fd_read, bundle_filename);
 
 //	RADIO_SAFE_STATE_OFF();
 
