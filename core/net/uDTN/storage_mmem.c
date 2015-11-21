@@ -97,10 +97,10 @@ void storage_mmem_update_statistics() {
 	statistics_storage_memory(mmem_avail_memory());
 }
 
-void storage_mmem_format(void)
+static int storage_mmem_format(void)
 {
 	/* We cannot delete everything in MMEM, so do nothing here */
-	return;
+	return 0;
 }
 
 /**
@@ -118,14 +118,14 @@ bool storage_mmem_init(void)
 
 	/* cancle, if initialisation was already done */
 	if(wait_for_changes_sem != NULL) {
-		return -1;
+		return false;
 	}
 	/* Do not use an recursive mutex,
 	 * because mmem_check() will not work vital then.
 	 */
 	wait_for_changes_sem = xSemaphoreCreateCounting(1, 0);
 	if(wait_for_changes_sem == NULL) {
-		return -2;
+		return false;
 	}
 
 	// Initialize the bundle list

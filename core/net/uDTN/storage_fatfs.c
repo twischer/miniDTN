@@ -21,6 +21,7 @@
 #include <string.h>
 
 #include "FreeRTOS.h"
+#include "semphr.h"
 #include "timers.h"
 #include "ff.h"
 
@@ -83,6 +84,8 @@ static uint16_t bundles_in_storage;
 /** Flag to indicate whether the bundle list has changed since last writing the list file */
 static uint8_t bundle_list_changed = 0;
 
+static SemaphoreHandle_t wait_for_changes_sem = NULL;
+
 static FATFS fatfs;
 
 ///**
@@ -138,11 +141,43 @@ static void storage_fatfs_file_close(FIL* const fd, const char* const filename)
 }
 
 
+static int storage_fatfs_format()
+{
+	//	RADIO_SAFE_STATE_ON();
+
+	LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "Formatting flash");
+
+	const FRESULT res = f_mkfs("0:/", 0, 0);
+	if (res != FR_OK) {
+		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "Formatting failed with error code %u!", res);
+		return -1;
+	}
+
+	//	RADIO_SAFE_STATE_OFF();
+
+	return 0;
+}
+
+
 /**
  * \brief called by agent at startup
  */
 static bool storage_fatfs_init(void)
 {
+	LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "storage_fatfs init");
+
+	/* cancle, if initialisation was already done */
+	if(wait_for_changes_sem != NULL) {
+		return false;
+	}
+	/* Do not use an recursive mutex,
+	 * because mmem_check() will not work vital then.
+	 */
+	wait_for_changes_sem = xSemaphoreCreateCounting(1, 0);
+	if(wait_for_changes_sem == NULL) {
+		return false;
+	}
+
 	// Initialize the bundle list
 	list_init(bundle_list);
 
@@ -159,17 +194,9 @@ static bool storage_fatfs_init(void)
 	}
 
 #if BUNDLE_STORAGE_INIT
-//	RADIO_SAFE_STATE_ON();
-
-	LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "Formatting flash");
-
-	const FRESULT res = f_mkfs("0:/", 0, 0);
-	if (res != FR_OK) {
-		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "Formatting failed with error code %u!", res);
+	if (storage_fatfs_format() < 0) {
 		return false;
 	}
-
-//	RADIO_SAFE_STATE_OFF();
 #else
 	// Try to restore our bundle list from the file system
 	storage_fatfs_reconstruct_bundles();
@@ -638,6 +665,9 @@ static uint8_t storage_fatfs_save_bundle(struct mmem* const bundlemem, uint32_t*
 	// the caller can stick it into an event
 	*bundle_number_ptr = entry->bundle_num;
 
+	/* storage status has changed */
+	xSemaphoreGive(wait_for_changes_sem);
+
 	return 1;
 }
 
@@ -718,6 +748,9 @@ static uint8_t storage_fatfs_delete_bundle(uint32_t bundle_number, uint8_t reaso
 
 	// Free the storage struct
 	memb_free(&bundle_mem, entry);
+
+	/* storage status has changed */
+	xSemaphoreGive(wait_for_changes_sem);
 
 	return 1;
 }
@@ -881,6 +914,15 @@ static void storage_fatfs_unlock_bundle(uint32_t bundle_num)
 	entry->flags &= ~STORAGE_COFFEE_FLAGS_LOCKED;
 }
 
+
+static void storage_fatfs_wait_for_changes(void)
+{
+	if ( !xSemaphoreTake(wait_for_changes_sem, portMAX_DELAY) ) {
+		LOG(LOGD_DTN, LOG_STORE, LOGL_WRN, "Wait for changes failed");
+	}
+}
+
+
 const struct storage_driver storage_fatfs = {
 	"STORAGE_FATFS",
 	storage_fatfs_init,
@@ -893,6 +935,8 @@ const struct storage_driver storage_fatfs = {
 	storage_fatfs_get_free_space,
 	storage_fatfs_get_bundle_numbers,
 	storage_fatfs_get_bundles,
+	storage_fatfs_wait_for_changes,
+	storage_fatfs_format,
 };
 /** @} */
 /** @} */
