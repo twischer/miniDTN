@@ -52,14 +52,21 @@ static TickType_t task_in_time = 0;
 #endif
 
 
-static const char* const get_task_name()
+static inline bool is_scheduler_running()
 {
-	/* only try to determine the task name, if the scheduler was started once */
 	static bool is_scheduler_running = false;
 	if (!is_scheduler_running) {
 		is_scheduler_running = (xTaskGetSchedulerState() == taskSCHEDULER_RUNNING);
 	}
-	const char* const task_name = is_scheduler_running ? pcTaskGetTaskName(NULL) : "INIT";
+
+	return is_scheduler_running;
+}
+
+
+static inline const char* const get_task_name()
+{
+	/* only try to determine the task name, if the scheduler was started once */
+	const char* const task_name = is_scheduler_running() ? pcTaskGetTaskName(NULL) : "INIT";
 
 	return task_name;
 }
@@ -148,6 +155,42 @@ void print_remembered_tasks()
 }
 #endif
 
+/* this variables are defined in the linker script */
+extern uint8_t _estack;
+extern uint8_t _Min_Stack_Size;
+
+static uint32_t highes_stack_usage = 0;
+void check_for_stack_overflow()
+{
+	/* check user stack until FreeRTOS tasks were started */
+	if (is_scheduler_running()) {
+#if (CHECK_FREERTOS_STACK_OVERFLOW == 1)
+		vTaskCheckForStackOverflow();
+#endif
+	} else {
+//		volatile uint32_t stack_pointer = 0;
+//		__asm volatile(
+//			"ldr r0, =stack_pointer  \n"		/* put address of C variable stackptr in r0 */
+//			"mov r1, sp         \n"		/* move value of sp to r1 */
+//			"str r1, [r0]       \n"		/* put value of r1 in address contained in r0 (stackptr) */
+//		);
+		const uint8_t last_stack_entry = 0;
+		const uint32_t stack_pointer = (uint32_t)&last_stack_entry;
+
+		const uint32_t stack_begin = (uint32_t)&_estack;
+		const uint32_t stack_usage = stack_begin - stack_pointer;
+		if (stack_usage > highes_stack_usage) {
+			highes_stack_usage = stack_usage;
+
+			const uint32_t stack_size = (uint32_t)&_Min_Stack_Size;
+			if (stack_usage > stack_size) {
+				printf("USER STACK OVERFLOW (usage 0x%lx)\n", stack_usage);
+				print_stack_trace();
+			}
+		}
+	}
+}
+
 
 static inline void message_add_task(const bool type, void *this_fn, void *call_site, const char* const task_name)
 		__attribute__((no_instrument_function));
@@ -185,9 +228,7 @@ static inline void message_add(const bool type, void *this_fn, void *call_site)
 	message_add_task(type, this_fn, call_site, task_name);
 
 
-#if (CHECK_FREERTOS_STACK_OVERFLOW == 1)
-	vTaskCheckForStackOverflow();
-#endif
+	check_for_stack_overflow();
 
 #if (CHECK_MMEM_CONSISTENCY == 1)
 	mmem_check();

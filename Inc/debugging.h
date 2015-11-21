@@ -51,6 +51,8 @@ void task_yield()  __attribute__((no_instrument_function));
 void task_blocked(QueueHandle_t queue)  __attribute__((no_instrument_function));
 #endif
 
+void check_for_stack_overflow();
+
 void print_stack_trace(void)  __attribute__((no_instrument_function));
 void print_stack_trace_part(const size_t count)  __attribute__((no_instrument_function));
 void print_stack_trace_part_not_blocking(const size_t count)  __attribute__((no_instrument_function));
