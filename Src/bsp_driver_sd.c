@@ -34,6 +34,11 @@
 /* USER CODE BEGIN 0 */
 /* Includes ------------------------------------------------------------------*/
 #include "bsp_driver_sd.h"
+#include "lib/logging.h"
+#include "agent.h"
+
+const uint8_t SDIO_ACCESS_RETRIES = 5;
+
 
 /* Extern variables ---------------------------------------------------------*/ 
   
@@ -113,14 +118,25 @@ __weak void BSP_SD_DetectCallback(void)
   */
 uint8_t BSP_SD_ReadBlocks(uint32_t *pData, uint64_t ReadAddr, uint32_t BlockSize, uint32_t NumOfBlocks)
 {
-  if(HAL_SD_ReadBlocks(&hsd, pData, ReadAddr, BlockSize, NumOfBlocks) != SD_OK)  
-  {
-    return MSD_ERROR;
-  }
-  else
-  {
-    return MSD_OK;
-  }
+	uint8_t retries = SDIO_ACCESS_RETRIES;
+
+	HAL_SD_ErrorTypedef error = SD_OK;
+	do {
+		error = HAL_SD_ReadBlocks(&hsd, pData, ReadAddr, BlockSize, NumOfBlocks);
+
+		if (error != SD_OK) {
+			LOG(LOGD_DTN, LOG_STORE, LOGL_WRN, "HAL_SD_ReadBlocks(addr %u, size %u, count %u) failed with error %u",
+				(uint32_t)ReadAddr, BlockSize, NumOfBlocks, error);
+
+			retries--;
+			if (retries <= 0) {
+				LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "Too many failes. Giving up reading from SD card!");
+				return MSD_ERROR;
+			}
+		}
+	} while (error != SD_OK);
+
+	return MSD_OK;
 }
 
 /**
@@ -133,14 +149,25 @@ uint8_t BSP_SD_ReadBlocks(uint32_t *pData, uint64_t ReadAddr, uint32_t BlockSize
   */
 uint8_t BSP_SD_WriteBlocks(uint32_t *pData, uint64_t WriteAddr, uint32_t BlockSize, uint32_t NumOfBlocks)
 {
-  if(HAL_SD_WriteBlocks(&hsd, pData, WriteAddr, BlockSize, NumOfBlocks) != SD_OK)  
-  {
-    return MSD_ERROR;
-  }
-  else
-  {
-    return MSD_OK;
-  }
+	uint8_t retries = SDIO_ACCESS_RETRIES;
+
+	HAL_SD_ErrorTypedef error = SD_OK;
+	do {
+	  error = HAL_SD_WriteBlocks(&hsd, pData, WriteAddr, BlockSize, NumOfBlocks);
+
+	  if (error != SD_OK) {
+		  LOG(LOGD_DTN, LOG_STORE, LOGL_WRN, "BSP_SD_WriteBlocks(addr %u, size %u, count %u) failed with error %u",
+			  (uint32_t)WriteAddr, BlockSize, NumOfBlocks, error);
+
+		  retries--;
+		  if (retries <= 0) {
+			  LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "Too many failes. Giving up writting to SD card!");
+			  return MSD_ERROR;
+		  }
+	  }
+	} while (error != SD_OK);
+
+	return MSD_OK;
 }
 
 /**
