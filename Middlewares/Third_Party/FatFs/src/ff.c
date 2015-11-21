@@ -2536,6 +2536,12 @@ FRESULT f_open (
 	if (!fp) return FR_INVALID_OBJECT;
 	fp->fs = 0;			/* Clear file object */
 
+	/* invalidate lock ID.
+	 * So dec_lock will not decrement the lock
+	 * if f_open failes before locking the file.
+	 */
+	fp->lockid = 0;
+
 	/* Get logical drive number */
 #if !_FS_READONLY
 	mode &= FA_READ | FA_WRITE | FA_CREATE_ALWAYS | FA_OPEN_ALWAYS | FA_CREATE_NEW;

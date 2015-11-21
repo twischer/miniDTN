@@ -122,6 +122,11 @@ static void storage_fatfs_file_close(FIL* const fd, const char* const filename)
 			tries--;
 			if (tries <= 0) {
 				LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "Closing file failed. Discard file contant and unlock file handle.");
+				/* fp->lockid is invalid,
+				 * if f_open failes before locking the file.
+				 * So dec_lock will not decrement the file lock
+				 * for a not locked file
+				 */
 				dec_lock(fd->lockid);
 				break;
 			}
