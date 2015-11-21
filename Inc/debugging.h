@@ -31,6 +31,8 @@
  */
 #define PRINT_BLOCKING_TASKS            0
 
+#define REMEMBER_TASKS                  0
+
 
 /* copied from task.h and queue.h.
  * These files can not include here,
@@ -64,6 +66,11 @@ void delay_us_check(void);
 void time_diff_start(const char* const file, const int line);
 void time_diff_stop(const char* const file, const int line);
 void time_diff_assert_too_big(const TickType_t max_time_diff, const char* const file, const int line);
+
+#if (REMEMBER_TASKS == 1)
+void print_remembered_tasks();
+void remember_task();
+#endif
 
 #endif // DEBUGGING_H
 

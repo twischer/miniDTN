@@ -19,6 +19,7 @@
 
 
 #define MESSAGE_COUNT	32
+#define TASKS_COUNT		8
 
 static const char IDLE_TASK_NAME[] = "IDLE";
 
@@ -34,10 +35,35 @@ static size_t next_message_index = 0;
 static message_t messages[MESSAGE_COUNT];
 static const char* fault_name = NULL;
 
+
+#if (REMEMBER_TASKS == 1)
+typedef struct {
+	TickType_t time_stamp;
+	const char* task_name;
+} task_time_t;
+
+static task_time_t remembered_tasks[TASKS_COUNT];
+#endif
+
+
 #if (PRINT_CPU_USAGE == 1)
 static uint64_t usage_time = 0;
 static TickType_t task_in_time = 0;
 #endif
+
+
+static const char* const get_task_name()
+{
+	/* only try to determine the task name, if the scheduler was started once */
+	static bool is_scheduler_running = false;
+	if (!is_scheduler_running) {
+		is_scheduler_running = (xTaskGetSchedulerState() == taskSCHEDULER_RUNNING);
+	}
+	const char* const task_name = is_scheduler_running ? pcTaskGetTaskName(NULL) : "INIT";
+
+	return task_name;
+}
+
 
 static TickType_t time_diff_start_ticks = 0;
 void time_diff_start(const char* const file, const int line)
@@ -81,6 +107,48 @@ void time_diff_assert_too_big(const TickType_t max_time_diff, const char* const 
 }
 
 
+#if (REMEMBER_TASKS == 1)
+void remember_task()
+{
+	const char* const task_name = get_task_name();
+
+	/* look for already existing task entry */
+	for (int i=0; i<TASKS_COUNT; i++) {
+		/* the task names are static string variables
+		 * So only comparing the pointers is enough.
+		 */
+		if (remembered_tasks[i].task_name == task_name) {
+			/* task entry already exists */
+			remembered_tasks[i].time_stamp = xTaskGetTickCount();
+			return;
+		}
+	}
+
+	/* look for an empty task entry */
+	for (int i=0; i<TASKS_COUNT; i++) {
+		if (remembered_tasks[i].task_name == NULL) {
+			remembered_tasks[i].time_stamp = xTaskGetTickCount();
+			remembered_tasks[i].task_name = task_name;
+			return;
+		}
+	}
+
+	printf("WRN: Not remembering task %s. List is full.\n", task_name);
+}
+
+void print_remembered_tasks()
+{
+	for (int i=0; i<TASKS_COUNT; i++) {
+		if (remembered_tasks[i].task_name == NULL) {
+			break;
+		}
+
+		printf("Task %s time %lu\n", remembered_tasks[i].task_name, remembered_tasks[i].time_stamp);
+	}
+}
+#endif
+
+
 static inline void message_add_task(const bool type, void *this_fn, void *call_site, const char* const task_name)
 		__attribute__((no_instrument_function));
 static inline void message_add_task(const bool type, void *this_fn, void *call_site, const char* const task_name)
@@ -113,13 +181,7 @@ static inline void message_add(const bool type, void *this_fn, void *call_site)
 	recursion_deeps++;
 
 
-	/* only try to determine the task name, if the scheduler was started once */
-	static bool is_scheduler_running = false;
-	if (!is_scheduler_running) {
-		is_scheduler_running = (xTaskGetSchedulerState() == taskSCHEDULER_RUNNING);
-	}
-	const char* const task_name = is_scheduler_running ? pcTaskGetTaskName(NULL) : "INIT";
-
+	const char* const task_name = get_task_name();
 	message_add_task(type, this_fn, call_site, task_name);
 
 
@@ -299,6 +361,11 @@ void print_stack_trace_part_not_blocking(const size_t count)
 void print_stack_trace_part(const size_t count)
 {
 	taskDISABLE_INTERRUPTS();
+
+
+#if (REMEMBER_TASKS == 1)
+	print_remembered_tasks();
+#endif
 
 	print_stack_trace_part_not_blocking(count);
 
