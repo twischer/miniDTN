@@ -12,6 +12,9 @@ CFLAGS+= -DBUNDLE_CONF_STORAGE=storage_fatfs
 #CFLAGS+= -DBUNDLE_CONF_STORAGE_INIT=1
 
 
+# compute static stack usage of each function
+#CFLAGS+= -fstack-usage
+
 # uncomment for enabling LwIP debug messages
 # CFLAGS+= -DLWIP_DEBUG
 # CFLAGS+= -DPBUF_DEBUG=LWIP_DBG_ON
