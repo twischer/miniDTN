@@ -61,9 +61,9 @@ void print_memory(const uint8_t* const data, const size_t length);
 void delay_us_check(void);
 
 
-#define TIME_DIFF_START() time_diff_start(__FILE__, __LINE__);
-#define TIME_DIFF_STOP() time_diff_stop(__FILE__, __LINE__);
-#define TIME_DIFF_ASSERT(max_diff) time_diff_assert_too_big(max_diff, __FILE__, __LINE__);
+#define TIME_DIFF_START() time_diff_start(__func__, __LINE__);
+#define TIME_DIFF_STOP() time_diff_stop(__func__, __LINE__);
+#define TIME_DIFF_ASSERT(max_diff) time_diff_assert_too_big(max_diff, __func__, __LINE__);
 
 void time_diff_start(const char* const file, const int line);
 void time_diff_stop(const char* const file, const int line);

@@ -648,8 +648,8 @@ static uint8_t storage_fatfs_save_bundle(struct mmem* const bundlemem, uint32_t*
 //	RADIO_SAFE_STATE_OFF();
 
 	LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "New Bundle %lu (%lu), Src %lu.%lu, Dest %lu.%lu, Seq %lu",
-		bundle->bundle_num, entry->bundle_num, bundle->src_node, bundle->src_srv,
-		bundle->dst_node, bundle->dst_srv, bundle->tstamp_seq);
+		bundle->bundle_num, entry->bundle_num, bundle->src_node, ((uint32_t)bundle->src_srv),
+		bundle->dst_node, ((uint32_t)bundle->dst_srv), bundle->tstamp_seq);
 
 	// Add bundle to the list
 	list_add(bundle_list, entry);

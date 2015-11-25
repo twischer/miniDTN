@@ -545,6 +545,15 @@ HAL_SD_ErrorTypedef HAL_SD_ReadBlocks(SD_HandleTypeDef *hsd, uint32_t *pReadBuff
         
         tempbuff += 8;
       }
+	  else if (hsd->Instance->STA == 0x00)
+	  {
+		/* the transmition is no longer active and
+		 * there is no datat end flag.
+		 * Something went wrong.
+		 * So cancle this transmission
+		 */
+		return SD_GENERAL_UNKNOWN_ERROR;
+	  }
     }      
   }
   else
@@ -574,6 +583,15 @@ HAL_SD_ErrorTypedef HAL_SD_ReadBlocks(SD_HandleTypeDef *hsd, uint32_t *pReadBuff
         
         tempbuff += 8;
       }
+	  else if (hsd->Instance->STA == 0x00)
+	  {
+		/* the transmition is no longer active and
+		 * there is no datat end flag.
+		 * Something went wrong.
+		 * So cancle this transmission
+		 */
+		return SD_GENERAL_UNKNOWN_ERROR;
+	  }
     }
   }
   

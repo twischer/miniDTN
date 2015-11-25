@@ -1,6 +1,8 @@
 MODULES+= examples/uDTN/dtnping
 #MODULES+= examples/uDTN/dtnsend
 #MODULES+= examples/uDTN/throughput
+#MODULES+= examples/uDTN/fatfs_test
+#MODULES+= examples/uDTN/fatfs-storage-test
 
 CFLAGS+= -DPROJECT_CONF_H=\"project-conf.h\"
 CFLAGS+= -DINGA_CONF_PAN_ID=0x0780
