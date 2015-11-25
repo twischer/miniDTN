@@ -2265,6 +2265,18 @@ void vTaskCheckForStackOverflow(void)
 	}
 
 	taskFIRST_CHECK_FOR_STACK_OVERFLOW();
+
+	/* when calling from a task
+	 * pxCurrentTCB->pxTopOfStack is not updated.
+	 * So use real stack pointer
+	 */
+	const register uint32_t stack_pointer asm("sp");
+
+	/* Is the currently saved stack pointer within the stack limit? */								\
+	if( stack_pointer <= (uint32_t)pxCurrentTCB->pxStack )
+	{																								\
+		vApplicationStackOverflowHook( ( TaskHandle_t ) pxCurrentTCB, pxCurrentTCB->pcTaskName );	\
+	}
 }
 /*-----------------------------------------------------------*/
 

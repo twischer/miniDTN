@@ -168,14 +168,7 @@ void check_for_stack_overflow()
 		vTaskCheckForStackOverflow();
 #endif
 	} else {
-//		volatile uint32_t stack_pointer = 0;
-//		__asm volatile(
-//			"ldr r0, =stack_pointer  \n"		/* put address of C variable stackptr in r0 */
-//			"mov r1, sp         \n"		/* move value of sp to r1 */
-//			"str r1, [r0]       \n"		/* put value of r1 in address contained in r0 (stackptr) */
-//		);
-		const uint8_t last_stack_entry = 0;
-		const uint32_t stack_pointer = (uint32_t)&last_stack_entry;
+		const register uint32_t stack_pointer asm("sp");
 
 		const uint32_t stack_begin = (uint32_t)&_estack;
 		const uint32_t stack_usage = stack_begin - stack_pointer;
