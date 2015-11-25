@@ -41,20 +41,18 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "FreeRTOS.h"
+
 #include "contiki.h"
-#include "sys/test.h"
-#include "sys/test.h"
-#include "sys/profiling/profiling.h"
-#include "watchdog.h"
-#include "list.h"
-#include "cfs/coffee/cfs-coffee.h"
 
 #include "net/uDTN/hash.h"
 #include "net/uDTN/agent.h"
 #include "net/uDTN/bundle.h"
 #include "net/uDTN/storage.h"
 
-#define DEBUG 0
+#include "dtn_process.h"
+
+#define DEBUG 1
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)
@@ -66,10 +64,6 @@
 
 uint32_t bundle_numbers[TEST_BUNDLES * 3];
 
-/*---------------------------------------------------------------------------*/
-PROCESS(test_process, "TEST");
-
-AUTOSTART_PROCESSES(&test_process);
 
 uint8_t my_create_bundle(uint32_t sequence_number, uint32_t * bundle_number, uint32_t lifetime) {
 	struct mmem * ptr = NULL;
@@ -77,7 +71,6 @@ uint8_t my_create_bundle(uint32_t sequence_number, uint32_t * bundle_number, uin
 	int n;
 	uint32_t i;
 	uint8_t payload[60];
-	uint32_t * bundle_number_ptr;
 
 	ptr = bundle_create_bundle();
 	if( ptr == NULL ) {
@@ -92,8 +85,17 @@ uint8_t my_create_bundle(uint32_t sequence_number, uint32_t * bundle_number, uin
 	}
 
 	// Set all attributes
-	for(i=VERSION; i<=FRAG_OFFSET; i++) {
-		bundle_set_attr(ptr, i, &i);
+	for(i=FLAGS; i<=FRAG_OFFSET; i++) {
+		if (i == LENGTH) {
+			continue;
+		}
+
+		if (i == DIRECTORY_LEN) {
+			const uint32_t len = 0;
+			bundle_set_attr(ptr, DIRECTORY_LEN, &len);
+		} else {
+			bundle_set_attr(ptr, i, &i);
+		}
 	}
 
 	// But set the sequence number to something monotonically increasing
@@ -114,14 +116,11 @@ uint8_t my_create_bundle(uint32_t sequence_number, uint32_t * bundle_number, uin
 	bundle->bundle_num = HASH.hash_convenience(bundle->tstamp_seq, bundle->tstamp, bundle->src_node, bundle->src_srv, bundle->frag_offs, bundle->app_len);
 
 	// And tell storage to save the bundle
-	n = BUNDLE_STORAGE.save_bundle(ptr, &bundle_number_ptr);
+	n = BUNDLE_STORAGE.save_bundle(ptr, bundle_number);
 	if( !n ) {
 		PRINTF("CREATE: Bundle %lu could not be created\n", sequence_number);
 		return 0;
 	}
-
-	// Copy over the bundle number
-	*bundle_number = *bundle_number_ptr;
 
 	return 1;
 }
@@ -192,40 +191,25 @@ uint8_t my_verify_bundle(uint32_t bundle_number, uint32_t sequence_number) {
 	return 1;
 }
 
-PROCESS_THREAD(test_process, ev, data)
+static void test_process(void* p)
 {
 	static int n;
 	static uint32_t i;
 	static int errors = 0;
-	static struct etimer timer;
-	static uint32_t time_start, time_stop;
 
-	PROCESS_BEGIN();
 
 	/* Initialize the flash before the storage comes along */
 	PRINTF("Intializing Flash...\n");
 	BUNDLE_STORAGE.format();
 
-	PROCESS_PAUSE();
-
-	profiling_init();
-	profiling_start();
-
-	// Wait again
-	etimer_set(&timer, CLOCK_SECOND);
-	PROCESS_WAIT_UNTIL(etimer_expired(&timer));
+	vTaskDelay(pdMS_TO_TICKS(1000));
 
 	printf("Init done, starting test using %s storage\n", BUNDLE_STORAGE.name);
 
-	profiling_init();
-	profiling_start();
-
-	// Measure the current time
-	time_start = test_precise_timestamp();
 
 	PRINTF("Create and Verify bundles in sequence\n");
 	for(i=0; i<TEST_BUNDLES; i++) {
-		PROCESS_PAUSE();
+		vTaskDelay(pdMS_TO_TICKS(1));
 
 		if( my_create_bundle(i, &bundle_numbers[i], 3600) ) {
 			PRINTF("\tBundle %lu created successfully \n", i);
@@ -266,21 +250,20 @@ PROCESS_THREAD(test_process, ev, data)
 		}
 	}
 
-	time_stop = test_precise_timestamp();
-
-	watchdog_stop();
-	profiling_report("persistent-storage", 0);
-
-	TEST_REPORT("No of errors", errors, 1, "errors");
-	TEST_REPORT("Duration", time_stop-time_start, CLOCK_SECOND, "s");
-
 	if( errors > 0 ) {
-		TEST_FAIL("More than 1 error occured");
-	} else {
-		TEST_PASS();
+		printf("More than 1 error occured\n");
 	}
 
-	PROCESS_END();
+	vTaskDelete(NULL);
 }
 
 /*---------------------------------------------------------------------------*/
+
+bool init()
+{
+	if ( !dtn_process_create_other_stack(test_process, "FAT FS storage test", configFATFS_USING_TASK_STACK_DEPTH) ) {
+		return false;
+	}
+
+  return true;
+}
