@@ -321,7 +321,7 @@ void task_switch_out(const TaskHandle_t task, const char* const name)
 		const uint64_t diff_ms = ((uint64_t)diff) / portTICK_PERIOD_MS;
 		usage_time += diff_ms * (SystemCoreClock / 1000 / 2);
 	} else {
-		const uint32_t last_usage_time = TIM3->CNT;
+		const uint32_t last_usage_time = TIM5->CNT;
 		usage_time += last_usage_time;
 	}
 #endif
