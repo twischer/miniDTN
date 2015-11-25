@@ -133,6 +133,9 @@ uint8_t BSP_SD_ReadBlocks(uint32_t *pData, uint64_t ReadAddr, uint32_t BlockSize
 				LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "Too many failes. Giving up reading from SD card!");
 				return MSD_ERROR;
 			}
+
+			/* wait for accessing the SD card again */
+			vTaskDelay(pdMS_TO_TICKS(1));
 		}
 	} while (error != SD_OK);
 
@@ -164,6 +167,9 @@ uint8_t BSP_SD_WriteBlocks(uint32_t *pData, uint64_t WriteAddr, uint32_t BlockSi
 			  LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "Too many failes. Giving up writting to SD card!");
 			  return MSD_ERROR;
 		  }
+
+		  /* wait for accessing the SD card again */
+		  vTaskDelay(pdMS_TO_TICKS(1));
 	  }
 	} while (error != SD_OK);
 
