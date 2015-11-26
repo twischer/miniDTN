@@ -639,8 +639,17 @@ HAL_SD_ErrorTypedef HAL_SD_ReadBlocks(SD_HandleTypeDef *hsd, uint32_t *pReadBuff
   }
   else if (__HAL_SD_SDIO_GET_FLAG(hsd, SDIO_FLAG_RXOVERR))
   {
-    __HAL_SD_SDIO_CLEAR_FLAG(hsd, SDIO_FLAG_RXOVERR);
+	  /* wait for end of sd card */
+	  while (__HAL_SD_SDIO_GET_FLAG(hsd, SDIO_FLAG_RXACT)) {
+		  SDIO_ReadFIFO(hsd->Instance);
+	  }
+
+	  if (NumberOfBlocks > 1) {
+		HAL_SD_StopTransfer(hsd);
+	  }
     
+    __HAL_SD_SDIO_CLEAR_FLAG(hsd, SDIO_FLAG_RXOVERR);
+
     errorstate = SD_RX_OVERRUN;
     
     return errorstate;
@@ -3296,6 +3305,15 @@ static HAL_SD_ErrorTypedef SD_FindSCR(SD_HandleTypeDef *hsd, uint32_t *pSCR)
       *(tempscr + index) = SDIO_ReadFIFO(hsd->Instance);
       index++;
     }
+	else if (hsd->Instance->STA == 0x00)
+	{
+	  /* the transmition is no longer active and
+	   * there is no datat end flag.
+	   * Something went wrong.
+	   * So cancle this transmission
+	   */
+	  return SD_GENERAL_UNKNOWN_ERROR;
+	}
   }
   
   if(__HAL_SD_SDIO_GET_FLAG(hsd, SDIO_FLAG_DTIMEOUT))
