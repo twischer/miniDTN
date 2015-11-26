@@ -199,7 +199,7 @@
 #define RF230_CONF_CCA_THRES      -85
 /* Default is one RAM buffer for received packets. 
  * More than one may benefit multiple TCP connections or ports */
-#define RF230_CONF_RX_BUFFERS     3
+#define RF230_CONF_RX_BUFFERS     10
 
 /* -- UIP settings */
 #define UIP_CONF_UDP_CHECKSUMS    1

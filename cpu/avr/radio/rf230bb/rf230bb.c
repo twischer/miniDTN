@@ -1411,6 +1411,10 @@ static void rxframe_next()
 	/* If another packet has been buffered, schedule another receive poll */
 	if (rxframe[rxframe_head].length <= 0) {
 	  rf230_pending = false;
+
+	  for (uint8_t i=0; i<RF230_CONF_RX_BUFFERS; i++) {
+		  configASSERT(rxframe[i].length <= 0);
+	  }
 	}
 }
 
