@@ -262,7 +262,8 @@ static void udtn_sink_process(void* p)
 
 bool init()
 {
-	if ( !dtn_process_create_other_stack(udtn_sink_process, "Throughput", 0x100) ) {
+	QueueHandle_t event_queue = NULL;
+	if ( !dtn_process_create_with_queue(udtn_sink_process, "Throughput", 0x100, 6, &event_queue) ) {
 		return false;
 	}
 
