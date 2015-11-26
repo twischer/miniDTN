@@ -451,6 +451,18 @@ __weak void HAL_SD_MspDeInit(SD_HandleTypeDef *hsd)
   * @{
   */
 
+void HAL_SD_Reset(SD_HandleTypeDef *hsd)
+{
+	/* disable the CPSM */
+	hsd->Instance->CMD = 0;
+
+	/* disable the DPSM */
+	hsd->Instance->DCTRL = 0;
+
+	/* Clear all the static flags from the last command before sending a new one */
+	__HAL_SD_SDIO_CLEAR_FLAG(hsd, SDIO_STATIC_FLAGS);
+}
+
 /**
   * @brief  Reads block(s) from a specified address in a card. The Data transfer 
   *         is managed by polling mode.  
@@ -491,6 +503,7 @@ HAL_SD_ErrorTypedef HAL_SD_ReadBlocks(SD_HandleTypeDef *hsd, uint32_t *pReadBuff
   
   if (errorstate != SD_OK)
   {
+    HAL_SD_Reset(hsd);
     return errorstate;
   }
   
@@ -2780,6 +2793,15 @@ static HAL_SD_ErrorTypedef SD_CmdResp1Error(SD_HandleTypeDef *hsd, uint8_t SD_CM
   
   while(!__HAL_SD_SDIO_GET_FLAG(hsd, SDIO_FLAG_CCRCFAIL | SDIO_FLAG_CMDREND | SDIO_FLAG_CTIMEOUT))
   {
+    if (hsd->Instance->STA == 0x00)
+    {
+      /* the transmition is no longer active and
+       * there is no cmd pend flag.
+       * Something went wrong.
+       * So cancle this transmission
+       */
+      return SD_GENERAL_UNKNOWN_ERROR;
+    }
   }
   
   if(__HAL_SD_SDIO_GET_FLAG(hsd, SDIO_FLAG_CTIMEOUT))
