@@ -415,9 +415,7 @@ to its original value when it is released. */
 #endif
 
 /* Callback function prototypes. --------------------------*/
-#if configCHECK_FOR_STACK_OVERFLOW > 0
-	extern void vApplicationStackOverflowHook( TaskHandle_t xTask, char *pcTaskName );
-#endif
+extern void vApplicationStackOverflowHook( TaskHandle_t xTask, char *pcTaskName );
 
 #if configUSE_TICK_HOOK > 0
 	extern void vApplicationTickHook( void );

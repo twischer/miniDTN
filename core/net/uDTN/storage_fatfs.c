@@ -36,6 +36,7 @@
 #include "statusreport.h"
 #include "agent.h"
 #include "hash.h"
+#include "convergence_layer_dgram.h"
 
 #include "storage.h"
 
@@ -85,6 +86,7 @@ static uint16_t bundles_in_storage;
 static uint8_t bundle_list_changed = 0;
 
 static SemaphoreHandle_t wait_for_changes_sem = NULL;
+static SemaphoreHandle_t bundle_deleted_sem = NULL;
 
 static FATFS fatfs;
 
@@ -166,8 +168,14 @@ static bool storage_fatfs_init(void)
 {
 	LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "storage_fatfs init");
 
+	/* Only execute the initalisation before the scheduler was started.
+	 * So there exists only one thread and
+	 * no locking is needed for the initialisation
+	 */
+	configASSERT(xTaskGetSchedulerState() == taskSCHEDULER_NOT_STARTED);
+
 	/* cancle, if initialisation was already done */
-	if(wait_for_changes_sem != NULL) {
+	if(wait_for_changes_sem != NULL || bundle_deleted_sem != NULL) {
 		return false;
 	}
 	/* Do not use an recursive mutex,
@@ -175,6 +183,11 @@ static bool storage_fatfs_init(void)
 	 */
 	wait_for_changes_sem = xSemaphoreCreateCounting(1, 0);
 	if(wait_for_changes_sem == NULL) {
+		return false;
+	}
+
+	bundle_deleted_sem = xSemaphoreCreateCounting(1, 0);
+	if(bundle_deleted_sem == NULL) {
 		return false;
 	}
 
@@ -559,13 +572,21 @@ static uint8_t storage_fatfs_save_bundle(struct mmem* const bundlemem, uint32_t*
 		}
 	}
 
-	if( !storage_fatfs_make_room(bundlemem) ) {
-		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "Cannot store bundle, no room");
+	while ( !storage_fatfs_make_room(bundlemem) ) {
+		LOG(LOGD_DTN, LOG_STORE, LOGL_DBG, "Waiting for bundle deletion");
+		if (xSemaphoreTake(bundle_deleted_sem, pdMS_TO_TICKS(CONVERGENCE_LAYER_RETRANSMIT_TIMEOUT)) == pdFALSE) {
+			/* Timeout has expired.
+			 * Do not acceped the bundle and
+			 * send an temporare NACK
+			 */
 
-		/* Throw away bundle to not take up RAM */
-		bundle_decrement(bundlemem);
+			LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "Cannot store bundle, no room");
 
-		return 0;
+			/* Throw away bundle to not take up RAM */
+			bundle_decrement(bundlemem);
+
+			return 0;
+		}
 	}
 
 	/* Update the pointer to the bundle, address may have changed due to storage_fatfs_make_room and MMEM reallocations */
@@ -748,6 +769,11 @@ static uint8_t storage_fatfs_delete_bundle(uint32_t bundle_number, uint8_t reaso
 
 	// Free the storage struct
 	memb_free(&bundle_mem, entry);
+
+	LOG(LOGD_DTN, LOG_STORE, LOGL_DBG, "Bundle %lu deleted with reason %u", bundle_number, reason);
+
+	/* there is one more slot free, now */
+	xSemaphoreGive(bundle_deleted_sem);
 
 	/* storage status has changed */
 	xSemaphoreGive(wait_for_changes_sem);
