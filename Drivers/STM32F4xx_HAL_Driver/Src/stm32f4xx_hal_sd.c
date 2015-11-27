@@ -463,6 +463,19 @@ void HAL_SD_Reset(SD_HandleTypeDef *hsd)
 	__HAL_SD_SDIO_CLEAR_FLAG(hsd, SDIO_STATIC_FLAGS);
 }
 
+
+void HAL_SD_StopTransferWaitForReady(SD_HandleTypeDef *hsd)
+{
+	HAL_SD_StopTransfer(hsd);
+
+	/* wait for finishing the stop command */
+	while (SD_GetState(hsd) == SD_CARD_PROGRAMMING) {}
+
+	/* Clear all the static flags from the last command before sending a new one */
+	__HAL_SD_SDIO_CLEAR_FLAG(hsd, SDIO_STATIC_FLAGS);
+}
+
+
 /**
   * @brief  Reads block(s) from a specified address in a card. The Data transfer 
   *         is managed by polling mode.  
@@ -565,6 +578,7 @@ HAL_SD_ErrorTypedef HAL_SD_ReadBlocks(SD_HandleTypeDef *hsd, uint32_t *pReadBuff
 		 * Something went wrong.
 		 * So cancle this transmission
 		 */
+		HAL_SD_StopTransferWaitForReady(hsd);
 		return SD_GENERAL_UNKNOWN_ERROR;
 	  }
     }      
@@ -603,6 +617,7 @@ HAL_SD_ErrorTypedef HAL_SD_ReadBlocks(SD_HandleTypeDef *hsd, uint32_t *pReadBuff
 		 * Something went wrong.
 		 * So cancle this transmission
 		 */
+		HAL_SD_StopTransferWaitForReady(hsd);
 		return SD_GENERAL_UNKNOWN_ERROR;
 	  }
     }
@@ -639,14 +654,7 @@ HAL_SD_ErrorTypedef HAL_SD_ReadBlocks(SD_HandleTypeDef *hsd, uint32_t *pReadBuff
   }
   else if (__HAL_SD_SDIO_GET_FLAG(hsd, SDIO_FLAG_RXOVERR))
   {
-	  /* wait for end of sd card */
-	  while (__HAL_SD_SDIO_GET_FLAG(hsd, SDIO_FLAG_RXACT)) {
-		  SDIO_ReadFIFO(hsd->Instance);
-	  }
-
-	  if (NumberOfBlocks > 1) {
-		HAL_SD_StopTransfer(hsd);
-	  }
+	HAL_SD_StopTransferWaitForReady(hsd);
     
     __HAL_SD_SDIO_CLEAR_FLAG(hsd, SDIO_FLAG_RXOVERR);
 
@@ -876,6 +884,8 @@ HAL_SD_ErrorTypedef HAL_SD_WriteBlocks(SD_HandleTypeDef *hsd, uint32_t *pWriteBu
   }
   else if (__HAL_SD_SDIO_GET_FLAG(hsd, SDIO_FLAG_TXUNDERR))
   {
+	HAL_SD_StopTransferWaitForReady(hsd);
+
     __HAL_SD_SDIO_CLEAR_FLAG(hsd, SDIO_FLAG_TXUNDERR);
     
     errorstate = SD_TX_UNDERRUN;
