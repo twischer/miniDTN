@@ -794,6 +794,11 @@ int convergence_layer_dgram_parse_ackframe(const cl_addr_t* const source, const 
 					/* There are more segments, keep on sending */
 					LOG(LOGD_DTN, LOG_CL, LOGL_DBG, "One Segment of bundle %lu acked, more to come (sent %lu, acked %lu, size %lu)",
 						ticket->bundle_number, ticket->offset_sent, ticket->offset_acked, ticket->buffer.size);
+
+					/* reset failed counters, becasue the next part of the bundle was received vital */
+					ticket->tries = 0;
+					ticket->failed_tries = 0;
+
 					return 1;
 				}
 			} else {
