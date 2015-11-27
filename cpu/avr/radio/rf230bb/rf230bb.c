@@ -1339,6 +1339,8 @@ static void rf230_process(void* p)
 	  // TODO use counting semaphore instead
 	/* only sleep, if there is no received data to process */
 	if (!rf230_pending) {
+		/* last received package processed */
+		LED_Off(LED_GREEN);
 	  vTaskSuspend(NULL);
 	}
 	RF230PROCESSFLAG(42);

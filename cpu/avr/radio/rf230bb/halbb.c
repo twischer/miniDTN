@@ -427,15 +427,13 @@ volatile char rf230interruptflag;
 
 static inline void hal_disable_not_needed_irqs()
 {
-	hal_register_write(RG_IRQ_MASK, HAL_TRX_END_MASK | HAL_TRX_UR_MASK);
+	hal_register_write(RG_IRQ_MASK, HAL_RX_START_MASK | HAL_TRX_END_MASK | HAL_TRX_UR_MASK);
 }
 
 
 /* Separate RF230 has a single radio interrupt and the source must be read from the IRQ_STATUS register */
 void hal_rf230_isr()
 {
-	LED_On(LED_BLUE);
-
 	INTERRUPTDEBUG(1);
 
 	/* used after HAL_SPI_TRANSFER_OPEN/CLOSE block */
@@ -459,6 +457,9 @@ void hal_rf230_isr()
 
 	/*Handle the incomming interrupt. Prioritized.*/
 	if ((interrupt_source & HAL_RX_START_MASK)) {
+		/* start processing incomming package */
+		LED_On(LED_GREEN);
+
 		INTERRUPTDEBUG(10);
 		/* Save RSSI for this packet if not in extended mode, scaling to 1dB resolution */
 #if !RF230_CONF_AUTOACK
@@ -469,11 +470,10 @@ void hal_rf230_isr()
 #else  // Faster with 1-clock multiply. Raven and Jackdaw have 2-clock multiply so same speed while saving 2 bytes of program memory
 		rf230_last_rssi = 3 * hal_subregister_read(SR_RSSI);
 #endif
-#else
+#endif
+
 		// TODO time critical read access with frame buffer empty indecator
 		// see datasheet page 126
-		hal_disable_not_needed_irqs();
-#endif
 
 	}
 	if (interrupt_source & HAL_TRX_END_MASK) {
@@ -548,8 +548,6 @@ void hal_rf230_isr()
 
 	configASSERT(interrupt_source == 0);
 #endif
-
-	LED_Off(LED_BLUE);
 }
 #   endif /* defined(DOXYGEN) */
 

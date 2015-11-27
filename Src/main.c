@@ -130,7 +130,7 @@ int main(void)
 	return -1;
   }
 
-  LED_On(LED_GREEN);
+  printf("DTN stack init done.\n");
 
   /* USER CODE END 2 */
 

@@ -1,3 +1,12 @@
+/*
+ * Used to access the four LEDs for debugging information
+ * LED_GREEN indecates receiving a package over LOWPAN or ethernt
+ * LED_BLUE sending a package over LOWPAN
+ * LED_ORANGE sending a package over ethernet
+ * LED_RED indectaes failers (starting FreeRTOS failes, LOWPAN FIFO buffer overflow)
+ */
+
+
 /* Define to prevent recursive inclusion -------------------------------------*/
 #ifndef __led_H
 #define __led_H

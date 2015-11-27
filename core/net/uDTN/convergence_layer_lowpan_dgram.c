@@ -1,5 +1,6 @@
 #include "convergence_layer_lowpan_dgram.h"
 
+#include "led.h"
 #include "lib/logging.h"
 #include "dtn_network.h"
 #include "discovery.h"
@@ -132,6 +133,9 @@ static int convergence_layer_lowpan_dgram_send_bundle(const cl_addr_t* const des
 {
 	configASSERT(dest->clayer == &clayer_lowpan_dgram);
 
+	/* start sending a package over LOWPAN */
+	LED_On(LED_BLUE);
+
 	/* only send the bundle, if no other bundle is sending */
 	if (convergence_layer_transmitting) {
 		return 0;
@@ -171,6 +175,13 @@ static int convergence_layer_lowpan_dgram_send_bundle(const cl_addr_t* const des
 	/* And send it out */
 	// TODO remove const cast
 	dtn_network_send((linkaddr_t*)&dest->lowpan, length_to_send, (void*)reference);
+
+
+	/* package over LOWPAN sent and possibly PHY layer ACK received.
+	 * convergence_layer_lowpan_dgram_status() will be called by dtn_network_send().
+	 * So the package is fully processed at this point.
+	 */
+	LED_Off(LED_BLUE);
 
 	return 1;
 }

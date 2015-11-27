@@ -13,6 +13,7 @@
 #include "lwip/api.h"
 #include "lwip/sys.h"
 #include "lib/logging.h"
+#include "led.h"
 
 #include "agent.h"
 #include "discovery.h"
@@ -183,6 +184,8 @@ static void convergence_layer_udp_bundle_thread(void *arg)
 	while (true) {
 		static struct netbuf* buf = NULL;
 		if (netconn_recv(bundle_conn, &buf) == ERR_OK) {
+			LED_On(LED_GREEN);
+
 			const ip_addr_t* const addr = netbuf_fromaddr(buf);
 			const uint16_t port = netbuf_fromport(buf);
 			LOG(LOGD_DTN, LOG_CL_UDP, LOGL_DBG, "Bundle package received from addr %s port %u", ipaddr_ntoa(addr), port);
@@ -200,6 +203,8 @@ static void convergence_layer_udp_bundle_thread(void *arg)
 			source.clayer->input(&source, data, length, 0);
 
 			netbuf_delete(buf);
+
+			LED_Off(LED_GREEN);
 		}
 	}
 }

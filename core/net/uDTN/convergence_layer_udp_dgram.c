@@ -2,6 +2,7 @@
 
 #include <lwip/ip.h>
 #include <lwip/udp.h>
+#include "led.h"
 #include "lib/logging.h"
 #include "agent.h"
 #include "discovery.h"
@@ -127,9 +128,17 @@ static int convergence_layer_udp_dgram_send_bundle(const cl_addr_t* const dest, 
 {
 	configASSERT(dest->clayer == &clayer_udp_dgram);
 
+	/* sending an package over ethernet */
+	LED_On(LED_ORANGE);
+
 	const HEADER_FLAGS header_flags = flags;
 	// TODO use the port, too, because other nodes can use other ports
-	return convergence_layer_udp_dgram_send(&dest->ip, HEADER_SEGMENT, sequence_number, header_flags, payload, length, reference);
+	const int ret =  convergence_layer_udp_dgram_send(&dest->ip, HEADER_SEGMENT, sequence_number, header_flags, payload, length, reference);
+
+	/* package over ethernet sent */
+	LED_Off(LED_ORANGE);
+
+	return ret;
 }
 
 
