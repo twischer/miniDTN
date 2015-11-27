@@ -9,7 +9,7 @@ CFLAGS+= -DINGA_CONF_PAN_ID=0x0780
 CFLAGS+= -DINGA_CONF_PAN_ADDR=1466
 
 
-CFLAGS+= -DBUNDLE_CONF_STORAGE=storage_fatfs
+#CFLAGS+= -DBUNDLE_CONF_STORAGE=storage_fatfs
 # Enable for fromating the sd card on every start up
 #CFLAGS+= -DBUNDLE_CONF_STORAGE_INIT=1
 
@@ -35,7 +35,7 @@ CFLAGS+= -DBUNDLE_CONF_STORAGE=storage_fatfs
 
 
 # Uncomment it for enabling debug messages
-CFLAGS+= -DENABLE_LOGGING
+#CFLAGS+= -DENABLE_LOGGING
 CFLAGS+= -DCONF_LOGLEVEL=LOGL_WRN
 #CFLAGS+= -DUART_BAUDRATE=921600
 

@@ -6,8 +6,8 @@ TOOLCHAIN_PREFIX:=arm-none-eabi
 
 # Optimization level, can be [0, 1, 2, 3, s].
 # TODO use s
-OPTLVL:=0
-DBG:=-g
+OPTLVL:=3
+#DBG:=-g
 #INSTRUMENTATION := -finstrument-functions
 
 STARTUP	:= $(ROOT_DIR)/Drivers/CMSIS/Device/ST/STM32F4xx/Source/Templates/gcc
