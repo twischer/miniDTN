@@ -726,7 +726,6 @@ UINT inc_lock (	/* Increment object open counter and returns its index (0:Intern
 }
 
 
-static
 FRESULT dec_lock (	/* Decrement object open counter */
 	UINT i			/* Semaphore index (1..) */
 )
@@ -2536,6 +2535,12 @@ FRESULT f_open (
 
 	if (!fp) return FR_INVALID_OBJECT;
 	fp->fs = 0;			/* Clear file object */
+
+	/* invalidate lock ID.
+	 * So dec_lock will not decrement the lock
+	 * if f_open failes before locking the file.
+	 */
+	fp->lockid = 0;
 
 	/* Get logical drive number */
 #if !_FS_READONLY

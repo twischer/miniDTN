@@ -36,6 +36,7 @@
 #include "tim.h"
 
 /* USER CODE BEGIN 0 */
+#include "delay.h"
 
 /* USER CODE END 0 */
 
@@ -142,6 +143,11 @@ void HAL_TIM_Base_MspDeInit(TIM_HandleTypeDef* htim_base)
 } 
 
 /* USER CODE BEGIN 1 */
+
+void HAL_Delay(__IO uint32_t Delay)
+{
+  delay_us(Delay * 1000);
+}
 
 /* USER CODE END 1 */
 

@@ -256,6 +256,9 @@ int f_puts (const TCHAR* str, FIL* cp);								/* Put a string to the file */
 int f_printf (FIL* fp, const TCHAR* str, ...);						/* Put a formatted string to the file */
 TCHAR* f_gets (TCHAR* buff, int len, FIL* fp);						/* Get a string from the file */
 
+
+FRESULT dec_lock (UINT i);
+
 #define f_eof(fp) ((int)((fp)->fptr == (fp)->fsize))
 #define f_error(fp) ((fp)->err)
 #define f_tell(fp) ((fp)->fptr)

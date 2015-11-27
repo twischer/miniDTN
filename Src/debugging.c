@@ -18,7 +18,8 @@
 
 
 
-#define MESSAGE_COUNT	128
+#define MESSAGE_COUNT	32
+#define TASKS_COUNT		8
 
 static const char IDLE_TASK_NAME[] = "IDLE";
 
@@ -34,10 +35,42 @@ static size_t next_message_index = 0;
 static message_t messages[MESSAGE_COUNT];
 static const char* fault_name = NULL;
 
+
+#if (REMEMBER_TASKS == 1)
+typedef struct {
+	TickType_t time_stamp;
+	const char* task_name;
+} task_time_t;
+
+static task_time_t remembered_tasks[TASKS_COUNT];
+#endif
+
+
 #if (PRINT_CPU_USAGE == 1)
 static uint64_t usage_time = 0;
 static TickType_t task_in_time = 0;
 #endif
+
+
+static inline bool is_scheduler_running()
+{
+	static bool is_scheduler_running = false;
+	if (!is_scheduler_running) {
+		is_scheduler_running = (xTaskGetSchedulerState() == taskSCHEDULER_RUNNING);
+	}
+
+	return is_scheduler_running;
+}
+
+
+static inline const char* const get_task_name()
+{
+	/* only try to determine the task name, if the scheduler was started once */
+	const char* const task_name = is_scheduler_running() ? pcTaskGetTaskName(NULL) : "INIT";
+
+	return task_name;
+}
+
 
 static TickType_t time_diff_start_ticks = 0;
 void time_diff_start(const char* const file, const int line)
@@ -81,6 +114,77 @@ void time_diff_assert_too_big(const TickType_t max_time_diff, const char* const 
 }
 
 
+#if (REMEMBER_TASKS == 1)
+void remember_task()
+{
+	const char* const task_name = get_task_name();
+
+	/* look for already existing task entry */
+	for (int i=0; i<TASKS_COUNT; i++) {
+		/* the task names are static string variables
+		 * So only comparing the pointers is enough.
+		 */
+		if (remembered_tasks[i].task_name == task_name) {
+			/* task entry already exists */
+			remembered_tasks[i].time_stamp = xTaskGetTickCount();
+			return;
+		}
+	}
+
+	/* look for an empty task entry */
+	for (int i=0; i<TASKS_COUNT; i++) {
+		if (remembered_tasks[i].task_name == NULL) {
+			remembered_tasks[i].time_stamp = xTaskGetTickCount();
+			remembered_tasks[i].task_name = task_name;
+			return;
+		}
+	}
+
+	printf("WRN: Not remembering task %s. List is full.\n", task_name);
+}
+
+void print_remembered_tasks()
+{
+	for (int i=0; i<TASKS_COUNT; i++) {
+		if (remembered_tasks[i].task_name == NULL) {
+			break;
+		}
+
+		printf("Task %s time %lu\n", remembered_tasks[i].task_name, remembered_tasks[i].time_stamp);
+	}
+}
+#endif
+
+/* this variables are defined in the linker script */
+extern uint8_t _estack;
+extern uint8_t _Min_Stack_Size;
+
+static uint32_t highes_stack_usage = 0;
+void check_for_stack_overflow()
+{
+	/* check user stack until FreeRTOS tasks were started */
+	if (is_scheduler_running()) {
+#if (CHECK_FREERTOS_STACK_OVERFLOW == 1)
+		vTaskCheckForStackOverflow();
+#endif
+	} else {
+		const register uint32_t stack_pointer asm("sp");
+
+		const uint32_t stack_begin = (uint32_t)&_estack;
+		const uint32_t stack_usage = stack_begin - stack_pointer;
+		if (stack_usage > highes_stack_usage) {
+			highes_stack_usage = stack_usage;
+
+			const uint32_t stack_size = (uint32_t)&_Min_Stack_Size;
+			if (stack_usage > stack_size) {
+				printf("USER STACK OVERFLOW (usage 0x%lx)\n", stack_usage);
+				print_stack_trace();
+			}
+		}
+	}
+}
+
+
 static inline void message_add_task(const bool type, void *this_fn, void *call_site, const char* const task_name)
 		__attribute__((no_instrument_function));
 static inline void message_add_task(const bool type, void *this_fn, void *call_site, const char* const task_name)
@@ -113,19 +217,11 @@ static inline void message_add(const bool type, void *this_fn, void *call_site)
 	recursion_deeps++;
 
 
-	/* only try to determine the task name, if the scheduler was started once */
-	static bool is_scheduler_running = false;
-	if (!is_scheduler_running) {
-		is_scheduler_running = (xTaskGetSchedulerState() == taskSCHEDULER_RUNNING);
-	}
-	const char* const task_name = is_scheduler_running ? pcTaskGetTaskName(NULL) : "INIT";
-
+	const char* const task_name = get_task_name();
 	message_add_task(type, this_fn, call_site, task_name);
 
 
-#if (CHECK_FREERTOS_STACK_OVERFLOW == 1)
-	vTaskCheckForStackOverflow();
-#endif
+	check_for_stack_overflow();
 
 #if (CHECK_MMEM_CONSISTENCY == 1)
 	mmem_check();
@@ -225,7 +321,7 @@ void task_switch_out(const TaskHandle_t task, const char* const name)
 		const uint64_t diff_ms = ((uint64_t)diff) / portTICK_PERIOD_MS;
 		usage_time += diff_ms * (SystemCoreClock / 1000 / 2);
 	} else {
-		const uint32_t last_usage_time = TIM3->CNT;
+		const uint32_t last_usage_time = TIM5->CNT;
 		usage_time += last_usage_time;
 	}
 #endif
@@ -288,12 +384,22 @@ void print_stack_trace_part_not_blocking(const size_t count)
 			   messages[message_index].call_site, task_name);
 		message_index = (message_index + 1) % MESSAGE_COUNT;
 	}
+
+	/* enable stack tracing again,
+	 * becasue this function can return
+	 */
+	disable_stack_tracing = false;
 }
 
 
 void print_stack_trace_part(const size_t count)
 {
 	taskDISABLE_INTERRUPTS();
+
+
+#if (REMEMBER_TASKS == 1)
+	print_remembered_tasks();
+#endif
 
 	print_stack_trace_part_not_blocking(count);
 

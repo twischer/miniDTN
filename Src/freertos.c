@@ -40,6 +40,7 @@
 #include <stdio.h>
 #include "stm32f4xx_hal.h"
 
+#include "storage.h"
 #include "debugging.h"
 /* USER CODE END Includes */
 
@@ -99,14 +100,11 @@ void MX_FREERTOS_Init(void) {
 /* StartDefaultTask function */
 void StartDefaultTask(void const * argument)
 {
-  /* init code for FATFS */
-  MX_FATFS_Init();
-
   /* init code for LWIP */
   MX_LWIP_Init();
 
   /* USER CODE BEGIN StartDefaultTask */
-  printf("FATFS and LWIP init done\n");
+  printf("LWIP init done\n");
 
   vTaskDelete(NULL);
   return;

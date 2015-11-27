@@ -11,6 +11,7 @@
  * in Makefile.include to enable function instrumentation
  * for nearly all source files.
  */
+#define configCHECK_FOR_STACK_OVERFLOW	0
 #define CHECK_FREERTOS_STACK_OVERFLOW	0
 #define CHECK_MMEM_CONSISTENCY			0
 
@@ -30,6 +31,8 @@
  */
 #define PRINT_BLOCKING_TASKS            0
 
+#define REMEMBER_TASKS                  0
+
 
 /* copied from task.h and queue.h.
  * These files can not include here,
@@ -48,6 +51,8 @@ void task_yield()  __attribute__((no_instrument_function));
 void task_blocked(QueueHandle_t queue)  __attribute__((no_instrument_function));
 #endif
 
+void check_for_stack_overflow();
+
 void print_stack_trace(void)  __attribute__((no_instrument_function));
 void print_stack_trace_part(const size_t count)  __attribute__((no_instrument_function));
 void print_stack_trace_part_not_blocking(const size_t count)  __attribute__((no_instrument_function));
@@ -56,13 +61,18 @@ void print_memory(const uint8_t* const data, const size_t length);
 void delay_us_check(void);
 
 
-#define TIME_DIFF_START() time_diff_start(__FILE__, __LINE__);
-#define TIME_DIFF_STOP() time_diff_stop(__FILE__, __LINE__);
-#define TIME_DIFF_ASSERT(max_diff) time_diff_assert_too_big(max_diff, __FILE__, __LINE__);
+#define TIME_DIFF_START() time_diff_start(__func__, __LINE__);
+#define TIME_DIFF_STOP() time_diff_stop(__func__, __LINE__);
+#define TIME_DIFF_ASSERT(max_diff) time_diff_assert_too_big(max_diff, __func__, __LINE__);
 
 void time_diff_start(const char* const file, const int line);
 void time_diff_stop(const char* const file, const int line);
 void time_diff_assert_too_big(const TickType_t max_time_diff, const char* const file, const int line);
+
+#if (REMEMBER_TASKS == 1)
+void print_remembered_tasks();
+void remember_task();
+#endif
 
 #endif // DEBUGGING_H
 

@@ -451,6 +451,31 @@ __weak void HAL_SD_MspDeInit(SD_HandleTypeDef *hsd)
   * @{
   */
 
+void HAL_SD_Reset(SD_HandleTypeDef *hsd)
+{
+	/* disable the CPSM */
+	hsd->Instance->CMD = 0;
+
+	/* disable the DPSM */
+	hsd->Instance->DCTRL = 0;
+
+	/* Clear all the static flags from the last command before sending a new one */
+	__HAL_SD_SDIO_CLEAR_FLAG(hsd, SDIO_STATIC_FLAGS);
+}
+
+
+void HAL_SD_StopTransferWaitForReady(SD_HandleTypeDef *hsd)
+{
+	HAL_SD_StopTransfer(hsd);
+
+	/* wait for finishing the stop command */
+	while (SD_GetState(hsd) == SD_CARD_PROGRAMMING) {}
+
+	/* Clear all the static flags from the last command before sending a new one */
+	__HAL_SD_SDIO_CLEAR_FLAG(hsd, SDIO_STATIC_FLAGS);
+}
+
+
 /**
   * @brief  Reads block(s) from a specified address in a card. The Data transfer 
   *         is managed by polling mode.  
@@ -491,6 +516,7 @@ HAL_SD_ErrorTypedef HAL_SD_ReadBlocks(SD_HandleTypeDef *hsd, uint32_t *pReadBuff
   
   if (errorstate != SD_OK)
   {
+    HAL_SD_Reset(hsd);
     return errorstate;
   }
   
@@ -545,6 +571,16 @@ HAL_SD_ErrorTypedef HAL_SD_ReadBlocks(SD_HandleTypeDef *hsd, uint32_t *pReadBuff
         
         tempbuff += 8;
       }
+	  else if (hsd->Instance->STA == 0x00)
+	  {
+		/* the transmition is no longer active and
+		 * there is no datat end flag.
+		 * Something went wrong.
+		 * So cancle this transmission
+		 */
+		HAL_SD_StopTransferWaitForReady(hsd);
+		return SD_GENERAL_UNKNOWN_ERROR;
+	  }
     }      
   }
   else
@@ -574,6 +610,16 @@ HAL_SD_ErrorTypedef HAL_SD_ReadBlocks(SD_HandleTypeDef *hsd, uint32_t *pReadBuff
         
         tempbuff += 8;
       }
+	  else if (hsd->Instance->STA == 0x00)
+	  {
+		/* the transmition is no longer active and
+		 * there is no datat end flag.
+		 * Something went wrong.
+		 * So cancle this transmission
+		 */
+		HAL_SD_StopTransferWaitForReady(hsd);
+		return SD_GENERAL_UNKNOWN_ERROR;
+	  }
     }
   }
   
@@ -608,8 +654,10 @@ HAL_SD_ErrorTypedef HAL_SD_ReadBlocks(SD_HandleTypeDef *hsd, uint32_t *pReadBuff
   }
   else if (__HAL_SD_SDIO_GET_FLAG(hsd, SDIO_FLAG_RXOVERR))
   {
-    __HAL_SD_SDIO_CLEAR_FLAG(hsd, SDIO_FLAG_RXOVERR);
+	HAL_SD_StopTransferWaitForReady(hsd);
     
+    __HAL_SD_SDIO_CLEAR_FLAG(hsd, SDIO_FLAG_RXOVERR);
+
     errorstate = SD_RX_OVERRUN;
     
     return errorstate;
@@ -836,6 +884,8 @@ HAL_SD_ErrorTypedef HAL_SD_WriteBlocks(SD_HandleTypeDef *hsd, uint32_t *pWriteBu
   }
   else if (__HAL_SD_SDIO_GET_FLAG(hsd, SDIO_FLAG_TXUNDERR))
   {
+	HAL_SD_StopTransferWaitForReady(hsd);
+
     __HAL_SD_SDIO_CLEAR_FLAG(hsd, SDIO_FLAG_TXUNDERR);
     
     errorstate = SD_TX_UNDERRUN;
@@ -2762,6 +2812,15 @@ static HAL_SD_ErrorTypedef SD_CmdResp1Error(SD_HandleTypeDef *hsd, uint8_t SD_CM
   
   while(!__HAL_SD_SDIO_GET_FLAG(hsd, SDIO_FLAG_CCRCFAIL | SDIO_FLAG_CMDREND | SDIO_FLAG_CTIMEOUT))
   {
+    if (hsd->Instance->STA == 0x00)
+    {
+      /* the transmition is no longer active and
+       * there is no cmd pend flag.
+       * Something went wrong.
+       * So cancle this transmission
+       */
+      return SD_GENERAL_UNKNOWN_ERROR;
+    }
   }
   
   if(__HAL_SD_SDIO_GET_FLAG(hsd, SDIO_FLAG_CTIMEOUT))
@@ -3256,6 +3315,15 @@ static HAL_SD_ErrorTypedef SD_FindSCR(SD_HandleTypeDef *hsd, uint32_t *pSCR)
       *(tempscr + index) = SDIO_ReadFIFO(hsd->Instance);
       index++;
     }
+	else if (hsd->Instance->STA == 0x00)
+	{
+	  /* the transmition is no longer active and
+	   * there is no datat end flag.
+	   * Something went wrong.
+	   * So cancle this transmission
+	   */
+	  return SD_GENERAL_UNKNOWN_ERROR;
+	}
   }
   
   if(__HAL_SD_SDIO_GET_FLAG(hsd, SDIO_FLAG_DTIMEOUT))

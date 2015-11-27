@@ -4,13 +4,14 @@
  */
 
 /**
- * \defgroup bundle_storage_coffee COFFEE-based persistent Storage
+ * \defgroup bundle_storage_fatfs FATFS-based persistent Storage
  *
  * @{
  */
 
 /**
  * \file 
+ * \author Timo Wischer <wischer@ibr.cs.tu-bs.de>
  * \author Georg von Zengen <vonzeng@ibr.cs.tu-bs.de>
  * \author Wolf-Bastian Poettner <poettner@ibr.cs.tu-bs.de>
  */
@@ -20,14 +21,13 @@
 #include <string.h>
 
 #include "FreeRTOS.h"
+#include "semphr.h"
 #include "timers.h"
+#include "ff.h"
 
 #include "net/netstack.h"
-#include "cfs/cfs.h"
 #include "lib/mmem.h"
 #include "lib/memb.h"
-#include "cfs/coffee/cfs-coffee.h"
-#include "dev/watchdog.h"
 #include "lib/list.h"
 #include "lib/logging.h"
 
@@ -36,6 +36,7 @@
 #include "statusreport.h"
 #include "agent.h"
 #include "hash.h"
+#include "convergence_layer_dgram.h"
 
 #include "storage.h"
 
@@ -56,10 +57,12 @@ struct file_list_entry_t {
 
 	uint32_t bundle_num;
 
-	uint32_t rec_time;
+	/* local bundle creation time (in freeRTOS ticks) */
+	TickType_t rec_time;
 	uint32_t lifetime;
 	uint32_t bundle_flags;
 
+	// TODO use size_t
 	uint16_t file_size;
 
 	/** Flags */
@@ -82,30 +85,112 @@ static uint16_t bundles_in_storage;
 /** Flag to indicate whether the bundle list has changed since last writing the list file */
 static uint8_t bundle_list_changed = 0;
 
-/**
- * COFFEE is so slow, that we are loosing radio packets while using the flash. Unfortunately, the
- * radio is sending LL ACKs for these packets, so the other side does not know.
- * Therefore, we have to disable the radio while reading or writing COFFEE, to avoid sending
- * ACKs for packets that we cannot read out of the buffer.
- *
- * FIXME: This HACK is *very* ugly and poor design.
- */
-#define RADIO_SAFE_STATE_ON()		NETSTACK_MAC.off(0)
-#define RADIO_SAFE_STATE_OFF()		NETSTACK_MAC.on()
+static SemaphoreHandle_t wait_for_changes_sem = NULL;
+static SemaphoreHandle_t bundle_deleted_sem = NULL;
+
+static FATFS fatfs;
+
+///**
+// * COFFEE is so slow, that we are loosing radio packets while using the flash. Unfortunately, the
+// * radio is sending LL ACKs for these packets, so the other side does not know.
+// * Therefore, we have to disable the radio while reading or writing COFFEE, to avoid sending
+// * ACKs for packets that we cannot read out of the buffer.
+// *
+// * FIXME: This HACK is *very* ugly and poor design.
+// */
+//#define RADIO_SAFE_STATE_ON()		NETSTACK_MAC.off(0)
+//#define RADIO_SAFE_STATE_OFF()		NETSTACK_MAC.on()
 
 /**
  * "Internal" functions
  */
-static void storage_coffee_prune(const TimerHandle_t timer);
-uint8_t storage_coffee_delete_bundle(uint32_t bundle_number, uint8_t reason);
-struct mmem * storage_coffee_read_bundle(uint32_t bundle_number);
-void storage_coffee_reconstruct_bundles();
+static void storage_fatfs_prune(const TimerHandle_t timer);
+static uint8_t storage_fatfs_delete_bundle(uint32_t bundle_number, uint8_t reason);
+static struct mmem * storage_fatfs_read_bundle(uint32_t bundle_number);
+
+#if (BUNDLE_STORAGE_INIT == 0)
+static void storage_fatfs_reconstruct_bundles();
+#endif
+
+
+
+static void storage_fatfs_file_close(FIL* const fd, const char* const filename)
+{
+	uint8_t tries = 5;
+
+	FRESULT close_res = FR_OK;
+	do {
+		close_res = f_close(fd);
+		if(close_res != FR_OK) {
+			LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to close file %s (err %u)", filename, close_res);
+
+			tries--;
+			if (tries <= 0) {
+				LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "Closing file failed. Discard file contant and unlock file handle.");
+				/* fp->lockid is invalid,
+				 * if f_open failes before locking the file.
+				 * So dec_lock will not decrement the file lock
+				 * for a not locked file
+				 */
+				dec_lock(fd->lockid);
+				break;
+			}
+
+			/* wait one ms to not blocking other tasks */
+			vTaskDelay(pdMS_TO_TICKS(1));
+		}
+	} while (close_res != FR_OK);
+}
+
+
+static int storage_fatfs_format()
+{
+	//	RADIO_SAFE_STATE_ON();
+
+	LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "Formatting flash");
+
+	const FRESULT res = f_mkfs("0:/", 0, 0);
+	if (res != FR_OK) {
+		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "Formatting failed with error code %u!", res);
+		return -1;
+	}
+
+	//	RADIO_SAFE_STATE_OFF();
+
+	return 0;
+}
+
 
 /**
  * \brief called by agent at startup
  */
-bool storage_coffee_init(void)
+static bool storage_fatfs_init(void)
 {
+	LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "storage_fatfs init");
+
+	/* Only execute the initalisation before the scheduler was started.
+	 * So there exists only one thread and
+	 * no locking is needed for the initialisation
+	 */
+	configASSERT(xTaskGetSchedulerState() == taskSCHEDULER_NOT_STARTED);
+
+	/* cancle, if initialisation was already done */
+	if(wait_for_changes_sem != NULL || bundle_deleted_sem != NULL) {
+		return false;
+	}
+	/* Do not use an recursive mutex,
+	 * because mmem_check() will not work vital then.
+	 */
+	wait_for_changes_sem = xSemaphoreCreateCounting(1, 0);
+	if(wait_for_changes_sem == NULL) {
+		return false;
+	}
+
+	bundle_deleted_sem = xSemaphoreCreateCounting(1, 0);
+	if(bundle_deleted_sem == NULL) {
+		return false;
+	}
+
 	// Initialize the bundle list
 	list_init(bundle_list);
 
@@ -115,21 +200,23 @@ bool storage_coffee_init(void)
 	bundles_in_storage = 0;
 	bundle_list_changed = 0;
 
+	const FRESULT ret = f_mount(&fatfs, "0:/", 1);
+	if (ret != FR_OK) {
+		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "Mounting sd card failed with error code %u!", ret);
+		return false;
+	}
+
 #if BUNDLE_STORAGE_INIT
-	RADIO_SAFE_STATE_ON();
-
-	LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "Formatting flash");
-	cfs_coffee_format();
-
-	RADIO_SAFE_STATE_OFF();
+	if (storage_fatfs_format() < 0) {
+		return false;
+	}
 #else
 	// Try to restore our bundle list from the file system
-	storage_coffee_reconstruct_bundles();
+	storage_fatfs_reconstruct_bundles();
 #endif
 
 	// Set the timer to regularly prune expired bundles
-//	ctimer_set(&g_store_timer, CLOCK_SECOND*5, storage_coffee_prune, NULL);
-	const TimerHandle_t store_timer = xTimerCreate("store timer", pdMS_TO_TICKS(5000), pdFALSE, NULL, storage_coffee_prune);
+	const TimerHandle_t store_timer = xTimerCreate("store timer", pdMS_TO_TICKS(5000), pdTRUE, NULL, storage_fatfs_prune);
 	if (store_timer == NULL) {
 		return false;
 	}
@@ -141,50 +228,72 @@ bool storage_coffee_init(void)
 	return true;
 }
 
+#if (BUNDLE_STORAGE_INIT == 0)
 /**
  * \brief Restore bundles stored in CFS
  */
-void storage_coffee_reconstruct_bundles()
+static void storage_fatfs_reconstruct_bundles()
 {
-	int n;
 	struct file_list_entry_t * entry = NULL;
-	struct cfs_dir directory_iterator;
-	struct cfs_dirent directory_entry;
-	char * delimeter = NULL;
-	uint32_t bundle_number = 0;
+	DIR directory_iterator;
 	struct mmem * bundleptr = NULL;
 	struct bundle_t * bundle = NULL;
 	uint8_t found = 0;
 
-	RADIO_SAFE_STATE_ON();
+//	RADIO_SAFE_STATE_ON();
 
-	n = cfs_opendir(&directory_iterator, "/");
-	if( n == -1 ) {
-		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to list directory /");
-		RADIO_SAFE_STATE_OFF();
+	const FRESULT n = f_opendir(&directory_iterator, "/");
+	if(n != FR_OK) {
+		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to list directory / (err %u)", n);
+//		RADIO_SAFE_STATE_OFF();
 		return;
 	}
 
-	while( cfs_readdir(&directory_iterator, &directory_entry) != -1 ) {
-		/* Check if there is a . in the filename */
-		delimeter = strchr(directory_entry.name, '.');
+	FILINFO directory_entry;
+#if _USE_LFN
+	/* not using static buffer, becasue this is only needed on intialization */
+	char lfn[_MAX_LFN + 1];
+	directory_entry.lfname = lfn;
+	directory_entry.lfsize = sizeof(lfn);
+#endif
 
+	while( f_readdir(&directory_iterator, &directory_entry) == FR_OK ) {
+		if (directory_entry.fname[0] == 0) {
+			/* end of directory */
+			break;
+		}
+
+		if (directory_entry.fattrib & AM_DIR) {
+			/* ignore directories */
+			continue;
+		}
+
+		/* Check if there is a . in the filename */
+		const char* const filename =  directory_entry.lfname[0] ? directory_entry.lfname : directory_entry.fname;
+
+		if (f_size(&directory_entry) < sizeof(struct bundle_t)) {
+			/* ignore files with a too small size */
+			LOG(LOGD_DTN, LOG_STORE, LOGL_WRN, "filename %s is too small, skipping (size %lu)", filename, f_size(&directory_entry));
+			continue;
+		}
+
+		char* const delimeter = strchr(filename, '.');
 		if( delimeter == NULL ) {
 			/* filename is invalid */
-			LOG(LOGD_DTN, LOG_STORE, LOGL_WRN, "filename %s is invalid, skipping", directory_entry.name);
+			LOG(LOGD_DTN, LOG_STORE, LOGL_WRN, "filename %s is invalid, skipping", filename);
 			continue;
 		}
 
 		/* Check if the extension is b */
 		if( *(delimeter+1) != 'b' ) {
 			/* filename is invalid */
-			LOG(LOGD_DTN, LOG_STORE, LOGL_WRN, "filename %s is invalid, skipping", directory_entry.name);
+			LOG(LOGD_DTN, LOG_STORE, LOGL_WRN, "filename %s is invalid, skipping", filename);
 			continue;
 		}
 
 		/* Get the bundle number from the filename */
-		delimeter = '\0';
-		bundle_number = strtoul(directory_entry.name, NULL, 10);
+		delimeter[0] = '\0';
+		const uint32_t bundle_number = strtoul(filename, NULL, 10);
 
 		/* Check if this bundle is in storage already */
 		found = 0;
@@ -205,22 +314,23 @@ void storage_coffee_reconstruct_bundles()
 		/* Allocate a directory entry for the bundle */
 		entry = memb_alloc(&bundle_mem);
 		if( entry == NULL ) {
-			LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to allocate struct, cannot restore bundle");
+			LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to allocate struct, cannot restore bundle (file %s, size %u)",
+				filename, f_size(&directory_entry));
 			continue;
 		}
 
 		/* Fill in the entry */
 		entry->bundle_num = bundle_number;
-		entry->file_size = directory_entry.size;
+		entry->file_size = f_size(&directory_entry);
 
 		/* Add bundle to the list */
 		list_add(bundle_list, entry);
 		bundles_in_storage ++;
 
 		/* Now read bundle from storage to update the rest of the entry */
-		RADIO_SAFE_STATE_OFF();
-		bundleptr = storage_coffee_read_bundle(entry->bundle_num);
-		RADIO_SAFE_STATE_ON();
+//		RADIO_SAFE_STATE_OFF();
+		bundleptr = storage_fatfs_read_bundle(entry->bundle_num);
+//		RADIO_SAFE_STATE_ON();
 
 		if( bundleptr == NULL ) {
 			LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to restore bundle %lu", entry->bundle_num);
@@ -247,42 +357,39 @@ void storage_coffee_reconstruct_bundles()
 	}
 
 	/* Close directory handle */
-	cfs_closedir(&directory_iterator);
+	f_closedir(&directory_iterator);
 
 	LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "Restored %u bundles from CFS", bundles_in_storage);
 
-	RADIO_SAFE_STATE_OFF();
+//	RADIO_SAFE_STATE_OFF();
 }
+#endif
+
 
 /**
  * \brief deletes expired bundles from storage
  */
-static void storage_coffee_prune(const TimerHandle_t timer)
+static void storage_fatfs_prune(const TimerHandle_t timer)
 {
-	uint32_t elapsed_time;
 	struct file_list_entry_t * entry = NULL;
 
 	// Delete expired bundles from storage
 	for(entry = list_head(bundle_list);
 			entry != NULL;
 			entry = list_item_next(entry)) {
-		elapsed_time = clock_seconds() - entry->rec_time;
+		const TickType_t elapsed_time = (xTaskGetTickCount() - entry->rec_time) / portTICK_PERIOD_MS / 1000;
 
 		if( entry->lifetime < elapsed_time ) {
 			LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "bundle lifetime expired of bundle %lu", entry->bundle_num);
-			storage_coffee_delete_bundle(entry->bundle_num, REASON_LIFETIME_EXPIRED);
+			storage_fatfs_delete_bundle(entry->bundle_num, REASON_LIFETIME_EXPIRED);
 		}
 	}
-
-	// Restart the timer
-//	ctimer_restart(&g_store_timer);
-	xTimerReset(timer, 0);
 }
 
 /**
  * \brief Sets the storage to its initial state
  */
-void storage_coffee_reinit(void)
+static void storage_fatfs_reinit(void)
 {
 	// Remove all bundles from storage
 	while(bundles_in_storage > 0) {
@@ -293,7 +400,7 @@ void storage_coffee_reinit(void)
 			break;
 		}
 
-		storage_coffee_delete_bundle(entry->bundle_num, REASON_DEPLETED_STORAGE);
+		storage_fatfs_delete_bundle(entry->bundle_num, REASON_DEPLETED_STORAGE);
 	}
 
 	// And reset our counters
@@ -305,10 +412,10 @@ void storage_coffee_reinit(void)
  * \param bundlemem Pointer to the MMEM struct containing the bundle
  * \return 1 on success, 0 if no room could be made free
  */
-uint8_t storage_coffee_make_room(struct mmem * bundlemem)
+static uint8_t storage_fatfs_make_room(struct mmem * bundlemem)
 {
 	/* Delete expired bundles first */
-	storage_coffee_prune(NULL);
+	storage_fatfs_prune(NULL);
 
 	/* If we do not have a pointer, we cannot compare - do nothing */
 	if( bundlemem == NULL ) {
@@ -363,7 +470,7 @@ uint8_t storage_coffee_make_room(struct mmem * bundlemem)
 		}
 
 		/* Delete Bundle */
-		storage_coffee_delete_bundle(entry->bundle_num, REASON_DEPLETED_STORAGE);
+		storage_fatfs_delete_bundle(entry->bundle_num, REASON_DEPLETED_STORAGE);
 	}
 #elif (BUNDLE_STORAGE_BEHAVIOUR == BUNDLE_STORAGE_BEHAVIOUR_DELETE_OLDER || BUNDLE_STORAGE_BEHAVIOUR == BUNDLE_STORAGE_BEHAVIOUR_DELETE_YOUNGER )
 	struct bundle_t * bundle = NULL;
@@ -390,16 +497,19 @@ uint8_t storage_coffee_make_room(struct mmem * bundlemem)
 				continue;
 			}
 
+			const uint32_t new_age = bundle->lifetime - ( (xTaskGetTickCount() - bundle->rec_time) / 1000 / portTICK_PERIOD_MS );
+			const uint32_t old_age = entry->lifetime - ( (xTaskGetTickCount() - entry->rec_time) / 1000 / portTICK_PERIOD_MS );
 #if BUNDLE_STORAGE_BEHAVIOUR == BUNDLE_STORAGE_BEHAVIOUR_DELETE_OLDER
 			/* If the new bundle has a longer lifetime than the bundle in our storage,
 			 * delete the bundle from storage to make room
 			 */
-			if( bundle->lifetime - (clock_seconds() - bundle->rec_time) >= entry->lifetime - (clock_seconds() - entry->rec_time) ) {
+			if (new_age >= old_age) {
 				break;
 			}
 #elif BUNDLE_STORAGE_BEHAVIOUR == BUNDLE_STORAGE_BEHAVIOUR_DELETE_YOUNGER
 			/* Delete youngest bundle in storage */
-			if( bundle->lifetime - (clock_seconds() - bundle->rec_time) >= entry->lifetime - (clock_seconds() - entry->rec_time) ) {
+			// TODO possibly wrong comparsion
+			if(new_age >= old_age) {
 				break;
 			}
 #endif
@@ -412,7 +522,7 @@ uint8_t storage_coffee_make_room(struct mmem * bundlemem)
 		}
 
 		/* Delete Bundle */
-		storage_coffee_delete_bundle(entry->bundle_num, REASON_DEPLETED_STORAGE);
+		storage_fatfs_delete_bundle(entry->bundle_num, REASON_DEPLETED_STORAGE);
 	}
 #else
 #error No Bundle Deletion Strategy defined
@@ -428,12 +538,11 @@ uint8_t storage_coffee_make_room(struct mmem * bundlemem)
  * \param bundle_number_ptr The pointer to the bundle number will be stored here
  * \return 1 on success, 0 otherwise
  */
-uint8_t storage_coffee_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_number_ptr)
+static uint8_t storage_fatfs_save_bundle(struct mmem* const bundlemem, uint32_t* const bundle_number_ptr)
 {
 	struct bundle_t * bundle = NULL;
 	struct file_list_entry_t * entry = NULL;
 	char bundle_filename[STORAGE_FILE_NAME_LENGTH];
-	int fd_write;
 	int n;
 
 	if( bundlemem == NULL ) {
@@ -457,22 +566,30 @@ uint8_t storage_coffee_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_n
 
 		if( bundle->bundle_num == entry->bundle_num ) {
 			LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "%lu is the same bundle", entry->bundle_num);
-			*bundle_number_ptr = &entry->bundle_num;
+			*bundle_number_ptr = entry->bundle_num;
 			bundle_decrement(bundlemem);
 			return entry->bundle_num;
 		}
 	}
 
-	if( !storage_coffee_make_room(bundlemem) ) {
-		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "Cannot store bundle, no room");
+	while ( !storage_fatfs_make_room(bundlemem) ) {
+		LOG(LOGD_DTN, LOG_STORE, LOGL_DBG, "Waiting for bundle deletion");
+		if (xSemaphoreTake(bundle_deleted_sem, pdMS_TO_TICKS(CONVERGENCE_LAYER_RETRANSMIT_TIMEOUT)) == pdFALSE) {
+			/* Timeout has expired.
+			 * Do not acceped the bundle and
+			 * send an temporare NACK
+			 */
 
-		/* Throw away bundle to not take up RAM */
-		bundle_decrement(bundlemem);
+			LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "Cannot store bundle, no room");
 
-		return 0;
+			/* Throw away bundle to not take up RAM */
+			bundle_decrement(bundlemem);
+
+			return 0;
+		}
 	}
 
-	/* Update the pointer to the bundle, address may have changed due to storage_coffee_make_room and MMEM reallocations */
+	/* Update the pointer to the bundle, address may have changed due to storage_fatfs_make_room and MMEM reallocations */
 	bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
 
 	// Allocate some memory for our bundle
@@ -504,47 +621,56 @@ uint8_t storage_coffee_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_n
 		return 0;
 	}
 
-	RADIO_SAFE_STATE_ON();
+//	RADIO_SAFE_STATE_ON();
 
 	// Store the bundle into the file
-	n = cfs_coffee_reserve(bundle_filename, bundlemem->size);
-	if( n < 0 ) {
-		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to reserve %u bytes for bundle", bundlemem->size);
-		memb_free(&bundle_mem, entry);
-		bundle_decrement(bundlemem);
-		RADIO_SAFE_STATE_OFF();
-		return 0;
-	}
+//	n = cfs_coffee_reserve(bundle_filename, bundlemem->size);
+//	if( n < 0 ) {
+//		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to reserve %u bytes for bundle", bundlemem->size);
+//		memb_free(&bundle_mem, entry);
+//		bundle_decrement(bundlemem);
+//		RADIO_SAFE_STATE_OFF();
+//		return 0;
+//	}
 
+	LOG(LOGD_DTN, LOG_STORE, LOGL_DBG, "open file %s", bundle_filename);
 	// Open the output file
-	fd_write = cfs_open(bundle_filename, CFS_WRITE);
-	if( fd_write == -1 ) {
+	FIL fd_write;
+	const FRESULT res = f_open(&fd_write, bundle_filename, FA_CREATE_ALWAYS | FA_WRITE);
+	if (res != FR_OK) {
 		// Unable to open file, abort here
-		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to open file %s, cannot save bundle", bundle_filename);
+		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to open file %s, cannot save bundle (err %u)", bundle_filename, res);
+		storage_fatfs_file_close(&fd_write, bundle_filename);
 		memb_free(&bundle_mem, entry);
 		bundle_decrement(bundlemem);
-		RADIO_SAFE_STATE_OFF();
+//		RADIO_SAFE_STATE_OFF();
 		return 0;
 	}
 
 	// Write our complete bundle
-	n = cfs_write(fd_write, bundle, bundlemem->size);
-	if( n != bundlemem->size ) {
-		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to write %u bytes to file %s, aborting", bundlemem->size, bundle_filename);
-		cfs_close(fd_write);
-		cfs_remove(bundle_filename);
+	UINT bytes_written = 0;
+	const FRESULT ret = f_write(&fd_write, bundle, bundlemem->size, &bytes_written);
+	if(ret != FR_OK || bytes_written != bundlemem->size) {
+		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to write %u bytes to file %s, aborting (err %u, written %u)",
+			bundlemem->size, bundle_filename, res, bytes_written);
+		storage_fatfs_file_close(&fd_write, bundle_filename);
+		f_unlink(bundle_filename);
+
 		memb_free(&bundle_mem, entry);
 		bundle_decrement(bundlemem);
-		RADIO_SAFE_STATE_OFF();
+//		RADIO_SAFE_STATE_OFF();
 		return 0;
 	}
 
 	// And close the file
-	cfs_close(fd_write);
+	storage_fatfs_file_close(&fd_write, bundle_filename);
+	LOG(LOGD_DTN, LOG_STORE, LOGL_DBG, "file %s closed", bundle_filename);
 
-	RADIO_SAFE_STATE_OFF();
+//	RADIO_SAFE_STATE_OFF();
 
-	LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "New Bundle %lu (%lu), Src %lu.%lu, Dest %lu.%lu, Seq %lu", bundle->bundle_num, entry->bundle_num, bundle->src_node, bundle->src_srv, bundle->dst_node, bundle->dst_srv, bundle->tstamp_seq);
+	LOG(LOGD_DTN, LOG_STORE, LOGL_INF, "New Bundle %lu (%lu), Src %lu.%lu, Dest %lu.%lu, Seq %lu",
+		bundle->bundle_num, entry->bundle_num, bundle->src_node, ((uint32_t)bundle->src_srv),
+		bundle->dst_node, ((uint32_t)bundle->dst_srv), bundle->tstamp_seq);
 
 	// Add bundle to the list
 	list_add(bundle_list, entry);
@@ -558,7 +684,10 @@ uint8_t storage_coffee_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_n
 
 	// Now copy over the STATIC pointer to the bundle number, so that
 	// the caller can stick it into an event
-	*bundle_number_ptr = &entry->bundle_num;
+	*bundle_number_ptr = entry->bundle_num;
+
+	/* storage status has changed */
+	xSemaphoreGive(wait_for_changes_sem);
 
 	return 1;
 }
@@ -569,7 +698,7 @@ uint8_t storage_coffee_save_bundle(struct mmem * bundlemem, uint32_t ** bundle_n
  * \param reason reason code
  * \return 1 on success or 0 on error
  */
-uint8_t storage_coffee_delete_bundle(uint32_t bundle_number, uint8_t reason)
+static uint8_t storage_fatfs_delete_bundle(uint32_t bundle_number, uint8_t reason)
 {
 	struct bundle_t * bundle = NULL;
 	struct file_list_entry_t * entry = NULL;
@@ -597,7 +726,7 @@ uint8_t storage_coffee_delete_bundle(uint32_t bundle_number, uint8_t reason)
 	// Figure out the source to send status report
 	if( reason != REASON_DELIVERED ) {
 		if( (entry->bundle_flags & BUNDLE_FLAG_CUST_REQ ) || (entry->bundle_flags & BUNDLE_FLAG_REP_DELETE) ){
-			bundlemem = storage_coffee_read_bundle(bundle_number);
+			bundlemem = storage_fatfs_read_bundle(bundle_number);
 			if( bundlemem == NULL ) {
 				LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to read back bundle %lu", bundle_number);
 				return 0;
@@ -628,11 +757,11 @@ uint8_t storage_coffee_delete_bundle(uint32_t bundle_number, uint8_t reason)
 		return 0;
 	}
 
-	RADIO_SAFE_STATE_ON();
+//	RADIO_SAFE_STATE_ON();
 
-	cfs_remove(bundle_filename);
+	f_unlink(bundle_filename);
 
-	RADIO_SAFE_STATE_OFF();
+//	RADIO_SAFE_STATE_OFF();
 
 	// Mark the bundle list as changed
 	bundle_list_changed = 1;
@@ -640,6 +769,14 @@ uint8_t storage_coffee_delete_bundle(uint32_t bundle_number, uint8_t reason)
 
 	// Free the storage struct
 	memb_free(&bundle_mem, entry);
+
+	LOG(LOGD_DTN, LOG_STORE, LOGL_DBG, "Bundle %lu deleted with reason %u", bundle_number, reason);
+
+	/* there is one more slot free, now */
+	xSemaphoreGive(bundle_deleted_sem);
+
+	/* storage status has changed */
+	xSemaphoreGive(wait_for_changes_sem);
 
 	return 1;
 }
@@ -649,13 +786,11 @@ uint8_t storage_coffee_delete_bundle(uint32_t bundle_number, uint8_t reason)
  * \param bundle_number bundle number to read
  * \return pointer to the MMEM struct containing the bundle (caller has to free)
  */
-struct mmem * storage_coffee_read_bundle(uint32_t bundle_number)
+static struct mmem * storage_fatfs_read_bundle(uint32_t bundle_number)
 {
-	struct bundle_t * bundle = NULL;
 	struct file_list_entry_t * entry = NULL;
 	struct mmem * bundlemem = NULL;
 	char bundle_filename[STORAGE_FILE_NAME_LENGTH];
-	int fd_read;
 	int n;
 
 	LOG(LOGD_DTN, LOG_STORE, LOGL_DBG, "Reading Bundle %lu", bundle_number);
@@ -696,45 +831,33 @@ struct mmem * storage_coffee_read_bundle(uint32_t bundle_number)
 		return NULL;
 	}
 
-	RADIO_SAFE_STATE_ON();
+//	RADIO_SAFE_STATE_ON();
 
 	// Open the output file
-	fd_read = cfs_open(bundle_filename, CFS_READ);
-	if( fd_read == -1 ) {
+	FIL fd_read;
+	const FRESULT open_res = f_open(&fd_read, bundle_filename, FA_OPEN_EXISTING | FA_READ);
+	if(open_res != FR_OK) {
 		// Unable to open file, abort here
-		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to open file %s, cannot read bundle", bundle_filename);
+		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to open file %s, cannot read bundle (err %u)", bundle_filename, open_res);
 		bundle_decrement(bundlemem);
+		storage_fatfs_file_close(&fd_read, bundle_filename);
 		return NULL;
 	}
 
 	// Read our complete bundle
-	n = cfs_read(fd_read, MMEM_PTR(bundlemem), bundlemem->size);
-	if( n != bundlemem->size ) {
+	UINT bytes_read = 0;
+	const FRESULT ret = f_read(&fd_read, MMEM_PTR(bundlemem), bundlemem->size, &bytes_read);
+	if(ret != FR_OK || bytes_read != bundlemem->size) {
 		LOG(LOGD_DTN, LOG_STORE, LOGL_ERR, "unable to read %u bytes from file %s, aborting", bundlemem->size, bundle_filename);
 		bundle_decrement(bundlemem);
-		cfs_close(fd_read);
+		storage_fatfs_file_close(&fd_read, bundle_filename);
 		return NULL;
 	}
 
 	// And close the file
-	cfs_close(fd_read);
+	storage_fatfs_file_close(&fd_read, bundle_filename);
 
-	RADIO_SAFE_STATE_OFF();
-
-	/* Get the bundle pointer */
-	bundle = (struct bundle_t *) MMEM_PTR(bundlemem);
-
-	/* How long did this bundle rot in our storage? */
-	uint32_t elapsed_time = clock_seconds() - bundle->rec_time;
-
-	/* Update lifetime of bundle */
-	if( bundle->lifetime < elapsed_time ) {
-		bundle->lifetime = 0;
-		bundle->rec_time = clock_seconds();
-	} else {
-		bundle->lifetime = bundle->lifetime - elapsed_time;
-		bundle->rec_time = clock_seconds();
-	}
+//	RADIO_SAFE_STATE_OFF();
 
 	return bundlemem;
 }
@@ -744,7 +867,7 @@ struct mmem * storage_coffee_read_bundle(uint32_t bundle_number)
  * \param bundlemem pointer to a bundle struct (not used here)
  * \return number of free slots
  */
-uint16_t storage_coffee_get_free_space(struct mmem * bundlemem)
+static uint16_t storage_fatfs_get_free_space(struct mmem * bundlemem)
 {
 	return BUNDLE_STORAGE_SIZE - bundles_in_storage;
 }
@@ -753,7 +876,7 @@ uint16_t storage_coffee_get_free_space(struct mmem * bundlemem)
  * \brief Get the number of slots available in storage
  * \returns the number of free slots
  */
-uint16_t storage_coffee_get_bundle_numbers(void){
+static uint16_t storage_fatfs_get_bundle_numbers(void){
 	return bundles_in_storage;
 }
 
@@ -761,7 +884,7 @@ uint16_t storage_coffee_get_bundle_numbers(void){
  * \brief Get the bundle list
  * \returns pointer to first bundle list entry
  */
-struct storage_entry_t * storage_coffee_get_bundles(void)
+static struct storage_entry_t * storage_fatfs_get_bundles(void)
 {
 	return (struct storage_entry_t *) list_head(bundle_list);
 }
@@ -772,7 +895,7 @@ struct storage_entry_t * storage_coffee_get_bundles(void)
  * \param bundle_num Bundle number
  * \return 1 on success or 0 on error
  */
-uint8_t storage_coffee_lock_bundle(uint32_t bundle_num)
+static uint8_t storage_fatfs_lock_bundle(uint32_t bundle_num)
 {
 	struct file_list_entry_t * entry = NULL;
 
@@ -797,7 +920,7 @@ uint8_t storage_coffee_lock_bundle(uint32_t bundle_num)
 /**
  * \brief Mark a bundle as unlocked after being locked previously
  */
-void storage_coffee_unlock_bundle(uint32_t bundle_num)
+static void storage_fatfs_unlock_bundle(uint32_t bundle_num)
 {
 	struct file_list_entry_t * entry = NULL;
 
@@ -817,18 +940,29 @@ void storage_coffee_unlock_bundle(uint32_t bundle_num)
 	entry->flags &= ~STORAGE_COFFEE_FLAGS_LOCKED;
 }
 
-const struct storage_driver storage_coffee = {
-	"STORAGE_COFFEE",
-	storage_coffee_init,
-	storage_coffee_reinit,
-	storage_coffee_save_bundle,
-	storage_coffee_delete_bundle,
-	storage_coffee_read_bundle,
-	storage_coffee_lock_bundle,
-	storage_coffee_unlock_bundle,
-	storage_coffee_get_free_space,
-	storage_coffee_get_bundle_numbers,
-	storage_coffee_get_bundles,
+
+static void storage_fatfs_wait_for_changes(void)
+{
+	if ( !xSemaphoreTake(wait_for_changes_sem, portMAX_DELAY) ) {
+		LOG(LOGD_DTN, LOG_STORE, LOGL_WRN, "Wait for changes failed");
+	}
+}
+
+
+const struct storage_driver storage_fatfs = {
+	"STORAGE_FATFS",
+	storage_fatfs_init,
+	storage_fatfs_reinit,
+	storage_fatfs_save_bundle,
+	storage_fatfs_delete_bundle,
+	storage_fatfs_read_bundle,
+	storage_fatfs_lock_bundle,
+	storage_fatfs_unlock_bundle,
+	storage_fatfs_get_free_space,
+	storage_fatfs_get_bundle_numbers,
+	storage_fatfs_get_bundles,
+	storage_fatfs_wait_for_changes,
+	storage_fatfs_format,
 };
 /** @} */
 /** @} */

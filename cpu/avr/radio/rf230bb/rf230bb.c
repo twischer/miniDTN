@@ -803,7 +803,7 @@ rf230_init(void)
   rf230_warm_reset();
  
  /* Start the packet receive process */
-  if ( !xTaskCreate(rf230_process, "RF230BB driver", 0x200, NULL, configMAX_PRIORITIES-1, &rf230_task) ) {
+  if ( !xTaskCreate(rf230_process, "RF230BB driver", 0x400, NULL, configMAX_PRIORITIES-1, &rf230_task) ) {
 	  return 0;
   }
  
@@ -1398,6 +1398,27 @@ rf230_read_fakeack(void *buf, unsigned short bufsize)
   }
   return rf230_read(buf,bufsize);
 }
+
+
+static void rxframe_next()
+{
+	/* Clear the length field to allow buffering of the next packet */
+	rxframe[rxframe_head].length=0;
+	rxframe_head++;
+	if (rxframe_head >= RF230_CONF_RX_BUFFERS) {
+	  rxframe_head=0;
+	}
+	/* If another packet has been buffered, schedule another receive poll */
+	if (rxframe[rxframe_head].length <= 0) {
+	  rf230_pending = false;
+
+	  for (uint8_t i=0; i<RF230_CONF_RX_BUFFERS; i++) {
+		  configASSERT(rxframe[i].length <= 0);
+	  }
+	}
+}
+
+
 /*---------------------------------------------------------------------------*/
 /* Read packet that was uploaded from Radio in ISR, else return zero.
  * The two-byte checksum is appended but the returned length does not include it.
@@ -1439,6 +1460,7 @@ rf230_read(void *buf, unsigned short bufsize)
 #if RADIOALWAYSON && DEBUGFLOWSIZE
    if (RF230_receive_on==0) {if (debugflow[debugflowsize-1]!='z') DEBUGFLOW('z');} //cxmac calls with radio off?
 #endif
+   rxframe_next();
     return 0;
   }
 
@@ -1457,6 +1479,7 @@ rf230_read(void *buf, unsigned short bufsize)
     DEBUGFLOW('u');
     flushrx();
     RIMESTATS_ADD(badsynch);
+	rxframe_next();
     return 0;
   }
 
@@ -1465,6 +1488,7 @@ rf230_read(void *buf, unsigned short bufsize)
     //PRINTF("len <= AUX_LEN\n");
     flushrx();
     RIMESTATS_ADD(tooshort);
+	rxframe_next();
     return 0;
   }
 
@@ -1473,6 +1497,7 @@ rf230_read(void *buf, unsigned short bufsize)
     //PRINTF("len - AUX_LEN > bufsize\n");
     flushrx();
     RIMESTATS_ADD(toolong);
+	rxframe_next();
     return 0;
   }
 
@@ -1481,16 +1506,7 @@ rf230_read(void *buf, unsigned short bufsize)
   memcpy(buf,framep,len-AUX_LEN+CHECKSUM_LEN);
   rf230_last_correlation = rxframe[rxframe_head].lqi;
 
-  /* Clear the length field to allow buffering of the next packet */
-  rxframe[rxframe_head].length=0;
-  rxframe_head++;
-  if (rxframe_head >= RF230_CONF_RX_BUFFERS) {
-    rxframe_head=0;
-  }
-  /* If another packet has been buffered, schedule another receive poll */
-  if (rxframe[rxframe_head].length <= 0) {
-	rf230_pending = false;
-  }
+  rxframe_next();
   
  /* Point to the checksum */
   framep+=len-AUX_LEN; 

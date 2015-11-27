@@ -63,7 +63,7 @@ struct mmem * bundle_create_bundle()
 
 	bundle = (struct bundle_t *) MMEM_PTR(&bs->bundle);
 	memset(bundle, 0, sizeof(struct bundle_t));
-	bundle->rec_time = (uint32_t) xTaskGetTickCount();
+	bundle->rec_time = xTaskGetTickCount();
 	bundle->num_blocks = 0;
 	bundle->source_event_queue = dtn_process_get_event_queue();
 

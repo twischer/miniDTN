@@ -97,10 +97,10 @@ void storage_mmem_update_statistics() {
 	statistics_storage_memory(mmem_avail_memory());
 }
 
-void storage_mmem_format(void)
+static int storage_mmem_format(void)
 {
 	/* We cannot delete everything in MMEM, so do nothing here */
-	return;
+	return 0;
 }
 
 /**
@@ -118,14 +118,14 @@ bool storage_mmem_init(void)
 
 	/* cancle, if initialisation was already done */
 	if(wait_for_changes_sem != NULL) {
-		return -1;
+		return false;
 	}
 	/* Do not use an recursive mutex,
 	 * because mmem_check() will not work vital then.
 	 */
 	wait_for_changes_sem = xSemaphoreCreateCounting(1, 0);
 	if(wait_for_changes_sem == NULL) {
-		return -2;
+		return false;
 	}
 
 	// Initialize the bundle list
@@ -296,16 +296,19 @@ uint8_t storage_mmem_make_room(struct mmem * bundlemem)
 				continue;
 			}
 
+			const uint32_t new_age = bundle_new->lifetime - ( (xTaskGetTickCount() - bundle_new->rec_time) / 1000 / portTICK_PERIOD_MS );
+			const uint32_t old_age = bundle_old->lifetime - ( (xTaskGetTickCount() - bundle_old->rec_time) / 1000 / portTICK_PERIOD_MS );
 #if BUNDLE_STORAGE_BEHAVIOUR == BUNDLE_STORAGE_BEHAVIOUR_DELETE_OLDER
 			/* If the new bundle has a longer lifetime than the bundle in our storage,
 			 * delete the bundle from storage to make room
 			 */
-			if( bundle_new->lifetime - (xTaskGetTickCount() - bundle_new->rec_time) / 1000 / portTICK_PERIOD_MS >= bundle_old->lifetime - (xTaskGetTickCount() - bundle_old->rec_time) / 1000 / portTICK_PERIOD_MS ) {
+			if(new_age >= old_age) {
 				break;
 			}
 #elif BUNDLE_STORAGE_BEHAVIOUR == BUNDLE_STORAGE_BEHAVIOUR_DELETE_YOUNGER
 			/* Delete youngest bundle in storage */
-			if( bundle_new->lifetime - (clock_time() - bundle_new->rec_time) / CLOCK_SECOND >= bundle_old->lifetime - (clock_time() - bundle_old->rec_time) / CLOCK_SECOND ) {
+			// TODO possibly wrong comparsion
+			if(new_age >= old_age) {
 				break;
 			}
 #endif

@@ -415,9 +415,7 @@ to its original value when it is released. */
 #endif
 
 /* Callback function prototypes. --------------------------*/
-#if configCHECK_FOR_STACK_OVERFLOW > 0
-	extern void vApplicationStackOverflowHook( TaskHandle_t xTask, char *pcTaskName );
-#endif
+extern void vApplicationStackOverflowHook( TaskHandle_t xTask, char *pcTaskName );
 
 #if configUSE_TICK_HOOK > 0
 	extern void vApplicationTickHook( void );
@@ -2265,6 +2263,18 @@ void vTaskCheckForStackOverflow(void)
 	}
 
 	taskFIRST_CHECK_FOR_STACK_OVERFLOW();
+
+	/* when calling from a task
+	 * pxCurrentTCB->pxTopOfStack is not updated.
+	 * So use real stack pointer
+	 */
+	const register uint32_t stack_pointer asm("sp");
+
+	/* Is the currently saved stack pointer within the stack limit? */								\
+	if( stack_pointer <= (uint32_t)pxCurrentTCB->pxStack )
+	{																								\
+		vApplicationStackOverflowHook( ( TaskHandle_t ) pxCurrentTCB, pxCurrentTCB->pcTaskName );	\
+	}
 }
 /*-----------------------------------------------------------*/
 

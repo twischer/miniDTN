@@ -46,7 +46,7 @@
 #include "net/uDTN/bundle.h"
 #include "net/uDTN/sdnv.h"
 
-#define DTN_PING_NODE		 2
+#define DTN_PING_NODE		 10
 #define DTN_PING_ENDPOINT	11
 #define DTN_PING_LENGTH		64
 

@@ -116,7 +116,7 @@ struct storage_driver {
 	/** block until the count of saved bundles has changed */
 	void (* const wait_for_changes)(void);
 	/** initializes the underlying medium to delete everything */
-	void (* format)();
+	int (* format)();
 };
 extern const struct storage_driver BUNDLE_STORAGE;
 #endif

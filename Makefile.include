@@ -93,9 +93,11 @@ vpath %.c $(ROOT_DIR)/Libraries/STM32F4xx_StdPeriph_Driver/src \
 	$(ROOT_DIR)/Libraries/syscall \
 	$(ROOT_DIR)/$(FREERTOS)/portable/MemMang \
 	$(ROOT_DIR)/$(FATFS)/drivers \
+	$(ROOT_DIR)/$(FATFS)/option \
 	$(ROOT_DIR)/core/net/mac/ \
 	$(SRC_DIRS)
-	  
+
+
 
 vpath %.s $(STARTUP)
 ASRC=startup_stm32f407xx.s
@@ -108,7 +110,8 @@ SRC+=heap_4.c
 
 # Standard Peripheral Source Files
 SRC+=sd_diskio.c
-
+SRC+=syscall.c
+SRC+=ccsbcs.c
 
 # needed contiki mac files
 SRC+=mac.c
@@ -124,7 +127,6 @@ EXCLUDE += core/net/uDTN/discovery_simple.c
 EXCLUDE += core/net/uDTN/discovery_static.c
 EXCLUDE += core/net/uDTN/routing_chain.c
 EXCLUDE += core/net/uDTN/routing_null.c
-EXCLUDE += core/net/uDTN/storage_coffee.c
 EXCLUDE += core/net/uDTN/storage_flash.c
 
 

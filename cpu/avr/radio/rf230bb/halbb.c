@@ -489,6 +489,10 @@ void hal_rf230_isr()
 				rx_buffer_overflow = true;
 				LED_On(LED_RED);
 				INTERRUPTDEBUG(42);
+
+				for (uint8_t i=0; i<RF230_CONF_RX_BUFFERS; i++) {
+					configASSERT(rxframe[i].length > 0);
+				}
 			} else {
 				INTERRUPTDEBUG(12);
 			}

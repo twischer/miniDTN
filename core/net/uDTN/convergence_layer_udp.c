@@ -256,7 +256,7 @@ int convergence_layer_udp_init(void)
 		return -5;
 	}
 
-	if ( !xTaskCreate(convergence_layer_udp_bundle_thread, "UDP DATA", configMINIMAL_STACK_SIZE+100, NULL, 5, NULL) ) {
+	if ( !xTaskCreate(convergence_layer_udp_bundle_thread, "UDP DATA", 0x400, NULL, 5, NULL) ) {
 		LOG(LOGD_DTN, LOG_CL_UDP, LOGL_ERR, "UDP-CL bundle task creation failed.");
 		return -6;
 	}

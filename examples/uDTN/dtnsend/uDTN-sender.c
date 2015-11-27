@@ -176,7 +176,7 @@ static void udtn_sender_process(void* p)
 
 
 		/* Only proceed, when we have enough storage left */
-		if( BUNDLE_STORAGE.free_space(NULL) < (BUNDLE_STORAGE_SIZE-1) ) {
+		if(BUNDLE_STORAGE.free_space(NULL) <= 2) {
 			BUNDLE_STORAGE.wait_for_changes();
 			continue;
 		}

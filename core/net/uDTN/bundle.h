@@ -127,7 +127,8 @@ struct bundle_t{
 
 	uint32_t bundle_num;
 
-	uint32_t rec_time;
+	/* local bundle creation time (in freeRTOS ticks) */
+	TickType_t rec_time;
 
 	uint32_t flags;
 	uint32_t dst_node;
