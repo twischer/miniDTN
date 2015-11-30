@@ -457,9 +457,6 @@ void hal_rf230_isr()
 
 	/*Handle the incomming interrupt. Prioritized.*/
 	if ((interrupt_source & HAL_RX_START_MASK)) {
-		/* start processing incomming package */
-		LED_On(LED_GREEN);
-
 		INTERRUPTDEBUG(10);
 		/* Save RSSI for this packet if not in extended mode, scaling to 1dB resolution */
 #if !RF230_CONF_AUTOACK
@@ -506,6 +503,9 @@ void hal_rf230_isr()
 #endif
 			if (rf230_last_rssi >= RF230_MIN_RX_POWER) {
 #endif
+				/* start processing incomming package */
+				LED_On(LED_GREEN);
+
 				hal_frame_read(&rxframe[rxframe_tail]);
 				rxframe_tail++;if (rxframe_tail >= RF230_CONF_RX_BUFFERS) rxframe_tail=0;
 				rf230_interrupt();
