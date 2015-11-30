@@ -59,6 +59,8 @@
 #error "I need a destination node - set CONF_SEND_TO_NODE"
 #endif
 
+#define SEND_DELAY		0
+
 #ifdef CONF_BUNDLE_SIZE
 #define BUNDLE_SIZE CONF_BUNDLE_SIZE
 #else
@@ -247,10 +249,16 @@ static void udtn_sender_process(void* p)
 
 			if (ev.event == dtn_bundle_stored) {
 				bundles_sent++;
+
+#if (SEND_DELAY <= 0)
 				/* Show progress every REPORTING_INTERVAL bundles */
 				if (bundles_sent % REPORTING_INTERVAL == 0) {
 					printf("%i\n", bundles_sent);
 				}
+#else
+				printf("%i\n", bundles_sent);
+				vTaskDelay(pdMS_TO_TICKS(SEND_DELAY));
+#endif
 				break;
 			}
 
