@@ -102,7 +102,7 @@
 #define configTICK_RATE_HZ                       ((TickType_t)1000)
 #define configMAX_PRIORITIES                     ( 7 )
 #define configMINIMAL_STACK_SIZE                 ((uint16_t)0x100)
-#define configTOTAL_HEAP_SIZE                    ((size_t)0xB000)
+#define configTOTAL_HEAP_SIZE                    ((size_t)0xA700)
 #define configMAX_TASK_NAME_LEN                  ( 16 )
 #define configUSE_TRACE_FACILITY                 0
 #define configUSE_16_BIT_TICKS                   0
@@ -166,7 +166,8 @@ See http://www.FreeRTOS.org/RTOS-Cortex-M3-M4.html. */
 /* Normal assert() semantics without relying on the provision of an assert.h
 header file. */
 /* USER CODE BEGIN 1 */
-//#define configASSERT( x ) if ((x) == 0) {taskDISABLE_INTERRUPTS(); printf("asssertion " #x " failed in %s:%u\n", __func__, __LINE__); for( ;; );}
+//#define configASSERT( x ) if ((x) == 0) {taskDISABLE_INTERRUPTS(); printf("asssertion " #x " failed in %s:%u\n", __func__, __LINE__); print_stack_trace();}
+#define IS_RAM(addr) ((void*)addr >= (void*)0x20000000 && (void*)addr <= (void*)0x2001FFFF)
 /* USER CODE END 1 */
 
 /* Definitions that map the FreeRTOS port interrupt handlers to their CMSIS

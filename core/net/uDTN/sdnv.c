@@ -144,7 +144,9 @@ int sdnv_decode_long(const uint8_t* bp, size_t len, uint64_t* val)
 
 int sdnv_decode(const uint8_t* bp, size_t len, uint32_t* val)
 {
-	LOG(LOGD_DTN, LOG_SDNV, LOGL_DBG, "sdnv_decode");
+	configASSERT(IS_RAM(bp) && IS_RAM(val));
+
+	LOG(LOGD_DTN, LOG_SDNV, LOGL_DBG, "sdnv_decode(in %p, len %lu, out %p)", bp, len, val);
 	const uint8_t* start = bp;
 	if (!val) {
 		LOG(LOGD_DTN, LOG_SDNV, LOGL_ERR, "SDNV: NULL pointer");

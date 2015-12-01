@@ -192,25 +192,6 @@ void discovery_ipnd_disable()
 }
 
 /**
- * \brief Parses an incoming EID in an IPND frame
- * \param eid Pointer where the EID will be stored
- * \param buffer Pointer to the incoming EID
- * \param length Length of the Pointer
- * \return Length of the parsed EID
- */
-uint8_t discovery_ipnd_parse_eid(uint32_t* const eid, const uint8_t* const buffer, const uint8_t length) {
-	int ret = 0;
-
-	/* Parse EID */
-	ret = eid_parse_host_length(buffer, length, eid);
-	if( ret < 0 ) {
-		return 0;
-	}
-
-	return ret;
-}
-
-/**
  * @brief discovery_ipnd_parse_service_param parses the port parameter of
  * a service block of a ipnd beacon message
  * @param attrs will contain the found port after parsing
@@ -379,7 +360,11 @@ static void discovery_ipnd_parse_msg(const uint8_t* const payload, const uint8_t
 	offset += 2;
 
 	if( flags & IPND_FLAGS_SOURCE_EID ) {
-		offset += discovery_ipnd_parse_eid(&(attrs->node_id), &payload[offset], length - offset);
+		const int ret = eid_parse_host_length(&payload[offset], length - offset, &(attrs->node_id));
+		if (ret < 0) {
+			return;
+		}
+		offset += ret;
 	}
 
 	if( flags & IPND_FLAGS_SERVICE_BLOCK ) {

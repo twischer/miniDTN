@@ -36,6 +36,13 @@ int eid_parse_host(char * buffer, uint8_t length, uint32_t * node_id)
 	return strlen(buffer);
 }
 
+/**
+ * \brief Parses an incoming EID in an IPND frame
+ * \param eid Pointer where the EID will be stored
+ * \param buffer Pointer to the incoming EID
+ * \param length Length of the Pointer
+ * \return Length of the parsed EID
+ */
 int eid_parse_host_length(const uint8_t* const buffer, const uint8_t length, uint32_t* const node_id)
 {
 	uint32_t eid_length;
