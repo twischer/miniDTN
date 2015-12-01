@@ -126,7 +126,7 @@ int convergence_layer_dgram_init(void)
 		return -3;
 	}
 
-	return -4;
+	return 1;
 }
 
 
