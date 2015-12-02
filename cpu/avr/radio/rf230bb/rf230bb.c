@@ -803,7 +803,7 @@ rf230_init(void)
   rf230_warm_reset();
  
  /* Start the packet receive process */
-  if ( !xTaskCreate(rf230_process, "RF230BB driver", 0x400, NULL, configMAX_PRIORITIES-1, &rf230_task) ) {
+  if ( !xTaskCreate(rf230_process, "RF230BB driver", configFATFS_STACK_SIZE, NULL, configMAX_PRIORITIES-1, &rf230_task) ) {
 	  return 0;
   }
  

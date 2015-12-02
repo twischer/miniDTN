@@ -118,11 +118,11 @@ int convergence_layer_dgram_init(void)
 
 
 	// Start CL process
-	if ( !xTaskCreate(convergence_layer_dgram_process, "CL process", 0x300, NULL, 5, NULL) ) {
+	if ( !xTaskCreate(convergence_layer_dgram_process, "CL process", configFATFS_STACK_SIZE, NULL, 5, NULL) ) {
 		return -2;
 	}
 
-	if ( !xTaskCreate(convergence_layer_dgram_check_timeouts, "CL TIMEOUTS", 0x300, NULL, tskIDLE_PRIORITY+1, NULL) ) {
+	if ( !xTaskCreate(convergence_layer_dgram_check_timeouts, "CL TIMEOUTS", configFATFS_STACK_SIZE, NULL, tskIDLE_PRIORITY+1, NULL) ) {
 		return -3;
 	}
 

@@ -216,7 +216,7 @@ bool routing_flooding_init(void)
 	list_init(routing_list);
 
 	// Start CL process
-	if ( !xTaskCreate(routing_process, "FLOOD ROUTE process", 0x300, NULL, 3, &routing_task) ) {
+	if ( !xTaskCreate(routing_process, "FLOOD ROUTE process", configFATFS_STACK_SIZE, NULL, 3, &routing_task) ) {
 		return false;
 	}
 
