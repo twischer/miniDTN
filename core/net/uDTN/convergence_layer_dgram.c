@@ -317,6 +317,10 @@ static int convergence_layer_dgram_prepare_segmentation(struct transmit_ticket_t
 			if( ticket->bundle == NULL ) {
 				LOG(LOGD_DTN, LOG_CL, LOGL_ERR, "Unable to read bundle %lu", ticket->bundle_number);
 				/* FIXME: Notify somebody */
+				BUNDLE_STORAGE.del_bundle(ticket->bundle_number, REASON_TRANSMISSION_CANCELED);
+				agent_delete_bundle(ticket->bundle_number);
+				bundle_decrement(ticket->bundle);
+				convergence_layer_dgram_free_transmit_ticket(ticket);
 				return -1;
 			}
 		}
@@ -325,8 +329,10 @@ static int convergence_layer_dgram_prepare_segmentation(struct transmit_ticket_t
 		const struct bundle_t* const bundle = (struct bundle_t *) MMEM_PTR(ticket->bundle);
 		if( bundle == NULL ) {
 			LOG(LOGD_DTN, LOG_CL, LOGL_ERR, "Invalid bundle pointer for bundle %lu", ticket->bundle_number);
+			BUNDLE_STORAGE.del_bundle(ticket->bundle_number, REASON_TRANSMISSION_CANCELED);
+			agent_delete_bundle(ticket->bundle_number);
 			bundle_decrement(ticket->bundle);
-			ticket->bundle = NULL;
+			convergence_layer_dgram_free_transmit_ticket(ticket);
 			return -1;
 		}
 
@@ -414,7 +420,7 @@ static int convergence_layer_dgram_prepare_segmentation(struct transmit_ticket_t
 		/* one byte for the CL header */
 		const size_t length_to_sent = (length > max_payload_length) ? max_payload_length : length;
 
-		/* onl increment the sequenz number, if all packages before were successfully acknowledged*/
+		/* only increment the sequence number, if all packages before were successfully acknowledged */
 		if( ticket->offset_sent == ticket->offset_acked ) {
 			/* Increment the sequence number for the new segment, except for the first segment */
 			if( ticket->offset_sent > 0 ) {
