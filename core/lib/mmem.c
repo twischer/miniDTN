@@ -348,6 +348,13 @@ mmem_check(void)
 		if (xSemaphoreGetMutexHolder(mutex) != NULL) {
 			return;
 		}
+
+		/* enter the critical section */
+		if ( !xSemaphoreTake(mutex, portMAX_DELAY) ) {
+			return;
+		}
+	} else {
+		return;
 	}
 
 
@@ -359,9 +366,11 @@ mmem_check(void)
 		print_stack_trace_part(2);
 	}
 
-	struct mmem* m = list_head(mmemlist);
-	if (m != NULL) {
+
+	const struct mmem* const first = list_head(mmemlist);
+	if (first != NULL) {
 		/* only check the list, if there is an element */
+		const struct mmem* m = first;
 		for (; m->next != NULL; m = m->next) {
 			if (m->real_size < m->size) {
 				/* only last two entries needed.
@@ -400,6 +409,8 @@ mmem_check(void)
 			print_stack_trace_part(2);
 		}
 	}
+
+	xSemaphoreGive(mutex);
 }
 
 /** @} */
