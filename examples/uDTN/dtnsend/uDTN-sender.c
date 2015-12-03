@@ -200,6 +200,7 @@ static void udtn_sender_process(void* p)
 			printf("create_bundle failed\n");
 			continue;
 		}
+		configASSERT( ((struct bundle_t *)MMEM_PTR(bundle_outgoing))->source_event_queue != NULL );
 
 		/* Source, destination, custody and report-to nodes and services*/
 		uint32_t tmp=CONF_SEND_TO_NODE;
@@ -230,6 +231,7 @@ static void udtn_sender_process(void* p)
 			.event = dtn_send_bundle_event,
 			.bundlemem = bundle_outgoing
 		};
+		configASSERT( ((struct bundle_t *)send_event.bundlemem->ptr)->source_event_queue );
 		agent_send_event(&send_event);
 
 

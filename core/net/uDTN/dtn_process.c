@@ -59,7 +59,10 @@ bool dtn_process_create_with_queue(const TaskFunction_t pvTaskCode, const char* 
 QueueHandle_t dtn_process_get_event_queue()
 {
 	/* get the application tag of the calling task */
-	return (QueueHandle_t)xTaskGetApplicationTaskTag(NULL);
+	const TaskHookFunction_t tag = xTaskGetApplicationTaskTag(NULL);
+	configASSERT(tag != NULL);
+
+	return (QueueHandle_t)tag;
 }
 
 

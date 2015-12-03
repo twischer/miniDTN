@@ -66,6 +66,7 @@ struct mmem * bundle_create_bundle()
 	bundle->rec_time = xTaskGetTickCount();
 	bundle->num_blocks = 0;
 	bundle->source_event_queue = dtn_process_get_event_queue();
+	configASSERT(bundle->source_event_queue != NULL);
 
 	/* Bundles are created as singleton and with normal priority */
 	bundle->flags = BUNDLE_FLAG_SINGLETON | BUNDLE_PRIORITY_NORMAL;
