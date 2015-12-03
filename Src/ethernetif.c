@@ -42,6 +42,7 @@
 
 /* Within 'USER CODE' section, code will be kept by default at each generation */
 /* USER CODE BEGIN 0 */
+#include "convergence_layer_udp.h"
 
 /* USER CODE END 0 */
 
@@ -208,6 +209,56 @@ void HAL_ETH_RxCpltCallback(ETH_HandleTypeDef *heth)
 
 /* USER CODE BEGIN 4 */
 
+
+/* copiied from https://my.st.com/public/STe2ecommunities/mcu/Lists/cortex_mx_stm32/Flat.aspx?RootFolder=
+ * https%3a%2f%2fmy.st.com%2fpublic%2fSTe2ecommunities%2fmcu%2fLists%2fcortex_mx_stm32%2fCalculating%20Ethernet%20Multicast%20
+ * filter%20HASH%20value%20%28%29&FolderCTID=0x01200200770978C69A1141439FE559EB459D7580009C4E14902C3CDE46A77F0FFD06506F5B&currentviews=659
+ */
+static inline uint32_t Rev32(const uint32_t x)
+{
+  uint32_t y;
+  int i;
+
+  y = 0;
+
+  for(i=0; i<32; i++)
+	if (x & (1 << i))
+	  y |= 1 << (31 - i);
+
+  return(y);
+}
+
+
+static inline uint32_t MacHash(const uint8_t* const Mac) // sourcer32@gmail.com
+{
+  int i, j;
+  uint32_t Crc;
+
+  Crc = 0xFFFFFFFF;
+
+  for(j=0; j<6; j++)
+  {
+	Crc = Crc ^ (uint32_t)Mac[j];
+
+	for(i=0; i<8; i++)
+	  if (Crc & 1)
+		Crc = (Crc >> 1) ^ 0xEDB88320; // Reversed 0x04C11DB7
+	  else
+		Crc = (Crc >> 1);
+  }
+
+  return(Rev32(~Crc) >> 26); // Get High order 6-bit in reversed/inverted CRC
+}
+
+
+//  static const uint8_t Test1[] = { 0x1F, 0x52, 0x41, 0x9C, 0xB6, 0xAF }; // 0x2C
+//  static const uint8_t Test2[] = { 0xA0, 0x0A, 0x98, 0x00, 0x00, 0x45 }; // 0x07
+//  static const uint8_t Test3[] = { 0x01, 0x00, 0x5e, 0x00, 0x00, 0x21 }; // 0x24
+//  static const uint8_t Test3[] = { 0x01, 0x00, 0x5e, 0x00, 0x00, 0x8E }; // 0x03
+//  printf("MacHash %02X\n", MacHash(Test1));
+//  printf("MacHash %02X\n", MacHash(Test2));
+//  printf("MacHash %02X\n", MacHash(Test3));
+
 /* USER CODE END 4 */
 
 /*******************************************************************************
@@ -284,7 +335,15 @@ static void low_level_init(struct netif *netif)
 	ETH_MACInitTypeDef macconf;
 	memset(&macconf, 0, sizeof(macconf));
 	macconf.PassControlFrames = ETH_PASSCONTROLFRAMES_BLOCKALL;
-	macconf.MulticastFramesFilter = ETH_MULTICASTFRAMESFILTER_NONE;
+	macconf.MulticastFramesFilter = ETH_MULTICASTFRAMESFILTER_PERFECTHASHTABLE;
+
+	const uint8_t mcast_mac[] = {0x01, 0x00, 0x5E, CL_UDP_DISCOVERY_IP_2, CL_UDP_DISCOVERY_IP_3, CL_UDP_DISCOVERY_IP_4};
+	const uint8_t crc = MacHash(mcast_mac);
+	if (crc >= 0x20) {
+		macconf.HashTableHigh = (1 << (crc - 0x20));
+	} else {
+		macconf.HashTableLow = (1 << crc);
+	}
 
 	if (HAL_ETH_ConfigMAC(&heth, &macconf) == HAL_OK) {
 	  netif->flags |= NETIF_FLAG_IGMP;
