@@ -1,6 +1,7 @@
 MODULES+= examples/uDTN/dtnping
 #MODULES+= examples/uDTN/dtnsend
 #MODULES+= examples/uDTN/throughput
+#MODULES+= examples/uDTN/counter
 #MODULES+= examples/uDTN/fatfs_test
 #MODULES+= examples/uDTN/fatfs-storage-test
 
@@ -19,6 +20,7 @@ CFLAGS+= -DINGA_CONF_PAN_ADDR=1466
 
 # uncomment for enabling LwIP debug messages
 # CFLAGS+= -DLWIP_DEBUG
+# CFLAGS+= -DLWIP_DBG_MIN_LEVEL=LWIP_DBG_LEVEL_WARNING
 # CFLAGS+= -DPBUF_DEBUG=LWIP_DBG_ON
 # CFLAGS+= -DAPI_LIB_DEBUG=LWIP_DBG_ON
 # CFLAGS+= -DAPI_MSG_DEBUG=LWIP_DBG_ON

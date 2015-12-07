@@ -202,3 +202,4 @@ platform/xmega-a3bu-xplained/dev
 platform/z1
 platform/z1/dev
 examples/uDTN/dtnsend
+examples/uDTN/counter
