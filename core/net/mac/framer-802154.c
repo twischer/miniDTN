@@ -39,7 +39,6 @@
 #include "net/mac/framer-802154.h"
 #include "net/mac/frame802154.h"
 #include "net/packetbuf.h"
-#include "lib/random.h"
 #include <string.h>
 
 #define DEBUG 0
