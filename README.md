@@ -35,7 +35,7 @@ The only thing you need to do is to edit the makefile and let it know your toolc
 ### Debug
 Connect your STM32F4Discovery with a USB cable. You can flash the binary into the board with this:
 
-`$ st-flash write binary/FreeRTOS.bin 0x8000000`
+`$ st-flash write binary/miniDTN.bin 0x8000000`
 
 The code is wrote directly into internal flash of STM32 processor and it starts to run after reset. To debug it, first start the GDB server:
 
@@ -44,7 +44,7 @@ The code is wrote directly into internal flash of STM32 processor and it starts 
 And then GDB:
 
 ```
-$ arm-none-eabi-gdb binary/FreeRTOS.elf
+$ arm-none-eabi-gdb binary/miniDTN.elf
 (gdb) tar ext :4242
 (gdb) b main
 (gdb) c
