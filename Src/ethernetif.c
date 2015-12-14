@@ -214,7 +214,7 @@ void HAL_ETH_RxCpltCallback(ETH_HandleTypeDef *heth)
  * https%3a%2f%2fmy.st.com%2fpublic%2fSTe2ecommunities%2fmcu%2fLists%2fcortex_mx_stm32%2fCalculating%20Ethernet%20Multicast%20
  * filter%20HASH%20value%20%28%29&FolderCTID=0x01200200770978C69A1141439FE559EB459D7580009C4E14902C3CDE46A77F0FFD06506F5B&currentviews=659
  */
-static inline uint32_t Rev32(const uint32_t x)
+static inline uint32_t rev32(const uint32_t x)
 {
   uint32_t y;
   int i;
@@ -229,7 +229,7 @@ static inline uint32_t Rev32(const uint32_t x)
 }
 
 
-static inline uint32_t MacHash(const uint8_t* const Mac) // sourcer32@gmail.com
+static inline uint32_t mac_hash(const uint8_t* const Mac) // sourcer32@gmail.com
 {
   int i, j;
   uint32_t Crc;
@@ -247,7 +247,7 @@ static inline uint32_t MacHash(const uint8_t* const Mac) // sourcer32@gmail.com
 		Crc = (Crc >> 1);
   }
 
-  return(Rev32(~Crc) >> 26); // Get High order 6-bit in reversed/inverted CRC
+  return(rev32(~Crc) >> 26); // Get High order 6-bit in reversed/inverted CRC
 }
 
 
@@ -338,7 +338,7 @@ static void low_level_init(struct netif *netif)
 	macconf.MulticastFramesFilter = ETH_MULTICASTFRAMESFILTER_PERFECTHASHTABLE;
 
 	const uint8_t mcast_mac[] = {0x01, 0x00, 0x5E, CL_UDP_DISCOVERY_IP_2, CL_UDP_DISCOVERY_IP_3, CL_UDP_DISCOVERY_IP_4};
-	const uint8_t crc = MacHash(mcast_mac);
+	const uint8_t crc = mac_hash(mcast_mac);
 	if (crc >= 0x20) {
 		macconf.HashTableHigh = (1 << (crc - 0x20));
 	} else {
