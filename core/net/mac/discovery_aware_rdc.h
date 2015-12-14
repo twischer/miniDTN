@@ -42,9 +42,7 @@
 #define __DISCOVERY_AWARE_RDC_H__
 
 #include "net/mac/rdc.h"
-#include "sys/process.h"
 
 extern const struct rdc_driver discovery_aware_rdc_driver;
-PROCESS_NAME(discovery_aware_rdc_process);
 
 #endif /* __DISCOVERY_AWARE_RDC_H__ */

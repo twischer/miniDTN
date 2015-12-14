@@ -99,12 +99,12 @@ static void discovery_scheduler_pattern_func(const TimerHandle_t timer)
 
 		if (sched_state) {
 			LOG(LOGD_DTN, LOG_DISCOVERY_SCHEDULER, LOGL_DBG, "PATTERN DISCOVERY SCHEDULER: begin of discovery phase");
-			process_post(&discovery_aware_rdc_process, dtn_disco_start_event, 0);
+// TODO			process_post(&discovery_aware_rdc_process, dtn_disco_start_event, 0);
 			DISCOVERY.start(newTimeout, schedule_index);
 		} else {
 			LOG(LOGD_DTN, LOG_DISCOVERY_SCHEDULER, LOGL_DBG, "PATTERN DISCOVERY SCHEDULER: end of discovery phase");
 			DISCOVERY.stop();
-			process_post(&discovery_aware_rdc_process, dtn_disco_stop_event, 0);
+// TODO			process_post(&discovery_aware_rdc_process, dtn_disco_stop_event, 0);
 		}
 	}
 

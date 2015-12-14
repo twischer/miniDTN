@@ -28,6 +28,7 @@
 #include "net/linkaddr.h"
 #include "net/mac/frame802154.h" // for IEEE802154_PANID
 #include "lib/logging.h"
+#include "clock.h"
 
 #include "dtn_apps.h"
 #include "dtn_network.h"

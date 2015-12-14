@@ -27,7 +27,7 @@
 
 
 bool discovery_scheduler_null_init() {
-  process_post(&discovery_aware_rdc_process, dtn_disco_start_event, 0);
+// TODO process_post(&discovery_aware_rdc_process, dtn_disco_start_event, 0);
   DISCOVERY.start(0, 0);
 
   return true;

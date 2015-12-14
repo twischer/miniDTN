@@ -11,7 +11,7 @@
  */
 
 #include <string.h> // for memcpy
-
+#include "clock.h"
 #include "agent.h"
 #include "bundle.h"
 #include "lib/logging.h"
