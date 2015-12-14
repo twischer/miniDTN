@@ -44,7 +44,6 @@
 #include "net/packetbuf.h"
 #include "net/queuebuf.h"
 #include "net/netstack.h"
-#include "net/rime/rimestats.h"
 #include <string.h>
 
 #define DEBUG 0
@@ -78,9 +77,6 @@
 #endif /* NULLRDC_802154_AUTOACK_HW */
 
 #if NULLRDC_802154_AUTOACK
-#include "sys/rtimer.h"
-#include "dev/watchdog.h"
-
 #ifdef NULLRDC_CONF_ACK_WAIT_TIME
 #define ACK_WAIT_TIME NULLRDC_CONF_ACK_WAIT_TIME
 #else /* NULLRDC_CONF_ACK_WAIT_TIME */
@@ -140,11 +136,7 @@ send_one_packet(mac_callback_t sent, void *ptr)
          already received a packet that needs to be read before
          sending with auto ack. */
       ret = MAC_TX_COLLISION;
-    } else {
-      if(!is_broadcast) {
-        RIMESTATS_ADD(reliabletx);
-      }
-
+	} else {
 	  switch(rf230_driver.transmit(packetbuf_totlen())) {
       case RADIO_TX_OK:
         if(is_broadcast) {
@@ -165,23 +157,15 @@ send_one_packet(mac_callback_t sent, void *ptr)
 			 rf230_driver.pending_packet() ||
 			 rf230_driver.channel_clear() == 0) {
             int len;
-            uint8_t ackbuf[ACK_LEN];
+			uint8_t ackbuf[ACK_LEN];
 
-//            if(AFTER_ACK_DETECTED_WAIT_TIME > 0) {
-//              wt = RTIMER_NOW();
-//              watchdog_periodic();
-//              while(RTIMER_CLOCK_LT(RTIMER_NOW(),
-//                                    wt + AFTER_ACK_DETECTED_WAIT_TIME)) {
-//              }
-//            }
 			/* wait 1/1500 sec after ack */
 			delay_us(667);
 
 			if(rf230_driver.pending_packet()) {
 			  len = rf230_driver.read(ackbuf, ACK_LEN);
               if(len == ACK_LEN && ackbuf[2] == dsn) {
-                /* Ack received */
-                RIMESTATS_ADD(ackrx);
+				/* Ack received */
                 ret = MAC_TX_OK;
               } else {
                 /* Not an ack or ack not for us: collision */

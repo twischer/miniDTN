@@ -54,7 +54,6 @@
 
 #include "contiki-conf.h"
 #include "net/linkaddr.h"
-#include "net/llsec/llsec802154.h"
 
 /**
  * \brief      The size of the packetbuf, in bytes

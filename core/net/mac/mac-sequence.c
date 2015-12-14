@@ -44,10 +44,8 @@
 
 #include <string.h>
 
-#include "contiki-net.h"
 #include "net/mac/mac-sequence.h"
 #include "net/packetbuf.h"
-#include "net/rime/rime.h"
 
 struct seqno {
   linkaddr_t sender;

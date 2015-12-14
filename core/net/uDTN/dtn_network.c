@@ -20,7 +20,6 @@
 #include "net/netstack.h"
 #include "net/packetbuf.h"
 #include "net/mac/framer-802154.h"
-#include "dev/leds.h"
 #include "lib/logging.h"
 
 #include "convergence_layer_lowpan_dgram.h"

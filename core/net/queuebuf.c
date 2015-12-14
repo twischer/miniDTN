@@ -42,7 +42,6 @@
  * @{
  */
 
-#include "contiki-net.h"
 #if WITH_SWAP
 #include "cfs/cfs.h"
 #endif

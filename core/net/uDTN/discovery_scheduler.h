@@ -8,9 +8,9 @@
 #ifndef DISCOVERY_SCHEDULER_H_
 #define DISCOVERY_SCHEDULER_H_
 
+#include <stdint.h>
 #include <stdbool.h>
 
-#include "net/rime/rime.h"
 
 /**
  * Which discovery scheduler driver are we going to use?

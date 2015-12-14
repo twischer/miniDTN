@@ -77,7 +77,6 @@ core/lib/mmem.c
 core/lib/mmem.h
 core/lib/petsciiconv.c
 core/lib/petsciiconv.h
-core/lib/print-stats.c
 core/lib/print-stats.h
 core/lib/random.c
 core/lib/random.h

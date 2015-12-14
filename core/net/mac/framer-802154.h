@@ -39,6 +39,7 @@
 #ifndef FRAMER_802154_H_
 #define FRAMER_802154_H_
 
+#include "net/mac/frame802154.h"
 #include "net/mac/framer.h"
 
 extern const struct framer framer_802154;
