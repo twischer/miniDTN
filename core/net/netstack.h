@@ -104,7 +104,6 @@
 #endif /* NETSTACK_CONF_FRAMER */
 #endif /* NETSTACK_FRAMER */
 
-#include "net/llsec/llsec.h"
 #include "net/mac/mac.h"
 #include "net/mac/rdc.h"
 #include "net/mac/framer.h"
