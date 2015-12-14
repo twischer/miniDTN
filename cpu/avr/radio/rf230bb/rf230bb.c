@@ -46,10 +46,6 @@
 #include "delay.h"
 
 #include "contiki.h"
-
-
-#include "dev/leds.h"
-#include "dev/spi.h"
 #include "rf230bb.h"
 
 #include "net/packetbuf.h"
