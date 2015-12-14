@@ -53,7 +53,6 @@
 #include "rf230bb.h"
 
 #include "net/packetbuf.h"
-#include "net/rime/rimestats.h"
 #include "net/netstack.h"
 
 #define WITH_SEND_CCA 0
@@ -1037,9 +1036,7 @@ rf230_transmit(unsigned short payload_len)
   }
 
   if (tx_result==RADIO_TX_OK) {
-    RIMESTATS_ADD(lltx);
-    if(packetbuf_attr(PACKETBUF_ATTR_RELIABLE))
-      RIMESTATS_ADD(ackrx);		//ack was requested and received
+	if(packetbuf_attr(PACKETBUF_ATTR_RELIABLE))
 #if RF230_INSERTACK
   /* Not PAN broadcast to FFFF, and ACK was requested and received */
   if (!((buffer[5]==0xff) && (buffer[6]==0xff)) && (buffer[0]&(1<<6)))
@@ -1049,7 +1046,6 @@ rf230_transmit(unsigned short payload_len)
   } else if (tx_result==3) {        //CSMA channel access failure
     ack_pending = 0;                //no fake-ack needed
     DEBUGFLOW('m');
-    RIMESTATS_ADD(contentiondrop);
     PRINTF("rf230_transmit: Transmission never started\n");
     tx_result = RADIO_TX_COLLISION;
   } else if (tx_result==5) {        //Expected ACK, none received
@@ -1057,7 +1053,6 @@ rf230_transmit(unsigned short payload_len)
     DEBUGFLOW('n');
     tx_result = RADIO_TX_NOACK;
     PRINTF("rf230_transmit: ACK not received\n");
-    RIMESTATS_ADD(badackrx);		//ack was requested but not received
   } else if (tx_result==7) {        //Invalid (Can't happen since waited for idle above?)
     ack_pending = 0;                //no fake-ack needed
     DEBUGFLOW('o');
@@ -1090,7 +1085,6 @@ rf230_prepare(const void *payload, unsigned short payload_len)
 //  PRINTF("rf230: sending %d bytes\n", payload_len);
 //  PRINTSHORT("s%d ",payload_len);
 
-  RIMESTATS_ADD(tx);
 
 #if RF230_CONF_CHECKSUM
   checksum = crc16_data(payload, payload_len, 0);
@@ -1294,7 +1288,6 @@ if (RF230_receive_on) {
 #if RADIOSTATS //TODO:This will double count buffered packets
   RF230_receivepackets++;
 #endif
-  RIMESTATS_ADD(llrx);
 
 #if RADIOALWAYSON
 } else {
@@ -1467,7 +1460,6 @@ rf230_read(void *buf, unsigned short bufsize)
     /* Oops, we must be out of sync. */
     DEBUGFLOW('u');
     flushrx();
-    RIMESTATS_ADD(badsynch);
 	rxframe_next();
     return 0;
   }
@@ -1476,7 +1468,6 @@ rf230_read(void *buf, unsigned short bufsize)
     DEBUGFLOW('s');
     //PRINTF("len <= AUX_LEN\n");
     flushrx();
-    RIMESTATS_ADD(tooshort);
 	rxframe_next();
     return 0;
   }
@@ -1485,7 +1476,6 @@ rf230_read(void *buf, unsigned short bufsize)
     DEBUGFLOW('v');
     //PRINTF("len - AUX_LEN > bufsize\n");
     flushrx();
-    RIMESTATS_ADD(toolong);
 	rxframe_next();
     return 0;
   }
@@ -1542,8 +1532,6 @@ rf230_read(void *buf, unsigned short bufsize)
  //   rf230_last_correlation = rxframe[rxframe_head].lqi;
     packetbuf_set_attr(PACKETBUF_ATTR_RSSI, rf230_last_rssi);
     packetbuf_set_attr(PACKETBUF_ATTR_LINK_QUALITY, rf230_last_correlation);
-
-    RIMESTATS_ADD(rx);
 
 #if RF230_CONF_TIMESTAMPS
     rf230_time_of_departure =
