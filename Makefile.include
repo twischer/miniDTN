@@ -29,8 +29,6 @@ MODULES+= Src \
 	$(LWIP)/system/OS \
 	Drivers/CMSIS/Device/ST/STM32F4xx/Source/Templates \
 	Drivers/STM32F4xx_HAL_Driver/Src \
-	Libraries \
-	Libraries/ub_lib \
 	cpu/avr/radio/rf230bb \
 	core/lib \
 	core/net \
@@ -45,7 +43,6 @@ INC_DIRS+= Inc \
 	Drivers/CMSIS/Device/ST/STM32F4xx/Include \
 	Drivers/CMSIS/Include \
 	Drivers/STM32F4xx_HAL_Driver/Inc \
-	Libraries \
 	core \
 	core/net/mac \
 	cpu/arm/stm32f103
@@ -54,7 +51,6 @@ INC_DIRS+= Inc \
 LINKER_SCRIPT:=$(ROOT_DIR)/STM32F407VG_FLASH.ld
 
 INCLUDE+=-I$(FREERTOS)/portable/GCC/ARM_CM4F
-INCLUDE+=-I$(ROOT_DIR)/Libraries/ub_lib
 INCLUDE+=-I$(ROOT_DIR)/config
 
 # Here comes black magic:
@@ -89,21 +85,15 @@ BUILD_DIR := $(addprefix $(BUILD_BASE)/,$(MODULES))
 
 # vpath is used so object files are written to the current directory instead
 # of the same directory as their source files
-vpath %.c $(ROOT_DIR)/Libraries/STM32F4xx_StdPeriph_Driver/src \
-	$(ROOT_DIR)/Libraries/syscall \
-	$(ROOT_DIR)/$(FREERTOS)/portable/MemMang \
+vpath %.c $(ROOT_DIR)/$(FREERTOS)/portable/MemMang \
 	$(ROOT_DIR)/$(FATFS)/drivers \
 	$(ROOT_DIR)/$(FATFS)/option \
-	$(ROOT_DIR)/core/net/mac/ \
-	$(SRC_DIRS)
+	$(ROOT_DIR)/core/net/mac/
 
 
 
 vpath %.s $(STARTUP)
 ASRC=startup_stm32f407xx.s
-
-# Project Source Files
-SRC+=syscalls.c
 
 # FreeRTOS Source Files
 SRC+=heap_4.c
