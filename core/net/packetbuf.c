@@ -44,7 +44,6 @@
 
 #include <string.h>
 
-#include "contiki-net.h"
 #include "net/packetbuf.h"
 
 struct packetbuf_attr packetbuf_attrs[PACKETBUF_NUM_ATTRS];

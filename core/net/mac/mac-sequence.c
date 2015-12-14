@@ -44,7 +44,6 @@
 
 #include <string.h>
 
-#include "contiki-net.h"
 #include "net/mac/mac-sequence.h"
 #include "net/packetbuf.h"
 
