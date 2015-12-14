@@ -18,9 +18,9 @@
 #ifndef DISCOVERY_H
 #define DISCOVERY_H
 
+#include <stdint.h>
 #include <stdbool.h>
 
-#include "net/rime/rime.h"
 #include "lwip/ip_addr.h"
 #include "cl_address.h"
 #include "convergence_layer_lowpan_dgram.h"

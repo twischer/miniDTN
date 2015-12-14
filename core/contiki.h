@@ -41,11 +41,6 @@
 #include "sys/process.h"
 #include "sys/autostart.h"
 
-#include "sys/timer.h"
-#include "sys/ctimer.h"
-#include "sys/etimer.h"
-#include "sys/rtimer.h"
-
 #include "sys/pt.h"
 
 #include "sys/procinit.h"
@@ -53,6 +48,5 @@
 #include "sys/loader.h"
 #include "sys/clock.h"
 
-#include "sys/energest.h"
 
 #endif /* CONTIKI_H_ */

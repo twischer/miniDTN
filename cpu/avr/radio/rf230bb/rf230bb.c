@@ -548,8 +548,6 @@ flushrx(void)
 static void
 radio_on(void)
 {
-//   ENERGEST_OFF(ENERGEST_TYPE_LISTEN);//testing
-  ENERGEST_ON(ENERGEST_TYPE_LISTEN);
   RF230_receive_on = 1;
 #ifdef RF230BB_HOOK_RADIO_ON
   RF230BB_HOOK_RADIO_ON();
@@ -557,7 +555,6 @@ radio_on(void)
 
 /* If radio is off (slptr high), turn it on */
   if (hal_get_slptr()) {
-	ENERGEST_ON(ENERGEST_TYPE_LED_RED);
 #if RF230BB_CONF_LEDONPORTE1
 	PORTE|=(1<<PE1); //ledon
 #endif
@@ -613,11 +610,8 @@ radio_off(void)
 #if RADIOSLEEPSWHENOFF
   /* Sleep Radio */
   hal_set_slptr_high();
-  ENERGEST_OFF(ENERGEST_TYPE_LED_RED);
 #endif
 #endif /* RADIOALWAYSON */
-
-   ENERGEST_OFF(ENERGEST_TYPE_LISTEN);
 }
 /*---------------------------------------------------------------------------*/
 static void
@@ -935,9 +929,6 @@ rf230_transmit(unsigned short payload_len)
  
   /* Wait for any previous operation or state transition to finish */
   rf230_waitidle();
-  if(RF230_receive_on) {
-    ENERGEST_OFF(ENERGEST_TYPE_LISTEN);
-  }
   /* Prepare to transmit */
 #if RF230_CONF_FRAME_RETRIES
   radio_set_trx_state(TX_ARET_ON);
@@ -962,8 +953,6 @@ rf230_transmit(unsigned short payload_len)
   rtimer_clock_t txtime = timesynch_time();
 #endif /* RF230_CONF_TIMESTAMPS */
 
-  ENERGEST_ON(ENERGEST_TYPE_TRANSMIT);
-  
 /* No interrupts across frame download! */
   HAL_ENTER_CRITICAL_REGION();
 
@@ -1026,11 +1015,9 @@ rf230_transmit(unsigned short payload_len)
 
 #endif /* RF230_CONF_TIMESTAMPS */
 
-  ENERGEST_OFF(ENERGEST_TYPE_TRANSMIT);
   if(RF230_receive_on) {
     DEBUGFLOW('l');
-    ENERGEST_ON(ENERGEST_TYPE_LISTEN);
-    radio_on();
+	radio_on();
   } else {
 #if RADIOALWAYSON
     /* Enable reception */
@@ -1667,7 +1654,6 @@ rf230_cca(void)
     rf230_on();
   }
 
-  ENERGEST_ON(ENERGEST_TYPE_LED_YELLOW);
   /* CCA Mode Mode 1=Energy above threshold  2=Carrier sense only  3=Both 0=Either (RF231 only) */
   /* Use the current mode. Note triggering a manual CCA is not recommended in extended mode */
 //hal_subregister_write(SR_CCA_MODE,1);
@@ -1691,7 +1677,6 @@ rf230_cca(void)
   }
   HAL_LEAVE_CRITICAL_REGION();
 
-  ENERGEST_OFF(ENERGEST_TYPE_LED_YELLOW); 
   if(radio_was_off) {
     rf230_off();
   }

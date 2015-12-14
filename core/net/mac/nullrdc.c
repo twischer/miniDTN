@@ -78,9 +78,6 @@
 #endif /* NULLRDC_802154_AUTOACK_HW */
 
 #if NULLRDC_802154_AUTOACK
-#include "sys/rtimer.h"
-#include "dev/watchdog.h"
-
 #ifdef NULLRDC_CONF_ACK_WAIT_TIME
 #define ACK_WAIT_TIME NULLRDC_CONF_ACK_WAIT_TIME
 #else /* NULLRDC_CONF_ACK_WAIT_TIME */
