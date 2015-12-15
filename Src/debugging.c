@@ -46,12 +46,6 @@ static task_time_t remembered_tasks[TASKS_COUNT];
 #endif
 
 
-#if (PRINT_CPU_USAGE == 1)
-static uint64_t usage_time = 0;
-static TickType_t task_in_time = 0;
-#endif
-
-
 static inline bool is_scheduler_running()
 {
 	static bool is_scheduler_running = false;
@@ -256,6 +250,7 @@ static void Unexpected_Interrupt(const char* const name)
 
 
 #if (PRINT_CPU_USAGE == 1)
+static uint64_t usage_time = 0;
 static inline void print_cpu_usage()
 {
 	const TickType_t current_time = xTaskGetTickCountFromISR();
@@ -267,10 +262,11 @@ static inline void print_cpu_usage()
 
 		const uint64_t running_time_ms = ((uint64_t)diff) / portTICK_PERIOD_MS;
 		const uint64_t running_time_hsys_clk = running_time_ms * (SystemCoreClock / 1000 / 2);
-		const uint8_t usage = (usage_time * 100) / running_time_hsys_clk;
+		const uint32_t usage = (usage_time * 10000) / running_time_hsys_clk;
+//		printf("use %lu / %lu\n", (uint32_t)usage_time, (uint32_t)running_time_hsys_clk);
 		usage_time = 0;
 
-		printf("\nCPU %u%%\n\n", usage);
+		printf("\nCPU 0.%04lu\n\n", usage);
 	}
 }
 #endif
@@ -278,22 +274,46 @@ static inline void print_cpu_usage()
 
 void task_switch_in(const TaskHandle_t task, const char* const name)
 {
-	/* ignore idle task switches */
+#if (PRINT_CPU_USAGE == 1)
+	/* this vartiable is only needed in this function */
+	static TickType_t task_in_time = 0;
+#endif
+
 	if (task == xTaskGetIdleTaskHandle()) {
 #if (PRINT_CPU_USAGE == 1)
+		/* stop usage time aquisation, if we enter the idle task from another task */
+		if (task_in_time > 0) {
+			/* check for overflow */
+			if ((TIM5->SR & TIM_SR_UIF) == TIM_SR_UIF ) {
+				const TickType_t diff = xTaskGetTickCountFromISR() - task_in_time;
+				const uint64_t diff_ms = ((uint64_t)diff) / portTICK_PERIOD_MS;
+				usage_time += diff_ms * (SystemCoreClock / 1000 / 2);
+//				printf("Overflow\n");
+			} else {
+				const uint32_t last_usage_time = TIM5->CNT;
+				usage_time += last_usage_time;
+			}
+
+			task_in_time = 0;
+		}
+
 		print_cpu_usage();
 #endif
+		/* ignore idle task switches */
 		return;
 	}
 
 #if (PRINT_CPU_USAGE == 1)
-	// TODO measure time between switch outs for non idle tasks.
-	// So the sceduling time will be measured, too.
-	/* reset usage time */
-	TIM5->CNT = 0;
-	/* reset the overflow bit */
-	TIM5->SR &= ~TIM_SR_UIF;
-	task_in_time = xTaskGetTickCountFromISR();
+	/* only start a new usage time aquisation,
+	 * if we switch from idle to another task
+	 */
+	if (task_in_time <= 0) {
+		/* reset usage time */
+		TIM5->CNT = 0;
+		/* reset the overflow bit */
+		TIM5->SR &= ~TIM_SR_UIF;
+		task_in_time = xTaskGetTickCountFromISR();
+	}
 #endif
 
 
@@ -313,18 +333,6 @@ void task_switch_out(const TaskHandle_t task, const char* const name)
 	if (task == xTaskGetIdleTaskHandle()) {
 		return;
 	}
-
-#if (PRINT_CPU_USAGE == 1)
-	/* check for overflow */
-	if ((TIM5->SR & TIM_SR_UIF) == TIM_SR_UIF ) {
-		const TickType_t diff = xTaskGetTickCountFromISR() - task_in_time;
-		const uint64_t diff_ms = ((uint64_t)diff) / portTICK_PERIOD_MS;
-		usage_time += diff_ms * (SystemCoreClock / 1000 / 2);
-	} else {
-		const uint32_t last_usage_time = TIM5->CNT;
-		usage_time += last_usage_time;
-	}
-#endif
 
 #if (PRINT_TASK_SWITCHING == 1)
 	printf("OUT %s\n", name);
