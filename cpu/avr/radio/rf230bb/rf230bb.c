@@ -961,7 +961,7 @@ rf230_transmit(unsigned short payload_len)
   hal_frame_write(buffer, total_len);
 
   HAL_LEAVE_CRITICAL_REGION();
-  PRINTF("rf230_transmit: %d\n", (int)total_len);
+  PRINTF("%08lu rf230_transmit: %d\n", xTaskGetTickCount(), (int)total_len);
 
 #if DEBUG>1
 /* Note the dumped packet will have a zero checksum unless compiled with RF230_CONF_CHECKSUM
@@ -1334,7 +1334,7 @@ static void rf230_process(void* p)
 		PRINTF("rf230_read: Packet lost, because of rx buffer overflow!\n");
 	}
 
-    PRINTF("rf230_read: %u bytes lqi %u\n",len,rf230_last_correlation);
+	PRINTF("%08lu rf230_read: %u bytes lqi %u \n", xTaskGetTickCount(), len, rf230_last_correlation);
 #if DEBUG>1
      {
         uint8_t i;
