@@ -165,6 +165,20 @@ SIZE=$(TOOLCHAIN_PATH)/$(TOOLCHAIN_PREFIX)-size
 
 OBJ = $(SRC:%.c=$(BUILD_BASE)/%.o)
 
+
+all: checkdirs $(OBJ)
+	@echo [AS] $(ASRC)
+	@$(AS) -o $(ASRC:%.s=$(BUILD_BASE)/%.o) $(STARTUP)/$(ASRC)
+	@echo [LD] $(TARGET).elf
+	@$(CC) -o $(BIN_DIR)/$(TARGET).elf $(LDFLAGS) $(OBJ) $(ASRC:%.s=$(BUILD_BASE)/%.o)
+	@echo [OBJCOPY] $(TARGET).hex
+	@$(OBJCOPY) -O ihex $(BIN_DIR)/$(TARGET).elf $(BIN_DIR)/$(TARGET).hex
+	@echo [OBJCOPY] $(TARGET).bin
+	@$(OBJCOPY) -O binary $(BIN_DIR)/$(TARGET).elf $(BIN_DIR)/$(TARGET).bin
+	@$(SIZE) -A -x $(BIN_DIR)/$(TARGET).elf | grep "\.data\|\.ccmram\|\.bss"
+	@echo "RAM size:           0x1FFFF (128kB)"
+
+
 # always exclude some source files from function instrumentation,
 # because it would hardly slow down the system
 #Exclude STM32F4 driver and HAL
@@ -208,19 +222,6 @@ $(BUILD_BASE)/Src/debugging.o: Src/debugging.c
 $(BUILD_BASE)/%.o: %.c
 	@echo [CC] $(INSTRUMENTATION) $(notdir $<)
 	@$(CC) $(CFLAGS) $(INSTRUMENTATION) $< -c -o $@
-
-
-all: checkdirs $(OBJ)
-	@echo [AS] $(ASRC)
-	@$(AS) -o $(ASRC:%.s=$(BUILD_BASE)/%.o) $(STARTUP)/$(ASRC)
-	@echo [LD] $(TARGET).elf
-	@$(CC) -o $(BIN_DIR)/$(TARGET).elf $(LDFLAGS) $(OBJ) $(ASRC:%.s=$(BUILD_BASE)/%.o)
-	@echo [OBJCOPY] $(TARGET).hex
-	@$(OBJCOPY) -O ihex $(BIN_DIR)/$(TARGET).elf $(BIN_DIR)/$(TARGET).hex
-	@echo [OBJCOPY] $(TARGET).bin
-	@$(OBJCOPY) -O binary $(BIN_DIR)/$(TARGET).elf $(BIN_DIR)/$(TARGET).bin
-	@$(SIZE) -A -x $(BIN_DIR)/$(TARGET).elf | grep "\.data\|\.ccmram\|\.bss"
-	@echo "RAM size:           0x1FFFF (128kB)"
 
 
 checkdirs: $(BUILD_DIR) $(BIN_DIR)
