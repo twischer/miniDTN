@@ -7,6 +7,8 @@ Some parts of this repository are forked from [µDTN](https://gitlab.ibr.cs.tu-b
 Some other parts were used from [Contiki-OS](https://github.com/contiki-os/contiki).
 These parts underlie the Contiki LICENSE.
 
+The convergence layers of this implemantation are compatible to [µDTN](https://gitlab.ibr.cs.tu-bs.de/cm-projects/udtn) and 
+[IBR-DTN](https://trac.ibr.cs.tu-bs.de/project-cm-2012-ibrdtn).
 
 ## Steps to run this example
 
